@@ -31,7 +31,7 @@
   (let [schema* (expand-node-once registry schema)]
     (if (identical? schema* schema)
       schema*
-      (expand-node registry schema*))))
+      (recur registry schema*))))
 
 (defn expand
   "Recursively expand `schema` and its children using the abbreviations and expanders in `registry`."

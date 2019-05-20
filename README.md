@@ -2,8 +2,8 @@
 
 ## Rationale
 - Schemas as immutable data
-  - can be transported over the line
-  - saved to database
+  - can be transported over the wire
+  - saved to the database
   - combined freely
 - Does not depend on global registry
 - Programmable, on the runtime as well
@@ -12,6 +12,7 @@ Should have:
 - Context dependent pluggable validators
 - Context dependent pluggable coercers
 - Close compatibility to Json Schema 7
+- First class error messages
 
 Could have:
 - Clojure spec generation

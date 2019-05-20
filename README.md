@@ -17,6 +17,10 @@ Could have:
 - Clojure spec generation
 - Database schema generations
 
+## Run tests
+
+`clojure -Atest:run-tests`
+
 ## Links
 
 - Clojure.spec https://clojure.org/guides/spec

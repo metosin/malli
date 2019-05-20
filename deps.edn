@@ -1,2 +1,9 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.9.0"}}}
+ :deps {org.clojure/clojure {:mvn/version "1.9.0"}}
+ :aliases
+ {:test
+  {:extra-deps {circleci/circleci.test {:mvn/version "0.4.1"}}
+   :extra-paths ["test"]}
+  :run-tests
+  {:main-opts ["-m" "test-tools.runner" "test"]}}}
+

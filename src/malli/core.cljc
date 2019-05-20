@@ -41,23 +41,16 @@
 
 ;;;;
 
-(deftype IntSchema []
-  SchemaFunctor
-  (-map-children [self _] self))
-
 (def Int
   "Schema for integers."
-  (->IntSchema))
+  (reify SchemaFunctor
+    (-map-children [self _] self)))
 
-(declare ->SetSchema)
-
-(deftype SetSchema [elem-schema]
-  SchemaFunctor
-  (-map-children [_ f] (->SetSchema (f elem-schema))))
-
-(def Set
+(defn Set
   "Schema constructor for sets."
-  ->SetSchema)
+  [elem-schema]
+  (reify SchemaFunctor
+    (-map-children [_ f] (Set (f elem-schema)))))
 
 ;;;;
 

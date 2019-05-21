@@ -1,5 +1,8 @@
 (ns malli.core-test
-  (:require [clojure.test :refer :all]))
+  (:require [clojure.test :refer :all]
+            [malli.core :as malli]))
 
-(deftest fail
-  (is (= 1 1)))
+(deftest expand-test
+  (is (= (malli/expand {::foo (fn [arg] arg)} [::foo ::bar]) ::bar))
+
+  (is (= (malli/expand malli/default-registry ::malli/int) malli/Int)))

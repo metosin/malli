@@ -1,3 +1,4 @@
-{:paths ["src" "resources"]
- :aliases {:test {:extra-paths ["test"]}}
- :deps {org.clojure/clojure {:mvn/version "1.9.0"}}}
+{:paths   ["src" "resources"]
+ :aliases {:test {:extra-paths ["test"]
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}}}}
+ :deps    {org.clojure/clojure {:mvn/version "1.9.0"}}}

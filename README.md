@@ -2,9 +2,9 @@
 
 ## Rationale
 - Schemas as immutable data
-  - can be transported over the wire
-  - saved to the database
-  - combined freely
+  - Can be transported over the wire
+  - Saved to the database
+  - Combined freely
 - Does not depend on global registry
 - Programmable, on the runtime as well
 
@@ -28,3 +28,7 @@ Could have:
 - JOI https://github.com/hapijs/joi
 - JSON Schema https://json-schema.org/understanding-json-schema/index.html
 
+## WIP Design and examples
+
+Discussion about format and all open topics at 
+[src/malli/design_draft.clj](src/malli/design_draft.clj).

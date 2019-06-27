@@ -7,7 +7,7 @@
 ;;
 
 (defprotocol IntoSchema
-  (-id [this])
+  (-name [this])
   (-into-schema [this properties childs opts]))
 
 (defprotocol Schema
@@ -19,7 +19,7 @@
   (satisfies? Schema x))
 
 (defmethod print-method ::into-schema [v ^java.io.Writer w]
-  (.write w (str "#IntoSchema{:id " (-id v) "}")))
+  (.write w (str "#IntoSchema{:name " (-name v) "}")))
 
 (defmethod print-method ::schema [v ^java.io.Writer w]
   (.write w (str (-form v))))
@@ -37,33 +37,33 @@
   ([type data]
    (throw (ex-info (str type) {:type type, :data data}))))
 
-(defn create-form [id properties childs]
+(defn create-form [name properties childs]
   (cond
-    (and (seq properties) (seq childs)) (into [id properties] childs)
-    (seq properties) [id properties]
-    (seq childs) (into [id] childs)
-    :else id))
+    (and (seq properties) (seq childs)) (into [name properties] childs)
+    (seq properties) [name properties]
+    (seq childs) (into [name] childs)
+    :else name))
 
-(defn- -fn-schema [id f]
+(defn- -fn-schema [name f]
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-id [_] id)
+    (-name [_] name)
     (-into-schema [_ properties childs _]
       (when (seq childs)
-        (fail! ::childs-not-allowed {:id id, :properties properties, :childs childs}))
+        (fail! ::childs-not-allowed {:name name, :properties properties, :childs childs}))
       ^{:type ::schema}
       (reify Schema
         (-validator [_ _] f)
         (-properties [_] properties)
-        (-form [_] (create-form id properties nil))))))
+        (-form [_] (create-form name properties nil))))))
 
-(defn- -composite-schema [id f]
+(defn- -composite-schema [name f]
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-id [_] id)
+    (-name [_] name)
     (-into-schema [_ properties childs opts]
       (when-not (seq childs)
-        (fail! ::no-childs {:id id, :properties properties}))
+        (fail! ::no-childs {:name name, :properties properties}))
       (let [child-schemas (mapv #(schema % opts) childs)
             validators (distinct (map #(-validator % opts) child-schemas))
             validator (apply f validators)]
@@ -71,7 +71,7 @@
         (reify Schema
           (-validator [_ _] validator)
           (-properties [_] properties)
-          (-form [_] (create-form id properties (map -form child-schemas))))))))
+          (-form [_] (create-form name properties (map -form child-schemas))))))))
 
 (defn- properties-and-childs [xs]
   (if (map? (first xs))
@@ -95,10 +95,10 @@
 (defn- -map-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-id [_] :map)
+    (-name [_] :map)
     (-into-schema [_ properties childs opts]
       (when-not (seq childs)
-        (fail! ::no-childs {:id :map, :properties properties}))
+        (fail! ::no-childs {:name :map, :properties properties}))
       (let [{:keys [entries]} (parse-keys childs opts)
             form (create-form :map properties (mapv #(expand-key % opts) childs))]
         ^{:type ::schema}
@@ -110,23 +110,24 @@
                                        default (not required)]
                                    (fn [m] (if-let [v (key m)] (valid? v) default))))
                                entries)]
-              (fn [m] (let [i (.iterator ^Iterable validators)]
-                        (boolean
-                          (loop []
-                            (if (.hasNext i)
-                              (and ((.next i) m) (recur))
-                              true)))))))
+              (fn [m] (and (map? m)
+                           (let [i (.iterator ^Iterable validators)]
+                             (boolean
+                               (loop []
+                                 (if (.hasNext i)
+                                   (and ((.next i) m) (recur))
+                                   true))))))))
           (-properties [_] properties)
           (-form [_] form))))))
 
 (defn- -register-var [registry v]
-  (let [id (-> v meta :name), schema (-fn-schema id @v)]
+  (let [name (-> v meta :name), schema (-fn-schema name @v)]
     (reduce
       (fn [acc k]
         (if (contains? acc k)
           (fail! ::schema-already-registered {:key k, :registry registry}))
         (assoc acc k schema))
-      registry [id @v])))
+      registry [name @v])))
 
 ;;
 ;; public api
@@ -239,7 +240,7 @@
 
       (let [valid {:x true, :y 1, :z "kikka"}]
 
-        ;; 22ns
+        ;; 18ns
         (let [valid? (fn [m]
                        (and (if-let [v (:x m)] (boolean? v) false)
                             (if-let [v (:y m)] (int? v) true)
@@ -272,7 +273,7 @@
           (dotimes [_ 1000]
             (valid? 0))))
 
-      ;; 3000ns -> 3ns
+      ;; 300ns -> 0.3ns
       (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
         (assert (= [true false true] (map valid? [-1 0 1])))
         (cc/quick-bench

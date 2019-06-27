@@ -8,11 +8,11 @@
 
 (defprotocol IntoSchema
   (-id [this])
-  (-into-schema [this props childs opts]))
+  (-into-schema [this properties childs opts]))
 
 (defprotocol Schema
   (-validator [this opts])
-  (-props [this])
+  (-properties [this])
   (-form [this]))
 
 (defn schema? [x]
@@ -37,10 +37,10 @@
   ([type data]
    (throw (ex-info (str type) {:type type, :data data}))))
 
-(defn create-form [id props childs]
+(defn create-form [id properties childs]
   (cond
-    (and (seq props) (seq childs)) (into [id props] childs)
-    (seq props) [id props]
+    (and (seq properties) (seq childs)) (into [id properties] childs)
+    (seq properties) [id properties]
     (seq childs) (into [id] childs)
     :else id))
 
@@ -48,32 +48,32 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-id [_] id)
-    (-into-schema [_ props childs _]
+    (-into-schema [_ properties childs _]
       (when (seq childs)
-        (fail! ::childs-not-allowed {:id id, :props props, :childs childs}))
+        (fail! ::childs-not-allowed {:id id, :properties properties, :childs childs}))
       ^{:type ::schema}
       (reify Schema
         (-validator [_ _] f)
-        (-props [_] props)
-        (-form [_] (create-form id props nil))))))
+        (-properties [_] properties)
+        (-form [_] (create-form id properties nil))))))
 
 (defn- -composite-schema [id f]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-id [_] id)
-    (-into-schema [_ props childs opts]
+    (-into-schema [_ properties childs opts]
       (when-not (seq childs)
-        (fail! ::no-childs {:id id, :props props}))
+        (fail! ::no-childs {:id id, :properties properties}))
       (let [child-schemas (mapv #(schema % opts) childs)
             validators (distinct (map #(-validator % opts) child-schemas))
             validator (apply f validators)]
         ^{:type ::schema}
         (reify Schema
           (-validator [_ _] validator)
-          (-props [_] props)
-          (-form [_] (create-form id props (map -form child-schemas))))))))
+          (-properties [_] properties)
+          (-form [_] (create-form id properties (map -form child-schemas))))))))
 
-(defn- props-and-childs [xs]
+(defn- properties-and-childs [xs]
   (if (map? (first xs))
     [(first xs) (rest xs)]
     [nil xs]))
@@ -96,11 +96,11 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-id [_] :map)
-    (-into-schema [_ props childs opts]
+    (-into-schema [_ properties childs opts]
       (when-not (seq childs)
-        (fail! ::no-childs {:id :map, :props props}))
+        (fail! ::no-childs {:id :map, :properties properties}))
       (let [{:keys [entries]} (parse-keys childs opts)
-            form (create-form :map props (mapv #(expand-key % opts) childs))]
+            form (create-form :map properties (mapv #(expand-key % opts) childs))]
         ^{:type ::schema}
         (reify Schema
           (-validator [_ opts]
@@ -116,7 +116,7 @@
                             (if (.hasNext i)
                               (and ((.next i) m) (recur))
                               true)))))))
-          (-props [_] props)
+          (-properties [_] properties)
           (-form [_] form))))))
 
 (defn- -register-var [registry v]
@@ -139,7 +139,7 @@
    (if (schema? ?schema)
      ?schema
      (if (vector? ?schema)
-       (apply -into-schema (concat [(get registry (first ?schema))] (props-and-childs (rest ?schema)) [opts]))
+       (apply -into-schema (concat [(get registry (first ?schema))] (properties-and-childs (rest ?schema)) [opts]))
        (if-let [schema' (get registry ?schema)]
          (-into-schema schema' nil nil opts)
          (fail! ::invalid-schema {:schema ?schema}))))))

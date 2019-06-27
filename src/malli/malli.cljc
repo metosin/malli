@@ -8,7 +8,6 @@
 
 (defprotocol IntoSchema
   (-id [this])
-  (-aliases [this])
   (-into-schema [this props childs opts]))
 
 (defprotocol Schema
@@ -45,27 +44,23 @@
     (seq childs) (into [id] childs)
     :else id))
 
-(defn- -var-schema [v]
-  (assert (var? v))
-  (let [id (-> v meta :name)]
-    ^{:type ::into-schema}
-    (reify IntoSchema
-      (-id [_] id)
-      (-aliases [_] [id @v])
-      (-into-schema [_ props childs _]
-        (when (seq childs)
-          (fail! ::childs-not-allowed {:id id, :props props, :childs childs}))
-        ^{:type ::schema}
-        (reify Schema
-          (-validator [_ _] @v)
-          (-props [_] props)
-          (-form [_] (create-form id props nil)))))))
+(defn- -fn-schema [id f]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-id [_] id)
+    (-into-schema [_ props childs _]
+      (when (seq childs)
+        (fail! ::childs-not-allowed {:id id, :props props, :childs childs}))
+      ^{:type ::schema}
+      (reify Schema
+        (-validator [_ _] f)
+        (-props [_] props)
+        (-form [_] (create-form id props nil))))))
 
 (defn- -composite-schema [id f]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-id [_] id)
-    (-aliases [_])
     (-into-schema [_ props childs opts]
       (when-not (seq childs)
         (fail! ::no-childs {:id id, :props props}))
@@ -101,7 +96,6 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-id [_] :map)
-    (-aliases [_])
     (-into-schema [_ props childs opts]
       (when-not (seq childs)
         (fail! ::no-childs {:id :map, :props props}))
@@ -125,16 +119,14 @@
           (-props [_] props)
           (-form [_] form))))))
 
-(defn registry! [registry]
-  (reduce-kv
-    (fn [acc k v]
-      (reduce
-        (fn [acc alias]
-          (if (contains? acc alias)
-            (fail! ::schema-already-registered {:key k, :alias alias, :registry registry})
-            (assoc acc alias v)))
-        acc (concat [k] (-aliases v))))
-    {} registry))
+(defn- -register-var [registry v]
+  (let [id (-> v meta :name), schema (-fn-schema id @v)]
+    (reduce
+      (fn [acc k]
+        (if (contains? acc k)
+          (fail! ::schema-already-registered {:key k, :registry registry}))
+        (assoc acc k schema))
+      registry [id @v])))
 
 ;;
 ;; public api
@@ -146,12 +138,11 @@
   ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
    (if (schema? ?schema)
      ?schema
-     (let [reg (registry! registry)]
-       (if (vector? ?schema)
-         (apply -into-schema (concat [(get reg (first ?schema))] (props-and-childs (rest ?schema)) [opts]))
-         (if-let [schema' (get reg ?schema)]
-           (-into-schema schema' nil nil opts)
-           (fail! ::invalid-schema {:schema ?schema})))))))
+     (if (vector? ?schema)
+       (apply -into-schema (concat [(get registry (first ?schema))] (props-and-childs (rest ?schema)) [opts]))
+       (if-let [schema' (get registry ?schema)]
+         (-into-schema schema' nil nil opts)
+         (fail! ::invalid-schema {:schema ?schema}))))))
 
 (defn form [?schema]
   (-form (schema ?schema)))
@@ -169,25 +160,19 @@
    ((validator ?schema opts) value)))
 
 ;;
-;; registry
+;; registries
 ;;
 
-(def default-registry
-  {:int (-var-schema #'int?)
-   :pos-int (-var-schema #'pos-int?)
-   :neg-int (-var-schema #'neg-int?)
-   :string (-var-schema #'string?)
-   :boolean (-var-schema #'boolean?)
-   :keyword (-var-schema #'keyword?)
-   :and (-composite-schema :and every-pred)
+(def predicate-registry
+  (->> 'clojure.core (ns-publics) (filter #(-> % first str last (= \?))) (vals) (reduce -register-var {})))
+
+(def base-registry
+  {:and (-composite-schema :and every-pred)
    :or (-composite-schema :or some-fn)
    :map (-map-schema)})
 
-;;
-;; helpers
-;;
-
-(def Int (schema :int))
+(def default-registry
+  (merge predicate-registry base-registry))
 
 ;;
 ;; spike
@@ -197,7 +182,7 @@
 
 (require '[malli.malli :as m])
 
-(m/validate m/Int 1)
+(m/validate int? 1)
 
 (m/form [:and int?])
 (m/schema [:and int? pos-int?])

@@ -1,6 +1,6 @@
 # malli - plain data schemas
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=150 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=115 align="right"/>
 
 ## Rationale
 
@@ -19,10 +19,13 @@ Definining and validating Schemas:
 ```clj
 (require '[malli.core :as m])
 
-(def schema (m/schema int?))
+(def Int (m/schema int?))
 
-(m/validate schema "1") ; => false
-(m/validate schema 1) ; => true
+(m/validate Int "1")
+; => false
+
+(m/validate Int 1)
+; => true
 
 (m/validate [:and int? [:> 6]] 7)
 ; => true
@@ -45,7 +48,7 @@ Schemas can have attributes:
   (m/schema
     [:and
      {:title "Age"
-      :description "Age of a user"
+      :description "It's an age"
       :json-schema/example 20}
      int? [:> 18]]))
 ```
@@ -64,7 +67,7 @@ Serializing & Deserializing schemas:
     (edn/read-string)
     (m/schema)
     (m/validate
-      {:x true, :y 1, :z "kikka"}))
+      {:x true, :z "kikka"}))
 ; => true
 ```
 

@@ -272,23 +272,35 @@
 
   (do "composite tests"
 
-      ;; 300ns -> 0.3ns
+      ;; 4ns
       (let [valid? (fn [x] (and (int? x) (or (pos-int? x) (neg-int? x))))]
         (assert (= [true false true] (map valid? [-1 0 1])))
         (cc/quick-bench
-          (dotimes [_ 1000]
-            (valid? 0))))
+          (valid? 0)))
 
-      ;; 300ns -> 0.3ns
+      ;; 6ns
       (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
         (assert (= [true false true] (map valid? [-1 0 1])))
         (cc/quick-bench
-          (dotimes [_ 1000]
-            (valid? 0))))
+          (valid? 0)))
 
-      ;; 40000ns -> 40ns
+      ;; 45ns
       (let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))]
         (assert (= [true false true] (map (partial s/valid? spec) [-1 0 1])))
         (cc/quick-bench
-          (dotimes [_ 1000]
-            (s/valid? spec 0))))))
+          (s/valid? spec 0)))))
+
+(comment
+  (require '[clojure.edn :as edn])
+  (-> [:map
+       [:x boolean?]
+       [[:opt :y] int?]
+       [:z string?]]
+      (m/schema)
+      (pr-str)
+      (edn/read-string)
+      (m/schema)
+      (m/validate
+        {:x true, :y 1, :z "kikka"}))
+  ; => true
+  )

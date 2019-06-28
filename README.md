@@ -1,5 +1,7 @@
 # malli - plain data schemas
 
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=150 align="right"/>
+
 ## Rationale
 
 - Schemas as immutable data
@@ -11,6 +13,8 @@
 - Fast
 
 ## Examples
+
+Definining and validating Schemas:
 
 ```clj
 (require '[malli.core :as m])
@@ -34,22 +38,33 @@
 ; => true
 ```
 
-As Schemas are all data, they can be serialized and deserialized easily:
+Schemas can have attributes:
+
+```clj
+(def Age
+  (m/schema
+    [:and
+     {:title "Age"
+      :description "Age of a user"
+      :json-schema/example 20}
+     int? [:> 18]]))
+```
+
+Serializing & Deserializing schemas:
 
 ```clj
 (require '[clojure.edn :as edn])
 
-(->
-  [:map
-   [:x boolean?]
-   [[:opt :y] int?]
-   [:z string?]]
-  (m/schema)
-  (pr-str) ;; write to edn
-  (edn/read-string) ;; read from edn
-  (m/schema)
-  (m/validate
-    {:x true, :y 1, :z "kikka"}))
+(-> [:map
+     [:x boolean?]
+     [[:opt :y] int?]
+     [:z string?]]
+    (m/schema)
+    (pr-str)
+    (edn/read-string)
+    (m/schema)
+    (m/validate
+      {:x true, :y 1, :z "kikka"}))
 ; => true
 ```
 
@@ -78,4 +93,3 @@ Could have:
 - Struct https://funcool.github.io/struct/latest/
 - JOI https://github.com/hapijs/joi
 - JSON Schema https://json-schema.org/understanding-json-schema/index.html
-

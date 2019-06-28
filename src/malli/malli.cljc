@@ -11,7 +11,7 @@
   (-into-schema [this properties childs opts]))
 
 (defprotocol Schema
-  (-validator [this opts])
+  (-validator [this])
   (-properties [this])
   (-form [this]))
 
@@ -53,7 +53,7 @@
         (fail! ::childs-not-allowed {:name name, :properties properties, :childs childs}))
       ^{:type ::schema}
       (reify Schema
-        (-validator [_ _] f)
+        (-validator [_] f)
         (-properties [_] properties)
         (-form [_] (create-form name properties nil))))))
 
@@ -65,11 +65,11 @@
       (when-not (seq childs)
         (fail! ::no-childs {:name name, :properties properties}))
       (let [child-schemas (mapv #(schema % opts) childs)
-            validators (distinct (map #(-validator % opts) child-schemas))
+            validators (distinct (map -validator child-schemas))
             validator (apply f validators)]
         ^{:type ::schema}
         (reify Schema
-          (-validator [_ _] validator)
+          (-validator [_] validator)
           (-properties [_] properties)
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
@@ -104,10 +104,10 @@
             form (create-form :map properties (mapv #(expand-key % opts) childs))]
         ^{:type ::schema}
         (reify Schema
-          (-validator [_ opts]
+          (-validator [_]
             (let [validators (mapv
                                (fn [[key {:keys [required]} value]]
-                                 (let [valid? (-validator value opts)
+                                 (let [valid? (-validator value)
                                        default (not required)]
                                    (fn [m] (if-let [v (key m)] (valid? v) default))))
                                entries)]
@@ -153,7 +153,7 @@
   ([?schema]
    (validator ?schema nil))
   ([?schema opts]
-   (-validator (schema ?schema opts) opts)))
+   (-validator (schema ?schema opts))))
 
 (defn validate
   ([?schema value]

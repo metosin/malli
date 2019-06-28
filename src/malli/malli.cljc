@@ -78,10 +78,11 @@
     [(first xs) (rest xs)]
     [nil xs]))
 
-(defn- expand-key [[k v] opts]
-  (let [v' (schema v opts)]
+(defn- expand-key [[k ?p ?v] opts]
+  (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
+        v' (schema v opts)]
     (if-not (vector? k)
-      [k {:required true} v']
+      [k {:required (:required p true)} v']
       (let [[r k] k]
         [k {:required (case r :opt false, :req true)} v']))))
 

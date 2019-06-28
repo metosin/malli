@@ -1,12 +1,63 @@
 # malli - plain data schemas
 
 ## Rationale
+
 - Schemas as immutable data
-  - can be transported over the wire
-  - saved to the database
-  - combined freely
-- Does not depend on global registry
-- Programmable, on the runtime as well
+- Schema-driven Runtime Validation
+- Schema-driven Transformations
+- Tools for programming with Schemas
+- No global state, explicit everything
+- First class error messages
+- Fast
+
+## Examples
+
+```clj
+(require '[malli.core :as m])
+
+(def schema (m/schema int?))
+
+(m/validate schema "1") ; => false
+(m/validate schema 1) ; => true
+
+(m/validate [:and int? [:> 6]] 7)
+; => true
+
+(def valid?
+  (m/validator
+    [:map
+     [:x boolean?]
+     [[:opt :y] int?]
+     [:z string?]]))
+
+(valid? {:x true, :z "kikka"})
+; => true
+```
+
+As Schemas are all data, they can be serialized and deserialized easily:
+
+```clj
+(require '[clojure.edn :as edn])
+
+(->
+  [:map
+   [:x boolean?]
+   [[:opt :y] int?]
+   [:z string?]]
+  (m/schema)
+  (pr-str) ;; write to edn
+  (edn/read-string) ;; read from edn
+  (m/schema)
+  (m/validate
+    {:x true, :y 1, :z "kikka"}))
+; => true
+```
+
+## Status
+
+WIP
+
+## More
 
 Should have:
 - Context dependent pluggable validators

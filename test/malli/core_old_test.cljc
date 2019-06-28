@@ -1,6 +1,6 @@
-(ns malli.core-test
+(ns malli.core-old-test
   (:require [clojure.test :refer :all]
-            [malli.core :as malli]))
+            [malli.core-old :as malli]))
 
 (deftest expand-test
   (is (= (malli/expand {::foo (fn [arg] arg)} [::foo ::bar]) ::bar))

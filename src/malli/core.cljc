@@ -1,7 +1,5 @@
 (ns malli.core)
 
-(set! *warn-on-reflection* true)
-
 ;;
 ;; protocols
 ;;
@@ -44,18 +42,33 @@
     (seq childs) (into [name] childs)
     :else name))
 
-(defn- -fn-schema [name f]
+(defn- -leaf-schema [name ->validator]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] name)
-    (-into-schema [_ properties childs _]
+    (-into-schema [_ properties childs opts]
+      (let [validator (->validator properties childs opts)]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] validator)
+          (-properties [_] properties)
+          (-form [_] (create-form name properties childs)))))))
+
+(defn- -fn-schema [name f]
+  (-leaf-schema
+    name
+    (fn [properties childs _]
       (when (seq childs)
         (fail! ::childs-not-allowed {:name name, :properties properties, :childs childs}))
-      ^{:type ::schema}
-      (reify Schema
-        (-validator [_] f)
-        (-properties [_] properties)
-        (-form [_] (create-form name properties nil))))))
+      f)))
+
+(defn- -partial-fn-schema [name f]
+  (-leaf-schema
+    name
+    (fn [properties [x :as childs] _]
+      (when-not (= 1 (count childs))
+        (fail! ::one-childs-allowed {:name name, :properties properties, :childs childs}))
+      #(f % x))))
 
 (defn- -composite-schema [name f]
   ^{:type ::into-schema}
@@ -78,16 +91,16 @@
     [(first xs) (rest xs)]
     [nil xs]))
 
-(defn- expand-key [[k ?p ?v] opts]
+(defn- expand-key [[k ?p ?v] opts f]
   (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
         v' (schema v opts)]
     (if-not (vector? k)
-      [k {:required (:required p true)} v']
+      [k {:required (:required p true)} (f v')]
       (let [[r k] k]
-        [k {:required (case r :opt false, :req true)} v']))))
+        [k {:required (case r :opt false, :req true)} (f v')]))))
 
 (defn- parse-keys [childs opts]
-  (let [entries (mapv #(expand-key % opts) childs)]
+  (let [entries (mapv #(expand-key % opts identity) childs)]
     {:required (->> entries (filter (comp :required second)) (mapv first))
      :optional (->> entries (filter (comp not :required second)) (mapv first))
      :keys (->> entries (mapv first))
@@ -101,7 +114,7 @@
       (when-not (seq childs)
         (fail! ::no-childs {:name :map, :properties properties}))
       (let [{:keys [entries]} (parse-keys childs opts)
-            form (create-form :map properties (mapv #(expand-key % opts) childs))]
+            form (create-form :map properties (mapv #(expand-key % opts -form) childs))]
         ^{:type ::schema}
         (reify Schema
           (-validator [_]
@@ -121,14 +134,17 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
+(defn- -register [registry k schema]
+  (if (contains? registry k)
+    (fail! ::schema-already-registered {:key k, :registry registry}))
+  (assoc registry k schema))
+
 (defn- -register-var [registry v]
-  (let [name (-> v meta :name), schema (-fn-schema name @v)]
-    (reduce
-      (fn [acc k]
-        (if (contains? acc k)
-          (fail! ::schema-already-registered {:key k, :registry registry}))
-        (assoc acc k schema))
-      registry [name @v])))
+  (let [name (-> v meta :name)
+        schema (-fn-schema name @v)]
+    (-> registry
+        (-register name schema)
+        (-register @v schema))))
 
 ;;
 ;; public api
@@ -168,13 +184,16 @@
 (def predicate-registry
   (->> 'clojure.core (ns-publics) (filter #(-> % first str last (= \?))) (vals) (reduce -register-var {})))
 
+(def comparator-registry
+  (->> {:> >, :>= >=, :< <, :<= <=, := =, :!= not=} (map (fn [[k v]] [k (-partial-fn-schema k v)])) (into {}) (reduce-kv -register nil)))
+
 (def base-registry
   {:and (-composite-schema :and every-pred)
    :or (-composite-schema :or some-fn)
    :map (-map-schema)})
 
 (def default-registry
-  (merge predicate-registry base-registry))
+  (merge predicate-registry comparator-registry base-registry))
 
 ;;
 ;; spike

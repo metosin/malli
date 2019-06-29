@@ -8,7 +8,8 @@
                                prismatic/schema {:mvn/version "1.1.11"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "dc960158ccb9cf8b5dc555842eea5e1af12f28c2"}}}
-           :perf {:extra-deps {criterium {:mvn/version "0.4.5"}
+           :perf {:extra-paths ["perf"]
+                  :extra-deps {criterium {:mvn/version "0.4.5"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

@@ -224,102 +224,37 @@
            [:y {:required false} int?]
            [:z string?]])
 
-(comment
-  ;; schema-style
-  [:map
-   {:closed true}
-   [:x boolean?]
-   [[:opt :y] int?]
-   [[:req :z] string?]]
+(def Age
+  (m/schema
+    [:and
+     {:title "Age"
+      :description "Age of a user"
+      :json-schema/example 20}
+     int? [:!= 18]]))
 
-  ;; tuples
-  [:map
-   [:x boolean?]
-   [:opt :y int?]
-   [:req :z string?]]
+(m/validate Age 19)
 
-  ;; attrs
-  [:map
-   [:x int?]
-   [:y {:required false} int?]
-   [:z {:required true} string?]]
+;; schema-style
+[:map
+ {:closed true}
+ [:x boolean?]
+ [[:opt :y] int?]
+ [[:req :z] string?]]
 
-  ;; varargs
-  [:map
-   [:x int?]
-   [:y int? :optional]
-   [:z string? :required]])
+;; tuples
+[:map
+ [:x boolean?]
+ [:opt :y int?]
+ [:req :z string?]]
 
-(comment
+;; attrs
+[:map
+ [:x int?]
+ [:y {:required false} int?]
+ [:z {:required true} string?]]
 
-  (do "imports"
-
-      (require '[clojure.spec.alpha :as s])
-      (require '[criterium.core :as cc]))
-
-  (do "map perf test"
-
-      (s/def ::x boolean?)
-      (s/def ::y int?)
-      (s/def ::z string?)
-
-      (let [valid {:x true, :y 1, :z "kikka"}]
-
-        ;; 18ns
-        (let [valid? (fn [m]
-                       (and (if-let [v (:x m)] (boolean? v) false)
-                            (if-let [v (:y m)] (int? v) true)
-                            (if-let [v (:z m)] (string? v) false)))]
-          (assert (valid? valid))
-          (cc/quick-bench
-            (valid? valid)))
-
-        ;; 37ns
-        (let [valid? (m/validator [:map
-                                   [:x boolean?]
-                                   [[:opt :y] int?]
-                                   [:z string?]])]
-          (assert (valid? valid))
-          (cc/quick-bench
-            (valid? valid)))
-
-        ;; 400ns
-        (let [spec (s/keys :req-un [::x ::z] :opt-un [::y])]
-          (assert (s/valid? spec valid))
-          (cc/quick-bench
-            (s/valid? spec valid)))))
-
-  (do "composite tests"
-
-      ;; 4ns
-      (let [valid? (fn [x] (and (int? x) (or (pos-int? x) (neg-int? x))))]
-        (assert (= [true false true] (map valid? [-1 0 1])))
-        (cc/quick-bench
-          (valid? 0)))
-
-      ;; 6ns
-      (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-        (assert (= [true false true] (map valid? [-1 0 1])))
-        (cc/quick-bench
-          (valid? 0)))
-
-      ;; 45ns
-      (let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))]
-        (assert (= [true false true] (map (partial s/valid? spec) [-1 0 1])))
-        (cc/quick-bench
-          (s/valid? spec 0)))))
-
-(comment
-  (require '[clojure.edn :as edn])
-  (-> [:map
-       [:x boolean?]
-       [[:opt :y] int?]
-       [:z string?]]
-      (m/schema)
-      (pr-str)
-      (edn/read-string)
-      (m/schema)
-      (m/validate
-        {:x true, :y 1, :z "kikka"}))
-  ; => true
-  )
+;; varargs
+[:map
+ [:x int?]
+ [:y int? :optional]
+ [:z string? :required]]

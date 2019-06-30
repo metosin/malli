@@ -6,13 +6,13 @@
   (-map-children [self f]))
 
 (extend-protocol SchemaFunctor
-  clojure.lang.APersistentVector
-  (-map-children [self f]
-    (if (seq self)
-      (into [(first self)] (map f) (rest self))
-      self))
+  #?(:clj clojure.lang.APersistentVector)
+  #?(:clj (-map-children [self f]
+                         (if (seq self)
+                           (into [(first self)] (map f) (rest self))
+                           self)))
 
-  clojure.lang.Keyword
+  #?(:clj clojure.lang.Keyword :cljs cljs.core/Keyword)
   (-map-children [self _] self))
 
 (defn map-children [f schema] (-map-children schema f))

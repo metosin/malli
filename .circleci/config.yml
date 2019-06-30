@@ -1,0 +1,20 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/clojure:tools-deps-1.10.0.442
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - 'clj-v1-{{ checksum "deps.edn" }}'
+            - 'clj-v1'
+      - run: mkdir -p test-results
+      - run: bin/kaocha --plugin kaocha.plugin/junit-xml --junit-xml-file  test-results/kaocha/results.xml
+      - store_test_results:
+          path: test-results
+      - save_cache:
+          key: 'clj-v1-{{checksum "deps.edn"}}'
+          paths:
+            - ~/.m2
+            - ~/.cljs/.aot_cache

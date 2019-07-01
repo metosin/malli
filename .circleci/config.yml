@@ -20,3 +20,4 @@ jobs:
             - ~/.m2
             - ~/.cljs/.aot_cache
             - ~/node_modules
+            - ~/.gitlibs

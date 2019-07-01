@@ -96,3 +96,12 @@ Could have:
 - Struct https://funcool.github.io/struct/latest/
 - JOI https://github.com/hapijs/joi
 - JSON Schema https://json-schema.org/understanding-json-schema/index.html
+
+## Running tests
+
+We use Kaocha as a test runner. Before running the tests, you need to install NPM dependencies.
+
+```bash
+npm install
+bin/kaocha
+```

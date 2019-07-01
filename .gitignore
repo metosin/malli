@@ -1,3 +1,6 @@
 *.iml
-.idea
+.cljs_node_repl
 .cpcache
+.idea
+node_modules
+out

@@ -1,6 +1,8 @@
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=175 align="right"/>
-
 # malli
+
+Plain data Schemas for Clojure/Script
+
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=175 align="right"/>
 
 ## Rationale
 

@@ -185,7 +185,7 @@
   (->> 'clojure.core (ns-publics) (filter #(-> % first str last (= \?))) (vals) (reduce -register-var {})))
 
 (def comparator-registry
-  (->> {:> >, :>= >=, :< <, :<= <=, := =, :!= not=} (map (fn [[k v]] [k (-partial-fn-schema k v)])) (into {}) (reduce-kv -register nil)))
+  (->> [:> :>= :< :<= := :not=] (map (fn [k] [k (-partial-fn-schema k (-> k str (subs 1) symbol resolve deref))])) (into {}) (reduce-kv -register nil)))
 
 (def base-registry
   {:and (-composite-schema :and every-pred)
@@ -230,7 +230,7 @@
      {:title "Age"
       :description "Age of a user"
       :json-schema/example 20}
-     int? [:!= 18]]))
+     int? [:not= 18]]))
 
 (m/validate Age 19)
 

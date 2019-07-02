@@ -1,6 +1,6 @@
-# malli
-
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=175 align="right"/>
+
+# malli
 
 ## Rationale
 

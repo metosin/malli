@@ -1,6 +1,6 @@
-# malli - plain data schemas
+# malli
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=115 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=175 align="right"/>
 
 ## Rationale
 
@@ -71,6 +71,25 @@ Serializing & Deserializing schemas:
 ; => true
 ```
 
+Performance:
+
+```clj
+(require '[criterium.core :as cc])
+
+;; 5ns
+(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
+  (assert (= [true false true] (map valid? [-1 0 1])))
+  (cc/quick-bench
+    (valid? 0)))
+
+;; 40ns
+(let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
+      valid? (partial s/valid? spec)]
+  (assert (= [true false true] (map valid? [-1 0 1])))
+  (cc/quick-bench
+    (valid? spec 0)))
+```
+
 ## Status
 
 WIP
@@ -81,7 +100,6 @@ Should have:
 - Context dependent pluggable validators
 - Context dependent pluggable coercers
 - Close compatibility to Json Schema 7
-- First class error messages
 
 Could have:
 - Clojure spec generation

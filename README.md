@@ -76,6 +76,7 @@ Serializing & Deserializing schemas:
 Performance:
 
 ```clj
+(require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
 ;; 5ns

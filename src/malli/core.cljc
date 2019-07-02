@@ -1,4 +1,5 @@
-(ns malli.core)
+(ns malli.core
+  (:refer-clojure :exclude [-name]))
 
 ;;
 ;; protocols
@@ -16,11 +17,13 @@
 (defn schema? [x]
   (satisfies? Schema x))
 
-(defmethod print-method ::into-schema [v ^java.io.Writer w]
-  (.write w (str "#IntoSchema{:name " (-name v) "}")))
+#?(:clj
+   (defmethod print-method ::into-schema [v ^java.io.Writer w]
+     (.write w (str "#IntoSchema{:name " (-name v) "}"))))
 
-(defmethod print-method ::schema [v ^java.io.Writer w]
-  (.write w (str (-form v))))
+#?(:clj
+   (defmethod print-method ::schema [v ^java.io.Writer w]
+     (.write w (str (-form v)))))
 
 ;;
 ;; impl
@@ -123,14 +126,17 @@
                                  (let [valid? (-validator value)
                                        default (not required)]
                                    (fn [m] (if-let [v (key m)] (valid? v) default))))
-                               entries)]
-              (fn [m] (and (map? m)
-                           (let [i (.iterator ^Iterable validators)]
+                               entries)
+                  validate (fn [m]
                              (boolean
-                               (loop []
-                                 (if (.hasNext i)
-                                   (and ((.next i) m) (recur))
-                                   true))))))))
+                               #?(:clj  (let [it (.iterator ^Iterable validators)]
+                                          (boolean
+                                            (loop []
+                                              (if (.hasNext it)
+                                                (and ((.next it) m) (recur))
+                                                true))))
+                                  :cljs (reduce #(or (%2 m) (reduced false)) true validators))))]
+              (fn [m] (and (map? m) (validate m)))))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -182,10 +188,17 @@
 ;;
 
 (def predicate-registry
-  (->> 'clojure.core (ns-publics) (filter #(-> % first str last (= \?))) (vals) (reduce -register-var {})))
+  (->> #?(:clj 'clojure.core, :cljs 'cljs.core)
+       (ns-publics)
+       (filter #(-> % first str last (= \?)))
+       (vals)
+       (reduce -register-var {})))
 
 (def comparator-registry
-  (->> [:> :>= :< :<= := :not=] (map (fn [k] [k (-partial-fn-schema k (-> k str (subs 1) symbol resolve deref))])) (into {}) (reduce-kv -register nil)))
+  (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
+       (map (fn [[k v]] [k (-partial-fn-schema k v)]))
+       (into {})
+       (reduce-kv -register nil)))
 
 (def base-registry
   {:and (-composite-schema :and every-pred)
@@ -194,67 +207,3 @@
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))
-
-;;
-;; spike
-;;
-
-(ns user)
-
-(require '[malli.core :as m])
-
-(m/validate int? 1)
-
-(m/form [:and int?])
-(m/schema [:and int? pos-int?])
-(m/validate [:and int? [:and pos-int?]] 2)
-(m/validate [:and int? pos-int?] 2)
-
-(m/validate [:and int? [:or pos-int? neg-int?]] 0)
-
-(m/schema [:map [:x int?]])
-
-(m/schema [:map
-           [:x boolean?]
-           [[:opt :y] int?]
-           [:z string?]])
-
-(m/schema [:map
-           [:x boolean?]
-           [:y {:required false} int?]
-           [:z string?]])
-
-(def Age
-  (m/schema
-    [:and
-     {:title "Age"
-      :description "Age of a user"
-      :json-schema/example 20}
-     int? [:not= 18]]))
-
-(m/validate Age 19)
-
-;; schema-style
-[:map
- {:closed true}
- [:x boolean?]
- [[:opt :y] int?]
- [[:req :z] string?]]
-
-;; tuples
-[:map
- [:x boolean?]
- [:opt :y int?]
- [:req :z string?]]
-
-;; attrs
-[:map
- [:x int?]
- [:y {:required false} int?]
- [:z {:required true} string?]]
-
-;; varargs
-[:map
- [:x int?]
- [:y int? :optional]
- [:z string? :required]]

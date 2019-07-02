@@ -1,7 +1,8 @@
 (ns malli.core-test
-  (:require [clojure.test :refer :all]
-            [clojure.edn :as edn]
-            [malli.core :as m]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [malli.core :as m]
+            #?@(:clj  [[clojure.edn]]
+                :cljs [[cljs.reader]])))
 
 (deftest validation-test
 
@@ -67,7 +68,8 @@
           schema' (-> schema
                       (m/form)
                       (pr-str)
-                      (edn/read-string)
+                      (#?(:clj  clojure.edn/read-string,
+                          :cljs cljs.reader/read-string))
                       (m/schema))
           valid {:x true, :y 1, :z "kikka"}]
       (is (= true

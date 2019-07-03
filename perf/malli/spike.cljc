@@ -27,14 +27,15 @@
            [:z string?]])
 
 (def Age
-  (m/schema
-    [:and
-     {:title "Age"
-      :description "Age of a user"
-      :json-schema/example 20}
-     int? [:not= 18]]))
+  [:schema
+   {:title "Age"
+    :description "Age of a user"
+    :json-schema/example 20}
+   [:and int? [:not= 18]]])
 
-(m/validate Age 19)
+(m/properties Age)
+
+(m/validate Age 18)
 
 ;; schema-style
 [:map

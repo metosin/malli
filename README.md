@@ -2,7 +2,7 @@
 
 Plain data Schemas for Clojure/Script
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=175 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=165 align="right"/>
 
 ## Rationale
 
@@ -43,16 +43,20 @@ Definining and validating Schemas:
 ; => true
 ```
 
-Schemas can have attributes:
+Schemas can have properties:
 
 ```clj
 (def Age
-  (m/schema
-    [:and
-     {:title "Age"
-      :description "It's an age"
-      :json-schema/example 20}
-     int? [:> 18]]))
+  [:and
+   {:title "Age"
+    :description "It's an age"
+    :json-schema/example 20}
+   int? [:> 18]])
+   
+(m/properties Age)
+; => {:title "Age"
+;     :description "It's an age"
+;     :json-schema/example 20}   
 ```
 
 Serializing & Deserializing schemas:
@@ -79,18 +83,18 @@ Performance:
 (require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
-;; 5ns
-(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-  (assert (= [true false true] (map valid? [-1 0 1])))
-  (cc/quick-bench
-    (valid? 0)))
-
 ;; 40ns
 (let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
       valid? (partial s/valid? spec)]
   (assert (= [true false true] (map valid? [-1 0 1])))
   (cc/quick-bench
     (valid? spec 0)))
+
+;; 5ns
+(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
+  (assert (= [true false true] (map valid? [-1 0 1])))
+  (cc/quick-bench
+    (valid? 0)))
 ```
 
 ## Status

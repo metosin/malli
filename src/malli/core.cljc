@@ -17,13 +17,11 @@
 (defn schema? [x]
   (satisfies? Schema x))
 
-#?(:clj
-   (defmethod print-method ::into-schema [v ^java.io.Writer w]
-     (.write w (str "#IntoSchema{:name " (-name v) "}"))))
+#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
+          (.write w (str "#IntoSchema{:name " (-name v) "}"))))
 
-#?(:clj
-   (defmethod print-method ::schema [v ^java.io.Writer w]
-     (.write w (str (-form v)))))
+#?(:clj (defmethod print-method ::schema [v ^java.io.Writer w]
+          (.write w (str (-form v)))))
 
 ;;
 ;; impl
@@ -45,12 +43,12 @@
     (seq childs) (into [name] childs)
     :else name))
 
-(defn- -leaf-schema [name ->validator]
+(defn- -leaf-schema [name ->validator-and-childs]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] name)
     (-into-schema [_ properties childs opts]
-      (let [validator (->validator properties childs opts)]
+      (let [[validator childs] (->validator-and-childs properties childs opts)]
         ^{:type ::schema}
         (reify Schema
           (-validator [_] validator)
@@ -62,16 +60,27 @@
     name
     (fn [properties childs _]
       (when (seq childs)
-        (fail! ::childs-not-allowed {:name name, :properties properties, :childs childs}))
-      f)))
+        (fail! ::child-error {:name name, :properties properties, :childs childs, :min 0, :max 0}))
+      [f childs])))
 
 (defn- -partial-fn-schema [name f]
   (-leaf-schema
     name
-    (fn [properties [x :as childs] _]
+    (fn [properties [child :as childs] _]
       (when-not (= 1 (count childs))
-        (fail! ::one-childs-allowed {:name name, :properties properties, :childs childs}))
-      #(f % x))))
+        (fail! ::child-error {:name name, :properties properties, :childs childs, :min 1, :max 1}))
+      [#(f % child) childs])))
+
+(defn- -schema []
+  (-leaf-schema
+    :schema
+    (fn [properties [child :as childs] opts]
+      (when-not (<= 0 (count childs) 1)
+        (fail! ::child-error {:name name, :properties properties, :childs childs, :min 0, :max 1}))
+      (if child
+        (let [child' (schema child opts)]
+          [(-validator child') [child']])
+        [any?]))))
 
 (defn- -composite-schema [name f]
   ^{:type ::into-schema}
@@ -171,6 +180,9 @@
 (defn form [?schema]
   (-form (schema ?schema)))
 
+(defn properties [?schema]
+  (-properties (schema ?schema)))
+
 (defn validator
   ([?schema]
    (validator ?schema nil))
@@ -203,7 +215,8 @@
 (def base-registry
   {:and (-composite-schema :and every-pred)
    :or (-composite-schema :or some-fn)
-   :map (-map-schema)})
+   :map (-map-schema)
+   :schema (-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

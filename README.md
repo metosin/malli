@@ -1,4 +1,4 @@
-# malli
+# malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli)
 
 Plain data Schemas for Clojure/Script
 

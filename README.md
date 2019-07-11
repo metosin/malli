@@ -1,6 +1,8 @@
 # malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli)
 
-Plain data Schemas for Clojure/Script
+**STATUS**: *Pre-alpha*, in design and prototyping phase.
+
+Plain data Schemas for Clojure/Script.
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=175 align="right"/>
 

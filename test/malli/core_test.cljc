@@ -62,8 +62,6 @@
   (testing "properties can be set and retrieved"
     (let [properties {:title "kikka"}]
       (is (= properties
-             (m/properties [:schema properties])
-             (m/properties [:schema properties int?])
              (m/properties [:and properties int?])
              (m/properties [int? properties]))))))
 

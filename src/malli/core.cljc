@@ -71,17 +71,6 @@
         (fail! ::child-error {:name name, :properties properties, :childs childs, :min 1, :max 1}))
       [#(f % child) childs])))
 
-(defn- -schema []
-  (-leaf-schema
-    :schema
-    (fn [properties [child :as childs] opts]
-      (when-not (<= 0 (count childs) 1)
-        (fail! ::child-error {:name name, :properties properties, :childs childs, :min 0, :max 1}))
-      (if child
-        (let [child' (schema child opts)]
-          [(-validator child') [child']])
-        [any?]))))
-
 (defn- -composite-schema [name f]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -215,8 +204,7 @@
 (def base-registry
   {:and (-composite-schema :and every-pred)
    :or (-composite-schema :or some-fn)
-   :map (-map-schema)
-   :schema (-schema)})
+   :map (-map-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

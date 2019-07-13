@@ -23,12 +23,12 @@ Definining and validating Schemas:
 ```clj
 (require '[malli.core :as m])
 
-(def Int (m/schema int?))
-
-(m/validate Int "1")
+(m/validate int? "1")
+(m/validate 'int? "1")
 ; => false
 
-(m/validate Int 1)
+(m/validate int? 1)
+(m/validate 'int? 1)
 ; => true
 
 (m/validate [:and int? [:> 6]] 7)
@@ -98,10 +98,6 @@ Performance:
   (cc/quick-bench
     (valid? 0)))
 ```
-
-## Status
-
-WIP
 
 ## More
 

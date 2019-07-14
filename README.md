@@ -1,14 +1,12 @@
 # malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli)
 
-**STATUS**: *Pre-alpha*, in design and prototyping phase.
-
 Plain data Schemas for Clojure/Script.
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=165 align="right"/>
+**STATUS**: *Pre-alpha*, in design and prototyping phase.
 
-## Rationale
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=220 align="right"/>
 
-- Schemas as immutable data
+- Schemas as data
 - Schema-driven Runtime Validation
 - Schema-driven Transformations
 - Tools for programming with Schemas
@@ -24,11 +22,9 @@ Definining and validating Schemas:
 (require '[malli.core :as m])
 
 (m/validate int? "1")
-(m/validate 'int? "1")
 ; => false
 
 (m/validate int? 1)
-(m/validate 'int? 1)
 ; => true
 
 (m/validate [:and int? [:> 6]] 7)

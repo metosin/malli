@@ -4,7 +4,7 @@ Plain data Schemas for Clojure/Script.
 
 **STATUS**: *Pre-alpha*, in design and prototyping phase.
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=220 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=240 align="right"/>
 
 - Schemas as data
 - Schema-driven Runtime Validation

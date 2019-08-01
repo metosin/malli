@@ -138,6 +138,30 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
+(defn- -collection-schema [f]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :vector)
+    (-into-schema [_ {:keys [min max] :as properties} childs opts]
+      (when-not (= 1 (count childs))
+        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
+      (let [schema (schema (first childs))
+            form (create-form :vector properties [schema])
+            validator (-validator schema)
+            check-limits (cond
+                           (not (or min max)) (constantly true)
+                           (and min max) (fn [x] (let [size (count x)] (<= min size max)))
+                           min (fn [x] (let [size (count x)] (<= min size)))
+                           max (fn [x] (let [size (count x)] (<= size max))))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_]
+            (fn [x] (and (f x)
+                         (check-limits x)
+                         (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x))))
+          (-properties [_] properties)
+          (-form [_] form))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -204,7 +228,10 @@
 (def base-registry
   {:and (-composite-schema :and every-pred)
    :or (-composite-schema :or some-fn)
-   :map (-map-schema)})
+   :map (-map-schema)
+   :vector (-collection-schema vector?)
+   :list (-collection-schema list?)
+   :set (-collection-schema set?)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

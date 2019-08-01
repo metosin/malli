@@ -1,5 +1,5 @@
 (ns malli.core-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             #?@(:clj  [[clojure.edn]]
                 :cljs [[cljs.reader]])))
@@ -56,7 +56,66 @@
               [:y {:required false} 'int?]
               [:z {:required true} 'string?]]
              (m/form schema1)
-             (m/form schema2))))))
+             (m/form schema2)))))
+
+  (testing "sequence schemas"
+
+    (testing "vector"
+      (are [expected schema value]
+        (is (= expected (m/validate schema value)))
+
+        true [:vector int?] [1 2 3]
+        false [:vector int?] [1 "2" 3]
+
+        true [:vector {:min 3} int?] [1 2 3]
+        false [:vector {:min 4} int?] [1 2 3]
+
+        true [:vector {:max 3} int?] [1 2 3]
+        false [:vector {:max 2} int?] [1 2 3]
+
+        true [:vector {:min 1, :max 3} int?] [1 2 3]
+        false [:vector {:min 4, :max 4} int?] [1 2 3]
+
+        false [:vector int?] '(1 2 3)
+        false [:vector int?] #{1 2 3}))
+
+    (testing "list"
+      (are [expected schema value]
+        (is (= expected (m/validate schema value)))
+
+        true [:list int?] '(1 2 3)
+        false [:list int?] '(1 "2" 3)
+
+        true [:list {:min 3} int?] '(1 2 3)
+        false [:list {:min 4} int?] '(1 2 3)
+
+        true [:list {:max 3} int?] '(1 2 3)
+        false [:list {:max 2} int?] '(1 2 3)
+
+        true [:list {:min 1, :max 3} int?] '(1 2 3)
+        false [:list {:min 4, :max 4} int?] '(1 2 3)
+
+        false [:list int?] [1 2 3]
+        false [:list int?] #{1 2 3}))
+
+    (testing "set"
+      (are [expected schema value]
+        (is (= expected (m/validate schema value)))
+
+        true [:set int?] #{1 2 3}
+        false [:set int?] #{1 "2" 3}
+
+        true [:set {:min 3} int?] #{1 2 3}
+        false [:set {:min 4} int?] #{1 2 3}
+
+        true [:set {:max 3} int?] #{1 2 3}
+        false [:set {:max 2} int?] #{1 2 3}
+
+        true [:set {:min 1, :max 3} int?] #{1 2 3}
+        false [:set {:min 4, :max 4} int?] #{1 2 3}
+
+        false [:set int?] '(1 2 3)
+        false [:set int?] [1 2 3]))))
 
 (deftest properties-test
   (testing "properties can be set and retrieved"

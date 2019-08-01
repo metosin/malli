@@ -4,7 +4,7 @@ Plain data Schemas for Clojure/Script.
 
 **STATUS**: *Pre-alpha*, in design and prototyping phase.
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=240 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=160 align="right"/>
 
 - Schemas as data
 - Schema-driven Runtime Validation
@@ -93,6 +93,51 @@ Performance:
   (assert (= [true false true] (map valid? [-1 0 1])))
   (cc/quick-bench
     (valid? 0)))
+```
+
+## Registry
+
+All public functions take optional options map with optional `:registry` key. It is an map of `name->IntoSchema`.  It defaults to `malli.core/default-registry` which is an merge of the following subregistries:
+
+### `malli.core/predicate-registry`
+
+Contains both function values and unqualified symbol representations for all `clojure.core`/`cljs.core` functions that end with a questionmark, e.g. `int?`, `'int?`, `string?`, `'string?`. Having both enables reading forms from both code (function values) and EDN-files (symbols)
+
+*TODO*: is this the way to do this? 
+
+### `malli.core/comparator-registry`
+
+Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
+
+### `malli.core/base-registry`
+
+Contains `:and`, `:or`, `:map`, `:vector`, `:list` and `:set`.
+
+### Custom registries
+
+Example to create a custom Schema model without the default core predicates and with `:string` and `:int` Schemas:
+
+```clj
+(def registry
+  (merge
+    m/comparator-registry
+    m/base-registry
+    {:int (m/fn-schema :int int?)
+     :string (m/fn-schema :string string?)}))
+
+(m/validate [:or :int :string] 'kikka {:registry registry})
+; => false
+
+(m/validate [:or :int :string] 123 {:registry registry})
+; => true
+```
+
+Predicate Schemas don't work anymore:
+
+```clj
+(m/validate int? 123 {:registry registry})
+; Syntax error (ExceptionInfo) compiling
+; :malli.core/invalid-schema
 ```
 
 ## More

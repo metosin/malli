@@ -55,7 +55,7 @@
           (-properties [_] properties)
           (-form [_] (create-form name properties childs)))))))
 
-(defn- -fn-schema [name f]
+(defn fn-schema [name f]
   (-leaf-schema
     name
     (fn [properties childs _]
@@ -169,7 +169,7 @@
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
-        schema (-fn-schema name @v)]
+        schema (fn-schema name @v)]
     (-> registry
         (-register name schema)
         (-register @v schema))))

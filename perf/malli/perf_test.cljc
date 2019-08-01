@@ -55,6 +55,42 @@
     (cc/quick-bench
       (s/valid? spec 0))))
 
+(defn composite-perf2 []
+  (let [assert! (fn [f]
+                  (doseq [[expected data] [[true [-1]]
+                                           [true [-1 1 2]]
+                                           [false [-1 0 2]]
+                                           [false [-1 -1 -1 -1]]]]
+                    (assert (= expected (f data)))))]
+
+    ;; 155ns
+    (let [valid? (fn [x]
+                   (and (vector? x)
+                        (<= (count x) 3)
+                        (every? #(and (int? %) (or (pos-int? %) (neg-int? %))) x)))]
+      (assert! valid?)
+      (cc/quick-bench
+        (valid? [-1 1 2])))
+
+    ;; 27ns
+    (let [valid? (m/validator
+                   [:vector {:max 3}
+                    [:and int? [:or pos-int? neg-int?]]])]
+      (assert! valid?)
+      (cc/quick-bench
+        (valid? [-1 1 2])))
+
+    ;; 506ns
+    (let [spec (s/coll-of
+                 (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
+                 :kind vector?
+                 :max-count 3)
+          valid? (partial s/valid? spec)]
+      (assert! valid?)
+      (cc/quick-bench
+        (valid? [-1 1 2])))))
+
 (comment
   (map-perf)
-  (composite-perf))
+  (composite-perf)
+  (composite-perf2))

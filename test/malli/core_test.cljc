@@ -142,3 +142,12 @@
              (m/validate schema valid)
              (m/validate schema' valid)))
       (is (= (m/form schema) (m/form schema'))))))
+
+(deftest custom-registry-test
+  (let [registry (merge
+                   m/comparator-registry
+                   m/base-registry
+                   {:int (m/fn-schema :int int?)
+                    :string (m/fn-schema :string string?)})]
+    (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
+    (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))

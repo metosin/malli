@@ -113,9 +113,9 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 Contains `:and`, `:or`, `:map`, `:vector`, `:list` and `:set`.
 
-### Custom registries
+### Custom registry
 
-Example to create a custom Schema model without the default core predicates and with `:string` and `:int` Schemas:
+Example to create a custom registry without the default core predicates and with `:string` and `:int` Schemas:
 
 ```clj
 (def registry

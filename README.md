@@ -4,7 +4,7 @@ Plain data Schemas for Clojure/Script.
 
 **STATUS**: *Pre-alpha*, in design and prototyping phase.
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=140 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schemas as data
 - Schema-driven Runtime Validation
@@ -101,17 +101,15 @@ Performance:
 
 All public functions take optional options map with optional `:registry` key. It is an map of `name->IntoSchema`.  It defaults to `malli.core/default-registry` which is an merge of the following subregistries:
 
-### `malli.core/predicate-registry`
+#### `malli.core/predicate-registry`
 
-Contains both function values and unqualified symbol representations for all `clojure.core`/`cljs.core` functions that end with a questionmark, e.g. `int?`, `'int?`, `string?`, `'string?`. Having both enables reading forms from both code (function values) and EDN-files (symbols)
+Contains both function values and unqualified symbol representations for all `clojure.core`/`cljs.core` functions that end with a questionmark, e.g. `int?`, `'int?`, `string?`, `'string?`. Having both enables reading forms from both code (function values) and EDN-files (symbols) 
 
-*TODO*: is this the way to do this? 
-
-### `malli.core/comparator-registry`
+#### `malli.core/comparator-registry`
 
 Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
-### `malli.core/base-registry`
+#### `malli.core/base-registry`
 
 Contains `:and`, `:or`, `:map`, `:vector`, `:list`, `:set` and `:tuple`.
 

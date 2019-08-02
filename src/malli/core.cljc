@@ -145,7 +145,7 @@
     (-into-schema [_ {:keys [min max] :as properties} childs opts]
       (when-not (= 1 (count childs))
         (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
-      (let [schemas (mapv schema childs)
+      (let [schemas (mapv #(schema % opts) childs)
             form (create-form name properties (map -form schemas))
             check-limits (cond
                            (not (or min max)) (constantly true)
@@ -167,7 +167,7 @@
   (reify IntoSchema
     (-name [_] :tuple)
     (-into-schema [_ properties childs opts]
-      (let [schemas (mapv schema childs)
+      (let [schemas (mapv #(schema % opts) childs)
             size (count schemas)
             form (create-form :tuple properties (map -form schemas))
             validators (into (array-map) (map-indexed vector (mapv -validator schemas)))]
@@ -207,7 +207,9 @@
      (if (vector? ?schema)
        (apply -into-schema (concat [(get registry (first ?schema))] (properties-and-childs (rest ?schema)) [opts]))
        (if-let [schema' (get registry ?schema)]
-         (-into-schema schema' nil nil opts)
+         (if (schema? schema')
+           schema'
+           (-into-schema schema' nil nil opts))
          (fail! ::invalid-schema {:schema ?schema}))))))
 
 (defn form [?schema]

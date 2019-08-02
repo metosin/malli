@@ -142,6 +142,31 @@ Predicate Schemas don't work anymore:
 ; :malli.core/invalid-schema
 ```
 
+### Mutable registry
+
+[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. There is no such thing in `malli`, but you can create it yourself:
+
+```clj
+(defonce my-registry
+  (atom m/default-registry))
+
+(defn register! [k schema]
+  (swap! my-registry assoc k (m/schema schema))
+  k)
+
+(register! ::id int?)
+;; => :user/id
+
+(register! ::name string?)
+;; => :user/name
+
+(m/validate 
+  [:tuple ::id ::name] 
+  [18 "and life"] 
+  {:registry @my-registry})
+; => true
+```
+
 ## More
 
 Should have:

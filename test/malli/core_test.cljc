@@ -123,6 +123,31 @@
 
       (is (= [:set 'int?] (m/form [:set int?]))))
 
+    (testing "tuple"
+      (are [expected schema value]
+        (is (= expected (m/validate schema value)))
+
+        true [:tuple int?] [1]
+        true [:tuple int? string?] [1 "2"]
+        false [:tuple int?] ["1"]
+
+        ;; ignored
+        true [:tuple {:min 3} int?] [1]
+        true [:tuple {:min 4} int?] [1]
+
+        ;; ignored
+        true [:tuple {:max 3} int?] [1]
+        true [:tuple {:max 2} int?] [1]
+
+        ;; ignored
+        true [:tuple {:min 1, :max 3} int?] [1]
+        true [:tuple {:min 4, :max 4} int?] [1]
+
+        false [:tuple int?] '(1)
+        false [:tuple int?] #{1})
+
+      (is (= [:tuple 'int? 'string?] (m/form [:tuple int? string?]))))))
+
 (deftest properties-test
   (testing "properties can be set and retrieved"
     (let [properties {:title "kikka"}]

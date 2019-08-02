@@ -161,6 +161,24 @@
                            (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
           (-properties [_] properties)
           (-form [_] form))))))
+
+(defn- -tuple-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :tuple)
+    (-into-schema [_ properties childs opts]
+      (let [schemas (mapv schema childs)
+            size (count schemas)
+            form (create-form :tuple properties (map -form schemas))
+            validators (into (array-map) (map-indexed vector (mapv -validator schemas)))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_]
+            (fn [x] (and (vector? x)
+                         (= (count x) size)
+                         (reduce-kv
+                           (fn [acc i validator]
+                             (if (validator (nth x i)) acc (reduced false))) true validators))))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -234,6 +252,7 @@
    :vector (-collection-schema :vector vector?)
    :list (-collection-schema :list list?)
    :set (-collection-schema :set set?)
+   :tuple (-tuple-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

@@ -77,7 +77,9 @@
         false [:vector {:min 4, :max 4} int?] [1 2 3]
 
         false [:vector int?] '(1 2 3)
-        false [:vector int?] #{1 2 3}))
+        false [:vector int?] #{1 2 3})
+
+      (is (= [:vector 'int?] (m/form [:vector int?]))))
 
     (testing "list"
       (are [expected schema value]
@@ -96,7 +98,9 @@
         false [:list {:min 4, :max 4} int?] '(1 2 3)
 
         false [:list int?] [1 2 3]
-        false [:list int?] #{1 2 3}))
+        false [:list int?] #{1 2 3})
+
+      (is (= [:list 'int?] (m/form [:list int?]))))
 
     (testing "set"
       (are [expected schema value]
@@ -115,7 +119,9 @@
         false [:set {:min 4, :max 4} int?] #{1 2 3}
 
         false [:set int?] '(1 2 3)
-        false [:set int?] [1 2 3]))))
+        false [:set int?] [1 2 3])
+
+      (is (= [:set 'int?] (m/form [:set int?]))))
 
 (deftest properties-test
   (testing "properties can be set and retrieved"

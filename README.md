@@ -4,7 +4,7 @@ Plain data Schemas for Clojure/Script.
 
 **STATUS**: *Pre-alpha*, in design and prototyping phase.
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=160 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=140 align="right"/>
 
 - Schemas as data
 - Schema-driven Runtime Validation
@@ -63,15 +63,17 @@ Serializing & Deserializing schemas:
 (require '[clojure.edn :as edn])
 
 (-> [:map
-     [:x boolean?]
-     [[:opt :y] int?]
-     [:z string?]]
+     [:id int?]
+     [:name string?]
+     [:lonlat [:tuple double? double?]]]
     (m/schema)
     (pr-str)
     (edn/read-string)
     (m/schema)
     (m/validate
-      {:x true, :z "kikka"}))
+      {:id 42
+       :name "Tampere"
+       :lonlat [61.49911 23.78712]}))
 ; => true
 ```
 
@@ -111,7 +113,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 ### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:vector`, `:list` and `:set`.
+Contains `:and`, `:or`, `:map`, `:vector`, `:list`, `:set` and `:tuple`.
 
 ### Custom registry
 

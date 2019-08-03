@@ -165,6 +165,51 @@ Predicate Schemas don't work anymore:
 ; => true
 ```
 
+## Entities and Values
+
+Schemas as just data, so they can be either inlined (values) or referenced (entities) in other schemas. For validation, they work the same way, but for model documentation, they are kept as separate.
+
+### Value Schemas
+
+Schemas can be represented as abstract schema syntax and referenced as values:
+
+```clj
+(def Age
+  [:and int? [:> 18]])
+
+(def User
+  [:map
+   [:name string?]
+   [:age Age]])
+
+(m/validate 
+  User 
+  {:name "Mirjami", :age 62})
+; => true
+```
+
+**NOTE**: Schema format validation only occurs when a `m/schema` is called, so here `Age` and `User` could contain syntax errors. 
+
+### Referenced Schemas
+
+Wrapping schemas into `m/schema` makes them first class. Here `User` is an entity, while `Age` is a value.
+
+```clj
+(def Age
+  [:and int? [:> 18]])
+
+(def User
+  (m/schema
+    [:map
+     [:name string?]
+     [:age Age]]))
+
+(m/validate 
+  User 
+  {:name "Mirjami", :age 62})
+; => true
+```
+
 ## More
 
 Should have:

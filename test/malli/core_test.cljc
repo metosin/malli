@@ -44,7 +44,7 @@
           schema2 (m/schema
                     [:map
                      [:x boolean?]
-                     [:y {:required false} int?]
+                     [:y {:optional true} int?]
                      [:z string?]])
           valid {:x true, :y 1, :z "kikka"}
           invalid {:x true, :y "invalid", :z "kikka"}]
@@ -52,9 +52,9 @@
         (is (true? (m/validate schema valid)))
         (is (false? (m/validate schema invalid))))
       (is (= [:map
-              [:x {:required true} 'boolean?]
-              [:y {:required false} 'int?]
-              [:z {:required true} 'string?]]
+              [:x {:optional false} 'boolean?]
+              [:y {:optional true} 'int?]
+              [:z {:optional false} 'string?]]
              (m/form schema1)
              (m/form schema2)))))
 

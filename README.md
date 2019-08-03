@@ -34,8 +34,22 @@ Definining and validating Schemas:
   (m/validator
     [:map
      [:x boolean?]
-     [[:opt :y] int?]
+     [:y {:optional true} int?]
      [:z string?]]))
+
+(valid? {:x true, :z "kikka"})
+; => true
+```
+
+Optional [Schema-like](https://github.com/plumatic/schema) syntax for `:map`:
+
+```clj
+(def valid?
+  (m/validator
+    [:map
+     [:x boolean?]
+     [[:opt y] int?]
+     [[:req :z] string?]]))
 
 (valid? {:x true, :z "kikka"})
 ; => true
@@ -192,7 +206,7 @@ Schemas can be represented as abstract schema syntax and referenced as values:
 
 ### Entity Schemas
 
-Wrapping schemas into `m/schema` makes them first class. Here `User` is an entity, while `Age` is a (embedded) value.
+Wrapping schemas into `m/schema` makes them first class entities. Here `User` is an entity, while `Age` is a (embedded) value.
 
 ```clj
 (def Age

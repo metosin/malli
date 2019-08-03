@@ -96,14 +96,14 @@
   (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
         v' (schema v opts)]
     (if-not (vector? k)
-      [k {:required (:required p true)} (f v')]
+      [k {:optional (:optional p false)} (f v')]
       (let [[r k] k]
-        [k {:required (case r :opt false, :req true)} (f v')]))))
+        [k {:optional (case r :opt true, :req false)} (f v')]))))
 
 (defn- parse-keys [childs opts]
   (let [entries (mapv #(expand-key % opts identity) childs)]
-    {:required (->> entries (filter (comp :required second)) (mapv first))
-     :optional (->> entries (filter (comp not :required second)) (mapv first))
+    {:required (->> entries (filter (comp not :optional second)) (mapv first))
+     :optional (->> entries (filter (comp :optional second)) (mapv first))
      :keys (->> entries (mapv first))
      :entries entries}))
 
@@ -120,9 +120,9 @@
         (reify Schema
           (-validator [_]
             (let [validators (mapv
-                               (fn [[key {:keys [required]} value]]
+                               (fn [[key {:keys [optional]} value]]
                                  (let [valid? (-validator value)
-                                       default (not required)]
+                                       default (boolean optional)]
                                    (fn [m] (if-let [v (key m)] (valid? v) default))))
                                entries)
                   validate (fn [m]

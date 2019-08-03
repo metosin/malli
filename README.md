@@ -190,9 +190,9 @@ Schemas can be represented as abstract schema syntax and referenced as values:
 
 **NOTE**: Schema format validation only occurs when a `m/schema` is called, so here `Age` and `User` could contain syntax errors. 
 
-### Referenced Schemas
+### Entity Schemas
 
-Wrapping schemas into `m/schema` makes them first class. Here `User` is an entity, while `Age` is a value.
+Wrapping schemas into `m/schema` makes them first class. Here `User` is an entity, while `Age` is a (embedded) value.
 
 ```clj
 (def Age

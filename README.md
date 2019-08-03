@@ -71,7 +71,7 @@ Schemas can have properties:
 ;     :json-schema/example 20}   
 ```
 
-Serializing & Deserializing schemas:
+Serializing & Deserializing schemas, no `eval` needed.
 
 ```clj
 (require '[clojure.edn :as edn])

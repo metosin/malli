@@ -224,17 +224,6 @@ Wrapping schemas into `m/schema` makes them first class entities. Here `User` is
 ; => true
 ```
 
-## More
-
-Should have:
-- Context dependent pluggable validators
-- Context dependent pluggable coercers
-- Close compatibility to Json Schema 7
-
-Could have:
-- Clojure spec generation
-- Database schema generations
-
 ## Links
 
 - Clojure.spec https://clojure.org/guides/spec

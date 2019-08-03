@@ -41,7 +41,7 @@ Definining and validating Schemas:
 ; => true
 ```
 
-Optional [Schema-like](https://github.com/plumatic/schema) syntax for `:map`:
+Optional [Schema-like](https://github.com/plumatic/schema) syntax for `:map` keys:
 
 ```clj
 (def valid?

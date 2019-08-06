@@ -230,7 +230,7 @@ We are building dynamic multi-tenant systems where data-models should be first-c
 
 Hasn't the problem been solved (many times) already?
 
-Well, there is [Schema](https://github.com/plumatic/schema), which is awesome, proven and collaborative open source project and we absolutely love it. We still used in most of our projects. Sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
+There is [Schema](https://github.com/plumatic/schema), which is awesome, proven and collaborative open source project, and we absolutely love it. We still use it in most of our projects. Sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
 
 [Spec](https://clojure.org/guides/spec) is de facto data spesification library for Clojure. It has many great ideas, but it is based on macros, has a global registry and doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [three years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still kinda hack and not fun to maintain.
 

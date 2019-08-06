@@ -234,7 +234,7 @@ There is [Schema](https://github.com/plumatic/schema), which is awesome, proven 
 
 [Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is based on macros, it has a global registry and it doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [three years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still kinda hack and not fun to maintain.
 
-So, we decided to try to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of existing libraries and several project-spesific tools we have done over the years.
+So, we decided to try to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
 
 > If you have expectations (of others) that aren't being met, those expectations are your own responsibility. You are responsible for your own needs. If you want things, make them.
 

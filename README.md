@@ -224,7 +224,23 @@ Wrapping schemas into `m/schema` makes them first class entities. Here `User` is
 ; => true
 ```
 
-## Links
+## Motivation
+
+We are building dynamic multi-tenant systems, where data-models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persistent and load back them from database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
+
+Isn't the problem solved (many times) already?
+
+Well, there is [Schema](https://github.com/plumatic/schema), which is awesome, proven and collaborative open source project and we absolutely love it. We still used in most of our projects. Sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
+
+[Spec](https://clojure.org/guides/spec) is de facto data spesification library for Clojure. It has many great ideas, but it is based on macros, has a global registry and doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [three years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still kinda hack and not fun to maintain.
+
+So, we decided to try to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of existing libraries and several project-spesific tools we have done over the years.
+
+> If you have expectations (of others) that aren't being met, those expectations are your own responsibility. You are responsible for your own needs. If you want things, make them.
+
+- Rich Hickey, [Open Source is Not About You](https://gist.github.com/richhickey/1563cddea1002958f96e7ba9519972d9)
+
+## Links (and thanks)
 
 - Clojure.spec https://clojure.org/guides/spec
 - Core.typed https://github.com/clojure/core.typed

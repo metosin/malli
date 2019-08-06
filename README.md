@@ -228,7 +228,7 @@ Wrapping schemas into `m/schema` makes them first class entities. Here `User` is
 
 We are building dynamic multi-tenant systems where data-models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
 
-Isn't the problem solved (many times) already?
+Hasn't the problem been solved (many times) already?
 
 Well, there is [Schema](https://github.com/plumatic/schema), which is awesome, proven and collaborative open source project and we absolutely love it. We still used in most of our projects. Sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
 

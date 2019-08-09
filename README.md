@@ -71,6 +71,43 @@ Schemas can have properties:
 ;     :json-schema/example 20}   
 ```
 
+Detailed errors with `m/explain`:
+
+```clj
+(def Address
+  [:map
+   [:street string?]
+   [:city string?]
+   [:lonlat {:optional true} [:tuple double? double?]]])
+
+(m/explain
+  Address
+  {:street "Hämeenkatu 14"
+   :city "Tampere"
+   :lonlat [61.4983866 23.7644223]})
+; => nil
+
+(m/explain
+  Address
+  {:street "Hämeenkatu 14"
+   :lonlat [61.4983866 nil]})
+;{:schema [:map
+;          [:street string?]
+;          [:city string?]
+;          [:lonlat {:optional true} [:tuple double? double?]]]
+; :value {:street "Hämeenkatu 14"
+;         :lonlat [61.4983866 nil]}
+; :problems ({:path []
+;             :in []
+;             :schema [:map
+;                      [:street string?]
+;                      [:city string?]
+;                      [:lonlat {:optional true} [:tuple double? double?]]]
+;             :type :malli.core/missing-key
+;             :malli.core/key :city}
+;            {:path [3 2 2], :in [:lonlat 1], :schema double?, :value nil})}
+```
+
 Serializing & Deserializing schemas, no `eval` needed.
 
 ```clj
@@ -234,7 +271,7 @@ There is [Schema](https://github.com/plumatic/schema), which is awesome, proven 
 
 [Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is based on macros, it has a global registry and it doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [three years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still kinda hack and not fun to maintain.
 
-So, we decided to try to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
+So, we decided to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
 
 > If you have expectations (of others) that aren't being met, those expectations are your own responsibility. You are responsible for your own needs. If you want things, make them.
 

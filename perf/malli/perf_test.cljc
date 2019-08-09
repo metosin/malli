@@ -23,7 +23,7 @@
     ;; 37ns
     (let [valid? (m/validator [:map
                                [:x boolean?]
-                               [[:opt :y] int?]
+                               [:y {:optional true} int?]
                                [:z string?]])]
       (assert (valid? valid))
       (cc/quick-bench
@@ -90,7 +90,79 @@
       (cc/quick-bench
         (valid? [-1 1 2])))))
 
+(s/def ::id string?)
+(s/def ::tags (s/coll-of keyword? :kind set?))
+(s/def ::street string?)
+(s/def ::city string?)
+(s/def ::zip int?)
+(s/def ::lonlat (s/coll-of double? :min-count 2, :max-count 2))
+(s/def ::address (s/keys
+                   :req-un [::street ::city ::zip]
+                   :opt-un [::lonlat]))
+
+(defn composite-explain-perf []
+  (let [valid {:id "Metosin"
+               :tags #{:clj :cljs}
+               :address {:street "Hämeenkatu 14"
+                         :city "Tampere"
+                         :zip 33800
+                         :lonlat [61.4983866 23.7644223]}}
+        invalid {:id "Metosin"
+                 :tags #{"clj" "cljs"}
+                 :address {:street "Hämeenkatu 14"
+                           :zip 33800
+                           :lonlat [61.4983866 nil]}}]
+
+
+    (let [spec (s/keys :req-un [::id ::tags ::address])
+          explain #(s/explain-data spec %)]
+
+      ;; 5.0µs
+      (cc/quick-bench (explain valid))
+
+      ;; 19µs
+      (cc/quick-bench (explain invalid)))
+
+    (let [explain (m/explainer
+                    [:map
+                     [:id string?]
+                     [:tags [:set keyword?]]
+                     [:address
+                      [:map
+                       [:street string?]
+                       [:city string?]
+                       [:zip int?]
+                       [:lonlat {:optional true} [:tuple double? double?]]]]])]
+      (assert (not (explain valid)))
+      (assert (explain invalid))
+
+      ;; 1.2µs
+      (cc/quick-bench (explain valid))
+
+      ;; 1.4µs
+      (cc/quick-bench (explain invalid)))))
+
+(def tests
+  [;; 1.7ns
+   [int? 1]
+   ;; 5.8ns
+   [[:and int? [:> 2]] 3]
+   ;; 107ns
+   [[:vector int?] [1 2 3]]
+   ;; 17ns
+   [[:map [:x int?] [:y boolean?]] {:x 1, :y true}]])
+
+(defn basic-perf []
+  (doseq [[schema value] tests
+          :let [validator (m/validator schema)]]
+    (println)
+    (println (m/form schema))
+    (println "-------------")
+    (cc/quick-bench (validator value))))
+
 (comment
   (map-perf)
   (composite-perf)
-  (composite-perf2))
+  (composite-perf2)
+  (composite-explain-perf)
+  (basic-perf))

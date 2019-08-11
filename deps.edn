@@ -12,6 +12,11 @@
                                minimallist/minimallist {:mvn/version "0.0.10"}
                                net.cgrand/seqexp {:mvn/version "0.6.2"}
                                meta-merge/meta-merge {:mvn/version "1.0.0"}
+                               meta-merge {:mvn/version "1.0.0"}
+                               fipp/fipp {:mvn/version "0.6.18"}
+                               expound/expound {:mvn/version "0.7.2"}
+                               lambdaisland/deep-diff {:mvn/version "0.0-47"}
+                               com.bhauman/spell-spec {:mvn/version "0.1.1"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "c087ded910b3532a938b37e853df79fc3b9c48c1"}}}
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}}

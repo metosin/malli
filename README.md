@@ -76,36 +76,78 @@ Detailed errors with `m/explain`:
 ```clj
 (def Address
   [:map
-   [:street string?]
-   [:city string?]
-   [:lonlat {:optional true} [:tuple double? double?]]])
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:city string?]
+     [:zip int?]
+     [:lonlat [:tuple double? double?]]]]])
 
 (m/explain
   Address
-  {:street "Hämeenkatu 14"
-   :city "Tampere"
-   :lonlat [61.4983866 23.7644223]})
+  {:id "Lillan"
+   :tags #{:artesan :coffee :hotel}
+   :address {:street "Ahlmanintie 29"
+             :city "Tampere"
+             :zip 33100
+             :lonlat [61.4858322, 23.7854658]}})
 ; => nil
 
 (m/explain
   Address
-  {:street "Hämeenkatu 14"
-   :lonlat [61.4983866 nil]})
+  {:id "Lillan"
+   :tags #{:artesan "coffee" :garden}
+   :address {:street "Ahlmanintie 29"
+             :zip 33100
+             :lonlat [61.4858322, nil]}})
 ;{:schema [:map
-;          [:street string?]
-;          [:city string?]
-;          [:lonlat {:optional true} [:tuple double? double?]]]
-; :value {:street "Hämeenkatu 14"
-;         :lonlat [61.4983866 nil]}
-; :problems ({:path []
-;             :in []
+;          [:id string?]
+;          [:tags [:set keyword?]]
+;          [:address [:map
+;                     [:street string?]
+;                     [:city string?]
+;                     [:zip int?]
+;                     [:lonlat [:tuple double? double?]]]]],
+; :value {:id "Lillan",
+;         :tags ["artesan" "coffee" "garden"],
+;         :address {:street "Ahlmanintie 29"
+;                   :zip 33100
+;                   :lonlat [61.4858322 nil]}},
+; :problems ({:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
+;            {:path [3 1],
+;             :in [:address],
 ;             :schema [:map
 ;                      [:street string?]
 ;                      [:city string?]
-;                      [:lonlat {:optional true} [:tuple double? double?]]]
-;             :type :malli.core/missing-key
+;                      [:zip int?]
+;                      [:lonlat [:tuple double? double?]]],
+;             :type :malli.core/missing-key,
 ;             :malli.core/key :city}
-;            {:path [3 2 2], :in [:lonlat 1], :schema double?, :value nil})}
+;            {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
+```
+
+Transforming Schemas:
+
+```clj
+(require '[malli.transform :as mt])
+
+(m/transform
+  Address
+  {:id "Lillan",
+   :tags ["coffee" "artesan" "garden"],
+   :address {:street "Ahlmanintie 29"
+             :city "Tampere"
+             :zip 33100
+             :lonlat [61.4858322 23.7854658]}}
+  mt/json-transformer)
+;{:id "Lillan",
+; :tags #{:coffee :artesan :garden},
+; :address {:street "Ahlmanintie 29"
+;           :city "Tampere"
+;           :zip 33100
+;           :lonlat [61.4858322 23.7854658]}}
 ```
 
 Serializing & Deserializing schemas, no `eval` needed.

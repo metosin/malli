@@ -1,6 +1,7 @@
 (ns malli.core-test
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
+            [malli.transform :as transform]
             #?@(:clj  [[clojure.edn]]
                 :cljs [[cljs.reader]])))
 
@@ -375,3 +376,7 @@
                     :string (m/fn-schema :string string?)})]
     (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
     (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))
+
+(deftest transform-test
+  (is (= 1 (m/transform int? "1" transform/string-transformer)))
+  (is (= "1" (m/transform int? "1" transform/json-transformer))))

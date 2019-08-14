@@ -112,7 +112,7 @@
      [:street string?]
      [:city string?]
      [:zip int?]
-     [:lonlat {:optional true} [:tuple double? double?]]]]])
+     [:lonlat [:tuple double? double?]]]]])
 
 (defn composite-explain-perf []
   (let [valid {:id "Metosin"

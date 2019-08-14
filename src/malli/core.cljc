@@ -12,6 +12,7 @@
 (defprotocol Schema
   (-validator [this])
   (-explainer [this path])
+  (-transformer [this transformer])
   (-properties [this])
   (-form [this]))
 
@@ -41,6 +42,10 @@
     (seq childs) (into [name] childs)
     :else name))
 
+(defn dispatch-name [schema]
+  (let [form (-form schema)]
+    (if (vector? form) (first form) form)))
+
 (defn- -leaf-schema [name ->validator-and-childs]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -60,6 +65,8 @@
                            :schema this
                            :value value})
                 acc)))
+          (-transformer [this transformer]
+            (transformer this))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -103,6 +110,18 @@
                         (reduced acc)
                         acc'')))
                   acc explainers))))
+          (-transformer [_ transformer]
+            (let [tvs (into [] (keep #(-transformer % transformer) child-schemas))]
+              (if (seq tvs)
+                (if short-circuit
+                  (fn [x]
+                    (reduce-kv
+                      (fn [_ _ t] (let [x' (t x)] (if-not (identical? x' x) (reduced x') x)))
+                      x tvs))
+                  (fn [x]
+                    (reduce-kv
+                      (fn [x' _ t] (t x'))
+                      x tvs))))))
           (-properties [_] properties)
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
@@ -185,10 +204,19 @@
                     (fn [acc explainer]
                       (explainer x in acc))
                     acc explainers)))))
+          (-transformer [_ transformer]
+            (let [transformers (->> entries
+                                    (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
+                                    (apply array-map))]
+              (if (seq transformers)
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) x transformers)
+                    x)))))
           (-properties [_] properties)
           (-form [_] form))))))
 
-(defn- -collection-schema [name f]
+(defn- -collection-schema [name fpred fnew finto]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] name)
@@ -206,7 +234,7 @@
         (reify Schema
           (-validator [_]
             (let [validator (-validator (first schemas))]
-              (fn [x] (and (f x)
+              (fn [x] (and (fpred x)
                            (validate-limits x)
                            (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
           (-explainer [this path]
@@ -215,7 +243,7 @@
                   explainer (-explainer schema (conj path distance))]
               (fn [x in acc]
                 (cond
-                  (not (f x))
+                  (not (fpred x))
                   (conj acc {:path path
                              :in in
                              :type ::invalid-type
@@ -231,6 +259,11 @@
                   (loop [acc acc, i 0, [x & xs] x]
                     (cond-> (explainer x (conj in i) acc) xs (recur (inc i) xs)))))))
           (-properties [_] properties)
+          (-transformer [_ transformer]
+            (if-let [t (-transformer (first schemas) transformer)]
+              (fn [x]
+                (persistent! (reduce (fn [v o] (conj! v (t o))) (transient finto) x)))
+              fnew))
           (-form [_] form))))))
 
 (defn- -tuple-schema []
@@ -272,6 +305,14 @@
                   :else
                   (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                     (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
+          (-transformer [_ transformer]
+            (let [ts (->> schemas
+                          (mapv transformer)
+                          (map-indexed vector)
+                          (filter second)
+                          (mapcat identity)
+                          (apply array-map))]
+              (fn [x] (reduce-kv (fn [acc i t] (update acc i t)) (vec x) ts))))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -299,11 +340,11 @@
                   value-explainer (-explainer value-schema (conj path (inc distance)))]
               (fn explain [m in acc]
                 (if-not (map? m)
-                  (conj acc {:path   path
-                             :in     in
+                  (conj acc {:path path
+                             :in in
                              :schema this
-                             :value  m
-                             :type   ::invalid-type})
+                             :value m
+                             :type ::invalid-type})
                   (reduce-kv
                     (fn [acc key value]
                       (let [in (conj in key)]
@@ -386,6 +427,20 @@
   ([?schema value opts]
    ((explainer ?schema opts) value [] [])))
 
+(defn transformer
+  ([?schema t]
+   (transformer ?schema nil t))
+  ([?schema opts t]
+   (or (-transformer (schema ?schema opts) t) identity)))
+
+(defn transform
+  ([?schema value t]
+   (transform ?schema value nil t))
+  ([?schema value opts t]
+   (if-let [transform (transformer (schema ?schema) opts t)]
+     (transform value)
+     value)))
+
 ;;
 ;; registries
 ;;
@@ -407,11 +462,11 @@
   {:and (-composite-schema :and every-pred false)
    :or (-composite-schema :or some-fn true)
    :map (-map-schema)
-   :vector (-collection-schema :vector vector?)
-   :list (-collection-schema :list list?)
-   :set (-collection-schema :set set?)
-   :tuple (-tuple-schema)
-   :map-of (-map-of-schema)})
+   :map-of (-map-of-schema)
+   :vector (-collection-schema :vector vector? vec [])
+   :list (-collection-schema :list list? seq '())
+   :set (-collection-schema :set set? set #{})
+   :tuple (-tuple-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

@@ -153,7 +153,14 @@
 
    'uuid? string->uuid
 
-   'inst? string->date})
+   'inst? string->date
+
+   :> string->long
+   :>= string->long
+   :< string->long
+   :<= string->long
+   := string->long
+   :not= string->long})
 
 (def +string-encoders+
   (merge

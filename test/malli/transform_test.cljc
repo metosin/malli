@@ -1,5 +1,6 @@
 (ns malli.transform-test
   (:require [clojure.test :refer [deftest testing is]]
+            [malli.core :as m]
             [malli.transform :as transform]))
 
 (deftest string->long
@@ -69,3 +70,50 @@
   #?(:clj (is (= 1/2 (transform/any->any 1/2))))
   (is (= 0.5 (transform/any->any 0.5)))
   (is (= nil (transform/any->any nil))))
+
+(deftest transform-test
+  (testing "predicates"
+    (is (= 1 (m/transform int? "1" transform/string-transformer)))
+    (is (= "1" (m/transform int? "1" transform/json-transformer)))
+    (is (= :user/kikka (m/transform keyword? "user/kikka" transform/string-transformer))))
+  (testing "comparators"
+    (doseq [schema (keys m/comparator-registry)]
+      (is (= 1 (m/transform [schema 1] "1" transform/string-transformer)))))
+  (testing "and"
+    (is (= 1 (m/transform [:and int?] "1" transform/string-transformer)))
+    (is (= :1 (m/transform [:and keyword?] "1" transform/string-transformer)))
+    (is (= 1 (m/transform [:and int? keyword?] "1" transform/string-transformer)))
+    #_(is (= 1 (m/transform [:and int? #{1 2}] "1" transform/string-transformer)))
+    #_(is (= 1 (m/transform [:and keyword? int?] "1" transform/string-transformer)))
+    (is (= [1] (m/transform [:and [:vector int?]] ["1"] transform/string-transformer))))
+  (testing "or"
+    (is (= 1 (m/transform [:or int? keyword?] "1" transform/string-transformer)))
+    #_(is (= 1 (m/transform [:or int? #{1 2}] "1" transform/string-transformer)))
+    (is (= :1 (m/transform [:or keyword? int?] "1" transform/string-transformer))))
+  (testing "collections"
+    (is (= #{1 2 3} (m/transform [:set int?] ["1" 2 "3"] transform/string-transformer)))
+    #_(is (= #{"1" 2 "3"} (m/transform [:set #{1 2}] ["1" 2 "3"] transform/string-transformer)))
+    (is (= #{"1" 2 "3"} (m/transform [:set int?] ["1" 2 "3"] transform/json-transformer)))
+    (is (= [:1 2 :3] (m/transform [:vector keyword?] ["1" 2 "3"] transform/string-transformer)))
+    (is (= '(:1 2 :3) (m/transform [:list keyword?] '("1" 2 "3") transform/string-transformer)))
+    (is (= '(:1 2 :3) (m/transform [:list keyword?] (seq '("1" 2 "3")) transform/string-transformer)))
+    (is (= '(:1 2 :3) (m/transform [:list keyword?] (lazy-seq '("1" 2 "3")) transform/string-transformer)))
+    (is (= ::invalid (m/transform [:vector keyword?] ::invalid transform/string-transformer))))
+  #_(testing "s/keys"
+    (is (= {:c1 1, ::c2 :kikka} (m/transform (s/keys :req-un [::c1]) {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
+    (is (= {:c1 1, ::c2 :kikka} (m/transform (s/keys :req-un [(and ::c1 ::c2)]) {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
+    (is (= {:c1 "1", ::c2 :kikka} (m/transform (s/keys :req-un [::c1]) {:c1 "1", ::c2 "kikka"} transform/json-transformer)))
+    (is (= ::invalid (m/transform (s/keys :req-un [::c1]) ::invalid transform/json-transformer))))
+  #_(testing "s/map-of"
+    (is (= {1 :abba, 2 :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/string-transformer)))
+    (is (= {"1" :abba, "2" :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/json-transformer)))
+    (is (= ::invalid (m/transform (s/map-of int? keyword?) ::invalid transform/json-transformer))))
+  #_(testing "s/nillable"
+    (is (= 1 (m/transform (s/nilable int?) "1" transform/string-transformer)))
+    (is (= nil (m/transform (s/nilable int?) nil transform/string-transformer))))
+  (testing "tuple"
+    (is (= [1] (m/transform [:tuple int?] ["1"] transform/string-transformer)))
+    (is (= [1 :kikka] (m/transform [:tuple int? keyword?] ["1" "kikka"] transform/string-transformer)))
+    (is (= [:kikka 1] (m/transform [:tuple keyword? int?] ["kikka" "1"] transform/string-transformer)))
+    (is (= "1" (m/transform [:tuple keyword? int?] "1" transform/string-transformer)))
+    (is (= [:kikka 1 "2"] (m/transform [:tuple keyword? int?] ["kikka" "1" "2"] transform/string-transformer)))))

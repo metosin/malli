@@ -111,7 +111,7 @@ Detailed errors with `m/explain`:
 ;                     [:zip int?]
 ;                     [:lonlat [:tuple double? double?]]]]],
 ; :value {:id "Lillan",
-;         :tags ["artesan" "coffee" "garden"],
+;         :tags #{:artesan :garden "coffee"},
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},

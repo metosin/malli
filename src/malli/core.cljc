@@ -261,9 +261,16 @@
           (-properties [_] properties)
           (-transformer [_ transformer]
             (if-let [t (-transformer (first schemas) transformer)]
-              (fn [x]
-                (persistent! (reduce (fn [v o] (conj! v (t o))) (transient fempty) x)))
-              ;; optional wrap?
+              (if fempty
+                (fn [x]
+                  (try
+                    (persistent! (reduce (fn [v o] (conj! v (t o))) (transient fempty) x))
+                    (catch #?(:clj Exception, :cljs js/Error) _ x)))
+                (fn [x]
+                  (try
+                    (map t x)
+                    (catch #?(:clj Exception, :cljs js/Error) _ x))))
+              ;; should wrapping be optional?
               fwrap))
           (-form [_] form))))))
 
@@ -313,7 +320,7 @@
                           (filter second)
                           (mapcat identity)
                           (apply array-map))]
-              (fn [x] (reduce-kv (fn [acc i t] (update acc i t)) (vec x) ts))))
+              (fn [x] (if (vector? x) (reduce-kv (fn [acc i t] (update acc i t)) (vec x) ts) x))))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -465,7 +472,7 @@
    :map (-map-schema)
    :map-of (-map-of-schema)
    :vector (-collection-schema :vector vector? vec [])
-   :list (-collection-schema :list list? seq '())
+   :list (-collection-schema :list list? seq nil)
    :set (-collection-schema :set set? set #{})
    :tuple (-tuple-schema)})
 

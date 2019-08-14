@@ -216,7 +216,7 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
-(defn- -collection-schema [name fpred fnew finto]
+(defn- -collection-schema [name fpred fwrap fempty]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] name)
@@ -262,8 +262,9 @@
           (-transformer [_ transformer]
             (if-let [t (-transformer (first schemas) transformer)]
               (fn [x]
-                (persistent! (reduce (fn [v o] (conj! v (t o))) (transient finto) x)))
-              fnew))
+                (persistent! (reduce (fn [v o] (conj! v (t o))) (transient fempty) x)))
+              ;; optional wrap?
+              fwrap))
           (-form [_] form))))))
 
 (defn- -tuple-schema []

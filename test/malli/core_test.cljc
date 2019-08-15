@@ -80,6 +80,19 @@
 
       (is (= [:> 0] (m/form schema)))))
 
+  (testing "enum schemas"
+    (let [schema (m/schema [:enum 1 2])]
+
+      (is (true? (m/validate schema 1)))
+      (is (false? (m/validate schema 0)))
+      (is (false? (m/validate schema "abba")))
+
+      (is (nil? (m/explain schema 1)))
+      (is (results= {:schema [:enum 1 2], :value 0, :problems [{:path [], :in [], :schema [:enum 1 2], :value 0}]}
+                    (m/explain schema 0)))
+
+      (is (= [:enum 1 2] (m/form schema)))))
+
   (testing "map schemas"
     (let [schema1 (m/schema
                     [:map

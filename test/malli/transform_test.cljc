@@ -99,11 +99,10 @@
     (is (= '(:1 2 :3) (m/transform [:list keyword?] (seq '("1" 2 "3")) transform/string-transformer)))
     (is (= '(:1 2 :3) (m/transform [:list keyword?] (lazy-seq '("1" 2 "3")) transform/string-transformer)))
     (is (= ::invalid (m/transform [:vector keyword?] ::invalid transform/string-transformer))))
-  #_(testing "s/keys"
-    (is (= {:c1 1, ::c2 :kikka} (m/transform (s/keys :req-un [::c1]) {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
-    (is (= {:c1 1, ::c2 :kikka} (m/transform (s/keys :req-un [(and ::c1 ::c2)]) {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
-    (is (= {:c1 "1", ::c2 :kikka} (m/transform (s/keys :req-un [::c1]) {:c1 "1", ::c2 "kikka"} transform/json-transformer)))
-    (is (= ::invalid (m/transform (s/keys :req-un [::c1]) ::invalid transform/json-transformer))))
+  (testing "map"
+    (is (= {:c1 1, ::c2 :kikka} (m/transform [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
+    (is (= {:c1 "1", ::c2 :kikka} (m/transform [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/json-transformer)))
+    (is (= ::invalid (m/transform [:map] ::invalid transform/json-transformer))))
   #_(testing "s/map-of"
     (is (= {1 :abba, 2 :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/string-transformer)))
     (is (= {"1" :abba, "2" :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/json-transformer)))

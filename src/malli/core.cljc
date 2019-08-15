@@ -382,7 +382,8 @@
                            :in in
                            :schema this
                            :value x}))))
-          (-transformer [_ _] identity)
+          ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
+          (-transformer [_ _])
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 

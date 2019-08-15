@@ -363,6 +363,29 @@
           (-properties [_] properties)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 
+(defn- -enum-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :enum)
+    (-into-schema [_ properties childs _]
+      (when-not (seq childs)
+        (fail! ::no-childs {:name name, :properties properties}))
+      (let [schema (set childs)
+            validator (fn [x] (contains? schema x))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (if-not (validator x)
+                (conj acc {:path path
+                           :in in
+                           :schema this
+                           :value x}))))
+          (-transformer [_ _] identity)
+          (-properties [_] properties)
+          (-form [_] (create-form :enum properties childs)))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -474,6 +497,7 @@
    :vector (-collection-schema :vector vector? vec [])
    :list (-collection-schema :list list? seq nil)
    :set (-collection-schema :set set? set #{})
+   :enum (-enum-schema)
    :tuple (-tuple-schema)})
 
 (def default-registry

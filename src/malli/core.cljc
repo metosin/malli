@@ -154,8 +154,6 @@
   (reify IntoSchema
     (-name [_] :map)
     (-into-schema [_ properties childs opts]
-      (when-not (seq childs)
-        (fail! ::no-childs {:name :map, :properties properties}))
       (let [{:keys [entries forms]} (parse-keys childs opts)
             form (create-form :map properties forms)]
         ^{:type ::schema}

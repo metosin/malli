@@ -93,6 +93,19 @@
 
       (is (= [:enum 1 2] (m/form schema)))))
 
+  (testing "maybe schemas"
+    (let [schema (m/schema [:maybe int?])]
+
+      (is (true? (m/validate schema 1)))
+      (is (true? (m/validate schema nil)))
+      (is (false? (m/validate schema "abba")))
+
+      (is (nil? (m/explain schema 1)))
+      (is (results= {:schema [:maybe int?], :value "abba", :problems [{:path [], :in [], :schema [:maybe int?], :value "abba"}]}
+                    (m/explain schema "abba")))
+
+      (is (= [:maybe 'int?] (m/form schema)))))
+
   (testing "map schemas"
     (let [schema1 (m/schema
                     [:map

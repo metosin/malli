@@ -387,6 +387,30 @@
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
+(defn- -maybe-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :maybe)
+    (-into-schema [_ properties childs _]
+      (when-not (= 1 (count childs))
+        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
+      (let [schema' (-> childs first schema)
+            validator' (-validator schema')
+            form (create-form :maybe properties (map -form (map schema childs)))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] (fn [x] (or (nil? x) (validator' x))))
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (if-not (or (nil? x) (validator' x))
+                (conj acc {:path path
+                           :in in
+                           :schema this
+                           :value x}))))
+          (-transformer [_ transformer] (-transformer schema' transformer))
+          (-properties [_] properties)
+          (-form [_] form))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -499,6 +523,7 @@
    :list (-collection-schema :list list? seq nil)
    :set (-collection-schema :set set? set #{})
    :enum (-enum-schema)
+   :maybe (-maybe-schema)
    :tuple (-tuple-schema)})
 
 (def default-registry

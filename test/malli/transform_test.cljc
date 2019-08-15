@@ -108,9 +108,9 @@
     (is (= {1 :abba, 2 :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/string-transformer)))
     (is (= {"1" :abba, "2" :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/json-transformer)))
     (is (= ::invalid (m/transform (s/map-of int? keyword?) ::invalid transform/json-transformer))))
-  #_(testing "s/nillable"
-    (is (= 1 (m/transform (s/nilable int?) "1" transform/string-transformer)))
-    (is (= nil (m/transform (s/nilable int?) nil transform/string-transformer))))
+  (testing "maybe"
+    (is (= 1 (m/transform [:maybe int?] "1" transform/string-transformer)))
+    (is (= nil (m/transform [:maybe int?] nil transform/string-transformer))))
   (testing "tuple"
     (is (= [1] (m/transform [:tuple int?] ["1"] transform/string-transformer)))
     (is (= [1 :kikka] (m/transform [:tuple int? keyword?] ["1" "kikka"] transform/string-transformer)))

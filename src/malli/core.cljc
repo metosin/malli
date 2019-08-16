@@ -275,6 +275,29 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
+(defn- -function-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :fn)
+    (-into-schema [_ properties childs _]
+      (let [f (first childs)]
+        (when-not (fn? f)
+          (fail! ::no-function {:name :fn :properties properties}))
+        (let [validator (fn [x] (f x))
+              form (create-form :fn properties childs)]
+          ^{:type ::schema}
+          (reify Schema
+            (-validator [_] validator)
+            (-explainer [this path]
+              (fn explain [x in acc]
+                (when-not (validator x)
+                  (conj acc {:path path
+                             :in in
+                             :schema this
+                             :value x}))))
+            (-form [_] form)
+            (-properties [_] properties)))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -371,7 +394,8 @@
    :vector (-collection-schema :vector vector?)
    :list (-collection-schema :list list?)
    :set (-collection-schema :set set?)
-   :tuple (-tuple-schema)})
+   :tuple (-tuple-schema)
+   :fn (-function-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

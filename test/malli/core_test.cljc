@@ -197,6 +197,19 @@
           (testing name
             (is (= expected (m/validate schema value)))))))
 
+    (testing "function schema"
+      (let [bounded-string? (fn [x] (< 1 (count x) 10))]
+        (is (thrown? Exception (m/validate [:fn 1] "aaaa")))
+
+        (is (false? (m/validate [:fn bounded-string?] "aaaaaaaaaaaaaaaaaaaa")))
+        (is (true? (m/validate [:fn bounded-string?] "aaa")))
+        (is (true? (m/validate [:and string? [:fn bounded-string?]] "aaa")))
+        (is (false? (m/validate [:and string? [:fn bounded-string?]] "")))
+
+        (is (nil? (m/explain [:fn bounded-string?] "aaaa")))
+        (is (results= {:schema [:fn bounded-string?], :value "", :problems [{:path [], :in [], :schema [:fn bounded-string?], :value ""}]}
+                      (m/explain [:fn bounded-string?] "")))))
+
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]
 

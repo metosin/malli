@@ -197,6 +197,33 @@
           (testing name
             (is (= expected (m/validate schema value)))))))
 
+    (testing "map-of schema"
+
+      (is (true? (m/validate [:map-of string? int?] {"age" 18})))
+      (is (true? (m/validate [:map-of keyword? int?] {:age 18})))
+      (is (false? (m/validate [:map-of string? int?] {:age "18"})))
+      (is (false? (m/validate [:map-of string? int?] 1)))
+
+      (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
+      (is (results= {:schema   [:map-of string? int?],
+                     :value    {:age 18},
+                     :problems [{:path   [1 0],
+                                 :in     [:age],
+                                 :schema string?,
+                                 :value  :age}]}
+                    (m/explain [:map-of string? int?] {:age 18})))
+      (is (results= {:schema   [:map-of string? int?],
+                     :value    {:age "18"},
+                     :problems [{:path   [1 0],
+                                 :in     [:age],
+                                 :schema string?,
+                                 :value  :age}
+                                {:path [1 1],
+                                 :in [:age],
+                                 :schema int?,
+                                 :value "18"}]}
+                    (m/explain [:map-of string? int?] {:age "18"}))))
+
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]
 

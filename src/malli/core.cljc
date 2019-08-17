@@ -286,8 +286,9 @@
             key-valid? (-validator key-schema)
             value-valid? (-validator value-schema)
             validate (fn [m]
-                       (reduce
-                         #(or (and (key-valid? (first %2)) (value-valid? (second %2))) (reduced false))
+                       (reduce-kv
+                         (fn [_ key value]
+                           (or (and (key-valid? key) (value-valid? value)) (reduced false)))
                          true m))]
         ^{:type ::schema}
         (reify Schema
@@ -303,16 +304,15 @@
                              :schema this
                              :value  m
                              :type   ::invalid-type})
-                  (reduce
-                    (fn [acc [i [key value]]]
+                  (reduce-kv
+                    (fn [acc key value]
                       (let [in (conj in key)
-                            distance-path (+ i distance)
-                            key-explainer' (key-explainer (into path [distance-path 0]))
-                            value-explainer' (value-explainer (into path [distance-path 1]))]
+                            key-explainer' (key-explainer (conj path distance))
+                            value-explainer' (value-explainer (conj path (inc distance)))]
                         (->> acc
                              (key-explainer' key in)
                              (value-explainer' value in))))
-                    acc (map-indexed vector m))))))
+                    acc m)))))
           (-properties [_] properties)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 

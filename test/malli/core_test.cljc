@@ -207,18 +207,18 @@
       (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
       (is (results= {:schema   [:map-of string? int?],
                      :value    {:age 18},
-                     :problems [{:path   [1 0],
+                     :problems [{:path   [1],
                                  :in     [:age],
                                  :schema string?,
                                  :value  :age}]}
                     (m/explain [:map-of string? int?] {:age 18})))
       (is (results= {:schema   [:map-of string? int?],
                      :value    {:age "18"},
-                     :problems [{:path   [1 0],
+                     :problems [{:path   [1],
                                  :in     [:age],
                                  :schema string?,
                                  :value  :age}
-                                {:path [1 1],
+                                {:path [2],
                                  :in [:age],
                                  :schema int?,
                                  :value "18"}]}

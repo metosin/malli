@@ -295,8 +295,8 @@
           (-validator [_] (fn [m] (and (map? m) (validate m))))
           (-explainer [this path]
             (let [distance (if (seq properties) 2 1)
-                  key-explainer (partial -explainer key-schema)
-                  value-explainer (partial -explainer value-schema)]
+                  key-explainer (-explainer key-schema (conj path distance))
+                  value-explainer (-explainer value-schema (conj path (inc distance)))]
               (fn explain [m in acc]
                 (if-not (map? m)
                   (conj acc {:path   path
@@ -306,12 +306,10 @@
                              :type   ::invalid-type})
                   (reduce-kv
                     (fn [acc key value]
-                      (let [in (conj in key)
-                            key-explainer' (key-explainer (conj path distance))
-                            value-explainer' (value-explainer (conj path (inc distance)))]
+                      (let [in (conj in key)]
                         (->> acc
-                             (key-explainer' key in)
-                             (value-explainer' value in))))
+                             (key-explainer key in)
+                             (value-explainer value in))))
                     acc m)))))
           (-properties [_] properties)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))

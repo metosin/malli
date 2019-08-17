@@ -275,6 +275,47 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
+(defn- -map-of-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :map-of)
+    (-into-schema [_ properties childs opts]
+      (when-not (and (seq childs) (= 2 (count childs)))
+        (fail! ::invalid-map-of))
+      (let [[key-schema value-schema :as schemas] (mapv #(schema % opts) childs)
+            key-valid? (-validator key-schema)
+            value-valid? (-validator value-schema)
+            validate (fn [m]
+                       (reduce
+                         #(or (and (key-valid? (first %2)) (value-valid? (second %2))) (reduced false))
+                         true m))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] (fn [m] (and (map? m) (validate m))))
+          (-explainer [this path]
+            (let [distance (if (seq properties) 2 1)
+                  key-explainer (partial -explainer key-schema)
+                  value-explainer (partial -explainer value-schema)]
+              (fn explain [m in acc]
+                (if-not (map? m)
+                  (conj acc {:path   path
+                             :in     in
+                             :schema this
+                             :value  m
+                             :type   ::invalid-type})
+                  (reduce
+                    (fn [acc [i [key value]]]
+                      (let [in (conj in key)
+                            distance-path (+ i distance)
+                            key-explainer' (key-explainer (into path [distance-path 0]))
+                            value-explainer' (value-explainer (into path [distance-path 1]))]
+                        (->> acc
+                             (key-explainer' key in)
+                             (value-explainer' value in))))
+                    acc (map-indexed vector m))))))
+          (-properties [_] properties)
+          (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -371,7 +412,8 @@
    :vector (-collection-schema :vector vector?)
    :list (-collection-schema :list list?)
    :set (-collection-schema :set set?)
-   :tuple (-tuple-schema)})
+   :tuple (-tuple-schema)
+   :map-of (-map-of-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

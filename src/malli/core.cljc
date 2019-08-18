@@ -6,15 +6,15 @@
 ;;
 
 (defprotocol IntoSchema
-  (-name [this])
-  (-into-schema [this properties childs opts]))
+  (-name [this] "returns name of the schema")
+  (-into-schema [this properties childs opts] "creates a new schema instance"))
 
 (defprotocol Schema
-  (-validator [this])
-  (-explainer [this path])
-  (-transformer [this transformer])
-  (-properties [this])
-  (-form [this]))
+  (-validator [this] "returns a predicate function that checks if the schema is valid")
+  (-explainer [this path] "returns a function of `x in acc -> maybe problems` to explain the errors for invalid values")
+  (-transformer [this transformer] "returns a function of `x -> y` to transform values with the given transformer")
+  (-properties [this] "returns original schema properties")
+  (-form [this] "returns original form of the spec"))
 
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
           (.write w (str "#IntoSchema{:name " (-name v) "}"))))

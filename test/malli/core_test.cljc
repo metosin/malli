@@ -13,6 +13,11 @@
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
 
+(deftest keyword->string
+  (is (= "abba" (m/keyword->string :abba)))
+  (is (= "jabba/abba" (m/keyword->string :jabba/abba)))
+  (is (= "abba" (m/keyword->string "abba"))))
+
 (deftest expand-key-test
   (are [schema expected]
     (= expected (second (#'m/expand-key schema nil identity)))
@@ -272,8 +277,9 @@
                     (m/explain [:map-of string? int?] {:age "18"})))
 
       (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
-      ;; TODO: test also keyword keys!
-      )
+
+      (testing "keyword keys are transformed via strings"
+        (is (= {1 1} (m/transform [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
 
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]

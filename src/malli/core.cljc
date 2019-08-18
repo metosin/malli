@@ -29,6 +29,13 @@
 (declare schema)
 (declare default-registry)
 
+(defn keyword->string [x]
+  (if (keyword? x)
+    (if-let [nn (namespace x)]
+      (str nn "/" (name x))
+      (name x))
+    x))
+
 (defn fail!
   ([type]
    (fail! type nil))
@@ -214,6 +221,75 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
+(defn- -map-of-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :map-of)
+    (-into-schema [_ properties childs opts]
+      (when-not (and (seq childs) (= 2 (count childs)))
+        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 2, :max 2}))
+      (let [[key-schema value-schema :as schemas] (mapv #(schema % opts) childs)
+            key-valid? (-validator key-schema)
+            value-valid? (-validator value-schema)
+            validate (fn [m]
+                       (reduce-kv
+                         (fn [_ key value]
+                           (or (and (key-valid? key) (value-valid? value)) (reduced false)))
+                         true m))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] (fn [m] (and (map? m) (validate m))))
+          (-explainer [this path]
+            (let [distance (if (seq properties) 2 1)
+                  key-explainer (-explainer key-schema (conj path distance))
+                  value-explainer (-explainer value-schema (conj path (inc distance)))]
+              (fn explain [m in acc]
+                (if-not (map? m)
+                  (conj acc {:path path
+                             :in in
+                             :schema this
+                             :value m
+                             :type ::invalid-type})
+                  (reduce-kv
+                    (fn [acc key value]
+                      (let [in (conj in key)]
+                        (->> acc
+                             (key-explainer key in)
+                             (value-explainer value in))))
+                    acc m)))))
+          (-transformer [_ transformer]
+            (let [key-transformer (if-let [t (-transformer key-schema transformer)]
+                                    (fn [x] (t (if (keyword? x) (-qualified-name x) x))))
+                  value-transformer (-transformer value-schema transformer)]
+              (cond
+                (and key-transformer value-transformer)
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv
+                      (fn [acc k v]
+                        (let [k' (key-transformer k)]
+                          (-> acc
+                              (assoc (key-transformer k) (value-transformer v))
+                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
+                    x))
+                key-transformer
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv
+                      (fn [acc k v]
+                        (let [k' (key-transformer k)]
+                          (-> acc
+                              (assoc (key-transformer k) v)
+                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
+                    x))
+                value-transformer
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv (fn [acc k v] (assoc acc k (value-transformer v))) x x)
+                    x)))))
+          (-properties [_] properties)
+          (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
+
 (defn- -collection-schema [name fpred fwrap fempty]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -321,73 +397,6 @@
               (fn [x] (if (vector? x) (reduce-kv (fn [acc i t] (update acc i t)) (vec x) ts) x))))
           (-properties [_] properties)
           (-form [_] form))))))
-
-(defn- -map-of-schema []
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-name [_] :map-of)
-    (-into-schema [_ properties childs opts]
-      (when-not (and (seq childs) (= 2 (count childs)))
-        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 2, :max 2}))
-      (let [[key-schema value-schema :as schemas] (mapv #(schema % opts) childs)
-            key-valid? (-validator key-schema)
-            value-valid? (-validator value-schema)
-            validate (fn [m]
-                       (reduce-kv
-                         (fn [_ key value]
-                           (or (and (key-valid? key) (value-valid? value)) (reduced false)))
-                         true m))]
-        ^{:type ::schema}
-        (reify Schema
-          (-validator [_] (fn [m] (and (map? m) (validate m))))
-          (-explainer [this path]
-            (let [distance (if (seq properties) 2 1)
-                  key-explainer (-explainer key-schema (conj path distance))
-                  value-explainer (-explainer value-schema (conj path (inc distance)))]
-              (fn explain [m in acc]
-                (if-not (map? m)
-                  (conj acc {:path path
-                             :in in
-                             :schema this
-                             :value m
-                             :type ::invalid-type})
-                  (reduce-kv
-                    (fn [acc key value]
-                      (let [in (conj in key)]
-                        (->> acc
-                             (key-explainer key in)
-                             (value-explainer value in))))
-                    acc m)))))
-          (-transformer [_ transformer]
-            (let [[key-transformer value-transformer] (map #(-transformer % transformer) schemas)]
-              (cond
-                (and key-transformer value-transformer)
-                (fn [x]
-                  (if (map? x)
-                    (reduce-kv
-                      (fn [acc k v]
-                        (let [k' (key-transformer k)]
-                          (-> acc
-                              (assoc (key-transformer k) (value-transformer v))
-                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
-                    x))
-                key-transformer
-                (fn [x]
-                  (if (map? x)
-                    (reduce-kv
-                      (fn [acc k v]
-                        (let [k' (key-transformer k)]
-                          (-> acc
-                              (assoc (key-transformer k) v)
-                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
-                    x))
-                value-transformer
-                (fn [x]
-                  (if (map? x)
-                    (reduce-kv (fn [acc k v] (assoc acc k (value-transformer v))) x x)
-                    x)))))
-          (-properties [_] properties)
-          (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 
 (defn- -enum-schema []
   ^{:type ::into-schema}

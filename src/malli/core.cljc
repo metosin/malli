@@ -259,7 +259,7 @@
                     acc m)))))
           (-transformer [_ transformer]
             (let [key-transformer (if-let [t (-transformer key-schema transformer)]
-                                    (fn [x] (t (if (keyword? x) (-qualified-name x) x))))
+                                    (fn [x] (t (keyword->string x))))
                   value-transformer (-transformer value-schema transformer)]
               (cond
                 (and key-transformer value-transformer)

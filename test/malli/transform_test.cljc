@@ -18,11 +18,6 @@
   (is (= :abba (transform/string->keyword "abba")))
   (is (= :abba (transform/string->keyword :abba))))
 
-(deftest keyword->string
-  (is (= "abba" (transform/keyword->string :abba)))
-  (is (= "jabba/abba" (transform/keyword->string :jabba/abba)))
-  (is (= "abba" (transform/keyword->string "abba"))))
-
 (deftest string->boolean
   (is (= true (transform/string->boolean "true")))
   (is (= false (transform/string->boolean "false")))

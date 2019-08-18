@@ -9,35 +9,6 @@
               (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
               (java.time.temporal ChronoField))))
 
-(defn qualified-name [key]
-  (if (keyword? key)
-    (if-let [nn (namespace key)]
-      (str nn "/" (name key))
-      (name key))
-    key))
-
-;;
-;; Keywords
-;;
-
-(defn keyword->string [x]
-  (if (keyword? x)
-    (qualified-name x)
-    x))
-
-(defn keyword-or-string-> [f]
-  (fn [x]
-    (cond
-      (keyword? x) (f (keyword->string x))
-      (string? x) (f x)
-      :else x)))
-
-(defn keyword-> [f]
-  (fn [x]
-    (if (keyword? x)
-      (f (keyword->string x))
-      x)))
-
 ;;
 ;; Strings
 ;;

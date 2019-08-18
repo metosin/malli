@@ -128,7 +128,7 @@ Detailed errors with `m/explain`:
 ;            {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
-Transforming Schemas:
+Schema-driven value transformations with `m/transform`:
 
 ```clj
 (require '[malli.transform :as mt])
@@ -235,7 +235,9 @@ Predicate Schemas don't work anymore:
 
 ### Mutable registry
 
-[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. There is no such thing in `malli`, but you can create it yourself:
+[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. There is no such thing in `malli`, but you can create it yourself.
+
+Using a custom registry atom:
 
 ```clj
 (defonce my-registry
@@ -255,6 +257,23 @@ Predicate Schemas don't work anymore:
   [:tuple ::id ::name] 
   [18 "and life"] 
   {:registry @my-registry})
+; => true
+```
+
+Mutating the default registry (not recommended):
+
+```clj
+(defn evil-register! [k ?schema]
+  (alter-var-root
+    #'m/default-registry
+    (constantly
+      (assoc m/default-registry k (m/schema ?schema))))
+  k)
+
+(evil-register! ::int int?)
+; :user/int
+
+(m/validate ::int 1)
 ; => true
 ```
 

@@ -157,3 +157,5 @@
 
 (defn json-transformer [schema]
   (get +json-decoders+ (m/dispatch-name schema)))
+
+(defn collection-transformer [schema])

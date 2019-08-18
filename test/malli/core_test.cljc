@@ -432,3 +432,6 @@
                     :string (m/fn-schema :string string?)})]
     (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
     (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))
+
+(deftest collection-transform-test
+  (is (= #{1 2 3} (m/transform [:set int?] [1 2 3] transform/collection-transformer))))

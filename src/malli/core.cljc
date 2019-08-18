@@ -178,9 +178,9 @@
           (-explainer [this path]
             (let [distance (if (seq properties) 2 1)
                   explainers (mapv
-                               (fn [[i [key {:keys [optional] :as key-properties} value]]]
+                               (fn [[i [key {:keys [optional] :as key-properties} schema]]]
                                  (let [key-distance (if (seq key-properties) 2 1)
-                                       explainer (-explainer value (into path [(+ i distance) key-distance]))]
+                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))]
                                    (fn [x in acc]
                                      (if-let [v (key x)]
                                        (explainer v (conj in key) acc)
@@ -328,7 +328,7 @@
     (-name [_] :map-of)
     (-into-schema [_ properties childs opts]
       (when-not (and (seq childs) (= 2 (count childs)))
-        (fail! ::invalid-map-of))
+        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 2, :max 2}))
       (let [[key-schema value-schema :as schemas] (mapv #(schema % opts) childs)
             key-valid? (-validator key-schema)
             value-valid? (-validator value-schema)
@@ -358,6 +358,34 @@
                              (key-explainer key in)
                              (value-explainer value in))))
                     acc m)))))
+          (-transformer [_ transformer]
+            (let [[key-transformer value-transformer] (map #(-transformer % transformer) schemas)]
+              (cond
+                (and key-transformer value-transformer)
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv
+                      (fn [acc k v]
+                        (let [k' (key-transformer k)]
+                          (-> acc
+                              (assoc (key-transformer k) (value-transformer v))
+                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
+                    x))
+                key-transformer
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv
+                      (fn [acc k v]
+                        (let [k' (key-transformer k)]
+                          (-> acc
+                              (assoc (key-transformer k) v)
+                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
+                    x))
+                value-transformer
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv (fn [acc k v] (assoc acc k (value-transformer v))) x x)
+                    x)))))
           (-properties [_] properties)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 
@@ -389,12 +417,12 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] :maybe)
-    (-into-schema [_ properties childs _]
+    (-into-schema [_ properties childs opts]
       (when-not (= 1 (count childs))
         (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
-      (let [schema' (-> childs first schema)
+      (let [schema' (-> childs first (schema opts))
             validator' (-validator schema')
-            form (create-form :maybe properties (map -form (map schema childs)))]
+            form (create-form :maybe properties [(-form schema')])]
         ^{:type ::schema}
         (reify Schema
           (-validator [_] (fn [x] (or (nil? x) (validator' x))))

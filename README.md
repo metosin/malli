@@ -204,7 +204,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:vector`, `:list`, `:set`, `:tuple`, `:enum` and `:maybe`.
+Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:set`, `:tuple`, `:enum` and `:maybe`.
 
 ### Custom registry
 

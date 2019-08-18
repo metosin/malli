@@ -47,6 +47,9 @@
                      :problems [{:path [], :in [], :schema schema, :value "1"}]}
                     (m/explain schema "1")))
 
+      (is (= 1 (m/transform schema "1" transform/string-transformer)))
+      (is (= "1" (m/transform schema "1" transform/json-transformer)))
+
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
@@ -65,6 +68,9 @@
                                 {:path [2 2], :in [], :schema neg-int?, :value 0}]}
                     (m/explain schema 0)))
 
+      (is (= 1 (m/transform schema "1" transform/string-transformer)))
+      (is (= "1" (m/transform schema "1" transform/json-transformer)))
+
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))))
 
   (testing "comparator schemas"
@@ -77,6 +83,9 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema [:> 0], :value 0, :problems [{:path [], :in [], :schema [:> 0], :value 0}]}
                     (m/explain schema 0)))
+
+      (is (= 1 (m/transform schema "1" transform/string-transformer)))
+      (is (= "1" (m/transform schema "1" transform/json-transformer)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -91,6 +100,10 @@
       (is (results= {:schema [:enum 1 2], :value 0, :problems [{:path [], :in [], :schema [:enum 1 2], :value 0}]}
                     (m/explain schema 0)))
 
+      ;; TODO: infer type from :enum
+      #_(is (= 1 (m/transform schema "1" transform/string-transformer)))
+      #_(is (= "1" (m/transform schema "1" transform/json-transformer)))
+
       (is (= [:enum 1 2] (m/form schema)))))
 
   (testing "maybe schemas"
@@ -103,6 +116,9 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema [:maybe int?], :value "abba", :problems [{:path [], :in [], :schema [:maybe int?], :value "abba"}]}
                     (m/explain schema "abba")))
+
+      (is (= 1 (m/transform schema "1" transform/string-transformer)))
+      (is (= "1" (m/transform schema "1" transform/json-transformer)))
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
@@ -136,6 +152,9 @@
                      :value "not-a-map"
                      :problems [{:path [], :in [], :schema schema1, :value "not-a-map", :type ::m/invalid-type}]}
                     (m/explain schema1 "not-a-map")))
+
+      (is (= {:x true, :y 1} (m/transform schema1 {:x "true", :y "1"} transform/string-transformer)))
+      (is (= {:x "true", :y "1"} (m/transform schema1 {:x "true", :y "1"} transform/json-transformer)))
 
       (is (= [:map
               [:x 'boolean?]
@@ -232,24 +251,29 @@
       (is (false? (m/validate [:map-of string? int?] 1)))
 
       (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
-      (is (results= {:schema   [:map-of string? int?],
-                     :value    {:age 18},
-                     :problems [{:path   [1],
-                                 :in     [:age],
+      (is (some? (m/explain [:map-of string? int?] ::invalid)))
+      (is (results= {:schema [:map-of string? int?],
+                     :value {:age 18},
+                     :problems [{:path [1],
+                                 :in [:age],
                                  :schema string?,
-                                 :value  :age}]}
+                                 :value :age}]}
                     (m/explain [:map-of string? int?] {:age 18})))
-      (is (results= {:schema   [:map-of string? int?],
-                     :value    {:age "18"},
-                     :problems [{:path   [1],
-                                 :in     [:age],
+      (is (results= {:schema [:map-of string? int?],
+                     :value {:age "18"},
+                     :problems [{:path [1],
+                                 :in [:age],
                                  :schema string?,
-                                 :value  :age}
+                                 :value :age}
                                 {:path [2],
                                  :in [:age],
                                  :schema int?,
                                  :value "18"}]}
-                    (m/explain [:map-of string? int?] {:age "18"}))))
+                    (m/explain [:map-of string? int?] {:age "18"})))
+
+      (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
+      ;; TODO: test also keyword keys!
+      )
 
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]
@@ -402,7 +426,3 @@
                     :string (m/fn-schema :string string?)})]
     (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
     (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))
-
-(deftest transform-test
-  (is (= 1 (m/transform int? "1" transform/string-transformer)))
-  (is (= "1" (m/transform int? "1" transform/json-transformer))))

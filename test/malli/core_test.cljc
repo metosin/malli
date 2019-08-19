@@ -127,6 +127,25 @@
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
+  (testing "clj schemas"
+    (let [schema (m/schema [:clj
+                            {:description "number between 10 and 18"}
+                            "#(and (int? %) (< 10 % 18))"])]
+
+      (is (true? (m/validate schema 12)))
+      (is (false? (m/validate schema 1)))
+      (is (false? (m/validate schema 20)))
+      (is (false? (m/validate schema "invalid")))
+
+      (is (nil? (m/explain schema 12)))
+      (is (results= {:schema schema, :value "abba", :problems [{:path [], :in [], :schema schema, :value "abba"}]}
+                    (m/explain schema "abba")))
+
+      (is (= [:clj
+              {:description "number between 10 and 18"}
+              "#(and (int? %) (< 10 % 18))"]
+             (m/form schema)))))
+
   (testing "map schemas"
     (let [schema1 (m/schema
                     [:map

@@ -1,5 +1,6 @@
 (ns malli.core
-  (:refer-clojure :exclude [-name]))
+  (:refer-clojure :exclude [-name])
+  (:require [sci.core :as sci]))
 
 ;;
 ;; protocols
@@ -422,6 +423,29 @@
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
+(defn- -clj-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :clj)
+    (-into-schema [_ properties childs _]
+      (when-not (= 1 (count childs))
+        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
+      (let [schema (set childs)
+            validator (sci/eval-string (first childs))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (if-not (validator x)
+                (conj acc {:path path
+                           :in in
+                           :schema this
+                           :value x}))))
+          (-transformer [_ _])
+          (-properties [_] properties)
+          (-form [_] (create-form :clj properties childs)))))))
+
 (defn- -maybe-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -559,7 +583,8 @@
    :set (-collection-schema :set set? set #{})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
-   :tuple (-tuple-schema)})
+   :tuple (-tuple-schema)
+   :clj (-clj-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

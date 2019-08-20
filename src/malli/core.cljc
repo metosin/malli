@@ -12,7 +12,7 @@
 
 (defprotocol Schema
   (-validator [this] "returns a predicate function that checks if the schema is valid")
-  (-explainer [this path] "returns a function of `x in acc -> maybe problems` to explain the errors for invalid values")
+  (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
   (-transformer [this transformer] "returns a function of `x -> y` to transform values with the given transformer")
   (-properties [this] "returns original schema properties")
   (-form [this] "returns original form of the spec"))
@@ -531,10 +531,10 @@
        ([value]
         (explainer value [] []))
        ([value in acc]
-        (if-let [problems (seq (explainer' value in acc))]
+        (if-let [errors (seq (explainer' value in acc))]
           {:schema schema'
            :value value
-           :problems problems}))))))
+           :errors errors}))))))
 
 (defn explain
   ([?schema value]

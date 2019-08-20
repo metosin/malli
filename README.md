@@ -115,17 +115,17 @@ Detailed errors with `m/explain`:
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},
-; :problems ({:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
-;            {:path [3 1],
-;             :in [:address],
-;             :schema [:map
-;                      [:street string?]
-;                      [:city string?]
-;                      [:zip int?]
-;                      [:lonlat [:tuple double? double?]]],
-;             :type :malli.core/missing-key,
-;             :malli.core/key :city}
-;            {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
+; :errors ({:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
+;          {:path [3 1],
+;           :in [:address],
+;           :schema [:map
+;                    [:street string?]
+;                    [:city string?]
+;                    [:zip int?]
+;                    [:lonlat [:tuple double? double?]]],
+;           :type :malli.core/missing-key,
+;           :malli.core/key :city}
+;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
 Schema-driven value transformations with `m/transform`:

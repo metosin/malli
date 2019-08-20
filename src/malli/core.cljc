@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [-name])
+  (:refer-clojure :exclude [-name eval])
   (:require [sci.core :as sci]))
 
 ;;
@@ -36,6 +36,9 @@
       (str nn "/" (name x))
       (name x))
     x))
+
+(defn eval [x]
+  (sci/eval-string (str x)))
 
 (defn fail!
   ([type]
@@ -423,15 +426,14 @@
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
-(defn- -clj-schema []
+(defn- -fn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-name [_] :clj)
+    (-name [_] :fn)
     (-into-schema [_ properties childs _]
       (when-not (= 1 (count childs))
         (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
-      (let [schema (set childs)
-            validator (sci/eval-string (first childs))]
+      (let [validator (eval (first childs))]
         ^{:type ::schema}
         (reify Schema
           (-validator [_] validator)
@@ -444,7 +446,7 @@
                            :value x}))))
           (-transformer [_ _])
           (-properties [_] properties)
-          (-form [_] (create-form :clj properties childs)))))))
+          (-form [_] (create-form :fn properties childs)))))))
 
 (defn- -maybe-schema []
   ^{:type ::into-schema}
@@ -584,7 +586,7 @@
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)
-   :clj (-clj-schema)})
+   :fn (-fn-schema)})
 
 (def default-registry
   (merge predicate-registry comparator-registry base-registry))

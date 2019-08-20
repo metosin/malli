@@ -6,8 +6,8 @@
                                org.clojure/test.check {:mvn/version "0.9.0"}
                                metosin/spec-tools {:mvn/version "0.10.0"}
                                prismatic/schema {:mvn/version "1.1.11"}
-                               borkdude/sci {:git/url  "https://github.com/borkdude/sci"
-                                             :sha "30ff44a1c65388f290cadfd58fbd2b5cee357195"}
+                               borkdude/sci {:git/url "https://github.com/borkdude/sci"
+                                             :sha "db83a754dbcbf287dda76c4e4f89deed5db4df8f"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "dc960158ccb9cf8b5dc555842eea5e1af12f28c2"}}}
            :perf {:extra-paths ["perf"]

@@ -13,6 +13,15 @@
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
 
+(defn over-the-wire [?schema]
+  (-> ?schema
+      (m/schema)
+      (m/form)
+      (pr-str)
+      (#?(:clj  clojure.edn/read-string,
+          :cljs cljs.reader/read-string))
+      (m/schema)))
+
 (deftest keyword->string
   (is (= "abba" (m/keyword->string :abba)))
   (is (= "jabba/abba" (m/keyword->string :jabba/abba)))
@@ -55,6 +64,8 @@
       (is (= 1 (m/transform schema "1" transform/string-transformer)))
       (is (= "1" (m/transform schema "1" transform/json-transformer)))
 
+      (is (true? (m/validate (over-the-wire schema) 1)))
+
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
@@ -76,6 +87,8 @@
       (is (= 1 (m/transform schema "1" transform/string-transformer)))
       (is (= "1" (m/transform schema "1" transform/json-transformer)))
 
+      (is (true? (m/validate (over-the-wire schema) 1)))
+
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))))
 
   (testing "comparator schemas"
@@ -91,6 +104,8 @@
 
       (is (= 1 (m/transform schema "1" transform/string-transformer)))
       (is (= "1" (m/transform schema "1" transform/json-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -109,6 +124,8 @@
       #_(is (= 1 (m/transform schema "1" transform/string-transformer)))
       #_(is (= "1" (m/transform schema "1" transform/json-transformer)))
 
+      (is (true? (m/validate (over-the-wire schema) 1)))
+
       (is (= [:enum 1 2] (m/form schema)))))
 
   (testing "maybe schemas"
@@ -125,26 +142,28 @@
       (is (= 1 (m/transform schema "1" transform/string-transformer)))
       (is (= "1" (m/transform schema "1" transform/json-transformer)))
 
+      (is (true? (m/validate (over-the-wire schema) 1)))
+
       (is (= [:maybe 'int?] (m/form schema)))))
 
-  (testing "clj schemas"
-    (let [schema (m/schema [:clj
-                            {:description "number between 10 and 18"}
-                            "#(and (int? %) (< 10 % 18))"])]
+  (testing "fn schemas"
+    (doseq [fn ['(fn [x] (and (int? x) (< 10 x 18)))
+                "(fn [x] (and (int? x) (< 10 x 18)))"]]
+      (let [schema (m/schema [:fn {:description "number between 10 and 18"} fn])]
 
-      (is (true? (m/validate schema 12)))
-      (is (false? (m/validate schema 1)))
-      (is (false? (m/validate schema 20)))
-      (is (false? (m/validate schema "invalid")))
+        (is (true? (m/validate schema 12)))
+        (is (false? (m/validate schema 1)))
+        (is (false? (m/validate schema 20)))
+        (is (false? (m/validate schema "invalid")))
 
-      (is (nil? (m/explain schema 12)))
-      (is (results= {:schema schema, :value "abba", :problems [{:path [], :in [], :schema schema, :value "abba"}]}
-                    (m/explain schema "abba")))
+        (is (nil? (m/explain schema 12)))
+        (is (results= {:schema schema, :value "abba", :errors [{:path [], :in [], :schema schema, :value "abba"}]}
+                      (m/explain schema "abba")))
 
-      (is (= [:clj
-              {:description "number between 10 and 18"}
-              "#(and (int? %) (< 10 % 18))"]
-             (m/form schema)))))
+        (is (true? (m/validate (over-the-wire schema) 12)))
+
+        (is (= [:fn {:description "number between 10 and 18"} fn]
+               (m/form schema))))))
 
   (testing "map schemas"
     (let [schema1 (m/schema
@@ -179,6 +198,8 @@
 
       (is (= {:x true, :y 1} (m/transform schema1 {:x "true", :y "1"} transform/string-transformer)))
       (is (= {:x "true", :y "1"} (m/transform schema1 {:x "true", :y "1"} transform/json-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema1) valid)))
 
       (is (= [:map
               [:x 'boolean?]
@@ -265,7 +286,8 @@
         (doseq [[name data] expectations
                 [expected schema value] data]
           (testing name
-            (is (= expected (m/validate schema value)))))))
+            (is (= expected (m/validate schema value)))
+            (is (= expected (m/validate (over-the-wire schema) value)))))))
 
     (testing "map-of schema"
 
@@ -296,6 +318,8 @@
                     (m/explain [:map-of string? int?] {:age "18"})))
 
       (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
+
+      (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
       (testing "keyword keys are transformed via strings"
         (is (= {1 1} (m/transform [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
@@ -429,14 +453,9 @@
     (let [schema (m/schema
                    [:map
                     [:x boolean?]
-                    [[:opt :y] int?]
+                    [:y {:optional true} int?]
                     [:z string?]])
-          schema' (-> schema
-                      (m/form)
-                      (pr-str)
-                      (#?(:clj  clojure.edn/read-string,
-                          :cljs cljs.reader/read-string))
-                      (m/schema))
+          schema' (over-the-wire schema)
           valid {:x true, :y 1, :z "kikka"}]
       (is (= true
              (m/validate schema valid)

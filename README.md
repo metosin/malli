@@ -128,6 +128,32 @@ Detailed errors with `m/explain`:
 ;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
+Using inline (serializable) functions:
+
+```clj
+(m/explain
+  [:and
+   [:map
+    [:x int?]
+    [:y int?]]
+   [:fn {:reason "x must be greater than y"}
+    '(fn [{:keys [x y]}] (> x y))]]
+  {:x 1
+   :y 2})
+;{:schema [:and 
+;          [:map 
+;           [:x int?] 
+;           [:y int?]] 
+;          [:fn {:reason "x must be greater than y"} 
+;           (fn [{:keys [x y]}] (> x y))]],
+; :value {:x 1, :y 2},
+; :errors [{:path [2],
+;           :in [],
+;           :schema [:fn {:reason "x must be greater than y"}
+;                    (fn [{:keys [x y]}] (> x y))],
+;           :value {:x 1, :y 2}}]}
+```
+
 Schema-driven value transformations with `m/transform`:
 
 ```clj
@@ -204,7 +230,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:set`, `:tuple`, `:enum` and `:maybe`.
+Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:set`, `:tuple`, `:enum`, `:fn` and `:maybe`.
 
 ### Custom registry
 

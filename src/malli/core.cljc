@@ -37,8 +37,9 @@
       (name x))
     x))
 
-(defn eval [x]
-  (sci/eval-string (str x)))
+(defn safe-eval [code]
+  (let [f (sci/eval-string (str code) {:realize-max 100})]
+    (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false)))))
 
 (defn fail!
   ([type]
@@ -433,7 +434,7 @@
     (-into-schema [_ properties childs _]
       (when-not (= 1 (count childs))
         (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
-      (let [validator (eval (first childs))]
+      (let [validator (safe-eval (first childs))]
         ^{:type ::schema}
         (reify Schema
           (-validator [_] validator)

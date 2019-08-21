@@ -163,7 +163,10 @@
         (is (true? (m/validate (over-the-wire schema) 12)))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
-               (m/form schema))))))
+               (m/form schema)))))
+
+    (testing "non-terminating functions fail fast"
+      (is (false? (m/validate [:fn '#(if (< % (apply max (range))))] 1)))))
 
   (testing "map schemas"
     (let [schema1 (m/schema

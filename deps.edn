@@ -7,7 +7,7 @@
                                metosin/spec-tools {:mvn/version "0.10.0"}
                                prismatic/schema {:mvn/version "1.1.11"}
                                borkdude/sci {:git/url "https://github.com/borkdude/sci"
-                                             :sha "b4909d5e7e44338b24207a7d78b3c707a464c5b5"}
+                                             :sha "f1d0bb333a46e514d8ebf46ec2c559f8cd971fbf"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "dc960158ccb9cf8b5dc555842eea5e1af12f28c2"}}}
            :perf {:extra-paths ["perf"]

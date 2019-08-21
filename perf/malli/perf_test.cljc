@@ -252,7 +252,7 @@
 (defn fn-test []
   (let [f (fn [x] (> x 10))
         f2 (eval '(fn [x] (> x 10)))
-        f3 (m/safe-eval '(fn [x] (> x 10)))]
+        f3 (m/eval '(fn [x] (> x 10)))]
 
     ;; 4ns
     (cc/quick-bench (f 12))

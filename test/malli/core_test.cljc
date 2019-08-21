@@ -166,7 +166,16 @@
                (m/form schema)))))
 
     (testing "non-terminating functions fail fast"
-      (is (false? (m/validate [:fn '#(if (< % (apply max (range))))] 1)))))
+      (let [schema [:fn '(fn [x] (< x (apply max (range))))]]
+        (is (false? (m/validate schema 1)))
+        (is (results= {:schema schema
+                       :value 1
+                       :errors [{:path []
+                                 :in []
+                                 :schema schema
+                                 :value 1
+                                 :type :sci.error/realized-beyond-max}]}
+                      (m/explain schema 1))))))
 
   (testing "map schemas"
     (let [schema1 (m/schema

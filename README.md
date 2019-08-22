@@ -128,7 +128,7 @@ Detailed errors with `m/explain`:
 ;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
-Using inline (serializable) functions:
+Using inline (serializable) functions via [sci](https://github.com/borkdude/sci):
 
 ```clj
 (m/explain
@@ -186,6 +186,7 @@ Serializing & Deserializing schemas, no `eval` needed.
      [:name string?]
      [:lonlat [:tuple double? double?]]]
     (m/schema)
+    (m/form)
     (pr-str)
     (edn/read-string)
     (m/schema)

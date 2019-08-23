@@ -167,6 +167,23 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
+Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pattern):
+
+```clj
+(defn visitor [spec childs _]
+  (into [(m/dispatch-name spec)] (seq childs)))
+
+(m/accept Address visitor)
+;[:map 
+; [string?] 
+; [:set [keyword?]] 
+; [:map 
+;  [string?] 
+;  [string?] 
+;  [int?] 
+;  [:tuple [double?] [double?]]]]
+```
+
 Serializing & Deserializing schemas, no `eval` needed.
 
 ```clj

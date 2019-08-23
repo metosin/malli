@@ -14,6 +14,7 @@
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
   (-transformer [this transformer] "returns a function of `x -> y` to transform values with the given transformer")
+  (-accept [this visitor opts] "accepts the visitor to visit schema and it's childs")
   (-properties [this] "returns original schema properties")
   (-form [this] "returns original form of the spec"))
 
@@ -78,6 +79,7 @@
                 acc)))
           (-transformer [this transformer]
             (transformer this))
+          (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -133,6 +135,8 @@
                     (reduce-kv
                       (fn [x' _ t] (t x'))
                       x tvs))))))
+          (-accept [this visitor opts]
+            (visitor this (mapv #(-accept % visitor opts) child-schemas) opts))
           (-properties [_] properties)
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
@@ -222,6 +226,8 @@
                   (if (map? x)
                     (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) x transformers)
                     x)))))
+          (-accept [this visitor opts]
+            (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -291,6 +297,8 @@
                   (if (map? x)
                     (reduce-kv (fn [acc k v] (assoc acc k (value-transformer v))) x x)
                     x)))))
+          (-accept [this visitor opts]
+            (visitor this (mapv #(-accept % visitor opts) schemas) opts))
           (-properties [_] properties)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 
@@ -348,6 +356,7 @@
                     (catch #?(:clj Exception, :cljs js/Error) _ x))))
               ;; should wrapping be optional?
               fwrap))
+          (-accept [this visitor opts] (visitor this [(-accept schema visitor opts)] opts))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -398,6 +407,7 @@
                           (mapcat identity)
                           (apply array-map))]
               (fn [x] (if (vector? x) (reduce-kv (fn [acc i t] (update acc i t)) (vec x) ts) x))))
+          (-accept [this visitor opts] (visitor this (mapv #(-accept % visitor opts) schemas) opts))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -422,6 +432,7 @@
                            :value x}))))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [_ _])
+          (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
@@ -453,6 +464,7 @@
                                        :value x}
                                       type (assoc :type type))))))))
           (-transformer [_ _])
+          (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] (create-form :fn properties childs)))))))
 
@@ -477,6 +489,7 @@
                            :schema this
                            :value x}))))
           (-transformer [_ transformer] (-transformer schema' transformer))
+          (-accept [this visitor opts] (visitor this [(-accept schema' visitor opts)] opts))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -518,6 +531,12 @@
    (form ?schema nil))
   ([?schema opts]
    (-form (schema ?schema opts))))
+
+(defn accept
+  ([?schema visitor]
+   (accept ?schema visitor nil))
+  ([?schema visitor opts]
+   (-accept (schema ?schema opts) visitor opts)))
 
 (defn properties
   ([?schema]

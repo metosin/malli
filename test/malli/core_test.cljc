@@ -39,6 +39,9 @@
     [[:opt :x] {:optional true} int?] {:optional true}
     [[:req :x] {:optional true} int?] {:optional false}))
 
+(defn visitor [spec childs _]
+  (into [(m/dispatch-name spec)] (seq childs)))
+
 (deftest validation-test
 
   (testing "coercion"
@@ -66,6 +69,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
+      (is (= ['int?] (m/accept schema visitor)))
+
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
@@ -89,6 +94,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
+      (is (= [:and ['int?] [:or ['pos-int?] ['neg-int?]]] (m/accept schema visitor)))
+
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))))
 
   (testing "comparator schemas"
@@ -106,6 +113,8 @@
       (is (= "1" (m/transform schema "1" transform/json-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
+
+      (is (= [:>] (m/accept schema visitor)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -126,6 +135,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
+      (is (= [:enum] (m/accept schema visitor)))
+
       (is (= [:enum 1 2] (m/form schema)))))
 
   (testing "maybe schemas"
@@ -144,6 +155,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
+      (is (= [:maybe ['int?]] (m/accept schema visitor)))
+
       (is (= [:maybe 'int?] (m/form schema)))))
 
   (testing "fn schemas"
@@ -161,6 +174,8 @@
                       (m/explain schema "abba")))
 
         (is (true? (m/validate (over-the-wire schema) 12)))
+
+        (is (= [:fn] (m/accept schema visitor)))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
@@ -213,6 +228,8 @@
 
       (is (true? (m/validate (over-the-wire schema1) valid)))
 
+      (is (= [:map ['boolean?] ['int?] ['string?]] (m/accept schema1 visitor)))
+
       (is (= [:map
               [:x 'boolean?]
               [:y {:optional true} 'int?]
@@ -251,6 +268,8 @@
     (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
+
+    (is (= [:map-of ['int?] ['pos-int?]] (m/accept [:map-of int? pos-int?] visitor)))
 
     (testing "keyword keys are transformed via strings"
       (is (= {1 1} (m/transform [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
@@ -435,7 +454,12 @@
         (doseq [[name data] expectations
                 [schema value expected] data]
           (testing name
-            (is (results= expected (m/explain schema value)))))))))
+            (is (results= expected (m/explain schema value)))))))
+
+    (testing "visit"
+      (doseq [name [:vector :list :set]]
+        (is (= [name ['int?]] (m/accept [name int?] visitor))))
+      (is (= [:tuple ['int?] ['int?]] (m/accept [:tuple int? int?] visitor))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

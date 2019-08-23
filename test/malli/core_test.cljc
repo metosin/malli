@@ -220,6 +220,41 @@
              (m/form schema1)
              (m/form schema2)))))
 
+  (testing "map-of schema"
+
+    (is (true? (m/validate [:map-of string? int?] {"age" 18})))
+    (is (true? (m/validate [:map-of keyword? int?] {:age 18})))
+    (is (false? (m/validate [:map-of string? int?] {:age "18"})))
+    (is (false? (m/validate [:map-of string? int?] 1)))
+
+    (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
+    (is (some? (m/explain [:map-of string? int?] ::invalid)))
+    (is (results= {:schema [:map-of string? int?],
+                   :value {:age 18},
+                   :errors [{:path [1],
+                             :in [:age],
+                             :schema string?,
+                             :value :age}]}
+                  (m/explain [:map-of string? int?] {:age 18})))
+    (is (results= {:schema [:map-of string? int?],
+                   :value {:age "18"},
+                   :errors [{:path [1],
+                             :in [:age],
+                             :schema string?,
+                             :value :age}
+                            {:path [2],
+                             :in [:age],
+                             :schema int?,
+                             :value "18"}]}
+                  (m/explain [:map-of string? int?] {:age "18"})))
+
+    (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
+
+    (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
+
+    (testing "keyword keys are transformed via strings"
+      (is (= {1 1} (m/transform [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
+
   (testing "sequence schemas"
 
     (testing "validation"
@@ -300,41 +335,6 @@
           (testing name
             (is (= expected (m/validate schema value)))
             (is (= expected (m/validate (over-the-wire schema) value)))))))
-
-    (testing "map-of schema"
-
-      (is (true? (m/validate [:map-of string? int?] {"age" 18})))
-      (is (true? (m/validate [:map-of keyword? int?] {:age 18})))
-      (is (false? (m/validate [:map-of string? int?] {:age "18"})))
-      (is (false? (m/validate [:map-of string? int?] 1)))
-
-      (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
-      (is (some? (m/explain [:map-of string? int?] ::invalid)))
-      (is (results= {:schema [:map-of string? int?],
-                     :value {:age 18},
-                     :errors [{:path [1],
-                               :in [:age],
-                               :schema string?,
-                               :value :age}]}
-                    (m/explain [:map-of string? int?] {:age 18})))
-      (is (results= {:schema [:map-of string? int?],
-                     :value {:age "18"},
-                     :errors [{:path [1],
-                               :in [:age],
-                               :schema string?,
-                               :value :age}
-                              {:path [2],
-                               :in [:age],
-                               :schema int?,
-                               :value "18"}]}
-                    (m/explain [:map-of string? int?] {:age "18"})))
-
-      (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
-
-      (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
-
-      (testing "keyword keys are transformed via strings"
-        (is (= {1 1} (m/transform [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
 
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]

@@ -301,8 +301,8 @@
     (-into-schema [_ {:keys [min max] :as properties} childs opts]
       (when-not (= 1 (count childs))
         (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
-      (let [schemas (mapv #(schema % opts) childs)
-            form (create-form name properties (map -form schemas))
+      (let [schema (schema (first childs) opts)
+            form (create-form name properties [(-form schema)])
             validate-limits (cond
                               (not (or min max)) (constantly true)
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
@@ -311,13 +311,12 @@
         ^{:type ::schema}
         (reify Schema
           (-validator [_]
-            (let [validator (-validator (first schemas))]
+            (let [validator (-validator schema)]
               (fn [x] (and (fpred x)
                            (validate-limits x)
                            (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
           (-explainer [this path]
-            (let [schema (first schemas)
-                  distance (if (seq properties) 2 1)
+            (let [distance (if (seq properties) 2 1)
                   explainer (-explainer schema (conj path distance))]
               (fn [x in acc]
                 (cond
@@ -336,9 +335,8 @@
                   :else
                   (loop [acc acc, i 0, [x & xs] x]
                     (cond-> (explainer x (conj in i) acc) xs (recur (inc i) xs)))))))
-          (-properties [_] properties)
           (-transformer [_ transformer]
-            (if-let [t (-transformer (first schemas) transformer)]
+            (if-let [t (-transformer schema transformer)]
               (if fempty
                 (fn [x]
                   (try
@@ -350,6 +348,7 @@
                     (catch #?(:clj Exception, :cljs js/Error) _ x))))
               ;; should wrapping be optional?
               fwrap))
+          (-properties [_] properties)
           (-form [_] form))))))
 
 (defn- -tuple-schema []
@@ -514,11 +513,17 @@
            (-into-schema schema' nil nil opts))
          (fail! ::invalid-schema {:schema ?schema}))))))
 
-(defn form [?schema]
-  (-form (schema ?schema)))
+(defn form
+  ([?schema]
+   (form ?schema nil))
+  ([?schema opts]
+   (-form (schema ?schema opts))))
 
-(defn properties [?schema]
-  (-properties (schema ?schema)))
+(defn properties
+  ([?schema]
+   (properties ?schema nil))
+  ([?schema opts]
+   (-properties (schema ?schema opts))))
 
 (defn validator
   ([?schema]

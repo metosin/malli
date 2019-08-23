@@ -71,6 +71,23 @@ Schemas can have properties:
 ;     :json-schema/example 20}   
 ```
 
+Serializable function schemas using [sci](https://github.com/borkdude/sci):
+
+```clj
+(def my-schema
+  [:and
+   [:map
+    [:x int?]
+    [:y int?]]
+   [:fn '(fn [{:keys [x y]}] (> x y))]])
+
+(m/validate my-schema {:x 1, :y 0})
+; => true
+
+(m/validate my-schema {:x 1, :y 2})
+; => false
+```
+
 Detailed errors with `m/explain`:
 
 ```clj
@@ -126,32 +143,6 @@ Detailed errors with `m/explain`:
 ;           :type :malli.core/missing-key,
 ;           :malli.core/key :city}
 ;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
-```
-
-Using inline (serializable) functions via [sci](https://github.com/borkdude/sci):
-
-```clj
-(m/explain
-  [:and
-   [:map
-    [:x int?]
-    [:y int?]]
-   [:fn {:reason "x must be greater than y"}
-    '(fn [{:keys [x y]}] (> x y))]]
-  {:x 1
-   :y 2})
-;{:schema [:and 
-;          [:map 
-;           [:x int?] 
-;           [:y int?]] 
-;          [:fn {:reason "x must be greater than y"} 
-;           (fn [{:keys [x y]}] (> x y))]],
-; :value {:x 1, :y 2},
-; :errors [{:path [2],
-;           :in [],
-;           :schema [:fn {:reason "x must be greater than y"}
-;                    (fn [{:keys [x y]}] (> x y))],
-;           :value {:x 1, :y 2}}]}
 ```
 
 Schema-driven value transformations with `m/transform`:

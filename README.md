@@ -205,7 +205,9 @@ Serializing & Deserializing schemas, no `eval` needed.
 ; => true
 ```
 
-Performance:
+## Performance
+
+Validation:
 
 ```clj
 (require '[clojure.spec.alpha :as s])
@@ -214,15 +216,34 @@ Performance:
 ;; 40ns
 (let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
       valid? (partial s/valid? spec)]
-  (assert (= [true false true] (map valid? [-1 0 1])))
   (cc/quick-bench
     (valid? spec 0)))
 
 ;; 5ns
 (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-  (assert (= [true false true] (map valid? [-1 0 1])))
   (cc/quick-bench
     (valid? 0)))
+```
+
+Coercion:
+
+```clj
+(require '[spec-tools.core :as st])
+
+(s/def ::id int?)
+(s/def ::name string?)
+
+;; 14µs
+(let [spec (s/keys :req-un [::id ::name])
+      transform #(st/coerce spec % st/string-transformer)]
+  (cc/quick-bench
+    (transform {:id "1", :name "kikka"})))
+
+;; 140ns
+(let [schema [:map [:id int?] [:name string?]]
+      transform (m/transformer schema transform/string-transformer)]
+  (cc/quick-bench
+    (transform {:id "1", :name "kikka"})))
 ```
 
 ## Registry

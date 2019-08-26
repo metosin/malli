@@ -153,9 +153,9 @@
      'true? string->boolean}))
 
 (defn string-transformer [schema]
-  (get +string-encoders+ (m/dispatch-name schema)))
+  (get +string-encoders+ (m/name schema)))
 
 (defn json-transformer [schema]
-  (get +json-decoders+ (m/dispatch-name schema)))
+  (get +json-decoders+ (m/name schema)))
 
 (defn collection-transformer [schema])

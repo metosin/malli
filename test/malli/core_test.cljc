@@ -40,7 +40,7 @@
     [[:req :x] {:optional true} int?] {:optional false}))
 
 (defn visitor [spec childs _]
-  (into [(m/dispatch-name spec)] (seq childs)))
+  (into [(m/name spec)] (seq childs)))
 
 (deftest validation-test
 

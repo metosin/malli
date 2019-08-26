@@ -84,7 +84,7 @@
 (defmethod accept :fn [_ _ _ _] {})
 
 (defn- -json-schema-visitor [schema childs opts]
-  (merge (accept (m/dispatch-name schema) schema childs opts) (json-schema-props schema)))
+  (merge (accept (m/name schema) schema childs opts) (json-schema-props schema)))
 
 ;;
 ;; public api

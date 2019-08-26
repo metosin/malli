@@ -171,7 +171,7 @@ Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pat
 
 ```clj
 (defn visitor [spec childs _]
-  {:name (m/dispatch-name spec)
+  {:name (m/name spec)
    :properties (or (m/properties spec) {})
    :childs childs})
 

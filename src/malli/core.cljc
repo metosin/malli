@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [-name eval])
+  (:refer-clojure :exclude [-name eval name])
   (:require [sci.core :as sci]))
 
 ;;
@@ -34,8 +34,8 @@
 (defn keyword->string [x]
   (if (keyword? x)
     (if-let [nn (namespace x)]
-      (str nn "/" (name x))
-      (name x))
+      (str nn "/" (clojure.core/name x))
+      (clojure.core/name x))
     x))
 
 (defn eval [code]
@@ -53,10 +53,6 @@
     (seq properties) [name properties]
     (seq childs) (into [name] childs)
     :else name))
-
-(defn dispatch-name [schema]
-  (let [form (-form schema)]
-    (if (vector? form) (first form) form)))
 
 (defn- -leaf-schema [name ->validator-and-childs]
   ^{:type ::into-schema}
@@ -417,7 +413,7 @@
     (-name [_] :enum)
     (-into-schema [_ properties childs _]
       (when-not (seq childs)
-        (fail! ::no-childs {:name name, :properties properties}))
+        (fail! ::no-childs {:name :enum, :properties properties}))
       (let [schema (set childs)
             validator (fn [x] (contains? schema x))]
         ^{:type ::schema}
@@ -543,6 +539,13 @@
    (properties ?schema nil))
   ([?schema opts]
    (-properties (schema ?schema opts))))
+
+(defn name
+  ([?schema]
+   (name ?schema nil))
+  ([?schema opts]
+   (let [form (form ?schema opts)]
+     (if (vector? form) (first form) form))))
 
 (defn validator
   ([?schema]

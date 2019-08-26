@@ -252,7 +252,7 @@ All public functions take optional options map with optional `:registry` key. It
 
 #### `malli.core/predicate-registry`
 
-Contains both function values and unqualified symbol representations for all `clojure.core`/`cljs.core` functions that end with a questionmark, e.g. `int?`, `'int?`, `string?`, `'string?`. Having both enables reading forms from both code (function values) and EDN-files (symbols) 
+Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
 
 #### `malli.core/comparator-registry`
 

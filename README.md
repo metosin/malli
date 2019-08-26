@@ -171,17 +171,28 @@ Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pat
 
 ```clj
 (defn visitor [spec childs _]
-  (into [(m/dispatch-name spec)] (seq childs)))
+  {:name (m/dispatch-name spec)
+   :properties (or (m/properties spec) {})
+   :childs childs})
 
 (m/accept Address visitor)
-;[:map 
-; [string?] 
-; [:set [keyword?]] 
-; [:map 
-;  [string?] 
-;  [string?] 
-;  [int?] 
-;  [:tuple [double?] [double?]]]]
+;{:name :map,
+; :properties {},
+; :childs [{:name string?
+;           :properties {}
+;           :childs []}
+;          {:name :set
+;           :properties {}
+;           :childs [{:name keyword?, :properties {}, :childs []}]}
+;          {:name :map,
+;           :properties {},
+;           :childs [{:name string?, :properties {}, :childs []}
+;                    {:name string?, :properties {}, :childs []}
+;                    {:name int?, :properties {}, :childs []}
+;                    {:name :tuple,
+;                     :properties {},
+;                     :childs [{:name double?, :properties {}, :childs []} 
+;                              {:name double?, :properties {}, :childs []}]}]}]}
 ```
 
 Serializing & Deserializing schemas, no `eval` needed.

@@ -195,6 +195,47 @@ Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pat
 ;                              {:name double?, :properties {}, :childs []}]}]}]}
 ```
 
+Transforming Schemas into [JSON Schema](https://json-schema.org/):
+
+```clj
+(require '[malli.json-schema :as json-schema])
+
+(json-schema/transform Address)
+;{:type "object",
+; :properties {:id {:type "string"},
+;              :tags {:type "array"
+;                     :items [{:type "string"}]
+;                     :uniqueItems true},
+;              :address {:type "object",
+;                        :properties {:street {:type "string"},
+;                                     :city {:type "string"},
+;                                     :zip {:type "integer", :format "int64"},
+;                                     :lonlat {:type "array",
+;                                              :items [{:type "number"} {:type "number"}],
+;                                              :additionalItems false}},
+;                        :required [:street :city :zip :lonlat]}},
+; :required [:id :tags :address]}
+```
+
+Custom transformation via properties:
+
+```clj
+(json-schema/transform
+  [:maybe
+   [:enum
+    {:title "Fish"
+     :description "Maybe Perch?"
+     :json-schema/example "perch"
+     :json-schema/type "string"}
+    "perch" "pike"]])
+;{:oneOf [{:enum ["perch" "pike"]
+;          :title "Fish"
+;          :description "Maybe Perch?"
+;          :example "perch
+;          :type "string"}
+;         {:type "null"}]}
+```
+
 Serializing & Deserializing schemas, no `eval` needed.
 
 ```clj

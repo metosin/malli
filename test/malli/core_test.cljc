@@ -29,7 +29,7 @@
 
 (deftest expand-key-test
   (are [schema expected]
-    (= expected (second (#'m/expand-key schema nil identity)))
+    (= expected (second (#'m/-expand-key schema nil identity)))
 
     [:x int?] nil
     [:x {:optional true} int?] {:optional true}
@@ -114,7 +114,7 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:>] (m/accept schema visitor)))
+      (is (= [:> 0] (m/accept schema visitor)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -135,7 +135,7 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:enum] (m/accept schema visitor)))
+      (is (= [:enum 1 2] (m/accept schema visitor)))
 
       (is (= [:enum 1 2] (m/form schema)))))
 

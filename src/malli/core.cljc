@@ -79,7 +79,7 @@
                 acc)))
           (-transformer [this transformer]
             (transformer this))
-          (-accept [this visitor opts] (visitor this [] opts))
+          (-accept [this visitor opts] (visitor this (vec childs) opts))
           (-properties [_] properties)
           (-form [_] form))))))
 
@@ -140,12 +140,12 @@
           (-properties [_] properties)
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
-(defn- properties-and-childs [xs]
+(defn- -properties-and-childs [xs]
   (if (map? (first xs))
     [(first xs) (rest xs)]
     [nil xs]))
 
-(defn- expand-key [[k ?p ?v] opts f]
+(defn- -expand-key [[k ?p ?v] opts f]
   (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
         v' (f (schema v opts))
         [k' p'] (if (vector? k)
@@ -154,8 +154,8 @@
                   [k p])]
     [k' p' v']))
 
-(defn- parse-keys [childs opts]
-  (let [entries (mapv #(expand-key % opts identity) childs)]
+(defn -parse-keys [childs opts]
+  (let [entries (mapv #(-expand-key % opts identity) childs)]
     {:required (->> entries (filter (comp not :optional second)) (mapv first))
      :optional (->> entries (filter (comp :optional second)) (mapv first))
      :keys (->> entries (mapv first))
@@ -169,7 +169,7 @@
   (reify IntoSchema
     (-name [_] :map)
     (-into-schema [_ properties childs opts]
-      (let [{:keys [entries forms]} (parse-keys childs opts)
+      (let [{:keys [entries forms]} (-parse-keys childs opts)
             form (create-form :map properties forms)]
         ^{:type ::schema}
         (reify Schema
@@ -432,7 +432,7 @@
                            :value x}))))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [_ _])
-          (-accept [this visitor opts] (visitor this [] opts))
+          (-accept [this visitor opts] (visitor this (vec childs) opts))
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
@@ -519,7 +519,7 @@
    (if (schema? ?schema)
      ?schema
      (if (vector? ?schema)
-       (apply -into-schema (concat [(get registry (first ?schema))] (properties-and-childs (rest ?schema)) [opts]))
+       (apply -into-schema (concat [(get registry (first ?schema))] (-properties-and-childs (rest ?schema)) [opts]))
        (if-let [schema' (get registry ?schema)]
          (if (schema? schema')
            schema'
@@ -596,10 +596,11 @@
 ;;
 
 (def predicate-registry
-  (->> #?(:clj 'clojure.core, :cljs 'cljs.core)
-       (ns-publics)
-       (filter #(-> % first str last (= \?)))
-       (vals)
+  (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'float? #'double?
+        #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
+        #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
+        #'inst? #'seqable? #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
+        #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)]
        (reduce -register-var {})))
 
 (def comparator-registry

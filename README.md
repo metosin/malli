@@ -224,14 +224,14 @@ Custom transformation via properties:
   [:maybe
    [:enum
     {:title "Fish"
-     :description "Maybe Perch?"
+     :description "Maybe perch?"
      :json-schema/example "perch"
      :json-schema/type "string"}
     "perch" "pike"]])
 ;{:oneOf [{:enum ["perch" "pike"]
 ;          :title "Fish"
-;          :description "Maybe Perch?"
-;          :example "perch
+;          :description "Maybe perch?"
+;          :example "perch"
 ;          :type "string"}
 ;         {:type "null"}]}
 ```

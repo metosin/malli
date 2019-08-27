@@ -170,9 +170,9 @@ Schema-driven value transformations with `m/transform`:
 Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pattern):
 
 ```clj
-(defn visitor [spec childs _]
-  {:name (m/name spec)
-   :properties (or (m/properties spec) {})
+(defn visitor [schema childs _]
+  {:name (m/name schema)
+   :properties (or (m/properties schema) {})
    :childs childs})
 
 (m/accept Address visitor)

@@ -39,8 +39,8 @@
     [[:opt :x] {:optional true} int?] {:optional true}
     [[:req :x] {:optional true} int?] {:optional false}))
 
-(defn visitor [spec childs _]
-  (into [(m/name spec)] (seq childs)))
+(defn visitor [schema childs _]
+  (into [(m/name schema)] (seq childs)))
 
 (deftest validation-test
 

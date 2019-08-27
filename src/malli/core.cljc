@@ -16,7 +16,7 @@
   (-transformer [this transformer] "returns a function of `x -> y` to transform values with the given transformer")
   (-accept [this visitor opts] "accepts the visitor to visit schema and it's childs")
   (-properties [this] "returns original schema properties")
-  (-form [this] "returns original form of the spec"))
+  (-form [this] "returns original form of the schema"))
 
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
           (.write w (str "#IntoSchema{:name " (-name v) "}"))))

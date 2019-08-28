@@ -174,8 +174,7 @@
                                (fn [[key {:keys [optional]} value]]
                                  (let [valid? (-validator value)
                                        default (boolean optional)]
-                                   (fn [m] (let [v (key m ::missing-key)]
-                                             (if (not= v ::missing-key) (valid? v) default)))))
+                                   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
                                entries)
                   validate (fn [m]
                              (boolean

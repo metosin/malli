@@ -235,7 +235,11 @@
               [:y {:optional true} 'int?]
               [:z {:optional false} 'string?]]
              (m/form schema1)
-             (m/form schema2)))))
+             (m/form schema2))))
+
+    (is (true? (m/validate [:map [:b boolean?]] {:b true})))
+    (is (true? (m/validate [:map [:b boolean?]] {:b false})))
+    (is (true? (m/validate [:map [:n nil?]] {:n nil}))))
 
   (testing "map-of schema"
 

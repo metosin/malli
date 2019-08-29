@@ -512,15 +512,17 @@
   ([?schema]
    (schema ?schema nil))
   ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
-   (if (schema? ?schema)
-     ?schema
-     (if (vector? ?schema)
-       (apply -into-schema (concat [(get registry (first ?schema))] (-properties-and-childs (rest ?schema)) [opts]))
-       (if-let [schema' (get registry ?schema)]
-         (if (schema? schema')
-           schema'
-           (-into-schema schema' nil nil opts))
-         (fail! ::invalid-schema {:schema ?schema}))))))
+   (cond
+     (schema? ?schema) ?schema
+     (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
+     :else (if (vector? ?schema)
+             (apply -into-schema (concat [(get registry (first ?schema))]
+                                         (-properties-and-childs (rest ?schema)) [opts]))
+             (if-let [schema' (get registry ?schema)]
+               (if (schema? schema')
+                 schema'
+                 (-into-schema schema' nil nil opts))
+               (fail! ::invalid-schema {:schema ?schema}))))))
 
 (defn form
   ([?schema]

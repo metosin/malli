@@ -48,6 +48,7 @@
     (is (= true
            (m/validate int? 1)
            (m/validate (m/schema int?) 1)
+           (m/validate (get m/default-registry int?) 1)
            ((m/validator int?) 1)
            ((m/validator (m/schema int?)) 1))))
 

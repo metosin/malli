@@ -204,6 +204,18 @@
                      [:x boolean?]
                      [[:opt :y] int?]
                      [[:req :z] string?]])
+          schema3 (m/schema
+                    [:map keyword? int?])
+          schema4 (m/schema
+                    [:map
+                     [keyword? int?]
+                     [:x string?]
+                     [:y int?]])
+          schema5 (m/schema
+                    [:map
+                     [:x string?]
+                     [[:opt :y] int?]
+                     [keyword? int?]])
           valid {:x true, :y 1, :z "kikka"}
           invalid {:x true, :y "invalid", :z "kikka", :extra "ok"}]
 
@@ -211,6 +223,12 @@
         (is (true? (m/validate schema valid)))
         (is (false? (m/validate schema invalid)))
         (is (false? (m/validate schema "not-a-map"))))
+
+      (is (true? (m/validate schema3 {:x 1 :y 2})))
+      (is (false? (m/validate schema3 {:x "1" :y "2"})))
+
+      (is (true? (m/validate schema4 {:x "x" :y 1})))
+      (is (false? (m/validate schema4 {:y 1})))
 
       (is (results= {:schema schema1
                      :value {:y "invalid" :z "kikka"}
@@ -224,12 +242,41 @@
                      :errors [{:path [], :in [], :schema schema1, :value "not-a-map", :type ::m/invalid-type}]}
                     (m/explain schema1 "not-a-map")))
 
+      (is (results= {:schema schema3
+                     :value {"x" "1" "y" "2"}
+                     :errors
+                     [{:path [1], :in ["x"], :schema keyword?, :value "x"}
+                      {:path [2], :in ["x"], :schema int?, :value "1"}
+                      {:path [1], :in ["y"], :schema keyword?, :value "y"}
+                      {:path [2], :in ["y"], :schema int?, :value "2"}]}
+                    (m/explain schema3 {"x" "1" "y" "2"})))
+
+      (is (results= {:schema schema4
+                     :value {:x 1, "z" "foo"}
+                     :errors
+                     [{:path [1 0], :in ["z"], :schema keyword?, :value "z"}
+                      {:path [1 1], :in ["z"], :schema int?, :value "foo"}
+                      {:path [2 1], :in [:x], :schema string?, :value 1}
+                      {:path [], :in [], :schema schema4, :type ::m/missing-key, ::m/key :y}]}
+                    (m/explain schema4 {:x 1 "z" "foo"})))
+
+      (is (results= {:schema schema5
+                     :value {:x 1, "z" "foo"}
+                     :errors
+                     [{:path [1 1], :in [:x], :schema string?, :value 1}
+                      {:path [3 0], :in ["z"], :schema keyword?, :value "z"}
+                      {:path [3 1], :in ["z"], :schema int?, :value "foo"}]}
+                    (m/explain schema5 {:x 1 "z" "foo"})))
+
       (is (= {:x true, :y 1} (m/transform schema1 {:x "true", :y "1"} transform/string-transformer)))
       (is (= {:x "true", :y "1"} (m/transform schema1 {:x "true", :y "1"} transform/json-transformer)))
+      (is (= {:x 1} (m/transform schema3 {"x" "1"} transform/string-transformer)))
+      (is (= {:x 1 :y 2 :z 3} (m/transform schema4 {"x" "1" "y" "2" "z" "3"} transform/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema1) valid)))
 
       (is (= [:map ['boolean?] ['int?] ['string?]] (m/accept schema1 visitor)))
+      (is (= [:map ['keyword?] ['int?]] (m/accept schema3 visitor)))
 
       (is (= [:map
               [:x 'boolean?]
@@ -241,43 +288,6 @@
     (is (true? (m/validate [:map [:b boolean?]] {:b true})))
     (is (true? (m/validate [:map [:b boolean?]] {:b false})))
     (is (true? (m/validate [:map [:n nil?]] {:n nil}))))
-
-  (testing "map-of schema"
-
-    (is (true? (m/validate [:map-of string? int?] {"age" 18})))
-    (is (true? (m/validate [:map-of keyword? int?] {:age 18})))
-    (is (false? (m/validate [:map-of string? int?] {:age "18"})))
-    (is (false? (m/validate [:map-of string? int?] 1)))
-
-    (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
-    (is (some? (m/explain [:map-of string? int?] ::invalid)))
-    (is (results= {:schema [:map-of string? int?],
-                   :value {:age 18},
-                   :errors [{:path [1],
-                             :in [:age],
-                             :schema string?,
-                             :value :age}]}
-                  (m/explain [:map-of string? int?] {:age 18})))
-    (is (results= {:schema [:map-of string? int?],
-                   :value {:age "18"},
-                   :errors [{:path [1],
-                             :in [:age],
-                             :schema string?,
-                             :value :age}
-                            {:path [2],
-                             :in [:age],
-                             :schema int?,
-                             :value "18"}]}
-                  (m/explain [:map-of string? int?] {:age "18"})))
-
-    (is (= {1 1} (m/transform [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
-
-    (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
-
-    (is (= [:map-of ['int?] ['pos-int?]] (m/accept [:map-of int? pos-int?] visitor)))
-
-    (testing "keyword keys are transformed via strings"
-      (is (= {1 1} (m/transform [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
 
   (testing "sequence schemas"
 

@@ -141,6 +141,26 @@
     [(first xs) (rest xs)]
     [nil xs]))
 
+(defn- -valid-schema? [schema?]
+  (try
+    (schema schema?)
+    true
+    (catch Exception _ false)))
+
+(defn- -conform-childs [childs]
+  (if (and (= 2 (count childs)) (every? -valid-schema? childs))
+    [childs]
+    childs))
+
+(defn- -is-pred-key?
+  [entry]
+  (-> entry meta :pred-key?))
+
+(defn- -only-map-of?
+  [entries]
+  (and (= 1 (count entries))
+       (-is-pred-key? (first entries))))
+
 (defn- -expand-key [[k ?p ?v] opts f]
   (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
         v' (f (schema v opts))
@@ -148,33 +168,46 @@
                   (let [[r k'] k]
                     [k' (assoc p :optional (case r :opt true, :req false))])
                   [k p])]
-    [k' p' v']))
+    (if (-valid-schema? k')
+      (with-meta [(f (schema k' opts)) p' v'] {:pred-key? true})
+      [k' p' v'])))
 
 (defn -parse-keys [childs opts]
-  (let [entries (mapv #(-expand-key % opts identity) childs)]
+  (let [entries (mapv #(-expand-key % opts identity) (-conform-childs childs))]
     {:required (->> entries (filter (comp not :optional second)) (mapv first))
      :optional (->> entries (filter (comp :optional second)) (mapv first))
-     :keys (->> entries (mapv first))
+     :keys (->> entries (filter (comp not :pred-key? meta)) (mapv first))
      :entries entries
-     :forms (mapv (fn [[k p v]]
-                    (let [v' (-form v)]
-                      (if p [k p v'] [k v']))) entries)}))
+     :forms (if (-only-map-of? entries)
+              (mapv -form (let [[k _ v] (first entries)] [k v]))
+              (mapv (fn [[k p v]]
+                      (let [v' (-form v)]
+                        (if p [k p v'] [k v']))) entries))}))
 
 (defn- -map-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] :map)
     (-into-schema [_ properties childs opts]
-      (let [{:keys [entries forms]} (-parse-keys childs opts)
-            form (create-form :map properties forms)]
+      (let [{:keys [entries forms keys]} (-parse-keys childs opts)
+            form (create-form :map properties forms)
+            dissoc-schema-keys (fn [m] (apply dissoc m keys))]
         ^{:type ::schema}
         (reify Schema
           (-validator [_]
             (let [validators (mapv
-                               (fn [[key {:keys [optional]} value]]
+                               (fn [[key {:keys [optional]} value :as entry]]
                                  (let [valid? (-validator value)
                                        default (boolean optional)]
-                                   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
+                                   (fn [m]
+                                     (if (-is-pred-key? entry)
+                                       (reduce-kv
+                                         (fn [_ k v]
+                                           (or (and ((-validator key) k) ((-validator value) v)) (reduced false)))
+                                         true (dissoc-schema-keys m))
+                                       (if-let [map-entry (find m key)]
+                                         (valid? (val map-entry))
+                                         default)))))
                                entries)
                   validate (fn [m]
                              (boolean
@@ -189,18 +222,32 @@
           (-explainer [this path]
             (let [distance (if (seq properties) 2 1)
                   explainers (mapv
-                               (fn [[i [key {:keys [optional] :as key-properties} schema]]]
-                                 (let [key-distance (if (seq key-properties) 2 1)
-                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))]
-                                   (fn [x in acc]
-                                     (if-let [v (key x)]
-                                       (explainer v (conj in key) acc)
-                                       (if-not optional
-                                         (conj acc {:path path
-                                                    :in in
-                                                    :schema this
-                                                    :type ::missing-key
-                                                    ::key key}))))))
+                               (fn [[i [key {:keys [optional] :as key-properties} schema :as entry]]]
+                                 (fn [x in acc]
+                                   (if (-is-pred-key? entry)
+                                     (let [[distance path] (if (-only-map-of? entries)
+                                                             [distance path]
+                                                             [0 (conj path (+ i distance))])]
+                                       (reduce-kv
+                                         (fn [acc k v]
+                                           (let [in (conj in k)
+                                                 key-path (conj path distance)
+                                                 schema-path (conj path (if key-properties (+ distance 2) (inc distance)))]
+                                             (->> acc
+                                                  ((-explainer key key-path) k in)
+                                                  ((-explainer schema schema-path) v in))))
+                                         acc (dissoc-schema-keys x)))
+                                     (let [key-distance (if (and (seq key-properties)) 2 1)
+                                           explainer (-explainer schema (into path [(+ i distance) key-distance]))]
+                                       (if-let [v (key x)]
+                                         (explainer v (conj in key) acc)
+                                         (if-not optional
+                                           (conj acc {:path path
+                                                      :in in
+                                                      :schema this
+                                                      :type ::missing-key
+                                                      ::key key})
+                                           acc))))))
                                (map-indexed vector entries))]
               (fn [x in acc]
                 (if-not (map? x)
@@ -215,88 +262,49 @@
                     acc explainers)))))
           (-transformer [_ transformer]
             (let [transformers (->> entries
-                                    (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
+                                    (mapcat
+                                      (fn [[k _ s :as entry]]
+                                        (if (-is-pred-key? entry)
+                                          [::pred-key [(-transformer k transformer)
+                                                       (-transformer s transformer)]]
+                                          (if-let [t (-transformer s transformer)]
+                                            [k t]))))
                                     (apply array-map))]
               (if (seq transformers)
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) x transformers)
+                    (reduce-kv
+                      (fn [acc k v]
+                        (let [t (get transformers k)]
+                          (if t
+                            (assoc acc k (t v))
+                            (if-let [[key-transformer value-transformer] (get transformers ::pred-key)]
+                              (cond
+                                (and key-transformer value-transformer)
+                                (let [k' (key-transformer k)]
+                                  (-> acc
+                                      (assoc k' (value-transformer v))
+                                      (cond-> (not (identical? k' k)) (dissoc k))))
+
+                                key-transformer
+                                (let [k' (key-transformer k)]
+                                  (-> acc
+                                      (assoc k' v)
+                                      (cond-> (not (identical? k' k)) (dissoc k))))
+
+                                value-transformer
+                                (assoc acc k (value-transformer v))
+
+                                :else acc)
+
+                              acc)))) x x)
                     x)))))
           (-accept [this visitor opts]
-            (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
+            (visitor this (if (-only-map-of? entries)
+                            (->> entries first (filter identity) (mapv #(-accept % visitor opts)))
+                            (->> entries (map last) (mapv #(-accept % visitor opts)))) opts))
           (-properties [_] properties)
           (-form [_] form))))))
-
-(defn- -map-of-schema []
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-name [_] :map-of)
-    (-into-schema [_ properties childs opts]
-      (when-not (and (seq childs) (= 2 (count childs)))
-        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 2, :max 2}))
-      (let [[key-schema value-schema :as schemas] (mapv #(schema % opts) childs)
-            key-valid? (-validator key-schema)
-            value-valid? (-validator value-schema)
-            validate (fn [m]
-                       (reduce-kv
-                         (fn [_ key value]
-                           (or (and (key-valid? key) (value-valid? value)) (reduced false)))
-                         true m))]
-        ^{:type ::schema}
-        (reify Schema
-          (-validator [_] (fn [m] (and (map? m) (validate m))))
-          (-explainer [this path]
-            (let [distance (if (seq properties) 2 1)
-                  key-explainer (-explainer key-schema (conj path distance))
-                  value-explainer (-explainer value-schema (conj path (inc distance)))]
-              (fn explain [m in acc]
-                (if-not (map? m)
-                  (conj acc {:path path
-                             :in in
-                             :schema this
-                             :value m
-                             :type ::invalid-type})
-                  (reduce-kv
-                    (fn [acc key value]
-                      (let [in (conj in key)]
-                        (->> acc
-                             (key-explainer key in)
-                             (value-explainer value in))))
-                    acc m)))))
-          (-transformer [_ transformer]
-            (let [key-transformer (if-let [t (-transformer key-schema transformer)]
-                                    (fn [x] (t (keyword->string x))))
-                  value-transformer (-transformer value-schema transformer)]
-              (cond
-                (and key-transformer value-transformer)
-                (fn [x]
-                  (if (map? x)
-                    (reduce-kv
-                      (fn [acc k v]
-                        (let [k' (key-transformer k)]
-                          (-> acc
-                              (assoc (key-transformer k) (value-transformer v))
-                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
-                    x))
-                key-transformer
-                (fn [x]
-                  (if (map? x)
-                    (reduce-kv
-                      (fn [acc k v]
-                        (let [k' (key-transformer k)]
-                          (-> acc
-                              (assoc (key-transformer k) v)
-                              (cond-> (not (identical? k' k)) (dissoc k))))) x x)
-                    x))
-                value-transformer
-                (fn [x]
-                  (if (map? x)
-                    (reduce-kv (fn [acc k v] (assoc acc k (value-transformer v))) x x)
-                    x)))))
-          (-accept [this visitor opts]
-            (visitor this (mapv #(-accept % visitor opts) schemas) opts))
-          (-properties [_] properties)
-          (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 
 (defn- -collection-schema [name fpred fwrap fempty]
   ^{:type ::into-schema}
@@ -618,7 +626,6 @@
   {:and (-composite-schema :and every-pred false)
    :or (-composite-schema :or some-fn true)
    :map (-map-schema)
-   :map-of (-map-of-schema)
    :vector (-collection-schema :vector vector? vec [])
    :list (-collection-schema :list list? seq nil)
    :set (-collection-schema :set set? set #{})

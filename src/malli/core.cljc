@@ -147,42 +147,34 @@
     true
     (catch Exception _ false)))
 
-(defn- -conform-childs [childs]
-  (if (and (= 2 (count childs)) (every? -valid-schema? childs))
-    [childs]
-    childs))
-
 (defn- -is-pred-key?
   [entry]
   (-> entry meta :pred-key?))
 
-(defn- -only-map-of?
-  [entries]
-  (and (= 1 (count entries))
-       (-is-pred-key? (first entries))))
-
 (defn- -expand-key [[k ?p ?v] opts f]
-  (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
+  (let [pred-key? (-valid-schema? k)
+        [p v] (if (map? ?p) [?p ?v] [nil ?p])
         v' (f (schema v opts))
-        [k' p'] (if (vector? k)
+        [k' p'] (if (and (vector? k) (not pred-key?))
                   (let [[r k'] k]
                     [k' (assoc p :optional (case r :opt true, :req false))])
                   [k p])]
-    (if (-valid-schema? k')
+    (if pred-key?
       (with-meta [(f (schema k' opts)) p' v'] {:pred-key? true})
       [k' p' v'])))
 
 (defn -parse-keys [childs opts]
-  (let [entries (mapv #(-expand-key % opts identity) (-conform-childs childs))]
+  (let [entries (mapv #(-expand-key % opts identity) childs)]
     {:required (->> entries (filter (comp not :optional second)) (mapv first))
      :optional (->> entries (filter (comp :optional second)) (mapv first))
      :keys (->> entries (filter (comp not :pred-key? meta)) (mapv first))
      :entries entries
-     :forms (if (-only-map-of? entries)
-              (mapv -form (let [[k _ v] (first entries)] [k v]))
-              (mapv (fn [[k p v]]
-                      (let [v' (-form v)]
-                        (if p [k p v'] [k v']))) entries))}))
+     :forms (mapv (fn [[k p v :as entry]]
+                    (let [k' (if (-is-pred-key? entry)
+                               (-form k)
+                               k)
+                          v' (-form v)]
+                      (if p [k' p v'] [k' v']))) entries)}))
 
 (defn- -map-schema []
   ^{:type ::into-schema}
@@ -197,16 +189,17 @@
           (-validator [_]
             (let [validators (mapv
                                (fn [[key {:keys [optional]} value :as entry]]
-                                 (let [valid? (-validator value)
+                                 (let [key-valid? (if (-is-pred-key? entry) (-validator key))
+                                       value-valid? (-validator value)
                                        default (boolean optional)]
                                    (fn [m]
                                      (if (-is-pred-key? entry)
                                        (reduce-kv
                                          (fn [_ k v]
-                                           (or (and ((-validator key) k) ((-validator value) v)) (reduced false)))
+                                           (or (and (key-valid? k) (value-valid? v)) (reduced false)))
                                          true (dissoc-schema-keys m))
                                        (if-let [map-entry (find m key)]
-                                         (valid? (val map-entry))
+                                         (value-valid? (val map-entry))
                                          default)))))
                                entries)
                   validate (fn [m]
@@ -223,24 +216,22 @@
             (let [distance (if (seq properties) 2 1)
                   explainers (mapv
                                (fn [[i [key {:keys [optional] :as key-properties} schema :as entry]]]
-                                 (fn [x in acc]
-                                   (if (-is-pred-key? entry)
-                                     (let [[distance path] (if (-only-map-of? entries)
-                                                             [distance path]
-                                                             [0 (conj path (+ i distance))])]
+                                 (let [key-distance 0
+                                       schema-distance (if (and (seq key-properties)) 2 1)
+                                       default-path (conj path (+ i distance))
+                                       key-explainer (if (-is-pred-key? entry) (-explainer key (conj default-path key-distance)))
+                                       schema-explainer (-explainer schema (conj default-path schema-distance))]
+                                   (fn [x in acc]
+                                     (if (-is-pred-key? entry)
                                        (reduce-kv
                                          (fn [acc k v]
-                                           (let [in (conj in k)
-                                                 key-path (conj path distance)
-                                                 schema-path (conj path (if key-properties (+ distance 2) (inc distance)))]
+                                           (let [in (conj in k)]
                                              (->> acc
-                                                  ((-explainer key key-path) k in)
-                                                  ((-explainer schema schema-path) v in))))
-                                         acc (dissoc-schema-keys x)))
-                                     (let [key-distance (if (and (seq key-properties)) 2 1)
-                                           explainer (-explainer schema (into path [(+ i distance) key-distance]))]
+                                                  (key-explainer k in)
+                                                  (schema-explainer v in))))
+                                         acc (dissoc-schema-keys x))
                                        (if-let [v (key x)]
-                                         (explainer v (conj in key) acc)
+                                         (schema-explainer v (conj in key) acc)
                                          (if-not optional
                                            (conj acc {:path path
                                                       :in in
@@ -300,9 +291,13 @@
                               acc)))) x x)
                     x)))))
           (-accept [this visitor opts]
-            (visitor this (if (-only-map-of? entries)
-                            (->> entries first (filter identity) (mapv #(-accept % visitor opts)))
-                            (->> entries (map last) (mapv #(-accept % visitor opts)))) opts))
+            (visitor this
+                     (->> entries
+                          (mapv (fn [[k _ v :as entry]]
+                                  (if (-is-pred-key? entry)
+                                    (mapv #(-accept % visitor opts) [k v])
+                                    (-accept v visitor opts)))))
+                     opts))
           (-properties [_] properties)
           (-form [_] form))))))
 

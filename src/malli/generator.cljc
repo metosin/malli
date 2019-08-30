@@ -5,10 +5,48 @@
             [clojure.spec.gen.alpha :as ga]
             [malli.core :as m]))
 
+(declare generator)
+
 (defn- -random [seed]
   (if seed
     (random/make-random seed)
     (random/make-random)))
+
+(defn- gen-double [opts] (gen/double* (merge {:infinite? false, :NaN? false} opts)))
+
+(defmulti -generator (fn [schema opts] (m/name schema opts)) :default ::default)
+
+(defmethod -generator :> [schema _] (gen-double {:min (-> schema m/childs first inc)}))
+(defmethod -generator :>= [schema _] (gen-double {:min (-> schema m/childs first)}))
+(defmethod -generator :< [schema _] (gen-double {:max (-> schema m/childs first dec)}))
+(defmethod -generator :<= [schema _] (gen-double {:max (-> schema m/childs first)}))
+(defmethod -generator := [schema _] (gen/return (first (m/childs schema))))
+(defmethod -generator :not= [schema _] (gen/such-that (->> schema m/childs first (partial not=)) gen/any-printable 100))
+
+(defmethod -generator :and [schema _] (gen/such-that (m/validator schema) (generator (first (m/childs schema))) 100))
+(defmethod -generator :or [schema opts] (gen/one-of (->> schema m/childs (mapv #(generator % opts)))))
+
+:map
+:vector
+:list
+:set
+:enum
+:maybe
+:tuple
+:fn
+
+(defmethod -generator ::default [schema _]
+  (ga/gen-for-pred (m/validator schema)))
+
+(defn generator
+  ([?schema]
+   (generator ?schema nil))
+  ([?schema opts]
+   (-generator (m/schema ?schema opts) opts)))
+
+;;
+;; public api
+;;
 
 (defn generate
   ([gen]
@@ -24,17 +62,6 @@
         (map #(rose/root (gen/call-gen gen %1 %2))
              (gen/lazy-random-states (-random seed)))
         (take size))))
-
-(defmulti -generator (fn [schema opts] (m/name schema opts)) :default ::default)
-
-(defmethod -generator ::default [schema _]
-  (ga/gen-for-pred (m/validator schema)))
-
-(defn generator
-  ([?schema]
-   (generator ?schema nil))
-  ([?schema opts]
-   (-generator (m/schema ?schema opts) opts)))
 
 ;;
 ;; spike

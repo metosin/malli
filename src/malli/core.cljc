@@ -542,6 +542,13 @@
   ([?schema opts]
    (-properties (schema ?schema opts))))
 
+(defn childs
+  ([?schema]
+   (childs ?schema nil))
+  ([?schema opts]
+   (let [schema (schema ?schema opts)]
+     (->> schema (-form) (drop (if (-properties schema) 2 1))))))
+
 (defn name
   ([?schema]
    (name ?schema nil))

@@ -489,6 +489,12 @@
              (m/properties [:and properties int?])
              (m/properties [int? properties]))))))
 
+(deftest childs-test
+  (testing "childs can be set and retrieved"
+    (is (= ['int? 'pos-int?]
+           (m/childs [:and {:a 1} int? pos-int?])
+           (m/childs [:and int? pos-int?])))))
+
 (deftest round-trip-test
   (testing "schemas can be roundtripped"
     (let [schema (m/schema

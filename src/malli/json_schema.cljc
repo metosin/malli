@@ -66,8 +66,7 @@
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
 (defmethod accept :map [_ schema children opts]
-  (let [distance (if (m/properties schema) 2 1)
-        {:keys [required keys]} (m/-parse-keys (drop distance (m/form schema)) opts)]
+  (let [{:keys [required keys]} (m/-parse-keys (m/childs schema opts) opts)]
     (merge
       {:type "object"
        :properties (apply array-map (interleave keys children))

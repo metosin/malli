@@ -205,7 +205,7 @@
                      [[:opt :y] int?]
                      [[:req :z] string?]])
           schema3 (m/schema
-                    [:map keyword? int?])
+                    [:map [keyword? int?]])
           schema4 (m/schema
                     [:map
                      [keyword? int?]
@@ -216,6 +216,12 @@
                      [:x string?]
                      [[:opt :y] int?]
                      [keyword? int?]])
+          schema6 (m/schema
+                    [:map
+                     [:x string?]
+                     [[:or keyword? string?] int?]])
+          schema7 (m/schema
+                    [:map [keyword? [:or string? int?]]])
           valid {:x true, :y 1, :z "kikka"}
           invalid {:x true, :y "invalid", :z "kikka", :extra "ok"}]
 
@@ -229,6 +235,8 @@
 
       (is (true? (m/validate schema4 {:x "x" :y 1})))
       (is (false? (m/validate schema4 {:y 1})))
+      (is (true? (m/validate schema6 {:x "x" "y" 1 :z 2})))
+      (is (true? (m/validate schema7 {:x "x" :y 1})))
 
       (is (results= {:schema schema1
                      :value {:y "invalid" :z "kikka"}
@@ -245,10 +253,10 @@
       (is (results= {:schema schema3
                      :value {"x" "1" "y" "2"}
                      :errors
-                     [{:path [1], :in ["x"], :schema keyword?, :value "x"}
-                      {:path [2], :in ["x"], :schema int?, :value "1"}
-                      {:path [1], :in ["y"], :schema keyword?, :value "y"}
-                      {:path [2], :in ["y"], :schema int?, :value "2"}]}
+                     [{:path [1 0], :in ["x"], :schema keyword?, :value "x"}
+                      {:path [1 1], :in ["x"], :schema int?, :value "1"}
+                      {:path [1 0], :in ["y"], :schema keyword?, :value "y"}
+                      {:path [1 1], :in ["y"], :schema int?, :value "2"}]}
                     (m/explain schema3 {"x" "1" "y" "2"})))
 
       (is (results= {:schema schema4
@@ -276,7 +284,7 @@
       (is (true? (m/validate (over-the-wire schema1) valid)))
 
       (is (= [:map ['boolean?] ['int?] ['string?]] (m/accept schema1 visitor)))
-      (is (= [:map ['keyword?] ['int?]] (m/accept schema3 visitor)))
+      (is (= [:map [['keyword?] ['int?]]] (m/accept schema3 visitor)))
 
       (is (= [:map
               [:x 'boolean?]

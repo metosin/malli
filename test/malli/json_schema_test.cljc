@@ -12,7 +12,8 @@
    [[:< 6] {:type "number", :format "double", :exclusiveMaximum 6}]
    [[:<= 6] {:type "number", :format "double", :maximum 6}]
    ;; base
-   [[:and int? string?] {:allOf [{:type "integer", :format "int64"} {:type "string"}]}]
+   [[:and int? pos-int?] {:allOf [{:type "integer", :format "int64"}
+                                  {:type "integer", :format "int64" :minimum 1}]}]
    [[:or int? string?] {:anyOf [{:type "integer", :format "int64"} {:type "string"}]}]
    [[:map
      [:a string?]

@@ -12,41 +12,71 @@
     (random/make-random seed)
     (random/make-random)))
 
-(defn- gen-double [opts] (gen/double* (merge {:infinite? false, :NaN? false} opts)))
+(defn- -double-gen [opts] (gen/double* (merge {:infinite? false, :NaN? false} opts)))
+
+(defn- -coll-gen [schema f]
+  (let [{:keys [min max]} (m/properties schema)
+        gen (-> schema m/childs first generator)]
+    (gen/fmap f (cond
+                  (and min (= min max)) (gen/vector gen min)
+                  (and min max) (gen/vector gen min max)
+                  min (gen/vector gen min (* 2 min))
+                  max (gen/vector gen 0 max)
+                  :else (gen/vector gen)))))
+
+(defn- -coll-distict-gen [schema f]
+  (let [{:keys [min max]} (m/properties schema)
+        gen (-> schema m/childs first generator)]
+    (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))
+
+(defn -map-gen [schema opts]
+  (let [{:keys [entries]} (m/-parse-keys (m/childs schema opts) opts)
+        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s opts)))
+        gen-req (->> entries
+                     (remove #(-> % second :optional))
+                     (map (fn [[k _ s]] (value-gen k s)))
+                     (apply gen/tuple))
+        gen-opt (->> entries
+                     (filter #(-> % second :optional))
+                     (map (fn [[k _ s]] (gen/one-of [(gen/return nil) (value-gen k s)])))
+                     (apply gen/tuple))]
+    (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
+
+;;
+;; generators
+;;
 
 (defmulti -generator (fn [schema opts] (m/name schema opts)) :default ::default)
 
-(defmethod -generator :> [schema _] (gen-double {:min (-> schema m/childs first inc)}))
-(defmethod -generator :>= [schema _] (gen-double {:min (-> schema m/childs first)}))
-(defmethod -generator :< [schema _] (gen-double {:max (-> schema m/childs first dec)}))
-(defmethod -generator :<= [schema _] (gen-double {:max (-> schema m/childs first)}))
+(defmethod -generator ::default [schema _] (ga/gen-for-pred (m/validator schema)))
+
+(defmethod -generator :> [schema _] (-double-gen {:min (-> schema m/childs first inc)}))
+(defmethod -generator :>= [schema _] (-double-gen {:min (-> schema m/childs first)}))
+(defmethod -generator :< [schema _] (-double-gen {:max (-> schema m/childs first dec)}))
+(defmethod -generator :<= [schema _] (-double-gen {:max (-> schema m/childs first)}))
 (defmethod -generator := [schema _] (gen/return (first (m/childs schema))))
 (defmethod -generator :not= [schema _] (gen/such-that (->> schema m/childs first (partial not=)) gen/any-printable 100))
 
-(defmethod -generator :and [schema _] (gen/such-that (m/validator schema) (generator (first (m/childs schema))) 100))
+(defmethod -generator :and [schema _] (gen/such-that (m/validator schema) (-> schema m/childs first generator) 100))
 (defmethod -generator :or [schema opts] (gen/one-of (->> schema m/childs (mapv #(generator % opts)))))
+(defmethod -generator :map [schema opts] (-map-gen schema opts))
+(defmethod -generator :vector [schema _] (-coll-gen schema identity))
+(defmethod -generator :list [schema _] (-coll-gen schema (partial apply list)))
+(defmethod -generator :set [schema _] (-coll-distict-gen schema set))
+(defmethod -generator :enum [schema _] (gen/elements (m/childs schema)))
+(defmethod -generator :maybe [schema opts] (gen/one-of [(gen/return nil) (-> schema m/childs first (generator opts))]))
+(defmethod -generator :tuple [schema opts] (apply gen/tuple (->> schema m/childs (mapv #(generator % opts)))))
+;(defmethod -generator :fn [_ _])
 
-:map
-:vector
-:list
-:set
-:enum
-:maybe
-:tuple
-:fn
-
-(defmethod -generator ::default [schema _]
-  (ga/gen-for-pred (m/validator schema)))
+;;
+;; public api
+;;
 
 (defn generator
   ([?schema]
    (generator ?schema nil))
   ([?schema opts]
    (-generator (m/schema ?schema opts) opts)))
-
-;;
-;; public api
-;;
 
 (defn generate
   ([gen]
@@ -62,39 +92,3 @@
         (map #(rose/root (gen/call-gen gen %1 %2))
              (gen/lazy-random-states (-random seed)))
         (take size))))
-
-;;
-;; spike
-;;
-
-(sample
-  (gen/elements [:a :b :c])
-  {:size 10, :seed nil})
-; (:b :c :a :a :a :b :b :b :a :c)
-
-(->> m/predicate-registry
-     (filter (comp fn? key))
-     (map (fn [[f schema]]
-            [(-> schema (m/schema) (m/name))
-             (-> f (generator) (sample {:size 4, :seed 0}))]))
-     (into {}))
-
-
-(sample (generator string?) {:size 10, :seed 0})
-; ("" "e" "wp" "t5" "L" "ho" "K99" "40" "4r3" "y3V8s")
-
-;;
-;; [:and int? neg-int?]
-;;
-
-; 1) this is not optimal (lot's of misses)
-(sample (gen/such-that int? (generator neg-int?)) {:seed 0})
-; (-1 -1 -2 -2 -2 -8 -5 -2 -7 -126)
-
-; 2) this would be better
-(sample (gen/such-that neg-int? (generator int?)) {:seed 0})
-; (-1 -1 -1 -1 -1 -7 -4 -4 -6 -16)
-
-; 3) this would be optiomal. how is the result different to 1???
-(sample (generator neg-int?) {:seed 0})
-; (-1 -2 -2 -2 -1 -4 -2 -2 -8 -110)

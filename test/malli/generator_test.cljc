@@ -5,7 +5,9 @@
             [malli.core :as m]))
 
 (deftest generator-test
-  (doseq [[?schema] json-schema-test/expectations
-          value (mg/sample (mg/generator ?schema))]
+  (doseq [[?schema] json-schema-test/expectations]
     (testing (m/form ?schema)
-      (is (m/validate ?schema value)))))
+      (is (= (mg/sample (mg/generator ?schema) {:seed 123})
+             (mg/sample (mg/generator ?schema) {:seed 123})))
+      (doseq [value (mg/sample (mg/generator ?schema))]
+        (is (m/validate ?schema value))))))

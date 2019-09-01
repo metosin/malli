@@ -7,10 +7,7 @@
 
 (declare generator)
 
-(defn- -random [seed]
-  (if seed
-    (random/make-random seed)
-    (random/make-random)))
+(defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
 (defn- -double-gen [opts] (gen/double* (merge {:infinite? false, :NaN? false} opts)))
 
@@ -86,9 +83,9 @@
 (defn generate
   ([?gen-or-schema]
    (generate ?gen-or-schema nil))
-  ([?gen-or-schema {:keys [seed] :as opts}]
+  ([?gen-or-schema {:keys [seed size] :or {size 1} :as opts}]
    (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema opts))]
-     (rose/root (gen/call-gen gen (-random seed) 1)))))
+     (rose/root (gen/call-gen gen (-random seed) size)))))
 
 (defn sample
   ([?gen-or-schema]

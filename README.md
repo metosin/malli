@@ -167,6 +167,35 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
+Generating example values for a schema:
+
+```clj
+(require '[malli.generator :as mg])
+
+(mg/generate keyword?)
+; :NB
+
+(mg/generate string? {:seed 3, :size 20})
+; "606FGq87f1Tk"
+
+(mg/generate Address {:seed 123, :size 4})
+;{:id "H7",
+; :tags #{:v?.w.t6!.QJYk-/-?s*4
+;         :_7U
+;         :QdG/Xi8J
+;         :*Q-.p*8*/n-J9u}
+; :address {:street "V9s"
+;           :city ""
+;           :zip 3
+;           :lonlat [-2.75 -0.625]}}
+
+(m/validate Address (mg/generate Address))
+; => true
+
+(mg/sample [:and pos-int? [:> 100] [:< 1000]] {:size 10})
+; (201 299 388 354 115 127 104 128 281 192)
+```
+
 Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pattern):
 
 ```clj

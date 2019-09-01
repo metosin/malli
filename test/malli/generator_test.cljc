@@ -7,9 +7,16 @@
 (deftest generator-test
   (doseq [[?schema] json-schema-test/expectations]
     (testing (m/form ?schema)
-      (is (= (mg/sample ?schema {:seed 123})
-             (mg/sample ?schema {:seed 123})
-             (mg/sample (mg/generator ?schema) {:seed 123})
-             (mg/sample (mg/generator ?schema) {:seed 123})))
-      (doseq [value (mg/sample ?schema)]
-        (is (m/validate ?schema value))))))
+      (testing "generate"
+        (is (= (mg/generate ?schema {:seed 123})
+               (mg/generate ?schema {:seed 123})))
+        (is (= (mg/generate ?schema {:seed 123, :size 10})
+               (mg/generate ?schema {:seed 123, :size 10})))
+        (is (m/validate ?schema (mg/generate ?schema {:seed 123}))))
+      (testing "sample"
+        (is (= (mg/sample ?schema {:seed 123})
+               (mg/sample ?schema {:seed 123})))
+        (is (= (mg/sample ?schema {:seed 123, :size 10})
+               (mg/sample ?schema {:seed 123, :size 10})))
+        (doseq [value (mg/sample ?schema {:seed 123})]
+          (is (m/validate ?schema value)))))))

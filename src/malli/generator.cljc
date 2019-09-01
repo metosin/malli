@@ -42,6 +42,10 @@
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
+(defn -map-of-gen [schema opts]
+  (let [[k-gen v-gen] (map #(generator % opts) (m/childs schema opts))]
+    (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
+
 ;;
 ;; generators
 ;;
@@ -60,6 +64,7 @@
 (defmethod -generator :and [schema _] (gen/such-that (m/validator schema) (-> schema m/childs first generator) 100))
 (defmethod -generator :or [schema opts] (gen/one-of (->> schema m/childs (mapv #(generator % opts)))))
 (defmethod -generator :map [schema opts] (-map-gen schema opts))
+(defmethod -generator :map-of [schema opts] (-map-of-gen schema opts))
 (defmethod -generator :vector [schema _] (-coll-gen schema identity))
 (defmethod -generator :list [schema _] (-coll-gen schema (partial apply list)))
 (defmethod -generator :set [schema _] (-coll-distict-gen schema set))

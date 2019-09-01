@@ -84,16 +84,18 @@
    (-generator (m/schema ?schema opts) opts)))
 
 (defn generate
-  ([gen]
-   (generate gen nil))
-  ([gen {:keys [seed]}]
-   (rose/root (gen/call-gen gen (-random seed) 1))))
+  ([?gen-or-schema]
+   (generate ?gen-or-schema nil))
+  ([?gen-or-schema {:keys [seed] :as opts}]
+   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema opts))]
+     (rose/root (gen/call-gen gen (-random seed) 1)))))
 
 (defn sample
-  ([gen]
-   (sample gen nil))
-  ([gen {:keys [seed size] :or {size 10}}]
-   (->> (gen/make-size-range-seq size)
-        (map #(rose/root (gen/call-gen gen %1 %2))
-             (gen/lazy-random-states (-random seed)))
-        (take size))))
+  ([?gen-or-schema]
+   (sample ?gen-or-schema nil))
+  ([?gen-or-schema {:keys [seed size] :or {size 10} :as opts}]
+   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema opts))]
+     (->> (gen/make-size-range-seq size)
+          (map #(rose/root (gen/call-gen gen %1 %2))
+               (gen/lazy-random-states (-random seed)))
+          (take size)))))

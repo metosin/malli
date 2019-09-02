@@ -7,8 +7,9 @@ Plain data Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schemas as data
-- Schema-driven Runtime Validation
+- Schema-driven Validation
 - Schema-driven Transformations
+- Schema-driven Example Data
 - Tools for programming with Schemas
 - No global state, explicit everything
 - First class error messages

@@ -167,16 +167,29 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
-Generating example values for a schema:
+Generating example data for a schema:
 
 ```clj
 (require '[malli.generator :as mg])
 
+;; random
 (mg/generate keyword?)
-; :NB
+; => :?
 
-(mg/generate string? {:seed 3, :size 20})
-; "606FGq87f1Tk"
+;; using seed
+(mg/generate [:enum "a" "b" "c"] {:seed 42})
+;; => "a"
+
+;; using seed and size
+(mg/generate pos-int? {:seed 10, :size 100})
+;; => 55740
+
+;; portable gen/fmap
+(mg/generate
+  [:and {:gen/fmap '(partial str "kikka_")}
+   string?]
+  {:seed 10, :size 10})
+;; => "kikka_WT3K0yax2"
 
 (mg/generate Address {:seed 123, :size 4})
 ;{:id "H7",
@@ -192,8 +205,9 @@ Generating example values for a schema:
 (m/validate Address (mg/generate Address))
 ; => true
 
-(mg/sample [:and pos-int? [:> 100] [:< 1000]] {:size 10})
-; (201 299 388 354 115 127 104 128 281 192)
+;; sampling
+(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
+; => (25 39 51 13 53 43 57 15 26 27)
 ```
 
 Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pattern):

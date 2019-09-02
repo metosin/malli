@@ -68,7 +68,14 @@
 (defmethod -generator :enum [schema _] (gen/elements (m/childs schema)))
 (defmethod -generator :maybe [schema opts] (gen/one-of [(gen/return nil) (-> schema m/childs first (generator opts))]))
 (defmethod -generator :tuple [schema opts] (apply gen/tuple (->> schema m/childs (mapv #(generator % opts)))))
-;(defmethod -generator :fn [_ _])
+
+(defn- -create [schema opts]
+  (let [gen (-generator schema opts)
+        fmap (:gen/fmap (m/properties schema))]
+    (cond
+      fmap (gen/fmap (m/eval fmap) (or gen (gen/return nil)))
+      gen gen
+      :else (m/fail! ::no-generator {:schema schema, :opts opts}))))
 
 ;;
 ;; public api
@@ -78,7 +85,7 @@
   ([?schema]
    (generator ?schema nil))
   ([?schema opts]
-   (-generator (m/schema ?schema opts) opts)))
+   (-create (m/schema ?schema opts) opts)))
 
 (defn generate
   ([?gen-or-schema]

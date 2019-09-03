@@ -148,7 +148,7 @@ Detailed errors with `m/explain`:
 ;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
-## Value Transformations
+## Value Transformation
 
 Schema-driven value transformations with `m/transform`:
 
@@ -172,7 +172,7 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
-## Schema Transformations
+## Schema Transformation
 
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):
 

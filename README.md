@@ -9,7 +9,7 @@ Plain data Schemas for Clojure/Script.
 - Schemas as data
 - Schema-driven Validation
 - Schema-driven Transformations
-- Schema-driven Example Data
+- Schema-driven Value Generation
 - Tools for programming with Schemas
 - No global state, explicit everything
 - First class error messages
@@ -89,6 +89,8 @@ Serializable function schemas using [sci](https://github.com/borkdude/sci):
 ; => false
 ```
 
+## Detailed Errors
+
 Detailed errors with `m/explain`:
 
 ```clj
@@ -146,6 +148,8 @@ Detailed errors with `m/explain`:
 ;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
+## Value Transformations
+
 Schema-driven value transformations with `m/transform`:
 
 ```clj
@@ -168,50 +172,9 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
-Generating example data for a schema:
+## Schema Transformations
 
-```clj
-(require '[malli.generator :as mg])
-
-;; random
-(mg/generate keyword?)
-; => :?
-
-;; using seed
-(mg/generate [:enum "a" "b" "c"] {:seed 42})
-;; => "a"
-
-;; using seed and size
-(mg/generate pos-int? {:seed 10, :size 100})
-;; => 55740
-
-;; portable gen/fmap
-(mg/generate
-  [:and {:gen/fmap '(partial str "kikka_")}
-   string?]
-  {:seed 10, :size 10})
-;; => "kikka_WT3K0yax2"
-
-(mg/generate Address {:seed 123, :size 4})
-;{:id "H7",
-; :tags #{:v?.w.t6!.QJYk-/-?s*4
-;         :_7U
-;         :QdG/Xi8J
-;         :*Q-.p*8*/n-J9u}
-; :address {:street "V9s"
-;           :city ""
-;           :zip 3
-;           :lonlat [-2.75 -0.625]}}
-
-(m/validate Address (mg/generate Address))
-; => true
-
-;; sampling
-(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
-; => (25 39 51 13 53 43 57 15 26 27)
-```
-
-Transforming Schemas using a [visitor](https://en.wikipedia.org/wiki/Visitor_pattern):
+Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):
 
 ```clj
 (defn visitor [schema childs _]
@@ -265,20 +228,73 @@ Custom transformation via properties:
 
 ```clj
 (json-schema/transform
-  [:maybe
-   [:enum
-    {:title "Fish"
-     :description "Maybe perch?"
-     :json-schema/example "perch"
-     :json-schema/type "string"}
-    "perch" "pike"]])
-;{:oneOf [{:enum ["perch" "pike"]
-;          :title "Fish"
-;          :description "Maybe perch?"
-;          :example "perch"
-;          :type "string"}
-;         {:type "null"}]}
+  [:enum
+   {:title "Fish"
+    :description "It's a fish"
+    :json-schema/type "string"
+    :json-schema/default "perch"}
+   "perch" "pike"])
+;{:title "Fish"
+; :description "It's a fish"
+; :type "string"
+; :default "perch"
+; :enum ["perch" "pike"]}
 ```
+
+## Value Generation
+
+Scehmas can be used to generate values:
+
+```clj
+(require '[malli.generator :as mg])
+
+;; random
+(mg/generate keyword?)
+; => :?
+
+;; using seed
+(mg/generate [:enum "a" "b" "c"] {:seed 42})
+;; => "a"
+
+;; using seed and size
+(mg/generate pos-int? {:seed 10, :size 100})
+;; => 55740
+
+;; portable gen/fmap
+(mg/generate
+  [:and {:gen/fmap '(partial str "kikka_")}
+   string?]
+  {:seed 10, :size 10})
+;; => "kikka_WT3K0yax2"
+```
+
+Generated values are valid:
+
+```clj
+(mg/generate Address {:seed 123, :size 4})
+;{:id "H7",
+; :tags #{:v?.w.t6!.QJYk-/-?s*4
+;         :_7U
+;         :QdG/Xi8J
+;         :*Q-.p*8*/n-J9u}
+; :address {:street "V9s"
+;           :city ""
+;           :zip 3
+;           :lonlat [-2.75 -0.625]}}
+
+(m/validate Address (mg/generate Address))
+; => true
+```
+
+Sampling values:
+
+```clj
+;; sampling
+(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
+; => (25 39 51 13 53 43 57 15 26 27)
+```
+
+## Persisting Schemas 
 
 Serializing & Deserializing schemas, no `eval` needed.
 

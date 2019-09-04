@@ -165,8 +165,9 @@
   (reify IntoSchema
     (-name [_] :map)
     (-into-schema [_ properties childs opts]
-      (let [{:keys [entries forms]} (-parse-keys childs opts)
-            form (create-form :map properties forms)]
+      (let [{:keys [entries forms keys]} (-parse-keys childs opts)
+            form (create-form :map properties forms)
+            properties' (assoc properties ::map-keys keys)]
         ^{:type ::schema}
         (reify Schema
           (-validator [_]
@@ -213,18 +214,21 @@
                     (fn [acc explainer]
                       (explainer x in acc))
                     acc explainers)))))
-          (-transformer [_ transformer]
+          (-transformer [this transformer]
             (let [transformers (->> entries
                                     (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
-                                    (apply array-map))]
-              (if (seq transformers)
+                                    (apply array-map))
+                  map-transformer (transformer this)]
+              (if (or (seq transformers) map-transformer)
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) x transformers)
+                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x))))
+                               (if map-transformer (map-transformer x) x)
+                               transformers)
                     x)))))
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
-          (-properties [_] properties)
+          (-properties [_] properties')
           (-form [_] form))))))
 
 (defn- -map-of-schema []

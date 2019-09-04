@@ -105,6 +105,11 @@
 
 (defn any->any [x] x)
 
+(defn strip-extra-keys [keys x]
+  (if (and keys (map? x))
+    (select-keys x keys)
+    x))
+
 ;;
 ;; transformers
 ;;
@@ -157,5 +162,9 @@
 
 (defn json-transformer [schema]
   (get +json-decoders+ (m/name schema)))
+
+(defn strip-extra-keys-transformer [schema]
+  (when-some [keys (-> schema m/properties ::m/map-keys)]
+    (partial strip-extra-keys keys)))
 
 (defn collection-transformer [schema])

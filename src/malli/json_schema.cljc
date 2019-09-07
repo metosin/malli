@@ -4,8 +4,8 @@
 (defn unlift-keys [m ns-str]
   (reduce-kv #(if (= ns-str (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn json-schema-props [schema]
-  (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ "json-schema"))))
+(defn json-schema-props [schema prefix]
+  (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ prefix))))
 
 (defmulti accept (fn [name _schema _childs _opts] name) :default ::default)
 
@@ -71,7 +71,7 @@
       {:type "object"
        :properties (apply array-map (interleave keys children))
        :required required}
-      (json-schema-props schema))))
+      (json-schema-props schema "json-schema"))))
 
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
 (defmethod accept :vector [_ _ children _] {:type "array", :items children})
@@ -83,7 +83,7 @@
 (defmethod accept :fn [_ _ _ _] {})
 
 (defn- -json-schema-visitor [schema childs opts]
-  (merge (accept (m/name schema) schema childs opts) (json-schema-props schema)))
+  (merge (accept (m/name schema) schema childs opts) (json-schema-props schema "json-schema")))
 
 ;;
 ;; public api

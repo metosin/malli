@@ -1,20 +1,25 @@
-(ns malli.json-schema-test
+(ns malli.swagger-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [malli.json-schema :as json-schema]))
+            [malli.swagger :as swagger]))
 
 (def expectations
   [;; predicates
    [pos-int? {:type "integer", :format "int64", :minimum 1}]
-   [float? {:type "number"}]
+   [float? {:type "number" :format "float"}]
    ;; comparators
    [[:> 6] {:type "number", :format "double", :exclusiveMinimum 6}]
    [[:>= 6] {:type "number", :format "double", :minimum 6}]
    [[:< 6] {:type "number", :format "double", :exclusiveMaximum 6}]
    [[:<= 6] {:type "number", :format "double", :maximum 6}]
    ;; base
-   [[:and int? pos-int?] {:allOf [{:type "integer", :format "int64"}
-                                  {:type "integer", :format "int64" :minimum 1}]}]
-   [[:or int? string?] {:anyOf [{:type "integer", :format "int64"} {:type "string"}]}]
+   [[:and int? pos-int?] {:type "integer"
+                          :format "int64"
+                          :x-allOf [{:type "integer", :format "int64"}
+                                    {:type "integer", :format "int64", :minimum 1}]}]
+   [[:or int? string?] {:type "integer"
+                        :format "int64"
+                        :x-anyOf [{:type "integer", :format "int64"}
+                                  {:type "string"}]}]
    [[:map
      [:a string?]
      [:b {:optional true} string?]
@@ -33,33 +38,39 @@
                     :items [{:type "string"}]
                     :uniqueItems true}]
    [[:enum 1 2 3] {:enum [1 2 3]}]
-   [[:maybe string?] {:oneOf [{:type "string"} {:type "null"}]}]
+   [[:maybe string?] {:type "string", :x-nullable true}]
    [[:tuple string? string?] {:type "array"
-                              :items [{:type "string"} {:type "string"}]
-                              :additionalItems false}]])
+                              :items {}
+                              :x-items [{:type "string"}
+                                        {:type "string"}]}]])
 
-(deftest json-schema-test
-  (doseq [[schema json-schema] expectations]
-    (is (= json-schema (json-schema/transform schema))))
+(deftest swagger-test
+  (doseq [[schema swagger-schema] expectations]
+    (is (= swagger-schema (swagger/transform schema))))
   (testing "with properties"
-    (is (= {:allOf [{:type "integer", :format "int64"}]
-            :title "age"
+    (is (= {:title "age"
+            :type "integer"
+            :format "int64"
             :description "blabla"
-            :default 42}
-           (json-schema/transform
+            :default 42
+            :x-allOf [{:type "integer", :format "int64"}]}
+           (swagger/transform
              [:and {:title "age"
                     :description "blabla"
                     :default 42} int?]))
-        (is (= {:allOf [{:type "integer", :format "int64"}]
-                :title "age2"
-                :description "blabla2"
+        (is (= {:title "age"
+                :type "integer"
+                :format "int64"
+                :description "blabla"
                 :default 422
-                :example 422}
-               (json-schema/transform
+                :example 422
+                :x-allOf [{:type "integer", :format "int64"}]}
+               (swagger/transform
                  [:and {:title "age"
                         :json-schema/title "age2"
+                        :json-schema/swagger "age3"
                         :description "blabla"
                         :json-schema/description "blabla2"
                         :default 42
-                        :json-schema/default 422
-                        :json-schema/example 422} int?]))))))
+                        :swagger/default 422
+                        :swagger/example 422} int?]))))))

@@ -202,6 +202,8 @@ Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/
 ;                              {:name double?, :properties {}, :childs []}]}]}]}
 ```
 
+### JSON Schema
+
 Transforming Schemas into [JSON Schema](https://json-schema.org/):
 
 ```clj
@@ -239,6 +241,31 @@ Custom transformation via properties:
 ; :type "string"
 ; :default "perch"
 ; :enum ["perch" "pike"]}
+```
+
+### Swagger2 Schema
+
+Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md):
+
+```clj
+(require '[malli.swagger :as swagger])
+
+(swagger/transform Address)
+;{:type "object",
+; :properties {:id {:type "string"},
+;              :tags {:type "array"
+;                     :items [{:type "string"}]
+;                     :uniqueItems true},
+;              :address {:type "object",
+;                        :properties {:street {:type "string"},
+;                                     :city {:type "string"},
+;                                     :zip {:type "integer", :format "int64"},
+;                                     :lonlat {:type "array",
+;                                              :items {},
+;                                              :x-items [{:type "number", :format "double"}
+;                                                        {:type "number", :format "double"}]}},
+;                        :required [:street :city :zip :lonlat]}},
+; :required [:id :tags :address]}
 ```
 
 ## Value Generation

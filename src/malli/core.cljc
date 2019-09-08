@@ -18,6 +18,11 @@
   (-properties [this] "returns original schema properties")
   (-form [this] "returns original form of the schema"))
 
+(defprotocol Transformer
+  (-transformer-name [this] "name of the transformer")
+  (-transformer-options [this] "returns transformer options")
+  (-value-transformer [this schema] "returns a function to transform value for the given schema"))
+
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
           (.write w (str "#IntoSchema{:name " (-name v) "}"))))
 
@@ -74,7 +79,7 @@
                            :value value})
                 acc)))
           (-transformer [this transformer]
-            (transformer this))
+            (-value-transformer transformer this))
           (-accept [this visitor opts] (visitor this (vec childs) opts))
           (-properties [_] properties)
           (-form [_] form))))))
@@ -165,7 +170,7 @@
   (reify IntoSchema
     (-name [_] :map)
     (-into-schema [_ properties childs opts]
-      (let [{:keys [entries forms keys]} (-parse-keys childs opts)
+      (let [{:keys [entries forms]} (-parse-keys childs opts)
             form (create-form :map properties forms)]
         ^{:type ::schema}
         (reify Schema
@@ -217,7 +222,7 @@
             (let [transformers (->> entries
                                     (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
                                     (apply array-map))
-                  map-transformer (transformer this)]
+                  map-transformer (-value-transformer transformer this)]
               (if (or (seq transformers) map-transformer)
                 (fn [x]
                   (if (map? x)
@@ -400,7 +405,7 @@
                     (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-transformer [_ transformer]
             (let [ts (->> schemas
-                          (mapv transformer)
+                          (mapv #(-transformer % transformer))
                           (map-indexed vector)
                           (filter second)
                           (mapcat identity)

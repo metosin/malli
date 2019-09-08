@@ -9,6 +9,18 @@
               (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
               (java.time.temporal ChronoField))))
 
+(defn transformer [& ?options]
+  (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
+        name (-> options last :name)
+        transformers (->> options (map :transformers) (apply merge))]
+    (reify
+      m/Transformer
+      (-transformer-name [_] name)
+      (-transformer-options [_] {:name name, :transformers transformers})
+      (-value-transformer [_ schema]
+        (if-let [->transformer (get transformers (m/name schema))]
+          (->transformer schema))))))
+
 ;;
 ;; Strings
 ;;
@@ -105,70 +117,78 @@
 
 (defn any->any [x] x)
 
-(defn strip-extra-keys [keys x]
-  (if (and keys (map? x))
-    (select-keys x keys)
-    x))
+;;
+;; decoders
+;;
+
+(def +json-decoders+
+  {'ident? (constantly string->keyword)
+   'simple-ident? (constantly string->keyword)
+   'qualified-ident? (constantly string->keyword)
+
+   'keyword? (constantly string->keyword)
+   'simple-keyword? (constantly string->keyword)
+   'qualified-keyword? (constantly string->keyword)
+
+   'symbol? (constantly string->symbol)
+   'simple-symbol? (constantly string->symbol)
+   'qualified-symbol? (constantly string->symbol)
+
+   'uuid? (constantly string->uuid)
+
+   'inst? (constantly string->date)})
+
+(def +string-decoders+
+  (merge
+    +json-decoders+
+    {'integer? (constantly string->long)
+     'int? (constantly string->long)
+     'pos-int? (constantly string->long)
+     'neg-int? (constantly string->long)
+     'nat-int? (constantly string->long)
+     'zero? (constantly string->long)
+
+     :> (constantly string->long)
+     :>= (constantly string->long)
+     :< (constantly string->long)
+     :<= (constantly string->long)
+     := (constantly string->long)
+     :not= (constantly string->long)
+
+     'number? (constantly string->double)
+     'float? (constantly string->double)
+     'double? (constantly string->double)
+     #?@(:clj ['rational? (constantly string->double)])
+
+     'boolean? (constantly string->boolean)
+     'false? (constantly string->boolean)
+     'true? (constantly string->boolean)}))
+
+(def +strip-extra-keys-decoders+
+  {:map (fn [schema]
+          (if-let [keys (seq (:keys (m/-parse-keys (m/childs schema) nil)))]
+            (fn [x] (select-keys x keys))))})
 
 ;;
 ;; transformers
 ;;
 
-(def +json-decoders+
-  {'ident? string->keyword
-   'simple-ident? string->keyword
-   'qualified-ident? string->keyword
+(def string-transformer
+  (transformer
+    {:name :string
+     :transformers +string-decoders+}))
 
-   'keyword? string->keyword
-   'simple-keyword? string->keyword
-   'qualified-keyword? string->keyword
+(def json-transformer
+  (transformer
+    {:name :json
+     :transformers +json-decoders+}))
 
-   'symbol? string->symbol
-   'simple-symbol? string->symbol
-   'qualified-symbol? string->symbol
+(def strip-extra-keys-transformer
+  (transformer
+    {:name ::strip-extra-keys
+     :transformers +strip-extra-keys-decoders+}))
 
-   'uuid? string->uuid
-
-   'inst? string->date})
-
-(def +string-encoders+
-  (merge
-    +json-decoders+
-    {'integer? string->long
-     'int? string->long
-     'pos-int? string->long
-     'neg-int? string->long
-     'nat-int? string->long
-     'zero? string->long
-
-     :> string->long
-     :>= string->long
-     :< string->long
-     :<= string->long
-     := string->long
-     :not= string->long
-
-     'number? string->double
-     'float? string->double
-     'double? string->double
-     #?@(:clj ['rational? string->double])
-
-     'boolean? string->boolean
-     'false? string->boolean
-     'true? string->boolean}))
-
-(defn string-transformer [schema]
-  (get +string-encoders+ (m/name schema)))
-
-(defn json-transformer [schema]
-  (get +json-decoders+ (m/name schema)))
-
-(defn strip-extra-keys-transformer [schema]
-  (case (m/name schema)
-    :map
-    (let [{:keys [keys]} (m/-parse-keys (m/childs schema) nil)]
-      (fn [x]
-        (strip-extra-keys keys x)))
-    nil))
-
-(defn collection-transformer [schema])
+(def collection-transformer
+  (transformer
+    {:name ::collection
+     :transformers {}}))

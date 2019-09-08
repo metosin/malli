@@ -190,7 +190,7 @@ Transformers are composable:
              :city "Tampere"
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
-  mt/json-transformer)
+  strict-json-transformer)
 ;{:id "Lillan",
 ; :tags #{:coffee :artesan :garden},
 ; :address {:street "Ahlmanintie 29"

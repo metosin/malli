@@ -624,12 +624,14 @@
    ((explainer ?schema opts) value [] [])))
 
 (defn transformer
+  "Creates a value transformer given a transformer and a schema."
   ([?schema t]
    (transformer ?schema nil t))
   ([?schema opts t]
    (or (-transformer (schema ?schema opts) t) identity)))
 
 (defn transform
+  "Transforms a value with a given transformer agains a schema."
   ([?schema value t]
    (transform ?schema value nil t))
   ([?schema value opts t]

@@ -172,6 +172,33 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
+Transformers are composable:
+
+```clj
+(def strict-json-transformer
+  (mt/transformer
+    mt/strip-extra-keys-transformer
+    mt/json-transformer)
+
+(m/transform
+  Address
+  {:id "Lillan",
+   :EVIL "LYN"
+   :tags ["coffee" "artesan" "garden"],
+   :address {:street "Ahlmanintie 29"
+             :DARK "ORKO"
+             :city "Tampere"
+             :zip 33100
+             :lonlat [61.4858322 23.7854658]}}
+  mt/json-transformer)
+;{:id "Lillan",
+; :tags #{:coffee :artesan :garden},
+; :address {:street "Ahlmanintie 29"
+;           :city "Tampere"
+;           :zip 33100
+;           :lonlat [61.4858322 23.7854658]}}
+```
+
 ## Schema Transformation
 
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):

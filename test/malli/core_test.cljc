@@ -518,3 +518,76 @@
                     :string (m/fn-schema :string string?)})]
     (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
     (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))
+
+(deftest merge-test
+  (let [or-merge-strategy (fn [s1 s2] (m/schema [:or s1 s2]))]
+    (are [?s1 ?s2 opts expected]
+      (= (m/form expected) (m/form (m/merge ?s1 ?s2 opts)))
+
+      int? int? {} int?
+      int? pos-int? {} pos-int?
+      int? nil {} int?
+      nil pos-int? {} pos-int?
+
+      ;; merge-strategy can be changed
+      int? pos-int? {::m/merge or-merge-strategy} [:or int? pos-int?]
+
+      [:map [:x int?]]
+      [:map [:x {:optional true} pos-int?]]
+      {}
+      [:map [:x pos-int?]]
+
+      [:map [:x int?]]
+      [:map [:x {:optional true} pos-int?]]
+      {}
+      [:map [:x pos-int?]]
+
+      ;; TODO: should retain the :optional key!
+      [:map [:x {:optional false} int?]]
+      [:map [:x {:optional true} pos-int?]]
+      {}
+      [:map [:x pos-int?]]
+
+      ;; map forms are deep-merged
+      [:map {:title "parameters"}
+       [:parameters
+        [:map
+         [:query-params {:title "query1"}
+          [:map [:x int?]]]]]]
+      [:map {:description "description"}
+       [:parameters
+        [:map
+         [:query-params {:title "query2"}
+          [:map [:x string?] [:y int?]]]
+         [:body-params
+          [:map [:z int?]]]]]]
+      {}
+      [:map {:title "parameters", :description "description"}
+       [:parameters
+        [:map
+         [:query-params {:title "query2"}
+          [:map [:x string?] [:y int?]]]
+         [:body-params
+          [:map [:z int?]]]]]]
+
+      ;; merge-stragy works with nested maps too
+      [:map {:title "parameters"}
+       [:parameters
+        [:map
+         [:query-params {:title "query1"}
+          [:map [:x int?]]]]]]
+      [:map {:description "description"}
+       [:parameters
+        [:map
+         [:query-params {:title "query2"}
+          [:map [:x string?] [:y int?]]]
+         [:body-params
+          [:map [:z int?]]]]]]
+      {::m/merge or-merge-strategy}
+      [:map {:title "parameters", :description "description"}
+       [:parameters
+        [:map
+         [:query-params {:title "query2"}
+          [:map [:x [:or int? string?]] [:y int?]]]
+         [:body-params
+          [:map [:z int?]]]]]])))

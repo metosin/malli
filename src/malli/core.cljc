@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [-name eval name])
+  (:refer-clojure :exclude [-name eval name merge])
   (:require [sci.core :as sci]))
 
 ;;
@@ -145,6 +145,19 @@
   (if (map? (first xs))
     [(first xs) (rest xs)]
     [nil xs]))
+
+(defn- -optional-entry? [[_ ?p]]
+  (boolean (and (map? ?p) (true? (:optional ?p)))))
+
+(defn- -optional-entry [[k ?p s :as entry] ?]
+  (if (map? ?p)
+    (cond
+      ? (update entry 1 assoc :optional true)
+      (= [:optional] (keys ?p)) [k s]
+      :else (update entry 1 dissoc :optional))
+    (cond
+      ? [k {:optional true} ?p]
+      :else [k ?p])))
 
 (defn- -expand-key [[k ?p ?v] opts f]
   (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
@@ -626,6 +639,41 @@
      (transform value)
      value)))
 
+(defn merge
+  ([?schema1 ?schema2]
+   (merge ?schema1 ?schema2 nil))
+  ([?schema1 ?schema2 opts]
+   (let [[schema1 schema2 :as schemas] [(if ?schema1 (schema ?schema1 opts))
+                                        (if ?schema2 (schema ?schema2 opts))]
+         merge' (::merge opts (constantly schema2))]
+     (cond
+       (not schema1) schema2
+       (not schema2) schema1
+       (not= :map (name schema1) (name schema2)) (merge' schema1 schema2)
+       :else (let [p (clojure.core/merge (properties schema1) (properties schema2))]
+               (-> [:map]
+                   (cond-> p (conj p))
+                   (into (:form
+                           (reduce
+                             (fn [{:keys [keys] :as acc} [k :as f]]
+                               (if (keys k)
+                                 (->> (reduce
+                                        (fn [acc' [k' :as f']]
+                                          (if-not (= k k')
+                                            (conj acc' f')
+                                            (let [f'' (-optional-entry
+                                                        (if (= k k') f f')
+                                                        (and (-optional-entry? f) (-optional-entry? f')))]
+                                              (conj acc' (conj (pop f'') (merge (peek f') (peek f) opts))))))
+                                        [] (:form acc))
+                                      (assoc acc :form))
+                                 (-> acc
+                                     (update :form conj f)
+                                     (update :keys conj k))))
+                             {:keys #{}, :form []}
+                             (mapcat #(-> % (childs opts) (-parse-keys opts) :forms) schemas))))
+                   (schema opts)))))))
+
 ;;
 ;; registries
 ;;
@@ -658,4 +706,4 @@
    :fn (-fn-schema)})
 
 (def default-registry
-  (merge predicate-registry comparator-registry base-registry))
+  (clojure.core/merge predicate-registry comparator-registry base-registry))

@@ -111,3 +111,13 @@
     (is (= [:kikka 1] (m/transform [:tuple keyword? int?] ["kikka" "1"] transform/string-transformer)))
     (is (= "1" (m/transform [:tuple keyword? int?] "1" transform/string-transformer)))
     (is (= [:kikka 1 "2"] (m/transform [:tuple keyword? int?] ["kikka" "1" "2"] transform/string-transformer)))))
+
+(deftest collection-transform-test
+  (is (= #{1 2 3} (m/transform [:set int?] [1 2 3] transform/collection-transformer))))
+
+(deftest composing-transformers
+  (let [strict-json-transformer (transform/transformer
+                                  transform/strip-extra-keys-transformer
+                                  transform/json-transformer)]
+    (is (= :kikka (m/transform keyword? "kikka" strict-json-transformer)))
+    (is (= {:x :kikka} (m/transform [:map [:x keyword?]] {:x "kikka"} strict-json-transformer)))))

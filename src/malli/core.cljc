@@ -166,8 +166,7 @@
     (-name [_] :map)
     (-into-schema [_ properties childs opts]
       (let [{:keys [entries forms keys]} (-parse-keys childs opts)
-            form (create-form :map properties forms)
-            properties' (assoc properties ::map-keys keys)]
+            form (create-form :map properties forms)]
         ^{:type ::schema}
         (reify Schema
           (-validator [_]
@@ -228,7 +227,7 @@
                     x)))))
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
-          (-properties [_] properties')
+          (-properties [_] properties)
           (-form [_] form))))))
 
 (defn- -map-of-schema []

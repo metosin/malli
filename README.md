@@ -199,6 +199,31 @@ Transformers are composable:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
+## Merging Schemas
+
+Schemas can be deep-merged with `m/merge`:
+
+```clj
+(m/merge
+  Address
+  [:map
+   [:description string?]
+   [:address
+    [:map
+     [:country string?]]]])
+;[:map
+; [:id string?]
+; [:tags [:set keyword?]]
+; [:address 
+;  [:map 
+;   [:street string?] 
+;   [:city string?] 
+;   [:zip int?] 
+;   [:lonlat [:tuple double? double?]] 
+;   [:country string?]]]
+; [:description string?]]
+```
+
 ## Schema Transformation
 
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):

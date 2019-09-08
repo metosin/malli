@@ -263,6 +263,17 @@
     ;; 7000ns
     (cc/quick-bench (f3 12))))
 
+(defn map-transform-test []
+  (doseq [transformer [transform/json-transformer
+                       (transform/transformer
+                         transform/strip-extra-keys-transformer
+                         transform/json-transformer)]]
+
+    ;; 3ns -> 3ns
+    ;; 520ns -> 130ns
+    (let [>> (m/transformer [:map [:x string?] [:y int?]] transformer)]
+      (cc/quick-bench (>> {:x "1", :y 1})))))
+
 (comment
   (map-perf)
   (composite-perf)
@@ -271,4 +282,5 @@
   (basic-perf)
   (transform-test)
   (transform-test2)
+  (map-transform-test)
   (fn-test))

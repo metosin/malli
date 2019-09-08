@@ -219,16 +219,31 @@
                       (explainer x in acc))
                     acc explainers)))))
           (-transformer [this transformer]
-            (let [transformers (->> entries
-                                    (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
-                                    (apply array-map))
+            (let [transformers (some->> entries
+                                        (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
+                                        (seq)
+                                        (apply array-map))
                   map-transformer (-value-transformer transformer this)]
-              (if (or (seq transformers) map-transformer)
+              (cond
+                (and (not transformers) (not map-transformer))
+                nil
+
+                (and (not transformers) map-transformer)
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x))))
-                               (if map-transformer (map-transformer x) x)
-                               transformers)
+                    (map-transformer x)
+                    x))
+
+                (and transformers (not map-transformer))
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) x transformers)
+                    x))
+
+                :else
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) (map-transformer x) transformers)
                     x)))))
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))

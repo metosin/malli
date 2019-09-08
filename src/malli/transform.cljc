@@ -164,7 +164,11 @@
   (get +json-decoders+ (m/name schema)))
 
 (defn strip-extra-keys-transformer [schema]
-  (when-some [keys (-> schema m/properties ::m/map-keys)]
-    (partial strip-extra-keys keys)))
+  (case (m/name schema)
+    :map
+    (let [{:keys [keys]} (m/-parse-keys (m/childs schema) nil)]
+      (fn [x]
+        (strip-extra-keys keys x)))
+    nil))
 
 (defn collection-transformer [schema])

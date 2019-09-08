@@ -149,15 +149,13 @@
 (defn- -optional-entry? [[_ ?p]]
   (boolean (and (map? ?p) (true? (:optional ?p)))))
 
-(defn- -optional-entry [[k ?p s :as entry] ?]
+(defn- -optional-entry [[k ?p s :as entry] optional]
   (if (map? ?p)
     (cond
-      ? (update entry 1 assoc :optional true)
+      optional (update entry 1 assoc :optional true)
       (= [:optional] (keys ?p)) [k s]
       :else (update entry 1 dissoc :optional))
-    (cond
-      ? [k {:optional true} ?p]
-      :else [k ?p])))
+    (if optional [k {:optional true} ?p] [k ?p])))
 
 (defn- -expand-key [[k ?p ?v] opts f]
   (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
@@ -640,6 +638,12 @@
      value)))
 
 (defn merge
+  "Deep-merges two schemas into one with the following rules:
+
+  * if either schemas is `nil`, the other one is used, regardless of value
+  * with two :map schemas, both keys and values are merged
+  * with any other schemas, 2-arity `:malli.core/merge` function is used, defaulting
+    to constantly schema2"
   ([?schema1 ?schema2]
    (merge ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 opts]

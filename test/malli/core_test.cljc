@@ -542,7 +542,7 @@
       {}
       [:map [:x pos-int?]]
 
-      ;; TODO: should retain the :optional key!
+      ;; TODO: should retain the :optional key?
       [:map [:x {:optional false} int?]]
       [:map [:x {:optional true} pos-int?]]
       {}

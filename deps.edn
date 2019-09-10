@@ -17,4 +17,6 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         borkdude/sci {:git/url "https://github.com/borkdude/sci"
                       :sha "73d0de59debe7a8acc4cb13e64f3cfe34baf0294"}
+        borkdude/edamame {:git/url "https://github.com/borkdude/edamame"
+                          :sha "ce13fd14275548bebf3eb5c9f2d003e9c96ccdb0"}
         org.clojure/test.check {:mvn/version "0.9.0"}}}

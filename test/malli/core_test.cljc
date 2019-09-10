@@ -1,9 +1,7 @@
 (ns malli.core-test
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
-            [malli.transform :as transform]
-            #?@(:clj  [[clojure.edn]]
-                :cljs [[cljs.reader]])))
+            [malli.transform :as transform]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -14,13 +12,7 @@
   (apply = (map with-schema-forms results)))
 
 (defn over-the-wire [?schema]
-  (-> ?schema
-      (m/schema)
-      (m/form)
-      (pr-str)
-      (#?(:clj  clojure.edn/read-string,
-          :cljs cljs.reader/read-string))
-      (m/schema)))
+  (-> ?schema (m/serialize) (m/deserialize)))
 
 (deftest keyword->string
   (is (= "abba" (m/keyword->string :abba)))

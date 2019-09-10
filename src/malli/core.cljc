@@ -1,6 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [-name eval name merge])
-  (:require [sci.core :as sci]))
+  (:require [sci.core :as sci]
+            [edamame.core :as edamame]))
 
 ;;
 ;; protocols
@@ -680,6 +681,17 @@
                              (mapcat #(-> % (childs opts) (-parse-keys opts) :forms) schemas))))
                    (schema opts)))))))
 
+(defn serialize
+  ([?schema]
+   (serialize ?schema nil))
+  ([?schema opts]
+   (pr-str (form ?schema opts))))
+
+(defn deserialize
+  ([form]
+   (deserialize form nil))
+  ([form opts]
+   (schema (edn/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) opts)))
 ;;
 ;; registries
 ;;

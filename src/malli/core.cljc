@@ -691,7 +691,8 @@
   ([form]
    (deserialize form nil))
   ([form opts]
-   (schema (edn/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) opts)))
+   (schema (edamame/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) opts)))
+
 ;;
 ;; registries
 ;;

@@ -8,6 +8,17 @@
                                meta-merge {:mvn/version "1.0.0"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "dc960158ccb9cf8b5dc555842eea5e1af12f28c2"}}}
+           :jar {:extra-deps {pack/pack.alpha
+                              {:git/url "https://github.com/juxt/pack.alpha.git"
+                               :sha "2769a6224bfb938e777906ea311b3daf7d2220f5"}}
+                 :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
+                             "--project-path" "malli.jar"]}
+           :deploy {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
+                    :main-opts ["-m" "deps-deploy.deps-deploy" "deploy"
+                                "malli.jar"]}
+           :install {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
+                     :main-opts ["-m" "deps-deploy.deps-deploy" "install"
+                                 "malli.jar"]}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium {:mvn/version "0.4.5"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}

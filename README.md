@@ -375,24 +375,21 @@ Sampling values:
 
 ## Persisting Schemas 
 
-Serializing & Deserializing schemas, no `eval` needed.
+Serializing & Deserializing schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
 ```clj
-(require '[clojure.edn :as edn])
-
-(-> [:map
-     [:id int?]
-     [:name string?]
-     [:lonlat [:tuple double? double?]]]
-    (m/schema)
-    (m/form)
-    (pr-str)
-    (edn/read-string)
-    (m/schema)
+(-> [:and
+     [:map
+      [:x int?]
+      [:y int?]]
+     [:fn '(fn [{:keys [x y]}] (> x y))]]
+    (m/serialize)
+    (doto prn)
+    (m/deserialize)
     (m/validate
-      {:id 42
-       :name "Tampere"
-       :lonlat [61.49911 23.78712]}))
+      {:x 2
+       :y 1}))
+; prints "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
 ; => true
 ```
 

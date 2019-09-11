@@ -42,7 +42,8 @@
    [[:tuple string? string?] {:type "array"
                               :items {}
                               :x-items [{:type "string"}
-                                        {:type "string"}]}]])
+                                        {:type "string"}]}]
+   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]])
 
 (deftest swagger-test
   (doseq [[schema swagger-schema] expectations]

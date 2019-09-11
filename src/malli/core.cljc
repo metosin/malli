@@ -467,13 +467,45 @@
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
+(defn- -re-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-name [_] :re)
+    (-into-schema [_ properties [child :as childs] _]
+      (when-not (= 1 (count childs))
+        (fail! ::child-error {:name :re, :properties properties, :childs childs, :min 1, :max 1}))
+      (let [re (re-pattern child)
+            validator (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false)))]
+        ^{:type ::schema}
+        (reify Schema
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (try
+                (if-not (re-find re x)
+                  (conj acc {:path path
+                             :in in
+                             :schema this
+                             :value x}))
+                (catch #?(:clj Exception, :cljs js/Error) e
+                  (let [type (:type (ex-data e))]
+                    (conj acc (cond-> {:path path
+                                       :in in
+                                       :schema this
+                                       :value x}
+                                      type (assoc :type type))))))))
+          (-transformer [_ _])
+          (-accept [this visitor opts] (visitor this [] opts))
+          (-properties [_] properties)
+          (-form [_] (create-form :re properties childs)))))))
+
 (defn- -fn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] :fn)
     (-into-schema [_ properties childs _]
       (when-not (= 1 (count childs))
-        (fail! ::child-error {:name :vector, :properties properties, :childs childs, :min 1, :max 1}))
+        (fail! ::child-error {:name :fn, :properties properties, :childs childs, :min 1, :max 1}))
       (let [f (eval (first childs))
             validator (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false)))]
         ^{:type ::schema}
@@ -722,6 +754,7 @@
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)
+   :re (-re-schema)
    :fn (-fn-schema)})
 
 (def default-registry

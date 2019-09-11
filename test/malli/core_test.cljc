@@ -152,6 +152,25 @@
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
+  (testing "re schemas"
+    (let [form [:re {:description "a regex"} "^[a-z]+\\.[a-z]+$"]
+          schema (m/schema form)]
+
+      (is (true? (m/validate schema "a.b")))
+      (is (false? (m/validate schema "abba")))
+      (is (false? (m/validate schema ".b")))
+      (is (false? (m/validate schema false)))
+
+      (is (nil? (m/explain schema "a.b")))
+      (is (results= {:schema schema, :value "abba", :errors [{:path [], :in [], :schema schema, :value "abba"}]}
+                    (m/explain schema "abba")))
+
+      (is (true? (m/validate (over-the-wire schema) "a.b")))
+
+      (is (= [:re] (m/accept schema visitor)))
+
+      (is (= form (m/form schema)))))
+
   (testing "fn schemas"
     (doseq [fn ['(fn [x] (and (int? x) (< 10 x 18)))
                 "(fn [x] (and (int? x) (< 10 x 18)))"]]

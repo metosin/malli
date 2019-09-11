@@ -339,6 +339,10 @@ Scehmas can be used to generate values:
 (mg/generate pos-int? {:seed 10, :size 100})
 ;; => 55740
 
+;; regexs work too
+(mg/generate [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] {:seed 42, :size 10})
+; => "CaR@MavCk70OHiX.yZ"
+
 ;; portable gen/fmap
 (mg/generate
   [:and {:gen/fmap '(partial str "kikka_")}
@@ -448,7 +452,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:set`, `:tuple`, `:enum`, `:fn` and `:maybe`.
+Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:set`, `:tuple`, `:enum`, `:maybe`, `:re` and `:fn`.
 
 ### Custom registry
 

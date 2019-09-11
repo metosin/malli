@@ -45,9 +45,10 @@
   (let [[k-gen v-gen] (map #(generator % opts) (m/childs schema opts))]
     (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
 
-(defn -re-gen [schema opts]
-  (let [[re] (m/childs schema opts)]
-    (gen2/string-from-regex (re-pattern (str/replace re #"^\^?(.*?)(\$?)$" "$1")))))
+#?(:clj
+   (defn -re-gen [schema opts]
+     (let [[re] (m/childs schema opts)]
+       (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))))
 
 ;;
 ;; generators
@@ -74,7 +75,7 @@
 (defmethod -generator :enum [schema _] (gen/elements (m/childs schema)))
 (defmethod -generator :maybe [schema opts] (gen/one-of [(gen/return nil) (-> schema m/childs first (generator opts))]))
 (defmethod -generator :tuple [schema opts] (apply gen/tuple (->> schema m/childs (mapv #(generator % opts)))))
-(defmethod -generator :re [schema opts] (-re-gen schema opts))
+#?(:clj (defmethod -generator :re [schema opts] (-re-gen schema opts)))
 
 (defn- -create [schema opts]
   (let [gen (-generator schema opts)

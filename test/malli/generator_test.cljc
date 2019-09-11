@@ -5,7 +5,9 @@
             [malli.core :as m]))
 
 (deftest generator-test
-  (doseq [[?schema] json-schema-test/expectations]
+  (doseq [[?schema] json-schema-test/expectations
+          ;; cljs doesn't have a regex generator :(
+          #?@(:cljs [:when (not= (m/name ?schema) :re)])]
     (testing (m/form ?schema)
       (testing "generate"
         (is (= (mg/generate ?schema {:seed 123})

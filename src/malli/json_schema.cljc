@@ -80,6 +80,7 @@
 (defmethod accept :enum [_ _ children _] {:enum children})
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
+(defmethod accept :re [_ schema _ opts] {:type "string", :pattern (first (m/childs schema opts))})
 (defmethod accept :fn [_ _ _ _] {})
 
 (defn- -json-schema-visitor [schema childs opts]

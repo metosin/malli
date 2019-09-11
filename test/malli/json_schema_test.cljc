@@ -36,7 +36,8 @@
    [[:maybe string?] {:oneOf [{:type "string"} {:type "null"}]}]
    [[:tuple string? string?] {:type "array"
                               :items [{:type "string"} {:type "string"}]
-                              :additionalItems false}]])
+                              :additionalItems false}]
+   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]])
 
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]

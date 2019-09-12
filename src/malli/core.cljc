@@ -1,7 +1,8 @@
 (ns malli.core
   (:refer-clojure :exclude [-name eval name merge])
   (:require [sci.core :as sci]
-            [edamame.core :as edamame]))
+            [edamame.core :as edamame])
+  #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
 ;; protocols
@@ -475,7 +476,9 @@
       (when-not (= 1 (count childs))
         (fail! ::child-error {:name :re, :properties properties, :childs childs, :min 1, :max 1}))
       (let [re (re-pattern child)
-            validator (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false)))]
+            validator (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
+            form (if (::regex properties) re (create-form :re properties childs))
+            properties (dissoc properties ::regex)]
         ^{:type ::schema}
         (reify Schema
           (-validator [_] validator)
@@ -497,7 +500,13 @@
           (-transformer [_ _])
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
-          (-form [_] (create-form :re properties childs)))))))
+          (-form [_] form))))))
+
+(extend-protocol IntoSchema
+  #?(:clj Pattern, :cljs js/RegExp)
+  (-name [_] :re)
+  (-into-schema [this properties _ opts]
+    (-into-schema (-re-schema) (assoc properties ::regex true) [this] opts)))
 
 (defn- -fn-schema []
   ^{:type ::into-schema}
@@ -759,3 +768,15 @@
 
 (def default-registry
   (clojure.core/merge predicate-registry comparator-registry base-registry))
+
+(validate #"\d+\.\d+" "1.2")
+
+(defn visitor [schema childs _]
+  (into [(name schema)] (seq childs)))
+
+(accept #"\d+\.\d+" visitor)
+(accept [:re #"\d+\.\d+"] visitor)
+(accept [:re "\\d+\\.\\d+"] visitor)
+
+(form [:re #"\d+\.\d+"])
+(form [:re "\\d+\\.\\d+"])

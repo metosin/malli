@@ -768,15 +768,3 @@
 
 (def default-registry
   (clojure.core/merge predicate-registry comparator-registry base-registry))
-
-(validate #"\d+\.\d+" "1.2")
-
-(defn visitor [schema childs _]
-  (into [(name schema)] (seq childs)))
-
-(accept #"\d+\.\d+" visitor)
-(accept [:re #"\d+\.\d+"] visitor)
-(accept [:re "\\d+\\.\\d+"] visitor)
-
-(form [:re #"\d+\.\d+"])
-(form [:re "\\d+\\.\\d+"])

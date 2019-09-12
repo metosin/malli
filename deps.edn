@@ -27,8 +27,8 @@
                              "-Dclojure.compiler.direct-linking=true"]}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         borkdude/sci {:git/url "https://github.com/borkdude/sci"
-                      :sha "939cfde3143c84e2134caaff1b5640510e6096f6"}
+                      :sha "e73331e74322b6c6a823ed487a724caec3f28a9e"}
         borkdude/edamame {:git/url "https://github.com/borkdude/edamame"
-                          :sha "945cb3ee22fc5d20445a2b007df318b0efa63205"}
+                          :sha "739bce6ad55f1ea563ee1ddceb8d0a7f41d0f85b"}
         org.clojure/test.check {:mvn/version "0.9.0"}
         com.gfredericks/test.chuck {:mvn/version "0.2.10"}}}

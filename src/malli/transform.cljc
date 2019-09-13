@@ -169,18 +169,10 @@
           (if-let [keys (seq (:keys (m/-parse-keys (m/childs schema) nil)))]
             (fn [x] (select-keys x keys))))})
 
-(defn +keys-decoders+ [key-fn]
-  {:map (fn [schema]
-          (if-let [keys (seq (:keys (m/-parse-keys (m/childs schema) nil)))]
-            (fn [x]
-              (reduce
-                (fn [acc k]
-                  (if-let [[_ v] (seq (find acc k))]
-                    (-> acc
-                        (assoc (key-fn k) v)
-                        (dissoc k))
-                    acc))
-                x keys))))})
+(defn +key-decoders+ [key-fn]
+  {:map-key (constantly
+              (fn [x]
+                (key-fn x)))})
 
 ;;
 ;; transformers
@@ -201,10 +193,10 @@
     {:name ::strip-extra-keys
      :transformers +strip-extra-keys-decoders+}))
 
-(defn keys-transformer [key-fn]
+(defn key-transformer [key-fn]
   (transformer
-    {:name ::keys-transformer
-     :transformers (+keys-decoders+ key-fn)}))
+    {:name ::key-transformer
+     :transformers (+key-decoders+ key-fn)}))
 
 (def collection-transformer
   (transformer

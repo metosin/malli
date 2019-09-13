@@ -120,4 +120,12 @@
                                   transform/strip-extra-keys-transformer
                                   transform/json-transformer)]
     (is (= :kikka (m/transform keyword? "kikka" strict-json-transformer)))
-    (is (= {:x :kikka} (m/transform [:map [:x keyword?]] {:x "kikka"} strict-json-transformer)))))
+    (is (= {:x :kikka} (m/transform [:map [:x keyword?]] {:x "kikka"} strict-json-transformer))))
+
+  (let [strip-extra-key-transformer (transform/transformer
+                                      transform/strip-extra-keys-transformer
+                                      (transform/key-transformer #(-> % name (str "_key") keyword)))]
+    (is (= {:x_key 18 :y_key "john"}
+           (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+                        {:x 18 :y "john" :a "doe"}
+                        strip-extra-key-transformer)))))

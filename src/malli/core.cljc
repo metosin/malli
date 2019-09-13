@@ -26,10 +26,10 @@
   (-value-transformer [this schema] "returns a function to transform value for the given schema"))
 
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
-          (.write w (str "#IntoSchema{:name " (-name v) "}"))))
+          (.write w (str "#IntoSchema{:name " (pr-str (-name v)) "}"))))
 
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w]
-          (.write w (str (-form v)))))
+          (.write w (pr-str (-form v)))))
 
 ;;
 ;; impl
@@ -468,7 +468,7 @@
           (-properties [_] properties)
           (-form [_] (create-form :enum properties childs)))))))
 
-(defn- -re-schema []
+(defn- -re-schema [class?]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-name [_] :re)
@@ -477,8 +477,7 @@
         (fail! ::child-error {:name :re, :properties properties, :childs childs, :min 1, :max 1}))
       (let [re (re-pattern child)
             validator (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
-            form (if (::regex properties) re (create-form :re properties childs))
-            properties (dissoc properties ::regex)]
+            form (if class? re (create-form :re properties childs))]
         ^{:type ::schema}
         (reify Schema
           (-validator [_] validator)
@@ -501,12 +500,6 @@
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] form))))))
-
-(extend-protocol IntoSchema
-  #?(:clj Pattern, :cljs js/RegExp)
-  (-name [_] :re)
-  (-into-schema [this properties _ opts]
-    (-into-schema (-re-schema) (assoc properties ::regex true) [this] opts)))
 
 (defn- -fn-schema []
   ^{:type ::into-schema}
@@ -588,17 +581,13 @@
   ([?schema]
    (schema ?schema nil))
   ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
-   (cond
-     (schema? ?schema) ?schema
-     (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
-     :else (if (vector? ?schema)
-             (apply -into-schema (concat [(get registry (first ?schema))]
-                                         (-properties-and-childs (rest ?schema)) [opts]))
-             (if-let [schema' (get registry ?schema)]
-               (if (schema? schema')
-                 schema'
-                 (-into-schema schema' nil nil opts))
-               (fail! ::invalid-schema {:schema ?schema}))))))
+   (let [-get #(or (get registry %) (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
+     (cond
+       (schema? ?schema) ?schema
+       (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
+       (vector? ?schema) (apply -into-schema (concat [(-get (first ?schema))]
+                                                     (-properties-and-childs (rest ?schema)) [opts]))
+       :else (or (some-> ?schema -get schema) (fail! ::invalid-schema {:schema ?schema}))))))
 
 (defn form
   ([?schema]
@@ -622,8 +611,10 @@
   ([?schema]
    (childs ?schema nil))
   ([?schema opts]
-   (let [schema (schema ?schema opts)]
-     (->> schema (-form) (drop (if (-properties schema) 2 1))))))
+   (let [schema (schema ?schema opts)
+         form (-form schema)]
+     (if (vector? form)
+       (->> form (drop (if (-properties schema) 2 1)))))))
 
 (defn name
   ([?schema]
@@ -746,6 +737,9 @@
         #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)]
        (reduce -register-var {})))
 
+(def class-registry
+  {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})
+
 (def comparator-registry
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
        (map (fn [[k v]] [k (-partial-fn-schema k v)]))
@@ -763,8 +757,8 @@
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)
-   :re (-re-schema)
+   :re (-re-schema false)
    :fn (-fn-schema)})
 
 (def default-registry
-  (clojure.core/merge predicate-registry comparator-registry base-registry))
+  (clojure.core/merge predicate-registry class-registry comparator-registry base-registry))

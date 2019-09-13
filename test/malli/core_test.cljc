@@ -238,7 +238,7 @@
                      :errors [{:path [], :in [], :schema schema1, :value "not-a-map", :type ::m/invalid-type}]}
                     (m/explain schema1 "not-a-map")))
 
-      (is (= {:x true, :y 1} (m/transform schema1 {:x "true", :y "1"} transform/string-transformer)))
+      (is (= {:x true} (m/transform schema1 {:x "true"} transform/string-transformer)))
       (is (= {:x "true", :y "1"} (m/transform schema1 {:x "true", :y "1"} transform/json-transformer)))
       (is (= {:x true, :y 1} (m/transform schema1 {:x true, :y 1, :a 1} transform/strip-extra-keys-transformer)))
 

@@ -250,13 +250,21 @@
                 (and transformers (not map-transformer))
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) x transformers)
+                    (reduce-kv (fn [acc k t]
+                                 (if-let [[_ v] (find x k)]
+                                   (assoc acc k (t v))
+                                   acc))
+                               x transformers)
                     x))
 
                 :else
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t] (assoc acc k (t (k x)))) (map-transformer x) transformers)
+                    (reduce-kv (fn [acc k t]
+                                 (if-let [[_ v] (find x k)]
+                                   (assoc acc k (t v))
+                                   acc))
+                               (map-transformer x) transformers)
                     x)))))
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))

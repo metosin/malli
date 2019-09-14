@@ -251,8 +251,8 @@
                 (fn [x]
                   (if (map? x)
                     (reduce-kv (fn [acc k t]
-                                 (if-let [[_ v] (find x k)]
-                                   (assoc acc k (t v))
+                                 (if-let [entry (find x k)]
+                                   (assoc acc k (t (val entry)))
                                    acc))
                                x transformers)
                     x))
@@ -261,8 +261,8 @@
                 (fn [x]
                   (if (map? x)
                     (reduce-kv (fn [acc k t]
-                                 (if-let [[_ v] (find x k)]
-                                   (assoc acc k (t v))
+                                 (if-let [entry (find x k)]
+                                   (assoc acc k (t (val entry)))
                                    acc))
                                (map-transformer x) transformers)
                     x)))))

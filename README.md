@@ -8,8 +8,9 @@ Plain data Schemas for Clojure/Script.
 
 - Schemas as data
 - Schema-driven Validation
-- Schema-driven Transformations
+- Schema-driven Transformation
 - Schema-driven Value Generation
+- Infer Schemas from sample data
 - Tools for programming with Schemas
 - No global state, explicit everything
 - First class error messages

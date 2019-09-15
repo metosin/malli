@@ -4,7 +4,8 @@
 (declare ->infer)
 (declare schema)
 
-(def preferences (-> ['int? 'integer? 'number? 'double? 'keyword? 'symbol? 'string? 'boolean?] (zipmap (range))))
+(def preferences
+  (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean?] (reverse) (zipmap (range))))
 
 (defn- -safe? [f & args]
   (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
@@ -50,7 +51,7 @@
   (let [max (->> schemas vals (apply max))]
     (->> schemas
          (filter #(= max (val %)))
-         (map (fn [[k]] [k (preferences k 0)]))
+         (map (fn [[k]] [k (preferences k -1)]))
          (sort-by (comp second) >)
          (ffirst))))
 

@@ -10,7 +10,7 @@ Plain data Schemas for Clojure/Script.
 - Schema-driven Validation
 - Schema-driven Transformation
 - Schema-driven Value Generation
-- Infer Schemas from sample data
+- Infer Schemas from sample values
 - Tools for programming with Schemas
 - No global state, explicit everything
 - First class error messages
@@ -236,12 +236,11 @@ Serializing & Deserializing schemas as [EDN](https://github.com/edn-format/edn),
       [:y int?]]
      [:fn '(fn [{:keys [x y]}] (> x y))]]
     (m/serialize)
-    (doto prn)
+    (doto prn) ; "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
     (m/deserialize)
     (m/validate
       {:x 2
        :y 1}))
-; prints "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
 ; => true
 ```
 
@@ -490,6 +489,10 @@ All public functions take optional options map with optional `:registry` key. It
 
 Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
 
+#### `malli.core/class-registry`
+
+Class-based schemas, contains `java.util.regex.Pattern` & `js/RegExp`.
+
 #### `malli.core/comparator-registry`
 
 Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
@@ -505,6 +508,7 @@ Example to create a custom registry without the default core predicates and with
 ```clj
 (def registry
   (merge
+    m/class-registry
     m/comparator-registry
     m/base-registry
     {:int (m/fn-schema :int int?)
@@ -632,13 +636,15 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Links (and thanks)
 
+- Schema https://github.com/plumatic/schema
 - Clojure.spec https://clojure.org/guides/spec
 - Core.typed https://github.com/clojure/core.typed
 - TypeScript https://www.typescriptlang.org/
-- Schema https://github.com/plumatic/schema
 - Struct https://funcool.github.io/struct/latest/
 - JOI https://github.com/hapijs/joi
 - JSON Schema https://json-schema.org/understanding-json-schema/index.html
+- Spec-provider: https://github.com/stathissideris/spec-provider
+- F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 
 ## Running tests
 

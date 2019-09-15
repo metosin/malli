@@ -301,6 +301,49 @@ Sampling values:
 ; => (25 39 51 13 53 43 57 15 26 27)
 ```
 
+## Inferring Schemas from sample data
+
+Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):
+
+
+```clj
+(require '[malli.provider :as mp])
+
+(def samples
+  [{:id "Lillan"
+    :tags #{:artesan :coffee :hotel}
+    :address {:street "Ahlmanintie 29"
+              :city "Tampere"
+              :zip 33100
+              :lonlat [61.4858322, 23.7854658]}}
+   {:id "Huber",
+    :description "Beefy place"
+    :tags #{:beef :wine :beer}
+    :address {:street "Aleksis Kiven katu 13"
+              :city "Tampere"
+              :zip 33200
+              :lonlat [61.4963599 23.7604916]}}])
+
+(mp/provide samples)
+;[:map
+; [:id string?]
+; [:tags [:set keyword?]]
+; [:address
+;  [:map
+;   [:street string?]
+;   [:city string?]
+;   [:zip number?]
+;   [:lonlat [:vector double?]]]]
+; [:description {:optional true} string?]]
+```
+
+All samples are valid against the inferred schema:
+
+```clj
+(every? (partial m/validate (mp/provide samples)) samples)
+; => true
+```
+
 ## Schema Transformation
 
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):

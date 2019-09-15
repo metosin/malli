@@ -22,6 +22,11 @@
                (mg/sample ?schema {:seed 123, :size 10})))
         (doseq [value (mg/sample ?schema {:seed 123})]
           (is (m/validate ?schema value))))))
+
+  #?(:clj (testing "regex"
+            (let [re #"^\d+ \d+$"]
+              (m/validate re (mg/generate re)))))
+
   (testing "no generator"
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)

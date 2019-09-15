@@ -47,7 +47,7 @@
 
 #?(:clj
    (defn -re-gen [schema opts]
-     (let [[re] (m/childs schema opts)]
+     (let [re (or (first (m/childs schema opts)) (m/form schema opts))]
        (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))))
 
 ;;

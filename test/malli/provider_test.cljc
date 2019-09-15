@@ -5,7 +5,6 @@
 
 (def expectations
   [[int? [1 2 3]]
-   [number? [1 2.0]]
    [keyword? [:kikka :kukka]]
    [qualified-keyword? [::kikka ::kukka]]
 

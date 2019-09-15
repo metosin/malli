@@ -4,14 +4,12 @@
 (declare ->infer)
 (declare schema)
 
-(def preferences
-  (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean?] (reverse) (zipmap (range))))
+(def preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean?]
+                     (reverse) (zipmap (range))))
 
-(defn- -safe? [f & args]
-  (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
+(defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [registry]
-  (->> registry (vals) (keep (fn [?schema] (try (m/schema ?schema) (catch Exception _))))))
+(defn- registry-schemas [registry] (->> registry (vals) (keep (partial -safe? m/schema))))
 
 (defn- ->infer-schemas [{:keys [registry] :or {registry m/default-registry}}]
   (let [registry-schemas (registry-schemas registry)]
@@ -24,7 +22,8 @@
   (reduce (->infer opts) acc x))
 
 (defn- ->infer [opts]
-  (let [infer-schemas (->infer-schemas opts)]
+  (let [infer-schemas (->infer-schemas opts)
+        merge+ (fnil (partial merge-with +) {})]
     (fn [acc x]
       (let [type (cond
                    (map? x) :map
@@ -35,8 +34,8 @@
         (-> acc
             (update :count (fnil inc 0))
             (update-in [:types type :count] (fnil inc 0))
-            (cond-> (= :value type) (-> (update-in [:types type :values] (fnil (partial merge-with +) {}) {x 1})
-                                        (update-in [:types type :schemas] (fnil (partial merge-with +) {}) (infer-schemas x)))
+            (cond-> (= :value type) (-> (update-in [:types type :values] merge+ {x 1})
+                                        (update-in [:types type :schemas] merge+ (infer-schemas x)))
                     (= :map type) (update-in [:types type] (fnil -infer-map {}) x opts)
                     (#{:set :vector :list} type) (update-in [:types type :values] (fnil -infer-seq {}) x opts)))))))
 

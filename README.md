@@ -224,6 +224,83 @@ Schemas can be deep-merged with `m/merge`:
 ; [:description string?]]
 ```
 
+## Persisting Schemas 
+
+Serializing & Deserializing schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
+
+```clj
+(-> [:and
+     [:map
+      [:x int?]
+      [:y int?]]
+     [:fn '(fn [{:keys [x y]}] (> x y))]]
+    (m/serialize)
+    (doto prn)
+    (m/deserialize)
+    (m/validate
+      {:x 2
+       :y 1}))
+; prints "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
+; => true
+```
+
+## Value Generation
+
+Scehmas can be used to generate values:
+
+```clj
+(require '[malli.generator :as mg])
+
+;; random
+(mg/generate keyword?)
+; => :?
+
+;; using seed
+(mg/generate [:enum "a" "b" "c"] {:seed 42})
+;; => "a"
+
+;; using seed and size
+(mg/generate pos-int? {:seed 10, :size 100})
+;; => 55740
+
+;; regexs work too
+(mg/generate [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] {:seed 42, :size 10})
+; => "CaR@MavCk70OHiX.yZ"
+
+;; portable gen/fmap
+(mg/generate
+  [:and {:gen/fmap '(partial str "kikka_")}
+   string?]
+  {:seed 10, :size 10})
+;; => "kikka_WT3K0yax2"
+```
+
+Generated values are valid:
+
+```clj
+(mg/generate Address {:seed 123, :size 4})
+;{:id "H7",
+; :tags #{:v?.w.t6!.QJYk-/-?s*4
+;         :_7U
+;         :QdG/Xi8J
+;         :*Q-.p*8*/n-J9u}
+; :address {:street "V9s"
+;           :city ""
+;           :zip 3
+;           :lonlat [-2.75 -0.625]}}
+
+(m/validate Address (mg/generate Address))
+; => true
+```
+
+Sampling values:
+
+```clj
+;; sampling
+(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
+; => (25 39 51 13 53 43 57 15 26 27)
+```
+
 ## Schema Transformation
 
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):
@@ -318,83 +395,6 @@ Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Speci
 ;                                                        {:type "number", :format "double"}]}},
 ;                        :required [:street :city :zip :lonlat]}},
 ; :required [:id :tags :address]}
-```
-
-## Value Generation
-
-Scehmas can be used to generate values:
-
-```clj
-(require '[malli.generator :as mg])
-
-;; random
-(mg/generate keyword?)
-; => :?
-
-;; using seed
-(mg/generate [:enum "a" "b" "c"] {:seed 42})
-;; => "a"
-
-;; using seed and size
-(mg/generate pos-int? {:seed 10, :size 100})
-;; => 55740
-
-;; regexs work too
-(mg/generate [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] {:seed 42, :size 10})
-; => "CaR@MavCk70OHiX.yZ"
-
-;; portable gen/fmap
-(mg/generate
-  [:and {:gen/fmap '(partial str "kikka_")}
-   string?]
-  {:seed 10, :size 10})
-;; => "kikka_WT3K0yax2"
-```
-
-Generated values are valid:
-
-```clj
-(mg/generate Address {:seed 123, :size 4})
-;{:id "H7",
-; :tags #{:v?.w.t6!.QJYk-/-?s*4
-;         :_7U
-;         :QdG/Xi8J
-;         :*Q-.p*8*/n-J9u}
-; :address {:street "V9s"
-;           :city ""
-;           :zip 3
-;           :lonlat [-2.75 -0.625]}}
-
-(m/validate Address (mg/generate Address))
-; => true
-```
-
-Sampling values:
-
-```clj
-;; sampling
-(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
-; => (25 39 51 13 53 43 57 15 26 27)
-```
-
-## Persisting Schemas 
-
-Serializing & Deserializing schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
-
-```clj
-(-> [:and
-     [:map
-      [:x int?]
-      [:y int?]]
-     [:fn '(fn [{:keys [x y]}] (> x y))]]
-    (m/serialize)
-    (doto prn)
-    (m/deserialize)
-    (m/validate
-      {:x 2
-       :y 1}))
-; prints "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
-; => true
 ```
 
 ## Performance

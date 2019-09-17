@@ -46,7 +46,7 @@
     x))
 
 (defn eval [code]
-  (sci/eval-string (str code) {:realize-max 100}))
+  (sci/eval-string (str code) {:preset :termination-safe}))
 
 (defn fail!
   ([type]

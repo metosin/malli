@@ -149,6 +149,52 @@ Detailed errors with `m/explain`:
 ;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
+## Custom Error Messages
+
+Schema properties `:error/message` and `:error/fn` can be used for human-readable errors:
+
+```clj
+(-> [int? {:error/message "should be an int"}]
+    (m/explain "kikka")
+    :errors
+    (first)
+    (m/error-message))
+; "should be an int"
+
+(-> [int? {:error/fn '(fn [schema value opts] (str "should be a int, was " (type value)))}]
+    (m/explain "kikka")
+    :errors
+    (first)
+    (m/error-message))
+; "should be a int, was class java.lang.String"
+```
+
+Error property values can be wrapped into localication maps (default-locale `:en`):
+
+```clj
+(-> [int? {:error/message {:en "should be an int"
+                           :fi "pitäisi olla numero"}}]
+    (m/explain "kikka")
+    :errors
+    (first)
+    (m/error-message {:locale :fi}))
+; "pitäisi olla numero"
+```
+
+Schema-based defaults can be used:
+
+```clj
+(-> int?
+    (m/explain "kikka")
+    :errors
+    (first)
+    (m/error-message
+      {:locale :fi
+       :errors {'int? {:error/message {:en "should be an int"
+                                       :fi "pitäisi olla numero"}}}}))
+; "pitäisi olla numero"
+```
+
 ## Value Transformation
 
 Schema-driven value transformations with `m/transform`:

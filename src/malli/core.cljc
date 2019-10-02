@@ -45,8 +45,8 @@
       (clojure.core/name x))
     x))
 
-(defn eval [code]
-  (sci/eval-string (str code) {:preset :termination-safe}))
+(defn eval [?code]
+  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe})))
 
 (defn fail!
   ([type]
@@ -662,6 +662,18 @@
    (explain ?schema value nil))
   ([?schema value opts]
    ((explainer ?schema opts) value [] [])))
+
+(defn error-message
+  ([error]
+   (error-message error nil))
+  ([{:keys [value schema]} {:keys [errors locale] :or {errors {}} :as opts}]
+   (let [maybe-localized (fn [x] (if (map? x) (get x (or locale :en)) x))
+         schema-properties (properties schema)
+         default-properties (errors (name schema))]
+     (or (if-let [fn (maybe-localized (:error/fn schema-properties))] ((eval fn) schema value opts))
+         (maybe-localized (:error/message schema-properties))
+         (if-let [fn (maybe-localized (:error/fn default-properties))] ((eval fn) schema value opts))
+         (maybe-localized (:error/message default-properties))))))
 
 (defn transformer
   "Creates a value transformer given a transformer and a schema."

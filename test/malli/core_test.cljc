@@ -34,6 +34,14 @@
 (defn visitor [schema childs _]
   (into [(m/name schema)] (seq childs)))
 
+(deftest eval-test
+  (is (= 2 ((m/eval inc) 1)))
+  (is (= 2 ((m/eval 'inc) 1)))
+  (is (= 2 ((m/eval '#(inc %)) 1)))
+  (is (= 2 ((m/eval '#(inc %1)) 1)))
+  (is (= 2 ((m/eval '(fn [x] (inc x))) 1)))
+  (is (= 2 ((m/eval "(fn [x] (inc x))") 1))))
+
 (deftest validation-test
 
   (testing "coercion"
@@ -496,6 +504,29 @@
     (is (= [1 1] (?path (m/explain [:map [:x int?]] {:x "1"}))))
     (is (= [2 1] (?path (m/explain [:map {:name int?} [:x int?]] {:x "1"}))))
     (is (= [2 2] (?path (m/explain [:map {:name int?} [:x {:optional false} int?]] {:x "1"}))))))
+
+(deftest error-message-test
+  (let [msg "should be an int"
+        fn1 (fn [_ value _] (str "should be an int, was " value))
+        fn2 '(fn [_ value _] (str "should be an int, was " value))]
+    (doseq [[schema value message opts]
+            [;; via schema
+             [[int? {:error/message msg}] "kikka" "should be an int"]
+             [[int? {:error/fn fn1}] "kikka" "should be an int, was kikka"]
+             [[int? {:error/fn fn2}] "kikka" "should be an int, was kikka"]
+             [[int? {:error/message msg, :error/fn fn2}] "kikka" "should be an int, was kikka"]
+             ;; via defaults
+             [[int?] "kikka" "should be an int" {:errors {'int? {:error/message msg}}}]
+             [[int?] "kikka" "should be an int, was kikka" {:errors {'int? {:error/fn fn1}}}]
+             [[int?] "kikka" "should be an int, was kikka" {:errors {'int? {:error/fn fn2}}}]
+             [[int?] "kikka" "should be an int, was kikka" {:errors {'int? {:error/message msg, :error/fn fn2}}}]
+             ;; both
+             [[int?
+               {:error/message msg, :error/fn fn2}]
+              "kikka" "should be an int, was kikka"
+              {:errors {'int? {:error/message "fail1", :error/fn (constantly "fail2")}}}]]]
+      (is (= message (-> (m/explain schema value) :errors first (m/error-message opts)))))))
+
 
 (deftest properties-test
   (testing "properties can be set and retrieved"

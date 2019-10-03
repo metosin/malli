@@ -158,14 +158,14 @@ Schema properties `:error/message` and `:error/fn` can be used for human-readabl
     (m/explain "kikka")
     :errors
     (first)
-    (m/error-message))
+    (me/error-message))
 ; "should be an int"
 
 (-> [int? {:error/fn '(fn [schema value opts] (str "should be a int, was " (type value)))}]
     (m/explain "kikka")
     :errors
     (first)
-    (m/error-message))
+    (me/error-message))
 ; "should be a int, was class java.lang.String"
 ```
 
@@ -177,7 +177,7 @@ Error property values can be wrapped into localication maps (default-locale `:en
     (m/explain "kikka")
     :errors
     (first)
-    (m/error-message {:locale :fi}))
+    (me/error-message {:locale :fi}))
 ; "pitäisi olla numero"
 ```
 
@@ -188,7 +188,7 @@ Schema-based defaults can be used:
     (m/explain "kikka")
     :errors
     (first)
-    (m/error-message
+    (me/error-message
       {:locale :fi
        :errors {'int? {:error/message {:en "should be an int"
                                        :fi "pitäisi olla numero"}}}}))

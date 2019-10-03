@@ -151,7 +151,23 @@ Detailed errors with `m/explain`:
 
 ## Custom Error Messages
 
-Schema properties `:error/message` and `:error/fn` can be used for human-readable errors:
+Namespace `malli.error` contains helpers to emitting human-readable errors. Schema properties `:error/message` and `:error/fn` can used to customize messages.
+
+```clj
+(require '[malli.error :as me])
+
+(-> [:map
+     [:x int?]
+     [:y int?]
+     [:z [pos-int? {:error/message "be positive"}]]]
+    (m/explain {:x 1, :y "2", :z -1})
+    (me/merge-errors))
+;{:x 1,
+; :y #SchemaError{:value "2", :message "should be an int"},
+; :z #SchemaError{:value -1, :message "be positive"}}
+```
+
+With custom error message:
 
 ```clj
 (-> [int? {:error/message "should be an int"}]
@@ -160,7 +176,11 @@ Schema properties `:error/message` and `:error/fn` can be used for human-readabl
     (first)
     (me/error-message))
 ; "should be an int"
+```
 
+With custom message function:
+
+```clj
 (-> [int? {:error/fn '(fn [schema value opts] (str "should be a int, was " (type value)))}]
     (m/explain "kikka")
     :errors
@@ -169,7 +189,7 @@ Schema properties `:error/message` and `:error/fn` can be used for human-readabl
 ; "should be a int, was class java.lang.String"
 ```
 
-Error property values can be wrapped into localication maps (default-locale `:en`):
+Localization (default-locale `:en`):
 
 ```clj
 (-> [int? {:error/message {:en "should be an int"
@@ -178,20 +198,6 @@ Error property values can be wrapped into localication maps (default-locale `:en
     :errors
     (first)
     (me/error-message {:locale :fi}))
-; "pitäisi olla numero"
-```
-
-Schema-based defaults can be used:
-
-```clj
-(-> int?
-    (m/explain "kikka")
-    :errors
-    (first)
-    (me/error-message
-      {:locale :fi
-       :errors {'int? {:error/message {:en "should be an int"
-                                       :fi "pitäisi olla numero"}}}}))
 ; "pitäisi olla numero"
 ```
 

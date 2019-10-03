@@ -1,6 +1,7 @@
 (ns malli.error
   (:require [malli.core :as m]))
 
+;; TODO: complete this
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}

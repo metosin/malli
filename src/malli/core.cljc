@@ -469,7 +469,8 @@
                 (conj acc {:path path
                            :in in
                            :schema this
-                           :value x}))))
+                           :value x})
+                acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [_ _])
           (-accept [this visitor opts] (visitor this (vec childs) opts))
@@ -590,11 +591,11 @@
    (schema ?schema nil))
   ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
    (let [-get #(or (get registry %) (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
-   (cond
-     (schema? ?schema) ?schema
-     (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
+     (cond
+       (schema? ?schema) ?schema
+       (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
        (vector? ?schema) (apply -into-schema (concat [(-get (first ?schema))]
-                                                   (-properties-and-childs (rest ?schema)) [opts]))
+                                                     (-properties-and-childs (rest ?schema)) [opts]))
        :else (or (some-> ?schema -get schema) (fail! ::invalid-schema {:schema ?schema}))))))
 
 (defn form

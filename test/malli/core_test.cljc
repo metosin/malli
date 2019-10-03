@@ -477,7 +477,28 @@
                                      [schema [1 2]
                                       {:schema schema
                                        :value [1 2]
-                                       :errors [{:path [2], :in [1], :schema string?, :value 2}]}]])}]
+                                       :errors [{:path [2], :in [1], :schema string?, :value 2}]}]])
+                          "map+enum" (let [schema [:map [:x [:enum "x"]]
+                                                        [:y [:enum "y"]]]]
+
+                                         [[schema {:x "x" :y "y"}
+                                           nil]
+
+                                          [schema {:x "non-x" :y "y"}
+                                           {:schema schema
+                                            :value {:x "non-x" :y "y"}
+                                            :errors [{:path [1 1], :in [:x], :schema [:enum "x"] , :value "non-x"}]}]
+
+                                          [schema {:x "x" :y "non-y"}
+                                           {:schema schema
+                                            :value {:x "x" :y "non-y"}
+                                            :errors [{:path [2 1], :in [:y], :schema [:enum "y"] , :value "non-y"}]}]
+
+                                          [schema {:x "non-x" :y "non-y"}
+                                           {:schema schema
+                                            :value {:x "non-x" :y "non-y"}
+                                            :errors [{:path [1 1], :in [:x], :schema [:enum "x"] , :value "non-x"}
+                                                     {:path [2 1], :in [:y], :schema [:enum "y"] , :value "non-y"}]}]])}]
 
         (doseq [[name data] expectations
                 [schema value expected] data]

@@ -12,7 +12,7 @@
   (if (map? x) (get x locale (get x :en)) x))
 
 (defn -message [{:keys [value schema]} x locale opts]
-  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((eval fn) schema value opts))
+  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) schema value opts))
       (-maybe-localized (:error/message x) locale)))
 
 ;;
@@ -33,9 +33,9 @@
   ([explanation {:keys [errors locale] :or {errors default-errors} :as opts}]
    (reduce
      (fn [acc error]
-       (if (identical? ::m/missing-key (:type error))
-         (update-in acc (conj (:in error) (::m/key error))
-                    (fn [x] (->SchemaError x (-maybe-localized (:error/message (::m/missing-key errors)) locale))))
+       (if (= ::m/missing-key (:type error))
+         (update-in acc (conj (:in error) (::m/key error)) ->SchemaError
+                    (-maybe-localized (:error/message (::m/missing-key errors)) locale))
          (update-in acc (:in error) (fn [x] (->SchemaError x (error-message error opts))))))
      (:value explanation)
      (:errors explanation))))

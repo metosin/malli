@@ -33,8 +33,7 @@
                 [:d
                  [:map
                   [:e any?]
-                  [:f [int? {:error/message {:en "should be zip"
-                                             :fi "pitäisi olla numero"}}]]]]]
+                  [:f [int? {:error/message {:en "should be zip", :fi "pitäisi olla numero"}}]]]]]
         error? (partial me/->SchemaError "invalid")]
 
     (testing "with default locale"

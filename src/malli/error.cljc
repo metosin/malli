@@ -9,6 +9,9 @@
 
 (defrecord SchemaError [value message])
 
+#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
+          (.write w (str "#Error" (into {} v)))))
+
 (defn -maybe-localized [x locale]
   (if (map? x) (get x locale (get x :en)) x))
 

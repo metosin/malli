@@ -6,7 +6,12 @@
 (defn with-schema-forms [result]
   (some-> result
           (update :schema m/form)
-          (update :errors (partial map #(update % :schema m/form)))))
+          (update :errors (partial map (fn [error]
+                                         (-> error
+                                             (update :schema m/form)
+                                             (update :type (fnil identity nil))
+                                             (update :message (fnil identity nil))
+                                             (m/map->SchemaError)))))))
 
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
@@ -479,26 +484,26 @@
                                        :value [1 2]
                                        :errors [{:path [2], :in [1], :schema string?, :value 2}]}]])
                           "map+enum" (let [schema [:map [:x [:enum "x"]]
-                                                        [:y [:enum "y"]]]]
+                                                   [:y [:enum "y"]]]]
 
-                                         [[schema {:x "x" :y "y"}
-                                           nil]
+                                       [[schema {:x "x" :y "y"}
+                                         nil]
 
-                                          [schema {:x "non-x" :y "y"}
-                                           {:schema schema
-                                            :value {:x "non-x" :y "y"}
-                                            :errors [{:path [1 1], :in [:x], :schema [:enum "x"] , :value "non-x"}]}]
+                                        [schema {:x "non-x" :y "y"}
+                                         {:schema schema
+                                          :value {:x "non-x" :y "y"}
+                                          :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
 
-                                          [schema {:x "x" :y "non-y"}
-                                           {:schema schema
-                                            :value {:x "x" :y "non-y"}
-                                            :errors [{:path [2 1], :in [:y], :schema [:enum "y"] , :value "non-y"}]}]
+                                        [schema {:x "x" :y "non-y"}
+                                         {:schema schema
+                                          :value {:x "x" :y "non-y"}
+                                          :errors [{:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
 
-                                          [schema {:x "non-x" :y "non-y"}
-                                           {:schema schema
-                                            :value {:x "non-x" :y "non-y"}
-                                            :errors [{:path [1 1], :in [:x], :schema [:enum "x"] , :value "non-x"}
-                                                     {:path [2 1], :in [:y], :schema [:enum "y"] , :value "non-y"}]}]])}]
+                                        [schema {:x "non-x" :y "non-y"}
+                                         {:schema schema
+                                          :value {:x "non-x" :y "non-y"}
+                                          :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}
+                                                   {:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}]
 
         (doseq [[name data] expectations
                 [schema value expected] data]

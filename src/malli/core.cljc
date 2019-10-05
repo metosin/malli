@@ -219,12 +219,13 @@
                   explainers (mapv
                                (fn [[i [key {:keys [optional] :as key-properties} schema]]]
                                  (let [key-distance (if (seq key-properties) 2 1)
-                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))]
+                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))
+                                       key-path (into path [(+ i distance) 0])]
                                    (fn [x in acc]
                                      (if-let [v (key x)]
                                        (explainer v (conj in key) acc)
                                        (if-not optional
-                                         (conj acc (-> (error path in this nil ::missing-key) (assoc ::key key))))))))
+                                         (conj acc (error key-path (conj in key) this nil ::missing-key)))))))
                                (map-indexed vector entries))]
               (fn [x in acc]
                 (if-not (map? x)

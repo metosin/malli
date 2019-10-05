@@ -256,7 +256,7 @@
       (is (results= {:schema schema1
                      :value {:y "invalid" :z "kikka"}
                      :errors
-                     [{:path [], :in [], :schema schema1, :type ::m/missing-key, ::m/key :x}
+                     [{:path [1 0], :in [:x], :schema schema1, :type ::m/missing-key}
                       {:path [2 2], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema1 {:y "invalid" :z "kikka"})))
 

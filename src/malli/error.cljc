@@ -76,7 +76,7 @@
    (reduce
      (fn [acc error]
        (if (= ::m/missing-key (:type error))
-         (assoc-in acc (conj (:in error) (::m/key error))
+         (assoc-in acc (:in error)
                    (assoc error :message (-maybe-localized (:error/message (::m/missing-key errors)) locale)))
          (assoc-in acc (:in error) (assoc error :message (error-message error opts)))))
      (empty (:value explanation))

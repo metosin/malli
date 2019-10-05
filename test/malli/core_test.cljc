@@ -68,6 +68,9 @@
       (is (results= {:schema schema
                      :value "1"
                      :errors [{:path [], :in [], :schema schema, :value "1"}]}
+                    {:schema schema
+                     :value "1"
+                     :errors [(m/error [] [] schema "1")]}
                     (m/explain schema "1")))
 
       (is (= 1 (m/transform schema "1" transform/string-transformer)))
@@ -102,7 +105,19 @@
 
       (is (= [:and ['int?] [:or ['pos-int?] ['neg-int?]]] (m/accept schema visitor)))
 
-      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))))
+      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
+
+    (testing "explain with branches"
+      (let [schema [:and pos-int? neg-int?]]
+        (is (results= {:schema schema,
+                       :value -1,
+                       :errors [{:path [1], :in [], :schema pos-int?, :value -1}]}
+                      (m/explain schema -1))))
+      (let [schema [:and pos-int? neg-int?]]
+        (is (results= {:schema schema,
+                       :value 1,
+                       :errors [{:path [2], :in [], :schema neg-int?, :value 1}]}
+                      (m/explain schema 1))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

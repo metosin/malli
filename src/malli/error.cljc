@@ -7,15 +7,10 @@
    ::m/missing-key {:error/message {:en "missing required key"}}
    'int? {:error/message {:en "should be an int"}}})
 
-(defrecord SchemaError [value message])
-
-#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
-          (.write w (str "#Error" (into {} v)))))
-
-(defn -maybe-localized [x locale]
+(defn- -maybe-localized [x locale]
   (if (map? x) (get x locale (get x :en)) x))
 
-(defn -message [{:keys [value schema]} x locale opts]
+(defn- -message [{:keys [value schema]} x locale opts]
   (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) schema value opts))
       (-maybe-localized (:error/message x) locale)))
 
@@ -31,15 +26,15 @@
        (-message error (errors (m/name schema)) locale opts)
        (-maybe-localized (-> errors ::unknown :error/message) locale))))
 
-(defn merge-errors
+(defn check
   ([explanation]
-   (merge-errors explanation nil))
+   (check explanation nil))
   ([explanation {:keys [errors locale] :or {errors default-errors} :as opts}]
    (reduce
      (fn [acc error]
        (if (= ::m/missing-key (:type error))
-         (update-in acc (conj (:in error) (::m/key error)) ->SchemaError
-                    (-maybe-localized (:error/message (::m/missing-key errors)) locale))
-         (update-in acc (:in error) (fn [x] (->SchemaError x (error-message error opts))))))
-     (:value explanation)
+         (assoc-in acc (conj (:in error) (::m/key error))
+                   (assoc error :message (-maybe-localized (:error/message (::m/missing-key errors)) locale)))
+         (assoc-in acc (:in error) (assoc error :message (error-message error opts)))))
+     (empty (:value explanation))
      (:errors explanation))))

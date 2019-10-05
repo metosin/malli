@@ -28,7 +28,7 @@
 (defrecord SchemaError [path in schema value type message])
 
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
-          (.write w (str "#Error" (into {} v)))))
+          (.write w (str "#Error" (->> v (filter val) (into {}))))))
 
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
           (.write w (str "#IntoSchema{:class " v "}"))))
@@ -58,6 +58,9 @@
    (->SchemaError path in schema value nil nil))
   ([path in schema value type]
    (->SchemaError path in schema value type nil)))
+
+(defn error? [x]
+  (instance? SchemaError x))
 
 (defn fail!
   ([type]
@@ -128,9 +131,10 @@
                 (reduce
                   (fn [acc' explainer]
                     (let [acc'' (explainer x in acc')]
-                      (if (and short-circuit (identical? acc' acc''))
-                        (reduced acc)
-                        acc'')))
+                      (cond
+                        (and short-circuit (identical? acc' acc'')) (reduced acc)
+                        (nil? acc'') acc'
+                        :else acc'')))
                   acc explainers))))
           (-transformer [_ transformer]
             (let [tvs (into [] (keep #(-transformer % transformer) child-schemas))]

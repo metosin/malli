@@ -64,20 +64,29 @@
 (defn error-message
   ([error]
    (error-message error nil))
-  ([{:keys [schema] :as error} {:keys [errors locale] :or {errors default-errors} :as opts}]
+  ([{:keys [schema type] :as error} {:keys [errors locale] :or {errors default-errors} :as opts}]
    (or (-message error (m/properties schema) locale opts)
        (-message error (errors (m/name schema)) locale opts)
+       (some-> type errors :error/message (-maybe-localized opts))
        (-maybe-localized (-> errors ::unknown :error/message) locale))))
+
+(defn with-error-message
+  ([error]
+   (with-error-message error nil))
+  ([error opts]
+   (assoc error :message (error-message error opts))))
+
+(defn with-error-messages
+  ([explanation]
+   (with-error-messages explanation nil))
+  ([explanation opts]
+   (update explanation :errors (partial map #(with-error-message % opts)))))
 
 (defn check
   ([explanation]
    (check explanation nil))
-  ([explanation {:keys [errors locale] :or {errors default-errors} :as opts}]
+  ([explanation opts]
    (reduce
-     (fn [acc error]
-       (if (= ::m/missing-key (:type error))
-         (assoc-in acc (:in error)
-                   (assoc error :message (-maybe-localized (:error/message (::m/missing-key errors)) locale)))
-         (assoc-in acc (:in error) (assoc error :message (error-message error opts)))))
+     (fn [acc error] (assoc-in acc (:in error) (with-error-message error opts)))
      (empty (:value explanation))
      (:errors explanation))))

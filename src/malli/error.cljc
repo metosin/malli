@@ -1,7 +1,6 @@
 (ns malli.error
   (:require [malli.core :as m]))
 
-;; TODO: complete this
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
@@ -57,6 +56,23 @@
   (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) schema value opts))
       (-maybe-localized (:error/message x) locale)))
 
+(defn- -ensure [x k]
+  (if (sequential? x)
+    (let [size' (count x)]
+      (if (> k size') (into (vec x) (repeat (- (inc k) size') nil)) x))
+    x))
+
+(defn- -get [x k]
+  (if (set? x) (-> x vec (get k)) (get x k)))
+
+(defn- -put [x k v]
+  (if (set? x) (conj x v) (assoc x k v)))
+
+(defn- -assoc-in [acc value [p & ps] error]
+  (if p (let [acc' (-ensure (or acc (empty value)) p)
+              value' (if ps (-assoc-in (-get acc p) (-get value p) ps error) error)]
+          (-put acc' p value'))))
+
 ;;
 ;; public api
 ;;
@@ -74,7 +90,8 @@
        (-message error (m/properties schema) default-locale opts)
        (-message error (errors (m/name schema)) default-locale opts)
        (some-> type errors :error/message (-maybe-localized default-locale))
-       (-maybe-localized (-> errors ::unknown :error/message) locale))))
+       (-maybe-localized (-> errors ::unknown :error/message) locale)
+       (-maybe-localized (-> errors ::unknown :error/message) default-locale))))
 
 (defn with-error-message
   ([error]
@@ -88,11 +105,15 @@
   ([explanation opts]
    (update explanation :errors (partial map #(with-error-message % opts)))))
 
-(defn check
+(defn humanize
   ([explanation]
-   (check explanation nil))
-  ([explanation opts]
-   (reduce
-     (fn [acc error] (assoc-in acc (:in error) (with-error-message error opts)))
-     (empty (:value explanation))
-     (:errors explanation))))
+   (humanize explanation nil))
+  ([{:keys [value errors]} {f :wrap :or {f identity} :as opts}]
+   (if errors
+     (if (and (coll? value) (-> errors first :path seq))
+       (reduce
+         (fn [acc error]
+           (-assoc-in acc value (:in error) (f (with-error-message error opts))))
+         (empty value)
+         errors)
+       (f (with-error-message (first errors) opts))))))

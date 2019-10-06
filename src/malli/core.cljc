@@ -369,8 +369,11 @@
                 (cond
                   (not (fpred x)) (conj acc (error path in this x ::invalid-type))
                   (not (validate-limits x)) (conj acc (error path in this x ::limits))
-                  :else (loop [acc acc, i 0, [x & xs] x]
-                          (cond-> (explainer x (conj in i) acc) xs (recur (inc i) xs)))))))
+                  :else (let [size (count x)]
+                          (loop [acc acc, i 0, [x & xs] x]
+                            (if (< i size)
+                              (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
+                              acc)))))))
           (-transformer [_ transformer]
             (if-let [t (-transformer schema transformer)]
               (if fempty

@@ -327,6 +327,7 @@
     (testing "validation"
       (let [expectations {"vector" [[true [:vector int?] [1 2 3]]
                                     [false [:vector int?] [1 "2" 3]]
+                                    [false [:vector int?] [1 2 "3"]]
                                     [false [:vector int?] [nil]]
                                     [false [:vector int?] "invalid"]
 
@@ -344,6 +345,7 @@
 
                           "list" [[true [:list int?] '(1 2 3)]
                                   [false [:list int?] '(1 "2" 3)]
+                                  [false [:list int?] '(1 2 "3")]
                                   [false [:vector int?] '(nil)]
                                   [false [:list int?] "invalid"]
 
@@ -361,6 +363,7 @@
 
                           "set" [[true [:set int?] #{1 2 3}]
                                  [false [:set int?] #{1 "2" 3}]
+                                 [false [:set int?] #{1 2 "3"}]
                                  [false [:set int?] #{nil}]
                                  [false [:set int?] "invalid"]
 

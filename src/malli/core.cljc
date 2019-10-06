@@ -234,31 +234,28 @@
             (let [transformers (some->> entries
                                         (mapcat (fn [[k _ s]]
                                                   (let [key-transformer (-transformer (map-key k) transformer)
-                                                        value-transformer (-transformer s transformer)]
-                                                    [k [key-transformer value-transformer]])))
+                                                        value-transformer (-transformer s transformer)
+                                                        noop-transformer (fn [x] x)]
+                                                    (cond
+                                                      (and key-transformer value-transformer)
+                                                      [k [key-transformer value-transformer]]
+
+                                                      (and (not key-transformer) value-transformer)
+                                                      [k [noop-transformer value-transformer]]
+
+                                                      (and key-transformer (not value-transformer))
+                                                      [k [key-transformer noop-transformer]]))))
                                         (seq)
                                         (apply array-map))
                   map-transformer (-value-transformer transformer this)
                   apply-transformers (fn [m k [k-t v-t]]
-                                       (let [[_ v :as entry] (find m k)]
-                                         (cond
-                                           (or (not entry) (and (not k-t) (not v-t)))
-                                           m
-
-                                           (and entry k-t (not v-t))
-                                           (let [k' (k-t k)]
-                                             (-> m
-                                                 (assoc k' v)
-                                                 (cond-> (not (identical? k' k)) (dissoc k))))
-
-                                           (and entry (not k-t) v-t)
-                                           (assoc m k (v-t v))
-
-                                           :else
-                                           (let [k' (k-t k)]
-                                             (-> m
-                                                 (assoc k' (v-t v))
-                                                 (cond-> (not (identical? k' k)) (dissoc k)))))))]
+                                       (if-let [entry (find m k)]
+                                         (let [k' (k-t k)
+                                               v' (v-t (val entry))]
+                                           (-> m
+                                               (assoc k' v')
+                                               (cond-> (not (identical? k' k)) (dissoc k))))
+                                         m))]
               (cond
                 (and (not transformers) (not map-transformer))
                 nil
@@ -702,6 +699,7 @@
 (defn map-key [_]
   ^{:type ::schema}
   (reify Schema
+    (-name [_] :map-key)
     (-form [_] :map-key)
     (-transformer [this transformer] (-value-transformer transformer this))))
 

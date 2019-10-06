@@ -51,7 +51,7 @@
    #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])})
 
 (defn- -maybe-localized [x locale]
-  (if (map? x) (get x locale (get x :en)) x))
+  (if (map? x) (get x locale) x))
 
 (defn- -message [{:keys [value schema]} x locale opts]
   (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) schema value opts))
@@ -64,10 +64,16 @@
 (defn error-message
   ([error]
    (error-message error nil))
-  ([{:keys [schema type] :as error} {:keys [errors locale] :or {errors default-errors} :as opts}]
+  ([{:keys [schema type] :as error}
+    {:keys [errors locale default-locale]
+     :or {errors default-errors
+          default-locale :en} :as opts}]
    (or (-message error (m/properties schema) locale opts)
        (-message error (errors (m/name schema)) locale opts)
-       (some-> type errors :error/message (-maybe-localized opts))
+       (some-> type errors :error/message (-maybe-localized locale))
+       (-message error (m/properties schema) default-locale opts)
+       (-message error (errors (m/name schema)) default-locale opts)
+       (some-> type errors :error/message (-maybe-localized default-locale))
        (-maybe-localized (-> errors ::unknown :error/message) locale))))
 
 (defn with-error-message

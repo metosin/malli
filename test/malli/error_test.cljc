@@ -5,8 +5,8 @@
 
 (deftest error-message-test
   (let [msg "should be an int"
-        fn1 (fn [_ value _] (str "should be an int, was " value))
-        fn2 '(fn [_ value _] (str "should be an int, was " value))]
+        fn1 (fn [{:keys [value]} _] (str "should be an int, was " value))
+        fn2 '(fn [{:keys [value]} _] (str "should be an int, was " value))]
     (doseq [[schema value message opts]
             [;; via schema
              [[int? {:error/message msg}] "kikka" "should be an int"]
@@ -25,41 +25,81 @@
               {:errors {'int? {:error/message "fail1", :error/fn (constantly "fail2")}}}]]]
       (is (= message (-> (m/explain schema value) :errors first (me/error-message opts)))))))
 
-(deftest merge-errors-test
+(deftest humanize-test
+  (testing "nil if success"
+    (is (nil? (-> int?
+                  (m/explain 1)
+                  (me/humanize {:wrap :message})))))
+
+  (testing "top-level error"
+    (is (= "should be int"
+           (-> int?
+               (m/explain "1")
+               (me/humanize {:wrap :message})))))
+
+  (testing "vector"
+    (is (= [nil nil [nil "should be int"]]
+           (-> [:vector [:vector int?]]
+               (m/explain [[1 2] [2 2] [3 "4"]])
+               (me/humanize {:wrap :message})))))
+
+  (testing "set"
+    (is (= #{#{"should be int"}}
+           (-> [:set [:set int?]]
+               (m/explain #{#{1} #{"2"}})
+               (me/humanize {:wrap :message})))))
+
+  (testing "unknown"
+    (is (= "unknown error"
+           (-> [:list int?]
+               (m/explain [1])
+               (me/humanize {:wrap :message})))))
+
+  (testing "mixed bag"
+    (is (= [nil
+            {:x [nil "should be int" "should be int"]}
+            {:x "unknown error"}]
+           (-> [:vector [:map [:x [:vector int?]]]]
+               (m/explain
+                 [{:x [1 2 3]}
+                  {:x [1 "2" "3"]}
+                  {:x #{"whatever"}}])
+               (me/humanize {:wrap :message}))))))
+
+(deftest humanize-customization-test
   (let [schema [:map
                 [:a int?]
                 [:b pos-int?]
-                [:c [pos-int? {:error/message "stay positive"}]]
+                [:c [pos-int? {:error/message "STAY POSITIVE"
+                               :error/fn {:fi '(constantly "POSITIIVINEN")}}]]
                 [:d
                  [:map
                   [:e any?]
-                  [:f [int? {:error/message {:en "should be zip", :fi "pitäisi olla numero"}}]]]]]
-        error? (partial me/->SchemaError "invalid")]
+                  [:f [int? {:error/message {:en "SHOULD BE ZIP", :fi "PITÄISI OLLA NUMERO"}}]]]]]
+        value {:a "invalid"
+               :b "invalid"
+               :c "invalid"
+               :d {:f "invalid"}}]
 
     (testing "with default locale"
-      (is (= {:a (error? "should be an int")
-              :b (error? "unknown error")
-              :c (error? "stay positive"),
-              :d {:f (error? "should be zip"),
-                  :e (me/->SchemaError nil "missing required key")}}
-             (-> (m/explain
-                   schema
-                   {:a "invalid"
-                    :b "invalid"
-                    :c "invalid"
-                    :d {:f "invalid"}})
-                 (me/merge-errors)))))
+      (is (= {:a "should be int"
+              :b "should be positive int"
+              :c "STAY POSITIVE",
+              :d {:e "missing required key"
+                  :f "SHOULD BE ZIP"}}
+             (-> (m/explain schema value)
+                 (me/humanize {:wrap :message})))))
 
     (testing "localization is applied, if available"
-      (is (= {:a (error? "should be an int")
-              :b (error? "unknown error")
-              :c (error? "stay positive"),
-              :d {:f (error? "pitäisi olla numero"),
-                  :e (me/->SchemaError nil "missing required key")}}
-             (-> (m/explain
-                   schema
-                   {:a "invalid"
-                    :b "invalid"
-                    :c "invalid"
-                    :d {:f "invalid"}})
-                 (me/merge-errors {:locale :fi})))))))
+      (is (= {:a "NUMERO"
+              :b "should be positive int"
+              :c "POSITIIVINEN",
+              :d {:e "PUUTTUVA AVAIN"
+                  :f "PITÄISI OLLA NUMERO"}}
+             (-> (m/explain schema value)
+                 (me/humanize
+                   {:wrap :message
+                    :locale :fi
+                    :errors (-> me/default-errors
+                                (assoc-in ['int? :error/message :fi] "NUMERO")
+                                (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))

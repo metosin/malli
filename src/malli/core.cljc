@@ -5,7 +5,7 @@
   #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
-;; protocols
+;; protocols and records
 ;;
 
 (defprotocol IntoSchema
@@ -24,6 +24,11 @@
   (-transformer-name [this] "name of the transformer")
   (-transformer-options [this] "returns transformer options")
   (-value-transformer [this schema] "returns a function to transform value for the given schema"))
+
+(defrecord SchemaError [path in schema value type message])
+
+#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
+          (.write w (str "#Error" (->> v (filter val) (into {}))))))
 
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
           (.write w (str "#IntoSchema{:class " v "}"))))
@@ -47,6 +52,15 @@
 
 (defn eval [?code]
   (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe})))
+
+(defn error
+  ([path in schema value]
+   (->SchemaError path in schema value nil nil))
+  ([path in schema value type]
+   (->SchemaError path in schema value type nil)))
+
+(defn error? [x]
+  (instance? SchemaError x))
 
 (defn fail!
   ([type]
@@ -74,12 +88,7 @@
           (-validator [_] validator)
           (-explainer [this path]
             (fn [value in acc]
-              (if-not (validator value)
-                (conj acc {:path path
-                           :in in
-                           :schema this
-                           :value value})
-                acc)))
+              (if-not (validator value) (conj acc (error path in this value)) acc)))
           (-transformer [this transformer]
             (-value-transformer transformer this))
           (-accept [this visitor opts] (visitor this (vec childs) opts))
@@ -122,9 +131,10 @@
                 (reduce
                   (fn [acc' explainer]
                     (let [acc'' (explainer x in acc')]
-                      (if (and short-circuit (identical? acc' acc''))
-                        (reduced acc)
-                        acc'')))
+                      (cond
+                        (and short-circuit (identical? acc' acc'')) (reduced acc)
+                        (nil? acc'') acc'
+                        :else acc'')))
                   acc explainers))))
           (-transformer [_ transformer]
             (let [tvs (into [] (keep #(-transformer % transformer) child-schemas))]
@@ -209,24 +219,17 @@
                   explainers (mapv
                                (fn [[i [key {:keys [optional] :as key-properties} schema]]]
                                  (let [key-distance (if (seq key-properties) 2 1)
-                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))]
+                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))
+                                       key-path (into path [(+ i distance) 0])]
                                    (fn [x in acc]
                                      (if-let [v (key x)]
                                        (explainer v (conj in key) acc)
                                        (if-not optional
-                                         (conj acc {:path path
-                                                    :in in
-                                                    :schema this
-                                                    :type ::missing-key
-                                                    ::key key}))))))
+                                         (conj acc (error key-path (conj in key) this nil ::missing-key)))))))
                                (map-indexed vector entries))]
               (fn [x in acc]
                 (if-not (map? x)
-                  (conj acc {:path path
-                             :in in
-                             :schema this
-                             :value x
-                             :type ::invalid-type})
+                  (conj acc (error path in this x ::invalid-type))
                   (reduce
                     (fn [acc explainer]
                       (explainer x in acc))
@@ -295,11 +298,7 @@
                   value-explainer (-explainer value-schema (conj path (inc distance)))]
               (fn explain [m in acc]
                 (if-not (map? m)
-                  (conj acc {:path path
-                             :in in
-                             :schema this
-                             :value m
-                             :type ::invalid-type})
+                  (conj acc (error path in this m ::invalid-type))
                   (reduce-kv
                     (fn [acc key value]
                       (let [in (conj in key)]
@@ -368,21 +367,13 @@
                   explainer (-explainer schema (conj path distance))]
               (fn [x in acc]
                 (cond
-                  (not (fpred x))
-                  (conj acc {:path path
-                             :in in
-                             :type ::invalid-type
-                             :schema this
-                             :value x})
-                  (not (validate-limits x))
-                  (conj acc {:path path
-                             :in in
-                             :type ::limits
-                             :schema this
-                             :value x})
-                  :else
-                  (loop [acc acc, i 0, [x & xs] x]
-                    (cond-> (explainer x (conj in i) acc) xs (recur (inc i) xs)))))))
+                  (not (fpred x)) (conj acc (error path in this x ::invalid-type))
+                  (not (validate-limits x)) (conj acc (error path in this x ::limits))
+                  :else (let [size (count x)]
+                          (loop [acc acc, i 0, [x & xs] x]
+                            (if (< i size)
+                              (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
+                              acc)))))))
           (-transformer [_ transformer]
             (if-let [t (-transformer schema transformer)]
               (if fempty
@@ -424,21 +415,10 @@
                                    (map-indexed vector schemas))]
               (fn [x in acc]
                 (cond
-                  (not (vector? x))
-                  (conj acc {:path path
-                             :in in
-                             :type ::invalid-type
-                             :schema this
-                             :value x})
-                  (not= (count x) size)
-                  (conj acc {:path path
-                             :in in
-                             :type ::tuple-size
-                             :schema this
-                             :value x})
-                  :else
-                  (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
-                    (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
+                  (not (vector? x)) (conj acc (error path in this x ::invalid-type))
+                  (not= (count x) size) (conj acc (error path in this x ::tuple-size))
+                  :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
+                          (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-transformer [_ transformer]
             (let [ts (->> schemas
                           (mapv #(-transformer % transformer))
@@ -465,12 +445,7 @@
           (-validator [_] validator)
           (-explainer [this path]
             (fn explain [x in acc]
-              (if-not (validator x)
-                (conj acc {:path path
-                           :in in
-                           :schema this
-                           :value x})
-                acc)))
+              (if-not (validator x) (conj acc (error path in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [_ _])
           (-accept [this visitor opts] (visitor this (vec childs) opts))
@@ -494,17 +469,9 @@
             (fn explain [x in acc]
               (try
                 (if-not (re-find re x)
-                  (conj acc {:path path
-                             :in in
-                             :schema this
-                             :value x}))
+                  (conj acc (error path in this x)))
                 (catch #?(:clj Exception, :cljs js/Error) e
-                  (let [type (:type (ex-data e))]
-                    (conj acc (cond-> {:path path
-                                       :in in
-                                       :schema this
-                                       :value x}
-                                      type (assoc :type type))))))))
+                  (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [_ _])
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
@@ -526,17 +493,9 @@
             (fn explain [x in acc]
               (try
                 (if-not (f x)
-                  (conj acc {:path path
-                             :in in
-                             :schema this
-                             :value x}))
+                  (conj acc (error path in this x)))
                 (catch #?(:clj Exception, :cljs js/Error) e
-                  (let [type (:type (ex-data e))]
-                    (conj acc (cond-> {:path path
-                                       :in in
-                                       :schema this
-                                       :value x}
-                                      type (assoc :type type))))))))
+                  (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [_ _])
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
@@ -557,11 +516,7 @@
           (-validator [_] (fn [x] (or (nil? x) (validator' x))))
           (-explainer [this path]
             (fn explain [x in acc]
-              (if-not (or (nil? x) (validator' x))
-                (conj acc {:path path
-                           :in in
-                           :schema this
-                           :value x}))))
+              (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)))))
           (-transformer [_ transformer] (-transformer schema' transformer))
           (-accept [this visitor opts] (visitor this [(-accept schema' visitor opts)] opts))
           (-properties [_] properties)

@@ -6,7 +6,12 @@
 (defn with-schema-forms [result]
   (some-> result
           (update :schema m/form)
-          (update :errors (partial map #(update % :schema m/form)))))
+          (update :errors (partial map (fn [error]
+                                         (-> error
+                                             (update :schema m/form)
+                                             (update :type (fnil identity nil))
+                                             (update :message (fnil identity nil))
+                                             (m/map->SchemaError)))))))
 
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
@@ -63,6 +68,9 @@
       (is (results= {:schema schema
                      :value "1"
                      :errors [{:path [], :in [], :schema schema, :value "1"}]}
+                    {:schema schema
+                     :value "1"
+                     :errors [(m/error [] [] schema "1")]}
                     (m/explain schema "1")))
 
       (is (= 1 (m/transform schema "1" transform/string-transformer)))
@@ -97,7 +105,19 @@
 
       (is (= [:and ['int?] [:or ['pos-int?] ['neg-int?]]] (m/accept schema visitor)))
 
-      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))))
+      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
+
+    (testing "explain with branches"
+      (let [schema [:and pos-int? neg-int?]]
+        (is (results= {:schema schema,
+                       :value -1,
+                       :errors [{:path [1], :in [], :schema pos-int?, :value -1}]}
+                      (m/explain schema -1))))
+      (let [schema [:and pos-int? neg-int?]]
+        (is (results= {:schema schema,
+                       :value 1,
+                       :errors [{:path [2], :in [], :schema neg-int?, :value 1}]}
+                      (m/explain schema 1))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]
@@ -236,7 +256,7 @@
       (is (results= {:schema schema1
                      :value {:y "invalid" :z "kikka"}
                      :errors
-                     [{:path [], :in [], :schema schema1, :type ::m/missing-key, ::m/key :x}
+                     [{:path [1 0], :in [:x], :schema schema1, :type ::m/missing-key}
                       {:path [2 2], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema1 {:y "invalid" :z "kikka"})))
 
@@ -307,6 +327,7 @@
     (testing "validation"
       (let [expectations {"vector" [[true [:vector int?] [1 2 3]]
                                     [false [:vector int?] [1 "2" 3]]
+                                    [false [:vector int?] [1 2 "3"]]
                                     [false [:vector int?] [nil]]
                                     [false [:vector int?] "invalid"]
 
@@ -324,6 +345,7 @@
 
                           "list" [[true [:list int?] '(1 2 3)]
                                   [false [:list int?] '(1 "2" 3)]
+                                  [false [:list int?] '(1 2 "3")]
                                   [false [:vector int?] '(nil)]
                                   [false [:list int?] "invalid"]
 
@@ -341,6 +363,7 @@
 
                           "set" [[true [:set int?] #{1 2 3}]
                                  [false [:set int?] #{1 "2" 3}]
+                                 [false [:set int?] #{1 2 "3"}]
                                  [false [:set int?] #{nil}]
                                  [false [:set int?] "invalid"]
 
@@ -479,26 +502,26 @@
                                        :value [1 2]
                                        :errors [{:path [2], :in [1], :schema string?, :value 2}]}]])
                           "map+enum" (let [schema [:map [:x [:enum "x"]]
-                                                        [:y [:enum "y"]]]]
+                                                   [:y [:enum "y"]]]]
 
-                                         [[schema {:x "x" :y "y"}
-                                           nil]
+                                       [[schema {:x "x" :y "y"}
+                                         nil]
 
-                                          [schema {:x "non-x" :y "y"}
-                                           {:schema schema
-                                            :value {:x "non-x" :y "y"}
-                                            :errors [{:path [1 1], :in [:x], :schema [:enum "x"] , :value "non-x"}]}]
+                                        [schema {:x "non-x" :y "y"}
+                                         {:schema schema
+                                          :value {:x "non-x" :y "y"}
+                                          :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
 
-                                          [schema {:x "x" :y "non-y"}
-                                           {:schema schema
-                                            :value {:x "x" :y "non-y"}
-                                            :errors [{:path [2 1], :in [:y], :schema [:enum "y"] , :value "non-y"}]}]
+                                        [schema {:x "x" :y "non-y"}
+                                         {:schema schema
+                                          :value {:x "x" :y "non-y"}
+                                          :errors [{:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
 
-                                          [schema {:x "non-x" :y "non-y"}
-                                           {:schema schema
-                                            :value {:x "non-x" :y "non-y"}
-                                            :errors [{:path [1 1], :in [:x], :schema [:enum "x"] , :value "non-x"}
-                                                     {:path [2 1], :in [:y], :schema [:enum "y"] , :value "non-y"}]}]])}]
+                                        [schema {:x "non-x" :y "non-y"}
+                                         {:schema schema
+                                          :value {:x "non-x" :y "non-y"}
+                                          :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}
+                                                   {:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}]
 
         (doseq [[name data] expectations
                 [schema value expected] data]

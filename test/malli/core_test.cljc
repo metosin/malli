@@ -30,11 +30,7 @@
 
     [:x int?] nil
     [:x {:optional true} int?] {:optional true}
-    [:x {:optional false} int?] {:optional false}
-    [[:opt :x] {:optional false} int?] {:optional true}
-    [[:req :x] {:optional false} int?] {:optional false}
-    [[:opt :x] {:optional true} int?] {:optional true}
-    [[:req :x] {:optional true} int?] {:optional false}))
+    [:x {:optional false} int?] {:optional false}))
 
 (defn visitor [schema childs _]
   (into [(m/name schema)] (seq childs)))
@@ -235,51 +231,44 @@
                       (m/explain schema 1))))))
 
   (testing "map schemas"
-    (let [schema1 (m/schema
-                    [:map
-                     [:x boolean?]
-                     [:y {:optional true} int?]
-                     [:z {:optional false} string?]])
-          schema2 (m/schema
-                    [:map
-                     [:x boolean?]
-                     [[:opt :y] int?]
-                     [[:req :z] string?]])
+    (let [schema (m/schema
+                   [:map
+                    [:x boolean?]
+                    [:y {:optional true} int?]
+                    [:z {:optional false} string?]])
           valid {:x true, :y 1, :z "kikka"}
           invalid {:x true, :y "invalid", :z "kikka", :extra "ok"}]
 
-      (doseq [schema [schema1 schema2]]
-        (is (true? (m/validate schema valid)))
-        (is (false? (m/validate schema invalid)))
-        (is (false? (m/validate schema "not-a-map"))))
+      (is (true? (m/validate schema valid)))
+      (is (false? (m/validate schema invalid)))
+      (is (false? (m/validate schema "not-a-map")))
 
-      (is (results= {:schema schema1
+      (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
                      :errors
-                     [{:path [1 0], :in [:x], :schema schema1, :type ::m/missing-key}
+                     [{:path [1 0], :in [:x], :schema schema, :type ::m/missing-key}
                       {:path [2 2], :in [:y], :schema int?, :value "invalid"}]}
-                    (m/explain schema1 {:y "invalid" :z "kikka"})))
+                    (m/explain schema {:y "invalid" :z "kikka"})))
 
-      (is (results= {:schema schema1
+      (is (results= {:schema schema
                      :value "not-a-map"
-                     :errors [{:path [], :in [], :schema schema1, :value "not-a-map", :type ::m/invalid-type}]}
-                    (m/explain schema1 "not-a-map")))
+                     :errors [{:path [], :in [], :schema schema, :value "not-a-map", :type ::m/invalid-type}]}
+                    (m/explain schema "not-a-map")))
 
-      (is (= {:x true} (m/transform schema1 {:x "true"} transform/string-transformer)))
-      (is (= {:x true, :y 1} (m/transform schema1 {:x "true", :y "1"} transform/string-transformer)))
-      (is (= {:x "true", :y "1"} (m/transform schema1 {:x "true", :y "1"} transform/json-transformer)))
-      (is (= {:x true, :y 1} (m/transform schema1 {:x true, :y 1, :a 1} transform/strip-extra-keys-transformer)))
+      (is (= {:x true} (m/transform schema {:x "true"} transform/string-transformer)))
+      (is (= {:x true, :y 1} (m/transform schema {:x "true", :y "1"} transform/string-transformer)))
+      (is (= {:x "true", :y "1"} (m/transform schema {:x "true", :y "1"} transform/json-transformer)))
+      (is (= {:x true, :y 1} (m/transform schema {:x true, :y 1, :a 1} transform/strip-extra-keys-transformer)))
 
-      (is (true? (m/validate (over-the-wire schema1) valid)))
+      (is (true? (m/validate (over-the-wire schema) valid)))
 
-      (is (= [:map ['boolean?] ['int?] ['string?]] (m/accept schema1 visitor)))
+      (is (= [:map ['boolean?] ['int?] ['string?]] (m/accept schema visitor)))
 
       (is (= [:map
               [:x 'boolean?]
               [:y {:optional true} 'int?]
               [:z {:optional false} 'string?]]
-             (m/form schema1)
-             (m/form schema2))))
+             (m/form schema))))
 
     (is (true? (m/validate [:map [:b boolean?]] {:b true})))
     (is (true? (m/validate [:map [:b boolean?]] {:b false})))

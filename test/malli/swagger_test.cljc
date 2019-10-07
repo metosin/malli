@@ -23,13 +23,11 @@
    [[:map
      [:a string?]
      [:b {:optional true} string?]
-     [[:req :c] string?]
-     [[:opt :d] string?]] {:type "object"
-                           :properties {:a {:type "string"}
-                                        :b {:type "string"}
-                                        :c {:type "string"}
-                                        :d {:type "string"}}
-                           :required [:a :c]}]
+     [:c {:optional false} string?]] {:type "object"
+                                      :properties {:a {:type "string"}
+                                                   :b {:type "string"}
+                                                   :c {:type "string"}}
+                                      :required [:a :c]}]
    [[:map-of string? string?] {:type "object"
                                :additionalProperties {:type "string"}}]
    [[:vector string?] {:type "array", :items [{:type "string"}]}]

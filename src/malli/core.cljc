@@ -170,13 +170,8 @@
     (if optional [k {:optional true} ?p] [k ?p])))
 
 (defn- -expand-key [[k ?p ?v] opts f]
-  (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])
-        v' (f (schema v opts))
-        [k' p'] (if (vector? k)
-                  (let [[r k'] k]
-                    [k' (assoc p :optional (case r :opt true, :req false))])
-                  [k p])]
-    [k' p' v']))
+  (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])]
+    [k p (f (schema v opts))]))
 
 (defn -parse-keys [childs opts]
   (let [entries (mapv #(-expand-key % opts identity) childs)]

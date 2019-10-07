@@ -136,69 +136,81 @@ Detailed errors with `m/explain`:
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},
-; :errors ({:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
-;          {:path [3 1],
-;           :in [:address],
-;           :schema [:map
-;                    [:street string?]
-;                    [:city string?]
-;                    [:zip int?]
-;                    [:lonlat [:tuple double? double?]]],
-;           :type :malli.core/missing-key,
-;           :malli.core/key :city}
-;          {:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
+; :errors (#Error{:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
+;          #Error{:path [3 1],
+;                 :in [:address],
+;                 :schema [:map
+;                          [:street string?]
+;                          [:city string?]
+;                          [:zip int?]
+;                          [:lonlat [:tuple double? double?]]],
+;                 :type :malli.core/missing-key,
+;                 :malli.core/key :city}
+;          #Error{:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
 ```
 
 ## Custom Error Messages
 
-Namespace `malli.error` contains helpers to emitting human-readable errors. Schema properties `:error/message` and `:error/fn` can used to customize messages.
+Explain results can be humanized with `malli.error/humanize`:
 
 ```clj
 (require '[malli.error :as me])
 
+(-> Address
+    (m/explain
+      {:id "Lillan"
+       :tags #{:artesan "coffee" :garden}
+       :address {:street "Ahlmanintie 29"
+                 :zip 33100
+                 :lonlat [61.4858322, nil]}})
+    (me/humanize
+      {:wrap :message}))
+{:tags #{"should be keyword"}
+ :address {:city "missing required key"
+           :lonlat [nil "should be double"]}}
+```
+
+Error messages can be customized with `:error/message` and `:error/fn` properties:
+
+```clj
 (-> [:map
-     [:x int?]
-     [:y int?]
-     [:z [pos-int? {:error/message "be positive"}]]]
-    (m/explain {:x 1, :y "2", :z -1})
-    (me/merge-errors))
-;{:x 1,
-; :y #SchemaError{:value "2", :message "should be an int"},
-; :z #SchemaError{:value -1, :message "be positive"}}
+     [:id int?]
+     [:size [:enum {:error/message "should be: S|M|L"} 
+             "S" "M" "L"]]
+     [:age [:fn {:error/fn '(fn [{:keys [value]} _] (str value ", should be > 18"))}
+            '(fn [x] (and (int? x) (> x 18)))]]]
+    (m/explain {:size "XL", :age 10})
+    (me/humanize
+      {:wrap :message
+       :errors (-> me/default-errors
+                   (assoc ::m/missing-key {:error/fn (fn [{:keys [in]} _] (str "missing key " (last in)))}))}))
+;{:id "missing key :id"
+; :size "should be: S|M|L"
+; :age "10, should be > 18"}
 ```
 
-With custom error message:
+Messages can be localized:
 
 ```clj
-(-> [int? {:error/message "should be an int"}]
-    (m/explain "kikka")
-    :errors
-    (first)
-    (me/error-message))
-; "should be an int"
-```
-
-With custom message function:
-
-```clj
-(-> [int? {:error/fn '(fn [schema value opts] (str "should be a int, was " (type value)))}]
-    (m/explain "kikka")
-    :errors
-    (first)
-    (me/error-message))
-; "should be a int, was class java.lang.String"
-```
-
-Localization (default-locale `:en`):
-
-```clj
-(-> [int? {:error/message {:en "should be an int"
-                           :fi "pitäisi olla numero"}}]
-    (m/explain "kikka")
-    :errors
-    (first)
-    (me/error-message {:locale :fi}))
-; "pitäisi olla numero"
+(-> [:map
+     [:id int?]
+     [:size [:enum {:error/message {:en "should be: S|M|L"
+                                    :fi "pitäisi olla: S|M|L"}}
+             "S" "M" "L"]]
+     [:age [:fn {:error/fn {:en '(fn [{:keys [value]} _] (str value ", should be > 18"))
+                            :fi '(fn [{:keys [value]} _] (str value ", pitäisi olla > 18"))}}
+            '(fn [x] (and (int? x) (> x 18)))]]]
+    (m/explain {:size "XL", :age 10})
+    (me/humanize
+      {:locale :fi
+       :wrap :message
+       :errors (-> me/default-errors
+                   (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
+                   (assoc ::m/missing-key {:error/fn {:en '(fn [{:keys [in]} _] (str "missing key " (last in)))
+                                                      :fi '(fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
+;{:id "puuttuu avain :id"
+; :size "pitäisi olla: S|M|L"
+; :age "10, pitäisi olla > 18"}
 ```
 
 ## Value Transformation

@@ -52,8 +52,8 @@
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))
 
-(defn- -message [{:keys [value schema]} x locale opts]
-  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) schema value opts))
+(defn- -message [error x locale opts]
+  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error opts))
       (-maybe-localized (:error/message x) locale)))
 
 (defn- -ensure [x k]
@@ -86,12 +86,12 @@
           default-locale :en} :as opts}]
    (or (-message error (m/properties schema) locale opts)
        (-message error (errors (m/name schema)) locale opts)
-       (some-> type errors :error/message (-maybe-localized locale))
+       (-message error (errors type) locale opts)
        (-message error (m/properties schema) default-locale opts)
        (-message error (errors (m/name schema)) default-locale opts)
-       (some-> type errors :error/message (-maybe-localized default-locale))
-       (-maybe-localized (-> errors ::unknown :error/message) locale)
-       (-maybe-localized (-> errors ::unknown :error/message) default-locale))))
+       (-message error (errors type) default-locale opts)
+       (-message error (errors ::unknown) locale opts)
+       (-message error (errors ::unknown) default-locale opts))))
 
 (defn with-error-message
   ([error]
@@ -102,8 +102,8 @@
 (defn with-error-messages
   ([explanation]
    (with-error-messages explanation nil))
-  ([explanation opts]
-   (update explanation :errors (partial map #(with-error-message % opts)))))
+  ([explanation {f :wrap :or {f identity} :as opts}]
+   (update explanation :errors (partial map #(f (with-error-message % opts))))))
 
 (defn humanize
   ([explanation]
@@ -114,6 +114,5 @@
        (reduce
          (fn [acc error]
            (-assoc-in acc value (:in error) (f (with-error-message error opts))))
-         (empty value)
-         errors)
+         nil errors)
        (f (with-error-message (first errors) opts))))))

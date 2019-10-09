@@ -250,6 +250,15 @@
                       {:path [2 2], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema {:y "invalid" :z "kikka"})))
 
+      (is (results= {:schema [:map [:x boolean?] [:y {:optional true} int?] [:z {:optional false} string?]],
+                     :value {:x "invalid"},
+                     :errors [{:path [1 1], :in [:x], :schema boolean?, :value "invalid"}
+                              {:path [3 0],
+                               :in [:z],
+                               :schema schema,
+                               :type :malli.core/missing-key}]}
+                    (m/explain schema {:x "invalid"})))
+
       (is (results= {:schema schema
                      :value "not-a-map"
                      :errors [{:path [], :in [], :schema schema, :value "not-a-map", :type ::m/invalid-type}]}

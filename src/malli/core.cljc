@@ -220,7 +220,8 @@
                                      (if-let [v (key x)]
                                        (explainer v (conj in key) acc)
                                        (if-not optional
-                                         (conj acc (error key-path (conj in key) this nil ::missing-key)))))))
+                                         (conj acc (error key-path (conj in key) this nil ::missing-key))
+                                         acc)))))
                                (map-indexed vector entries))]
               (fn [x in acc]
                 (if-not (map? x)

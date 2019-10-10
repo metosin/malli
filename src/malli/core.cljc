@@ -465,7 +465,8 @@
             (fn explain [x in acc]
               (try
                 (if-not (re-find re x)
-                  (conj acc (error path in this x)))
+                  (conj acc (error path in this x))
+                  acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [_ _])
@@ -489,7 +490,8 @@
             (fn explain [x in acc]
               (try
                 (if-not (f x)
-                  (conj acc (error path in this x)))
+                  (conj acc (error path in this x))
+                  acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [_ _])
@@ -512,7 +514,7 @@
           (-validator [_] (fn [x] (or (nil? x) (validator' x))))
           (-explainer [this path]
             (fn explain [x in acc]
-              (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)))))
+              (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
           (-transformer [_ transformer] (-transformer schema' transformer))
           (-accept [this visitor opts] (visitor this [(-accept schema' visitor opts)] opts))
           (-properties [_] properties)

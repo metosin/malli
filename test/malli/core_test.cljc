@@ -250,7 +250,7 @@
                       {:path [2 2], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema {:y "invalid" :z "kikka"})))
 
-      (is (results= {:schema [:map [:x boolean?] [:y {:optional true} int?] [:z {:optional false} string?]],
+      (is (results= {:schema schema,
                      :value {:x "invalid"},
                      :errors [{:path [1 1], :in [:x], :schema boolean?, :value "invalid"}
                               {:path [3 0],
@@ -282,6 +282,22 @@
     (is (true? (m/validate [:map [:b boolean?]] {:b true})))
     (is (true? (m/validate [:map [:b boolean?]] {:b false})))
     (is (true? (m/validate [:map [:n nil?]] {:n nil}))))
+
+  (testing "accumulating errors #84"
+    (let [re #"b"
+          schema [:map
+                  [:a string?]
+                  [:b [:fn 'pos?]]
+                  [:c re]
+                  [:d [:maybe int?]]]
+          value {:b -1, :c "", :d "not"}]
+      (results= {:schema schema,
+                 :value value,
+                 :errors [{:path [1 0], :in [:a], :schema schema, :type :malli.core/missing-key}
+                          {:path [2 1], :in [:b], :schema [:fn 'pos?], :value -1}
+                          {:path [3 1], :in [:c], :schema re, :value ""}
+                          {:path [4 1], :in [:d], :schema [:maybe int?], :value "not"}]}
+                (m/explain schema value))))
 
   (testing "map-of schema"
 

@@ -79,9 +79,11 @@
 
 (defn- -create [schema opts]
   (let [gen (-generator schema opts)
-        fmap (:gen/fmap (m/properties schema))]
+        {:gen/keys [fmap elements]} (m/properties schema)
+        elements (if elements (gen/elements elements))]
     (cond
-      fmap (gen/fmap (m/eval fmap) (or gen (gen/return nil)))
+      fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))
+      elements elements
       gen gen
       :else (m/fail! ::no-generator {:schema schema, :opts opts}))))
 

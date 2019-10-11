@@ -1,7 +1,6 @@
 (ns malli.core
   (:refer-clojure :exclude [-name eval name merge])
-  (:require [sci.core :as sci]
-            [edamame.core :as edamame])
+  (:require [sci.core :as sci])
   #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
@@ -708,18 +707,6 @@
                              {:keys #{}, :form []}
                              (mapcat #(-> % (childs opts) (-parse-keys opts) :forms) schemas))))
                    (schema opts)))))))
-
-(defn serialize
-  ([?schema]
-   (serialize ?schema nil))
-  ([?schema opts]
-   (pr-str (form ?schema opts))))
-
-(defn deserialize
-  ([form]
-   (deserialize form nil))
-  ([form opts]
-   (schema (edamame/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) opts)))
 
 (defn map-key [_]
   ^{:type ::schema}

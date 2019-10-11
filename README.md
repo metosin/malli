@@ -299,21 +299,26 @@ Schemas can be deep-merged with `m/merge`:
 
 ## Persisting Schemas 
 
-Serializing & Deserializing schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
+Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
 ```clj
+(require '[malli.edn :as me])
+
 (-> [:and
      [:map
       [:x int?]
       [:y int?]]
      [:fn '(fn [{:keys [x y]}] (> x y))]]
-    (m/serialize)
-    (doto prn) ; "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
-    (m/deserialize)
-    (m/validate
-      {:x 2
-       :y 1}))
-; => true
+    (me/write-string)
+    (doto prn) ; => "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
+    (me/read-string)
+    (doto (-> (m/validate {:x 0, :y 1}) prn)) ; => false
+    (doto (-> (m/validate {:x 2, :y 1}) prn))) ; => true
+;[:and 
+; [:map 
+;  [:x int?] 
+;  [:y int?]] 
+; [:fn (fn [{:keys [x y]}] (> x y))]]
 ```
 
 ## Value Generation
@@ -336,13 +341,20 @@ Scehmas can be used to generate values:
 ;; => 55740
 
 ;; regexs work too
-(mg/generate [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] {:seed 42, :size 10})
+(mg/generate 
+  [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] 
+  {:seed 42, :size 10})
 ; => "CaR@MavCk70OHiX.yZ"
+
+;; gen/elements
+(mg/generate
+  [:and {:gen/elements ["kikka" "kukka" "kakka"]} string?]
+  {:seed 10})
+; => "kikka"
 
 ;; portable gen/fmap
 (mg/generate
-  [:and {:gen/fmap '(partial str "kikka_")}
-   string?]
+  [:and {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})
 ;; => "kikka_WT3K0yax2"
 ```

@@ -16,6 +16,8 @@ Plain data Schemas for Clojure/Script.
 - First class error messages
 - Fast
 
+Try the [online demo](https://metosin.github.io/malli-web/).
+
 ## Examples
 
 Definining and validating Schemas:

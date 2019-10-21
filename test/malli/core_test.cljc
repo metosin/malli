@@ -268,6 +268,10 @@
       (is (= {:x true, :y 1} (m/transform schema {:x "true", :y "1"} transform/string-transformer)))
       (is (= {:x "true", :y "1"} (m/transform schema {:x "true", :y "1"} transform/json-transformer)))
       (is (= {:x true, :y 1} (m/transform schema {:x true, :y 1, :a 1} transform/strip-extra-keys-transformer)))
+      (is (= {:x_key true, :y_key 2} (m/transform schema {:x true, :y 2}
+                                              (transform/key-transformer
+                                                (fn [key]
+                                                  (-> key name (str "_key") keyword))))))
 
       (is (true? (m/validate (over-the-wire schema) valid)))
 

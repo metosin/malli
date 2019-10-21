@@ -169,6 +169,11 @@
           (if-let [keys (seq (:keys (m/-parse-keys (m/childs schema) nil)))]
             (fn [x] (select-keys x keys))))})
 
+(defn +key-decoders+ [key-fn]
+  {:map-key (constantly
+              (fn [x]
+                (key-fn x)))})
+
 ;;
 ;; transformers
 ;;
@@ -187,6 +192,11 @@
   (transformer
     {:name ::strip-extra-keys
      :transformers +strip-extra-keys-decoders+}))
+
+(defn key-transformer [key-fn]
+  (transformer
+    {:name ::key-transformer
+     :transformers (+key-decoders+ key-fn)}))
 
 (def collection-transformer
   (transformer

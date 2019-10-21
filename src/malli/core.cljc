@@ -42,6 +42,7 @@
 
 (declare schema)
 (declare default-registry)
+(declare map-key)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -231,39 +232,73 @@
                       (explainer x in acc))
                     acc explainers)))))
           (-transformer [this transformer]
-            (let [transformers (some->> entries
-                                        (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
-                                        (seq)
-                                        (apply array-map))
-                  map-transformer (-value-transformer transformer this)]
+            (let [key-transformers (some->> entries
+                                            (mapcat (fn [[k _ _]] (if-let [t (-transformer (map-key k) transformer)] [k t])))
+                                            (seq)
+                                            (apply array-map))
+                  value-transformers (some->> entries
+                                              (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
+                                              (seq)
+                                              (apply array-map))
+                  map-transformer (-value-transformer transformer this)
+                  apply-key-transformers (fn [m k t]
+                                           (if-let [entry (find m k)]
+                                             (let [k' (t k)]
+                                               (-> m
+                                                   (assoc k' (val entry))
+                                                   (cond-> (not (identical? k' k)) (dissoc k))))
+                                             m))
+                  apply-value-transformers (fn [m k t]
+                                             (if-let [entry (find m k)]
+                                               (assoc m k (t (val entry)))
+                                               m))]
               (cond
-                (and (not transformers) (not map-transformer))
+                (and (not key-transformers) (not value-transformers) (not map-transformer))
                 nil
 
-                (and (not transformers) map-transformer)
+                (and (not key-transformers) (not value-transformers) map-transformer)
                 (fn [x]
                   (if (map? x)
                     (map-transformer x)
                     x))
 
-                (and transformers (not map-transformer))
+                (and key-transformers (not value-transformers) (not map-transformer))
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t]
-                                 (if-let [entry (find x k)]
-                                   (assoc acc k (t (val entry)))
-                                   acc))
-                               x transformers)
+                    (reduce-kv apply-key-transformers x key-transformers)
+                    x))
+
+                (and (not key-transformers) value-transformers (not map-transformer))
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv apply-value-transformers x value-transformers)
+                    x))
+
+                (and key-transformers value-transformers (not map-transformer))
+                (fn [x]
+                  (if (map? x)
+                    (let [values-transformed (reduce-kv apply-value-transformers x value-transformers)]
+                      (reduce-kv apply-key-transformers values-transformed key-transformers))
+                    x))
+
+                (and (not key-transformers) value-transformers map-transformer)
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv apply-value-transformers (map-transformer x) value-transformers)
+                    x))
+
+                (and key-transformers (not value-transformers) map-transformer)
+                (fn [x]
+                  (if (map? x)
+                    (reduce-kv apply-key-transformers (map-transformer x) key-transformers)
                     x))
 
                 :else
                 (fn [x]
                   (if (map? x)
-                    (reduce-kv (fn [acc k t]
-                                 (if-let [entry (find x k)]
-                                   (assoc acc k (t (val entry)))
-                                   acc))
-                               (map-transformer x) transformers)
+                    (let [map-transformed (map-transformer x)
+                          values-transformed (reduce-kv apply-value-transformers map-transformed value-transformers)]
+                      (reduce-kv apply-key-transformers values-transformed key-transformers))
                     x)))))
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
@@ -685,6 +720,13 @@
    (deserialize form nil))
   ([form opts]
    (schema (edamame/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) opts)))
+
+(defn map-key [_]
+  ^{:type ::schema}
+  (reify Schema
+    (-name [_] ::map-key)
+    (-form [_] :map-key)
+    (-transformer [this transformer] (-value-transformer transformer this))))
 
 ;;
 ;; registries

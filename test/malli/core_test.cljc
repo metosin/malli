@@ -1,6 +1,7 @@
 (ns malli.core-test
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
+            [malli.edn :as me]
             [malli.transform :as transform]))
 
 (defn with-schema-forms [result]
@@ -17,7 +18,7 @@
   (apply = (map with-schema-forms results)))
 
 (defn over-the-wire [?schema]
-  (-> ?schema (m/serialize) (m/deserialize)))
+  (-> ?schema (me/write-string) (me/read-string)))
 
 (deftest keyword->string
   (is (= "abba" (m/keyword->string :abba)))

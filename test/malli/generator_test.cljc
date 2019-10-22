@@ -40,4 +40,9 @@
         (dotimes [_ 100]
           (m/validate schema (mg/generate generator)))))
     (testing "with generator"
-      (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?]))))))
+      (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
+  (testing "gen/elements"
+    (dotimes [_ 1000]
+      (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?])))
+    (dotimes [_ 1000]
+      (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?])))))

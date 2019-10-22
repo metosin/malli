@@ -170,9 +170,7 @@
             (fn [x] (select-keys x keys))))})
 
 (defn +key-decoders+ [key-fn]
-  {:map-key (constantly
-              (fn [x]
-                (key-fn x)))})
+  {::m/map-key (constantly (fn [x] (key-fn x)))})
 
 ;;
 ;; transformers

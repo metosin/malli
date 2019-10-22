@@ -218,8 +218,8 @@
                                        explainer (-explainer schema (into path [(+ i distance) key-distance]))
                                        key-path (into path [(+ i distance) 0])]
                                    (fn [x in acc]
-                                     (if-let [v (key x)]
-                                       (explainer v (conj in key) acc)
+                                     (if-let [e (find x key)]
+                                       (explainer (val e) (conj in key) acc)
                                        (if-not optional
                                          (conj acc (error key-path (conj in key) this nil ::missing-key))
                                          acc)))))

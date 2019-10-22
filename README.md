@@ -346,7 +346,7 @@ Scehmas can be used to generate values:
   {:seed 42, :size 10})
 ; => "CaR@MavCk70OHiX.yZ"
 
-;; gen/elements
+;; gen/elements (note, are not validated)
 (mg/generate
   [:and {:gen/elements ["kikka" "kukka" "kakka"]} string?]
   {:seed 10})

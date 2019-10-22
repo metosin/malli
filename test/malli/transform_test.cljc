@@ -129,3 +129,10 @@
            (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                         {:x 18 :y "john" :a "doe"}
                         strip-extra-key-transformer)))))
+
+(deftest key-transformer
+  (let [key-transformer (transform/key-transformer #(-> % name (str "_key") keyword))]
+    (is (= {:x_key 18 :y_key "john" :a_key "doe"}
+           (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+                        {:x 18 :y "john" :a "doe"}
+                        key-transformer)))))

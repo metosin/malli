@@ -225,6 +225,26 @@ Schema-driven value transformations with `m/transform`:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
+Transform map keys with `mt/key-transformer`:
+
+```clj
+(m/transform
+  Address
+  {:id "Lillan",
+   :tags ["coffee" "artesan" "garden"],
+   :address {:street "Ahlmanintie 29"
+             :city "Tampere"
+             :zip 33100
+             :lonlat [61.4858322 23.7854658]}}
+  (mt/key-transformer name))
+;{"id" "Lillan",
+; "tags" #{:coffee :artesan :garden},
+; "address" {"street" "Ahlmanintie 29"
+;            "city" "Tampere"
+;            "zip" 33100
+;            "lonlat" [61.4858322 23.7854658]}}
+```
+
 Transformers are composable:
 
 ```clj

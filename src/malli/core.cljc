@@ -724,7 +724,7 @@
 (defn map-key [_]
   ^{:type ::schema}
   (reify Schema
-    (-name [_] ::map-key)
+    (-name [_] :map-key)
     (-form [_] :map-key)
     (-transformer [this transformer] (-value-transformer transformer this))))
 

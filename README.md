@@ -153,9 +153,9 @@ Explain results can be humanized with `malli.error/humanize`:
                  :lonlat [61.4858322, nil]}})
     (me/humanize
       {:wrap :message}))
-{:tags #{"should be keyword"}
- :address {:city "missing required key"
-           :lonlat [nil "should be double"]}}
+;{:tags #{"should be keyword"}
+; :address {:city "missing required key"
+;           :lonlat [nil "should be double"]}}
 ```
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:

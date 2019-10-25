@@ -234,12 +234,12 @@ Errors can be targetted using `:error/path` property:
 
 ## Value Transformation
 
-Schema-driven value transformations with `m/transform`:
+Schema-driven value transformations with `m/decode` and `m/encode`:
 
 ```clj
 (require '[malli.transform :as mt])
 
-(m/transform
+(m/decode
   Address
   {:id "Lillan",
    :tags ["coffee" "artesan" "garden"],
@@ -259,7 +259,7 @@ Schema-driven value transformations with `m/transform`:
 Transform map keys with `mt/key-transformer`:
 
 ```clj
-(m/transform
+(m/decode
   Address
   {:id "Lillan",
    :tags ["coffee" "artesan" "garden"],
@@ -284,7 +284,7 @@ Transformers are composable:
     mt/strip-extra-keys-transformer
     mt/json-transformer)
 
-(m/transform
+(m/decode
   Address
   {:id "Lillan",
    :EVIL "LYN"
@@ -591,7 +591,7 @@ Coercion:
 
 ;; 140ns
 (let [schema [:map [:id int?] [:name string?]]
-      transform (m/transformer schema transform/string-transformer)]
+      transform (m/decoder schema transform/string-transformer)]
   (cc/quick-bench
     (transform {:id "1", :name "kikka"})))
 ```

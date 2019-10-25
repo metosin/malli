@@ -68,71 +68,71 @@
 
 (deftest transform-test
   (testing "predicates"
-    (is (= 1 (m/transform int? "1" transform/string-transformer)))
-    (is (= "1" (m/transform int? "1" transform/json-transformer)))
-    (is (= :user/kikka (m/transform keyword? "user/kikka" transform/string-transformer))))
+    (is (= 1 (m/decode int? "1" transform/string-transformer)))
+    (is (= "1" (m/decode int? "1" transform/json-transformer)))
+    (is (= :user/kikka (m/decode keyword? "user/kikka" transform/string-transformer))))
   (testing "comparators"
     (doseq [schema (keys m/comparator-registry)]
-      (is (= 1 (m/transform [schema 1] "1" transform/string-transformer)))))
+      (is (= 1 (m/decode [schema 1] "1" transform/string-transformer)))))
   (testing "and"
-    (is (= 1 (m/transform [:and int?] "1" transform/string-transformer)))
-    (is (= :1 (m/transform [:and keyword?] "1" transform/string-transformer)))
-    (is (= 1 (m/transform [:and int? keyword?] "1" transform/string-transformer)))
-    (is (= 1 (m/transform [:and int? [:enum 1 2]] "1" transform/string-transformer)))
-    (is (= :1 (m/transform [:and keyword? int?] "1" transform/string-transformer)))
-    (is (= [1] (m/transform [:and [:vector int?]] ["1"] transform/string-transformer))))
+    (is (= 1 (m/decode [:and int?] "1" transform/string-transformer)))
+    (is (= :1 (m/decode [:and keyword?] "1" transform/string-transformer)))
+    (is (= 1 (m/decode [:and int? keyword?] "1" transform/string-transformer)))
+    (is (= 1 (m/decode [:and int? [:enum 1 2]] "1" transform/string-transformer)))
+    (is (= :1 (m/decode [:and keyword? int?] "1" transform/string-transformer)))
+    (is (= [1] (m/decode [:and [:vector int?]] ["1"] transform/string-transformer))))
   (testing "or"
-    (is (= 1 (m/transform [:or int? keyword?] "1" transform/string-transformer)))
-    (is (= 1 (m/transform [:or int? [:enum 1 2]] "1" transform/string-transformer)))
-    (is (= :1 (m/transform [:or keyword? int?] "1" transform/string-transformer))))
+    (is (= 1 (m/decode [:or int? keyword?] "1" transform/string-transformer)))
+    (is (= 1 (m/decode [:or int? [:enum 1 2]] "1" transform/string-transformer)))
+    (is (= :1 (m/decode [:or keyword? int?] "1" transform/string-transformer))))
   (testing "collections"
-    (is (= #{1 2 3} (m/transform [:set int?] ["1" 2 "3"] transform/string-transformer)))
-    (is (= #{"1" 2 "3"} (m/transform [:set [:enum 1 2]] ["1" 2 "3"] transform/string-transformer)))
-    (is (= #{"1" 2 "3"} (m/transform [:set int?] ["1" 2 "3"] transform/json-transformer)))
-    (is (= [:1 2 :3] (m/transform [:vector keyword?] ["1" 2 "3"] transform/string-transformer)))
-    (is (= '(:1 2 :3) (m/transform [:list keyword?] '("1" 2 "3") transform/string-transformer)))
-    (is (= '(:1 2 :3) (m/transform [:list keyword?] (seq '("1" 2 "3")) transform/string-transformer)))
-    (is (= '(:1 2 :3) (m/transform [:list keyword?] (lazy-seq '("1" 2 "3")) transform/string-transformer)))
-    (is (= ::invalid (m/transform [:vector keyword?] ::invalid transform/string-transformer))))
+    (is (= #{1 2 3} (m/decode [:set int?] ["1" 2 "3"] transform/string-transformer)))
+    (is (= #{"1" 2 "3"} (m/decode [:set [:enum 1 2]] ["1" 2 "3"] transform/string-transformer)))
+    (is (= #{"1" 2 "3"} (m/decode [:set int?] ["1" 2 "3"] transform/json-transformer)))
+    (is (= [:1 2 :3] (m/decode [:vector keyword?] ["1" 2 "3"] transform/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:list keyword?] '("1" 2 "3") transform/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:list keyword?] (seq '("1" 2 "3")) transform/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:list keyword?] (lazy-seq '("1" 2 "3")) transform/string-transformer)))
+    (is (= ::invalid (m/decode [:vector keyword?] ::invalid transform/string-transformer))))
   (testing "map"
-    (is (= {:c1 1, ::c2 :kikka} (m/transform [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
-    (is (= {:c1 "1", ::c2 :kikka} (m/transform [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/json-transformer)))
-    (is (= ::invalid (m/transform [:map] ::invalid transform/json-transformer))))
+    (is (= {:c1 1, ::c2 :kikka} (m/decode [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
+    (is (= {:c1 "1", ::c2 :kikka} (m/decode [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/json-transformer)))
+    (is (= ::invalid (m/decode [:map] ::invalid transform/json-transformer))))
   #_(testing "s/map-of"
-    (is (= {1 :abba, 2 :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/string-transformer)))
-    (is (= {"1" :abba, "2" :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/json-transformer)))
-    (is (= ::invalid (m/transform (s/map-of int? keyword?) ::invalid transform/json-transformer))))
+    (is (= {1 :abba, 2 :jabba} (m/decode (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/string-transformer)))
+    (is (= {"1" :abba, "2" :jabba} (m/decode (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/json-transformer)))
+    (is (= ::invalid (m/decode (s/map-of int? keyword?) ::invalid transform/json-transformer))))
   (testing "maybe"
-    (is (= 1 (m/transform [:maybe int?] "1" transform/string-transformer)))
-    (is (= nil (m/transform [:maybe int?] nil transform/string-transformer))))
+    (is (= 1 (m/decode [:maybe int?] "1" transform/string-transformer)))
+    (is (= nil (m/decode [:maybe int?] nil transform/string-transformer))))
   (testing "tuple"
-    (is (= [1] (m/transform [:tuple int?] ["1"] transform/string-transformer)))
-    (is (= [1 :kikka] (m/transform [:tuple int? keyword?] ["1" "kikka"] transform/string-transformer)))
-    (is (= [:kikka 1] (m/transform [:tuple keyword? int?] ["kikka" "1"] transform/string-transformer)))
-    (is (= "1" (m/transform [:tuple keyword? int?] "1" transform/string-transformer)))
-    (is (= [:kikka 1 "2"] (m/transform [:tuple keyword? int?] ["kikka" "1" "2"] transform/string-transformer)))))
+    (is (= [1] (m/decode [:tuple int?] ["1"] transform/string-transformer)))
+    (is (= [1 :kikka] (m/decode [:tuple int? keyword?] ["1" "kikka"] transform/string-transformer)))
+    (is (= [:kikka 1] (m/decode [:tuple keyword? int?] ["kikka" "1"] transform/string-transformer)))
+    (is (= "1" (m/decode [:tuple keyword? int?] "1" transform/string-transformer)))
+    (is (= [:kikka 1 "2"] (m/decode [:tuple keyword? int?] ["kikka" "1" "2"] transform/string-transformer)))))
 
 (deftest collection-transform-test
-  (is (= #{1 2 3} (m/transform [:set int?] [1 2 3] transform/collection-transformer))))
+  (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] transform/collection-transformer))))
 
 (deftest composing-transformers
   (let [strict-json-transformer (transform/transformer
                                   transform/strip-extra-keys-transformer
                                   transform/json-transformer)]
-    (is (= :kikka (m/transform keyword? "kikka" strict-json-transformer)))
-    (is (= {:x :kikka} (m/transform [:map [:x keyword?]] {:x "kikka"} strict-json-transformer))))
+    (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))
+    (is (= {:x :kikka} (m/decode [:map [:x keyword?]] {:x "kikka"} strict-json-transformer))))
 
   (let [strip-extra-key-transformer (transform/transformer
                                       transform/strip-extra-keys-transformer
                                       (transform/key-transformer #(-> % name (str "_key") keyword)))]
     (is (= {:x_key 18 :y_key "john"}
-           (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+           (m/decode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                         {:x 18 :y "john" :a "doe"}
                         strip-extra-key-transformer)))))
 
 (deftest key-transformer
   (let [key-transformer (transform/key-transformer #(-> % name (str "_key") keyword))]
     (is (= {:x_key 18 :y_key "john" :a_key "doe"}
-           (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+           (m/decode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                         {:x 18 :y "john" :a "doe"}
                         key-transformer)))))

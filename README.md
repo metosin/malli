@@ -333,16 +333,16 @@ Schemas can be deep-merged with `m/merge`:
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
 ```clj
-(require '[malli.edn :as me])
+(require '[malli.edn :as edn])
 
 (-> [:and
      [:map
       [:x int?]
       [:y int?]]
      [:fn '(fn [{:keys [x y]}] (> x y))]]
-    (me/write-string)
+    (edn/write-string)
     (doto prn) ; => "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
-    (me/read-string)
+    (edn/read-string)
     (doto (-> (m/validate {:x 0, :y 1}) prn)) ; => false
     (doto (-> (m/validate {:x 2, :y 1}) prn))) ; => true
 ;[:and 

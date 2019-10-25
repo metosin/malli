@@ -23,7 +23,7 @@
           (->transformer schema))))))
 
 ;;
-;; Strings
+;; From Strings
 ;;
 
 (defn string->long [x]
@@ -139,6 +139,23 @@
 
    'inst? (constantly string->date)})
 
+(def +json-encoders+
+  {'keyword? (constantly m/keyword->string)
+   'simple-keyword? (constantly m/keyword->string)
+   'qualified-keyword? (constantly m/keyword->string)
+
+   'symbol? (constantly any->string)
+   'simple-symbol? (constantly any->string)
+   'qualified-symbol? (constantly any->string)
+
+   'uuid? (constantly any->string)
+
+   ;:uri any->string
+   ;:bigdec any->string
+
+   'inst? (constantly date->string)
+   #?@(:clj ['ratio? number->double])})
+
 (def +string-decoders+
   (merge
     +json-decoders+
@@ -148,7 +165,7 @@
      'neg-int? (constantly string->long)
      'nat-int? (constantly string->long)
      'zero? (constantly string->long)
-
+     
      :> (constantly string->long)
      :>= (constantly string->long)
      :< (constantly string->long)
@@ -165,13 +182,32 @@
      'false? (constantly string->boolean)
      'true? (constantly string->boolean)}))
 
-(def +strip-extra-keys-decoders+
+(def +string-encoders+
+  (merge
+    +json-encoders+
+    {'integer? (constantly any->string)
+     'int? (constantly any->string)
+     'pos-int? (constantly any->string)
+     'neg-int? (constantly any->string)
+     'nat-int? (constantly any->string)
+     'zero? (constantly any->string)
+
+     :> (constantly any->string)
+     :>= (constantly any->string)
+     :< (constantly any->string)
+     :<= (constantly any->string)
+     := (constantly any->string)
+     :not= (constantly any->string)
+
+     'double (constantly any->string)}))
+
+(def +strip-extra-keys-transformers+
   {:map (fn [schema]
           (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
             (fn [x] (select-keys x keys))))})
 
-(defn +key-decoders+ [key-fn]
-  {::m/map-key (constantly (fn [x] (key-fn x)))})
+(defn +key-transformers+ [key-fn]
+  (if key-fn {::m/map-key (constantly (fn [x] (key-fn x)))}))
 
 ;;
 ;; transformers
@@ -180,22 +216,29 @@
 (def string-transformer
   (transformer
     {:name :string
-     :decoders +string-decoders+}))
+     :decoders +string-decoders+
+     :encoders +string-encoders+}))
 
 (def json-transformer
   (transformer
     {:name :json
-     :decoders +json-decoders+}))
+     :decoders +json-decoders+
+     :encoders +string-encoders+}))
 
 (def strip-extra-keys-transformer
   (transformer
     {:name ::strip-extra-keys
-     :decoders +strip-extra-keys-decoders+}))
+     :decoders +strip-extra-keys-transformers+
+     :encoders +strip-extra-keys-transformers+}))
 
-(defn key-transformer [key-fn]
-  (transformer
-    {:name ::key-transformer
-     :decoders (+key-decoders+ key-fn)}))
+(defn key-transformer
+  ([decode-key-fn]
+   (key-transformer decode-key-fn nil))
+  ([decode-key-fn encode-key-fn]
+   (transformer
+     {:name ::key-transformer
+      :decoders (+key-transformers+ decode-key-fn)
+      :encoders (+key-transformers+ encode-key-fn)})))
 
 (def collection-transformer
   (transformer

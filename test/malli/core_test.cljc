@@ -681,3 +681,49 @@
           [:map [:x [:or int? string?]] [:y int?]]]
          [:body-params
           [:map [:z int?]]]]]])))
+
+(deftest select-keys-test
+  (are [s1 ks expected]
+    (= (m/form expected) (m/form (m/select-keys s1 ks)))
+
+    [:map [:x int?] [:y {:optional true} string?]]
+    [:x]
+    [:map [:x int?]]
+
+    [:map [:x int?] [:y {:optional true} string?]]
+    [:y]
+    [:map [:y {:optional true} string?]]))
+
+(deftest dissoc-test
+  (are [s1 k expected]
+    (= (m/form expected) (m/form (m/dissoc s1 k)))
+
+    [:map [:x int?] [:y {:optional true} string?]]
+    :x
+    [:map [:y {:optional true} string?]]
+
+    [:map [:x int?] [:y {:optional true} string?]]
+    :y
+    [:map [:x int?]]))
+
+(deftest assoc-test
+  (are [s1 k v expected]
+    (= (m/form expected) (m/form (m/assoc s1 k v)))
+
+    [:map [:x int?]]
+    :y string?
+    [:map [:x int?] [:y string?]]
+
+    [:map [:x int?]]
+    :x string?
+    [:map [:x string?]]))
+
+(deftest update-in-test
+  (let [s [:map [:x int?] [:y [:map [:z string?] [:w int?]]]]]
+    (is (= (m/form [:map [:x int?] [:y [:map [:z string?]]]])
+           (m/form (m/update-in s [:y] m/dissoc :w))))
+
+    (is (= (m/form [:map [:x int?] [:y [:map [:z string?] [:w string?]]]])
+           (m/form (m/update-in s [:y :w] (fn [_] string?)))))))
+
+

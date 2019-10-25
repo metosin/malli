@@ -715,6 +715,56 @@
     (-form [_] ::map-key)
     (-transformer [this transformer] (-value-transformer transformer this))))
 
+(defn- -equals? [a b]
+  #?(:clj  (.equals a b)
+     :cljs (= a b)))
+
+(defn- -assert-map-schema [s]
+  (when-not (-equals? (-name s) :map)
+    (fail! ::invalid-type)))
+
+(defn select-keys
+  [schema' ks]
+  (let [s (schema schema')]
+    (-assert-map-schema s)
+    (let [c (childs s)
+          ks? (set ks)]
+      (schema (vec (cons (-name s) (filterv (comp ks? first) c)))))))
+
+(defn dissoc
+  [schema' & ks]
+  (let [s (schema schema')]
+    (-assert-map-schema s)
+    (let [c (childs s)
+          not-ks? (complement (set ks))]
+      (schema (vec (cons (-name s) (filterv (comp not-ks? first) c)))))))
+
+(defn assoc
+  [schema' k v]
+  (let [s (schema schema')]
+    (-assert-map-schema s)
+    (let [c (childs (dissoc s k))]
+      (schema (vec (cons (-name s) (conj (vec c) [k v])))))))
+
+(defn get [schema' k]
+  (let [s (schema schema')]
+    (-assert-map-schema s)
+    (let [c (childs schema')
+          entry (first (filter (comp #(-equals? % k) first) c))
+          [_ _ v] (-expand-key entry {} identity)]
+      v)))
+
+(defn update-in
+  [schema' path f & args]
+  (let [rec (fn rec [schema' path f args]
+              (let [s (schema schema')
+                    [k & ks] path]
+                (-assert-map-schema s)
+                (if ks
+                  (assoc s k (rec (get s k) ks f args))
+                  (assoc s k (apply f (get s k) args)))))]
+    (schema (rec schema' path f args))))
+
 ;;
 ;; registries
 ;;

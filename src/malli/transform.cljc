@@ -12,13 +12,14 @@
 (defn transformer [& ?options]
   (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
         name (-> options last :name)
-        transformers (->> options (map :transformers) (apply merge))]
+        decoders (->> options (map :decoders) (apply merge))
+        encoders (->> options (map :encoders) (apply merge))]
     (reify
       m/Transformer
       (-transformer-name [_] name)
-      (-transformer-options [_] {:name name, :transformers transformers})
-      (-value-transformer [_ schema]
-        (if-let [->transformer (get transformers (m/name schema))]
+      (-transformer-options [_] {:name name, :decoders decoders, :encoders encoders})
+      (-value-transformer [_ schema context]
+        (if-let [->transformer (get ({:encode encoders, :decode decoders} context) (m/name schema))]
           (->transformer schema))))))
 
 ;;
@@ -179,24 +180,23 @@
 (def string-transformer
   (transformer
     {:name :string
-     :transformers +string-decoders+}))
+     :decoders +string-decoders+}))
 
 (def json-transformer
   (transformer
     {:name :json
-     :transformers +json-decoders+}))
+     :decoders +json-decoders+}))
 
 (def strip-extra-keys-transformer
   (transformer
     {:name ::strip-extra-keys
-     :transformers +strip-extra-keys-decoders+}))
+     :decoders +strip-extra-keys-decoders+}))
 
 (defn key-transformer [key-fn]
   (transformer
     {:name ::key-transformer
-     :transformers (+key-decoders+ key-fn)}))
+     :decoders (+key-decoders+ key-fn)}))
 
 (def collection-transformer
   (transformer
-    {:name ::collection
-     :transformers {}}))
+    {:name ::collection}))

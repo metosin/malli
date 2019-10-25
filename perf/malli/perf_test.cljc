@@ -158,7 +158,7 @@
       ;; 74µs
       (cc/quick-bench (json->place json)))
 
-    (let [json->place (m/transformer Place transform/json-transformer)]
+    (let [json->place (m/decoder Place transform/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
       ;; 1µs
@@ -179,7 +179,7 @@
       (string->edn "1")))
 
   ;; 4ns
-  (let [string->edn (m/transformer int? transform/string-transformer)]
+  (let [string->edn (m/decoder int? transform/string-transformer)]
     (assert (= 1
                (string->edn "1")
                (string->edn 1)))
@@ -204,7 +204,7 @@
 
   ;; 140ns
   (let [schema [:map [:id int?] [:name string?]]
-        string->edn (m/transformer schema transform/string-transformer)]
+        string->edn (m/decoder schema transform/string-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})
                (string->edn {:id "1", :name "kikka"})))
@@ -225,7 +225,7 @@
 
   ;; 3.0ns
   (let [schema [:map [:id int?] [:name string?]]
-        string->edn (m/transformer schema transform/json-transformer)]
+        string->edn (m/decoder schema transform/json-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})))
     (cc/quick-bench
@@ -271,7 +271,7 @@
 
     ;; 3ns -> 3ns
     ;; 520ns -> 130ns
-    (let [>> (m/transformer [:map [:x string?] [:y int?]] transformer)]
+    (let [>> (m/decoder [:map [:x string?] [:y int?]] transformer)]
       (cc/quick-bench (>> {:x "1", :y 1})))))
 
 (comment

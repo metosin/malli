@@ -14,7 +14,7 @@
   (-name [this] "returns name of the schema")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  (-transformer [this transformer] "returns a function of `x -> y` to transform values with the given transformer")
+  (-transformer [this transformer context] "returns a function of `x -> y` to transform values with the given transformer and context")
   (-accept [this visitor opts] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
   (-form [this] "returns original form of the schema"))
@@ -22,7 +22,7 @@
 (defprotocol Transformer
   (-transformer-name [this] "name of the transformer")
   (-transformer-options [this] "returns transformer options")
-  (-value-transformer [this schema] "returns a function to transform value for the given schema"))
+  (-value-transformer [this schema context] "returns a function to transform value for the given schema and context"))
 
 (defrecord SchemaError [path in schema value type message])
 
@@ -89,8 +89,8 @@
           (-explainer [this path]
             (fn [value in acc]
               (if-not (validator value) (conj acc (error path in this value)) acc)))
-          (-transformer [this transformer]
-            (-value-transformer transformer this))
+          (-transformer [this transformer context]
+            (-value-transformer transformer this context))
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
           (-form [_] form))))))
@@ -136,8 +136,8 @@
                         (nil? acc'') acc'
                         :else acc'')))
                   acc explainers))))
-          (-transformer [_ transformer]
-            (let [tvs (into [] (keep #(-transformer % transformer) child-schemas))]
+          (-transformer [_ transformer context]
+            (let [tvs (into [] (keep #(-transformer % transformer context) child-schemas))]
               (if (seq tvs)
                 (if short-circuit
                   (fn [x]
@@ -230,13 +230,13 @@
                     (fn [acc explainer]
                       (explainer x in acc))
                     acc explainers)))))
-          (-transformer [this transformer]
-            (let [key-transformer (-transformer (map-key) transformer)
+          (-transformer [this transformer context]
+            (let [key-transformer (-transformer (map-key) transformer context)
                   value-transformers (some->> entries
-                                              (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer)] [k t])))
+                                              (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer context)] [k t])))
                                               (seq)
                                               (apply array-map))
-                  map-transformer (-value-transformer transformer this)
+                  map-transformer (-value-transformer transformer this context)
                   apply-key-transformers (fn [m k v]
                                            (let [k' (key-transformer k)]
                                              (-> m
@@ -332,10 +332,10 @@
                              (key-explainer key in)
                              (value-explainer value in))))
                     acc m)))))
-          (-transformer [_ transformer]
-            (let [key-transformer (if-let [t (-transformer key-schema transformer)]
+          (-transformer [_ transformer context]
+            (let [key-transformer (if-let [t (-transformer key-schema transformer context)]
                                     (fn [x] (t (keyword->string x))))
-                  value-transformer (-transformer value-schema transformer)]
+                  value-transformer (-transformer value-schema transformer context)]
               (cond
                 (and key-transformer value-transformer)
                 (fn [x]
@@ -400,8 +400,8 @@
                             (if (< i size)
                               (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
-          (-transformer [_ transformer]
-            (if-let [t (-transformer schema transformer)]
+          (-transformer [_ transformer context]
+            (if-let [t (-transformer schema transformer context)]
               (if fempty
                 (fn [x]
                   (try
@@ -447,9 +447,9 @@
                   (not= (count x) size) (conj acc (error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
-          (-transformer [_ transformer]
+          (-transformer [_ transformer context]
             (let [ts (->> schemas
-                          (mapv #(-transformer % transformer))
+                          (mapv #(-transformer % transformer context))
                           (map-indexed vector)
                           (filter second)
                           (mapcat identity)
@@ -475,7 +475,7 @@
             (fn explain [x in acc]
               (if-not (validator x) (conj acc (error path in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
-          (-transformer [_ _])
+          (-transformer [_ _ _])
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
           (-form [_] (create-form :enum properties children)))))))
@@ -501,7 +501,7 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [_ _])
+          (-transformer [_ _ _])
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] form))))))
@@ -526,7 +526,7 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [_ _])
+          (-transformer [_ _ _])
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] (create-form :fn properties children)))))))
@@ -547,7 +547,7 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
-          (-transformer [_ transformer] (-transformer schema' transformer))
+          (-transformer [_ transformer context] (-transformer schema' transformer context))
           (-accept [this visitor opts] (visitor this [(-accept schema' visitor opts)] opts))
           (-properties [_] properties)
           (-form [_] form))))))
@@ -651,19 +651,35 @@
   ([?schema value opts]
    ((explainer ?schema opts) value [] [])))
 
-(defn transformer
-  "Creates a value transformer given a transformer and a schema."
+(defn decoder
+  "Creates a value decoding transformer given a transformer and a schema."
   ([?schema t]
-   (transformer ?schema nil t))
+   (decoder ?schema nil t))
   ([?schema opts t]
-   (or (-transformer (schema ?schema opts) t) identity)))
+   (or (-transformer (schema ?schema opts) t :decode) identity)))
 
-(defn transform
-  "Transforms a value with a given transformer agains a schema."
+(defn decode
+  "Transforms a value with a given decoding transformer agains a schema."
   ([?schema value t]
-   (transform ?schema value nil t))
+   (decode ?schema value nil t))
   ([?schema value opts t]
-   (if-let [transform (transformer (schema ?schema) opts t)]
+   (if-let [transform (decoder (schema ?schema) opts t)]
+     (transform value)
+     value)))
+
+(defn encoder
+  "Creates a value encoding transformer given a transformer and a schema."
+  ([?schema t]
+   (encoder ?schema nil t))
+  ([?schema opts t]
+   (or (-transformer (schema ?schema opts) t :encode) identity)))
+
+(defn encode
+  "Transforms a value with a given encoding transformer agains a schema."
+  ([?schema value t]
+   (encode ?schema value nil t))
+  ([?schema value opts t]
+   (if-let [transform (encoder (schema ?schema) opts t)]
      (transform value)
      value)))
 
@@ -713,7 +729,7 @@
   (reify Schema
     (-name [_] ::map-key)
     (-form [_] ::map-key)
-    (-transformer [this transformer] (-value-transformer transformer this))))
+    (-transformer [this transformer context] (-value-transformer transformer this context))))
 
 ;;
 ;; registries

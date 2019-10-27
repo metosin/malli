@@ -206,8 +206,8 @@
 
 (deftest schema-hinted-tranformation
   (let [schema [string? {:title "lower-upper-string"
-                         :decode/string (constantly str/upper-case)
-                         :encode/string (constantly str/lower-case)}]
+                         :decode/string '(constantly str/upper-case)
+                         :encode/string '(constantly str/lower-case)}]
         value "KiKkA"]
     (testing "defined transformations"
       (is (= "KIKKA" (m/decode schema value mt/string-transformer)))

@@ -11,15 +11,19 @@
 
 (defn transformer [& ?options]
   (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
-        name (-> options last :name)
+        transformer-name (-> options last :name)
         decoders (->> options (map :decoders) (apply merge))
-        encoders (->> options (map :encoders) (apply merge))]
+        encoders (->> options (map :encoders) (apply merge))
+        transformers {:encode encoders, :decode decoders}
+        schema-keys {:encode (some->> transformer-name name (str "encode/") keyword)
+                     :decode (some->> transformer-name name (str "decode/") keyword)}]
     (reify
       m/Transformer
-      (-transformer-name [_] name)
-      (-transformer-options [_] {:name name, :decoders decoders, :encoders encoders})
+      (-transformer-name [_] transformer-name)
+      (-transformer-options [_] {:name transformer-name, :decoders decoders, :encoders encoders})
       (-value-transformer [_ schema context]
-        (if-let [->transformer (get ({:encode encoders, :decode decoders} context) (m/name schema))]
+        (if-let [->transformer (or (some-> (get (m/properties schema) (schema-keys context)) (m/eval))
+                                   (get (transformers context) (m/name schema)))]
           (->transformer schema))))))
 
 ;;
@@ -165,7 +169,7 @@
      'neg-int? (constantly string->long)
      'nat-int? (constantly string->long)
      'zero? (constantly string->long)
-     
+
      :> (constantly string->long)
      :>= (constantly string->long)
      :< (constantly string->long)
@@ -213,16 +217,16 @@
 ;; transformers
 ;;
 
-(def string-transformer
-  (transformer
-    {:name :string
-     :decoders +string-decoders+
-     :encoders +string-encoders+}))
-
 (def json-transformer
   (transformer
     {:name :json
      :decoders +json-decoders+
+     :encoders +string-encoders+}))
+
+(def string-transformer
+  (transformer
+    {:name :string
+     :decoders +string-decoders+
      :encoders +string-encoders+}))
 
 (def strip-extra-keys-transformer

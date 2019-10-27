@@ -1,7 +1,8 @@
 (ns malli.transform-test
   (:require [clojure.test :refer [deftest testing is]]
             [malli.core :as m]
-            [malli.transform :as mt]))
+            [malli.transform :as mt]
+            [clojure.string :as str]))
 
 (deftest string->long
   (is (= 1 (mt/string->long "1")))
@@ -202,3 +203,18 @@
              (m/encode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                        {:x 18 :y "john" :a "doe"}
                        key-transformer))))))
+
+(deftest schema-hinted-tranformation
+  (let [schema [string? {:title "lower-upper-string"
+                         :decode/string (constantly str/upper-case)
+                         :encode/string (constantly str/lower-case)}]
+        value "KiKkA"]
+    (testing "defined transformations"
+      (is (= "KIKKA" (m/decode schema value mt/string-transformer)))
+      (is (= "kikka" (m/encode schema value mt/string-transformer)))
+      (is (= "kikka" (as-> value $
+                           (m/decode schema $ mt/string-transformer)
+                           (m/encode schema $ mt/string-transformer)))))
+    (testing "undefined transformations"
+      (is (= value (m/decode schema value mt/json-transformer)))
+      (is (= value (m/encode schema value mt/json-transformer))))))

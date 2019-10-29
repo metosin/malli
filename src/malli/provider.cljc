@@ -5,7 +5,7 @@
 (declare schema)
 
 (def preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean?]
-                     (reverse) (zipmap (range)) (assoc 'any? -10 'some? -10)))
+                     (reverse) (zipmap (range)) (assoc 'any? -10 'some? -9)))
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 

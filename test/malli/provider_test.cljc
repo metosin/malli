@@ -7,6 +7,8 @@
   [[int? [1 2 3]]
    [keyword? [:kikka :kukka]]
    [qualified-keyword? [::kikka ::kukka]]
+   [uuid? [#?(:clj (java.util.UUID/randomUUID) :cljs (random-uuid))]]
+   [inst? [#?(:clj (java.util.Date.) :cljs (js/Date.))]]
 
    [[:vector keyword?] [[:kikka] [:kukka :kakka]]]
    [[:list symbol?] [(list 'kikka) (list 'kukka 'kakka)]]

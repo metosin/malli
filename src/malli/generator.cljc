@@ -47,12 +47,9 @@
 
 #?(:clj
    (defn -re-gen [schema opts]
-     (let [re (or (first (m/childs schema opts)) (m/form schema opts))]
-       (try
-         (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1")))
-         (catch Exception ex
-           #(throw ex)                                      ;; throw only if bad regex generator is actually used
-           )))))
+     (when-not (-> schema m/properties :gen/elements)
+       (let [re (or (first (m/childs schema opts)) (m/form schema opts))]
+         (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1")))))))
 
 ;;
 ;; generators

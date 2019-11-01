@@ -47,9 +47,8 @@
 
 #?(:clj
    (defn -re-gen [schema opts]
-     (when-not (-> schema m/properties :gen/elements)
-       (let [re (or (first (m/childs schema opts)) (m/form schema opts))]
-         (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1")))))))
+     (let [re (or (first (m/childs schema opts)) (m/form schema opts))]
+       (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))))
 
 ;;
 ;; generators
@@ -79,9 +78,9 @@
 #?(:clj (defmethod -generator :re [schema opts] (-re-gen schema opts)))
 
 (defn- -create [schema opts]
-  (let [gen (-generator schema opts)
-        {:gen/keys [fmap elements]} (m/properties schema)
-        elements (if elements (gen/elements elements))]
+  (let [{:gen/keys [fmap elements]} (m/properties schema)
+        gen (when-not elements (-generator schema opts))
+        elements (when elements (gen/elements elements))]
     (cond
       fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))
       elements elements

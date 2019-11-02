@@ -107,16 +107,32 @@
 (deftest composing-with-and-test
 
   (testing "top-level map-schemas are written in :malli/error"
-    (let [map-schema [:and [:map [:x int?]
-                            [:y int?]
-                            [:z int?]]
-                      [:fn {:error/message "(> x y)"}
-                       '(fn [{:keys [x y]}] (> x y))]]]
+    (let [schema [:and [:map
+                        [:x int?]
+                        [:y int?]
+                        [:z int?]]
+                  [:fn {:error/message "(> x y)"}
+                   '(fn [{:keys [x y]}] (> x y))]]]
 
       (is (= {:z "should be int", :malli/error "(> x y)"}
-             (-> map-schema
+             (-> schema
                  (m/explain {:x 1 :y 2, :z "1"})
-                 (me/humanize {:wrap :message}))))))
+                 (me/humanize {:wrap :message})))))
+
+    (testing ":error/path contributes to path"
+      (let [schema [:and [:map
+                          [:password string?]
+                          [:password2 string?]]
+                    [:fn {:error/message "passwords don't match"
+                          :error/path [:password2]}
+                     '(fn [{:keys [password password2]}]
+                        (= password password2))]]]
+
+        (is (= {:password2 "passwords don't match"}
+               (-> schema
+                   (m/explain {:password "secret"
+                               :password2 "faarao"})
+                   (me/humanize {:wrap :message})))))))
 
   (testing "on collections, first error wins"
     (let [schema [:and

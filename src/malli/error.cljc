@@ -78,9 +78,22 @@
     acc acc
     :else error))
 
+(defn- -path [{:keys [schema]}
+              {:keys [locale default-locale]
+               :or {default-locale :en}}]
+  (let [properties (m/properties schema)]
+    (or (-maybe-localized (:error/path properties) locale)
+        (-maybe-localized (:error/path properties) default-locale))))
+
 ;;
 ;; public api
 ;;
+
+(defn error-path
+  ([error]
+   (error-path error nil))
+  ([error opts]
+   (into (:in error) (-path error opts))))
 
 (defn error-message
   ([error]
@@ -118,6 +131,6 @@
      (if (coll? value)
        (reduce
          (fn [acc error]
-           (-assoc-in acc value (:in error) (f (with-error-message error opts))))
+           (-assoc-in acc value (error-path error opts) (f (with-error-message error opts))))
          nil errors)
        (f (with-error-message (first errors) opts))))))

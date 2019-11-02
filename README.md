@@ -201,6 +201,37 @@ Messages can be localized:
 ; :age "10, pitäisi olla > 18"}
 ```
 
+Top-level humanized map-errors are under `:malli/error`:
+
+```clj
+(-> [:and [:map
+           [:password string?]
+           [:password2 string?]]
+     [:fn {:error/message "passwords don't match"}
+      '(fn [{:keys [password password2]}]
+         (= password password2))]]
+    (m/explain {:password "secret"
+                :password2 "faarao"})
+    (me/humanize {:wrap :message}))
+; {:malli/error "passwords don't match"}
+```
+
+Errors can be targetted using `:error/path` property:
+
+```clj
+(-> [:and [:map
+           [:password string?]
+           [:password2 string?]]
+     [:fn {:error/message "passwords don't match"
+           :error/path [:password2]}
+      '(fn [{:keys [password password2]}]
+         (= password password2))]]
+    (m/explain {:password "secret"
+                :password2 "faarao"})
+    (me/humanize {:wrap :message}))
+; {:password2 "passwords don't match"}
+```
+
 ## Value Transformation
 
 Schema-driven value transformations with `m/transform`:

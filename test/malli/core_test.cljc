@@ -348,6 +348,14 @@
 
   (testing "sequence schemas"
 
+    (testing "empty schemas fail"
+      (doseq [element [:vector :list :set :tuple]]
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
+
+    (testing "more than 1 elements fail on collections"
+      (doseq [element [:vector :list :set]]
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element int? int?])))))
+
     (testing "validation"
       (let [expectations {"vector" [[true [:vector int?] [1 2 3]]
                                     [false [:vector int?] [1 "2" 3]]

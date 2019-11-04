@@ -689,3 +689,9 @@
           [:map [:x [:or int? string?]] [:y int?]]]
          [:body-params
           [:map [:z int?]]]]]])))
+
+(def sequential (#'m/-collection-schema `sequential sequential? seq nil))
+
+(deftest custom-into-schema-test
+  (doseq [value [[1 2 3] '(1 2 3)]]
+    (is (= true (m/validate [sequential int?] value)))))

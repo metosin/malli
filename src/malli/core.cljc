@@ -575,7 +575,9 @@
   ([?schema]
    (schema ?schema nil))
   ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
-   (let [-get #(or (get registry %) (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
+   (let [-get #(or (if (satisfies? IntoSchema %) %)
+                   (get registry %)
+                   (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
      (cond
        (schema? ?schema) ?schema
        (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)

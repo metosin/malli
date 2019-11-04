@@ -378,7 +378,8 @@
                           "list" [[true [:list int?] '(1 2 3)]
                                   [false [:list int?] '(1 "2" 3)]
                                   [false [:list int?] '(1 2 "3")]
-                                  [false [:vector int?] '(nil)]
+                                  [false [:list int?] nil]
+                                  [false [:list int?] '(nil)]
                                   [false [:list int?] "invalid"]
 
                                   [true [:list {:min 3} int?] '(1 2 3)]

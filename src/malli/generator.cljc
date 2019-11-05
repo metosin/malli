@@ -14,7 +14,7 @@
 (defn- -double-gen [opts] (gen/double* (merge {:infinite? false, :NaN? false} opts)))
 
 (defn- -coll-gen [schema f opts]
-  (let [{:keys [min max]} (m/properties schema)
+  (let [{:keys [min max]} (m/properties schema opts)
         gen (-> schema m/children first (generator opts))]
     (gen/fmap f (cond
                   (and min (= min max)) (gen/vector gen min)
@@ -24,7 +24,7 @@
                   :else (gen/vector gen)))))
 
 (defn- -coll-distict-gen [schema f opts]
-  (let [{:keys [min max]} (m/properties schema)
+  (let [{:keys [min max]} (m/properties schema opts)
         gen (-> schema m/children first (generator opts))]
     (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))
 
@@ -56,29 +56,29 @@
 
 (defmulti -generator (fn [schema opts] (m/name schema opts)) :default ::default)
 
-(defmethod -generator ::default [schema _] (ga/gen-for-pred (m/validator schema)))
+(defmethod -generator ::default [schema opts] (ga/gen-for-pred (m/validator schema opts)))
 
-(defmethod -generator :> [schema _] (-double-gen {:min (-> schema m/children first inc)}))
-(defmethod -generator :>= [schema _] (-double-gen {:min (-> schema m/children first)}))
-(defmethod -generator :< [schema _] (-double-gen {:max (-> schema m/children first dec)}))
-(defmethod -generator :<= [schema _] (-double-gen {:max (-> schema m/children first)}))
-(defmethod -generator := [schema _] (gen/return (first (m/children schema))))
-(defmethod -generator :not= [schema _] (gen/such-that (->> schema m/children first (partial not=)) gen/any-printable 100))
+(defmethod -generator :> [schema opts] (-double-gen {:min (-> schema (m/children opts) first inc)}))
+(defmethod -generator :>= [schema opts] (-double-gen {:min (-> schema (m/children opts) first)}))
+(defmethod -generator :< [schema opts] (-double-gen {:max (-> schema (m/children opts) first dec)}))
+(defmethod -generator :<= [schema opts] (-double-gen {:max (-> schema (m/children opts) first)}))
+(defmethod -generator := [schema opts] (gen/return (first (m/children schema opts))))
+(defmethod -generator :not= [schema opts] (gen/such-that (partial not= (-> schema (m/children opts) first)) gen/any-printable 100))
 
-(defmethod -generator :and [schema opts] (gen/such-that (m/validator schema) (-> schema m/children first (generator opts)) 100))
-(defmethod -generator :or [schema opts] (gen/one-of (->> schema m/children (mapv #(generator % opts)))))
+(defmethod -generator :and [schema opts] (gen/such-that (m/validator schema opts) (-> schema (m/children opts) first (generator opts)) 100))
+(defmethod -generator :or [schema opts] (gen/one-of (mapv #(generator % opts) (m/children schema opts))))
 (defmethod -generator :map [schema opts] (-map-gen schema opts))
 (defmethod -generator :map-of [schema opts] (-map-of-gen schema opts))
 (defmethod -generator :vector [schema opts] (-coll-gen schema identity opts))
 (defmethod -generator :list [schema opts] (-coll-gen schema (partial apply list) opts))
-(defmethod -generator :set [schema _] (-coll-distict-gen schema set))
-(defmethod -generator :enum [schema _] (gen/elements (m/children schema)))
-(defmethod -generator :maybe [schema opts] (gen/one-of [(gen/return nil) (-> schema m/children first (generator opts))]))
-(defmethod -generator :tuple [schema opts] (apply gen/tuple (->> schema m/children (mapv #(generator % opts)))))
+(defmethod -generator :set [schema opts] (-coll-distict-gen schema set opts))
+(defmethod -generator :enum [schema opts] (gen/elements (m/children schema opts)))
+(defmethod -generator :maybe [schema opts] (gen/one-of [(gen/return nil) (-> schema (m/children opts) first (generator opts))]))
+(defmethod -generator :tuple [schema opts] (apply gen/tuple (mapv #(generator % opts) (m/children schema opts))))
 #?(:clj (defmethod -generator :re [schema opts] (-re-gen schema opts)))
 
 (defn- -create [schema opts]
-  (let [{:gen/keys [fmap elements]} (m/properties schema)
+  (let [{:gen/keys [fmap elements]} (m/properties schema opts)
         gen (when-not elements (-generator schema opts))
         elements (when elements (gen/elements elements))]
     (cond

@@ -33,8 +33,8 @@
     [:x {:optional true} int?] {:optional true}
     [:x {:optional false} int?] {:optional false}))
 
-(defn visitor [schema childs _]
-  (into [(m/name schema)] (seq childs)))
+(defn visitor [schema children _]
+  (into [(m/name schema)] (seq children)))
 
 (deftest eval-test
   (is (= 2 ((m/eval inc) 1)))
@@ -589,11 +589,11 @@
              (m/properties [:and properties int?])
              (m/properties [int? properties]))))))
 
-(deftest childs-test
-  (testing "childs can be set and retrieved"
+(deftest children-test
+  (testing "children can be set and retrieved"
     (is (= ['int? 'pos-int?]
-           (m/childs [:and {:a 1} int? pos-int?])
-           (m/childs [:and int? pos-int?])))))
+           (m/children [:and {:a 1} int? pos-int?])
+           (m/children [:and int? pos-int?])))))
 
 (deftest round-trip-test
   (testing "schemas can be roundtripped"

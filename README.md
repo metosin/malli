@@ -464,29 +464,29 @@ All samples are valid against the inferred schema:
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):
 
 ```clj
-(defn visitor [schema childs _]
+(defn visitor [schema children _]
   {:name (m/name schema)
    :properties (or (m/properties schema) {})
-   :childs childs})
+   :children children})
 
 (m/accept Address visitor)
 ;{:name :map,
 ; :properties {},
-; :childs [{:name string?
-;           :properties {}
-;           :childs []}
-;          {:name :set
-;           :properties {}
-;           :childs [{:name keyword?, :properties {}, :childs []}]}
-;          {:name :map,
-;           :properties {},
-;           :childs [{:name string?, :properties {}, :childs []}
-;                    {:name string?, :properties {}, :childs []}
-;                    {:name int?, :properties {}, :childs []}
-;                    {:name :tuple,
-;                     :properties {},
-;                     :childs [{:name double?, :properties {}, :childs []} 
-;                              {:name double?, :properties {}, :childs []}]}]}]}
+; :children [{:name string?
+;             :properties {}
+;             :children []}
+;            {:name :set
+;             :properties {}
+;             :children [{:name keyword?, :properties {}, :children []}]}
+;            {:name :map,
+;             :properties {},
+;             :children [{:name string?, :properties {}, :children []}
+;                        {:name string?, :properties {}, :children []}
+;                        {:name int?, :properties {}, :children []}
+;                        {:name :tuple,
+;                         :properties {},
+;                         :children [{:name double?, :properties {}, :children []}
+;                                    {:name double?, :properties {}, :children []}]}]}]}
 ```
 
 ### JSON Schema

@@ -166,7 +166,7 @@
 
 (def +strip-extra-keys-decoders+
   {:map (fn [schema]
-          (if-let [keys (seq (:keys (m/-parse-keys (m/childs schema) nil)))]
+          (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
             (fn [x] (select-keys x keys))))})
 
 (defn +key-decoders+ [key-fn]

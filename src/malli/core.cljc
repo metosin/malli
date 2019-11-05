@@ -583,7 +583,7 @@
        (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
        (vector? ?schema) (apply -into-schema (concat [(-get (first ?schema))]
                                                      (-properties-and-childs (rest ?schema)) [opts]))
-       :else (or (some-> ?schema -get schema) (fail! ::invalid-schema {:schema ?schema}))))))
+       :else (or (some-> ?schema -get (schema opts)) (fail! ::invalid-schema {:schema ?schema}))))))
 
 (defn form
   ([?schema]

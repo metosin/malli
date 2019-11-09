@@ -218,3 +218,12 @@
     (testing "undefined transformations"
       (is (= value (m/decode schema value mt/json-transformer)))
       (is (= value (m/encode schema value mt/json-transformer))))))
+
+(deftest transformation-targets
+  (let [PROPS {:decode/string '(constantly str/upper-case)
+               :encode/string '(constantly str/lower-case)}
+        expectations [[[string? PROPS] "kikka" "KIKKA"]
+                      [[:and PROPS string?] "kikka" "KIKKA"]
+                      [[:or PROPS int? string?] "kikka" "KIKKA"]]]
+    (doseq [[schema value expected] expectations]
+      (is (= expected (m/decode schema value mt/string-transformer))))))

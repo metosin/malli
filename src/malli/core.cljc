@@ -136,18 +136,18 @@
                         (nil? acc'') acc'
                         :else acc'')))
                   acc explainers))))
-          (-transformer [_ transformer context]
-            (let [tvs (into [] (keep #(-transformer % transformer context) child-schemas))]
-              (if (seq tvs)
-                (if short-circuit
-                  (fn [x]
-                    (reduce-kv
-                      (fn [_ _ t] (let [x' (t x)] (if-not (identical? x' x) (reduced x') x)))
-                      x tvs))
-                  (fn [x]
-                    (reduce-kv
-                      (fn [x' _ t] (t x'))
-                      x tvs))))))
+          (-transformer [this transformer context]
+            (let [st (-value-transformer transformer this context)
+                  ?st (or st identity)
+                  tvs (into [] (keep #(-transformer % transformer context) child-schemas))]
+              (cond
+                (not (seq tvs)) st
+                short-circuit (fn [x]
+                                (let [x (?st x)]
+                                  (reduce-kv
+                                    (fn [_ _ t] (let [x' (t x)] (if-not (identical? x' x) (reduced x') x)))
+                                    x tvs)))
+                :else (fn [x] (reduce-kv (fn [x' _ t] (t x')) (?st x) tvs)))))
           (-accept [this visitor opts]
             (visitor this (mapv #(-accept % visitor opts) child-schemas) opts))
           (-properties [_] properties)

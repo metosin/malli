@@ -506,7 +506,8 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [_ _ _])
+          (-transformer [this transformer context]
+            (-value-transformer transformer this context))
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] form))))))

@@ -479,7 +479,8 @@
             (fn explain [x in acc]
               (if-not (validator x) (conj acc (error path in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
-          (-transformer [_ _ _])
+          (-transformer [this transformer context]
+            (-value-transformer transformer this context))
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
           (-form [_] (create-form :enum properties children)))))))

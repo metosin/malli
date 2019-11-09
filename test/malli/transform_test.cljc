@@ -220,10 +220,11 @@
       (is (= value (m/encode schema value mt/json-transformer))))))
 
 (deftest transformation-targets
-  (let [PROPS {:decode/string '(constantly str/upper-case)
-               :encode/string '(constantly str/lower-case)}
-        expectations [[[string? PROPS] "kikka" "KIKKA"]
-                      [[:and PROPS string?] "kikka" "KIKKA"]
-                      [[:or PROPS int? string?] "kikka" "KIKKA"]]]
+  (let [P1 {:decode/string '(constantly str/upper-case)}
+        PS {:decode/string '(constantly (partial mapv str/upper-case))}
+        expectations [[[string? P1] "kikka" "KIKKA"]
+                      [[:and P1 string?] "kikka" "KIKKA"]
+                      [[:or P1 int? string?] "kikka" "KIKKA"]
+                      [[:tuple PS string? int?] ["kikka" "1"] ["KIKKA" 1]]]]
     (doseq [[schema value expected] expectations]
       (is (= expected (m/decode schema value mt/string-transformer))))))

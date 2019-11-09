@@ -447,14 +447,18 @@
                   (not= (count x) size) (conj acc (error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
-          (-transformer [_ transformer context]
-            (let [ts (->> schemas
+          (-transformer [this transformer context]
+            (let [?tt (or (-value-transformer transformer this context) identity)
+                  ts (->> schemas
                           (mapv #(-transformer % transformer context))
                           (map-indexed vector)
                           (filter second)
                           (mapcat identity)
                           (apply array-map))]
-              (fn [x] (if (vector? x) (reduce-kv (fn [acc i t] (update acc i t)) (vec x) ts) x))))
+              (fn [x]
+                (let [x (?tt x)]
+                  (if (vector? x)
+                    (reduce-kv (fn [acc i t] (update acc i t)) x ts) x)))))
           (-accept [this visitor opts] (visitor this (mapv #(-accept % visitor opts) schemas) opts))
           (-properties [_] properties)
           (-form [_] form))))))

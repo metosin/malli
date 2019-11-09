@@ -554,7 +554,10 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
-          (-transformer [_ transformer context] (-transformer schema' transformer context))
+          (-transformer [this transformer context]
+            (let [tt (-value-transformer transformer this context)
+                  t (-transformer schema' transformer context)]
+              (if (and tt t) (comp t tt) (or tt t))))
           (-accept [this visitor opts] (visitor this [(-accept schema' visitor opts)] opts))
           (-properties [_] properties)
           (-form [_] form))))))

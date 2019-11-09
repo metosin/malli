@@ -226,6 +226,7 @@
                       [[:and P1 string?] "kikka" "KIKKA"]
                       [[:or P1 int? string?] "kikka" "KIKKA"]
                       [[:tuple PS string? int?] ["kikka" "1"] ["KIKKA" 1]]
-                      [[:enum P1 "S" "M" "L"] "s" "S"]]]
+                      [[:enum P1 "S" "M" "L"] "s" "S"]
+                      [[:re P1 ".*"] "kikka" "KIKKA"]]]
     (doseq [[schema value expected] expectations]
       (is (= expected (m/decode schema value mt/string-transformer))))))

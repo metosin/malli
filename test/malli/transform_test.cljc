@@ -222,19 +222,19 @@
 (deftest transformation-targets
   (let [P1 {:decode/string '(constantly str/upper-case)}
         PS {:decode/string '(constantly (partial mapv str/upper-case))}
-        PM {:decode/string '(constantly (fn [x] (->> (for [[k v] x] [(keyword k) v]) (into {}))))}
-        expectations [[[string? P1] "kikka" "KIKKA"]
-                      [[:and P1 string?] "kikka" "KIKKA"]
-                      [[:or P1 int? string?] "kikka" "KIKKA"]
-                      [[:map PM [:x int?]] {"x" "1", "y" "2"} {:x 1, :y "2"}]
-                      [[:map-of PM string? int?] {"x" "1", "y" "2"} {:x 1, :y 2}]
-                      [[:tuple PS string? int?] ["kikka" "1"] ["KIKKA" 1]]
+        PM {:decode/string '(constantly (fn [x] (->> (for [[k v] x] [(keyword k) (str/upper-case v)]) (into {}))))}
+        expectations [[[keyword? P1] "kikka" "KIKKA"]
+                      [[:and P1 keyword?] "kikka" :KIKKA]
+                      [[:or P1 int? keyword?] "kikka" :KIKKA]
+                      [[:map PM [:x keyword?]] {"x" "kikka", "y" "kukka"} {:x :KIKKA, :y "KUKKA"}]
+                      [[:map-of PM string? keyword?] {"x" "kikka", "y" "kukka"} {:x :KIKKA, :y :KUKKA}]
+                      [[:tuple PS keyword? int?] ["kikka" "1"] [:KIKKA 1]]
                       [[:enum P1 "S" "M" "L"] "s" "S"]
                       [[:re P1 ".*"] "kikka" "KIKKA"]
-                      [[:fn P1 string?] "kikka" "KIKKA"]
-                      [[:maybe P1 string?] "kikka" "KIKKA"]
-                      [[:vector PS string?] ["kikka"] ["KIKKA"]]
-                      [[:list PS string?] '("kikka") '("KIKKA")]
-                      [[:set PS string?] #{"kikka"} #{"KIKKA"}]]]
+                      [[:fn P1 'string?] "kikka" "KIKKA"]
+                      [[:maybe P1 keyword?] "kikka" :KIKKA]
+                      [[:vector PS keyword?] ["kikka"] [:KIKKA]]
+                      [[:list PS keyword?] '("kikka") '(:KIKKA)]
+                      [[:set PS keyword?] #{"kikka"} #{:KIKKA}]]]
     (doseq [[schema value expected] expectations]
       (is (= expected (m/decode schema value mt/string-transformer))))))

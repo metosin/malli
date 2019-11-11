@@ -11,7 +11,7 @@
 
 (defn transformer [& ?options]
   (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
-        transformer-name (-> options last :name)
+        transformer-name (->> options reverse (some :name))
         decoders (->> options (map :decoders) (apply merge))
         encoders (->> options (map :encoders) (apply merge))
         transformers {:encode encoders, :decode decoders}

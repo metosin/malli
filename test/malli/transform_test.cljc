@@ -162,7 +162,12 @@
 (deftest composing-transformers
   (let [strict-json-transformer (mt/transformer
                                   mt/strip-extra-keys-transformer
-                                  mt/json-transformer)]
+                                  mt/json-transformer
+                                  {:opts {:random :opts}})]
+
+    (testing "name is taken from the last named transformer"
+      (is (= :json (m/-transformer-name strict-json-transformer))))
+
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))
       (is (= {:x :kikka} (m/decode [:map [:x keyword?]] {:x "kikka", :y "kukka"} strict-json-transformer))))

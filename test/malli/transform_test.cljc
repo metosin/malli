@@ -227,6 +227,7 @@
                       [[:and P1 string?] "kikka" "KIKKA"]
                       [[:or P1 int? string?] "kikka" "KIKKA"]
                       [[:map PM [:x int?]] {"x" "1", "y" "2"} {:x 1, :y "2"}]
+                      [[:map-of PM string? int?] {"x" "1", "y" "2"} {:x 1, :y 2}]
                       [[:tuple PS string? int?] ["kikka" "1"] ["KIKKA" 1]]
                       [[:enum P1 "S" "M" "L"] "s" "S"]
                       [[:re P1 ".*"] "kikka" "KIKKA"]

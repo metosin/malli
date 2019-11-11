@@ -14,17 +14,18 @@
         transformer-name (->> options reverse (some :name))
         decoders (->> options (map :decoders) (apply merge))
         encoders (->> options (map :encoders) (apply merge))
+        opts (->> options (map :opts) (apply merge))
         transformers {:encode encoders, :decode decoders}
         schema-keys {:encode (some->> transformer-name name (str "encode/") keyword)
                      :decode (some->> transformer-name name (str "decode/") keyword)}]
     (reify
       m/Transformer
       (-transformer-name [_] transformer-name)
-      (-transformer-options [_] {:name transformer-name, :decoders decoders, :encoders encoders})
+      (-transformer-options [_] {:name transformer-name, :decoders decoders, :encoders encoders, :opts opts})
       (-value-transformer [_ schema context]
         (if-let [->transformer (or (some-> (get (m/properties schema) (schema-keys context)) (m/eval))
                                    (get (transformers context) (m/name schema)))]
-          (->transformer schema))))))
+          (->transformer schema opts))))))
 
 ;;
 ;; From Strings
@@ -206,7 +207,7 @@
      'double (constantly any->string)}))
 
 (def +strip-extra-keys-transformers+
-  {:map (fn [schema]
+  {:map (fn [schema _]
           (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
             (fn [x] (select-keys x keys))))})
 

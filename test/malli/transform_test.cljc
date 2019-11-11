@@ -243,3 +243,12 @@
                       [[:set PS keyword?] #{"kikka"} #{:KIKKA}]]]
     (doseq [[schema value expected] expectations]
       (is (= expected (m/decode schema value mt/string-transformer))))))
+
+(deftest options-in-transformaton
+  (let [schema [:and int? [any? {:decode/string '(fn [_ {::keys [increment]}] (partial + (or increment 0)))}]]
+        transformer (mt/transformer mt/string-transformer)
+        transformer1 (mt/transformer mt/string-transformer {:opts {::increment 1}})
+        transformer1000 (mt/transformer mt/string-transformer {:opts {::increment 1000}})]
+    (is (= 0 (m/decode schema "0" transformer)))
+    (is (= 1 (m/decode schema "0" transformer1)))
+    (is (= 1000 (m/decode schema "0" transformer1000)))))

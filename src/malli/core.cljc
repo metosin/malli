@@ -400,19 +400,22 @@
                             (if (< i size)
                               (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
-          (-transformer [_ transformer context]
-            (if-let [t (-transformer schema transformer context)]
-              (if fempty
-                (fn [x]
-                  (try
-                    (persistent! (reduce (fn [v o] (conj! v (t o))) (transient fempty) x))
-                    (catch #?(:clj Exception, :cljs js/Error) _ x)))
-                (fn [x]
-                  (try
-                    (map t x)
-                    (catch #?(:clj Exception, :cljs js/Error) _ x))))
-              ;; should wrapping be optional?
-              fwrap))
+          (-transformer [this transformer context]
+            (let [tt (-value-transformer transformer this context)
+                  ?tt (or tt identity)
+                  t (-transformer schema transformer context)]
+              (cond
+                (and (not t) tt) (comp fwrap tt)
+                (not t) fwrap ;; should wrapping be optional?
+                :else (if fempty
+                        (fn [x]
+                          (try
+                            (persistent! (reduce (fn [v o] (conj! v (t o))) (transient fempty) (?tt x)))
+                            (catch #?(:clj Exception, :cljs js/Error) _ x)))
+                        (fn [x]
+                          (try
+                            (map t (?tt x))
+                            (catch #?(:clj Exception, :cljs js/Error) _ x)))))))
           (-accept [this visitor opts] (visitor this [(-accept schema visitor opts)] opts))
           (-properties [_] properties)
           (-form [_] form))))))

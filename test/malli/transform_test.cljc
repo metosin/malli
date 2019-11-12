@@ -114,6 +114,8 @@
     (is (= #{"1" 2 "3"} (m/decode [:set [:enum 1 2]] ["1" 2 "3"] mt/string-transformer)))
     (is (= #{"1" 2 "3"} (m/decode [:set int?] ["1" 2 "3"] mt/json-transformer)))
     (is (= [:1 2 :3] (m/decode [:vector keyword?] ["1" 2 "3"] mt/string-transformer)))
+    (is (= [:1 2 :3] (m/decode [:sequential keyword?] ["1" 2 "3"] mt/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:sequential keyword?] '("1" 2 "3") mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] '("1" 2 "3") mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] (seq '("1" 2 "3")) mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] (lazy-seq '("1" 2 "3")) mt/string-transformer)))
@@ -239,6 +241,8 @@
                       [[:fn P1 'string?] "kikka" "KIKKA"]
                       [[:maybe P1 keyword?] "kikka" :KIKKA]
                       [[:vector PS keyword?] ["kikka"] [:KIKKA]]
+                      [[:sequential PS keyword?] ["kikka"] [:KIKKA]]
+                      [[:sequential PS keyword?] '("kikka") '(:KIKKA)]
                       [[:list PS keyword?] '("kikka") '(:KIKKA)]
                       [[:set PS keyword?] #{"kikka"} #{:KIKKA}]]]
     (doseq [[schema value expected] expectations]

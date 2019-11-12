@@ -12,6 +12,7 @@
 
    [[:vector keyword?] [[:kikka] [:kukka :kakka]]]
    [[:list symbol?] [(list 'kikka) (list 'kukka 'kakka)]]
+   [[:sequential symbol?] [(seq ['kikka]) (seq ['kikka 'kakka])]]
    [[:set string?] [#{"a" "b"} #{"c"}]]
    [[:vector [:list [:set int?]]] [[(list #{1})]]]
 

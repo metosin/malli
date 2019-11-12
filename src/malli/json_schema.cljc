@@ -76,6 +76,7 @@
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
 (defmethod accept :vector [_ _ children _] {:type "array", :items children})
 (defmethod accept :list [_ _ children _] {:type "array", :items children})
+(defmethod accept :sequential [_ _ children _] {:type "array", :items children})
 (defmethod accept :set [_ _ children _] {:type "array", :items children, :uniqueItems true})
 (defmethod accept :enum [_ _ children _] {:enum children})
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})

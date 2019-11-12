@@ -349,11 +349,11 @@
   (testing "sequence schemas"
 
     (testing "empty schemas fail"
-      (doseq [element [:vector :list :set :tuple]]
+      (doseq [element [:vector :list :sequential :set :tuple]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
 
     (testing "more than 1 elements fail on collections"
-      (doseq [element [:vector :list :set]]
+      (doseq [element [:vector :list :sequential :set]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element int? int?])))))
 
     (testing "validation"
@@ -393,6 +393,12 @@
 
                                   [false [:list int?] [1 2 3]]
                                   [false [:list int?] #{1 2 3}]]
+
+                          "sequential" [[true [:sequential int?] '(1 2 3)]
+                                        [true [:sequential int?] [1 2 3]]
+                                        [true [:sequential int?] (range 10)]
+                                        [false [:sequential int?] #{1 2 3}]
+                                        [false [:sequential int?] nil]]
 
                           "set" [[true [:set int?] #{1 2 3}]
                                  [false [:set int?] #{1 "2" 3}]
@@ -554,7 +560,8 @@
                                          {:schema schema
                                           :value {:x "non-x" :y "non-y"}
                                           :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}
-                                                   {:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}]
+                                                   {:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
+            expectations (assoc expectations "sequential" (concat (get expectations "list") (get expectations "vector")))]
 
         (doseq [[name data] expectations
                 [schema value expected] data]
@@ -562,7 +569,7 @@
             (is (results= expected (m/explain schema value)))))))
 
     (testing "visit"
-      (doseq [name [:vector :list :set]]
+      (doseq [name [:vector :list :sequential :set]]
         (is (= [name ['int?]] (m/accept [name int?] visitor))))
       (is (= [:tuple ['int?] ['int?]] (m/accept [:tuple int? int?] visitor))))))
 

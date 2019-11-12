@@ -29,7 +29,8 @@
                    (map? x) :map
                    (set? x) :set
                    (vector? x) :vector
-                   (sequential? x) :list
+                   (list? x) :list
+                   (sequential? x) :sequential
                    :else :value)]
         (-> acc
             (update :count (fnil inc 0))
@@ -37,7 +38,7 @@
             (cond-> (= :value type) (-> (update-in [:types type :values] merge+ {x 1})
                                         (update-in [:types type :schemas] merge+ (infer-schemas x)))
                     (= :map type) (update-in [:types type] (fnil -infer-map {}) x opts)
-                    (#{:set :vector :list} type) (update-in [:types type :values] (fnil -infer-seq {}) x opts)))))))
+                    (#{:set :vector :list :sequential} type) (update-in [:types type :values] (fnil -infer-seq {}) x opts)))))))
 
 (defn- -map-schema [{:keys [count] :as stats} opts]
   (->> (:keys stats)
@@ -72,7 +73,7 @@
      (let [type (-> types keys first)]
        (case type
          :value (-value-schema (type types))
-         (:set :vector :list) [type (-> types type :values (schema opts))]
+         (:set :vector :list :sequential) [type (-> types type :values (schema opts))]
          :map (-map-schema (type types) opts)))
      (into [:or] (map (fn [[type]] (schema (update stats :types select-keys [type]) opts)) types)))))
 

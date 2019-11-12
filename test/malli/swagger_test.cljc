@@ -32,6 +32,7 @@
                                :additionalProperties {:type "string"}}]
    [[:vector string?] {:type "array", :items [{:type "string"}]}]
    [[:list string?] {:type "array", :items [{:type "string"}]}]
+   [[:sequential string?] {:type "array", :items [{:type "string"}]}]
    [[:set string?] {:type "array"
                     :items [{:type "string"}]
                     :uniqueItems true}]

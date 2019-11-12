@@ -780,6 +780,7 @@
    :map-of (-map-of-schema)
    :vector (-collection-schema :vector vector? vec [])
    :list (-collection-schema :list list? seq nil)
+   :sequential (-collection-schema :sequential sequential? seq nil)
    :set (-collection-schema :set set? set #{})
    :enum (-enum-schema)
    :maybe (-maybe-schema)

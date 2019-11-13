@@ -237,8 +237,22 @@ Errors can be targetted using `:error/path` property:
 Schema-driven value transformations with `m/decode` and `m/encode`:
 
 ```clj
-(require '[malli.transform :as mt])
+(m/decode
+  [:tuple int? uuid?]
+  ["42" "4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+  mt/string-transformer)
+; [42 #uuid"4eee8131-191e-4157-afc8-8b2f70d6af2b"]
 
+(m/encode
+  [:tuple int? uuid?]
+  [42 #uuid"4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+  mt/string-transformer)
+; ["42" "4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+```
+
+Transformations are recursive:
+
+```clj
 (m/decode
   Address
   {:id "Lillan",

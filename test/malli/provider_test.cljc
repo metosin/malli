@@ -42,4 +42,3 @@
 (deftest provider-test
   (doseq [[schema samples] expectations]
     (is (= (m/form schema) (m/form (mp/provide samples))))))
-

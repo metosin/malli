@@ -11,18 +11,24 @@
 
 (defn transformer [& ?options]
   (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
-        name (-> options last :name)
-        transformers (->> options (map :transformers) (apply merge))]
+        transformer-name (->> options reverse (some :name))
+        decoders (->> options (map :decoders) (apply merge))
+        encoders (->> options (map :encoders) (apply merge))
+        opts (->> options (map :opts) (apply merge))
+        transformers {:encode encoders, :decode decoders}
+        schema-keys {:encode (some->> transformer-name name (str "encode/") keyword)
+                     :decode (some->> transformer-name name (str "decode/") keyword)}]
     (reify
       m/Transformer
-      (-transformer-name [_] name)
-      (-transformer-options [_] {:name name, :transformers transformers})
-      (-value-transformer [_ schema]
-        (if-let [->transformer (get transformers (m/name schema))]
-          (->transformer schema))))))
+      (-transformer-name [_] transformer-name)
+      (-transformer-options [_] {:name transformer-name, :decoders decoders, :encoders encoders, :opts opts})
+      (-value-transformer [_ schema context]
+        (if-let [->transformer (or (some-> (get (m/properties schema) (schema-keys context)) (m/eval))
+                                   (get (transformers context) (m/name schema)))]
+          (->transformer schema opts))))))
 
 ;;
-;; Strings
+;; From Strings
 ;;
 
 (defn string->long [x]
@@ -138,6 +144,23 @@
 
    'inst? (constantly string->date)})
 
+(def +json-encoders+
+  {'keyword? (constantly m/keyword->string)
+   'simple-keyword? (constantly m/keyword->string)
+   'qualified-keyword? (constantly m/keyword->string)
+
+   'symbol? (constantly any->string)
+   'simple-symbol? (constantly any->string)
+   'qualified-symbol? (constantly any->string)
+
+   'uuid? (constantly any->string)
+
+   ;:uri any->string
+   ;:bigdec any->string
+
+   'inst? (constantly date->string)
+   #?@(:clj ['ratio? number->double])})
+
 (def +string-decoders+
   (merge
     +json-decoders+
@@ -164,39 +187,64 @@
      'false? (constantly string->boolean)
      'true? (constantly string->boolean)}))
 
-(def +strip-extra-keys-decoders+
-  {:map (fn [schema]
-          (if-let [keys (seq (:keys (m/-parse-keys (m/childs schema) nil)))]
+(def +string-encoders+
+  (merge
+    +json-encoders+
+    {'integer? (constantly any->string)
+     'int? (constantly any->string)
+     'pos-int? (constantly any->string)
+     'neg-int? (constantly any->string)
+     'nat-int? (constantly any->string)
+     'zero? (constantly any->string)
+
+     :> (constantly any->string)
+     :>= (constantly any->string)
+     :< (constantly any->string)
+     :<= (constantly any->string)
+     := (constantly any->string)
+     :not= (constantly any->string)
+
+     'double (constantly any->string)}))
+
+(def +strip-extra-keys-transformers+
+  {:map (fn [schema _]
+          (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
             (fn [x] (select-keys x keys))))})
 
-(defn +key-decoders+ [key-fn]
-  {::m/map-key (constantly (fn [x] (key-fn x)))})
+(defn +key-transformers+ [key-fn]
+  (if key-fn {::m/map-key (constantly (fn [x] (key-fn x)))}))
 
 ;;
 ;; transformers
 ;;
 
-(def string-transformer
-  (transformer
-    {:name :string
-     :transformers +string-decoders+}))
-
 (def json-transformer
   (transformer
     {:name :json
-     :transformers +json-decoders+}))
+     :decoders +json-decoders+
+     :encoders +string-encoders+}))
+
+(def string-transformer
+  (transformer
+    {:name :string
+     :decoders +string-decoders+
+     :encoders +string-encoders+}))
 
 (def strip-extra-keys-transformer
   (transformer
     {:name ::strip-extra-keys
-     :transformers +strip-extra-keys-decoders+}))
+     :decoders +strip-extra-keys-transformers+
+     :encoders +strip-extra-keys-transformers+}))
 
-(defn key-transformer [key-fn]
-  (transformer
-    {:name ::key-transformer
-     :transformers (+key-decoders+ key-fn)}))
+(defn key-transformer
+  ([decode-key-fn]
+   (key-transformer decode-key-fn nil))
+  ([decode-key-fn encode-key-fn]
+   (transformer
+     {:name ::key-transformer
+      :decoders (+key-transformers+ decode-key-fn)
+      :encoders (+key-transformers+ encode-key-fn)})))
 
 (def collection-transformer
   (transformer
-    {:name ::collection
-     :transformers {}}))
+    {:name ::collection}))

@@ -1,138 +1,258 @@
 (ns malli.transform-test
   (:require [clojure.test :refer [deftest testing is]]
             [malli.core :as m]
-            [malli.transform :as transform]))
+            [malli.transform :as mt]
+            [clojure.string :as str]))
 
 (deftest string->long
-  (is (= 1 (transform/string->long "1")))
-  (is (= 1 (transform/string->long 1)))
-  (is (= "abba" (transform/string->long "abba"))))
+  (is (= 1 (mt/string->long "1")))
+  (is (= 1 (mt/string->long 1)))
+  (is (= "abba" (mt/string->long "abba"))))
 
 (deftest string->double
-  (is (= 1.0 (transform/string->double "1")))
-  (is (= 1.0 (transform/string->double 1.0)))
-  (is (= 1 (transform/string->double 1)))
-  (is (= "abba" (transform/string->double "abba"))))
+  (is (= 1.0 (mt/string->double "1")))
+  (is (= 1.0 (mt/string->double 1.0)))
+  (is (= 1 (mt/string->double 1)))
+  (is (= "abba" (mt/string->double "abba"))))
 
 (deftest string->keyword
-  (is (= :abba (transform/string->keyword "abba")))
-  (is (= :abba (transform/string->keyword :abba))))
+  (is (= :abba (mt/string->keyword "abba")))
+  (is (= :abba (mt/string->keyword :abba))))
 
 (deftest string->boolean
-  (is (= true (transform/string->boolean "true")))
-  (is (= false (transform/string->boolean "false")))
-  (is (= "abba" (transform/string->boolean "abba"))))
+  (is (= true (mt/string->boolean "true")))
+  (is (= false (mt/string->boolean "false")))
+  (is (= "abba" (mt/string->boolean "abba"))))
 
 (deftest string->uuid
-  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (transform/string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
-  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (transform/string->uuid #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce")))
-  (is (= "abba" (transform/string->uuid "abba"))))
+  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/string->uuid #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= "abba" (mt/string->uuid "abba"))))
 
 (deftest string->date
-  (is (= #inst "2018-04-27T18:25:37Z" (transform/string->date "2018-04-27T18:25:37Z")))
-  (is (= #inst "2018-04-27T00:00:00Z" (transform/string->date "2018-04-27")))
-  (is (= #inst "2018-04-27T05:00:00Z" (transform/string->date "2018-04-27T08:00:00+03:00")))
-  (is (= #inst "2018-04-27T18:25:37Z" (transform/string->date "2018-04-27T18:25:37.000Z")))
-  (is (= #inst "2018-04-27T18:25:37Z" (transform/string->date "2018-04-27T18:25:37.000+0000")))
-  (is (= #inst "2014-02-18T18:25:37Z" (transform/string->date #inst "2014-02-18T18:25:37Z")))
-  (is (= #inst "2018-04-27T00:00:00Z" (transform/string->date #inst "2018-04-27")))
-  (is (= #inst "2018-04-27T05:00:00Z" (transform/string->date #inst "2018-04-27T08:00:00+03:00")))
-  (is (= "abba" (transform/string->date "abba"))))
+  (is (= #inst "2018-04-27T18:25:37Z" (mt/string->date "2018-04-27T18:25:37Z")))
+  (is (= #inst "2018-04-27T00:00:00Z" (mt/string->date "2018-04-27")))
+  (is (= #inst "2018-04-27T05:00:00Z" (mt/string->date "2018-04-27T08:00:00+03:00")))
+  (is (= #inst "2018-04-27T18:25:37Z" (mt/string->date "2018-04-27T18:25:37.000Z")))
+  (is (= #inst "2018-04-27T18:25:37Z" (mt/string->date "2018-04-27T18:25:37.000+0000")))
+  (is (= #inst "2014-02-18T18:25:37Z" (mt/string->date #inst "2014-02-18T18:25:37Z")))
+  (is (= #inst "2018-04-27T00:00:00Z" (mt/string->date #inst "2018-04-27")))
+  (is (= #inst "2018-04-27T05:00:00Z" (mt/string->date #inst "2018-04-27T08:00:00+03:00")))
+  (is (= "abba" (mt/string->date "abba"))))
 
 (deftest date->string
-  (is (= "2014-02-18T18:25:37.000Z" (transform/date->string #inst "2014-02-18T18:25:37Z")))
-  (is (= "abba" (transform/date->string "abba"))))
+  (is (= "2014-02-18T18:25:37.000Z" (mt/date->string #inst "2014-02-18T18:25:37Z")))
+  (is (= "abba" (mt/date->string "abba"))))
 
 (deftest string->symbol
-  (is (= 'inc (transform/string->symbol "inc")))
-  (is (= 'inc (transform/string->symbol 'inc))))
+  (is (= 'inc (mt/string->symbol "inc")))
+  (is (= 'inc (mt/string->symbol 'inc))))
 
 (deftest string->nil
-  (is (= nil (transform/string->nil "")))
-  (is (= nil (transform/string->nil nil))))
+  (is (= nil (mt/string->nil "")))
+  (is (= nil (mt/string->nil nil))))
 
 (deftest number->double
-  #?(:clj (is (= 0.5 (transform/number->double 1/2))))
-  (is (= 1.0 (transform/number->double 1)))
-  (is (= "kikka" (transform/number->double "kikka"))))
+  #?(:clj (is (= 0.5 (mt/number->double 1/2))))
+  (is (= 1.0 (mt/number->double 1)))
+  (is (= "kikka" (mt/number->double "kikka"))))
 
 (deftest any->string
-  #?(:clj (is (= "1/2" (transform/any->string 1/2))))
-  (is (= "0.5" (transform/any->string 0.5)))
-  (is (= nil (transform/any->string nil))))
+  #?(:clj (is (= "1/2" (mt/any->string 1/2))))
+  (is (= "0.5" (mt/any->string 0.5)))
+  (is (= nil (mt/any->string nil))))
 
 (deftest any->any
-  #?(:clj (is (= 1/2 (transform/any->any 1/2))))
-  (is (= 0.5 (transform/any->any 0.5)))
-  (is (= nil (transform/any->any nil))))
+  #?(:clj (is (= 1/2 (mt/any->any 1/2))))
+  (is (= 0.5 (mt/any->any 0.5)))
+  (is (= nil (mt/any->any nil))))
 
 (deftest transform-test
   (testing "predicates"
-    (is (= 1 (m/transform int? "1" transform/string-transformer)))
-    (is (= "1" (m/transform int? "1" transform/json-transformer)))
-    (is (= :user/kikka (m/transform keyword? "user/kikka" transform/string-transformer))))
+    (testing "decode"
+      (is (= 1 (m/decode int? "1" mt/string-transformer)))
+      (is (= "1" (m/decode int? "1" mt/json-transformer)))
+      (is (= :user/kikka (m/decode keyword? "user/kikka" mt/string-transformer))))
+    (testing "encode"
+      (is (= "1" (m/encode int? 1 mt/string-transformer)))
+      (is (= "1" (m/encode int? 1 mt/json-transformer)))
+      (is (= "user/kikka" (m/encode keyword? :user/kikka mt/string-transformer)))))
   (testing "comparators"
-    (doseq [schema (keys m/comparator-registry)]
-      (is (= 1 (m/transform [schema 1] "1" transform/string-transformer)))))
+    (testing "decode"
+      (doseq [schema (keys m/comparator-registry)]
+        (is (= 1 (m/decode [schema 1] "1" mt/string-transformer)))))
+    (testing "encode"
+      (doseq [schema (keys m/comparator-registry)]
+        (is (= "1" (m/encode [schema 1] 1 mt/string-transformer))))))
   (testing "and"
-    (is (= 1 (m/transform [:and int?] "1" transform/string-transformer)))
-    (is (= :1 (m/transform [:and keyword?] "1" transform/string-transformer)))
-    (is (= 1 (m/transform [:and int? keyword?] "1" transform/string-transformer)))
-    (is (= 1 (m/transform [:and int? [:enum 1 2]] "1" transform/string-transformer)))
-    (is (= :1 (m/transform [:and keyword? int?] "1" transform/string-transformer)))
-    (is (= [1] (m/transform [:and [:vector int?]] ["1"] transform/string-transformer))))
+    (testing "decode"
+      (is (= 1 (m/decode [:and int?] "1" mt/string-transformer)))
+      (is (= :1 (m/decode [:and keyword?] "1" mt/string-transformer)))
+      (is (= 1 (m/decode [:and int? keyword?] "1" mt/string-transformer)))
+      (is (= 1 (m/decode [:and int? [:enum 1 2]] "1" mt/string-transformer)))
+      (is (= :1 (m/decode [:and keyword? int?] "1" mt/string-transformer)))
+      (is (= [1] (m/decode [:and [:vector int?]] ["1"] mt/string-transformer))))
+    (testing "encode"
+      (is (= "1" (m/encode [:and int?] 1 mt/string-transformer)))
+      (is (= "1" (m/encode [:and keyword?] :1 mt/string-transformer)))
+      (is (= "1" (m/encode [:and int? keyword?] 1 mt/string-transformer)))
+      (is (= "1" (m/encode [:and int? [:enum 1 2]] 1 mt/string-transformer)))
+      (is (= "1" (m/encode [:and keyword? int?] :1 mt/string-transformer)))
+      (is (= ["1"] (m/encode [:and [:vector int?]] [1] mt/string-transformer)))))
   (testing "or"
-    (is (= 1 (m/transform [:or int? keyword?] "1" transform/string-transformer)))
-    (is (= 1 (m/transform [:or int? [:enum 1 2]] "1" transform/string-transformer)))
-    (is (= :1 (m/transform [:or keyword? int?] "1" transform/string-transformer))))
+    (testing "decode"
+      (is (= 1 (m/decode [:or int? keyword?] "1" mt/string-transformer)))
+      (is (= 1 (m/decode [:or int? [:enum 1 2]] "1" mt/string-transformer)))
+      (is (= :1 (m/decode [:or keyword? int?] "1" mt/string-transformer))))
+    (testing "encode"
+      (is (= "1" (m/encode [:or int? keyword?] 1 mt/string-transformer)))
+      (is (= "1" (m/encode [:or int? [:enum 1 2]] 1 mt/string-transformer)))
+      (is (= "1" (m/encode [:or keyword? int?] 1 mt/string-transformer)))))
+  ;; TODO: encode
   (testing "collections"
-    (is (= #{1 2 3} (m/transform [:set int?] ["1" 2 "3"] transform/string-transformer)))
-    (is (= #{"1" 2 "3"} (m/transform [:set [:enum 1 2]] ["1" 2 "3"] transform/string-transformer)))
-    (is (= #{"1" 2 "3"} (m/transform [:set int?] ["1" 2 "3"] transform/json-transformer)))
-    (is (= [:1 2 :3] (m/transform [:vector keyword?] ["1" 2 "3"] transform/string-transformer)))
-    (is (= '(:1 2 :3) (m/transform [:list keyword?] '("1" 2 "3") transform/string-transformer)))
-    (is (= '(:1 2 :3) (m/transform [:list keyword?] (seq '("1" 2 "3")) transform/string-transformer)))
-    (is (= '(:1 2 :3) (m/transform [:list keyword?] (lazy-seq '("1" 2 "3")) transform/string-transformer)))
-    (is (= ::invalid (m/transform [:vector keyword?] ::invalid transform/string-transformer))))
+    (is (= #{1 2 3} (m/decode [:set int?] ["1" 2 "3"] mt/string-transformer)))
+    (is (= #{"1" 2 "3"} (m/decode [:set [:enum 1 2]] ["1" 2 "3"] mt/string-transformer)))
+    (is (= #{"1" 2 "3"} (m/decode [:set int?] ["1" 2 "3"] mt/json-transformer)))
+    (is (= [:1 2 :3] (m/decode [:vector keyword?] ["1" 2 "3"] mt/string-transformer)))
+    (is (= [:1 2 :3] (m/decode [:sequential keyword?] ["1" 2 "3"] mt/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:sequential keyword?] '("1" 2 "3") mt/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:list keyword?] '("1" 2 "3") mt/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:list keyword?] (seq '("1" 2 "3")) mt/string-transformer)))
+    (is (= '(:1 2 :3) (m/decode [:list keyword?] (lazy-seq '("1" 2 "3")) mt/string-transformer)))
+    (is (= ::invalid (m/decode [:vector keyword?] ::invalid mt/string-transformer))))
   (testing "map"
-    (is (= {:c1 1, ::c2 :kikka} (m/transform [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/string-transformer)))
-    (is (= {:c1 "1", ::c2 :kikka} (m/transform [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} transform/json-transformer)))
-    (is (= ::invalid (m/transform [:map] ::invalid transform/json-transformer))))
+    (testing "decode"
+      (is (= {:c1 1, ::c2 :kikka} (m/decode [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/string-transformer)))
+      (is (= {:c1 "1", ::c2 :kikka} (m/decode [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/json-transformer)))
+      (is (= ::invalid (m/decode [:map] ::invalid mt/json-transformer))))
+    (testing "encode"
+      (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
+      (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
+      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
   #_(testing "s/map-of"
-    (is (= {1 :abba, 2 :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/string-transformer)))
-    (is (= {"1" :abba, "2" :jabba} (m/transform (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} transform/json-transformer)))
-    (is (= ::invalid (m/transform (s/map-of int? keyword?) ::invalid transform/json-transformer))))
+      (is (= {1 :abba, 2 :jabba} (m/decode (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} mt/string-transformer)))
+      (is (= {"1" :abba, "2" :jabba} (m/decode (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} mt/json-transformer)))
+      (is (= ::invalid (m/decode (s/map-of int? keyword?) ::invalid mt/json-transformer))))
   (testing "maybe"
-    (is (= 1 (m/transform [:maybe int?] "1" transform/string-transformer)))
-    (is (= nil (m/transform [:maybe int?] nil transform/string-transformer))))
+    (testing "decode"
+      (is (= 1 (m/decode [:maybe int?] "1" mt/string-transformer)))
+      (is (= nil (m/decode [:maybe int?] nil mt/string-transformer))))
+    (testing "encode"
+      (is (= "1" (m/encode [:maybe int?] 1 mt/string-transformer)))
+      (is (= nil (m/encode [:maybe int?] nil mt/string-transformer)))))
   (testing "tuple"
-    (is (= [1] (m/transform [:tuple int?] ["1"] transform/string-transformer)))
-    (is (= [1 :kikka] (m/transform [:tuple int? keyword?] ["1" "kikka"] transform/string-transformer)))
-    (is (= [:kikka 1] (m/transform [:tuple keyword? int?] ["kikka" "1"] transform/string-transformer)))
-    (is (= "1" (m/transform [:tuple keyword? int?] "1" transform/string-transformer)))
-    (is (= [:kikka 1 "2"] (m/transform [:tuple keyword? int?] ["kikka" "1" "2"] transform/string-transformer)))))
+    (testing "decode"
+      (is (= [1] (m/decode [:tuple int?] ["1"] mt/string-transformer)))
+      (is (= [1 :kikka] (m/decode [:tuple int? keyword?] ["1" "kikka"] mt/string-transformer)))
+      (is (= [:kikka 1] (m/decode [:tuple keyword? int?] ["kikka" "1"] mt/string-transformer)))
+      (is (= "1" (m/decode [:tuple keyword? int?] "1" mt/string-transformer)))
+      (is (= [:kikka 1 "2"] (m/decode [:tuple keyword? int?] ["kikka" "1" "2"] mt/string-transformer))))
+    (testing "encode"
+      (is (= ["1"] (m/encode [:tuple int?] [1] mt/string-transformer)))
+      (is (= ["1" "kikka"] (m/encode [:tuple int? keyword?] [1 :kikka] mt/string-transformer)))
+      (is (= ["kikka" "1"] (m/encode [:tuple keyword? int?] [:kikka 1] mt/string-transformer)))
+      (is (= 1.0 (m/encode [:tuple keyword? int?] 1.0 mt/string-transformer)))
+      (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer))))))
 
+;; TODO: this is wrong!
 (deftest collection-transform-test
-  (is (= #{1 2 3} (m/transform [:set int?] [1 2 3] transform/collection-transformer))))
+  (testing "decode"
+    (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer))))
+  (testing "encode"
+    (is (= #{1 2 3} (m/encode [:set int?] [1 2 3] mt/collection-transformer)))))
 
 (deftest composing-transformers
-  (let [strict-json-transformer (transform/transformer
-                                  transform/strip-extra-keys-transformer
-                                  transform/json-transformer)]
-    (is (= :kikka (m/transform keyword? "kikka" strict-json-transformer)))
-    (is (= {:x :kikka} (m/transform [:map [:x keyword?]] {:x "kikka"} strict-json-transformer))))
+  (let [strict-json-transformer (mt/transformer
+                                  mt/strip-extra-keys-transformer
+                                  mt/json-transformer
+                                  {:opts {:random :opts}})]
 
-  (let [strip-extra-key-transformer (transform/transformer
-                                      transform/strip-extra-keys-transformer
-                                      (transform/key-transformer #(-> % name (str "_key") keyword)))]
-    (is (= {:x_key 18 :y_key "john"}
-           (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
-                        {:x 18 :y "john" :a "doe"}
-                        strip-extra-key-transformer)))))
+    (testing "name is taken from the last named transformer"
+      (is (= :json (m/-transformer-name strict-json-transformer))))
+
+    (testing "decode"
+      (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))
+      (is (= {:x :kikka} (m/decode [:map [:x keyword?]] {:x "kikka", :y "kukka"} strict-json-transformer))))
+    (testing "encode"
+      (is (= "kikka" (m/encode keyword? :kikka strict-json-transformer)))
+      (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))))
+
+  (let [strip-extra-key-transformer (mt/transformer
+                                      mt/string-transformer
+                                      mt/strip-extra-keys-transformer
+                                      (mt/key-transformer
+                                        #(-> % name (str "_key") keyword)
+                                        #(-> % name (str "_key"))))]
+    (testing "decode"
+      (is (= {:x_key 18 :y_key "john"}
+             (m/decode
+               [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+               {:x "18" :y "john" :a "doe"}
+               strip-extra-key-transformer))))
+    (testing "encode"
+      (is (= {"x_key" "18" "y_key" "john"}
+             (m/encode
+               [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+               {:x 18 :y "john" :a "doe"}
+               strip-extra-key-transformer))))))
 
 (deftest key-transformer
-  (let [key-transformer (transform/key-transformer #(-> % name (str "_key") keyword))]
-    (is (= {:x_key 18 :y_key "john" :a_key "doe"}
-           (m/transform [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
-                        {:x 18 :y "john" :a "doe"}
-                        key-transformer)))))
+  (let [key-transformer (mt/key-transformer
+                          #(-> % name (str "_key") keyword)
+                          #(-> % name (str "_key")))]
+    (testing "decode"
+      (is (= {:x_key 18 :y_key "john" :a_key "doe"}
+             (m/decode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+                       {:x 18 :y "john" :a "doe"}
+                       key-transformer))))
+    (testing "encode"
+      (is (= {"x_key" 18 "y_key" "john" "a_key" "doe"}
+             (m/encode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+                       {:x 18 :y "john" :a "doe"}
+                       key-transformer))))))
+
+(deftest schema-hinted-tranformation
+  (let [schema [string? {:title "lower-upper-string"
+                         :decode/string '(constantly str/upper-case)
+                         :encode/string '(constantly str/lower-case)}]
+        value "KiKkA"]
+    (testing "defined transformations"
+      (is (= "KIKKA" (m/decode schema value mt/string-transformer)))
+      (is (= "kikka" (m/encode schema value mt/string-transformer)))
+      (is (= "kikka" (as-> value $
+                           (m/decode schema $ mt/string-transformer)
+                           (m/encode schema $ mt/string-transformer)))))
+    (testing "undefined transformations"
+      (is (= value (m/decode schema value mt/json-transformer)))
+      (is (= value (m/encode schema value mt/json-transformer))))))
+
+(deftest transformation-targets
+  (let [P1 {:decode/string '(constantly str/upper-case)}
+        PS {:decode/string '(constantly (partial mapv str/upper-case))}
+        PM {:decode/string '(constantly (fn [x] (->> (for [[k v] x] [(keyword k) (str/upper-case v)]) (into {}))))}
+        expectations [[[keyword? P1] "kikka" "KIKKA"]
+                      [[:and P1 keyword?] "kikka" :KIKKA]
+                      [[:or P1 int? keyword?] "kikka" :KIKKA]
+                      [[:map PM [:x keyword?]] {"x" "kikka", "y" "kukka"} {:x :KIKKA, :y "KUKKA"}]
+                      [[:map-of PM string? keyword?] {"x" "kikka", "y" "kukka"} {:x :KIKKA, :y :KUKKA}]
+                      [[:tuple PS keyword? int?] ["kikka" "1"] [:KIKKA 1]]
+                      [[:enum P1 "S" "M" "L"] "s" "S"]
+                      [[:re P1 ".*"] "kikka" "KIKKA"]
+                      [[:fn P1 'string?] "kikka" "KIKKA"]
+                      [[:maybe P1 keyword?] "kikka" :KIKKA]
+                      [[:vector PS keyword?] ["kikka"] [:KIKKA]]
+                      [[:sequential PS keyword?] ["kikka"] [:KIKKA]]
+                      [[:sequential PS keyword?] '("kikka") '(:KIKKA)]
+                      [[:list PS keyword?] '("kikka") '(:KIKKA)]
+                      [[:set PS keyword?] #{"kikka"} #{:KIKKA}]]]
+    (doseq [[schema value expected] expectations]
+      (is (= expected (m/decode schema value mt/string-transformer))))))
+
+(deftest options-in-transformaton
+  (let [schema [:and int? [any? {:decode/string '(fn [_ {::keys [increment]}] (partial + (or increment 0)))}]]
+        transformer (mt/transformer mt/string-transformer)
+        transformer1 (mt/transformer mt/string-transformer {:opts {::increment 1}})
+        transformer1000 (mt/transformer mt/string-transformer {:opts {::increment 1000}})]
+    (is (= 0 (m/decode schema "0" transformer)))
+    (is (= 1 (m/decode schema "0" transformer1)))
+    (is (= 1000 (m/decode schema "0" transformer1000)))))

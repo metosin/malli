@@ -49,8 +49,8 @@
                (m/explain #{#{1} #{"2"}})
                (me/humanize {:wrap :message})))))
 
-  (testing "unknown"
-    (is (= "unknown error"
+  (testing "invalid type"
+    (is (= "invalid type"
            (-> [:list int?]
                (m/explain [1])
                (me/humanize {:wrap :message})))))
@@ -58,7 +58,7 @@
   (testing "mixed bag"
     (is (= [nil
             {:x [nil "should be int" "should be int"]}
-            {:x "unknown error"}]
+            {:x "invalid type"}]
            (-> [:vector [:map [:x [:vector int?]]]]
                (m/explain
                  [{:x [1 2 3]}
@@ -103,3 +103,76 @@
                     :errors (-> me/default-errors
                                 (assoc-in ['int? :error/message :fi] "NUMERO")
                                 (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))
+
+(deftest composing-with-and-test
+
+  (testing "top-level map-schemas are written in :malli/error"
+    (let [schema [:and [:map
+                        [:x int?]
+                        [:y int?]
+                        [:z int?]]
+                  [:fn {:error/message "(> x y)"}
+                   '(fn [{:keys [x y]}] (> x y))]]]
+
+      (is (= {:z "should be int", :malli/error "(> x y)"}
+             (-> schema
+                 (m/explain {:x 1 :y 2, :z "1"})
+                 (me/humanize {:wrap :message})))))
+
+    (testing ":error/path contributes to path"
+      (let [schema [:and [:map
+                          [:password string?]
+                          [:password2 string?]]
+                    [:fn {:error/message "passwords don't match"
+                          :error/path [:password2]}
+                     '(fn [{:keys [password password2]}]
+                        (= password password2))]]]
+
+        (is (= {:password2 "passwords don't match"}
+               (-> schema
+                   (m/explain {:password "secret"
+                               :password2 "faarao"})
+                   (me/humanize {:wrap :message})))))))
+
+  (testing "on collections, first error wins"
+    (let [schema [:and
+                  [:vector int?]
+                  [:fn {:error/message "first should be positive"}
+                   '(fn [[x]] (pos? x))]
+                  [:fn {:error/message "first should be positive (masked)"}
+                   '(fn [[x]] (pos? x))]]]
+      (is (= "first should be positive"
+             (-> schema
+                 (m/explain [-2 1])
+                 (me/humanize {:wrap :message}))))
+      (is (= [nil "should be int"]
+             (-> schema
+                 (m/explain [-2 "1"])
+                 (me/humanize {:wrap :message}))))
+      (is (= "invalid type"
+             (-> schema
+                 (m/explain '(-2 "1"))
+                 (me/humanize {:wrap :message}))))))
+
+  (testing "on non-collections, first error wins"
+    (let [schema [:and
+                  [:fn {:error/message "should be >= 1"} '(fn [x] (or (not (int? x)) (>= x 1)))]
+                  int?
+                  [:fn {:error/message "should be >= 2"} '(fn [x] (or (not (int? x)) (>= x 2)))]]]
+
+      (is (= "should be >= 1"
+             (-> schema
+                 (m/explain 0)
+                 (me/humanize {:wrap :message}))))
+      (is (= "should be int"
+             (-> schema
+                 (m/explain "kikka")
+                 (me/humanize {:wrap :message}))))
+      (is (= "should be >= 2"
+             (-> schema
+                 (m/explain 1)
+                 (me/humanize {:wrap :message}))))
+      (is (= nil
+             (-> schema
+                 (m/explain 2)
+                 (me/humanize {:wrap :message})))))))

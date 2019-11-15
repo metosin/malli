@@ -4,6 +4,7 @@
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
+   ::m/invalid-type {:error/message {:en "invalid type"}}
    'any? {:error/message {:en "should be any"}}
    'some? {:error/message {:en "shoud be some"}}
    'number? {:error/message {:en "should be number"}}
@@ -69,13 +70,30 @@
   (if (set? x) (conj x v) (assoc x k v)))
 
 (defn- -assoc-in [acc value [p & ps] error]
-  (if p (let [acc' (-ensure (or acc (empty value)) p)
-              value' (if ps (-assoc-in (-get acc p) (-get value p) ps error) error)]
-          (-put acc' p value'))))
+  (cond
+    p (let [acc' (-ensure (or acc (empty value)) p)
+            value' (if ps (-assoc-in (-get acc p) (-get value p) ps error) error)]
+        (-put acc' p value'))
+    (map? value) (recur acc value [:malli/error] error)
+    acc acc
+    :else error))
+
+(defn- -path [{:keys [schema]}
+              {:keys [locale default-locale]
+               :or {default-locale :en}}]
+  (let [properties (m/properties schema)]
+    (or (-maybe-localized (:error/path properties) locale)
+        (-maybe-localized (:error/path properties) default-locale))))
 
 ;;
 ;; public api
 ;;
+
+(defn error-path
+  ([error]
+   (error-path error nil))
+  ([error opts]
+   (into (:in error) (-path error opts))))
 
 (defn error-message
   ([error]
@@ -110,9 +128,9 @@
    (humanize explanation nil))
   ([{:keys [value errors]} {f :wrap :or {f identity} :as opts}]
    (if errors
-     (if (and (coll? value) (-> errors first :path seq))
+     (if (coll? value)
        (reduce
          (fn [acc error]
-           (-assoc-in acc value (:in error) (f (with-error-message error opts))))
+           (-assoc-in acc value (error-path error opts) (f (with-error-message error opts))))
          nil errors)
        (f (with-error-message (first errors) opts))))))

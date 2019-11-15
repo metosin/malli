@@ -7,7 +7,7 @@
 (defn json-schema-props [schema prefix]
   (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ prefix))))
 
-(defmulti accept (fn [name _schema _childs _opts] name) :default ::default)
+(defmulti accept (fn [name _schema _children _opts] name) :default ::default)
 
 (defmethod accept ::default [_ _ _ _] {})
 (defmethod accept 'any? [_ _ _ _] {})
@@ -66,7 +66,7 @@
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
 (defmethod accept :map [_ schema children opts]
-  (let [{:keys [required keys]} (m/-parse-keys (m/childs schema opts) opts)]
+  (let [{:keys [required keys]} (m/-parse-keys (m/children schema opts) opts)]
     (merge
       {:type "object"
        :properties (apply array-map (interleave keys children))
@@ -76,15 +76,16 @@
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
 (defmethod accept :vector [_ _ children _] {:type "array", :items children})
 (defmethod accept :list [_ _ children _] {:type "array", :items children})
+(defmethod accept :sequential [_ _ children _] {:type "array", :items children})
 (defmethod accept :set [_ _ children _] {:type "array", :items children, :uniqueItems true})
 (defmethod accept :enum [_ _ children _] {:enum children})
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
-(defmethod accept :re [_ schema _ opts] {:type "string", :pattern (first (m/childs schema opts))})
+(defmethod accept :re [_ schema _ opts] {:type "string", :pattern (first (m/children schema opts))})
 (defmethod accept :fn [_ _ _ _] {})
 
-(defn- -json-schema-visitor [schema childs opts]
-  (merge (accept (m/name schema) schema childs opts) (json-schema-props schema "json-schema")))
+(defn- -json-schema-visitor [schema children opts]
+  (merge (accept (m/name schema) schema children opts) (json-schema-props schema "json-schema")))
 
 ;;
 ;; public api

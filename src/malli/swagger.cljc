@@ -2,9 +2,9 @@
   (:require [malli.json-schema :as json-schema]
             [malli.core :as m]))
 
-(defmulti accept (fn [name _schema _childs _opts] name) :default ::default)
+(defmulti accept (fn [name _schema _children _opts] name) :default ::default)
 
-(defmethod accept ::default [name schema childs opts] (json-schema/accept name schema childs opts))
+(defmethod accept ::default [name schema children opts] (json-schema/accept name schema children opts))
 (defmethod accept 'float? [_ _ _ _] {:type "number" :format "float"})
 (defmethod accept 'double? [_ _ _ _] {:type "number" :format "double"})
 (defmethod accept 'nil? [_ _ _ _] {})
@@ -18,8 +18,8 @@
 
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
-(defn- -swagger-visitor [schema childs opts]
-  (merge (accept (m/name schema) schema childs opts) (json-schema/json-schema-props schema "swagger")))
+(defn- -swagger-visitor [schema children opts]
+  (merge (accept (m/name schema) schema children opts) (json-schema/json-schema-props schema "swagger")))
 
 ;;
 ;; public api

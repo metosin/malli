@@ -1,4 +1,4 @@
-# malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli)
+# malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli) [![Slack](https://img.shields.io/badge/clojurians-malli-blue.svg?logo=slack)](https://clojurians.slack.com/messages/malli/)
 
 Plain data Schemas for Clojure/Script.
 
@@ -201,14 +201,59 @@ Messages can be localized:
 ; :age "10, pitäisi olla > 18"}
 ```
 
-## Value Transformation
-
-Schema-driven value transformations with `m/transform`:
+Top-level humanized map-errors are under `:malli/error`:
 
 ```clj
-(require '[malli.transform :as mt])
+(-> [:and [:map
+           [:password string?]
+           [:password2 string?]]
+     [:fn {:error/message "passwords don't match"}
+      '(fn [{:keys [password password2]}]
+         (= password password2))]]
+    (m/explain {:password "secret"
+                :password2 "faarao"})
+    (me/humanize {:wrap :message}))
+; {:malli/error "passwords don't match"}
+```
 
-(m/transform
+Errors can be targetted using `:error/path` property:
+
+```clj
+(-> [:and [:map
+           [:password string?]
+           [:password2 string?]]
+     [:fn {:error/message "passwords don't match"
+           :error/path [:password2]}
+      '(fn [{:keys [password password2]}]
+         (= password password2))]]
+    (m/explain {:password "secret"
+                :password2 "faarao"})
+    (me/humanize {:wrap :message}))
+; {:password2 "passwords don't match"}
+```
+
+## Value Transformation
+
+Schema-driven value transformations with `m/decode` and `m/encode`:
+
+```clj
+(m/decode
+  [:tuple int? uuid?]
+  ["42" "4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+  mt/string-transformer)
+; [42 #uuid"4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+
+(m/encode
+  [:tuple int? uuid?]
+  [42 #uuid"4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+  mt/string-transformer)
+; ["42" "4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+```
+
+Transformations are recursive:
+
+```clj
+(m/decode
   Address
   {:id "Lillan",
    :tags ["coffee" "artesan" "garden"],
@@ -228,7 +273,7 @@ Schema-driven value transformations with `m/transform`:
 Transform map keys with `mt/key-transformer`:
 
 ```clj
-(m/transform
+(m/decode
   Address
   {:id "Lillan",
    :tags ["coffee" "artesan" "garden"],
@@ -253,7 +298,7 @@ Transformers are composable:
     mt/strip-extra-keys-transformer
     mt/json-transformer)
 
-(m/transform
+(m/decode
   Address
   {:id "Lillan",
    :EVIL "LYN"
@@ -302,16 +347,16 @@ Schemas can be deep-merged with `m/merge`:
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
 ```clj
-(require '[malli.edn :as me])
+(require '[malli.edn :as edn])
 
 (-> [:and
      [:map
       [:x int?]
       [:y int?]]
      [:fn '(fn [{:keys [x y]}] (> x y))]]
-    (me/write-string)
+    (edn/write-string)
     (doto prn) ; => "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
-    (me/read-string)
+    (edn/read-string)
     (doto (-> (m/validate {:x 0, :y 1}) prn)) ; => false
     (doto (-> (m/validate {:x 2, :y 1}) prn))) ; => true
 ;[:and 
@@ -433,29 +478,29 @@ All samples are valid against the inferred schema:
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):
 
 ```clj
-(defn visitor [schema childs _]
+(defn visitor [schema children _]
   {:name (m/name schema)
    :properties (or (m/properties schema) {})
-   :childs childs})
+   :children children})
 
 (m/accept Address visitor)
 ;{:name :map,
 ; :properties {},
-; :childs [{:name string?
-;           :properties {}
-;           :childs []}
-;          {:name :set
-;           :properties {}
-;           :childs [{:name keyword?, :properties {}, :childs []}]}
-;          {:name :map,
-;           :properties {},
-;           :childs [{:name string?, :properties {}, :childs []}
-;                    {:name string?, :properties {}, :childs []}
-;                    {:name int?, :properties {}, :childs []}
-;                    {:name :tuple,
-;                     :properties {},
-;                     :childs [{:name double?, :properties {}, :childs []} 
-;                              {:name double?, :properties {}, :childs []}]}]}]}
+; :children [{:name string?
+;             :properties {}
+;             :children []}
+;            {:name :set
+;             :properties {}
+;             :children [{:name keyword?, :properties {}, :children []}]}
+;            {:name :map,
+;             :properties {},
+;             :children [{:name string?, :properties {}, :children []}
+;                        {:name string?, :properties {}, :children []}
+;                        {:name int?, :properties {}, :children []}
+;                        {:name :tuple,
+;                         :properties {},
+;                         :children [{:name double?, :properties {}, :children []}
+;                                    {:name double?, :properties {}, :children []}]}]}]}
 ```
 
 ### JSON Schema
@@ -560,7 +605,7 @@ Coercion:
 
 ;; 140ns
 (let [schema [:map [:id int?] [:name string?]]
-      transform (m/transformer schema transform/string-transformer)]
+      transform (m/decoder schema transform/string-transformer)]
   (cc/quick-bench
     (transform {:id "1", :name "kikka"})))
 ```
@@ -583,7 +628,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:set`, `:tuple`, `:enum`, `:maybe`, `:re` and `:fn`.
+Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:re` and `:fn`.
 
 ### Custom registry
 

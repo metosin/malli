@@ -4,6 +4,7 @@
                                lambdaisland/kaocha-cljs {:mvn/version "0.0-59"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}
                                metosin/spec-tools {:mvn/version "0.10.0"}
+                               metosin/schema-tools {:mvn/version "0.12.0"}
                                prismatic/schema {:mvn/version "1.1.12"}
                                meta-merge {:mvn/version "1.0.0"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
@@ -27,7 +28,8 @@
                              "-Dclojure.compiler.direct-linking=true"]}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         borkdude/sci {:git/url "https://github.com/borkdude/sci"
-                      :sha "a1f6c2204bbfa0c191dbb99efef99709dc454fbe"}
-        borkdude/edamame {:mvn/version "0.0.6"}
+                      :sha "a66dd0dce8edab65627b86f6388100740e36bd66"}
+        borkdude/edamame {:git/url "https://github.com/borkdude/edamame"
+                          :sha "34755e7a875fae2ab4d64e6be89b6270046a91a3"}
         org.clojure/test.check {:mvn/version "0.10.0"}
         com.gfredericks/test.chuck {:mvn/version "0.2.10"}}}

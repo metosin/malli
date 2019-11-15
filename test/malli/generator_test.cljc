@@ -25,7 +25,14 @@
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]
-              (m/validate re (mg/generate re)))))
+              (m/validate re (mg/generate re)))
+
+            (let [re-test #"(?=.{8,})"                      ;; contains unsupported feature
+                  elements ["abcdefgh" "01234567"]
+                  fmap '(fn [s] (str "prefix_" s))]
+              (is (thrown-with-msg? Exception #"Unsupported-feature" (mg/generator [:re re-test])))
+              (m/validate #".{8,}" (mg/generate [:re {:gen/elements elements} re-test]))
+              (m/validate #"prefix_.{8,}" (mg/generate [:re {:gen/fmap fmap, :gen/elements elements} re-test])))))
 
   (testing "no generator"
     (is (thrown-with-msg?

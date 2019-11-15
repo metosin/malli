@@ -529,6 +529,25 @@
           (-properties [_] properties)
           (-form [_] (create-form :fn properties childs)))))))
 
+(defn- -recursive []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties childs opts]
+      (when-not (or (= 0 (count childs)) (= 1 (count childs)))
+        (fail! ::child-error {:name :recursive :childs childs}))
+      (let [steps (:recursion-steps opts)
+            l (last steps)]
+        ^{:type ::schema}
+        (reify Schema
+          (-name [_] :recursive)
+          (-validator [_]
+            (fn [value] ((-validator (schema l opts)) value)))
+          (-explainer [_ path] (-explainer (schema l opts) path))
+          (-transformer [_ transformer] (-transformer (schema l opts) transformer))
+          (-accept [_ visitor opts] (-accept (schema l opts) visitor opts))
+          (-properties [_] (-properties (schema l opts)))
+          (-form [_] :recursive))))))
+
 (defn- -maybe-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -573,13 +592,24 @@
   ([?schema]
    (schema ?schema nil))
   ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
-   (let [-get #(or (get registry %) (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
-     (cond
+   (let [new-opts (assoc opts :recursion-steps (conj (:recursion-steps opts) ?schema))
+         -get #(or (get registry %) (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
+      (cond
        (schema? ?schema) ?schema
-       (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
-       (vector? ?schema) (apply -into-schema (concat [(-get (first ?schema))]
-                                                     (-properties-and-childs (rest ?schema)) [opts]))
-       :else (or (some-> ?schema -get schema) (fail! ::invalid-schema {:schema ?schema}))))))
+       (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil new-opts)
+       (vector? ?schema) (let [[properties childs] (-properties-and-childs (rest ?schema))]
+                           (-into-schema (-get (first ?schema)) properties childs new-opts))
+       (-get ?schema) (schema (-get ?schema) new-opts)
+       :else (fail! ::invalid-schema {:schema ?schema})))))
+
+(comment
+
+  (validate
+    (schema [:map
+            [:name string?]
+            [:parent {:optional true} :recursive]])
+    {:name "foo"})
+  )
 
 (defn form
   ([?schema]
@@ -743,6 +773,7 @@
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)
+   :recursive (-recursive)
    :re (-re-schema false)
    :fn (-fn-schema)})
 

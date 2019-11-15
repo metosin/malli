@@ -116,6 +116,31 @@
                        :errors [{:path [2], :in [], :schema neg-int?, :value 1}]}
                       (m/explain schema 1))))))
 
+  (testing "recursive schemas"
+    (testing "simple"
+      (let [schema [:map
+                    [:name string?]
+                    [:parent {:optional true} :recursive]]]
+        (is (m/validate schema {:name "Kid"}))
+        (is (m/validate schema {:name "Kid"
+                                :parent {:name "Father"}}))
+        (is (m/validate schema {:name "Kid"
+                                :parent {:name "Father"
+                                         :parent {:name "Grandfather"}}}))))
+    (testing "collections"
+      (let [schema [:map
+                    [:name string?]
+                    [:children [:set :recursive]]]]
+        (is (m/validate schema {:name "Not a Dad"
+                                :children #{}}))
+        (is (m/validate schema {:name "Dad"
+                                :children #{{:name "Kid" :children #{}}}}))
+        (is (m/validate schema {:name     "Grandfather"
+                                :children #{{:name "Dad" :children #{{:name "Kid" :children #{}}}}}}))))
+    ; TODO: What do we do when the schema has no value but recursion?
+    #_(testing "no value recursive"
+      (let [schema :recursive]
+        (is (thrown? Exception (m/schema schema))))))
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]
 

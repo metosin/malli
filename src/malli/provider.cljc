@@ -9,7 +9,12 @@
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [registry] (->> registry (vals) (keep (partial -safe? m/schema))))
+(defn- whitelisted-schemas [registry]
+  (->> registry
+       (filter #(not= :recursive (first %)))
+       (map second)))
+
+(defn- registry-schemas [registry] (->> (whitelisted-schemas registry) (filter (partial -safe? m/schema))))
 
 (defn- ->infer-schemas [{:keys [registry] :or {registry m/default-registry}}]
   (let [registry-schemas (registry-schemas registry)]

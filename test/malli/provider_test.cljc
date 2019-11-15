@@ -43,35 +43,3 @@
   (doseq [[schema samples] expectations]
     (is (= (m/form schema) (m/form (mp/provide samples))))))
 
-
-(comment
-
-  (first (filter (fn [[schema samples]]
-                   (try (not= (m/form schema) (m/form (mp/provide samples)))
-                        (catch Throwable t false))) expectations))
-
-  (m/form [:set string?])
- (mp/provide [{:id "Lillan"
-               :tags #{:artesan :coffee :hotel}
-               :address {:street "Ahlmanintie 29"
-                         :city "Tampere"
-                         :zip 33100
-                         :lonlat [61.4858322, 23.7854658]}}
-              {:id "Huber",
-               :description "Beefy place"
-               :tags #{:beef :wine :beer}
-               :address {:street "Aleksis Kiven katu 13"
-                         :city "Tampere"
-                         :zip 33200
-                         :lonlat [61.4963599 23.7604916]}}])
-  (m/form [:map
-           [:id string?]
-           [:tags [:set keyword?]]
-           [:address
-            [:map
-             [:street string?]
-             [:city string?]
-             [:zip int?]
-             [:lonlat [:vector double?]]]]
-           [:description {:optional true} string?]])
-  )

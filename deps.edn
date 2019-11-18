@@ -8,7 +8,7 @@
                                prismatic/schema {:mvn/version "1.1.12"}
                                meta-merge {:mvn/version "1.0.0"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
-                                                        :sha "aaadd79b1644bc73d1c4283532a7b59ef382a671"}}}
+                                                        :sha "cef04589198e18ac81b8de2142921e82b4dece48"}}}
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
                                :sha "042c61410b1851957ae5f77cfe26a255837172cc"}}
@@ -28,8 +28,7 @@
                              "-Dclojure.compiler.direct-linking=true"]}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         borkdude/sci {:git/url "https://github.com/borkdude/sci"
-                      :sha "a66dd0dce8edab65627b86f6388100740e36bd66"}
-        borkdude/edamame {:git/url "https://github.com/borkdude/edamame"
-                          :sha "34755e7a875fae2ab4d64e6be89b6270046a91a3"}
+                      :sha "29c6ab20416b8662296f64f3ce92fdbd826bc286"}
+        borkdude/edamame {:mvn/version "0.0.8-alpha.4"}
         org.clojure/test.check {:mvn/version "0.10.0"}
         com.gfredericks/test.chuck {:mvn/version "0.2.10"}}}

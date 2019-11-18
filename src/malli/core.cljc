@@ -572,6 +572,44 @@
           (-properties [_] properties)
           (-form [_] form))))))
 
+(defn- -multi-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties childs opts]
+      (let [{:keys [entries forms]} (-parse-keys childs opts)
+            dispatch (eval (:dispatch properties))
+            dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))
+            form (create-form :multi properties forms)]
+        (when-not dispatch
+          (fail! ::missing-property {:key :dispatch}))
+        ^{:type ::schema}
+        (reify Schema
+          (-name [_] :multi)
+          (-validator [_]
+            (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
+              (fn [x]
+                (if-let [validator (validators (dispatch x))]
+                  (validator x)
+                  false))))
+          (-explainer [this path]
+            (let [explainers (reduce-kv (fn [acc k s] (assoc acc k (-explainer s path))) {} dispatch-map)]
+              (fn [x in acc]
+                (if-let [explainer (explainers (dispatch x))]
+                  (explainer x in acc)
+                  (conj acc (error path in this x ::invalid-dispatch-value))))))
+          (-transformer [this transformer context]
+            (let [tt (-value-transformer transformer this context)
+                  transformers (reduce-kv (fn [acc k s] (assoc acc k (-transformer s transformer context))) {} dispatch-map)
+                  ts (if)]
+              (fn [x in acc]
+                (if-let [explainer (explainers (dispatch x))]
+                  (explainer x in acc)
+                  (conj acc (error path in this x ::invalid-dispatch-value)))))
+            )
+          (-accept [this visitor opts])
+          (-properties [_] properties)
+          (-form [_] form))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -785,8 +823,33 @@
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)
+   :multi (-multi-schema)
    :re (-re-schema false)
    :fn (-fn-schema)})
 
 (def default-registry
   (clojure.core/merge predicate-registry class-registry comparator-registry base-registry))
+
+(validate
+  [:vector
+   [:multi {:dispatch :type}
+    [:sized [:map [:type keyword?] [:size int?]]]
+    [:human [:map [:type keyword?] [:name string?] [:address [:map [:street string?]]]]]]]
+  [{:type :sized, :size 10}
+   {:type :human, :name "tiina", :address {:street "kikka"}}])
+
+(explain
+  [:vector
+   [:multi {:dispatch '(fn [{:keys [type]}] type)}
+    [:sized [:map [:type keyword?] [:size int?]]]
+    [:human [:map [:type keyword?] [:name string?] [:address [:map [:street string?]]]]]]]
+  [{:type :sized, :size "10"}
+   {:type :human, :name "tiina", :address {:street "kikka"}}])
+
+(explain
+  [:vector
+   [:multi {:dispatch 'first}
+    [:sized [:tuple keyword? int?]]
+    [:human [:tuple keyword? [:map [:name string?] [:address [:map [:street string?]]]]]]]]
+  [[:sized 10]
+   [:human {:name "tiina", :address {:street "kikka"}}]])

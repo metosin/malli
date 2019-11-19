@@ -366,6 +366,43 @@ Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eva
 ; [:fn (fn [{:keys [x y]}] (> x y))]]
 ```
 
+## Multi Schemas
+
+Closed dispatch with `:multi` and `:dispatch` property:
+
+```clj
+(m/validate
+  [:multi {:dispatch :type}
+   [:sized [:map [:type keyword?] [:size int?]]]
+   [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+  {:type :sized, :size 10})
+; true
+```
+
+Any (serializable) funcion can be used:
+
+```clj
+(m/validate
+  [:multi {:dispatch 'first}
+   [:sized [:tuple [:= :sized] [:map [:size int?]]]]
+   [:human [:tuple [:= :human] [:map [:name string?] [:address [:map [:country keyword?]]]]]]]
+  [:human {:name "seppo", :address {:country :sweden}}])
+; true
+```
+
+Decoding `:dispatch` key before actual values to make it work:
+
+```clj
+(m/decode
+  [:multi {:dispatch :type
+           :decode/string '(constantly #(update % :type keyword))}
+   [:sized [:map [:type keyword?] [:size int?]]]
+   [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+  {:type "sized", :size "10"}
+  mt/string-transformer)
+; {:type :sized, :size 10}
+```
+
 ## Value Generation
 
 Scehmas can be used to generate values:
@@ -628,7 +665,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:re` and `:fn`.
+Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
 
 ### Custom registry
 

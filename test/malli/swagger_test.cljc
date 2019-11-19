@@ -28,6 +28,27 @@
                                                    :b {:type "string"}
                                                    :c {:type "string"}}
                                       :required [:a :c]}]
+   [[:multi {:dispatch :type
+             :decode/string '(constantly (fn [x] (update x :type keyword)))}
+     [:sized [:map [:type keyword?] [:size int?]]]
+     [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+    {:type "object",
+     :properties {:type {:type "string"}
+                  :size {:type "integer"
+                         :format "int64"}},
+     :required [:type :size],
+     :x-anyOf [{:type "object",
+                :properties {:type {:type "string"}
+                             :size {:type "integer"
+                                    :format "int64"}},
+                :required [:type :size]}
+               {:type "object",
+                :properties {:type {:type "string"},
+                             :name {:type "string"},
+                             :address {:type "object"
+                                       :properties {:country {:type "string"}}
+                                       :required [:country]}},
+                :required [:type :name :address]}]}]
    [[:map-of string? string?] {:type "object"
                                :additionalProperties {:type "string"}}]
    [[:vector string?] {:type "array", :items [{:type "string"}]}]

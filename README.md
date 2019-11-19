@@ -366,6 +366,49 @@ Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eva
 ; [:fn (fn [{:keys [x y]}] (> x y))]]
 ```
 
+## Multi Schemas
+
+Closed dispatch with `:multi` schema and `:dispatch` property:
+
+```clj
+(m/validate
+  [:multi {:dispatch :type}
+   [:sized [:map [:type keyword?] [:size int?]]]
+   [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+  {:type :sized, :size 10})
+; true
+```
+
+Any (serializable) funcion can be used for `:dispatch`:
+
+```clj
+(m/validate
+  [:multi {:dispatch 'first}
+   [:sized [:tuple [:= :sized] [:map [:size int?]]]]
+   [:human [:tuple [:= :human] [:map [:name string?] [:address [:map [:country keyword?]]]]]]]
+  [:human {:name "seppo", :address {:country :sweden}}])
+; true
+```
+
+Decoding `:dispatch` key before actual values to make it work:
+
+```clj
+(m/decode
+  [:multi {:dispatch :type
+           :decode/string '(constantly #(update % :type keyword))}
+   [:sized [:map [:type [:= :sized] [:size int?]]]
+   [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
+  {:type "human"
+   :name "Tiina"
+   :age 98
+   :address {:country "finland"
+             :street "this is an extra key"}}
+  (mt/transformer mt/strip-extra-keys-transformer mt/string-transformer))
+;{:type :human
+; :name "Tiina"
+; :address {:country :finland}}
+```
+
 ## Value Generation
 
 Scehmas can be used to generate values:
@@ -628,7 +671,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/base-registry`
 
-Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:re` and `:fn`.
+Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
 
 ### Custom registry
 

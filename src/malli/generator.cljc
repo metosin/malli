@@ -69,6 +69,7 @@
 (defmethod -generator :or [schema opts] (gen/one-of (mapv #(generator % opts) (m/children schema opts))))
 (defmethod -generator :map [schema opts] (-map-gen schema opts))
 (defmethod -generator :map-of [schema opts] (-map-of-gen schema opts))
+(defmethod -generator :multi [schema opts] (gen/one-of (mapv #(generator (second %) opts) (m/children schema opts))))
 (defmethod -generator :vector [schema opts] (-coll-gen schema identity opts))
 (defmethod -generator :list [schema opts] (-coll-gen schema (partial apply list) opts))
 (defmethod -generator :sequential [schema opts] (-coll-gen schema identity opts))

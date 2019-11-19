@@ -25,8 +25,8 @@
                                       :required [:a :c]}]
    [[:multi {:dispatch :type
              :decode/string '(constantly (fn [x] (update x :type keyword)))}
-     [:sized [:map [:type keyword?] [:size int?]]]
-     [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+     [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]
+     [:human [:map {:gen/fmap '#(assoc % :type :human)} [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"

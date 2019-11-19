@@ -599,14 +599,15 @@
                   (conj acc (error path in this x ::invalid-dispatch-value))))))
           (-transformer [this transformer context]
             (let [tt (-value-transformer transformer this context)
-                  transformers (reduce-kv (fn [acc k s] (assoc acc k (-transformer s transformer context))) {} dispatch-map)
-                  ts (if)]
-              (fn [x in acc]
-                (if-let [explainer (explainers (dispatch x))]
-                  (explainer x in acc)
-                  (conj acc (error path in this x ::invalid-dispatch-value)))))
-            )
-          (-accept [this visitor opts])
+                  ts (reduce-kv (fn [acc k s] (assoc acc k (-transformer s transformer context))) {} dispatch-map)
+                  t (fn [x] (if-let [t (ts (dispatch x))] (t x) x))]
+              (cond
+                (and tt (not (seq ts))) tt
+                (not (seq ts)) nil
+                (not tt) t
+                :else (comp t tt))))
+          (-accept [this visitor opts]
+            (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
           (-properties [_] properties)
           (-form [_] form))))))
 

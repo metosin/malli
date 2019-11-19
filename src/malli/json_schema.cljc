@@ -73,6 +73,7 @@
        :required required}
       (json-schema-props schema "json-schema"))))
 
+(defmethod accept :multi [_ _ children _] {:oneOf children})
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
 (defmethod accept :vector [_ _ children _] {:type "array", :items children})
 (defmethod accept :list [_ _ children _] {:type "array", :items children})

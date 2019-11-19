@@ -309,6 +309,70 @@
                           {:path [4 1], :in [:d], :schema [:maybe int?], :value "not"}]}
                 (m/explain schema value))))
 
+  (testing "multi-schemas"
+    (let [schema [:multi {:dispatch :type
+                          :decode/string '(constantly (fn [x] (update x :type keyword)))}
+                  [:sized [:map [:type keyword?] [:size int?]]]
+                  [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+          valid1 {:type :sized, :size 10}
+          valid2 {:type :human :name "inkeri", :address {:country :PO}}
+          invalid1 {:type :sized, :size "size"}
+          invalid2 {:type :human :namez "inkeri"}
+          invalid3 {:type :worm}]
+
+      (is (true? (m/validate schema valid1)))
+      (is (true? (m/validate schema valid2)))
+      (is (false? (m/validate schema invalid1)))
+      (is (false? (m/validate schema invalid2)))
+      (is (false? (m/validate schema invalid3)))
+      (is (false? (m/validate schema "not-a-map")))
+
+      (is (nil? (m/explain schema valid1)))
+      (is (nil? (m/explain schema valid2)))
+
+      (is (results= {:schema schema,
+                     :value {:type :sized, :size "size"},
+                     :errors [{:path [2 1], :in [:size], :schema int?, :value "size"}]}
+                    (m/explain schema invalid1)))
+
+      (is (results= {:schema schema,
+                     :value {:type :human, :namez "inkeri"},
+                     :errors [{:path [2 0]
+                               :in [:name]
+                               :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
+                               :type :malli.core/missing-key}
+                              {:path [3 0]
+                               :in [:address]
+                               :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
+                               :type :malli.core/missing-key}]}
+                    (m/explain schema invalid2)))
+
+      (is (results= {:schema schema,
+                     :value {:type :worm}
+                     :errors [{:path []
+                               :in []
+                               :schema schema
+                               :value {:type :worm}
+                               :type :malli.core/invalid-dispatch-value}]}
+                    (m/explain schema invalid3)))
+
+      (is (= {:type :sized, :size 10}
+             (m/decode schema {:type "sized", :size "10"} transform/string-transformer)))
+      (is (= {:type :human, :name "liisa", :address {:country :PO}}
+             (m/decode schema {:type "human", :name "liisa", :address {:country "PO"}} transform/string-transformer)))
+      (is (= {:type :sized, :size 10}
+             (m/decode schema {:type :sized, :size 10, :nesting true} transform/strip-extra-keys-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema) valid1)))
+
+      (is (= [:multi [:map ['keyword?] ['int?]] [:map ['keyword?] ['string?] [:map ['keyword?]]]] (m/accept schema visitor)))
+
+      (is (= [:multi
+              {:dispatch :type, :decode/string '(constantly (fn [x] (update x :type keyword)))}
+              [:sized [:map [:type 'keyword?] [:size 'int?]]]
+              [:human [:map [:type 'keyword?] [:name 'string?] [:address [:map [:country 'keyword?]]]]]]
+             (m/form schema)))))
+
   (testing "map-of schema"
 
     (is (true? (m/validate [:map-of string? int?] {"age" 18})))

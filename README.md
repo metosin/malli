@@ -396,11 +396,17 @@ Decoding `:dispatch` key before actual values to make it work:
 (m/decode
   [:multi {:dispatch :type
            :decode/string '(constantly #(update % :type keyword))}
-   [:sized [:map [:type keyword?] [:size int?]]]
-   [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
-  {:type "sized", :size "10"}
-  mt/string-transformer)
-; {:type :sized, :size 10}
+   [:sized [:map [:type [:= :sized] [:size int?]]]
+   [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
+  {:type "human"
+   :name "Tiina"
+   :age 98
+   :address {:country "finland"
+             :street "this is an extra key"}}
+  (mt/transformer mt/strip-extra-keys-transformer mt/string-transformer))
+;{:type :human
+; :name "Tiina"
+; :address {:country :finland}}
 ```
 
 ## Value Generation

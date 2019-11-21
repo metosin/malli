@@ -379,18 +379,18 @@ Closed dispatch with `:multi` schema and `:dispatch` property:
 ; true
 ```
 
-Any (serializable) funcion can be used for `:dispatch`:
+Any (serializable) function can be used for `:dispatch`:
 
 ```clj
 (m/validate
   [:multi {:dispatch 'first}
-   [:sized [:tuple [:= :sized] [:map [:size int?]]]]
-   [:human [:tuple [:= :human] [:map [:name string?] [:address [:map [:country keyword?]]]]]]]
+   [:sized [:tuple keyword? [:map [:size int?]]]]
+   [:human [:tuple keyword? [:map [:name string?] [:address [:map [:country keyword?]]]]]]]
   [:human {:name "seppo", :address {:country :sweden}}])
 ; true
 ```
 
-Decoding `:dispatch` key before actual values to make it work:
+`:dispatch` values should be decoded before actual values:
 
 ```clj
 (m/decode
@@ -400,7 +400,7 @@ Decoding `:dispatch` key before actual values to make it work:
    [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
   {:type "human"
    :name "Tiina"
-   :age 98
+   :age "98"
    :address {:country "finland"
              :street "this is an extra key"}}
   (mt/transformer mt/strip-extra-keys-transformer mt/string-transformer))

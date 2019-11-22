@@ -830,27 +830,3 @@
 
 (def default-registry
   (clojure.core/merge predicate-registry class-registry comparator-registry base-registry))
-
-(validate
-  [:vector
-   [:multi {:dispatch :type}
-    [:sized [:map [:type keyword?] [:size int?]]]
-    [:human [:map [:type keyword?] [:name string?] [:address [:map [:street string?]]]]]]]
-  [{:type :sized, :size 10}
-   {:type :human, :name "tiina", :address {:street "kikka"}}])
-
-(explain
-  [:vector
-   [:multi {:dispatch '(fn [{:keys [type]}] type)}
-    [:sized [:map [:type keyword?] [:size int?]]]
-    [:human [:map [:type keyword?] [:name string?] [:address [:map [:street string?]]]]]]]
-  [{:type :sized, :size "10"}
-   {:type :human, :name "tiina", :address {:street "kikka"}}])
-
-(explain
-  [:vector
-   [:multi {:dispatch 'first}
-    [:sized [:tuple keyword? int?]]
-    [:human [:tuple keyword? [:map [:name string?] [:address [:map [:street string?]]]]]]]]
-  [[:sized 10]
-   [:human {:name "tiina", :address {:street "kikka"}}]])

@@ -80,8 +80,8 @@
 #?(:clj (defmethod -generator :re [schema opts] (-re-gen schema opts)))
 
 (defn- -create [schema opts]
-  (let [{:gen/keys [fmap elements]} (m/properties schema opts)
-        gen (when-not elements (-generator schema opts))
+  (let [{:gen/keys [gen fmap elements]} (m/properties schema opts)
+        gen (or gen (when-not elements (-generator schema opts)))
         elements (when elements (gen/elements elements))]
     (cond
       fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))

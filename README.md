@@ -445,6 +445,14 @@ Scehmas can be used to generate values:
   [:and {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})
 ;; => "kikka_WT3K0yax2"
+
+(require '[clojure.test.check.generators :as gen])
+
+;; gen/gen (note, not serializable)
+(mg/generate
+  [:sequential {:gen/gen (gen/list gen/neg-int)} int?]
+  {:size 42, :seed 42})
+; => (-37 -13 -13 -24 -20 -11 -34 -40 -22 0 -10)
 ```
 
 Generated values are valid:

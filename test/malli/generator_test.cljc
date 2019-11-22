@@ -1,5 +1,6 @@
 (ns malli.generator-test
   (:require [clojure.test :refer [deftest testing is]]
+            [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
             [malli.generator :as mg]
             [malli.core :as m]))
@@ -27,7 +28,7 @@
             (let [re #"^\d+ \d+$"]
               (m/validate re (mg/generate re)))
 
-            (let [re-test #"(?=.{8,})"                      ;; contains unsupported feature
+            (let [re-test #"(?=.{8,})" ;; contains unsupported feature
                   elements ["abcdefgh" "01234567"]
                   fmap '(fn [s] (str "prefix_" s))]
               (is (thrown-with-msg? Exception #"Unsupported-feature" (mg/generator [:re re-test])))
@@ -52,4 +53,9 @@
     (dotimes [_ 1000]
       (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?])))
     (dotimes [_ 1000]
-      (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?])))))
+      (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?]))))
+  (testing "gen/gen"
+    (dotimes [_ 1000]
+      (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?])))
+    (dotimes [_ 1000]
+      (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?])))))

@@ -9,6 +9,29 @@
               (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
               (java.time.temporal ChronoField))))
 
+(defn- ->interceptor
+  "Utility function to convert a transformer into an interceptor. Works with transformers
+  that are already interceptors, as well as sequences of transformers"
+  [transformer]
+  (cond
+   (fn? transformer) {:enter transformer :leave nil}
+   (and (map? transformer)
+        (or (contains? transformer :enter)
+            (contains? transformer :leave))) transformer
+
+   (coll? transformer) (reduce
+                        (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
+                          (let [enter (if (and enter new-enter)
+                                        (comp enter new-enter)
+                                        (or enter new-enter))
+                                leave (if (and leave new-leave)
+                                        (comp leave new-leave)
+                                        (or leave new-leave))]
+                            {:enter enter :leave leave}))
+                        (keep ->interceptor transformer))
+   (nil? transformer) nil
+   :else (throw (ex-info "Invalid transformer. Must be a function, collection, or interceptor map"
+                         {:value transformer}))))
 (defn transformer [& ?options]
   (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
         transformer-name (->> options reverse (some :name))
@@ -25,7 +48,7 @@
       (-value-transformer [_ schema context]
         (if-let [->transformer (or (some-> (get (m/properties schema) (schema-keys context)) (m/eval))
                                    (get (transformers context) (m/name schema)))]
-          (->transformer schema opts))))))
+          (->interceptor (->transformer schema opts)))))))
 
 ;;
 ;; From Strings

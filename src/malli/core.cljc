@@ -231,7 +231,7 @@
                       (explainer x in acc))
                     acc explainers)))))
           (-transformer [this transformer context]
-            (let [key-transformer (-transformer (map-key) transformer context)
+            (let [key-transformer (-transformer (map-key this) transformer context)
                   value-transformers (some->> entries
                                               (mapcat (fn [[k _ s]] (if-let [t (-transformer s transformer context)] [k t])))
                                               (seq)
@@ -783,13 +783,22 @@
                              (mapcat #(-> % (children opts) (-parse-keys opts) :forms) schemas))))
                    (schema opts)))))))
 
-(defn map-key []
+(defn map-key [parent-schema]
   ^{:type ::schema}
   (reify Schema
     (-name [_] ::map-key)
     (-form [_] ::map-key)
     (-properties [_])
-    (-transformer [this transformer context] (-value-transformer transformer this context))))
+    (-transformer [this transformer context]
+      (let [transformer-opts (-transformer-options transformer)
+            opt-key          (case context
+                               :encode :encoders
+                               :decode :decoders)
+            opts             (:opts transformer-opts)]
+        (if-let [->transformer (some-> transformer-opts
+                                       opt-key
+                                       ::map-key)]
+          (->transformer parent-schema opts))))))
 
 ;;
 ;; registries

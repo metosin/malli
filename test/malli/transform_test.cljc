@@ -198,8 +198,23 @@
 
 (deftest key-transformer
   (let [key-transformer (mt/key-transformer
-                          #(-> % name (str "_key") keyword)
-                          #(-> % name (str "_key")))]
+                         #(-> % name (str "_key") keyword)
+                         #(-> % name (str "_key")))
+
+        schema-aware-key-fn (fn [schema opts]
+                              (is (= [:x :y [:opt :z]]
+                                     (vec (map first (m/children schema)))))
+                              (is (nil? opts))
+                              #(name %))
+
+        schema-aware-key-transformer (mt/transformer
+                                      {:name ::custom
+                                       :encoders {::m/map-key schema-aware-key-fn}})]
+    (testing "schema-aware-key-fn"
+      (is (= {"x" 18 "y" "john" "a" "doe"}
+             (m/encode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
+                       {:x 18 :y "john" :a "doe"}
+                       schema-aware-key-transformer))))
     (testing "decode"
       (is (= {:x_key 18 :y_key "john" :a_key "doe"}
              (m/decode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]

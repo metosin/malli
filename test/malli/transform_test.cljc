@@ -198,8 +198,8 @@
 
 (deftest key-transformer
   (let [key-transformer (mt/key-transformer
-                          #(-> % name (str "_key") keyword)
-                          #(-> % name (str "_key")))]
+                         #(-> % name (str "_key") keyword)
+                         #(-> % name (str "_key")))]
     (testing "decode"
       (is (= {:x_key 18 :y_key "john" :a_key "doe"}
              (m/decode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
@@ -211,6 +211,24 @@
                        {:x 18 :y "john" :a "doe"}
                        key-transformer))))))
 
+(deftest interceptor-style-transformers
+  (testing "map"
+    (let [raw-val {:x 5 :y :foo}
+          map-interceptor {:enter (fn [m]
+                                    (is (= raw-val m))
+                                    (update m :x inc))
+                           :leave (fn [m]
+                                    (is (= "foo" (:y m)))
+                                    (update m :y #(str % "!")))}
+          transformer (mt/transformer
+                       {:name :custom
+                        :encoders {:map (constantly map-interceptor)
+                                   'keyword? (constantly name)}})]
+      (is (= {:x 6 :y "foo!"}
+             (m/encode [:map [:x int?] [:y keyword?]]
+                       raw-val
+                       transformer))))))
+
 (deftest schema-hinted-tranformation
   (let [schema [string? {:title "lower-upper-string"
                          :decode/string '(constantly str/upper-case)
@@ -220,8 +238,8 @@
       (is (= "KIKKA" (m/decode schema value mt/string-transformer)))
       (is (= "kikka" (m/encode schema value mt/string-transformer)))
       (is (= "kikka" (as-> value $
-                           (m/decode schema $ mt/string-transformer)
-                           (m/encode schema $ mt/string-transformer)))))
+                       (m/decode schema $ mt/string-transformer)
+                       (m/encode schema $ mt/string-transformer)))))
     (testing "undefined transformations"
       (is (= value (m/decode schema value mt/json-transformer)))
       (is (= value (m/encode schema value mt/json-transformer))))))

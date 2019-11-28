@@ -14,11 +14,9 @@
   that are already interceptors, as well as sequences of transformers"
   [transformer]
   (cond
-    (fn? transformer) {:enter (m/eval transformer) :leave nil}
-    (map? transformer) (let [{:keys [enter leave]} transformer]
-                         (if (or enter leave)
-                           {:enter (m/eval enter)
-                            :leave (m/eval leave)}))
+    (fn? transformer) {:enter transformer :leave nil}
+    (and (map? transformer) (or (contains? transformer :enter)
+                                (contains? transformer :leave))) transformer
     (coll? transformer) (reduce
                           (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
                             (let [enter (if (and enter new-enter)

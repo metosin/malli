@@ -75,7 +75,7 @@
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
-               [string? {:decode/string (constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})}]
+               [string? {:decode/string '(constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})}]
                "kerran" mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
@@ -105,7 +105,7 @@
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
-               [:and {:decode/string (constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})} string?]
+               [:and {:decode/string '(constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})} string?]
                "kerran" mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
@@ -141,7 +141,7 @@
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
 
       (is (= 4 (m/decode
-                 [:> {:decode/string (constantly {:enter inc, :leave (partial * 2)})} 0]
+                 [:> {:decode/string '(constantly {:enter inc, :leave (partial * 2)})} 0]
                  1 mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
@@ -186,7 +186,7 @@
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
 
       (is (= 4 (m/decode
-                 [:maybe {:decode/string (constantly {:enter inc, :leave (partial * 2)})} int?]
+                 [:maybe {:decode/string '(constantly {:enter inc, :leave (partial * 2)})} int?]
                  1 mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
@@ -211,7 +211,7 @@
                       (m/explain schema "abba")))
 
         (is (= 4 (m/decode
-                   [:re {:decode/string (constantly {:enter inc, :leave (partial * 2)})} ".*"]
+                   [:re {:decode/string '(constantly {:enter inc, :leave (partial * 2)})} ".*"]
                    1 mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire schema) "a.b")))
@@ -235,7 +235,7 @@
                       (m/explain schema "abba")))
 
         (is (= 4 (m/decode
-                   [:fn {:decode/string (constantly {:enter inc, :leave (partial * 2)})} 'int?]
+                   [:fn {:decode/string '(constantly {:enter inc, :leave (partial * 2)})} 'int?]
                    1 mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire schema) 12)))
@@ -308,8 +308,8 @@
       (is (= {:x 24}
              (m/decode
                [:map
-                {:decode/string (constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
-                [:x [int? {:decode/string (constantly {:enter '(partial + 2), :leave '(partial * 3)})}]]]
+                {:decode/string '(constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
+                [:x [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]]]
                {:x 1} mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) valid)))
@@ -399,8 +399,8 @@
       (is (= {:type :math, :x 24}
              (m/decode
                [:multi {:dispatch :type
-                        :decode/string (constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
-                [:math [:map [:type keyword?] [:x [int? {:decode/string (constantly {:enter '(partial + 2), :leave '(partial * 3)})}]]]]]
+                        :decode/string '(constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
+                [:math [:map [:type keyword?] [:x [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]]]]]
                {:type :math, :x 1} mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
@@ -447,8 +447,8 @@
     #?(:clj
        (is (= {:x 24}
               (m/decode
-                [:map-of {:decode/string (constantly {:enter '#(update % :x inc), :leave '#(update % :x (partial * 2))})}
-                 keyword? [int? {:decode/string (constantly {:enter '(partial + 2), :leave '(partial * 3)})}]]
+                [:map-of {:decode/string '(constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
+                 keyword? [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]]
                 {:x 1} mt/string-transformer))))
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
@@ -561,15 +561,15 @@
       (is (= [24 30 36 42]
              (m/decode
                [:sequential
-                {:decode/string (constantly {:enter (partial map inc), :leave (partial map (partial * 2))})}
-                [int? {:decode/string (constantly {:enter (partial + 2), :leave (partial * 3)})}]]
+                {:decode/string '(constantly {:enter (partial map inc), :leave (partial map (partial * 2))})}
+                [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]]
                [1 2 3 4] mt/string-transformer)))
       (is (= [24 48 8 10]
              (m/decode
                [:tuple
-                {:decode/string (constantly {:enter (partial mapv inc), :leave (partial mapv (partial * 2))})}
-                [int? {:decode/string (constantly {:enter (partial + 2), :leave (partial * 3)})}]
-                [int? {:decode/string (constantly {:enter (partial + 3), :leave (partial * 4)})}]]
+                {:decode/string '(constantly {:enter (partial mapv inc), :leave (partial mapv (partial * 2))})}
+                [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]
+                [int? {:decode/string '(constantly {:enter (partial + 3), :leave (partial * 4)})}]]
                [1 2 3 4] mt/string-transformer))))
 
     (testing "explain"

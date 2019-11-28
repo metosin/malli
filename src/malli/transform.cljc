@@ -14,24 +14,24 @@
   that are already interceptors, as well as sequences of transformers"
   [transformer]
   (cond
-   (fn? transformer) {:enter transformer :leave nil}
-   (and (map? transformer)
-        (or (contains? transformer :enter)
-            (contains? transformer :leave))) transformer
+    (fn? transformer) {:enter (m/eval transformer) :leave nil}
+    (map? transformer) (let [{:keys [enter leave]} transformer]
+                         (if (or enter leave)
+                           {:enter (m/eval enter)
+                            :leave (m/eval leave)}))
+    (coll? transformer) (reduce
+                          (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
+                            (let [enter (if (and enter new-enter)
+                                          (comp new-enter enter)
+                                          (or enter new-enter))
+                                  leave (if (and leave new-leave)
+                                          (comp new-leave leave)
+                                          (or leave new-leave))]
+                              {:enter enter :leave leave}))
+                          (keep ->interceptor transformer))
+    (nil? transformer) nil
+    :else (m/fail! ::invalid-transformer {:value transformer})))
 
-   (coll? transformer) (reduce
-                        (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
-                          (let [enter (if (and enter new-enter)
-                                        (comp enter new-enter)
-                                        (or enter new-enter))
-                                leave (if (and leave new-leave)
-                                        (comp leave new-leave)
-                                        (or leave new-leave))]
-                            {:enter enter :leave leave}))
-                        (keep ->interceptor transformer))
-   (nil? transformer) nil
-   :else (throw (ex-info "Invalid transformer. Must be a function, collection, or interceptor map"
-                         {:value transformer}))))
 (defn transformer [& ?options]
   (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
         transformer-name (->> options reverse (some :name))

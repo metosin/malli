@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             [malli.edn :as me]
-            [malli.transform :as transform]))
+            [malli.transform :as mt]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -70,8 +70,13 @@
                      :errors [(m/error [] [] schema "1")]}
                     (m/explain schema "1")))
 
-      (is (= 1 (m/decode schema "1" transform/string-transformer)))
-      (is (= "1" (m/decode schema "1" transform/json-transformer)))
+      (is (= 1 (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= "olipa_kerran_avaruus"
+             (m/decode
+               [string? {:decode/string (constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})}]
+               "kerran" mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -95,8 +100,13 @@
                               {:path [2 2], :in [], :schema neg-int?, :value 0}]}
                     (m/explain schema 0)))
 
-      (is (= 1 (m/decode schema "1" transform/string-transformer)))
-      (is (= "1" (m/decode schema "1" transform/json-transformer)))
+      (is (= 1 (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= "olipa_kerran_avaruus"
+             (m/decode
+               [:and {:decode/string (constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})} string?]
+               "kerran" mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -127,8 +137,12 @@
       (is (results= {:schema [:> 0], :value 0, :errors [{:path [], :in [], :schema [:> 0], :value 0}]}
                     (m/explain schema 0)))
 
-      (is (= 1 (m/decode schema "1" transform/string-transformer)))
-      (is (= "1" (m/decode schema "1" transform/json-transformer)))
+      (is (= 1 (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= 4 (m/decode
+                 [:> {:decode/string (constantly {:enter inc, :leave (partial * 2)})} 0]
+                 1 mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -148,8 +162,8 @@
                     (m/explain schema 0)))
 
       ;; TODO: infer type from :enum
-      #_(is (= 1 (m/decode schema "1" transform/string-transformer)))
-      #_(is (= "1" (m/decode schema "1" transform/json-transformer)))
+      #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
+      #_(is (= "1" (m/decode schema "1" mt/json-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -168,8 +182,12 @@
       (is (results= {:schema [:maybe int?], :value "abba", :errors [{:path [], :in [], :schema [:maybe int?], :value "abba"}]}
                     (m/explain schema "abba")))
 
-      (is (= 1 (m/decode schema "1" transform/string-transformer)))
-      (is (= "1" (m/decode schema "1" transform/json-transformer)))
+      (is (= 1 (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= 4 (m/decode
+                 [:maybe {:decode/string (constantly {:enter inc, :leave (partial * 2)})} int?]
+                 1 mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -192,6 +210,10 @@
         (is (results= {:schema schema, :value "abba", :errors [{:path [], :in [], :schema schema, :value "abba"}]}
                       (m/explain schema "abba")))
 
+        (is (= 4 (m/decode
+                   [:re {:decode/string (constantly {:enter inc, :leave (partial * 2)})} ".*"]
+                   1 mt/string-transformer)))
+
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
         (is (= [:re] (m/accept schema visitor)))
@@ -211,6 +233,10 @@
         (is (nil? (m/explain schema 12)))
         (is (results= {:schema schema, :value "abba", :errors [{:path [], :in [], :schema schema, :value "abba"}]}
                       (m/explain schema "abba")))
+
+        (is (= 4 (m/decode
+                   [:fn {:decode/string (constantly {:enter inc, :leave (partial * 2)})} 'int?]
+                   1 mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire schema) 12)))
 
@@ -270,14 +296,21 @@
                      :errors [{:path [], :in [], :schema schema, :value "not-a-map", :type ::m/invalid-type}]}
                     (m/explain schema "not-a-map")))
 
-      (is (= {:x true} (m/decode schema {:x "true"} transform/string-transformer)))
-      (is (= {:x true, :y 1} (m/decode schema {:x "true", :y "1"} transform/string-transformer)))
-      (is (= {:x "true", :y "1"} (m/decode schema {:x "true", :y "1"} transform/json-transformer)))
-      (is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} transform/strip-extra-keys-transformer)))
+      (is (= {:x true} (m/decode schema {:x "true"} mt/string-transformer)))
+      (is (= {:x true, :y 1} (m/decode schema {:x "true", :y "1"} mt/string-transformer)))
+      (is (= {:x "true", :y "1"} (m/decode schema {:x "true", :y "1"} mt/json-transformer)))
+      (is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} mt/strip-extra-keys-transformer)))
       (is (= {:x_key true, :y_key 2} (m/decode schema {:x true, :y 2}
-                                               (transform/key-transformer
+                                               (mt/key-transformer
                                                  (fn [key]
                                                    (-> key name (str "_key") keyword))))))
+
+      (is (= {:x 24}
+             (m/decode
+               [:map
+                {:decode/string (constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
+                [:x [int? {:decode/string (constantly {:enter '(partial + 2), :leave '(partial * 3)})}]]]
+               {:x 1} mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) valid)))
 
@@ -357,11 +390,18 @@
                     (m/explain schema invalid3)))
 
       (is (= {:type :sized, :size 10}
-             (m/decode schema {:type "sized", :size "10"} transform/string-transformer)))
+             (m/decode schema {:type "sized", :size "10"} mt/string-transformer)))
       (is (= {:type :human, :name "liisa", :address {:country :PO}}
-             (m/decode schema {:type "human", :name "liisa", :address {:country "PO"}} transform/string-transformer)))
+             (m/decode schema {:type "human", :name "liisa", :address {:country "PO"}} mt/string-transformer)))
       (is (= {:type :sized, :size 10}
-             (m/decode schema {:type :sized, :size 10, :nesting true} transform/strip-extra-keys-transformer)))
+             (m/decode schema {:type :sized, :size 10, :nesting true} mt/strip-extra-keys-transformer)))
+
+      (is (= {:type :math, :x 24}
+             (m/decode
+               [:multi {:dispatch :type
+                        :decode/string (constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
+                [:math [:map [:type keyword?] [:x [int? {:decode/string (constantly {:enter '(partial + 2), :leave '(partial * 3)})}]]]]]
+               {:type :math, :x 1} mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
@@ -401,14 +441,22 @@
                              :value "18"}]}
                   (m/explain [:map-of string? int?] {:age "18"})))
 
-    (is (= {1 1} (m/decode [:map-of int? pos-int?] {"1" "1"} transform/string-transformer)))
+    (is (= {1 1} (m/decode [:map-of int? pos-int?] {"1" "1"} mt/string-transformer)))
+
+    ;; TODO: this doesn't work with CLJS???
+    #?(:clj
+       (is (= {:x 24}
+              (m/decode
+                [:map-of {:decode/string (constantly {:enter '#(update % :x inc), :leave '#(update % :x (partial * 2))})}
+                 keyword? [int? {:decode/string (constantly {:enter '(partial + 2), :leave '(partial * 3)})}]]
+                {:x 1} mt/string-transformer))))
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
     (is (= [:map-of ['int?] ['pos-int?]] (m/accept [:map-of int? pos-int?] visitor)))
 
     (testing "keyword keys are transformed via strings"
-      (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} transform/string-transformer)))))
+      (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} mt/string-transformer)))))
 
   (testing "sequence schemas"
 
@@ -508,6 +556,21 @@
           (testing name
             (is (= expected (m/validate schema value)))
             (is (= expected (m/validate (over-the-wire schema) value)))))))
+
+    (testing "transform"
+      (is (= [24 30 36 42]
+             (m/decode
+               [:sequential
+                {:decode/string (constantly {:enter (partial map inc), :leave (partial map (partial * 2))})}
+                [int? {:decode/string (constantly {:enter (partial + 2), :leave (partial * 3)})}]]
+               [1 2 3 4] mt/string-transformer)))
+      (is (= [24 48 8 10]
+             (m/decode
+               [:tuple
+                {:decode/string (constantly {:enter (partial mapv inc), :leave (partial mapv (partial * 2))})}
+                [int? {:decode/string (constantly {:enter (partial + 2), :leave (partial * 3)})}]
+                [int? {:decode/string (constantly {:enter (partial + 3), :leave (partial * 4)})}]]
+               [1 2 3 4] mt/string-transformer))))
 
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]

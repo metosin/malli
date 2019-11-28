@@ -828,9 +828,15 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Running tests
 
-We use Kaocha as a test runner. Before running the tests, you need to install NPM dependencies.
+We use Make which handles task management and related dependency installation for you. Simply run
 
 ```bash
-npm install
-bin/kaocha
+make test
+```
+
+to run all tests. You can also run only Clojure or ClojureScript specific tests:
+
+```bash
+make test-clj
+make test-cljs
 ```

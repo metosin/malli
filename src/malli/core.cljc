@@ -359,9 +359,7 @@
                               (reduce-kv
                                 (fn [acc k v]
                                   (let [k' (key-transformer k)]
-                                    (-> acc
-                                        (assoc k' (value-transformer v))
-                                        (cond-> (not (identical? k' k)) (dissoc k))))) x x))
+                                    (assoc acc k' (value-transformer v)))) (empty x) x))
                             x))
                         key-transformer
                         (fn [x]
@@ -370,9 +368,7 @@
                               (reduce-kv
                                 (fn [acc k v]
                                   (let [k' (key-transformer k)]
-                                    (-> acc
-                                        (assoc k' v)
-                                        (cond-> (not (identical? k' k)) (dissoc k))))) x x))
+                                    (assoc acc k' v))) (empty x) x))
                             x))
                         value-transformer
                         (fn [x]

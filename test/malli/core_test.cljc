@@ -443,13 +443,11 @@
 
     (is (= {1 1} (m/decode [:map-of int? pos-int?] {"1" "1"} mt/string-transformer)))
 
-    ;; TODO: this doesn't work with CLJS???
-    #?(:clj
-       (is (= {:x 24}
-              (m/decode
-                [:map-of {:decode/string '(constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
-                 keyword? [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]]
-                {:x 1} mt/string-transformer))))
+    (is (= {:x 24}
+           (m/decode
+             [:map-of {:decode/string '(constantly {:enter #(update % :x inc), :leave #(update % :x (partial * 2))})}
+              keyword? [int? {:decode/string '(constantly {:enter (partial + 2), :leave (partial * 3)})}]]
+             {:x 1} mt/string-transformer)))
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 

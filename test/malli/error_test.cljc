@@ -64,7 +64,25 @@
                  [{:x [1 2 3]}
                   {:x [1 "2" "3"]}
                   {:x #{"whatever"}}])
-               (me/humanize {:wrap :message}))))))
+               (me/humanize {:wrap :message})))))
+
+  (testing "so nested"
+    (is (= {:data [{:x ["should be int" nil "should be int"]}
+                   {:x ["should be int" nil "should be int"]}
+                   nil
+                   {:x ["should be int"]}]}
+           (-> [:map [:data [:vector [:map [:x [:vector int?]]]]]]
+               (m/explain
+                 {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
+               (me/humanize {:wrap :message})))))
+
+  (testing "multiple errors on same key are accumulated into vector"
+    (is (= {:x ["missing required key" "missing required key"]}
+           (me/humanize
+             {:value {},
+              :errors [{:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}
+                       {:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}]}
+             {:wrap :message})))))
 
 (deftest humanize-customization-test
   (let [schema [:map

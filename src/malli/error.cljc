@@ -67,7 +67,11 @@
   (if (set? x) (-> x vec (get k)) (get x k)))
 
 (defn- -put [x k v]
-  (if (set? x) (conj x v) (assoc x k v)))
+  (if (set? x) (conj x v) (update x k (fn [e]
+                                        (cond (string? e) [e v]
+                                              (sequential? v) v
+                                              (nil? e) v
+                                              :else (conj e v))))))
 
 (defn- -assoc-in [acc value [p & ps] error]
   (cond

@@ -41,11 +41,11 @@
               :required [:type :name :address]}]}]
    [[:map-of string? string?] {:type "object"
                                :additionalProperties {:type "string"}}]
-   [[:vector string?] {:type "array", :items [{:type "string"}]}]
-   [[:list string?] {:type "array", :items [{:type "string"}]}]
-   [[:sequential string?] {:type "array", :items [{:type "string"}]}]
+   [[:vector string?] {:type "array", :items {:type "string"}}]
+   [[:list string?] {:type "array", :items {:type "string"}}]
+   [[:sequential string?] {:type "array", :items {:type "string"}}]
    [[:set string?] {:type "array"
-                    :items [{:type "string"}]
+                    :items {:type "string"}
                     :uniqueItems true}]
    [[:enum 1 2 3] {:enum [1 2 3]}]
    [[:maybe string?] {:oneOf [{:type "string"} {:type "null"}]}]

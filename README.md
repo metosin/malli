@@ -565,7 +565,7 @@ Transforming Schemas into [JSON Schema](https://json-schema.org/):
 ;{:type "object",
 ; :properties {:id {:type "string"},
 ;              :tags {:type "array"
-;                     :items [{:type "string"}]
+;                     :items {:type "string"}
 ;                     :uniqueItems true},
 ;              :address {:type "object",
 ;                        :properties {:street {:type "string"},
@@ -606,7 +606,7 @@ Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Speci
 ;{:type "object",
 ; :properties {:id {:type "string"},
 ;              :tags {:type "array"
-;                     :items [{:type "string"}]
+;                     :items {:type "string"}
 ;                     :uniqueItems true},
 ;              :address {:type "object",
 ;                        :properties {:street {:type "string"},

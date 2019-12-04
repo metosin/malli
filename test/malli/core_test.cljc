@@ -823,6 +823,14 @@
          [:body-params
           [:map [:z int?]]]]]])))
 
+(deftest encode-decode-test
+  (testing "works with custom registry"
+    (let [opts {:registry (merge m/default-registry {:test keyword?}) }
+          encoded (m/encode :test :foo opts transform/string-transformer)
+          decoded (m/decode :test encoded opts transform/string-transformer)]
+      (is (= "foo" encoded))
+      (is (= :foo decoded)))))
+
 (def sequential (#'m/-collection-schema `sequential sequential? seq nil))
 
 (deftest custom-into-schema-test

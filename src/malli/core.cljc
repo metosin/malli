@@ -752,7 +752,7 @@
   ([?schema value t]
    (decode ?schema value nil t))
   ([?schema value opts t]
-   (if-let [transform (decoder (schema ?schema) opts t)]
+   (if-let [transform (decoder ?schema opts t)]
      (transform value)
      value)))
 
@@ -772,7 +772,7 @@
   ([?schema value t]
    (encode ?schema value nil t))
   ([?schema value opts t]
-   (if-let [transform (encoder (schema ?schema) opts t)]
+   (if-let [transform (encoder ?schema opts t)]
      (transform value)
      value)))
 

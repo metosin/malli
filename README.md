@@ -411,7 +411,7 @@ Any (serializable) function can be used for `:dispatch`:
 
 ## Value Generation
 
-Scehmas can be used to generate values:
+Schemas can be used to generate values:
 
 ```clj
 (require '[malli.generator :as mg])

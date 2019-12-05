@@ -826,8 +826,8 @@
 (deftest encode-decode-test
   (testing "works with custom registry"
     (let [opts {:registry (merge m/default-registry {:test keyword?}) }
-          encoded (m/encode :test :foo opts transform/string-transformer)
-          decoded (m/decode :test encoded opts transform/string-transformer)]
+          encoded (m/encode :test :foo opts mt/string-transformer)
+          decoded (m/decode :test encoded opts mt/string-transformer)]
       (is (= "foo" encoded))
       (is (= :foo decoded)))))
 

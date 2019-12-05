@@ -1,6 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [-name eval name merge])
-  (:require [sci.core :as sci])
+  (:require [sci.core :as sci]
+            [clojure.set :as set])
   #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
@@ -237,13 +238,15 @@
           (-transformer [this transformer context]
             (let [build-transformer
                   (fn [i-key]
-                    (let [key-transformer (i-key (-transformer (map-key) transformer context))
+                    (let [map-transformer (i-key (-value-transformer transformer this context))
+                          compile-time-key-renames (some-> map-transformer meta ::rename-keys)
+                          key-transformer (i-key (-transformer (map-key) transformer context))
                           value-transformers
                           (some->> entries
                                    (mapcat (fn [[k _ s]] (if-let [t (i-key (-transformer s transformer context))] [k t])))
                                    (seq)
-                                   (apply array-map))
-                          map-transformer (i-key (-value-transformer transformer this context))
+                                   (apply array-map)
+                                   (#(set/rename-keys % compile-time-key-renames)))
                           apply-key-transformers (fn [m k v]
                                                    (let [k' (key-transformer k)]
                                                      (-> m
@@ -285,7 +288,11 @@
                         (and (not key-transformer) value-transformers map-transformer)
                         (fn [x]
                           (if (map? x)
-                            (reduce-kv apply-value-transformers (map-transformer x) value-transformers)
+                            (let [map-transformed (map-transformer x)
+                                  value-transformers (if-some [renames (::rename-keys (meta map-transformed))]
+                                                       (set/rename-keys value-transformers renames)
+                                                       value-transformers)]
+                              (reduce-kv apply-value-transformers map-transformed value-transformers))
                             x))
 
                         (and key-transformer (not value-transformers) map-transformer)
@@ -299,6 +306,9 @@
                         (fn [x]
                           (if (map? x)
                             (let [map-transformed (map-transformer x)
+                                  value-transformers (if-some [renames (::rename-keys (meta map-transformed))]
+                                                       (set/rename-keys value-transformers renames)
+                                                       value-transformers)
                                   values-transformed (reduce-kv apply-value-transformers map-transformed value-transformers)]
                               (reduce-kv apply-key-transformers values-transformed values-transformed))
                             x)))))]

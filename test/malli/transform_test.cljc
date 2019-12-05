@@ -1,5 +1,6 @@
 (ns malli.transform-test
   (:require [clojure.test :refer [deftest testing is]]
+            [clojure.set :as set]
             [malli.core :as m]
             [malli.transform :as mt]
             [clojure.string :as str]))
@@ -213,33 +214,78 @@
 
 (deftest interceptor-style-transformers
   (testing "map"
-    (let [raw-val {:x 5 :y :foo}
+    (let [raw-val         {:x 5 :y :foo}
           map-interceptor {:enter (fn [m]
                                     (is (= raw-val m))
                                     (update m :x inc))
                            :leave (fn [m]
                                     (is (= "foo" (:y m)))
                                     (update m :y #(str % "!")))}
-          transformer (mt/transformer
-                        {:name :custom
-                         :encoders {:map (constantly map-interceptor)
-                                    'keyword? (constantly name)}})]
+          transformer     (mt/transformer
+                           {:name     :custom
+                            :encoders {:map      (constantly map-interceptor)
+                                       'keyword? (constantly name)}})]
       (is (= {:x 6 :y "foo!"}
              (m/encode [:map [:x int?] [:y keyword?]]
                        raw-val
                        transformer))))))
 
+(deftest map-transformer-with-metadata-key-renames
+  (let [schema   [:map
+                  [:foo [:map
+                         [:foo int?]
+                         [:bar int?]]]
+                  [:bar int?]]
+        data     {:foo {:foo 2 :bar 1} :bar 3}
+        expected {:oof {:rab 2 :oof 3} :rab 4}
+        renames  {:foo :oof :bar :rab}]
+    (testing "with compile-time metadata"
+      (let [transformer (mt/transformer
+                         {:name :custom
+                          :encoders
+                          {:map  (constantly (with-meta #(set/rename-keys % renames)
+                                               {::m/rename-keys renames}))
+                           'int? (constantly inc)}})]
+        (is (= expected (m/encode schema data transformer)))))
+
+    (testing "with run-time metadata"
+      (testing "works independently"
+        (let [runtime-transform (fn [x]
+                                  (if-not (map? x)
+                                    x
+                                    (with-meta (set/rename-keys x renames)
+                                      {::m/rename-keys renames})))
+              transformer       (mt/transformer
+                                 {:name     :custom
+                                  :encoders {:map  (constantly runtime-transform)
+                                             'int? (constantly inc)}})]
+          (is (= expected (m/encode schema data transformer)))))
+
+      (testing "works with compile-time metadata"
+        (let [transform   (with-meta (fn [x]
+                                       (if-not (map? x)
+                                         x
+                                         (with-meta (set/rename-keys x {:bar :rab
+                                                                        :foo :oof})
+                                           {::m/rename-keys {:bar :rab}})))
+                            {::m/rename-keys {:foo :oof}})
+              transformer (mt/transformer
+                           {:name     :custom
+                            :encoders {:map  (constantly transform)
+                                       'int? (constantly inc)}})]
+          (is (= expected (m/encode schema data transformer))))))))
+
 (deftest schema-hinted-tranformation
-  (let [schema [string? {:title "lower-upper-string"
+  (let [schema [string? {:title         "lower-upper-string"
                          :decode/string '(constantly str/upper-case)
                          :encode/string '(constantly str/lower-case)}]
-        value "KiKkA"]
+        value  "KiKkA"]
     (testing "defined transformations"
       (is (= "KIKKA" (m/decode schema value mt/string-transformer)))
       (is (= "kikka" (m/encode schema value mt/string-transformer)))
       (is (= "kikka" (as-> value $
-                           (m/decode schema $ mt/string-transformer)
-                           (m/encode schema $ mt/string-transformer)))))
+                       (m/decode schema $ mt/string-transformer)
+                       (m/encode schema $ mt/string-transformer)))))
     (testing "undefined transformations"
       (is (= value (m/decode schema value mt/json-transformer)))
       (is (= value (m/encode schema value mt/json-transformer))))))

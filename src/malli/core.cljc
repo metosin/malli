@@ -391,6 +391,10 @@
         (fail! ::child-error {:name name, :properties properties, :children children, :min 1, :max 1}))
       (let [schema (schema (first children) opts)
             form (create-form name properties [(-form schema)])
+            fwrap (fn [x]
+                    (if (coll? x)
+                      (fwrap x)
+                      x))
             validate-limits (cond
                               (not (or min max)) (constantly true)
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
@@ -423,18 +427,17 @@
                           ?tt (or tt identity)
                           t (i-key (-transformer schema transformer context))]
                       (cond
-                        (and (= :enter i-key) (not t) tt) (comp fwrap tt)
-                        (and (= :leave i-key) (and (not tt) (not t))) nil
-                        (and (= :enter i-key) (not t)) fwrap ;; should wrapping be optional?
+                        (and (not t) tt) (comp fwrap tt)
+                        (not t) fwrap ;; should wrapping be optional?
                         :else (if fempty
                                 (fn [x]
-                                  (try
+                                  (if (coll? x)
                                     (persistent! (reduce (fn [v o] (conj! v (t o))) (transient fempty) (?tt x)))
-                                    (catch #?(:clj Exception, :cljs js/Error) _ x)))
+                                    x))
                                 (fn [x]
-                                  (try
+                                  (if (coll? x)
                                     (map t (?tt x))
-                                    (catch #?(:clj Exception, :cljs js/Error) _ x)))))))]
+                                    x))))))]
               {:enter (build-transformer :enter)
                :leave (build-transformer :leave)}))
           (-accept [this visitor opts] (visitor this [(-accept schema visitor opts)] opts))

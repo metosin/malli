@@ -159,7 +159,20 @@
   (testing "decode"
     (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer))))
   (testing "encode"
-    (is (= #{1 2 3} (m/encode [:set int?] [1 2 3] mt/collection-transformer)))))
+    (is (= #{1 2 3} (m/encode [:set int?] [1 2 3] mt/collection-transformer))))
+
+  (testing "does not interprit strings as collections"
+    (is (= "123" (m/encode [:set string?] "123" mt/collection-transformer)))
+    (is (= "abc" (m/encode [:vector keyword?] "abc" mt/json-transformer))))
+
+
+  (testing "does not raise with bad input"
+    (is (= 2 (m/encode [:set string?] 2 mt/collection-transformer))))
+
+  (testing "allows transformers to change their type"
+    (is (= "a,b,c" (m/encode [:vector {:encode/string
+                                       (constantly {:leave #(str/join "," %)})}
+                              string?] ["a" "b" "c"] mt/string-transformer)))))
 
 (deftest composing-transformers
   (let [strict-json-transformer (mt/transformer

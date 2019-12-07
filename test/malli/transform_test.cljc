@@ -180,8 +180,8 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "-context-names is taken from the last named transformer"
-      (is (= [:json] (m/-context-names strict-json-transformer))))
+    (testing "transformer chain has 3 named transformers"
+      (is (= [::mt/strip-extra-keys :json] (keep :name (m/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))
@@ -255,7 +255,18 @@
                            (m/encode schema $ mt/string-transformer)))))
     (testing "undefined transformations"
       (is (= value (m/decode schema value mt/json-transformer)))
-      (is (= value (m/encode schema value mt/json-transformer))))))
+      (is (= value (m/encode schema value mt/json-transformer)))))
+
+  (let [transformer (mt/transformer
+                      {:name :before}
+                      mt/string-transformer
+                      {:decoders {'int? (constantly inc)}}
+                      {:name :after})]
+    (is (= 23 (m/decode
+                [int? {:decode/before '(constantly {:leave inc})
+                       :decode/after '(constantly (partial * 2))}]
+                "10"
+                transformer)))))
 
 (deftest transformation-targets
   (let [P1 {:decode/string '(constantly str/upper-case)}

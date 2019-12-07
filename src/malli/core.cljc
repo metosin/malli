@@ -20,9 +20,8 @@
   (-form [this] "returns original form of the schema"))
 
 (defprotocol Transformer
-  (-context-names [this] "vector of context names attached to the transformer")
-  (-transformer-options [this] "returns transformer options")
-  (-value-transformer [this schema stage] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and s"))
+  (-transformer-chain [this] "returns transformer chain as a vector of maps")
+  (-value-transformer [this schema method] "returns an value transforming interceptor for the given schema and method"))
 
 (defrecord SchemaError [path in schema value type message])
 

@@ -20,7 +20,7 @@
   (-form [this] "returns original form of the schema"))
 
 (defprotocol Transformer
-  (-transformer-chain [this] "returns transformer chain as a vector of maps")
+  (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :opts")
   (-value-transformer [this schema method] "returns an value transforming interceptor for the given schema and method"))
 
 (defrecord SchemaError [path in schema value type message])

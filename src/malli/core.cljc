@@ -14,15 +14,15 @@
   (-name [this] "returns name of the schema")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  (-transformer [this transformer context] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and context")
+  (-transformer [this transformer method] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
   (-accept [this visitor opts] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
   (-form [this] "returns original form of the schema"))
 
 (defprotocol Transformer
-  (-transformer-name [this] "name of the transformer")
+  (-context-names [this] "vector of context names attached to the transformer")
   (-transformer-options [this] "returns transformer options")
-  (-value-transformer [this schema context] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and context"))
+  (-value-transformer [this schema stage] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and s"))
 
 (defrecord SchemaError [path in schema value type message])
 
@@ -89,8 +89,8 @@
           (-explainer [this path]
             (fn [value in acc]
               (if-not (validator value) (conj acc (error path in this value)) acc)))
-          (-transformer [this transformer context]
-            (-value-transformer transformer this context))
+          (-transformer [this transformer method]
+            (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
           (-form [_] form))))))
@@ -136,12 +136,12 @@
                         (nil? acc'') acc'
                         :else acc'')))
                   acc explainers))))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [st (i-key (-value-transformer transformer this context))
+                    (let [st (i-key (-value-transformer transformer this method))
                           ?st (or st identity)
-                          tvs (into [] (keep #(i-key (-transformer % transformer context)) child-schemas))]
+                          tvs (into [] (keep #(i-key (-transformer % transformer method)) child-schemas))]
                       (cond
                         (not (seq tvs)) st
                         short-circuit (fn [x]
@@ -234,16 +234,16 @@
                     (fn [acc explainer]
                       (explainer x in acc))
                     acc explainers)))))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [key-transformer (i-key (-transformer (map-key) transformer context))
+                    (let [key-transformer (i-key (-transformer (map-key) transformer method))
                           value-transformers
                           (some->> entries
-                                   (mapcat (fn [[k _ s]] (if-let [t (i-key (-transformer s transformer context))] [k t])))
+                                   (mapcat (fn [[k _ s]] (if-let [t (i-key (-transformer s transformer method))] [k t])))
                                    (seq)
                                    (apply array-map))
-                          map-transformer (i-key (-value-transformer transformer this context))
+                          map-transformer (i-key (-value-transformer transformer this method))
                           apply-key-transformers (fn [m k v]
                                                    (let [k' (key-transformer k)]
                                                      (-> m
@@ -341,14 +341,14 @@
                              (key-explainer key in)
                              (value-explainer value in))))
                     acc m)))))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [tt (i-key (-value-transformer transformer this context))
+                    (let [tt (i-key (-value-transformer transformer this method))
                           ?tt (or tt identity)
-                          key-transformer (if-let [t (i-key (-transformer key-schema transformer context))]
+                          key-transformer (if-let [t (i-key (-transformer key-schema transformer method))]
                                             (fn [x] (t (keyword->string x))))
-                          value-transformer (i-key (-transformer value-schema transformer context))]
+                          value-transformer (i-key (-transformer value-schema transformer method))]
                       (cond
                         (and tt (not key-transformer) (not value-transformer))
                         tt
@@ -420,12 +420,12 @@
                             (if (< i size)
                               (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [tt (i-key (-value-transformer transformer this context))
+                    (let [tt (i-key (-value-transformer transformer this method))
                           ?tt (or tt identity)
-                          t (i-key (-transformer schema transformer context))]
+                          t (i-key (-transformer schema transformer method))]
                       (cond
                         (and (not t) tt) (comp fwrap tt)
                         (not t) fwrap ;; should wrapping be optional?
@@ -474,12 +474,12 @@
                   (not= (count x) size) (conj acc (error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [?tt (or (i-key (-value-transformer transformer this context)) identity)
+                    (let [?tt (or (i-key (-value-transformer transformer this method)) identity)
                           ts (->> schemas
-                                  (mapv #(i-key (-transformer % transformer context)))
+                                  (mapv #(i-key (-transformer % transformer method)))
                                   (map-indexed vector)
                                   (filter second)
                                   (mapcat identity)
@@ -510,8 +510,8 @@
             (fn explain [x in acc]
               (if-not (validator x) (conj acc (error path in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
-          (-transformer [this transformer context]
-            (-value-transformer transformer this context))
+          (-transformer [this transformer method]
+            (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
           (-form [_] (create-form :enum properties children)))))))
@@ -537,8 +537,8 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [this transformer context]
-            (-value-transformer transformer this context))
+          (-transformer [this transformer method]
+            (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] form))))))
@@ -563,8 +563,8 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [this transformer context]
-            (-value-transformer transformer this context))
+          (-transformer [this transformer method]
+            (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
           (-form [_] (create-form :fn properties children)))))))
@@ -585,11 +585,11 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [tt (i-key (-value-transformer transformer this context))
-                          t (i-key (-transformer schema' transformer context))]
+                    (let [tt (i-key (-value-transformer transformer this method))
+                          t (i-key (-transformer schema' transformer method))]
                       (if (and tt t) (comp t tt) (or tt t))))]
               {:enter (build-transformer :enter)
                :leave (build-transformer :leave)}))
@@ -622,11 +622,11 @@
                 (if-let [explainer (explainers (dispatch x))]
                   (explainer x in acc)
                   (conj acc (error path in this x ::invalid-dispatch-value))))))
-          (-transformer [this transformer context]
+          (-transformer [this transformer method]
             (let [build-transformer
                   (fn [i-key]
-                    (let [tt (i-key (-value-transformer transformer this context))
-                          ts (reduce-kv (fn [acc k s] (assoc acc k (i-key (-transformer s transformer context)))) {} dispatch-map)
+                    (let [tt (i-key (-value-transformer transformer this method))
+                          ts (reduce-kv (fn [acc k s] (assoc acc k (i-key (-transformer s transformer method)))) {} dispatch-map)
                           t (fn [x] (if-let [t (ts (dispatch x))] (t x) x))]
                       (cond
                         (and tt (not (seq ts))) tt
@@ -826,7 +826,7 @@
     (-name [_] ::map-key)
     (-form [_] ::map-key)
     (-properties [_])
-    (-transformer [this transformer context] (-value-transformer transformer this context))))
+    (-transformer [this transformer method] (-value-transformer transformer this method))))
 
 ;;
 ;; registries

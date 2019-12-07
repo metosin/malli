@@ -41,7 +41,7 @@
                      :decode (some->> transformer-name name (str "decode/") keyword)}]
     (reify
       m/Transformer
-      (-transformer-name [_] transformer-name)
+      (-context-names [_] [transformer-name])
       (-transformer-options [_] {:name transformer-name, :decoders decoders, :encoders encoders, :opts opts})
       (-value-transformer [_ schema context]
         (if-let [->transformer (or (some-> (get (m/properties schema) (schema-keys context)) (m/eval))

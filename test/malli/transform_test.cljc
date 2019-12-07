@@ -180,8 +180,8 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "name is taken from the last named transformer"
-      (is (= :json (m/-transformer-name strict-json-transformer))))
+    (testing "-context-names is taken from the last named transformer"
+      (is (= [:json] (m/-context-names strict-json-transformer))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))

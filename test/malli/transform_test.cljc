@@ -262,6 +262,8 @@
                       mt/string-transformer
                       {:decoders {'int? (constantly inc)}}
                       {:name :after})]
+    (testing "nil punning"
+      (is (= identity (m/decoder string? transformer))))
     (is (= 23 (m/decode
                 [int? {:decode/before '(constantly {:leave inc})
                        :decode/after '(constantly (partial * 2))}]

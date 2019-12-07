@@ -137,10 +137,10 @@
                   acc explainers))))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [st (stage (-value-transformer transformer this method))
+                  (fn [phase]
+                    (let [st (phase (-value-transformer transformer this method))
                           ?st (or st identity)
-                          tvs (into [] (keep #(stage (-transformer % transformer method)) child-schemas))]
+                          tvs (into [] (keep #(phase (-transformer % transformer method)) child-schemas))]
                       (cond
                         (not (seq tvs)) st
                         short-circuit (fn [x]
@@ -235,14 +235,14 @@
                     acc explainers)))))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [key-transformer (stage (-transformer (map-key) transformer method))
+                  (fn [phase]
+                    (let [key-transformer (phase (-transformer (map-key) transformer method))
                           value-transformers
                           (some->> entries
-                                   (mapcat (fn [[k _ s]] (if-let [t (stage (-transformer s transformer method))] [k t])))
+                                   (mapcat (fn [[k _ s]] (if-let [t (phase (-transformer s transformer method))] [k t])))
                                    (seq)
                                    (apply array-map))
-                          map-transformer (stage (-value-transformer transformer this method))
+                          map-transformer (phase (-value-transformer transformer this method))
                           apply-key-transformers (fn [m k v]
                                                    (let [k' (key-transformer k)]
                                                      (-> m
@@ -342,12 +342,12 @@
                     acc m)))))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [tt (stage (-value-transformer transformer this method))
+                  (fn [phase]
+                    (let [tt (phase (-value-transformer transformer this method))
                           ?tt (or tt identity)
-                          key-transformer (if-let [t (stage (-transformer key-schema transformer method))]
+                          key-transformer (if-let [t (phase (-transformer key-schema transformer method))]
                                             (fn [x] (t (keyword->string x))))
-                          value-transformer (stage (-transformer value-schema transformer method))]
+                          value-transformer (phase (-transformer value-schema transformer method))]
                       (cond
                         (and tt (not key-transformer) (not value-transformer))
                         tt
@@ -421,10 +421,10 @@
                               acc)))))))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [tt (stage (-value-transformer transformer this method))
+                  (fn [phase]
+                    (let [tt (phase (-value-transformer transformer this method))
                           ?tt (or tt identity)
-                          t (stage (-transformer schema transformer method))]
+                          t (phase (-transformer schema transformer method))]
                       (cond
                         (and (not t) tt) (comp fwrap tt)
                         (not t) fwrap ;; should wrapping be optional?
@@ -475,10 +475,10 @@
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [?tt (or (stage (-value-transformer transformer this method)) identity)
+                  (fn [phase]
+                    (let [?tt (or (phase (-value-transformer transformer this method)) identity)
                           ts (->> schemas
-                                  (mapv #(stage (-transformer % transformer method)))
+                                  (mapv #(phase (-transformer % transformer method)))
                                   (map-indexed vector)
                                   (filter second)
                                   (mapcat identity)
@@ -586,9 +586,9 @@
               (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [tt (stage (-value-transformer transformer this method))
-                          t (stage (-transformer schema' transformer method))]
+                  (fn [phase]
+                    (let [tt (phase (-value-transformer transformer this method))
+                          t (phase (-transformer schema' transformer method))]
                       (if (and tt t) (comp t tt) (or tt t))))]
               {:enter (build-transformer :enter)
                :leave (build-transformer :leave)}))
@@ -623,9 +623,9 @@
                   (conj acc (error path in this x ::invalid-dispatch-value))))))
           (-transformer [this transformer method]
             (let [build-transformer
-                  (fn [stage]
-                    (let [tt (stage (-value-transformer transformer this method))
-                          ts (reduce-kv (fn [acc k s] (assoc acc k (stage (-transformer s transformer method)))) {} dispatch-map)
+                  (fn [phase]
+                    (let [tt (phase (-value-transformer transformer this method))
+                          ts (reduce-kv (fn [acc k s] (assoc acc k (phase (-transformer s transformer method)))) {} dispatch-map)
                           t (fn [x] (if-let [t (ts (dispatch x))] (t x) x))]
                       (cond
                         (and tt (not (seq ts))) tt

@@ -31,17 +31,13 @@
     :else (m/fail! ::invalid-transformer {:value transformer})))
 
 (defn transformer [& ?options]
-  (let [chain (->> ?options
-                   (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%]))
-                   (mapv #(select-keys % [:name :decoders :encoders :opts])))
-        chain' (->> chain (mapv (fn [m]
-                                  (let [name (some-> m :name name)]
-                                    {:decode (cond-> {:transformers (:decoders m)}
-                                                     name (assoc :key (keyword (str "decode/" name))))
-                                     :encode (cond-> {:transformers (:encoders m)}
-                                                     name (assoc :key (keyword (str "encode/" name))))}))))
-        ;; TODO: remove this
-        opts (->> chain (map :opts) (apply merge))]
+  (let [chain (->> ?options (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
+        chain' (->> chain (mapv #(let [name (some-> % :name name)]
+                                   {:decode (cond-> {:transformers (:decoders %)}
+                                                    name (assoc :key (keyword (str "decode/" name))))
+                                    :encode (cond-> {:transformers (:encoders %)}
+                                                    name (assoc :key (keyword (str "encode/" name))))})))
+        opts (->> chain (map :opts) (apply merge))] ;; TODO: remove this
     (reify
       m/Transformer
       (-transformer-chain [_] chain)
@@ -52,8 +48,7 @@
                                        (get transformers (m/name schema)))]
               (let [interceptor (->interceptor (->transformer schema opts))]
                 (if (nil? acc) interceptor (->interceptor [acc interceptor])))
-              acc))
-          nil chain')))))
+              acc)) nil chain')))))
 
 ;;
 ;; From Strings

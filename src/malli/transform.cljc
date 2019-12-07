@@ -31,22 +31,29 @@
     :else (m/fail! ::invalid-transformer {:value transformer})))
 
 (defn transformer [& ?options]
-  (let [options (map #(if (satisfies? m/Transformer %) (m/-transformer-options %) %) ?options)
-        transformer-name (->> options reverse (some :name))
-        decoders (->> options (map :decoders) (apply merge))
-        encoders (->> options (map :encoders) (apply merge))
-        opts (->> options (map :opts) (apply merge))
-        transformers {:encode encoders, :decode decoders}
-        schema-keys {:encode (some->> transformer-name name (str "encode/") keyword)
-                     :decode (some->> transformer-name name (str "decode/") keyword)}]
+  (let [chain (->> ?options
+                   (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%]))
+                   (mapv #(select-keys % [:name :decoders :encoders :opts])))
+        chain' (->> chain (mapv (fn [m]
+                                  (let [name (some-> m :name name)]
+                                    {:decode (cond-> {:transformers (:decoders m)}
+                                                     name (assoc :key (keyword (str "decode/" name))))
+                                     :encode (cond-> {:transformers (:encoders m)}
+                                                     name (assoc :key (keyword (str "encode/" name))))}))))
+        ;; TODO: remove this
+        opts (->> chain (map :opts) (apply merge))]
     (reify
       m/Transformer
-      (-context-names [_] [transformer-name])
-      (-transformer-options [_] {:name transformer-name, :decoders decoders, :encoders encoders, :opts opts})
-      (-value-transformer [_ schema context]
-        (if-let [->transformer (or (some-> (get (m/properties schema) (schema-keys context)) (m/eval))
-                                   (get (transformers context) (m/name schema)))]
-          (->interceptor (->transformer schema opts)))))))
+      (-transformer-chain [_] chain)
+      (-value-transformer [_ schema method]
+        (reduce
+          (fn [acc {{:keys [key transformers]} method}]
+            (if-let [->transformer (or (some-> (get (m/properties schema) key) (m/eval))
+                                       (get transformers (m/name schema)))]
+              (let [interceptor (->interceptor (->transformer schema opts))]
+                (if (nil? acc) interceptor (->interceptor [acc interceptor])))
+              acc))
+          nil chain')))))
 
 ;;
 ;; From Strings

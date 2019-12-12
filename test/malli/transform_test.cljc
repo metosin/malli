@@ -1,5 +1,5 @@
 (ns malli.transform-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             [malli.transform :as mt]
             [clojure.string :as str]))
@@ -240,7 +240,74 @@
       (is (= {:x 6 :y "foo!"}
              (m/encode [:map [:x int?] [:y keyword?]]
                        raw-val
-                       transformer))))))
+                       transformer)))))
+  (testing "call order"
+    (are [schema data call-order]
+        (let [calls       (atom [])
+              record-call (fn [n] (constantly
+                                   {:enter (fn [x]
+                                             (swap! calls conj [:enter n])
+                                             x)
+                                    :leave (fn [x]
+                                             (swap! calls conj [:leave n])
+                                             x)}))
+              transformer (mt/transformer
+                           {:name     :order-test
+                            :decoders {:map     (record-call :map)
+                                       :map-of  (record-call :map-of)
+                                       :vector  (record-call :vector)
+                                       :multi   (record-call :multi)
+                                       :tuple   (record-call :tuple)
+                                       'int?    (record-call :int)
+                                       'string? (record-call :string)}})]
+          (m/decode schema data transformer)
+          (= call-order
+             @calls))
+      [:map
+       [:foo int?]
+       [:bar string?]]
+      {:foo 5 :bar "wee"}
+      [[:enter :map]
+       [:enter :int]
+       [:enter :string]
+       [:leave :int]
+       [:leave :string]
+       [:leave :map]]
+      [:map-of int? string?]
+      {5 "foo"}
+      [[:enter :map-of]
+       [:enter :int]
+       [:enter :string]
+       [:leave :int]
+       [:leave :string]
+       [:leave :map-of]]
+      [:vector int?]
+      [5 6]
+      [[:enter :vector]
+       [:enter :int]
+       [:enter :int]
+       [:leave :int]
+       [:leave :int]
+       [:leave :vector]]
+      [:tuple string? int?]
+      ["Foo" 5]
+      [[:enter :tuple]
+       [:enter :string]
+       [:enter :int]
+       [:leave :string]
+       [:leave :int]
+       [:leave :tuple]]
+      [:multi {:dispatch :kind}
+       [:person [:map [:name string?]]]
+       [:food   [:map [:weight int?]]]]
+      {:kind   :food
+       :weight 42}
+      [[:enter :multi]
+       [:enter :map]
+       [:enter :int]
+       [:leave :int]
+       [:leave :map]
+       [:leave :multi]])))
 
 (deftest schema-hinted-tranformation
   (let [schema [string? {:title "lower-upper-string"

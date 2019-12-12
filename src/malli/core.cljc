@@ -156,6 +156,44 @@
           (-properties [_] properties)
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
+(defn- -not-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children opts]
+      (when-not (= 1 (count children))
+        (fail! ::child-error {:name :not, :properties properties, :children children, :min 1, :max 1}))
+      (let [child-schemas (mapv #(schema % opts) children)
+            validators (distinct (map (comp complement -validator) child-schemas))
+            f (apply every-pred validators)
+            validator (fn [x] (try (boolean (f x)) (catch #?(:clj Exception, :cljs js/Error) _ true)))]
+        ^{:type ::schema}
+        (reify Schema
+          (-name [_] :not)
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (try
+                (if-not (validator x)
+                  (conj acc (error path in this x))
+                  acc)
+                (catch #?(:clj Exception, :cljs js/Error) e
+                  (conj acc (error path in this x (:type (ex-data e))))))))
+          (-transformer [this transformer method]
+            (let [build-transformer
+                  (fn [phase]
+                    (let [st (phase (-value-transformer transformer this method))
+                          ?st (or st identity)
+                          tvs (into [] (keep #(phase (-transformer % transformer method)) child-schemas))]
+                      (cond
+                        (not (seq tvs)) st
+                        :else (fn [x] (reduce-kv (fn [x' _ t] (t x')) (?st x) tvs)))))]
+              {:enter (build-transformer :enter)
+               :leave (build-transformer :leave)}))
+          (-accept [this visitor opts]
+            (visitor this (mapv #(-accept % visitor opts) child-schemas) opts))
+          (-properties [_] properties)
+          (-form [_] (create-form :not properties (map -form child-schemas))))))))
+
 (defn- -properties-and-children [xs]
   (if (map? (first xs))
     [(first xs) (rest xs)]
@@ -851,6 +889,7 @@
 (def base-registry
   {:and (-composite-schema :and every-pred false)
    :or (-composite-schema :or some-fn true)
+   :not (-not-schema)
    :map (-map-schema)
    :map-of (-map-of-schema)
    :vector (-collection-schema :vector vector? vec [])

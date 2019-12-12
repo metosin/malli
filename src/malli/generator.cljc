@@ -67,6 +67,7 @@
 
 (defmethod -generator :and [schema opts] (gen/such-that (m/validator schema opts) (-> schema (m/children opts) first (generator opts)) 100))
 (defmethod -generator :or [schema opts] (gen/one-of (mapv #(generator % opts) (m/children schema opts))))
+(defmethod -generator :not [schema opts] (gen/such-that (m/validator schema opts) gen/any-printable 100))
 (defmethod -generator :map [schema opts] (-map-gen schema opts))
 (defmethod -generator :map-of [schema opts] (-map-of-gen schema opts))
 (defmethod -generator :multi [schema opts] (gen/one-of (mapv #(generator (second %) opts) (m/children schema opts))))

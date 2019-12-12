@@ -85,7 +85,7 @@
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
-    (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])]
+    (let [schema (m/schema [:and int? [:or pos-int? neg-int?] [:not zero?]])]
 
       (is (true? (m/validate schema 1)))
       (is (true? (m/validate schema -1)))
@@ -97,7 +97,8 @@
       (is (results= {:schema schema,
                      :value 0,
                      :errors [{:path [2 1], :in [], :schema pos-int?, :value 0}
-                              {:path [2 2], :in [], :schema neg-int?, :value 0}]}
+                              {:path [2 2], :in [], :schema neg-int?, :value 0}
+                              {:path [3], :in [], :schema [:not zero?], :value 0}]}
                     (m/explain schema 0)))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -110,9 +111,9 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:and ['int?] [:or ['pos-int?] ['neg-int?]]] (m/accept schema visitor)))
+      (is (= [:and ['int?] [:or ['pos-int?] ['neg-int?]] [:not ['zero?]]] (m/accept schema visitor)))
 
-      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
+      (is (= [:and 'int? [:or 'pos-int? 'neg-int?] [:not 'zero?]] (m/form schema))))
 
     (testing "explain with branches"
       (let [schema [:and pos-int? neg-int?]]
@@ -125,6 +126,61 @@
                        :value 1,
                        :errors [{:path [2], :in [], :schema neg-int?, :value 1}]}
                       (m/explain schema 1))))))
+
+  (testing "not schemas"
+    (let [schema1 (m/schema [:not zero?])
+          schema2 (m/schema [:or string? [:not [:and [:not= 2] [:not= 5]]]])]
+
+      (is (true? (m/validate schema1 1)))
+      (is (true? (m/validate schema1 -1)))
+      (is (true? (m/validate schema1 "1")))
+      (is (true? (m/validate schema1 [1])))
+      (is (false? (m/validate schema1 0)))
+
+      (is (true? (m/validate schema2 "1")))
+      (is (true? (m/validate schema2 2)))
+      (is (true? (m/validate schema2 5)))
+      (is (false? (m/validate schema2 0)))
+      (is (false? (m/validate schema2 1)))
+      (is (false? (m/validate schema2 -1)))
+      (is (false? (m/validate schema2 [1])))
+
+      (is (nil? (m/explain schema1 1)))
+      (is (results= {:schema schema1,
+                     :value 0,
+                     :errors [{:path [], :in [], :schema [:not zero?], :value 0}]}
+            (m/explain schema1 0)))
+
+      (is (nil? (m/explain schema2 "1")))
+      (is (nil? (m/explain schema2 2)))
+      (is (nil? (m/explain schema2 5)))
+      (is (results= {:schema schema2,
+                     :value 0,
+                     :errors [{:path [1], :in [], :schema string?, :value 0}
+                              {:path [2], :in [], :schema [:not [:and [:not= 2] [:not= 5]]], :value 0}]}
+            (m/explain schema2 0)))
+
+      (is (= 1 (m/decode schema1 "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema1 "1" mt/json-transformer)))
+
+      (is (= "olipa_kerran_avaruus"
+            (m/decode
+              [:not {:decode/string '(constantly {:enter #(str "olipa_" %), :leave #(str % "_avaruus")})} string?]
+              "kerran" mt/string-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema1) 1)))
+      (is (false? (m/validate (over-the-wire schema1) 0)))
+
+      (is (true? (m/validate (over-the-wire schema2) "1")))
+      (is (true? (m/validate (over-the-wire schema2) 2)))
+      (is (true? (m/validate (over-the-wire schema2) 5)))
+      (is (false? (m/validate (over-the-wire schema2) 0)))
+
+      (is (= [:not ['zero?]] (m/accept schema1 visitor)))
+      (is (= [:or ['string?] [:not [:and [:not= 2] [:not= 5]]]] (m/accept schema2 visitor)))
+
+      (is (= [:not 'zero?] (m/form schema1)))
+      (is (= [:or 'string? [:not [:and [:not= 2] [:not= 5]]]] (m/form schema2)))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

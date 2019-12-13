@@ -170,8 +170,7 @@
     (is (= 2 (m/encode [:set string?] 2 mt/collection-transformer))))
 
   (testing "allows transformers to change their type"
-    (is (= "a,b,c" (m/encode [:vector {:encode/string
-                                       (constantly {:leave #(str/join "," %)})}
+    (is (= "a,b,c" (m/encode [:vector {:encode/string {:leave #(str/join "," %)}}
                               string?] ["a" "b" "c"] mt/string-transformer)))))
 
 (deftest composing-transformers
@@ -235,8 +234,8 @@
                                     (update m :y #(str % "!")))}
           transformer (mt/transformer
                         {:name :custom
-                         :encoders {:map (constantly map-interceptor)
-                                    'keyword? (constantly name)}})]
+                         :encoders {:map map-interceptor
+                                    'keyword? name}})]
       (is (= {:x 6 :y "foo!"}
              (m/encode [:map [:x int?] [:y keyword?]]
                        raw-val
@@ -311,8 +310,8 @@
 
 (deftest schema-hinted-tranformation
   (let [schema [string? {:title "lower-upper-string"
-                         :decode/string '(constantly str/upper-case)
-                         :encode/string '(constantly str/lower-case)}]
+                         :decode/string 'str/upper-case
+                         :encode/string 'str/lower-case}]
         value "KiKkA"]
     (testing "defined transformations"
       (is (= "KIKKA" (m/decode schema value mt/string-transformer)))
@@ -327,20 +326,20 @@
   (let [transformer (mt/transformer
                       {:name :before}
                       mt/string-transformer
-                      {:decoders {'int? (constantly inc)}}
+                      {:decoders {'int? inc}}
                       {:name :after})]
     (testing "nil punning"
       (is (= identity (m/decoder string? transformer))))
     (is (= 23 (m/decode
-                [int? {:decode/before '(constantly {:leave inc})
-                       :decode/after '(constantly (partial * 2))}]
+                [int? {:decode/before '{:leave inc}
+                       :decode/after '(partial * 2)}]
                 "10"
                 transformer)))))
 
 (deftest transformation-targets
-  (let [P1 {:decode/string '(constantly str/upper-case)}
-        PS {:decode/string '(constantly (partial mapv str/upper-case))}
-        PM {:decode/string '(constantly (fn [x] (->> (for [[k v] x] [(keyword k) (str/upper-case v)]) (into {}))))}
+  (let [P1 {:decode/string 'str/upper-case}
+        PS {:decode/string '(partial mapv str/upper-case)}
+        PM {:decode/string '(fn [x] (->> (for [[k v] x] [(keyword k) (str/upper-case v)]) (into {})))}
         expectations [[[keyword? P1] "kikka" "KIKKA"]
                       [[:and P1 keyword?] "kikka" :KIKKA]
                       [[:or P1 int? keyword?] "kikka" :KIKKA]
@@ -360,7 +359,7 @@
       (is (= expected (m/decode schema value mt/string-transformer))))))
 
 (deftest options-in-transformaton
-  (let [schema [:and int? [any? {:decode/string '(fn [_ {::keys [increment]}] (partial + (or increment 0)))}]]
+  (let [schema [:and int? [any? {:decode/string '{:compile (fn [_ {::keys [increment]}] (partial + (or increment 0)))}}]]
         transformer (mt/transformer mt/string-transformer)
         transformer1 (mt/transformer mt/string-transformer {:opts {::increment 1}})
         transformer1000 (mt/transformer mt/string-transformer {:opts {::increment 1000}})]

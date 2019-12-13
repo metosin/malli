@@ -317,6 +317,59 @@ Transformers are composable:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
+Schema properties can be used to override default transformations:
+
+```clj
+(m/decode
+  [string? {:decode/string 'str/upper-case}]
+  "kerran" mt/string-transformer)
+; => "KERRAN"
+```
+
+Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
+
+```clj
+(m/decode
+  [string? {:decode/string '{:enter str/upper-case}}]
+  "kerran" mt/string-transformer)
+; => "KERRAN"
+```
+
+```clj
+(m/decode
+  [string? {:decode/string '{:enter #(str "olipa_" %)
+                             :leave #(str % "_avaruus")}}]
+  "kerran" mt/string-transformer)
+; => "olipa_kerran_avaruus"
+```
+
+To access Schema (and options) use `:compile`:
+
+```clj
+(m/decode
+  [int? {:math/multiplier 10
+         :decode/math '{:compile (fn [schema _]
+                                  (let [multiplier (:math/multiplier (m/properties schema))]
+                                    (fn [x] (* x multiplier))))}}]
+  12
+  (mt/transformer {:name :math}))
+; => 120
+```
+
+Going crazy:
+
+```clj
+(m/decode
+  [:map
+   {:decode/math '{:enter #(update % :x inc)
+                   :leave #(update % :x (partial * 2))}}
+   [:x [int? {:decode/math '{:enter (partial + 2)
+                             :leave (partial * 3)}}]]]
+  {:x 1} 
+  (mt/transformer {:name :math}))
+; => {:x 42}
+```
+
 ## Merging Schemas
 
 Schemas can be deep-merged with `m/merge`:
@@ -395,7 +448,7 @@ Any (serializable) function can be used for `:dispatch`:
 ```clj
 (m/decode
   [:multi {:dispatch :type
-           :decode/string '(constantly #(update % :type keyword))}
+           :decode/string '#(update % :type keyword)}
    [:sized [:map [:type [:= :sized] [:size int?]]]
    [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
   {:type "human"

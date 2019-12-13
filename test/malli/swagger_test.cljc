@@ -29,7 +29,7 @@
                                                    :c {:type "string"}}
                                       :required [:a :c]}]
    [[:multi {:dispatch :type
-             :decode/string '(constantly (fn [x] (update x :type keyword)))}
+             :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map [:type keyword?] [:size int?]]]
      [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
     {:type "object",

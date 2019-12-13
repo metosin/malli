@@ -39,6 +39,7 @@
 ;;
 
 (declare schema)
+(declare properties)
 (declare default-registry)
 (declare map-key)
 
@@ -50,7 +51,8 @@
     x))
 
 (defn eval [?code]
-  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe})))
+  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
+                                                      :bindings {'m/properties properties}})))
 
 (defn error
   ([path in schema value]

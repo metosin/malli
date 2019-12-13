@@ -138,11 +138,11 @@
                         :else acc'')))
                   acc explainers))))
           (-transformer [this transformer method]
-            (let [value-transformer  (-value-transformer transformer this method)
+            (let [value-transformer (-value-transformer transformer this method)
                   child-transformers (map #(-transformer % transformer method) child-schemas)
                   build-transformer
                   (fn [phase]
-                    (let [st  (phase value-transformer)
+                    (let [st (phase value-transformer)
                           ?st (or st identity)
                           tvs (into [] (keep phase) child-transformers)]
                       (cond
@@ -150,8 +150,8 @@
                         short-circuit (fn [x]
                                         (let [x (?st x)]
                                           (reduce-kv
-                                          (fn [_ _ t] (let [x' (t x)] (if-not (identical? x' x) (reduced x') x)))
-                                          x tvs)))
+                                            (fn [_ _ t] (let [x' (t x)] (if-not (identical? x' x) (reduced x') x)))
+                                            x tvs)))
                         :else (fn [x] (reduce-kv (fn [x' _ t] (t x')) (?st x) tvs)))))]
               {:enter (build-transformer :enter)
                :leave (build-transformer :leave)}))
@@ -240,11 +240,11 @@
           (-transformer [this transformer method]
             (let [key-transformers (-transformer (map-key) transformer method)
                   value-transformers (some->>
-                                      entries
-                                      (keep (fn [[k _ s]]
-                                              (when-some [t (-transformer s transformer method)]
-                                                [k t])))
-                                      (into {}))
+                                       entries
+                                       (keep (fn [[k _ s]]
+                                               (when-some [t (-transformer s transformer method)]
+                                                 [k t])))
+                                       (into {}))
                   map-transformers (-value-transformer transformer this method)
                   build-transformer
                   (fn [phase]
@@ -257,21 +257,21 @@
                           map-transformer (phase map-transformers)
                           apply-key-transformers (when key-transformer
                                                    #(reduce-kv
-                                                     (fn reduce-key-transformers [m k v]
-                                                       (let [new-k (key-transformer k)]
-                                                         (-> m
-                                                             (assoc new-k v)
-                                                             (cond-> (not (identical? k new-k)) (dissoc k)))))
-                                                     %
-                                                     %))
+                                                      (fn reduce-key-transformers [m k v]
+                                                        (let [new-k (key-transformer k)]
+                                                          (-> m
+                                                              (assoc new-k v)
+                                                              (cond-> (not (identical? k new-k)) (dissoc k)))))
+                                                      %
+                                                      %))
                           apply-value-transformers (when (seq value-transformers)
                                                      #(reduce-kv
-                                                       (fn reduce-value-transformers [m k t]
-                                                         (if-let [entry (find m k)]
-                                                           (assoc m k (t (val entry)))
-                                                           m))
-                                                       %
-                                                       value-transformers))
+                                                        (fn reduce-value-transformers [m k t]
+                                                          (if-let [entry (find m k)]
+                                                            (assoc m k (t (val entry)))
+                                                            m))
+                                                        %
+                                                        value-transformers))
                           transform-order (->> (case phase
                                                  :enter [map-transformer
                                                          apply-value-transformers
@@ -630,9 +630,9 @@
           (-transformer [this transformer method]
             (let [transformers (-value-transformer transformer this method)
                   child-transformers (reduce-kv
-                                      #(assoc %1 %2 (-transformer %3 transformer method))
-                                      {}
-                                      dispatch-map)
+                                       #(assoc %1 %2 (-transformer %3 transformer method))
+                                       {}
+                                       dispatch-map)
                   build-transformer
                   (fn [phase]
                     (let [transform-val (phase transformers)
@@ -643,10 +643,10 @@
                           transform-child (when (seq ts)
                                             (fn [x] (if-let [t (ts (dispatch x))] (t x) x)))
                           transform-order (->>
-                                           (case phase
-                                             :enter [transform-val transform-child]
-                                             :leave [transform-child transform-val])
-                                           (remove nil?))
+                                            (case phase
+                                              :enter [transform-val transform-child]
+                                              :leave [transform-child transform-val])
+                                            (remove nil?))
 
                           transform (when (seq transform-order)
                                       (apply comp (reverse transform-order)))]

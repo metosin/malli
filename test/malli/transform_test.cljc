@@ -261,26 +261,25 @@
                        transformer)))))
   (testing "call order"
     (are [schema data call-order]
-        (let [calls       (atom [])
-              record-call (fn [n] (constantly
-                                   {:enter (fn [x]
-                                             (swap! calls conj [:enter n])
-                                             x)
-                                    :leave (fn [x]
-                                             (swap! calls conj [:leave n])
-                                             x)}))
-              transformer (mt/transformer
-                           {:name     :order-test
-                            :decoders {:map     (record-call :map)
-                                       :map-of  (record-call :map-of)
-                                       :vector  (record-call :vector)
-                                       :multi   (record-call :multi)
-                                       :tuple   (record-call :tuple)
-                                       'int?    (record-call :int)
-                                       'string? (record-call :string)}})]
-          (m/decode schema data transformer)
-          (= call-order
-             @calls))
+      (let [calls (atom [])
+            record-call (fn [n] {:enter (fn [x]
+                                          (swap! calls conj [:enter n])
+                                          x)
+                                 :leave (fn [x]
+                                          (swap! calls conj [:leave n])
+                                          x)})
+            transformer (mt/transformer
+                          {:name :order-test
+                           :decoders {:map (record-call :map)
+                                      :map-of (record-call :map-of)
+                                      :vector (record-call :vector)
+                                      :multi (record-call :multi)
+                                      :tuple (record-call :tuple)
+                                      'int? (record-call :int)
+                                      'string? (record-call :string)}})]
+        (m/decode schema data transformer)
+        (= call-order
+           @calls))
       [:map
        [:foo int?]
        [:bar string?]]
@@ -317,8 +316,8 @@
        [:leave :tuple]]
       [:multi {:dispatch :kind}
        [:person [:map [:name string?]]]
-       [:food   [:map [:weight int?]]]]
-      {:kind   :food
+       [:food [:map [:weight int?]]]]
+      {:kind :food
        :weight 42}
       [[:enter :multi]
        [:enter :map]

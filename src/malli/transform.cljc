@@ -9,34 +9,54 @@
               (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
               (java.time.temporal ChronoField))))
 
+(def ^:dynamic *max-compile-depth* 10)
+
 (defn- ->interceptor
-  "Utility function to convert a transformer into an interceptor. Works with transformers
-  that are already interceptors, as well as sequences of transformers"
-  [transformer]
+  "Utility function to convert input into an interceptor. Works with functions,
+  map and sequence of those."
+  [?interceptor schema opts]
   (cond
-    (fn? transformer) {:enter transformer :leave nil}
-    (and (map? transformer) (or (contains? transformer :enter)
-                                (contains? transformer :leave))) transformer
-    (coll? transformer) (reduce
-                          (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
-                            (let [enter (if (and enter new-enter)
-                                          (comp new-enter enter)
-                                          (or enter new-enter))
-                                  leave (if (and leave new-leave)
-                                          (comp new-leave leave)
-                                          (or leave new-leave))]
-                              {:enter enter :leave leave}))
-                          (keep ->interceptor transformer))
-    (nil? transformer) nil
-    :else (m/fail! ::invalid-transformer {:value transformer})))
+
+    (fn? ?interceptor)
+    {:enter ?interceptor :leave nil}
+
+    (and (map? ?interceptor) (contains? ?interceptor :compile))
+    (let [compiled (::compiled opts 0)
+          opts (assoc opts ::compiled (inc ^long compiled))]
+      (when (>= ^long compiled ^long *max-compile-depth*)
+        (m/fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :opts opts}))
+      (if-let [interceptor (->interceptor ((:compile ?interceptor) schema opts) schema opts)]
+        (merge
+          (dissoc ?interceptor :compile)
+          interceptor)))
+
+    (and (map? ?interceptor)
+         (or (contains? ?interceptor :enter)
+             (contains? ?interceptor :leave))) ?interceptor
+
+    (coll? ?interceptor)
+    (reduce
+      (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
+        (let [enter (if (and enter new-enter)
+                      (comp new-enter enter)
+                      (or enter new-enter))
+              leave (if (and leave new-leave)
+                      (comp new-leave leave)
+                      (or leave new-leave))]
+          {:enter enter :leave leave}))
+      (keep #(->interceptor % schema opts) ?interceptor))
+
+    (nil? ?interceptor) nil
+
+    :else (m/fail! ::invalid-transformer {:value ?interceptor})))
 
 (defn transformer [& ?options]
-  (let [chain (->> ?options (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
+  (let [->data (fn [ts name key] (cond-> {:transformers ts} name (assoc :key (keyword (str key "/" name)))))
+        ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
+        chain (->> ?options (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
-                                   {:decode (cond-> {:transformers (:decoders %)}
-                                                    name (assoc :key (keyword (str "decode/" name))))
-                                    :encode (cond-> {:transformers (:encoders %)}
-                                                    name (assoc :key (keyword (str "encode/" name))))})))
+                                   {:decode (->data (:decoders %) name "decode")
+                                    :encode (->data (:encoders %) name "encode")})))
         opts (->> chain (map :opts) (apply merge))] ;; TODO: remove this
     (reify
       m/Transformer
@@ -44,10 +64,10 @@
       (-value-transformer [_ schema method]
         (reduce
           (fn [acc {{:keys [key transformers]} method}]
-            (if-let [->transformer (or (some-> (get (m/properties schema) key) (m/eval))
-                                       (get transformers (m/name schema)))]
-              (let [interceptor (->interceptor (->transformer schema opts))]
-                (if (nil? acc) interceptor (->interceptor [acc interceptor])))
+            (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
+                                      (get transformers (m/name schema)))]
+              (let [interceptor (->interceptor ?interceptor schema opts)]
+                (if (nil? acc) interceptor (->interceptor [acc interceptor] schema opts)))
               acc)) nil chain')))))
 
 ;;
@@ -151,91 +171,91 @@
 ;;
 
 (def +json-decoders+
-  {'ident? (constantly string->keyword)
-   'simple-ident? (constantly string->keyword)
-   'qualified-ident? (constantly string->keyword)
+  {'ident? string->keyword
+   'simple-ident? string->keyword
+   'qualified-ident? string->keyword
 
-   'keyword? (constantly string->keyword)
-   'simple-keyword? (constantly string->keyword)
-   'qualified-keyword? (constantly string->keyword)
+   'keyword? string->keyword
+   'simple-keyword? string->keyword
+   'qualified-keyword? string->keyword
 
-   'symbol? (constantly string->symbol)
-   'simple-symbol? (constantly string->symbol)
-   'qualified-symbol? (constantly string->symbol)
+   'symbol? string->symbol
+   'simple-symbol? string->symbol
+   'qualified-symbol? string->symbol
 
-   'uuid? (constantly string->uuid)
+   'uuid? string->uuid
 
-   'inst? (constantly string->date)})
+   'inst? string->date})
 
 (def +json-encoders+
-  {'keyword? (constantly m/keyword->string)
-   'simple-keyword? (constantly m/keyword->string)
-   'qualified-keyword? (constantly m/keyword->string)
+  {'keyword? m/keyword->string
+   'simple-keyword? m/keyword->string
+   'qualified-keyword? m/keyword->string
 
-   'symbol? (constantly any->string)
-   'simple-symbol? (constantly any->string)
-   'qualified-symbol? (constantly any->string)
+   'symbol? any->string
+   'simple-symbol? any->string
+   'qualified-symbol? any->string
 
-   'uuid? (constantly any->string)
+   'uuid? any->string
 
    ;:uri any->string
    ;:bigdec any->string
 
-   'inst? (constantly date->string)
+   'inst? date->string
    #?@(:clj ['ratio? number->double])})
 
 (def +string-decoders+
   (merge
     +json-decoders+
-    {'integer? (constantly string->long)
-     'int? (constantly string->long)
-     'pos-int? (constantly string->long)
-     'neg-int? (constantly string->long)
-     'nat-int? (constantly string->long)
-     'zero? (constantly string->long)
+    {'integer? string->long
+     'int? string->long
+     'pos-int? string->long
+     'neg-int? string->long
+     'nat-int? string->long
+     'zero? string->long
 
-     :> (constantly string->long)
-     :>= (constantly string->long)
-     :< (constantly string->long)
-     :<= (constantly string->long)
-     := (constantly string->long)
-     :not= (constantly string->long)
+     :> string->long
+     :>= string->long
+     :< string->long
+     :<= string->long
+     := string->long
+     :not= string->long
 
-     'number? (constantly string->double)
-     'float? (constantly string->double)
-     'double? (constantly string->double)
-     #?@(:clj ['rational? (constantly string->double)])
+     'number? string->double
+     'float? string->double
+     'double? string->double
+     #?@(:clj ['rational? string->double])
 
-     'boolean? (constantly string->boolean)
-     'false? (constantly string->boolean)
-     'true? (constantly string->boolean)}))
+     'boolean? string->boolean
+     'false? string->boolean
+     'true? string->boolean}))
 
 (def +string-encoders+
   (merge
     +json-encoders+
-    {'integer? (constantly any->string)
-     'int? (constantly any->string)
-     'pos-int? (constantly any->string)
-     'neg-int? (constantly any->string)
-     'nat-int? (constantly any->string)
-     'zero? (constantly any->string)
+    {'integer? any->string
+     'int? any->string
+     'pos-int? any->string
+     'neg-int? any->string
+     'nat-int? any->string
+     'zero? any->string
 
-     :> (constantly any->string)
-     :>= (constantly any->string)
-     :< (constantly any->string)
-     :<= (constantly any->string)
-     := (constantly any->string)
-     :not= (constantly any->string)
+     :> any->string
+     :>= any->string
+     :< any->string
+     :<= any->string
+     := any->string
+     :not= any->string
 
-     'double (constantly any->string)}))
+     'double any->string}))
 
 (def +strip-extra-keys-transformers+
-  {:map (fn [schema _]
-          (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
-            (fn [x] (select-keys x keys))))})
+  {:map {:compile (fn [schema _]
+                    (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
+                      (fn [x] (select-keys x keys))))}})
 
 (defn +key-transformers+ [key-fn]
-  (if key-fn {::m/map-key (constantly (fn [x] (key-fn x)))}))
+  (if key-fn {::m/map-key (fn [x] (key-fn x))}))
 
 ;;
 ;; transformers

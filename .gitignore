@@ -4,3 +4,5 @@
 .idea
 node_modules
 out
+.nrepl-port
+.dir-locals.el

@@ -1,6 +1,6 @@
 # malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli) [![Slack](https://img.shields.io/badge/clojurians-malli-blue.svg?logo=slack)](https://clojurians.slack.com/messages/malli/)
 
-Plain data Schemas for Clojure/Script.
+Plain data Schemas for Clojure/Script. Try the [online demo](https://malli.io).
 
 **STATUS**: *Pre-alpha*, in design and prototyping phase.
 
@@ -16,7 +16,9 @@ Plain data Schemas for Clojure/Script.
 - First class error messages
 - Fast
 
-Try the [online demo](https://malli.io).
+Libraries using malli:
+
+- [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
 
 ## Examples
 

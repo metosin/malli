@@ -129,10 +129,10 @@
       (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
       (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
-  #_(testing "s/map-of"
-      (is (= {1 :abba, 2 :jabba} (m/decode (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} mt/string-transformer)))
-      (is (= {"1" :abba, "2" :jabba} (m/decode (s/map-of int? keyword?) {"1" "abba", "2" "jabba"} mt/json-transformer)))
-      (is (= ::invalid (m/decode (s/map-of int? keyword?) ::invalid mt/json-transformer))))
+  (testing "map-of"
+    (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
+    (is (= {"1" :abba, "2" :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
+    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
   (testing "maybe"
     (testing "decode"
       (is (= 1 (m/decode [:maybe int?] "1" mt/string-transformer)))

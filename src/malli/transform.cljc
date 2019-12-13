@@ -18,7 +18,7 @@
   (cond
 
     (fn? ?interceptor)
-    {:enter ?interceptor :leave nil}
+    {:enter ?interceptor}
 
     (and (map? ?interceptor) (contains? ?interceptor :compile))
     (let [compiled (::compiled opts 0)

@@ -4,6 +4,25 @@
             [malli.transform :as mt]
             [clojure.string :as str]))
 
+(deftest ->interceptor-test
+  (are [?interceptor expected]
+    (= expected (is (#'mt/->interceptor ?interceptor {} {})))
+
+    inc {:enter inc}
+    {:enter inc} {:enter inc}
+    {:leave dec} {:leave dec}
+    {:enter inc, :leave dec} {:enter inc, :leave dec}
+    {:compile (constantly inc)} {:enter inc}
+    {:compile (constantly {:enter inc, :leave dec})} {:enter inc, :leave dec})
+
+  (let [?interceptor {:compile (constantly {:compile (constantly inc)})}]
+    (testing "shallow compilation succeeds"
+      (binding [mt/*max-compile-depth* 2]
+        (is (= {:enter inc} (#'mt/->interceptor ?interceptor {} {})))))
+    (testing "too deep compilation fails"
+      (binding [mt/*max-compile-depth* 1]
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/->interceptor ?interceptor {} {})))))))
+
 (deftest string->long
   (is (= 1 (mt/string->long "1")))
   (is (= 1 (mt/string->long 1)))

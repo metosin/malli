@@ -240,7 +240,9 @@ Errors can be targetted using `:error/path` property:
 (require '[malli.transform :as mt])
 ```
 
-Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `m/Transformer`. Default Transformers include: `string-transformer`, `json-transformer`, `strip-extra-keys-transformer`, `default-value-transformer` and `key-transformer`.
+Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `m/Transformer`. 
+
+Default Transformers include: `string-transformer`, `json-transformer`, `strip-extra-keys-transformer`, `default-value-transformer` and `key-transformer`.
 
 ```clj
 (m/decode int? "42" mt/string-transformer)
@@ -370,7 +372,16 @@ Going crazy:
 ; => {:x 42}
 ```
 
+## Default values
+
 Applying default values:
+
+```clj
+(m/decode [:and {:default 42} int?] nil mt/default-value-transformer)
+; => 42
+```
+
+Single sweep of defaults & string encoding:
 
 ```clj
 (m/encode

@@ -80,8 +80,7 @@
   (let [f (case phase
             :enter identity
             :leave reverse)]
-    (if-let [chain (some-> (keep identity chain) (seq) (f))]
-      (apply comp (reverse chain)))))
+    (some->> chain (keep identity) (seq) (f) (reverse) (apply comp))))
 
 (defn- -leaf-schema [name ->validator-and-children]
   ^{:type ::into-schema}

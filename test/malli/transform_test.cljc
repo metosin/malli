@@ -138,19 +138,23 @@
     (is (= '(:1 2 :3) (m/decode [:list keyword?] '("1" 2 "3") mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] (seq '("1" 2 "3")) mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] (lazy-seq '("1" 2 "3")) mt/string-transformer)))
+    (is (= nil (m/decode [:vector keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:vector keyword?] ::invalid mt/string-transformer))))
   (testing "map"
     (testing "decode"
       (is (= {:c1 1, ::c2 :kikka} (m/decode [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/string-transformer)))
       (is (= {:c1 "1", ::c2 :kikka} (m/decode [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/json-transformer)))
+      (is (= nil (m/decode [:map] nil mt/string-transformer)))
       (is (= ::invalid (m/decode [:map] ::invalid mt/json-transformer))))
     (testing "encode"
       (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
+      (is (= nil (m/encode [:map] nil mt/string-transformer)))
       (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
     (is (= {"1" :abba, "2" :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
+    (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
   (testing "maybe"
     (testing "decode"
@@ -165,12 +169,14 @@
       (is (= [1 :kikka] (m/decode [:tuple int? keyword?] ["1" "kikka"] mt/string-transformer)))
       (is (= [:kikka 1] (m/decode [:tuple keyword? int?] ["kikka" "1"] mt/string-transformer)))
       (is (= "1" (m/decode [:tuple keyword? int?] "1" mt/string-transformer)))
+      (is (= nil (m/decode [:tuple keyword? int?] nil mt/string-transformer)))
       (is (= [:kikka 1 "2"] (m/decode [:tuple keyword? int?] ["kikka" "1" "2"] mt/string-transformer))))
     (testing "encode"
       (is (= ["1"] (m/encode [:tuple int?] [1] mt/string-transformer)))
       (is (= ["1" "kikka"] (m/encode [:tuple int? keyword?] [1 :kikka] mt/string-transformer)))
       (is (= ["kikka" "1"] (m/encode [:tuple keyword? int?] [:kikka 1] mt/string-transformer)))
       (is (= 1.0 (m/encode [:tuple keyword? int?] 1.0 mt/string-transformer)))
+      (is (= nil (m/encode [:tuple keyword? int?] nil mt/string-transformer)))
       (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer))))))
 
 ;; TODO: this is wrong!
@@ -183,7 +189,6 @@
   (testing "does not interprit strings as collections"
     (is (= "123" (m/encode [:set string?] "123" mt/collection-transformer)))
     (is (= "abc" (m/encode [:vector keyword?] "abc" mt/json-transformer))))
-
 
   (testing "does not raise with bad input"
     (is (= 2 (m/encode [:set string?] 2 mt/collection-transformer))))
@@ -198,8 +203,8 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "transformer chain has 3 named transformers"
-      (is (= [::mt/strip-extra-keys :json] (keep :name (m/-transformer-chain strict-json-transformer)))))
+    (testing "transformer chain has 3 transformers"
+      (is (= 3 (count (m/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))
@@ -326,6 +331,36 @@
        [:leave :map]
        [:leave :multi]])))
 
+;; TODO: the order of keys & values is wrong!
+(deftest default-tranformers
+  (let [state (atom nil)
+        schema (m/schema [:map [:x int?] [:y string?]])
+        transformer (mt/transformer {:decoders {'int? identity}
+                                     :default-decoder (fn [value]
+                                                        (swap! state (fnil conj []) [:decode value])
+                                                        value)
+                                     :encoders {'int? identity}
+                                     :default-encoder (fn [value]
+                                                        (swap! state (fnil conj []) [:encode value])
+                                                        value)})]
+    (testing "decode"
+      (reset! state nil)
+      (m/decode schema {:x 1, :y "2"} transformer)
+      (is (= [[:decode {:x 1, :y "2"}]
+              [:decode "2"]
+              [:decode :x]
+              [:decode :y]]
+             @state)))
+
+    (testing "encode"
+      (reset! state nil)
+      (m/encode schema {:x 1, :y "2"} transformer)
+      (is (= [[:encode {:x 1, :y "2"}]
+              [:encode "2"]
+              [:encode :x]
+              [:encode :y]]
+             @state)))))
+
 (deftest schema-hinted-tranformation
   (let [schema [string? {:title "lower-upper-string"
                          :decode/string 'str/upper-case
@@ -384,3 +419,37 @@
     (is (= 0 (m/decode schema "0" transformer)))
     (is (= 1 (m/decode schema "0" transformer1)))
     (is (= 1000 (m/decode schema "0" transformer1000)))))
+
+(deftest default-transformer
+  (testing "nil collections"
+    (are [schema expected]
+      (is (= expected (m/decode schema nil mt/default-value-transformer)))
+
+      [:vector {:default [1 2 3]} int?] [1 2 3]
+      [:map {:default {:x 10}} [:x int?]] {:x 10}
+      [:tuple {:default [1 2]} int? int?] [1 2]
+      [:map-of {:default {1 1}} int? int?] {1 1}))
+
+  (testing "nested"
+    (let [schema [:map {:default {}}
+                  [:a [int? {:default 1}]]
+                  [:b [:vector {:default [1 2 3]} int?]]
+                  [:c [:map {:default {}}
+                       [:x [int? {:default 42}]]
+                       [:y int?]]]
+                  [:d [:map
+                       [:x [int? {:default 42}]]
+                       [:y int?]]]
+                  [:e int?]]]
+
+      (is (= {:a 1
+              :b [1 2 3]
+              :c {:x 42}}
+             (m/encode schema nil mt/default-value-transformer)))
+
+      (is (= {:a "1"
+              :b ["1" "2" "3"]
+              :c {:x "42"}}
+             (m/encode schema nil (mt/transformer
+                                    mt/default-value-transformer
+                                    mt/string-transformer)))))))

@@ -331,6 +331,36 @@
        [:leave :map]
        [:leave :multi]])))
 
+;; TODO: the order of keys & values is wrong!
+(deftest default-tranformers
+  (let [state (atom nil)
+        schema (m/schema [:map [:x int?] [:y string?]])
+        transformer (mt/transformer {:decoders {'int? identity}
+                                     :default-decoder (fn [value]
+                                                        (swap! state (fnil conj []) [:decode value])
+                                                        value)
+                                     :encoders {'int? identity}
+                                     :default-encoder (fn [value]
+                                                        (swap! state (fnil conj []) [:encode value])
+                                                        value)})]
+    (testing "decode"
+      (reset! state nil)
+      (m/decode schema {:x 1, :y "2"} transformer)
+      (is (= [[:decode {:x 1, :y "2"}]
+              [:decode "2"]
+              [:decode :x]
+              [:decode :y]]
+             @state)))
+
+    (testing "encode"
+      (reset! state nil)
+      (m/encode schema {:x 1, :y "2"} transformer)
+      (is (= [[:encode {:x 1, :y "2"}]
+              [:encode "2"]
+              [:encode :x]
+              [:encode :y]]
+             @state)))))
+
 (deftest schema-hinted-tranformation
   (let [schema [string? {:title "lower-upper-string"
                          :decode/string 'str/upper-case
@@ -389,3 +419,37 @@
     (is (= 0 (m/decode schema "0" transformer)))
     (is (= 1 (m/decode schema "0" transformer1)))
     (is (= 1000 (m/decode schema "0" transformer1000)))))
+
+(deftest default-transformer
+  (testing "nil collections"
+    (are [schema expected]
+      (is (= expected (m/decode schema nil mt/default-value-transformer)))
+
+      [:vector {:default [1 2 3]} int?] [1 2 3]
+      [:map {:default {:x 10}} [:x int?]] {:x 10}
+      [:tuple {:default [1 2]} int? int?] [1 2]
+      [:map-of {:default {1 1}} int? int?] {1 1}))
+
+  (testing "nested"
+    (let [schema [:map {:default {}}
+                  [:a [int? {:default 1}]]
+                  [:b [:vector {:default [1 2 3]} int?]]
+                  [:c [:map {:default {}}
+                       [:x [int? {:default 42}]]
+                       [:y int?]]]
+                  [:d [:map
+                       [:x [int? {:default 42}]]
+                       [:y int?]]]
+                  [:e int?]]]
+
+      (is (= {:a 1
+              :b [1 2 3]
+              :c {:x 42}}
+             (m/encode schema nil mt/default-value-transformer)))
+
+      (is (= {:a "1"
+              :b ["1" "2" "3"]
+              :c {:x "42"}}
+             (m/encode schema nil (mt/transformer
+                                    mt/default-value-transformer
+                                    mt/string-transformer)))))))

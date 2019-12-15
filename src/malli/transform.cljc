@@ -51,21 +51,24 @@
     :else (m/fail! ::invalid-transformer {:value ?interceptor})))
 
 (defn transformer [& ?options]
-  (let [->data (fn [ts name key] (cond-> {:transformers ts} name (assoc :key (keyword (str key "/" name)))))
+  (let [->data (fn [ts default name key] {:transformers ts
+                                          :default default
+                                          :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
         chain (->> ?options (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
-                                   {:decode (->data (:decoders %) name "decode")
-                                    :encode (->data (:encoders %) name "encode")})))
+                                   {:decode (->data (:decoders %) (:default-decoder %) name "decode")
+                                    :encode (->data (:encoders %) (:default-encoder %) name "encode")})))
         opts (->> chain (map :opts) (apply merge))] ;; TODO: remove this
     (reify
       m/Transformer
       (-transformer-chain [_] chain)
       (-value-transformer [_ schema method]
         (reduce
-          (fn [acc {{:keys [key transformers]} method}]
+          (fn [acc {{:keys [key default transformers]} method}]
             (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
-                                      (get transformers (m/name schema)))]
+                                      (get transformers (m/name schema))
+                                      default)]
               (let [interceptor (->interceptor ?interceptor schema opts)]
                 (if (nil? acc) interceptor (->interceptor [acc interceptor] schema opts)))
               acc)) nil chain')))))
@@ -285,6 +288,34 @@
    (transformer
      {:decoders (+key-transformers+ decode-key-fn)
       :encoders (+key-transformers+ encode-key-fn)})))
+
+(def default-value-transformer
+  (let [get-default (fn [schema] (some-> schema m/properties :default))
+        set-default {:compile (fn [schema _]
+                                (if-let [default (get-default schema)]
+                                  (fn [x] (if (nil? x) default x))))}
+        add-defaults {:compile (fn [schema _]
+                                 (let [entries (:entries (m/-parse-keys (m/children schema) nil))
+                                       defaults (->> entries
+                                                     (keep (fn [[k _ v]]
+                                                             (if-let [default (get-default v)]
+                                                               [k default])))
+                                                     (into {}))]
+                                   (if (seq defaults)
+                                     (fn [x]
+                                       (if (map? x)
+                                         (reduce-kv
+                                           (fn [acc k v]
+                                             (if-not (contains? x k)
+                                               (assoc acc k v)
+                                               acc))
+                                           x defaults)
+                                         x)))))}]
+    (transformer
+      {:default-decoder set-default
+       :default-encoder set-default}
+      {:decoders {:map add-defaults}
+       :encoders {:map add-defaults}})))
 
 (def collection-transformer
   (transformer

@@ -236,20 +236,18 @@ Errors can be targetted using `:error/path` property:
 
 ## Value Transformation
 
-Schema-driven value transformations with `m/decode` and `m/encode`:
+```clj
+(require '[malli.transform :as mt])
+```
+
+Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `m/Transformer`. Default Transformers include: `string-transformer`, `json-transformer`, `strip-extra-keys-transformer`, `default-value-transformer` and `key-transformer`.
 
 ```clj
-(m/decode
-  [:tuple int? uuid?]
-  ["42" "4eee8131-191e-4157-afc8-8b2f70d6af2b"]
-  mt/string-transformer)
-; [42 #uuid"4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+(m/decode int? "42" mt/string-transformer)
+; 42
 
-(m/encode
-  [:tuple int? uuid?]
-  [42 #uuid"4eee8131-191e-4157-afc8-8b2f70d6af2b"]
-  mt/string-transformer)
-; ["42" "4eee8131-191e-4157-afc8-8b2f70d6af2b"]
+(m/encode int? 42 mt/string-transformer)
+; "42"
 ```
 
 Transformations are recursive:
@@ -272,7 +270,7 @@ Transformations are recursive:
 ;           :lonlat [61.4858322 23.7854658]}}
 ```
 
-Transform map keys with `mt/key-transformer`:
+Transform map keys:
 
 ```clj
 (m/decode
@@ -292,7 +290,7 @@ Transform map keys with `mt/key-transformer`:
 ;            "lonlat" [61.4858322 23.7854658]}}
 ```
 
-Transformers are composable:
+Transformers can be composed with `mt/transformer`:
 
 ```clj
 (def strict-json-transformer
@@ -332,15 +330,15 @@ Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 
 ```clj
 (m/decode
-  [string? {:decode/string '{:enter str/upper-case}}]
+  [string? {:decode/string {:enter 'str/upper-case}}]
   "kerran" mt/string-transformer)
 ; => "KERRAN"
 ```
 
 ```clj
 (m/decode
-  [string? {:decode/string '{:enter #(str "olipa_" %)
-                             :leave #(str % "_avaruus")}}]
+  [string? {:decode/string {:enter '#(str "olipa_" %)
+                            :leave '#(str % "_avaruus")}}]
   "kerran" mt/string-transformer)
 ; => "olipa_kerran_avaruus"
 ```
@@ -350,7 +348,7 @@ To access Schema (and options) use `:compile`:
 ```clj
 (m/decode
   [int? {:math/multiplier 10
-         :decode/math '{:compile (fn [schema _]
+         :decode/math {:compile '(fn [schema _]
                                   (let [multiplier (:math/multiplier (m/properties schema))]
                                     (fn [x] (* x multiplier))))}}]
   12
@@ -363,13 +361,36 @@ Going crazy:
 ```clj
 (m/decode
   [:map
-   {:decode/math '{:enter #(update % :x inc)
-                   :leave #(update % :x (partial * 2))}}
-   [:x [int? {:decode/math '{:enter (partial + 2)
-                             :leave (partial * 3)}}]]]
+   {:decode/math {:enter '#(update % :x inc)
+                  :leave '#(update % :x (partial * 2))}}
+   [:x [int? {:decode/math {:enter '(partial + 2)
+                            :leave '(partial * 3)}}]]]
   {:x 1} 
   (mt/transformer {:name :math}))
 ; => {:x 42}
+```
+
+Applying default values:
+
+```clj
+(m/encode
+  [:map {:default {}}
+   [:a [int? {:default 1}]]
+   [:b [:vector {:default [1 2 3]} int?]]
+   [:c [:map {:default {}}
+        [:x [int? {:default 42}]]
+        [:y int?]]]
+   [:d [:map
+        [:x [int? {:default 42}]]
+        [:y int?]]]
+   [:e int?]]
+  nil
+  (mt/transformer
+    mt/default-value-transformer
+    mt/string-transformer))
+;{:a "1"
+; :b ["1" "2" "3"]
+; :c {:x "42"}}
 ```
 
 ## Merging Schemas

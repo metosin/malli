@@ -138,19 +138,23 @@
     (is (= '(:1 2 :3) (m/decode [:list keyword?] '("1" 2 "3") mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] (seq '("1" 2 "3")) mt/string-transformer)))
     (is (= '(:1 2 :3) (m/decode [:list keyword?] (lazy-seq '("1" 2 "3")) mt/string-transformer)))
+    (is (= nil (m/decode [:vector keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:vector keyword?] ::invalid mt/string-transformer))))
   (testing "map"
     (testing "decode"
       (is (= {:c1 1, ::c2 :kikka} (m/decode [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/string-transformer)))
       (is (= {:c1 "1", ::c2 :kikka} (m/decode [:map [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/json-transformer)))
+      (is (= nil (m/decode [:map] nil mt/string-transformer)))
       (is (= ::invalid (m/decode [:map] ::invalid mt/json-transformer))))
     (testing "encode"
       (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
+      (is (= nil (m/encode [:map] nil mt/string-transformer)))
       (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
     (is (= {"1" :abba, "2" :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
+    (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
   (testing "maybe"
     (testing "decode"
@@ -165,12 +169,14 @@
       (is (= [1 :kikka] (m/decode [:tuple int? keyword?] ["1" "kikka"] mt/string-transformer)))
       (is (= [:kikka 1] (m/decode [:tuple keyword? int?] ["kikka" "1"] mt/string-transformer)))
       (is (= "1" (m/decode [:tuple keyword? int?] "1" mt/string-transformer)))
+      (is (= nil (m/decode [:tuple keyword? int?] nil mt/string-transformer)))
       (is (= [:kikka 1 "2"] (m/decode [:tuple keyword? int?] ["kikka" "1" "2"] mt/string-transformer))))
     (testing "encode"
       (is (= ["1"] (m/encode [:tuple int?] [1] mt/string-transformer)))
       (is (= ["1" "kikka"] (m/encode [:tuple int? keyword?] [1 :kikka] mt/string-transformer)))
       (is (= ["kikka" "1"] (m/encode [:tuple keyword? int?] [:kikka 1] mt/string-transformer)))
       (is (= 1.0 (m/encode [:tuple keyword? int?] 1.0 mt/string-transformer)))
+      (is (= nil (m/encode [:tuple keyword? int?] nil mt/string-transformer)))
       (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer))))))
 
 ;; TODO: this is wrong!
@@ -183,7 +189,6 @@
   (testing "does not interprit strings as collections"
     (is (= "123" (m/encode [:set string?] "123" mt/collection-transformer)))
     (is (= "abc" (m/encode [:vector keyword?] "abc" mt/json-transformer))))
-
 
   (testing "does not raise with bad input"
     (is (= 2 (m/encode [:set string?] 2 mt/collection-transformer))))
@@ -198,8 +203,8 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "transformer chain has 3 named transformers"
-      (is (= [::mt/strip-extra-keys :json] (keep :name (m/-transformer-chain strict-json-transformer)))))
+    (testing "transformer chain has 3 transformers"
+      (is (= 3 (count (m/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))

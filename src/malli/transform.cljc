@@ -255,7 +255,7 @@
                       (fn [x] (select-keys x keys))))}})
 
 (defn +key-transformers+ [key-fn]
-  (if key-fn {::m/map-key (fn [x] (key-fn x))}))
+  (if key-fn {::m/map-key key-fn}))
 
 ;;
 ;; transformers
@@ -275,8 +275,7 @@
 
 (def strip-extra-keys-transformer
   (transformer
-    {:name ::strip-extra-keys
-     :decoders +strip-extra-keys-transformers+
+    {:decoders +strip-extra-keys-transformers+
      :encoders +strip-extra-keys-transformers+}))
 
 (defn key-transformer
@@ -284,8 +283,7 @@
    (key-transformer decode-key-fn nil))
   ([decode-key-fn encode-key-fn]
    (transformer
-     {:name ::key-transformer
-      :decoders (+key-transformers+ decode-key-fn)
+     {:decoders (+key-transformers+ decode-key-fn)
       :encoders (+key-transformers+ encode-key-fn)})))
 
 (def collection-transformer

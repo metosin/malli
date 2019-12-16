@@ -252,11 +252,6 @@
 
      'double any->string}))
 
-(def +strip-extra-keys-transformers+
-  {:map {:compile (fn [schema _]
-                    (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
-                      (fn [x] (select-keys x keys))))}})
-
 ;;
 ;; transformers
 ;;
@@ -274,9 +269,12 @@
      :encoders +string-encoders+}))
 
 (def strip-extra-keys-transformer
-  (transformer
-    {:decoders +strip-extra-keys-transformers+
-     :encoders +strip-extra-keys-transformers+}))
+  (let [transform {:compile (fn [schema _]
+                              (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
+                                (fn [x] (select-keys x keys))))}]
+    (transformer
+      {:decoders {:map transform}
+       :encoders {:map transform}})))
 
 (defn key-transformer
   ([decode-key-fn]

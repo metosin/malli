@@ -169,6 +169,16 @@
 
 (defn any->any [x] x)
 
+(defn coerce-map-keys [transform]
+  (fn [x]
+    (if (map? x)
+      (into {}
+            (map
+             (fn [[k v]] [(transform k) v]))
+            x)
+      x)))
+
+
 ;;
 ;; decoders
 ;;
@@ -188,7 +198,9 @@
 
    'uuid? string->uuid
 
-   'inst? string->date})
+   'inst? string->date
+
+   :map-of (coerce-map-keys m/keyword->string)})
 
 (def +json-encoders+
   {'keyword? m/keyword->string

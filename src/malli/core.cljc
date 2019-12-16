@@ -318,7 +318,7 @@
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ->key (if-let [t (phase key-transformer)]
-                                        (fn [x] (t (keyword->string x))))
+                                        (fn [x] (t x)))
                                 ->child (phase child-transformer)
                                 ->key-child (cond
                                               (and ->key ->child) #(assoc %1 (->key %2) (->child %3))

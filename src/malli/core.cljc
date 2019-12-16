@@ -251,27 +251,17 @@
                     acc explainers)))))
           (-transformer [this transformer method]
             (let [this-transformer (-value-transformer transformer this method)
-                  key-transformer (-transformer (map-key) transformer method)
                   child-transformers (some->>
                                        entries
                                        (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method)] [k t])))
                                        (into {}))
                   build (fn [phase]
                           (let [->this (phase this-transformer)
-                                ->key (phase key-transformer)
                                 ->children (->> child-transformers
                                                 (keep (fn extract-value-transformer-phase [[k t]]
                                                         (if-let [phase-t (phase t)]
                                                           [k phase-t])))
                                                 (into {}))
-                                apply->key (if ->key
-                                             #(reduce-kv
-                                                (fn reduce-key-transformers [m k v]
-                                                  (let [new-k (->key k)]
-                                                    (-> m
-                                                        (assoc new-k v)
-                                                        (cond-> (not (identical? k new-k)) (dissoc k)))))
-                                                % %))
                                 apply->children (if (seq ->children)
                                                   #(reduce-kv
                                                      (fn reduce-child-transformers [m k t]
@@ -279,7 +269,7 @@
                                                          (assoc m k (t (val entry)))
                                                          m))
                                                      % ->children))
-                                transform (-chain phase [->this apply->children apply->key])]
+                                transform (-chain phase [->this apply->children])]
                             (if transform
                               (fn [x] (if (or (nil? x) (map? x)) (transform x) x)))))]
               {:enter (build :enter)
@@ -780,14 +770,6 @@
                              {:keys #{}, :form []}
                              (mapcat #(-> % (children opts) (-parse-keys opts) :forms) schemas))))
                    (schema opts)))))))
-
-(defn map-key []
-  ^{:type ::schema}
-  (reify Schema
-    (-name [_] ::map-key)
-    (-form [_] ::map-key)
-    (-properties [_])
-    (-transformer [this transformer method] (-value-transformer transformer this method))))
 
 ;;
 ;; registries

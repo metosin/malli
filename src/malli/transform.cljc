@@ -257,9 +257,6 @@
                     (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
                       (fn [x] (select-keys x keys))))}})
 
-(defn +key-transformers+ [key-fn]
-  (if key-fn {::m/map-key key-fn}))
-
 ;;
 ;; transformers
 ;;
@@ -285,9 +282,16 @@
   ([decode-key-fn]
    (key-transformer decode-key-fn nil))
   ([decode-key-fn encode-key-fn]
-   (transformer
-     {:decoders (+key-transformers+ decode-key-fn)
-      :encoders (+key-transformers+ encode-key-fn)})))
+   (let [transform (fn [f]
+                     {:leave (fn [x]
+                               (if (map? x)
+                                 (reduce-kv
+                                   (fn [m k v] (assoc m (f k) v))
+                                   (empty x) x)
+                                 x))})]
+     (transformer
+       {:decoders {:map (transform decode-key-fn)}
+        :encoders {:map (transform encode-key-fn)}}))))
 
 (def default-value-transformer
   (let [get-default (fn [schema] (some-> schema m/properties :default))

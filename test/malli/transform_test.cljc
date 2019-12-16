@@ -331,7 +331,6 @@
        [:leave :map]
        [:leave :multi]])))
 
-;; TODO: the order of keys & values is wrong!
 (deftest default-tranformers
   (let [state (atom nil)
         schema (m/schema [:map [:x int?] [:y string?]])
@@ -347,18 +346,14 @@
       (reset! state nil)
       (m/decode schema {:x 1, :y "2"} transformer)
       (is (= [[:decode {:x 1, :y "2"}]
-              [:decode "2"]
-              [:decode :x]
-              [:decode :y]]
+              [:decode "2"]]
              @state)))
 
     (testing "encode"
       (reset! state nil)
       (m/encode schema {:x 1, :y "2"} transformer)
       (is (= [[:encode {:x 1, :y "2"}]
-              [:encode "2"]
-              [:encode :x]
-              [:encode :y]]
+              [:encode "2"]]
              @state)))))
 
 (deftest schema-hinted-tranformation

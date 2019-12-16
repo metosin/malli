@@ -569,7 +569,34 @@
                 {:decode/string '{:enter (partial mapv inc), :leave (partial mapv (partial * 2))}}
                 [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]
                 [int? {:decode/string '{:enter (partial + 3), :leave (partial * 4)}}]]
-               [1 2 3 4] mt/string-transformer))))
+               [1 2 3 4] mt/string-transformer)))
+      (testing "changing type results in children not being called"
+        (are [schema data]
+            (is (= "age:31"
+                   (m/encode schema data
+                             (let [should-not-be-called
+                                   (fn [_] (throw (ex-info "Was called" {:schema schema
+                                                                         :data   data})))]
+                               (mt/transformer
+                                {:name     :test
+                                 :encoders {'int? should-not-be-called
+                                            'keyword? should-not-be-called}})))))
+          [:map {:encode/test (fn [{:keys [age]}]
+                                (str "age:" age))}
+           [:age int?]]
+          {:age 31}
+          [:map-of {:encode/test (fn [{:keys [age]}]
+                                   (str "age:" age))}
+           keyword? int?]
+          {:age 31}
+          [:tuple {:encode/test (fn [[_ age]]
+                                  (str "age:" age))}
+           keyword? int?]
+          [:age 31]
+          [:vector {:encode/test (fn [x]
+                                   (str "age:" (:age (apply hash-map x))))}
+           [:or keyword? int?]]
+          [:age 31])))
 
     (testing "explain"
       (let [expectations {"vector" (let [schema [:vector {:min 2, :max 3} int?]]

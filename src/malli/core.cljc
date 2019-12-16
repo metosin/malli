@@ -76,11 +76,31 @@
     (seq children) (into [name] children)
     :else name))
 
+(defn- -transform-if
+  [pred tf]
+  (when tf
+    (fn [x]
+      (if (pred x)
+        (tf x)
+        x))))
+
 (defn- -chain [phase chain]
   (let [f (case phase
             :enter identity
             :leave reverse)]
-    (some->> chain (keep identity) (seq) (f) (reverse) (apply comp))))
+    (some->> chain
+             (keep (fn [item]
+                     (if (vector? item)
+                       (let [pred (first item)
+                             child-chain (second item)]
+                         (assert (fn? pred) "First item in tuple must be a predicate fn")
+                         (assert (seqable? child-chain) "Second item in tuple must be a sequence")
+                         (-transform-if pred (-chain phase child-chain)))
+                       item)))
+             (seq)
+             (f)
+             (reverse)
+             (apply comp))))
 
 (defn- -leaf-schema [name ->validator-and-children]
   ^{:type ::into-schema}
@@ -279,9 +299,9 @@
                                                          (assoc m k (t (val entry)))
                                                          m))
                                                      % ->children))
-                                transform (-chain phase [->this apply->children apply->key])]
-                            (if transform
-                              (fn [x] (if (or (nil? x) (map? x)) (transform x) x)))))]
+                                transform (-chain phase
+                                                  [->this [map? [apply->children apply->key]]])]
+                            transform))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts]
@@ -335,7 +355,7 @@
                                               ->key #(assoc %1 (->key %2) %3)
                                               ->child #(assoc %1 %2 (->child %3)))
                                 apply->key-child (if ->key-child #(reduce-kv ->key-child (empty %) %))
-                                transform (-chain phase [->this apply->key-child])]
+                                transform (-chain phase [->this [map? [apply->key-child]]])]
                             (if transform
                               (fn [x] (if (or (nil? x) (map? x)) (transform x) x)))))]
               {:enter (build :enter)
@@ -391,9 +411,8 @@
                                           (if fempty
                                             #(into (if % fempty) (map ct) %)
                                             #(map ct %)))
-                                transform (-chain phase [->this ->child])]
-                            (if transform
-                              (fn [x] (if (or (nil? x) (coll? x)) (transform x) x)))))]
+                                transform (-chain phase [->this [coll? [->child]]])]
+                            transform))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this [(-accept schema visitor opts)] opts))
@@ -441,10 +460,10 @@
                                 ->children (->> child-transformers
                                                 (keep (fn [[k t]] (if-let [t (phase t)] [k t])))
                                                 (into {}))
-                                apply->children #(if (vector? %) (reduce-kv update % ->children) %)
-                                transform (-chain phase [->this apply->children])]
-                            (if transform
-                              (fn [x] (if (or (nil? x) (vector? x)) (transform x) x)))))]
+                                apply->children #(reduce-kv update % ->children)
+                                transform (-chain phase [->this
+                                                         [vector? [apply->children]]])]
+                            transform))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this (mapv #(-accept % visitor opts) schemas) opts))

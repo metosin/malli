@@ -182,12 +182,14 @@
 ;; TODO: this is wrong!
 (deftest collection-transform-test
   (testing "decode"
-    (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer))))
+    (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer)))
+    (is (= #{1 2 3} (m/decode [:set {:decode/string #(map str %)} int?]
+                              "123" mt/string-transformer))))
   (testing "encode"
     (is (= #{1 2 3} (m/encode [:set int?] [1 2 3] mt/collection-transformer))))
 
   (testing "does not interprit strings as collections"
-    (is (= "123" (m/encode [:set string?] "123" mt/collection-transformer)))
+    (is (= "123" (m/encode [:set int?] "123" mt/collection-transformer)))
     (is (= "abc" (m/encode [:vector keyword?] "abc" mt/json-transformer))))
 
   (testing "does not raise with bad input"

@@ -182,12 +182,14 @@
 ;; TODO: this is wrong!
 (deftest collection-transform-test
   (testing "decode"
-    (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer))))
+    (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer)))
+    (is (= #{1 2 3} (m/decode [:set {:decode/string #(map str %)} int?]
+                              "123" mt/string-transformer))))
   (testing "encode"
     (is (= #{1 2 3} (m/encode [:set int?] [1 2 3] mt/collection-transformer))))
 
   (testing "does not interprit strings as collections"
-    (is (= "123" (m/encode [:set string?] "123" mt/collection-transformer)))
+    (is (= "123" (m/encode [:set int?] "123" mt/collection-transformer)))
     (is (= "abc" (m/encode [:vector keyword?] "abc" mt/json-transformer))))
 
   (testing "does not raise with bad input"
@@ -331,7 +333,6 @@
        [:leave :map]
        [:leave :multi]])))
 
-;; TODO: the order of keys & values is wrong!
 (deftest default-tranformers
   (let [state (atom nil)
         schema (m/schema [:map [:x int?] [:y string?]])
@@ -347,18 +348,14 @@
       (reset! state nil)
       (m/decode schema {:x 1, :y "2"} transformer)
       (is (= [[:decode {:x 1, :y "2"}]
-              [:decode "2"]
-              [:decode :x]
-              [:decode :y]]
+              [:decode "2"]]
              @state)))
 
     (testing "encode"
       (reset! state nil)
       (m/encode schema {:x 1, :y "2"} transformer)
       (is (= [[:encode {:x 1, :y "2"}]
-              [:encode "2"]
-              [:encode :x]
-              [:encode :y]]
+              [:encode "2"]]
              @state)))))
 
 (deftest schema-hinted-tranformation

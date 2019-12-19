@@ -169,6 +169,16 @@
 
 (defn any->any [x] x)
 
+(defn coerce-map-keys [transform]
+  (fn [x]
+    (if (map? x)
+      (into {}
+            (map
+             (fn [[k v]] [(transform k) v]))
+            x)
+      x)))
+
+
 ;;
 ;; decoders
 ;;
@@ -188,7 +198,9 @@
 
    'uuid? string->uuid
 
-   'inst? string->date})
+   'inst? string->date
+
+   :map-of (coerce-map-keys m/keyword->string)})
 
 (def +json-encoders+
   {'keyword? m/keyword->string
@@ -252,14 +264,6 @@
 
      'double any->string}))
 
-(def +strip-extra-keys-transformers+
-  {:map {:compile (fn [schema _]
-                    (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
-                      (fn [x] (select-keys x keys))))}})
-
-(defn +key-transformers+ [key-fn]
-  (if key-fn {::m/map-key key-fn}))
-
 ;;
 ;; transformers
 ;;
@@ -277,17 +281,27 @@
      :encoders +string-encoders+}))
 
 (def strip-extra-keys-transformer
-  (transformer
-    {:decoders +strip-extra-keys-transformers+
-     :encoders +strip-extra-keys-transformers+}))
+  (let [transform {:compile (fn [schema _]
+                              (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
+                                (fn [x] (select-keys x keys))))}]
+    (transformer
+      {:decoders {:map transform}
+       :encoders {:map transform}})))
 
 (defn key-transformer
   ([decode-key-fn]
    (key-transformer decode-key-fn nil))
   ([decode-key-fn encode-key-fn]
-   (transformer
-     {:decoders (+key-transformers+ decode-key-fn)
-      :encoders (+key-transformers+ encode-key-fn)})))
+   (let [transform (fn [f]
+                     {:leave (fn [x]
+                               (if (map? x)
+                                 (reduce-kv
+                                   (fn [m k v] (assoc m (f k) v))
+                                   (empty x) x)
+                                 x))})]
+     (transformer
+       {:decoders {:map (transform decode-key-fn)}
+        :encoders {:map (transform encode-key-fn)}}))))
 
 (def default-value-transformer
   (let [get-default (fn [schema] (some-> schema m/properties :default))

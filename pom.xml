@@ -6,6 +6,14 @@
   <artifactId>malli</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>malli</name>
+
+  <licenses>
+    <license>
+      <name>Eclipse Public License 2.0</name>
+      <url>https://www.eclipse.org/legal/epl-2.0/</url>
+    </license>
+  </license>
+
   <dependencies>
     <dependency>
       <groupId>borkdude</groupId>

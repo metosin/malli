@@ -921,3 +921,9 @@ We use Kaocha as a test runner. Before running the tests, you need to install NP
 npm install
 bin/kaocha
 ```
+
+## License
+
+Copyright © 2018-2019 Metosin Oy and contributors.
+
+Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

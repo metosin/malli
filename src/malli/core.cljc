@@ -201,7 +201,7 @@
     [k p (f (schema v opts))]))
 
 (defn -parse-keys [children opts]
-  (let [entries (mapv #(-expand-key % opts identity) children)]
+  (let [entries (->> children (keep identity) (mapv #(-expand-key % opts identity)))]
     {:required (->> entries (filter (comp not :optional second)) (mapv first))
      :optional (->> entries (filter (comp :optional second)) (mapv first))
      :keys (->> entries (mapv first))

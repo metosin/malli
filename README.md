@@ -404,30 +404,60 @@ Single sweep of defaults & string encoding:
 ; :c {:x "42"}}
 ```
 
-## Merging Schemas
-
-Schemas can be deep-merged with `m/merge`:
+## Programming with Schemas
 
 ```clj
-(m/merge
-  Address
+(require '[malli.util :as mu])
+```
+
+Merging Schemas (last value wins):
+
+```clj
+(mu/merge
   [:map
+   [:name string?]
    [:description string?]
+   [:address
+    [:map
+     [:street string?]
+     [:country [:enum "finland" "poland"]]]]]
+  [:map
+   [:description {:optional true} string?]
    [:address
     [:map
      [:country string?]]]])
 ;[:map
-; [:id string?]
-; [:tags [:set keyword?]]
-; [:address 
-;  [:map 
-;   [:street string?] 
-;   [:city string?] 
-;   [:zip int?] 
-;   [:lonlat [:tuple double? double?]] 
-;   [:country string?]]]
-; [:description string?]]
+; [:name string?]
+; [:description {:optional true} string?]
+; [:address [:map
+;            [:street string?]
+;            [:country string?]]]]
 ```
+
+Schema unions (merged values of both schemas are valid for union schema):
+
+```clj
+(mu/union
+  [:map
+   [:name string?]
+   [:description string?]
+   [:address
+    [:map
+     [:street string?]
+     [:country [:enum "finland" "poland"]]]]]
+  [:map
+   [:description {:optional true} string?]
+   [:address
+    [:map
+     [:country string?]]]])
+;[:map
+; [:name string?]
+; [:description string?]
+; [:address [:map 
+;            [:street string?] 
+;            [:country [:or [:enum "finland" "poland"] string?]]]]]
+```
+
 
 ## Persisting Schemas 
 

@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [-name eval name merge])
+  (:refer-clojure :exclude [-name eval name])
   (:require [sci.core :as sci])
   #?(:clj (:import (java.util.regex Pattern))))
 
@@ -18,6 +18,9 @@
   (-accept [this visitor opts] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
   (-form [this] "returns original form of the schema"))
+
+(defprotocol MapSchema
+  (-map-entries [this] "returns map entries"))
 
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :opts")
@@ -39,9 +42,8 @@
 ;;
 
 (declare schema)
-(declare properties)
+(declare eval)
 (declare default-registry)
-(declare map-key)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -49,10 +51,6 @@
       (str nn "/" (clojure.core/name x))
       (clojure.core/name x))
     x))
-
-(defn eval [?code]
-  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
-                                                      :bindings {'m/properties properties}})))
 
 (defn error
   ([path in schema value]
@@ -76,18 +74,10 @@
     (seq children) (into [name] children)
     :else name))
 
-(defn- -guard
-  [pred tf]
-  (when tf
-    (fn [x]
-      (if (pred x)
-        (tf x)
-        x))))
+(defn- -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn- -chain [phase chain]
-  (let [f (case phase
-            :enter identity
-            :leave reverse)]
+  (let [f (case phase, :enter identity, :leave reverse)]
     (some->> chain (keep identity) (seq) (f) (reverse) (apply comp))))
 
 (defn- -leaf-schema [name ->validator-and-children]
@@ -185,36 +175,33 @@
     [(first xs) (rest xs)]
     [nil xs]))
 
-(defn- -optional-entry? [[_ ?p]]
-  (boolean (and (map? ?p) (true? (:optional ?p)))))
-
-(defn- -optional-entry [[k ?p s :as entry] optional]
-  (if (map? ?p)
-    (cond
-      optional (update entry 1 assoc :optional true)
-      (= [:optional] (keys ?p)) [k s]
-      :else (update entry 1 dissoc :optional))
-    (if optional [k {:optional true} ?p] [k ?p])))
-
 (defn- -expand-key [[k ?p ?v] opts f]
-  (let [[p v] (if (map? ?p) [?p ?v] [nil ?p])]
+  (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])]
     [k p (f (schema v opts))]))
 
-(defn -parse-keys [children opts]
-  (let [entries (->> children (keep identity) (mapv #(-expand-key % opts identity)))]
-    {:required (->> entries (filter (comp not :optional second)) (mapv first))
-     :optional (->> entries (filter (comp :optional second)) (mapv first))
-     :keys (->> entries (mapv first))
-     :entries entries
-     :forms (mapv (fn [[k p v]]
-                    (let [v' (-form v)]
-                      (if p [k p v'] [k v']))) entries)}))
+(defn- -parse-map-entries [children opts]
+  (->> children (keep identity) (mapv #(-expand-key % opts identity))))
+
+(defn ^:no-doc map-entry-forms [entries]
+  (mapv (fn [[k p v]] (let [v' (-form v)] (if p [k p v'] [k v']))) entries))
+
+(defn ^:no-doc required-map-entry [[_ ?p]]
+  (not (and (map? ?p) (true? (:optional ?p)))))
+
+(defn ^:no-doc simplify-map-entry [[k ?p s]]
+  (cond
+    (not s) [k ?p]
+    (and ?p (false? (:optional ?p)) (= 1 (count ?p))) [k s]
+    (not (seq ?p)) [k s]
+    (false? (:optional ?p)) [k (dissoc ?p :optional) s]
+    :else [k ?p s]))
 
 (defn- -map-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children opts]
-      (let [{:keys [entries forms]} (-parse-keys children opts)
+      (let [entries (-parse-map-entries children opts)
+            forms (map-entry-forms entries)
             form (create-form :map properties forms)]
         ^{:type ::schema}
         (reify Schema
@@ -284,7 +271,9 @@
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
           (-properties [_] properties)
-          (-form [_] form))))))
+          (-form [_] form)
+          MapSchema
+          (-map-entries [_] entries))))))
 
 (defn- -map-of-schema []
   ^{:type ::into-schema}
@@ -554,8 +543,9 @@
 (defn- -multi-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties childs opts]
-      (let [{:keys [entries forms]} (-parse-keys childs opts)
+    (-into-schema [_ properties children opts]
+      (let [entries (-parse-map-entries children opts)
+            forms (map-entry-forms entries)
             dispatch (eval (:dispatch properties))
             dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))
             form (create-form :multi properties forms)]
@@ -633,6 +623,12 @@
    (form ?schema nil))
   ([?schema opts]
    (-form (schema ?schema opts))))
+
+(defn equals
+  ([?schema1 ?schema2]
+   (equals ?schema1 ?schema2 nil))
+  ([?schema1 ?schema2 opts]
+   (= (form ?schema1 opts) (form ?schema2 opts))))
 
 (defn accept
   ([?schema visitor]
@@ -734,46 +730,21 @@
      (transform value)
      value)))
 
-(defn merge
-  "Deep-merges two schemas into one with the following rules:
+(defn map-entries
+  "Returns a sequence of map-entry tuples `[key ?properties schema]`"
+  ([?schema]
+   (map-entries ?schema nil))
+  ([?schema opts]
+   (if-let [schema (schema ?schema opts)]
+     (if (satisfies? MapSchema schema)
+       (-map-entries schema)))))
 
-  * if either schemas is `nil`, the other one is used, regardless of value
-  * with two :map schemas, both keys and values are merged
-  * with any other schemas, 2-arity `:malli.core/merge` function is used, defaulting
-    to constantly schema2"
-  ([?schema1 ?schema2]
-   (merge ?schema1 ?schema2 nil))
-  ([?schema1 ?schema2 opts]
-   (let [[schema1 schema2 :as schemas] [(if ?schema1 (schema ?schema1 opts))
-                                        (if ?schema2 (schema ?schema2 opts))]
-         merge' (::merge opts (constantly schema2))]
-     (cond
-       (not schema1) schema2
-       (not schema2) schema1
-       (not= :map (name schema1) (name schema2)) (merge' schema1 schema2)
-       :else (let [p (clojure.core/merge (properties schema1) (properties schema2))]
-               (-> [:map]
-                   (cond-> p (conj p))
-                   (into (:form
-                           (reduce
-                             (fn [{:keys [keys] :as acc} [k :as f]]
-                               (if (keys k)
-                                 (->> (reduce
-                                        (fn [acc' [k' :as f']]
-                                          (if-not (= k k')
-                                            (conj acc' f')
-                                            (let [f'' (-optional-entry
-                                                        (if (= k k') f f')
-                                                        (and (-optional-entry? f) (-optional-entry? f')))]
-                                              (conj acc' (conj (pop f'') (merge (peek f') (peek f) opts))))))
-                                        [] (:form acc))
-                                      (assoc acc :form))
-                                 (-> acc
-                                     (update :form conj f)
-                                     (update :keys conj k))))
-                             {:keys #{}, :form []}
-                             (mapcat #(-> % (children opts) (-parse-keys opts) :forms) schemas))))
-                   (schema opts)))))))
+(defn ^:no-doc eval [?code]
+  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
+                                                      :bindings {'m/properties properties
+                                                                 'm/name name
+                                                                 'm/children children
+                                                                 'm/map-entries map-entries}})))
 
 ;;
 ;; registries

@@ -29,7 +29,7 @@
     (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))
 
 (defn -map-gen [schema opts]
-  (let [{:keys [entries]} (m/-parse-keys (m/children schema opts) opts)
+  (let [entries (m/map-entries schema)
         value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s opts)))
         gen-req (->> entries
                      (remove #(-> % second :optional))

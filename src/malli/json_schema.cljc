@@ -65,8 +65,10 @@
 (defmethod accept :and [_ _ children _] {:allOf children})
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
-(defmethod accept :map [_ schema children opts]
-  (let [{:keys [required keys]} (m/-parse-keys (m/children schema opts) opts)]
+(defmethod accept :map [_ schema children _]
+  (let [entries (m/map-entries schema)
+        required (->> entries (filter (comp not :optional second)) (mapv first))
+        keys (->> entries (mapv first))]
     (merge
       {:type "object"
        :properties (apply array-map (interleave keys children))

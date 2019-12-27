@@ -174,7 +174,7 @@
     (if (map? x)
       (into {}
             (map
-             (fn [[k v]] [(transform k) v]))
+              (fn [[k v]] [(transform k) v]))
             x)
       x)))
 
@@ -282,7 +282,7 @@
 
 (def strip-extra-keys-transformer
   (let [transform {:compile (fn [schema _]
-                              (if-let [keys (seq (:keys (m/-parse-keys (m/children schema) nil)))]
+                              (if-let [keys (->> schema m/map-entries (map first) seq)]
                                 (fn [x] (select-keys x keys))))}]
     (transformer
       {:decoders {:map transform}
@@ -309,7 +309,7 @@
                                 (if-let [default (get-default schema)]
                                   (fn [x] (if (nil? x) default x))))}
         add-defaults {:compile (fn [schema _]
-                                 (let [entries (:entries (m/-parse-keys (m/children schema) nil))
+                                 (let [entries (m/map-entries schema)
                                        defaults (->> entries
                                                      (keep (fn [[k _ v]]
                                                              (if-let [default (get-default v)]

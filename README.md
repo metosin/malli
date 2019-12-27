@@ -452,9 +452,9 @@ Schema unions (merged values of both schemas are valid for union schema):
      [:country string?]]]])
 ;[:map
 ; [:name string?]
-; [:description string?]
-; [:address [:map 
-;            [:street string?] 
+; [:description {:optional true} string?]
+; [:address [:map
+;            [:street string?]
 ;            [:country [:or [:enum "finland" "poland"] string?]]]]]
 ```
 

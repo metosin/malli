@@ -3,6 +3,17 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
+(deftest simplify-map-entry-test
+  (are [entry expected]
+    (is (= expected (mu/simplify-map-entry entry)))
+
+    [:x 'int?] [:x 'int?]
+    [:x nil 'int?] [:x 'int?]
+    [:x {} 'int?] [:x 'int?]
+    [:x {:optional false} 'int?] [:x 'int?]
+    [:x {:optional false, :x 1} 'int?] [:x {:x 1} 'int?]
+    [:x {:optional true} 'int?] [:x {:optional true} 'int?]))
+
 (deftest merge-test
   (are [?s1 ?s2 expected]
     (= true (m/equals expected (mu/merge ?s1 ?s2)))
@@ -55,11 +66,11 @@
 
     [:map [:x int?]]
     [:map [:x {:optional true} pos-int?]]
-    [:map [:x [:or int? pos-int?]]]
+    [:map [:x {:optional true} [:or int? pos-int?]]]
 
     [:map [:x int?]]
     [:map [:x {:optional true} pos-int?]]
-    [:map [:x [:or int? pos-int?]]]
+    [:map [:x {:optional true} [:or int? pos-int?]]]
 
     [:map [:x {:optional true} int?]]
     [:map [:x {:optional true} pos-int?]]
@@ -67,7 +78,7 @@
 
     [:map [:x {:optional false} int?]]
     [:map [:x {:optional true} pos-int?]]
-    [:map [:x [:or int? pos-int?]]]
+    [:map [:x {:optional true} [:or int? pos-int?]]]
 
     [:map {:title "parameters"}
      [:parameters
@@ -88,43 +99,3 @@
         [:map [:x [:or int? string?]] [:y int?]]]
        [:body-params
         [:map [:z int?]]]]]]))
-
-(mu/merge
-  [:map
-   [:name string?]
-   [:description string?]
-   [:address
-    [:map
-     [:street string?]
-     [:country [:enum "finland" "poland"]]]]]
-  [:map
-   [:description {:optional true} string?]
-   [:address
-    [:map
-     [:country string?]]]])
-;[:map
-; [:name string?]
-; [:description {:optional true} string?]
-; [:address [:map
-;            [:street string?]
-;            [:country string?]]]]
-
-(mu/union
-  [:map
-   [:name string?]
-   [:description string?]
-   [:address
-    [:map
-     [:street string?]
-     [:country [:enum "finland" "poland"]]]]]
-  [:map
-   [:description {:optional true} string?]
-   [:address
-    [:map
-     [:country string?]]]])
-;[:map
-; [:name string?]
-; [:description string?]
-; [:address [:map
-;            [:street string?]
-;            [:country [:or [:enum "finland" "poland"] string?]]]]]

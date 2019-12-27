@@ -185,16 +185,8 @@
 (defn ^:no-doc map-entry-forms [entries]
   (mapv (fn [[k p v]] (let [v' (-form v)] (if p [k p v'] [k v']))) entries))
 
-(defn ^:no-doc required-map-entry [[_ ?p]]
+(defn ^:no-doc required-map-entry? [[_ ?p]]
   (not (and (map? ?p) (true? (:optional ?p)))))
-
-(defn ^:no-doc simplify-map-entry [[k ?p s]]
-  (cond
-    (not s) [k ?p]
-    (and ?p (false? (:optional ?p)) (= 1 (count ?p))) [k s]
-    (not (seq ?p)) [k s]
-    (false? (:optional ?p)) [k (dissoc ?p :optional) s]
-    :else [k ?p s]))
 
 (defn- -map-schema []
   ^{:type ::into-schema}
@@ -731,7 +723,7 @@
      value)))
 
 (defn map-entries
-  "Returns a sequence of map-entry tuples `[key ?properties schema]`"
+  "Returns a sequence of 3-element map-entry tuples of type `key ?properties schema`"
   ([?schema]
    (map-entries ?schema nil))
   ([?schema opts]

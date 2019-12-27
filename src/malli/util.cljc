@@ -2,10 +2,18 @@
   (:refer-clojure :exclude [merge])
   (:require [malli.core :as m]))
 
+(defn ^:no-doc simplify-map-entry [[k ?p s]]
+  (cond
+    (not s) [k ?p]
+    (and ?p (false? (:optional ?p)) (= 1 (count ?p))) [k s]
+    (not (seq ?p)) [k s]
+    (false? (:optional ?p)) [k (dissoc ?p :optional) s]
+    :else [k ?p s]))
+
 (defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge opts]
-  (let [required (merge-required (m/required-map-entry e1) (m/required-map-entry e2))
+  (let [required (merge-required (m/required-map-entry? e1) (m/required-map-entry? e2))
         p (clojure.core/merge ?p1 ?p2)]
-    (m/simplify-map-entry [k (assoc p :optional (not required)) (merge s1 s2 opts)])))
+    (simplify-map-entry [k (assoc p :optional (not required)) (merge s1 s2 opts)])))
 
 ;;
 ;; public api
@@ -63,7 +71,7 @@
    (union ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 opts]
    (let [merge-default (fn [s1 s2 opts] (if (m/equals s1 s2) s1 (m/schema [:or s1 s2] opts)))
-         merge-required (fn [r1 r2] (or r1 r2))]
+         merge-required (fn [r1 r2] (and r1 r2))]
      (merge ?schema1 ?schema2 (-> opts
                                   (update :merge-default (fnil identity merge-default))
                                   (update :merge-required (fnil identity merge-required)))))))

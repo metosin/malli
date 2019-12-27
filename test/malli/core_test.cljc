@@ -36,17 +36,6 @@
     [:x {:optional true} int?] {:optional true}
     [:x {:optional false} int?] {:optional false}))
 
-(deftest simplify-map-entry-test
-  (are [entry expected]
-    (is (= expected (m/simplify-map-entry entry)))
-
-    [:x 'int?] [:x 'int?]
-    [:x nil 'int?] [:x 'int?]
-    [:x {} 'int?] [:x 'int?]
-    [:x {:optional false} 'int?] [:x 'int?]
-    [:x {:optional false, :x 1} 'int?] [:x {:x 1} 'int?]
-    [:x {:optional true} 'int?] [:x {:optional true} 'int?]))
-
 (defn visitor [schema children _]
   (into [(m/name schema)] (seq children)))
 

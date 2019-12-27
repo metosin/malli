@@ -3,6 +3,11 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
+(deftest equals-test
+  (is (true? (mu/equals int? int?)))
+  (is (true? (mu/equals [:map [:x int?]] [:map [:x int?]])))
+  (is (false? (mu/equals [:map [:x {} int?]] [:map [:x int?]]))))
+
 (deftest simplify-map-entry-test
   (are [entry expected]
     (is (= expected (mu/simplify-map-entry entry)))
@@ -16,7 +21,7 @@
 
 (deftest merge-test
   (are [?s1 ?s2 expected]
-    (= true (m/equals expected (mu/merge ?s1 ?s2)))
+    (= true (mu/equals expected (mu/merge ?s1 ?s2)))
 
     int? int? int?
     int? pos-int? pos-int?
@@ -57,7 +62,7 @@
 
 (deftest union-test
   (are [?s1 ?s2 expected]
-    (= true (m/equals expected (mu/union ?s1 ?s2)))
+    (= true (mu/equals expected (mu/union ?s1 ?s2)))
 
     int? int? int?
     int? pos-int? [:or int? pos-int?]

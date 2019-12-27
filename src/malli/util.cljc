@@ -2,6 +2,12 @@
   (:refer-clojure :exclude [merge])
   (:require [malli.core :as m]))
 
+(defn ^:no-doc equals
+  ([?schema1 ?schema2]
+   (equals ?schema1 ?schema2 nil))
+  ([?schema1 ?schema2 opts]
+   (= (m/form ?schema1 opts) (m/form ?schema2 opts))))
+
 (defn ^:no-doc simplify-map-entry [[k ?p s]]
   (cond
     (not s) [k ?p]
@@ -70,7 +76,7 @@
   ([?schema1 ?schema2]
    (union ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 opts]
-   (let [merge-default (fn [s1 s2 opts] (if (m/equals s1 s2) s1 (m/schema [:or s1 s2] opts)))
+   (let [merge-default (fn [s1 s2 opts] (if (equals s1 s2) s1 (m/schema [:or s1 s2] opts)))
          merge-required (fn [r1 r2] (and r1 r2))]
      (merge ?schema1 ?schema2 (-> opts
                                   (update :merge-default (fnil identity merge-default))

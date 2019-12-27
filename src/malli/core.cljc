@@ -616,12 +616,6 @@
   ([?schema opts]
    (-form (schema ?schema opts))))
 
-(defn equals
-  ([?schema1 ?schema2]
-   (equals ?schema1 ?schema2 nil))
-  ([?schema1 ?schema2 opts]
-   (= (form ?schema1 opts) (form ?schema2 opts))))
-
 (defn accept
   ([?schema visitor]
    (accept ?schema visitor nil))

@@ -51,11 +51,6 @@
   (is (= ['int? 'string?] (m/eval "(m/children [:or {:some \"props\"} int? string?])")))
   (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
 
-(deftest equals-test
-  (is (true? (m/equals int? int?)))
-  (is (true? (m/equals [:map [:x int?]] [:map [:x int?]])))
-  (is (false? (m/equals [:map [:x {} int?]] [:map [:x int?]]))))
-
 (deftest validation-test
 
   (testing "coercion"

@@ -12,7 +12,7 @@
       <name>Eclipse Public License 2.0</name>
       <url>https://www.eclipse.org/legal/epl-2.0/</url>
     </license>
-  </license>
+  </licenses>
 
   <dependencies>
     <dependency>

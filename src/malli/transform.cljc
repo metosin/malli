@@ -282,8 +282,8 @@
 
 (def strip-extra-keys-transformer
   (let [transform {:compile (fn [schema _]
-                              (if-let [keys (->> schema m/map-entries (map first) seq)]
-                                (fn [x] (select-keys x keys))))}]
+                              (if-let [ks (some->> schema m/map-entries (map first) seq set)]
+                                (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x)))))}]
     (transformer
       {:decoders {:map transform}
        :encoders {:map transform}})))

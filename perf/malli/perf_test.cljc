@@ -274,6 +274,22 @@
     (let [>> (m/decoder [:map [:x string?] [:y int?]] transformer)]
       (cc/quick-bench (>> {:x "1", :y 1})))))
 
+(defn select-keys-perf-test []
+  (let [ks #{:a :b}
+        quick-select-keys (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x)))
+        normal-select-keys (fn [x] (select-keys x ks))]
+
+    (assert (= {:a 1, :b 2} (normal-select-keys {:a 1, :b 2, :c 3})))
+    (assert (= {:a 1, :b 2} (quick-select-keys {:a 1, :b 2, :c 3})))
+
+    ;; 370ns
+    (cc/quick-bench (normal-select-keys {:a 1, :b 2}))
+    (cc/quick-bench (normal-select-keys {:a 1, :b 2, :c 3, :d 4}))
+
+    ;; 110ns
+    (cc/quick-bench (quick-select-keys {:a 1, :b 2}))
+    (cc/quick-bench (quick-select-keys {:a 1, :b 2, :c 3, :d 4}))))
+
 (comment
   (map-perf)
   (composite-perf)
@@ -283,4 +299,5 @@
   (transform-test)
   (transform-test2)
   (map-transform-test)
+  (select-keys-perf-test)
   (fn-test))

@@ -4,6 +4,9 @@
 (defn unlift-keys [m ns-str]
   (reduce-kv #(if (= ns-str (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
+(defn maybe-prefix [schema prefix]
+  (some-> schema m/properties (get prefix)))
+
 (defn json-schema-props [schema prefix]
   (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ prefix))))
 
@@ -88,7 +91,9 @@
 (defmethod accept :fn [_ _ _ _] {})
 
 (defn- -json-schema-visitor [schema children opts]
-  (merge (accept (m/name schema) schema children opts) (json-schema-props schema "json-schema")))
+  (or (maybe-prefix schema :json-schema)
+      (merge (accept (m/name schema) schema children opts)
+             (json-schema-props schema "json-schema"))))
 
 ;;
 ;; public api

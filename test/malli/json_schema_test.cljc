@@ -57,6 +57,10 @@
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]
     (is (= json-schema (json-schema/transform schema))))
+  (testing "full override"
+    (is (= {:type "file"}
+           (json-schema/transform
+             [:map {:json-schema {:type "file"}} [:file any?]]))))
   (testing "with properties"
     (is (= {:allOf [{:type "integer", :format "int64"}]
             :title "age"
@@ -65,17 +69,17 @@
            (json-schema/transform
              [:and {:title "age"
                     :description "blabla"
-                    :default 42} int?]))
-        (is (= {:allOf [{:type "integer", :format "int64"}]
-                :title "age2"
-                :description "blabla2"
-                :default 422
-                :example 422}
-               (json-schema/transform
-                 [:and {:title "age"
-                        :json-schema/title "age2"
-                        :description "blabla"
-                        :json-schema/description "blabla2"
-                        :default 42
-                        :json-schema/default 422
-                        :json-schema/example 422} int?]))))))
+                    :default 42} int?])))
+    (is (= {:allOf [{:type "integer", :format "int64"}]
+            :title "age2"
+            :description "blabla2"
+            :default 422
+            :example 422}
+           (json-schema/transform
+             [:and {:title "age"
+                    :json-schema/title "age2"
+                    :description "blabla"
+                    :json-schema/description "blabla2"
+                    :default 42
+                    :json-schema/default 422
+                    :json-schema/example 422} int?])))))

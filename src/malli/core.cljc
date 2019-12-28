@@ -255,9 +255,8 @@
                                                        (if-let [entry (find m k)]
                                                          (assoc m k (t (val entry)))
                                                          m))
-                                                     % ->children))
-                                transform (-chain phase [->this (-guard map? apply->children)])]
-                            transform))]
+                                                     % ->children))]
+                            (-chain phase [->this (-guard map? apply->children)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts]
@@ -312,9 +311,8 @@
                                               (and ->key ->child) #(assoc %1 (->key %2) (->child %3))
                                               ->key #(assoc %1 (->key %2) %3)
                                               ->child #(assoc %1 %2 (->child %3)))
-                                apply->key-child (if ->key-child #(reduce-kv ->key-child (empty %) %))
-                                transform (-chain phase [->this (-guard map? apply->key-child)])]
-                            transform))]
+                                apply->key-child (if ->key-child #(reduce-kv ->key-child (empty %) %))]
+                            (-chain phase [->this (-guard map? apply->key-child)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts]
@@ -367,9 +365,8 @@
                                 ->child (if-let [ct (phase child-transformer)]
                                           (if fempty
                                             #(into (if % fempty) (map ct) %)
-                                            #(map ct %)))
-                                transform (-chain phase [->this (-guard coll? ->child)])]
-                            transform))]
+                                            #(map ct %)))]
+                            (-chain phase [->this (-guard coll? ->child)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this [(-accept schema visitor opts)] opts))
@@ -417,9 +414,8 @@
                                 ->children (->> child-transformers
                                                 (keep (fn [[k t]] (if-let [t (phase t)] [k t])))
                                                 (into {}))
-                                apply->children #(reduce-kv update % ->children)
-                                transform (-chain phase [->this (-guard vector? apply->children)])]
-                            transform))]
+                                apply->children #(reduce-kv update % ->children)]
+                            (-chain phase [->this (-guard vector? apply->children)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this (mapv #(-accept % visitor opts) schemas) opts))

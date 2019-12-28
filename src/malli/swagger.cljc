@@ -20,7 +20,10 @@
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
 (defn- -swagger-visitor [schema children opts]
-  (merge (accept (m/name schema) schema children opts) (json-schema/json-schema-props schema "swagger")))
+  (or (json-schema/maybe-prefix schema :swagger)
+      (json-schema/maybe-prefix schema :json-schema)
+      (merge (accept (m/name schema) schema children opts)
+             (json-schema/json-schema-props schema "swagger"))))
 
 ;;
 ;; public api

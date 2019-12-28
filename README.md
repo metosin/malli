@@ -695,7 +695,7 @@ Transforming Schemas into [JSON Schema](https://json-schema.org/):
 ; :required [:id :tags :address]}
 ```
 
-Custom transformation via properties:
+Custom transformation via `:json-schema` namespaced properties:
 
 ```clj
 (json-schema/transform
@@ -710,6 +710,15 @@ Custom transformation via properties:
 ; :type "string"
 ; :default "perch"
 ; :enum ["perch" "pike"]}
+```
+
+Full override with `:json-schema` property:
+
+```clj
+(json-schema/transform 
+  [:map {:json-schema {:type "file"}} 
+   [:file any?]])
+; {:type "file"}
 ```
 
 ### Swagger2 Schema
@@ -735,6 +744,32 @@ Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Speci
 ;                                                        {:type "number", :format "double"}]}},
 ;                        :required [:street :city :zip :lonlat]}},
 ; :required [:id :tags :address]}
+```
+
+Custom transformation via `:swagger` and `:json-schema` namespaced properties:
+
+```clj
+(swagger/transform
+  [:enum
+   {:title "Fish"
+    :description "It's a fish"
+    :swagger/type "string"
+    :json-schema/default "perch"}
+   "perch" "pike"])
+;{:title "Fish"
+; :description "It's a fish"
+; :type "string"
+; :default "perch"
+; :enum ["perch" "pike"]}
+```
+
+Full override with `:swagger` property:
+
+```clj
+(swagger/transform 
+  [:map {:swagger {:type "file"}} 
+   [:file any?]])
+; {:type "file"}
 ```
 
 ## Performance

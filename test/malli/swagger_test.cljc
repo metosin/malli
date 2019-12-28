@@ -68,6 +68,17 @@
 (deftest swagger-test
   (doseq [[schema swagger-schema] expectations]
     (is (= swagger-schema (swagger/transform schema))))
+  (testing "full override"
+    (is (= {:type "file"}
+           (swagger/transform 
+             [:map {:swagger {:type "file"}} [:file any?]])))
+    (is (= {:type "file"}
+           (swagger/transform 
+             [:map {:json-schema {:type "file"}} [:file any?]])))
+    (is (= {:type "file"}
+           (swagger/transform 
+             [:map {:swagger {:type "file"}
+           	        :json-schema {:type "file2"}} [:file any?]]))))
   (testing "with properties"
     (is (= {:title "age"
             :type "integer"
@@ -78,20 +89,20 @@
            (swagger/transform
              [:and {:title "age"
                     :description "blabla"
-                    :default 42} int?]))
-        (is (= {:title "age"
-                :type "integer"
-                :format "int64"
-                :description "blabla"
-                :default 422
-                :example 422
-                :x-allOf [{:type "integer", :format "int64"}]}
-               (swagger/transform
-                 [:and {:title "age"
-                        :json-schema/title "age2"
-                        :json-schema/swagger "age3"
-                        :description "blabla"
-                        :json-schema/description "blabla2"
-                        :default 42
-                        :swagger/default 422
-                        :swagger/example 422} int?]))))))
+                    :default 42} int?])))
+    (is (= {:title "age"
+            :type "integer"
+            :format "int64"
+            :description "blabla"
+            :default 422
+            :example 422
+            :x-allOf [{:type "integer", :format "int64"}]}
+           (swagger/transform
+             [:and {:title "age"
+                    :json-schema/title "age2"
+                    :json-schema/swagger "age3"
+                    :description "blabla"
+                    :json-schema/description "blabla2"
+                    :default 42
+                    :swagger/default 422
+                    :swagger/example 422} int?])))))

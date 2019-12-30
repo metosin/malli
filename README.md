@@ -155,9 +155,9 @@ Explain results can be humanized with `malli.error/humanize`:
                  :lonlat [61.4858322, nil]}})
     (me/humanize
       {:wrap :message}))
-;{:tags #{"should be keyword"}
-; :address {:city "missing required key"
-;           :lonlat [nil "should be double"]}}
+;{:tags #{["should be keyword"]}
+; :address {:city ["missing required key"]
+;           :lonlat [nil ["should be double"]]}}
 ```
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:
@@ -174,9 +174,9 @@ Error messages can be customized with `:error/message` and `:error/fn` propertie
       {:wrap :message
        :errors (-> me/default-errors
                    (assoc ::m/missing-key {:error/fn (fn [{:keys [in]} _] (str "missing key " (last in)))}))}))
-;{:id "missing key :id"
-; :size "should be: S|M|L"
-; :age "10, should be > 18"}
+;{:id ["missing key :id"]
+; :size ["should be: S|M|L"]
+; :age ["10, should be > 18"]}
 ```
 
 Messages can be localized:
@@ -198,9 +198,9 @@ Messages can be localized:
                    (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
                    (assoc ::m/missing-key {:error/fn {:en '(fn [{:keys [in]} _] (str "missing key " (last in)))
                                                       :fi '(fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
-;{:id "puuttuu avain :id"
-; :size "pitäisi olla: S|M|L"
-; :age "10, pitäisi olla > 18"}
+;{:id ["puuttuu avain :id"]
+; :size ["pitäisi olla: S|M|L"]
+; :age ["10, pitäisi olla > 18"]}
 ```
 
 Top-level humanized map-errors are under `:malli/error`:
@@ -215,7 +215,7 @@ Top-level humanized map-errors are under `:malli/error`:
     (m/explain {:password "secret"
                 :password2 "faarao"})
     (me/humanize {:wrap :message}))
-; {:malli/error "passwords don't match"}
+; {:malli/error ["passwords don't match"]}
 ```
 
 Errors can be targetted using `:error/path` property:
@@ -231,7 +231,7 @@ Errors can be targetted using `:error/path` property:
     (m/explain {:password "secret"
                 :password2 "faarao"})
     (me/humanize {:wrap :message}))
-; {:password2 "passwords don't match"}
+; {:password2 ["passwords don't match"]}
 ```
 
 ## Value Transformation

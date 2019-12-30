@@ -63,15 +63,14 @@
       (if (> k size') (into (vec x) (repeat (- (inc k) size') nil)) x))
     x))
 
+(defn- -just-error? [x]
+  (and (vector? x) (= 1 (count x)) (string? (first x))))
+
 (defn- -get [x k]
   (if (set? x) (-> x vec (get k)) (get x k)))
 
 (defn- -put [x k v]
-  (if (set? x) (conj x v) (update x k (fn [e]
-                                        (cond (string? e) [e v]
-                                              (sequential? v) v
-                                              (nil? e) v
-                                              :else (conj e v))))))
+  (if (set? x) (conj x v) (update x k (fn [e] (if (-just-error? v) (into (vec e) v) v)))))
 
 (defn- -assoc-in [acc value [p & ps] error]
   (cond
@@ -135,6 +134,6 @@
      (if (coll? value)
        (reduce
          (fn [acc error]
-           (-assoc-in acc value (error-path error opts) (f (with-error-message error opts))))
+           (-assoc-in acc value (error-path error opts) [(f (with-error-message error opts))]))
          nil errors)
-       (f (with-error-message (first errors) opts))))))
+       [(f (with-error-message (first errors) opts))]))))

@@ -63,6 +63,24 @@ Schemas can have properties:
 ;     :json-schema/example 20}   
 ```
 
+Maps are open by default:
+
+```clj
+(m/validate
+  [:map [:x int?]]
+  {:x 1, :extra "key"})
+; => true
+```
+
+Maps can be closed with `:closed` property:
+
+```clj
+(m/validate
+  [:map {:closed true} [:x int?]]
+  {:x 1, :extra "key"})
+; => false
+``` 
+
 Serializable function schemas using [sci](https://github.com/borkdude/sci):
 
 ```clj

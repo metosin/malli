@@ -130,7 +130,7 @@
 (defn humanize
   ([explanation]
    (humanize explanation nil))
-  ([{:keys [value errors]} {f :wrap :or {f identity} :as opts}]
+  ([{:keys [value errors]} {f :wrap :or {f :message} :as opts}]
    (if errors
      (if (coll? value)
        (reduce

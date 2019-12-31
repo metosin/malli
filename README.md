@@ -171,8 +171,7 @@ Explain results can be humanized with `malli.error/humanize`:
        :address {:street "Ahlmanintie 29"
                  :zip 33100
                  :lonlat [61.4858322, nil]}})
-    (me/humanize
-      {:wrap :message}))
+    (me/humanize))
 ;{:tags #{["should be keyword"]}
 ; :address {:city ["missing required key"]
 ;           :lonlat [nil ["should be double"]]}}
@@ -189,8 +188,7 @@ Error messages can be customized with `:error/message` and `:error/fn` propertie
             '(fn [x] (and (int? x) (> x 18)))]]]
     (m/explain {:size "XL", :age 10})
     (me/humanize
-      {:wrap :message
-       :errors (-> me/default-errors
+      {:errors (-> me/default-errors
                    (assoc ::m/missing-key {:error/fn (fn [{:keys [in]} _] (str "missing key " (last in)))}))}))
 ;{:id ["missing key :id"]
 ; :size ["should be: S|M|L"]
@@ -211,7 +209,6 @@ Messages can be localized:
     (m/explain {:size "XL", :age 10})
     (me/humanize
       {:locale :fi
-       :wrap :message
        :errors (-> me/default-errors
                    (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
                    (assoc ::m/missing-key {:error/fn {:en '(fn [{:keys [in]} _] (str "missing key " (last in)))
@@ -232,7 +229,7 @@ Top-level humanized map-errors are under `:malli/error`:
          (= password password2))]]
     (m/explain {:password "secret"
                 :password2 "faarao"})
-    (me/humanize {:wrap :message}))
+    (me/humanize))
 ; {:malli/error ["passwords don't match"]}
 ```
 
@@ -248,7 +245,7 @@ Errors can be targetted using `:error/path` property:
          (= password password2))]]
     (m/explain {:password "secret"
                 :password2 "faarao"})
-    (me/humanize {:wrap :message}))
+    (me/humanize))
 ; {:password2 ["passwords don't match"]}
 ```
 

@@ -5,6 +5,7 @@
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
+   ::m/extra-key {:error/message {:en "disallowed key"}}
    'any? {:error/message {:en "should be any"}}
    'some? {:error/message {:en "shoud be some"}}
    'number? {:error/message {:en "should be number"}}

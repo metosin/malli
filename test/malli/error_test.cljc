@@ -76,6 +76,12 @@
                  {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
                (me/humanize {:wrap :message})))))
 
+  (testing "disallowed keys in closed maps"
+    (is (= {:extra ["disallowed key"]}
+           (-> [:map {:closed true} [:x int?]]
+               (m/explain {:x 1, :extra "key"})
+               (me/humanize {:wrap :message})))))
+
   (testing "multiple errors on same key are accumulated into vector"
     (is (= {:x ["missing required key" "missing required key"]}
            (me/humanize

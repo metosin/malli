@@ -17,6 +17,7 @@
   (-transformer [this transformer method] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
   (-accept [this visitor opts] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
+  (-opts [this] "returns original opts")
   (-form [this] "returns original form of the schema"))
 
 (defprotocol MapSchema
@@ -98,6 +99,7 @@
             (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form))))))
 
 (defn fn-schema [name f]
@@ -168,6 +170,7 @@
           (-accept [this visitor opts]
             (visitor this (mapv #(-accept % visitor opts) child-schemas) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
 (defn- -properties-and-children [xs]
@@ -274,6 +277,7 @@
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form)
           MapSchema
           (-map-entries [_] entries))))))
@@ -330,6 +334,7 @@
           (-accept [this visitor opts]
             (visitor this (mapv #(-accept % visitor opts) schemas) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
 
 (defn- -collection-schema [name fpred fwrap fempty]
@@ -383,6 +388,7 @@
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this [(-accept schema visitor opts)] opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form))))))
 
 (defn- -tuple-schema []
@@ -432,12 +438,13 @@
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this (mapv #(-accept % visitor opts) schemas) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form))))))
 
 (defn- -enum-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties children _]
+    (-into-schema [_ properties children opts]
       (when-not (seq children)
         (fail! ::no-children {:name :enum, :properties properties}))
       (let [schema (set children)
@@ -454,12 +461,13 @@
             (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this (vec children) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] (create-form :enum properties children)))))))
 
 (defn- -re-schema [class?]
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties [child :as children] _]
+    (-into-schema [_ properties [child :as children] opts]
       (when-not (= 1 (count children))
         (fail! ::child-error {:name :re, :properties properties, :children children, :min 1, :max 1}))
       (let [re (re-pattern child)
@@ -481,12 +489,13 @@
             (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form))))))
 
 (defn- -fn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties children _]
+    (-into-schema [_ properties children opts]
       (when-not (= 1 (count children))
         (fail! ::child-error {:name :fn, :properties properties, :children children, :min 1, :max 1}))
       (let [f (eval (first children))
@@ -507,6 +516,7 @@
             (-value-transformer transformer this method))
           (-accept [this visitor opts] (visitor this [] opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] (create-form :fn properties children)))))))
 
 (defn- -maybe-schema []
@@ -538,6 +548,7 @@
                :leave (build :leave)}))
           (-accept [this visitor opts] (visitor this [(-accept schema' visitor opts)] opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form))))))
 
 (defn- -multi-schema []
@@ -583,6 +594,7 @@
           (-accept [this visitor opts]
             (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
           (-properties [_] properties)
+          (-opts [_] opts)
           (-form [_] form))))))
 
 (defn- -register [registry k schema]
@@ -643,6 +655,12 @@
    (properties ?schema nil))
   ([?schema opts]
    (-properties (schema ?schema opts))))
+
+(defn opts
+  ([?schema]
+   (opts ?schema nil))
+  ([?schema opts]
+   (-opts (schema ?schema opts))))
 
 (defn children
   ([?schema]

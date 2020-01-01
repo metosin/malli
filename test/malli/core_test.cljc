@@ -20,6 +20,9 @@
 (defn entries= [& entries]
   (apply = (map (partial map #(update % 2 m/form)) entries)))
 
+(defn form= [& entries]
+  (apply = (map m/form entries)))
+
 (defn over-the-wire [?schema]
   (-> ?schema (me/write-string) (me/read-string)))
 
@@ -50,6 +53,10 @@
   (is (= :maybe (m/eval "(m/name [:maybe int?])")))
   (is (= ['int? 'string?] (m/eval "(m/children [:or {:some \"props\"} int? string?])")))
   (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
+
+(deftest into-schema-test
+  (is (form= [:map {:closed true} [:x int?]]
+             (m/into-schema :map {:closed true} [[:x int?]]))))
 
 (deftest validation-test
 
@@ -799,7 +806,7 @@
       (is (= true
              (m/validate schema valid)
              (m/validate schema' valid)))
-      (is (= (m/form schema) (m/form schema'))))))
+      (is (form= schema schema')))))
 
 (deftest custom-registry-test
   (let [registry (merge

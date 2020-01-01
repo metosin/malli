@@ -597,9 +597,20 @@
         (-register name schema)
         (-register @v schema))))
 
+(defn- -schema [?schema {:keys [registry] :as opts :or {registry default-registry}}]
+  (or (if (satisfies? IntoSchema ?schema) ?schema)
+      (get registry ?schema)
+      (some-> registry (get (type ?schema)) (-into-schema nil [?schema] opts))))
+
 ;;
 ;; public api
 ;;
+
+(defn into-schema
+  ([name properties children]
+   (into-schema name properties children nil))
+  ([name properties children opts]
+   (-into-schema (-schema name opts) properties children opts)))
 
 (defn schema? [x]
   (satisfies? Schema x))
@@ -607,16 +618,13 @@
 (defn schema
   ([?schema]
    (schema ?schema nil))
-  ([?schema {:keys [registry] :as opts :or {registry default-registry}}]
-   (let [-get #(or (if (satisfies? IntoSchema %) %)
-                   (get registry %)
-                   (some-> registry (get (type %)) (-into-schema nil [%] opts)))]
-     (cond
-       (schema? ?schema) ?schema
-       (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
-       (vector? ?schema) (apply -into-schema (concat [(-get (first ?schema))]
-                                                     (-properties-and-children (rest ?schema)) [opts]))
-       :else (or (some-> ?schema -get (schema opts)) (fail! ::invalid-schema {:schema ?schema}))))))
+  ([?schema opts]
+   (cond
+     (schema? ?schema) ?schema
+     (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil opts)
+     (vector? ?schema) (apply -into-schema (concat [(-schema (first ?schema) opts)]
+                                                   (-properties-and-children (rest ?schema)) [opts]))
+     :else (or (some-> ?schema (-schema opts) (schema opts)) (fail! ::invalid-schema {:schema ?schema})))))
 
 (defn form
   ([?schema]

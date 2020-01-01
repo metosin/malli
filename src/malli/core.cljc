@@ -191,20 +191,25 @@
 (defn- -map-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties children opts]
+    (-into-schema [_ {:keys [closed] :as properties} children opts]
       (let [entries (-parse-map-entries children opts)
+            keyset (->> entries (map first) (set))
             forms (map-entry-forms entries)
             form (create-form :map properties forms)]
         ^{:type ::schema}
         (reify Schema
           (-name [_] :map)
           (-validator [_]
-            (let [validators (mapv
-                               (fn [[key {:keys [optional]} value]]
-                                 (let [valid? (-validator value)
-                                       default (boolean optional)]
-                                   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
-                               entries)
+            (let [validators (cond-> (mapv
+                                       (fn [[key {:keys [optional]} value]]
+                                         (let [valid? (-validator value)
+                                               default (boolean optional)]
+                                           (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
+                                       entries)
+                                     closed (into [(fn [m]
+                                                     (reduce
+                                                       (fn [acc k] (if (contains? keyset k) acc (reduced false)))
+                                                       true (keys m)))]))
                   validate (fn [m]
                              (boolean
                                #?(:clj  (let [it (.iterator ^Iterable validators)]
@@ -217,18 +222,25 @@
               (fn [m] (and (map? m) (validate m)))))
           (-explainer [this path]
             (let [distance (if (seq properties) 2 1)
-                  explainers (mapv
-                               (fn [[i [key {:keys [optional] :as key-properties} schema]]]
-                                 (let [key-distance (if (seq key-properties) 2 1)
-                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))
-                                       key-path (into path [(+ i distance) 0])]
-                                   (fn [x in acc]
-                                     (if-let [e (find x key)]
-                                       (explainer (val e) (conj in key) acc)
-                                       (if-not optional
-                                         (conj acc (error key-path (conj in key) this nil ::missing-key))
-                                         acc)))))
-                               (map-indexed vector entries))]
+                  explainers (cond-> (mapv
+                                       (fn [[i [key {:keys [optional] :as key-properties} schema]]]
+                                         (let [key-distance (if (seq key-properties) 2 1)
+                                               explainer (-explainer schema (into path [(+ i distance) key-distance]))
+                                               key-path (into path [(+ i distance) 0])]
+                                           (fn [x in acc]
+                                             (if-let [e (find x key)]
+                                               (explainer (val e) (conj in key) acc)
+                                               (if-not optional
+                                                 (conj acc (error key-path (conj in key) this nil ::missing-key))
+                                                 acc)))))
+                                       (map-indexed vector entries))
+                                     closed (into [(fn [x in acc]
+                                                     (reduce
+                                                       (fn [acc k]
+                                                         (if (contains? keyset k)
+                                                           acc
+                                                           (conj acc (error path (conj in k) this nil ::extra-key))))
+                                                       acc (keys x)))]))]
               (fn [x in acc]
                 (if-not (map? x)
                   (conj acc (error path in this x ::invalid-type))

@@ -29,31 +29,31 @@
   (testing "nil if success"
     (is (nil? (-> int?
                   (m/explain 1)
-                  (me/humanize {:wrap :message})))))
+                  (me/humanize)))))
 
   (testing "top-level error"
     (is (= ["should be int"]
            (-> int?
                (m/explain "1")
-               (me/humanize {:wrap :message})))))
+               (me/humanize)))))
 
   (testing "vector"
     (is (= [nil nil [nil ["should be int"]]]
            (-> [:vector [:vector int?]]
                (m/explain [[1 2] [2 2] [3 "4"]])
-               (me/humanize {:wrap :message})))))
+               (me/humanize)))))
 
   (testing "set"
     (is (= #{#{["should be int"]}}
            (-> [:set [:set int?]]
                (m/explain #{#{1} #{"2"}})
-               (me/humanize {:wrap :message})))))
+               (me/humanize)))))
 
   (testing "invalid type"
     (is (= ["invalid type"]
            (-> [:list int?]
                (m/explain [1])
-               (me/humanize {:wrap :message})))))
+               (me/humanize)))))
 
   (testing "mixed bag"
     (is (= [nil
@@ -64,7 +64,7 @@
                  [{:x [1 2 3]}
                   {:x [1 "2" "3"]}
                   {:x #{"whatever"}}])
-               (me/humanize {:wrap :message})))))
+               (me/humanize)))))
 
   (testing "so nested"
     (is (= {:data [{:x [["should be int"] nil ["should be int"]]}
@@ -74,15 +74,20 @@
            (-> [:map [:data [:vector [:map [:x [:vector int?]]]]]]
                (m/explain
                  {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
-               (me/humanize {:wrap :message})))))
+               (me/humanize)))))
+
+  (testing "disallowed keys in closed maps"
+    (is (= {:extra ["disallowed key"]}
+           (-> [:map {:closed true} [:x int?]]
+               (m/explain {:x 1, :extra "key"})
+               (me/humanize)))))
 
   (testing "multiple errors on same key are accumulated into vector"
     (is (= {:x ["missing required key" "missing required key"]}
            (me/humanize
              {:value {},
               :errors [{:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}
-                       {:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}]}
-             {:wrap :message})))))
+                       {:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}]})))))
 
 (deftest humanize-customization-test
   (let [schema [:map
@@ -106,7 +111,7 @@
               :d {:e ["missing required key"]
                   :f ["SHOULD BE ZIP"]}}
              (-> (m/explain schema value)
-                 (me/humanize {:wrap :message})))))
+                 (me/humanize)))))
 
     (testing "localization is applied, if available"
       (is (= {:a ["NUMERO"]
@@ -116,8 +121,7 @@
                   :f ["PITÄISI OLLA NUMERO"]}}
              (-> (m/explain schema value)
                  (me/humanize
-                   {:wrap :message
-                    :locale :fi
+                   {:locale :fi
                     :errors (-> me/default-errors
                                 (assoc-in ['int? :error/message :fi] "NUMERO")
                                 (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))
@@ -135,7 +139,7 @@
       (is (= {:z ["should be int"], :malli/error ["(> x y)"]}
              (-> schema
                  (m/explain {:x 1 :y 2, :z "1"})
-                 (me/humanize {:wrap :message})))))
+                 (me/humanize)))))
 
     (testing ":error/path contributes to path"
       (let [schema [:and [:map
@@ -150,7 +154,7 @@
                (-> schema
                    (m/explain {:password "secret"
                                :password2 "faarao"})
-                   (me/humanize {:wrap :message})))))))
+                   (me/humanize)))))))
 
   (testing "on collections, first error wins"
     (let [schema [:and
@@ -162,15 +166,15 @@
       (is (= ["first should be positive"]
              (-> schema
                  (m/explain [-2 1])
-                 (me/humanize {:wrap :message}))))
+                 (me/humanize))))
       (is (= [nil ["should be int"]]
              (-> schema
                  (m/explain [-2 "1"])
-                 (me/humanize {:wrap :message}))))
+                 (me/humanize))))
       (is (= ["invalid type"]
              (-> schema
                  (m/explain '(-2 "1"))
-                 (me/humanize {:wrap :message}))))))
+                 (me/humanize))))))
 
   (testing "on non-collections, first error wins"
     (let [schema [:and
@@ -181,16 +185,16 @@
       (is (= ["should be >= 1"]
              (-> schema
                  (m/explain 0)
-                 (me/humanize {:wrap :message}))))
+                 (me/humanize))))
       (is (= ["should be int"]
              (-> schema
                  (m/explain "kikka")
-                 (me/humanize {:wrap :message}))))
+                 (me/humanize))))
       (is (= ["should be >= 2"]
              (-> schema
                  (m/explain 1)
-                 (me/humanize {:wrap :message}))))
+                 (me/humanize))))
       (is (= nil
              (-> schema
                  (m/explain 2)
-                 (me/humanize {:wrap :message})))))))
+                 (me/humanize)))))))

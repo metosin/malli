@@ -270,14 +270,24 @@
                     [:x boolean?]
                     [:y {:optional true} int?]
                     [:z {:optional false} string?]])
+          closed-schema (m/schema
+                          [:map {:closed true}
+                           [:x boolean?]
+                           [:y {:optional true} int?]
+                           [:z {:optional false} string?]])
           valid {:x true, :y 1, :z "kikka"}
+          valid-with-extras {:x true, :y 1, :z "kikka", :extra "key"}
           valid2 {:x false, :y 1, :z "kikka"}
           invalid {:x true, :y "invalid", :z "kikka", :extra "ok"}]
 
       (is (true? (m/validate schema valid)))
+      (is (true? (m/validate schema valid-with-extras)))
       (is (true? (m/validate schema valid2)))
       (is (false? (m/validate schema invalid)))
       (is (false? (m/validate schema "not-a-map")))
+
+      (is (true? (m/validate closed-schema valid)))
+      (is (false? (m/validate closed-schema valid-with-extras)))
 
       (is (nil? (m/explain schema valid)))
       (is (nil? (m/explain schema valid2)))
@@ -308,6 +318,16 @@
                      :value "not-a-map"
                      :errors [{:path [], :in [], :schema schema, :value "not-a-map", :type ::m/invalid-type}]}
                     (m/explain schema "not-a-map")))
+
+      (is (results= {:schema closed-schema
+                     :value valid-with-extras
+                     :errors [{:path [],
+                               :in [:extra],
+                               :schema closed-schema,
+                               :value nil,
+                               :type :malli.core/extra-key,
+                               :message nil}]}
+                    (m/explain closed-schema valid-with-extras)))
 
       (is (= {:x true} (m/decode schema {:x "true"} mt/string-transformer)))
       (is (= {:x true, :y 1} (m/decode schema {:x "true", :y "1"} mt/string-transformer)))

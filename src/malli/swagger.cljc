@@ -11,7 +11,7 @@
 
 (defmethod accept :and [_ _ children _] (assoc (first children) :x-allOf children))
 (defmethod accept :or [_ _ children _] (assoc (first children) :x-anyOf children))
-(defmethod accept :multi [_ _ children _] (assoc (first children) :x-anyOf children))
+(defmethod accept :multi [_ _ children _] (let [cs (mapv last children)] (assoc (first cs) :x-anyOf cs)))
 
 (defmethod accept :maybe [_ _ children {:keys [type in]}]
   (let [k (if (and (= type :parameter) (not= in :body)) :allowEmptyValue :x-nullable)]

@@ -473,6 +473,63 @@ Schema unions (merged values of both schemas are valid for union schema):
 ;            [:country [:or [:enum "finland" "poland"] string?]]]]]
 ```
 
+Updating Schema properties:
+
+```clj
+(mu/update-properties [:vector int?] assoc :min 1)
+; => [:vector {:min 1} int?]
+```
+
+Closing and opening all `:map` schemas recursively:
+
+```clj
+(def abcd
+  [:map {:title "abcd"}
+   [:a int?]
+   [:b {:optional true} int?]
+   [:c [:map
+        [:d int?]]]])
+
+(mu/closed-schema abcd)
+;[:map {:title "abcd", :closed true}
+; [:a int?]
+; [:b {:optional true} int?]
+; [:c [:map {:closed true}
+;      [:d int?]]]]
+
+(-> abcd mu/closed-schema mu/open-schema)
+;[:map {:title "abcd"}
+; [:a int?]
+; [:b {:optional true} int?]
+; [:c [:map
+;      [:d int?]]]]
+```
+
+Adding generated example values to Schemas:
+
+```clj
+(m/accept
+  [:map
+   [:name string?]
+   [:description string?]
+   [:address
+    [:map
+     [:street string?]
+     [:country [:enum "finland" "poland"]]]]]
+  (m/schema-visitor
+    (fn [schema]
+      (mu/update-properties schema assoc :examples (mg/sample schema {:size 2, :seed 20})))))
+;[:map
+; {:examples ({:name "", :description "", :address {:street "", :country "poland"}}
+;             {:name "W", :description "x", :address {:street "8", :country "finland"}})}
+; [:name [string? {:examples ("" "")}]]
+; [:description [string? {:examples ("" "")}]]
+; [:address
+;  [:map
+;   {:examples ({:street "", :country "finland"} {:street "W", :country "poland"})}
+;   [:street [string? {:examples ("" "")}]]
+;   [:country [:enum {:examples ("finland" "poland")} "finland" "poland"]]]]]
+```
 
 ## Persisting Schemas 
 
@@ -662,28 +719,23 @@ Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/
 
 ```clj
 (defn visitor [schema children _]
-  {:name (m/name schema)
-   :properties (or (m/properties schema) {})
-   :children children})
+  (let [properties (m/properties schema)]
+    (cond-> {:name (m/name schema)}
+            (seq properties) (assoc :properties properties)
+            (seq children) (assoc :children children))))
 
 (m/accept Address visitor)
 ;{:name :map,
-; :properties {},
-; :children [{:name string?
-;             :properties {}
-;             :children []}
-;            {:name :set
-;             :properties {}
-;             :children [{:name keyword?, :properties {}, :children []}]}
-;            {:name :map,
-;             :properties {},
-;             :children [{:name string?, :properties {}, :children []}
-;                        {:name string?, :properties {}, :children []}
-;                        {:name int?, :properties {}, :children []}
-;                        {:name :tuple,
-;                         :properties {},
-;                         :children [{:name double?, :properties {}, :children []}
-;                                    {:name double?, :properties {}, :children []}]}]}]}
+; :children [[:id nil {:name string?}]
+;            [:tags nil {:name :set
+;                        :children [{:name keyword?}]}]
+;            [:address nil {:name :map,
+;                           :children [[:street nil {:name string?}]
+;                                      [:city nil {:name string?}]
+;                                      [:zip nil {:name int?}]
+;                                      [:lonlat nil {:name :tuple
+;                                                    :children [{:name double?} 
+;                                                               {:name double?}]}]]}]]}
 ```
 
 ### JSON Schema

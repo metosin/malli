@@ -69,16 +69,14 @@
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
 (defmethod accept :map [_ schema children _]
-  (let [entries (m/map-entries schema)
-        required (->> entries (filter (comp not :optional second)) (mapv first))
-        keys (->> entries (mapv first))]
+  (let [required (->> children (filter (comp not :optional second)) (mapv first))]
     (merge
       {:type "object"
-       :properties (apply array-map (interleave keys children))
+       :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))
        :required required}
       (json-schema-props schema "json-schema"))))
 
-(defmethod accept :multi [_ _ children _] {:oneOf children})
+(defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
 (defmethod accept :vector [_ _ children _] {:type "array", :items (first children)})
 (defmethod accept :list [_ _ children _] {:type "array", :items (first children)})

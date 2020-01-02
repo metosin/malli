@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             [malli.edn :as me]
-            [malli.transform :as mt]))
+            [malli.transform :as mt]
+            [malli.util :as mu]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -20,6 +21,9 @@
 (defn entries= [& entries]
   (apply = (map (partial map #(update % 2 m/form)) entries)))
 
+(defn form= [& entries]
+  (apply = (map m/form entries)))
+
 (defn over-the-wire [?schema]
   (-> ?schema (me/write-string) (me/read-string)))
 
@@ -36,9 +40,6 @@
     [:x {:optional true} int?] {:optional true}
     [:x {:optional false} int?] {:optional false}))
 
-(defn visitor [schema children _]
-  (into [(m/name schema)] (seq children)))
-
 (deftest eval-test
   (is (= 2 ((m/eval inc) 1)))
   (is (= 2 ((m/eval 'inc) 1)))
@@ -50,6 +51,14 @@
   (is (= :maybe (m/eval "(m/name [:maybe int?])")))
   (is (= ['int? 'string?] (m/eval "(m/children [:or {:some \"props\"} int? string?])")))
   (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
+
+(deftest into-schema-test
+  (is (form= [:map {:closed true} [:x int?]]
+             (m/into-schema :map {:closed true} [[:x int?]]))))
+
+(deftest schema-visitor-test
+  (is (form= [:map {:closed true} [:x int?]]
+             (m/accept [:map {:closed true} [:x int?]] (m/schema-visitor identity)))))
 
 (deftest validation-test
 
@@ -87,7 +96,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= ['int?] (m/accept schema visitor)))
+      (is (= {:name 'int?}
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= 'int? (m/form schema)))))
 
@@ -117,7 +127,12 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:and ['int?] [:or ['pos-int?] ['neg-int?]]] (m/accept schema visitor)))
+      (is (= {:name :and
+              :children [{:name 'int?}
+                         {:name :or
+                          :children [{:name 'pos-int?}
+                                     {:name 'neg-int?}]}]}
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
 
@@ -153,7 +168,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:> 0] (m/accept schema visitor)))
+      (is (= {:name :>, :children [0]}
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -174,7 +190,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:enum 1 2] (m/accept schema visitor)))
+      (is (= {:name :enum, :children [1 2]}
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:enum 1 2] (m/form schema)))))
 
@@ -198,7 +215,8 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= [:maybe ['int?]] (m/accept schema visitor)))
+      (is (= {:name :maybe, :children [{:name 'int?}]}
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
@@ -223,7 +241,8 @@
 
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
-        (is (= [:re] (m/accept schema visitor)))
+        (is (= {:name :re}
+               (m/accept schema m/map-syntax-visitor)))
 
         (is (= form (m/form schema))))))
 
@@ -247,7 +266,8 @@
 
         (is (true? (m/validate (over-the-wire schema) 12)))
 
-        (is (= [:fn] (m/accept schema visitor)))
+        (is (= {:name :fn, :properties {:description "number between 10 and 18"}}
+               (m/accept schema m/map-syntax-visitor)))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
@@ -347,7 +367,11 @@
 
       (is (true? (m/validate (over-the-wire schema) valid)))
 
-      (is (= [:map ['boolean?] ['int?] ['string?]] (m/accept schema visitor)))
+      (is (= {:name :map
+              :children [[:x nil {:name 'boolean?}]
+                         [:y {:optional true} {:name 'int?}]
+                         [:z {:optional false} {:name 'string?}]]}
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:map
               [:x 'boolean?]
@@ -438,7 +462,19 @@
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
-      (is (= [:multi [:map ['keyword?] ['int?]] [:map ['keyword?] ['string?] [:map ['keyword?]]]] (m/accept schema visitor)))
+      (is (= {:name :multi
+              :properties {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}
+              :children [[:sized nil {:name :map
+                                      :children [[:type nil {:name 'keyword?}]
+                                                 [:size nil {:name 'int?}]]}]
+                         [:human nil {:name :map
+                                      :children [[:type nil {:name 'keyword?}]
+                                                 [:name nil {:name 'string?}]
+                                                 [:address nil {:name :map
+                                                                :children [[:country nil {:name 'keyword?}]]}]]}]]}
+
+
+             (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:multi
               {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}
@@ -484,7 +520,8 @@
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
-    (is (= [:map-of ['int?] ['pos-int?]] (m/accept [:map-of int? pos-int?] visitor)))
+    (is (= {:name :map-of, :children [{:name 'int?} {:name 'pos-int?}]}
+           (m/accept [:map-of int? pos-int?] m/map-syntax-visitor)))
 
     (testing "keyword keys are transformed via strings"
       (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} mt/string-transformer)))))
@@ -755,8 +792,10 @@
 
     (testing "visit"
       (doseq [name [:vector :list :sequential :set]]
-        (is (= [name ['int?]] (m/accept [name int?] visitor))))
-      (is (= [:tuple ['int?] ['int?]] (m/accept [:tuple int? int?] visitor))))))
+        (is (= {:name name, :children [{:name 'int?}]}
+               (m/accept [name int?] m/map-syntax-visitor))))
+      (is (= {:name :tuple, :children [{:name 'int?} {:name 'int?}]}
+             (m/accept [:tuple int? int?] m/map-syntax-visitor))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]
@@ -785,7 +824,16 @@
   (testing "children can be set and retrieved"
     (is (= ['int? 'pos-int?]
            (m/children [:and {:a 1} int? pos-int?])
+           (m/children [:and {} int? pos-int?])
            (m/children [:and int? pos-int?])))))
+
+(deftest opts-test
+  (testing "opts can be set and retrieved"
+    (let [opts {:tyyris "tyllero"
+                :registry m/default-registry}
+          schema (m/into-schema 'int? {} nil opts)]
+      (is (= opts
+             (m/opts schema))))))
 
 (deftest round-trip-test
   (testing "schemas can be roundtripped"
@@ -799,7 +847,7 @@
       (is (= true
              (m/validate schema valid)
              (m/validate schema' valid)))
-      (is (= (m/form schema) (m/form schema'))))))
+      (is (form= schema schema')))))
 
 (deftest custom-registry-test
   (let [registry (merge

@@ -14,7 +14,7 @@
   (-name [this] "returns name of the schema")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  (-transformer [this transformer method] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
+  (-transformer [this transformer method options] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
   (-accept [this visitor options] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
@@ -25,7 +25,7 @@
 
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
-  (-value-transformer [this schema method] "returns an value transforming interceptor for the given schema and method"))
+  (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
 (defrecord SchemaError [path in schema value type message])
 
@@ -95,8 +95,8 @@
           (-explainer [this path]
             (fn [value in acc]
               (if-not (validator value) (conj acc (error path in this value)) acc)))
-          (-transformer [this transformer method]
-            (-value-transformer transformer this method))
+          (-transformer [this transformer method options]
+            (-value-transformer transformer this method options))
           (-accept [this visitor options] (visitor this (vec children) options))
           (-properties [_] properties)
           (-options [_] options)
@@ -143,9 +143,9 @@
                         (nil? acc'') acc'
                         :else acc'')))
                   acc explainers))))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
-                  child-transformers (map #(-transformer % transformer method) child-schemas)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
+                  child-transformers (map #(-transformer % transformer method options) child-schemas )
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ?->this (or ->this identity)
@@ -251,11 +251,11 @@
                     (fn [acc explainer]
                       (explainer x in acc))
                     acc explainers)))))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (some->>
                                        entries
-                                       (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method)] [k t])))
+                                       (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method options)] [k t])))
                                        (into {}))
                   build (fn [phase]
                           (let [->this (phase this-transformer)
@@ -314,10 +314,10 @@
                              (key-explainer key in)
                              (value-explainer value in))))
                     acc m)))))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
-                  key-transformer (-transformer key-schema transformer method)
-                  child-transformer (-transformer value-schema transformer method)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
+                  key-transformer (-transformer key-schema transformer method options)
+                  child-transformer (-transformer value-schema transformer method options)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ->key (if-let [t (phase key-transformer)]
@@ -374,9 +374,9 @@
                             (if (< i size)
                               (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
-                  child-transformer (-transformer schema transformer method)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
+                  child-transformer (-transformer schema transformer method options)
                   build (fn [phase]
                           (let [->this (or (phase this-transformer) fwrap)
                                 ->child (if-let [ct (phase child-transformer)]
@@ -421,10 +421,10 @@
                   (not= (count x) size) (conj acc (error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (->> schemas
-                                          (mapv #(-transformer % transformer method))
+                                          (mapv #(-transformer % transformer method options))
                                           (map-indexed vector)
                                           (into {}))
                   build (fn [phase]
@@ -457,8 +457,8 @@
             (fn explain [x in acc]
               (if-not (validator x) (conj acc (error path in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
-          (-transformer [this transformer method]
-            (-value-transformer transformer this method))
+          (-transformer [this transformer method options]
+            (-value-transformer transformer this method options))
           (-accept [this visitor options] (visitor this (vec children) options))
           (-properties [_] properties)
           (-options [_] options)
@@ -485,8 +485,8 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [this transformer method]
-            (-value-transformer transformer this method))
+          (-transformer [this transformer method options]
+            (-value-transformer transformer this method options))
           (-accept [this visitor options] (visitor this [] options))
           (-properties [_] properties)
           (-options [_] options)
@@ -512,8 +512,8 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (error path in this x (:type (ex-data e))))))))
-          (-transformer [this transformer method]
-            (-value-transformer transformer this method))
+          (-transformer [this transformer method options]
+            (-value-transformer transformer this method options))
           (-accept [this visitor options] (visitor this [] options))
           (-properties [_] properties)
           (-options [_] options)
@@ -535,9 +535,9 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
-                  child-transformer (-transformer schema' transformer method)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
+                  child-transformer (-transformer schema' transformer method options)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ->child (phase child-transformer)]
@@ -577,10 +577,10 @@
                 (if-let [explainer (explainers (dispatch x))]
                   (explainer x in acc)
                   (conj acc (error path in this x ::invalid-dispatch-value))))))
-          (-transformer [this transformer method]
-            (let [this-transformer (-value-transformer transformer this method)
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (reduce-kv
-                                       #(assoc %1 %2 (-transformer %3 transformer method))
+                                       #(assoc %1 %2 (-transformer %3 transformer method options))
                                        {} dispatch-map)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
@@ -715,7 +715,7 @@
   ([?schema t]
    (decoder ?schema nil t))
   ([?schema options t]
-   (let [{:keys [enter leave]} (-transformer (schema ?schema options) t :decode)]
+   (let [{:keys [enter leave]} (-transformer (schema ?schema options) t :decode options)]
      (cond
        (and enter leave) (comp leave enter)
        (or enter leave) (or enter leave)
@@ -735,7 +735,7 @@
   ([?schema t]
    (encoder ?schema nil t))
   ([?schema options t]
-   (let [{:keys [enter leave]} (-transformer (schema ?schema options) t :encode)]
+   (let [{:keys [enter leave]} (-transformer (schema ?schema options) t :encode options)]
      (cond
        (and enter leave) (comp leave enter)
        (or enter leave) (or enter leave)

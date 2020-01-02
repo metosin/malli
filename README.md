@@ -715,16 +715,35 @@ All samples are valid against the inferred schema:
 
 ## Schema Transformation
 
-Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern):
+Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern).
+
+The identity visitor:
 
 ```clj
-(defn visitor [schema children _]
-  (let [properties (m/properties schema)]
-    (cond-> {:name (m/name schema)}
-            (seq properties) (assoc :properties properties)
-            (seq children) (assoc :children children))))
+(m/accept 
+  Address 
+  (m/schema-visitor identity))
+;[:map
+; [:id string?]
+; [:tags [:set keyword?]]
+; [:address
+;  [:map
+;   [:street string?]
+;   [:city string?]
+;   [:zip int?]
+;   [:lonlat [:tuple double? double?]]]]]
+```
 
-(m/accept Address visitor)
+Transforming schemas into map-syntax:
+
+```clj
+(m/accept
+  Address
+  (fn [schema children _]
+    (let [properties (m/properties schema)]
+      (cond-> {:name (m/name schema)}
+              (seq properties) (assoc :properties properties)
+              (seq children) (assoc :children children)))))
 ;{:name :map,
 ; :children [[:id nil {:name string?}]
 ;            [:tags nil {:name :set

@@ -275,7 +275,7 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts]
-            (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
+            (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor opts)]) entries) opts))
           (-properties [_] properties)
           (-opts [_] opts)
           (-form [_] form)
@@ -592,7 +592,7 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor opts]
-            (visitor this (->> entries (map last) (mapv #(-accept % visitor opts))) opts))
+            (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor opts)]) entries) opts))
           (-properties [_] properties)
           (-opts [_] opts)
           (-form [_] form))))))
@@ -669,7 +669,7 @@
    (let [schema (schema ?schema opts)
          form (-form schema)]
      (if (vector? form)
-       (->> form (drop (if (-properties schema) 2 1)))))))
+       (->> form (drop (if (seq (-properties schema)) 2 1)))))))
 
 (defn name
   ([?schema]
@@ -765,6 +765,19 @@
                                                                  'm/name name
                                                                  'm/children children
                                                                  'm/map-entries map-entries}})))
+;;
+;; Visitors
+;;
+
+(defn schema-visitor [f]
+  (fn [schema children opts]
+    (f (into-schema (name schema) (properties schema) children opts))))
+
+(defn ^:no-doc map-syntax-visitor [schema children _]
+  (let [properties (properties schema)]
+    (cond-> {:name (name schema)}
+            (seq properties) (assoc :properties properties)
+            (seq children) (assoc :children children))))
 
 ;;
 ;; registries

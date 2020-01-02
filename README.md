@@ -662,28 +662,23 @@ Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/
 
 ```clj
 (defn visitor [schema children _]
-  {:name (m/name schema)
-   :properties (or (m/properties schema) {})
-   :children children})
+  (let [properties (m/properties schema)]
+    (cond-> {:name (m/name schema)}
+            (seq properties) (assoc :properties properties)
+            (seq children) (assoc :children children))))
 
 (m/accept Address visitor)
 ;{:name :map,
-; :properties {},
-; :children [{:name string?
-;             :properties {}
-;             :children []}
-;            {:name :set
-;             :properties {}
-;             :children [{:name keyword?, :properties {}, :children []}]}
-;            {:name :map,
-;             :properties {},
-;             :children [{:name string?, :properties {}, :children []}
-;                        {:name string?, :properties {}, :children []}
-;                        {:name int?, :properties {}, :children []}
-;                        {:name :tuple,
-;                         :properties {},
-;                         :children [{:name double?, :properties {}, :children []}
-;                                    {:name double?, :properties {}, :children []}]}]}]}
+; :children [[:id nil {:name string?}]
+;            [:tags nil {:name :set
+;                        :children [{:name keyword?}]}]
+;            [:address nil {:name :map,
+;                           :children [[:street nil {:name string?}]
+;                                      [:city nil {:name string?}]
+;                                      [:zip nil {:name int?}]
+;                                      [:lonlat nil {:name :tuple
+;                                                    :children [{:name double?} 
+;                                                               {:name double?}]}]]}]]}
 ```
 
 ### JSON Schema

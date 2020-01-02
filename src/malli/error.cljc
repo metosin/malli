@@ -54,8 +54,8 @@
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))
 
-(defn- -message [error x locale opts]
-  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error opts))
+(defn- -message [error x locale options]
+  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
       (-maybe-localized (:error/message x) locale)))
 
 (defn- -ensure [x k]
@@ -96,8 +96,8 @@
 (defn error-path
   ([error]
    (error-path error nil))
-  ([error opts]
-   (into (:in error) (-path error opts))))
+  ([error options]
+   (into (:in error) (-path error options))))
 
 (defn error-message
   ([error]
@@ -105,36 +105,36 @@
   ([{:keys [schema type] :as error}
     {:keys [errors locale default-locale]
      :or {errors default-errors
-          default-locale :en} :as opts}]
-   (or (-message error (m/properties schema) locale opts)
-       (-message error (errors (m/name schema)) locale opts)
-       (-message error (errors type) locale opts)
-       (-message error (m/properties schema) default-locale opts)
-       (-message error (errors (m/name schema)) default-locale opts)
-       (-message error (errors type) default-locale opts)
-       (-message error (errors ::unknown) locale opts)
-       (-message error (errors ::unknown) default-locale opts))))
+          default-locale :en} :as options}]
+   (or (-message error (m/properties schema) locale options)
+       (-message error (errors (m/name schema)) locale options)
+       (-message error (errors type) locale options)
+       (-message error (m/properties schema) default-locale options)
+       (-message error (errors (m/name schema)) default-locale options)
+       (-message error (errors type) default-locale options)
+       (-message error (errors ::unknown) locale options)
+       (-message error (errors ::unknown) default-locale options))))
 
 (defn with-error-message
   ([error]
    (with-error-message error nil))
-  ([error opts]
-   (assoc error :message (error-message error opts))))
+  ([error options]
+   (assoc error :message (error-message error options))))
 
 (defn with-error-messages
   ([explanation]
    (with-error-messages explanation nil))
-  ([explanation {f :wrap :or {f identity} :as opts}]
-   (update explanation :errors (partial map #(f (with-error-message % opts))))))
+  ([explanation {f :wrap :or {f identity} :as options}]
+   (update explanation :errors (partial map #(f (with-error-message % options))))))
 
 (defn humanize
   ([explanation]
    (humanize explanation nil))
-  ([{:keys [value errors]} {f :wrap :or {f :message} :as opts}]
+  ([{:keys [value errors]} {f :wrap :or {f :message} :as options}]
    (if errors
      (if (coll? value)
        (reduce
          (fn [acc error]
-           (-assoc-in acc value (error-path error opts) [(f (with-error-message error opts))]))
+           (-assoc-in acc value (error-path error options) [(f (with-error-message error options))]))
          nil errors)
-       [(f (with-error-message (first errors) opts))]))))
+       [(f (with-error-message (first errors) options))]))))

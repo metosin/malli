@@ -827,13 +827,13 @@
            (m/children [:and {} int? pos-int?])
            (m/children [:and int? pos-int?])))))
 
-(deftest opts-test
-  (testing "opts can be set and retrieved"
+(deftest options-test
+  (testing "options can be set and retrieved"
     (let [opts {:tyyris "tyllero"
                 :registry m/default-registry}
           schema (m/into-schema 'int? {} nil opts)]
       (is (= opts
-             (m/opts schema))))))
+             (m/options schema))))))
 
 (deftest round-trip-test
   (testing "schemas can be roundtripped"

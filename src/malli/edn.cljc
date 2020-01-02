@@ -6,11 +6,11 @@
 (defn write-string
   ([?schema]
    (write-string ?schema nil))
-  ([?schema opts]
-   (pr-str (m/form ?schema opts))))
+  ([?schema options]
+   (pr-str (m/form ?schema options))))
 
 (defn read-string
   ([form]
    (read-string form nil))
-  ([form opts]
-   (m/schema (edamame/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) opts)))
+  ([form options]
+   (m/schema (edamame/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) options)))

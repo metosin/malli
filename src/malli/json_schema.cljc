@@ -10,7 +10,7 @@
 (defn json-schema-props [schema prefix]
   (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ prefix))))
 
-(defmulti accept (fn [name _schema _children _opts] name) :default ::default)
+(defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
 (defmethod accept ::default [_ _ _ _] {})
 (defmethod accept 'any? [_ _ _ _] {})
@@ -85,12 +85,12 @@
 (defmethod accept :enum [_ _ children _] {:enum children})
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
-(defmethod accept :re [_ schema _ opts] {:type "string", :pattern (first (m/children schema opts))})
+(defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
 
-(defn- -json-schema-visitor [schema children opts]
+(defn- -json-schema-visitor [schema children options]
   (or (maybe-prefix schema :json-schema)
-      (merge (accept (m/name schema) schema children opts)
+      (merge (accept (m/name schema) schema children options)
              (json-schema-props schema "json-schema"))))
 
 ;;
@@ -100,5 +100,5 @@
 (defn transform
   ([?schema]
    (transform ?schema nil))
-  ([?schema opts]
-   (m/accept ?schema -json-schema-visitor opts)))
+  ([?schema options]
+   (m/accept ?schema -json-schema-visitor options)))

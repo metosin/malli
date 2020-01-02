@@ -81,3 +81,36 @@
      (merge ?schema1 ?schema2 (-> opts
                                   (update :merge-default (fnil identity merge-default))
                                   (update :merge-required (fnil identity merge-required)))))))
+
+(defn update-properties
+  "Returns a Schema instance with updated properties."
+  [schema f & args]
+  (let [schema (m/schema schema)
+        properties (apply f (m/properties schema) args)]
+    (m/into-schema
+      (m/name schema)
+      (if (seq properties) properties)
+      (m/children schema)
+      (m/opts schema))))
+
+(defn closed-schema
+  "Closes all :map Schemas recursively."
+  [schema]
+  (m/accept
+    schema
+    (m/schema-visitor
+      (fn [schema]
+        (if (= :map (m/name schema))
+          (update-properties schema assoc :closed true)
+          schema)))))
+
+(defn open-schema
+  "Opens up all :map Schemas recursively."
+  [schema]
+  (m/accept
+    schema
+    (m/schema-visitor
+      (fn [schema]
+        (if (= :map (m/name schema))
+          (update-properties schema dissoc :closed)
+          schema)))))

@@ -1,6 +1,5 @@
 (ns malli.util-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [malli.core :as m]
             [malli.util :as mu]))
 
 (deftest equals-test
@@ -104,3 +103,25 @@
         [:map [:x [:or int? string?]] [:y int?]]]
        [:body-params
         [:map [:z int?]]]]]]))
+
+(deftest update-properties-test
+  (let [schema [:and {:x 0} int?]]
+    (is (mu/equals [:and {:x 1} int?]
+                   (mu/update-properties schema update :x inc)))
+    (is (mu/equals [:and {:x 0, :joulu "loma"} int?]
+                   (mu/update-properties schema assoc :joulu "loma")))))
+
+(deftest open-closed-schema-test
+  (let [open [:map {:title "map"}
+              [:a int?]
+              [:b {:optional true} int?]
+              [:c [:map
+                   [:d int?]]]]
+        closed [:map {:title "map", :closed true}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c [:map {:closed true}
+                     [:d int?]]]]]
+
+    (is (mu/equals closed (mu/closed-schema open)))
+    (is (mu/equals open (mu/open-schema closed)))))

@@ -5,8 +5,8 @@
 (defn ^:no-doc equals
   ([?schema1 ?schema2]
    (equals ?schema1 ?schema2 nil))
-  ([?schema1 ?schema2 opts]
-   (= (m/form ?schema1 opts) (m/form ?schema2 opts))))
+  ([?schema1 ?schema2 options]
+   (= (m/form ?schema1 options) (m/form ?schema2 options))))
 
 (defn ^:no-doc simplify-map-entry [[k ?p s]]
   (cond
@@ -16,10 +16,10 @@
     (false? (:optional ?p)) [k (dissoc ?p :optional) s]
     :else [k ?p s]))
 
-(defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge opts]
+(defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge options]
   (let [required (merge-required (m/required-map-entry? e1) (m/required-map-entry? e2))
         p (clojure.core/merge ?p1 ?p2)]
-    (simplify-map-entry [k (assoc p :optional (not required)) (merge s1 s2 opts)])))
+    (simplify-map-entry [k (assoc p :optional (not required)) (merge s1 s2 options)])))
 
 ;;
 ;; public api
@@ -35,20 +35,20 @@
 
   | key               | description
   | ------------------|-------------
-  | `:merge-default`  | `schema1 schema2 opts -> schema` fn to merge unknown entries
+  | `:merge-default`  | `schema1 schema2 options -> schema` fn to merge unknown entries
   | `:merge-required` | `boolean boolean -> boolean` fn to resolve how required keys are merged"
   ([?schema1 ?schema2]
    (merge ?schema1 ?schema2 nil))
-  ([?schema1 ?schema2 opts]
-   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/schema ?schema1 opts))
-                                        (if ?schema2 (m/schema ?schema2 opts))]
+  ([?schema1 ?schema2 options]
+   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/schema ?schema1 options))
+                                        (if ?schema2 (m/schema ?schema2 options))]
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
-               merge-required (fn [_ r2] r2)}} opts]
+               merge-required (fn [_ r2] r2)}} options]
      (cond
        (not schema1) schema2
        (not schema2) schema1
-       (not= :map (m/name schema1) (m/name schema2)) (merge-default schema1 schema2 opts)
+       (not= :map (m/name schema1) (m/name schema2)) (merge-default schema1 schema2 options)
        :else (let [p (clojure.core/merge (m/properties schema1) (m/properties schema2))]
                (-> [:map]
                    (cond-> p (conj p))
@@ -60,7 +60,7 @@
                                         (fn [acc' [k1 :as e1]]
                                           (conj acc'
                                                 (if (= k1 k2)
-                                                  (-entry e1 e2 merge-required merge opts)
+                                                  (-entry e1 e2 merge-required merge options)
                                                   e1)))
                                         [] (:form acc))
                                       (assoc acc :form))
@@ -69,16 +69,16 @@
                                      (update :keys conj k2))))
                              {:keys #{}, :form []}
                              (mapcat m/map-entries schemas))))
-                   (m/schema opts)))))))
+                   (m/schema options)))))))
 
 (defn union
   "Union of two schemas. See [[merge]] for more details."
   ([?schema1 ?schema2]
    (union ?schema1 ?schema2 nil))
-  ([?schema1 ?schema2 opts]
-   (let [merge-default (fn [s1 s2 opts] (if (equals s1 s2) s1 (m/schema [:or s1 s2] opts)))
+  ([?schema1 ?schema2 options]
+   (let [merge-default (fn [s1 s2 options] (if (equals s1 s2) s1 (m/schema [:or s1 s2] options)))
          merge-required (fn [r1 r2] (and r1 r2))]
-     (merge ?schema1 ?schema2 (-> opts
+     (merge ?schema1 ?schema2 (-> options
                                   (update :merge-default (fnil identity merge-default))
                                   (update :merge-required (fnil identity merge-required)))))))
 
@@ -91,7 +91,7 @@
       (m/name schema)
       (if (seq properties) properties)
       (m/children schema)
-      (m/opts schema))))
+      (m/options schema))))
 
 (defn closed-schema
   "Closes all :map Schemas recursively."

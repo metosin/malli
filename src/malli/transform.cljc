@@ -14,18 +14,18 @@
 (defn- ->interceptor
   "Utility function to convert input into an interceptor. Works with functions,
   map and sequence of those."
-  [?interceptor schema opts]
+  [?interceptor schema options]
   (cond
 
     (fn? ?interceptor)
     {:enter ?interceptor}
 
     (and (map? ?interceptor) (contains? ?interceptor :compile))
-    (let [compiled (::compiled opts 0)
-          opts (assoc opts ::compiled (inc ^long compiled))]
+    (let [compiled (::compiled options 0)
+          options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
-        (m/fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :opts opts}))
-      (if-let [interceptor (->interceptor ((:compile ?interceptor) schema opts) schema opts)]
+        (m/fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
+      (if-let [interceptor (->interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
           (dissoc ?interceptor :compile)
           interceptor)))
@@ -44,7 +44,7 @@
                       (comp new-leave leave)
                       (or leave new-leave))]
           {:enter enter :leave leave}))
-      (keep #(->interceptor % schema opts) ?interceptor))
+      (keep #(->interceptor % schema options) ?interceptor))
 
     (nil? ?interceptor) nil
 
@@ -59,7 +59,7 @@
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))
-        opts (->> chain (map :opts) (apply merge))] ;; TODO: remove this
+        options (->> chain (map :options) (apply merge))] ;; TODO: remove this
     (reify
       m/Transformer
       (-transformer-chain [_] chain)
@@ -69,8 +69,8 @@
             (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
                                       (get transformers (m/name schema))
                                       default)]
-              (let [interceptor (->interceptor ?interceptor schema opts)]
-                (if (nil? acc) interceptor (->interceptor [acc interceptor] schema opts)))
+              (let [interceptor (->interceptor ?interceptor schema options)]
+                (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))
               acc)) nil chain')))))
 
 ;;

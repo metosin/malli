@@ -11,11 +11,11 @@
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
-(defn- -double-gen [opts] (gen/double* (merge {:infinite? false, :NaN? false} opts)))
+(defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
-(defn- -coll-gen [schema f opts]
-  (let [{:keys [min max]} (m/properties schema opts)
-        gen (-> schema m/children first (generator opts))]
+(defn- -coll-gen [schema f options]
+  (let [{:keys [min max]} (m/properties schema options)
+        gen (-> schema m/children first (generator options))]
     (gen/fmap f (cond
                   (and min (= min max)) (gen/vector gen min)
                   (and min max) (gen/vector gen min max)
@@ -23,14 +23,14 @@
                   max (gen/vector gen 0 max)
                   :else (gen/vector gen)))))
 
-(defn- -coll-distict-gen [schema f opts]
-  (let [{:keys [min max]} (m/properties schema opts)
-        gen (-> schema m/children first (generator opts))]
+(defn- -coll-distict-gen [schema f options]
+  (let [{:keys [min max]} (m/properties schema options)
+        gen (-> schema m/children first (generator options))]
     (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))
 
-(defn -map-gen [schema opts]
+(defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
-        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s opts)))
+        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options)))
         gen-req (->> entries
                      (remove #(-> % second :optional))
                      (map (fn [[k _ s]] (value-gen k s)))
@@ -41,53 +41,53 @@
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
-(defn -map-of-gen [schema opts]
-  (let [[k-gen v-gen] (map #(generator % opts) (m/children schema opts))]
+(defn -map-of-gen [schema options]
+  (let [[k-gen v-gen] (map #(generator % options) (m/children schema options))]
     (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
 
 #?(:clj
-   (defn -re-gen [schema opts]
-     (let [re (or (first (m/children schema opts)) (m/form schema opts))]
+   (defn -re-gen [schema options]
+     (let [re (or (first (m/children schema options)) (m/form schema options))]
        (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))))
 
 ;;
 ;; generators
 ;;
 
-(defmulti -generator (fn [schema opts] (m/name schema opts)) :default ::default)
+(defmulti -generator (fn [schema options] (m/name schema options)) :default ::default)
 
-(defmethod -generator ::default [schema opts] (ga/gen-for-pred (m/validator schema opts)))
+(defmethod -generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
-(defmethod -generator :> [schema opts] (-double-gen {:min (-> schema (m/children opts) first inc)}))
-(defmethod -generator :>= [schema opts] (-double-gen {:min (-> schema (m/children opts) first)}))
-(defmethod -generator :< [schema opts] (-double-gen {:max (-> schema (m/children opts) first dec)}))
-(defmethod -generator :<= [schema opts] (-double-gen {:max (-> schema (m/children opts) first)}))
-(defmethod -generator := [schema opts] (gen/return (first (m/children schema opts))))
-(defmethod -generator :not= [schema opts] (gen/such-that (partial not= (-> schema (m/children opts) first)) gen/any-printable 100))
+(defmethod -generator :> [schema options] (-double-gen {:min (-> schema (m/children options) first inc)}))
+(defmethod -generator :>= [schema options] (-double-gen {:min (-> schema (m/children options) first)}))
+(defmethod -generator :< [schema options] (-double-gen {:max (-> schema (m/children options) first dec)}))
+(defmethod -generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
+(defmethod -generator := [schema options] (gen/return (first (m/children schema options))))
+(defmethod -generator :not= [schema options] (gen/such-that (partial not= (-> schema (m/children options) first)) gen/any-printable 100))
 
-(defmethod -generator :and [schema opts] (gen/such-that (m/validator schema opts) (-> schema (m/children opts) first (generator opts)) 100))
-(defmethod -generator :or [schema opts] (gen/one-of (mapv #(generator % opts) (m/children schema opts))))
-(defmethod -generator :map [schema opts] (-map-gen schema opts))
-(defmethod -generator :map-of [schema opts] (-map-of-gen schema opts))
-(defmethod -generator :multi [schema opts] (gen/one-of (mapv #(generator (second %) opts) (m/children schema opts))))
-(defmethod -generator :vector [schema opts] (-coll-gen schema identity opts))
-(defmethod -generator :list [schema opts] (-coll-gen schema (partial apply list) opts))
-(defmethod -generator :sequential [schema opts] (-coll-gen schema identity opts))
-(defmethod -generator :set [schema opts] (-coll-distict-gen schema set opts))
-(defmethod -generator :enum [schema opts] (gen/elements (m/children schema opts)))
-(defmethod -generator :maybe [schema opts] (gen/one-of [(gen/return nil) (-> schema (m/children opts) first (generator opts))]))
-(defmethod -generator :tuple [schema opts] (apply gen/tuple (mapv #(generator % opts) (m/children schema opts))))
-#?(:clj (defmethod -generator :re [schema opts] (-re-gen schema opts)))
+(defmethod -generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
+(defmethod -generator :or [schema options] (gen/one-of (mapv #(generator % options) (m/children schema options))))
+(defmethod -generator :map [schema options] (-map-gen schema options))
+(defmethod -generator :map-of [schema options] (-map-of-gen schema options))
+(defmethod -generator :multi [schema options] (gen/one-of (mapv #(generator (second %) options) (m/children schema options))))
+(defmethod -generator :vector [schema options] (-coll-gen schema identity options))
+(defmethod -generator :list [schema options] (-coll-gen schema (partial apply list) options))
+(defmethod -generator :sequential [schema options] (-coll-gen schema identity options))
+(defmethod -generator :set [schema options] (-coll-distict-gen schema set options))
+(defmethod -generator :enum [schema options] (gen/elements (m/children schema options)))
+(defmethod -generator :maybe [schema options] (gen/one-of [(gen/return nil) (-> schema (m/children options) first (generator options))]))
+(defmethod -generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
+#?(:clj (defmethod -generator :re [schema options] (-re-gen schema options)))
 
-(defn- -create [schema opts]
-  (let [{:gen/keys [gen fmap elements]} (m/properties schema opts)
-        gen (or gen (when-not elements (-generator schema opts)))
+(defn- -create [schema options]
+  (let [{:gen/keys [gen fmap elements]} (m/properties schema options)
+        gen (or gen (when-not elements (-generator schema options)))
         elements (when elements (gen/elements elements))]
     (cond
       fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))
       elements elements
       gen gen
-      :else (m/fail! ::no-generator {:schema schema, :opts opts}))))
+      :else (m/fail! ::no-generator {:schema schema, :options options}))))
 
 ;;
 ;; public api
@@ -96,21 +96,21 @@
 (defn generator
   ([?schema]
    (generator ?schema nil))
-  ([?schema opts]
-   (-create (m/schema ?schema opts) opts)))
+  ([?schema options]
+   (-create (m/schema ?schema options) options)))
 
 (defn generate
   ([?gen-or-schema]
    (generate ?gen-or-schema nil))
-  ([?gen-or-schema {:keys [seed size] :or {size 1} :as opts}]
-   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema opts))]
+  ([?gen-or-schema {:keys [seed size] :or {size 1} :as options}]
+   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
      (rose/root (gen/call-gen gen (-random seed) size)))))
 
 (defn sample
   ([?gen-or-schema]
    (sample ?gen-or-schema nil))
-  ([?gen-or-schema {:keys [seed size] :or {size 10} :as opts}]
-   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema opts))]
+  ([?gen-or-schema {:keys [seed size] :or {size 10} :as options}]
+   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
      (->> (gen/make-size-range-seq size)
           (map #(rose/root (gen/call-gen gen %1 %2))
                (gen/lazy-random-states (-random seed)))

@@ -410,12 +410,10 @@
 
 (deftest options-in-transformaton
   (let [schema [:and int? [any? {:decode/string '{:compile (fn [_ {::keys [increment]}] (partial + (or increment 0)))}}]]
-        transformer (mt/transformer mt/string-transformer)
-        transformer1 (mt/transformer mt/string-transformer {:options {::increment 1}})
-        transformer1000 (mt/transformer mt/string-transformer {:options {::increment 1000}})]
+        transformer (mt/transformer mt/string-transformer)]
     (is (= 0 (m/decode schema "0" transformer)))
-    (is (= 1 (m/decode schema "0" transformer1)))
-    (is (= 1000 (m/decode schema "0" transformer1000)))))
+    (is (= 1 (m/decode schema "0" {::increment 1} transformer)))
+    (is (= 1000 (m/decode schema "0" {::increment 1000} transformer)))))
 
 (deftest default-transformer
   (testing "nil collections"

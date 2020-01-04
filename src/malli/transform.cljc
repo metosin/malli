@@ -94,6 +94,9 @@
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
+(defn number->double [x]
+  (if (number? x) (double x) x))
+
 (defn string->keyword [x]
   (if (string? x)
     (keyword x)
@@ -196,7 +199,7 @@
    'qualified-symbol? string->symbol
 
    'uuid? string->uuid
-
+   'double? number->double
    'inst? string->date
 
    :map-of (coerce-map-keys m/keyword->string)})

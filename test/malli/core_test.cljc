@@ -355,8 +355,7 @@
       (is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} mt/strip-extra-keys-transformer)))
       (is (= {:x_key true, :y_key 2} (m/decode schema {:x true, :y 2}
                                                (mt/key-transformer
-                                                 (fn [key]
-                                                   (-> key name (str "_key") keyword))))))
+                                                 {:decode #(-> % name (str "_key") keyword)}))))
 
       (is (= {:x 24}
              (m/decode

@@ -50,12 +50,14 @@
 
     :else (m/fail! ::invalid-transformer {:value ?interceptor})))
 
-(defn transformer [& ?transformer]
+(defn transformer [& ?transformers]
+  (when-let [invalid (seq (filter (comp fn? second) (map-indexed vector ?transformers)))]
+    (m/fail! ::invalid-transformers {:transformers ?transformers, :invalid invalid}))
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
-        chain (->> ?transformer (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
+        chain (->> ?transformers (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
@@ -282,28 +284,29 @@
      :decoders +string-decoders+
      :encoders +string-encoders+}))
 
-(def strip-extra-keys-transformer
-  (let [transform {:compile (fn [schema _]
-                              (if-let [ks (some->> schema m/map-entries (map first) seq set)]
-                                (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x)))))}]
-    (transformer
-      {:decoders {:map transform}
-       :encoders {:map transform}})))
-
-(defn key-transformer
-  ([decode-key-fn]
-   (key-transformer decode-key-fn nil))
-  ([decode-key-fn encode-key-fn]
-   (let [transform (fn [f]
-                     {:leave (fn [x]
-                               (if (map? x)
-                                 (reduce-kv
-                                   (fn [m k v] (assoc m (f k) v))
-                                   (empty x) x)
-                                 x))})]
+(defn strip-extra-keys-transformer
+  ([]
+   (strip-extra-keys-transformer nil))
+  ([{:keys [accept] :or {accept (comp (some-fn nil? true?) :closed m/properties)}}]
+   (let [transform {:compile (fn [schema _]
+                               (if (accept schema)
+                                 (if-let [ks (some->> schema m/map-entries (map first) seq set)]
+                                   (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x))))))}]
      (transformer
-       {:decoders {:map (transform decode-key-fn)}
-        :encoders {:map (transform encode-key-fn)}}))))
+       {:decoders {:map transform}
+        :encoders {:map transform}}))))
+
+(defn key-transformer [{:keys [decode encode]}]
+  (let [transform (fn [f]
+                    (if f {:leave (fn [x]
+                                    (if (map? x)
+                                      (reduce-kv
+                                        (fn [m k v] (assoc m (f k) v))
+                                        (empty x) x)
+                                      x))}))]
+    (transformer
+      {:decoders {:map (transform decode)}
+       :encoders {:map (transform encode)}})))
 
 (def default-value-transformer
   (let [get-default (fn [schema] (some-> schema m/properties :default))

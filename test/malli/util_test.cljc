@@ -124,4 +124,14 @@
                      [:d int?]]]]]
 
     (is (mu/equals closed (mu/closed-schema open)))
-    (is (mu/equals open (mu/open-schema closed)))))
+    (is (mu/equals open (mu/open-schema closed))))
+
+  (testing "explicitely open maps not effected"
+    (let [schema [:map {:title "map", :closed false}
+                  [:a int?]
+                  [:b {:optional true} int?]
+                  [:c [:map {, :closed false}
+                       [:d int?]]]]]
+
+      (is (mu/equals schema (mu/closed-schema schema)))
+      (is (mu/equals schema (mu/open-schema schema))))))

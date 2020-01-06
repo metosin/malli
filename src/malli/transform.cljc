@@ -166,11 +166,6 @@
   (if-not (nil? x)
     (str x)))
 
-(defn number->double [x]
-  (if (number? x)
-    (double x)
-    x))
-
 (defn any->any [x] x)
 
 (defn coerce-map-keys [transform]

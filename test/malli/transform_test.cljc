@@ -201,15 +201,9 @@
     (is (= "a,b,c" (m/encode [:vector {:encode/string {:leave #(str/join "," %)}}
                               string?] ["a" "b" "c"] mt/string-transformer)))))
 
-(deftest failing-fast-with-invalid-transformers
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (mt/transformer mt/strip-extra-keys-transformer)))
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (m/decoder int? mt/strip-extra-keys-transformer))))
-
 (deftest composing-transformers
   (let [strict-json-transformer (mt/transformer
-                                  (mt/strip-extra-keys-transformer)
+                                  mt/strip-extra-keys-transformer
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
@@ -225,7 +219,7 @@
 
   (let [transformer (mt/transformer
                       mt/string-transformer
-                      (mt/strip-extra-keys-transformer)
+                      mt/strip-extra-keys-transformer
                       (mt/key-transformer
                         {:decode #(-> % name (str "_key") keyword)
                          :encode #(-> % name (str "_key"))}))]

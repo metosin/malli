@@ -51,13 +51,11 @@
     :else (m/fail! ::invalid-transformer {:value ?interceptor})))
 
 (defn transformer [& ?transformers]
-  (when-let [invalid (seq (filter (comp fn? second) (map-indexed vector ?transformers)))]
-    (m/fail! ::invalid-transformers {:transformers ?transformers, :invalid invalid}))
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
-        chain (->> ?transformers (mapcat #(if (satisfies? m/Transformer %) (m/-transformer-chain %) [%])) (vec))
+        chain (->> ?transformers (mapcat #(if (map? %) [%] (-> % m/into-transformer m/-transformer-chain))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
@@ -267,13 +265,13 @@
 ;; transformers
 ;;
 
-(def json-transformer
+(defn json-transformer []
   (transformer
     {:name :json
      :decoders +json-decoders+
      :encoders +string-encoders+}))
 
-(def string-transformer
+(defn string-transformer []
   (transformer
     {:name :string
      :decoders +string-decoders+
@@ -303,7 +301,7 @@
       {:decoders {:map (transform decode)}
        :encoders {:map (transform encode)}})))
 
-(def default-value-transformer
+(defn default-value-transformer []
   (let [get-default (fn [schema] (some-> schema m/properties :default))
         set-default {:compile (fn [schema _]
                                 (if-let [default (get-default schema)]
@@ -331,6 +329,6 @@
       {:decoders {:map add-defaults}
        :encoders {:map add-defaults}})))
 
-(def collection-transformer
+(defn collection-transformer []
   (transformer
     {:name ::collection}))

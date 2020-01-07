@@ -55,22 +55,24 @@
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
-        chain (->> ?transformers (mapcat #(if (map? %) [%] (-> % m/into-transformer m/-transformer-chain))) (vec))
+        ->chain (comp m/-transformer-chain m/into-transformer)
+        chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
-    (reify
-      m/Transformer
-      (-transformer-chain [_] chain)
-      (-value-transformer [_ schema method options]
-        (reduce
-          (fn [acc {{:keys [key default transformers]} method}]
-            (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
-                                      (get transformers (m/name schema))
-                                      default)]
-              (let [interceptor (->interceptor ?interceptor schema options)]
-                (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))
-              acc)) nil chain')))))
+    (if (seq chain)
+	    (reify
+	      m/Transformer
+	      (-transformer-chain [_] chain)
+	      (-value-transformer [_ schema method options]
+	        (reduce
+	          (fn [acc {{:keys [key default transformers]} method}]
+	            (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
+	                                      (get transformers (m/name schema))
+	                                      default)]
+	              (let [interceptor (->interceptor ?interceptor schema options)]
+	                (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))
+	              acc)) nil chain'))))))
 
 ;;
 ;; From Strings

@@ -202,7 +202,10 @@
                               string?] ["a" "b" "c"] mt/string-transformer)))))
 
 (deftest composing-transformers
+  (is (= nil (mt/transformer nil)))
+
   (let [strict-json-transformer (mt/transformer
+                                  nil
                                   mt/strip-extra-keys-transformer
                                   mt/json-transformer
                                   {:opts {:random :opts}})]

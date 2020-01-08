@@ -487,7 +487,7 @@
                   (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
-          (-accept [this visitor options] (visitor this [] options))
+          (-accept [this visitor options] (visitor this (vec children) options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form))))))
@@ -514,7 +514,7 @@
                   (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
-          (-accept [this visitor options] (visitor this [] options))
+          (-accept [this visitor options] (visitor this (vec children) options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] (create-form :fn properties children)))))))

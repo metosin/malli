@@ -224,7 +224,8 @@
     (doseq [form [[:re "^[a-z]+\\.[a-z]+$"]
                   [:re #"^[a-z]+\.[a-z]+$"]
                   #"^[a-z]+\.[a-z]+$"]]
-      (let [schema (m/schema form)]
+      (let [schema (m/schema form)
+            re (if (sequential? form) (last form) form)]
 
         (is (true? (m/validate schema "a.b")))
         (is (false? (m/validate schema "abba")))
@@ -241,7 +242,7 @@
 
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
-        (is (= {:name :re}
+        (is (= {:name :re, :children [re]}
                (m/accept schema m/map-syntax-visitor)))
 
         (is (= form (m/form schema))))))
@@ -266,7 +267,9 @@
 
         (is (true? (m/validate (over-the-wire schema) 12)))
 
-        (is (= {:name :fn, :properties {:description "number between 10 and 18"}}
+        (is (= {:name :fn
+                :children [fn]
+                :properties {:description "number between 10 and 18"}}
                (m/accept schema m/map-syntax-visitor)))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]

@@ -614,6 +614,12 @@
       (get registry ?schema)
       (some-> registry (get (type ?schema)) (-into-schema nil [?schema] options))))
 
+(defn ^:no-doc into-transformer [x]
+  (cond
+    (satisfies? Transformer x) x
+    (fn? x) (into-transformer (x))
+    :else (fail! ::invalid-transformer {:value x})))
+
 ;;
 ;; public api
 ;;
@@ -715,7 +721,7 @@
   ([?schema t]
    (decoder ?schema nil t))
   ([?schema options t]
-   (let [{:keys [enter leave]} (-transformer (schema ?schema options) t :decode options)]
+   (let [{:keys [enter leave]} (-transformer (schema ?schema options) (into-transformer t) :decode options)]
      (cond
        (and enter leave) (comp leave enter)
        (or enter leave) (or enter leave)
@@ -735,7 +741,7 @@
   ([?schema t]
    (encoder ?schema nil t))
   ([?schema options t]
-   (let [{:keys [enter leave]} (-transformer (schema ?schema options) t :encode options)]
+   (let [{:keys [enter leave]} (-transformer (schema ?schema options) (into-transformer t) :encode options)]
      (cond
        (and enter leave) (comp leave enter)
        (or enter leave) (or enter leave)

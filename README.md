@@ -298,7 +298,7 @@ Transform map keys:
              :city "Tampere"
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
-  (mt/key-transformer name))
+  (mt/key-transformer {:decode name}))
 ;{"id" "Lillan",
 ; "tags" #{:coffee :artesan :garden},
 ; "address" {"street" "Ahlmanintie 29"

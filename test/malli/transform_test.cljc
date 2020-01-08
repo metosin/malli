@@ -202,7 +202,10 @@
                               string?] ["a" "b" "c"] mt/string-transformer)))))
 
 (deftest composing-transformers
+  (is (= nil (mt/transformer nil)))
+
   (let [strict-json-transformer (mt/transformer
+                                  nil
                                   mt/strip-extra-keys-transformer
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
@@ -217,29 +220,49 @@
       (is (= "kikka" (m/encode keyword? :kikka strict-json-transformer)))
       (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))))
 
-  (let [strip-extra-key-transformer (mt/transformer
-                                      mt/string-transformer
-                                      mt/strip-extra-keys-transformer
-                                      (mt/key-transformer
-                                        #(-> % name (str "_key") keyword)
-                                        #(-> % name (str "_key"))))]
+  (let [transformer (mt/transformer
+                      mt/string-transformer
+                      mt/strip-extra-keys-transformer
+                      (mt/key-transformer
+                        {:decode #(-> % name (str "_key") keyword)
+                         :encode #(-> % name (str "_key"))}))]
     (testing "decode"
       (is (= {:x_key 18 :y_key "john"}
              (m/decode
                [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                {:x "18" :y "john" :a "doe"}
-               strip-extra-key-transformer))))
+               transformer))))
     (testing "encode"
       (is (= {"x_key" "18" "y_key" "john"}
              (m/encode
                [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                {:x 18 :y "john" :a "doe"}
-               strip-extra-key-transformer))))))
+               transformer))))))
+
+(deftest strip-extra-keys-transformer-test
+  (let [strip-default (mt/strip-extra-keys-transformer)
+        strip-closed (mt/strip-extra-keys-transformer {:accept (comp :closed m/properties)})
+        strip-all (mt/strip-extra-keys-transformer {:accept (constantly true)})]
+
+    (are [expected transformer schema]
+      (is (= expected (m/decode schema {:x 1, :y 2} transformer)))
+
+      {:x 1} strip-default [:map [:x int?]]
+      {:x 1, :y 2} strip-default [:map {:closed false} [:x int?]]
+      {:x 1} strip-default [:map {:closed true} [:x int?]]
+
+      {:x 1, :y 2} strip-closed [:map [:x int?]]
+      {:x 1, :y 2} strip-closed [:map {:closed false} [:x int?]]
+      {:x 1} strip-closed [:map {:closed true} [:x int?]]
+
+      {:x 1} strip-all [:map [:x int?]]
+      {:x 1} strip-all [:map {:closed false} [:x int?]]
+      {:x 1} strip-all [:map {:closed true} [:x int?]])))
 
 (deftest key-transformer
   (let [key-transformer (mt/key-transformer
-                          #(-> % name (str "_key") keyword)
-                          #(-> % name (str "_key")))]
+                          {:decode #(-> % name (str "_key") keyword)
+                           :encode #(-> % name (str "_key"))})]
     (testing "decode"
       (is (= {:x_key 18 :y_key "john" :a_key "doe"}
              (m/decode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]

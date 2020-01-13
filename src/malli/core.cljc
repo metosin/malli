@@ -145,7 +145,7 @@
                   acc explainers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (map #(-transformer % transformer method options) child-schemas )
+                  child-transformers (map #(-transformer % transformer method options) child-schemas)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ?->this (or ->this identity)
@@ -174,7 +174,7 @@
           (-form [_] (create-form name properties (map -form child-schemas))))))))
 
 (defn- -properties-and-children [xs]
-  (if (map? (first xs))
+  (if ((some-fn map? nil?) (first xs))
     [(first xs) (rest xs)]
     [nil xs]))
 
@@ -183,7 +183,7 @@
     [k p (f (schema v options))]))
 
 (defn- -parse-map-entries [children options]
-  (->> children (keep identity) (mapv #(-expand-key % options identity))))
+  (->> children (mapv #(-expand-key % options identity))))
 
 (defn ^:no-doc map-entry-forms [entries]
   (mapv (fn [[k p v]] (let [v' (-form v)] (if p [k p v'] [k v']))) entries))
@@ -628,7 +628,7 @@
   ([name properties children]
    (into-schema name properties children nil))
   ([name properties children options]
-   (-into-schema (-schema name options) properties children options)))
+   (-into-schema (-schema name options) (if (seq properties) properties) children options)))
 
 (defn schema? [x]
   (satisfies? Schema x))
@@ -640,8 +640,8 @@
    (cond
      (schema? ?schema) ?schema
      (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (apply -into-schema (concat [(-schema (first ?schema) options)]
-                                                   (-properties-and-children (rest ?schema)) [options]))
+     (vector? ?schema) (apply into-schema (concat [(-schema (first ?schema) options)]
+                                                  (-properties-and-children (rest ?schema)) [options]))
      :else (or (some-> ?schema (-schema options) (schema options)) (fail! ::invalid-schema {:schema ?schema})))))
 
 (defn form

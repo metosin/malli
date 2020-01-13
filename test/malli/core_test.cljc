@@ -2,8 +2,7 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             [malli.edn :as me]
-            [malli.transform :as mt]
-            [malli.util :as mu]))
+            [malli.transform :as mt]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -187,6 +186,11 @@
       ;; TODO: infer type from :enum
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
       #_(is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (testing "map enums require nil properties"
+        (let [schema [:enum nil {:a 1} {:b 2}]]
+          (is (= nil (m/properties schema)))
+          (is (= [{:a 1} {:b 2}] (m/children schema)))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -820,7 +824,14 @@
     (let [properties {:title "kikka"}]
       (is (= properties
              (m/properties [:and properties int?])
-             (m/properties [int? properties]))))))
+             (m/properties [int? properties]))))
+    (is (= nil
+           (m/properties [:and {} int?])
+           (m/properties [:and nil int?])
+           (m/properties [:and int?])
+           (m/properties [:enum {} 1 2 3])
+           (m/properties [:enum nil 1 2 3])
+           (m/properties [:enum 1 2 3])))))
 
 (deftest children-test
   (testing "children can be set and retrieved"

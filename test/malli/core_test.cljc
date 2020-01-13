@@ -187,6 +187,11 @@
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
       #_(is (= "1" (m/decode schema "1" mt/json-transformer)))
 
+      (testing "map enums require nil properties"
+        (let [schema [:enum nil {:a 1} {:b 2}]]
+          (is (= nil (m/properties schema)))
+          (is (= [{:a 1} {:b 2}] (m/children schema)))))
+
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:name :enum, :children [1 2]}

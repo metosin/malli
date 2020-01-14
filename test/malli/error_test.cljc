@@ -1,7 +1,8 @@
 (ns malli.error-test
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.error :as me]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.util :as mu]))
 
 (deftest error-message-test
   (let [msg "should be an int"
@@ -24,6 +25,64 @@
               "kikka" "should be an int, was kikka"
               {:errors {'int? {:error/message "fail1", :error/fn (constantly "fail2")}}}]]]
       (is (= message (-> (m/explain schema value) :errors first (me/error-message opts)))))))
+
+(deftest with-spell-checking-test
+  (let [get-errors (fn [explanation] (->> explanation :errors (mapv #(select-keys % [:in :type ::me/likely-misspelling-of :message]))))]
+
+    (testing "simple"
+      (is (= [{:in [:deliver]
+               :type :malli.core/missing-key
+               :message "missing required key"}
+              {:in [:deliverz]
+               :type ::me/misspelled-key
+               ::me/likely-misspelling-of [[:deliver]]
+               :message "should be spelled :deliver"}]
+             (-> [:map
+                  [:orders boolean?]
+                  [:deliver boolean?]]
+                 (mu/closed-schema)
+                 (m/explain {:orders true, :deliverz true})
+                 (me/with-spell-checking)
+                 (me/with-error-messages)
+                 (get-errors)))))
+
+    (testing "nested"
+
+      (testing "with defaults"
+        (is (= [{:in [:address :street1]
+                 :type ::m/missing-key
+                 :message "missing required key"}
+                {:in [:address :street2]
+                 :type ::m/missing-key
+                 :message "missing required key"}
+                {:in [:address :streetz]
+                 :type ::me/misspelled-key
+                 ::me/likely-misspelling-of [[:address :street1] [:address :street2]],
+                 :message "should be spelled :street1 or :street2"}]
+               (-> [:map
+                    [:address [:map
+                               [:street1 string?]
+                               [:street2 string?]]]]
+                   (mu/closed-schema)
+                   (m/explain {:address {:streetz "123"}})
+                   (me/with-spell-checking)
+                   (me/with-error-messages)
+                   (get-errors)))))
+
+      (testing "stripping likely-misspelled-of fields"
+        (is (= [{:in [:address :streetz]
+                 :type ::me/misspelled-key
+                 ::me/likely-misspelling-of [[:address :street1] [:address :street2]]
+                 :message "should be spelled :street1 or :street2"}]
+               (-> [:map
+                    [:address [:map
+                               [:street1 string?]
+                               [:street2 string?]]]]
+                   (mu/closed-schema)
+                   (m/explain {:address {:streetz "123"}})
+                   (me/with-spell-checking {:remove-likely-misspelled-of true})
+                   (me/with-error-messages)
+                   (get-errors))))))))
 
 (deftest humanize-test
   (testing "nil if success"
@@ -86,8 +145,8 @@
     (is (= {:x ["missing required key" "missing required key"]}
            (me/humanize
              {:value {},
-              :errors [{:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}
-                       {:in [:x], :schema [:map [:x int?]], :type :malli.core/missing-key}]})))))
+              :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
+                       {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]})))))
 
 (deftest humanize-customization-test
   (let [schema [:map

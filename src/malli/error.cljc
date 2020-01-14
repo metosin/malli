@@ -1,11 +1,14 @@
 (ns malli.error
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [clojure.string :as str]))
 
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
+   ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
+                                      (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
    'any? {:error/message {:en "should be any"}}
    'some? {:error/message {:en "shoud be some"}}
    'number? {:error/message {:en "should be number"}}
@@ -90,6 +93,49 @@
         (-maybe-localized (:error/path properties) default-locale))))
 
 ;;
+;; spell checking (kudos to https://github.com/bhauman/spell-spec)
+;;
+
+(defn- -length->threshold [len]
+  (condp #(<= %2 %1) len, 4 0, 5 1, 6 2, 11 3, 20 4 (int (* 0.2 len))))
+
+(defn- -next-row [previous current other-seq]
+  (reduce
+    (fn [row [diagonal above other]]
+      (let [update-val (if (= other current) diagonal (inc (min diagonal above (peek row))))]
+        (conj row update-val)))
+    [(inc (first previous))]
+    (map vector previous (next previous) other-seq)))
+
+(defn- -levenshtein [sequence1 sequence2]
+  (peek (reduce (fn [previous current] (-next-row previous current sequence2))
+                (map #(identity %2) (cons nil sequence2) (range))
+                sequence1)))
+
+(defn- -similar-key [ky ky2]
+  (let [min-len (apply min (map (comp count #(if (str/starts-with? % ":") (subs % 1) %) str) [ky ky2]))
+        dist (-levenshtein (str ky) (str ky2))]
+    (when (<= dist (-length->threshold min-len)) dist)))
+
+;; a tricky part is is that a keyword is not considered misspelled
+;; if its substitute is already present in the original map
+(defn- -likely-misspelled [value known-keys]
+  (fn [key]
+    (when-not (known-keys key)
+      (->> known-keys
+           (filter #(-similar-key % key))
+           (remove (set (keys value)))
+           not-empty))))
+
+(defn- -most-similar-to [value key known-keys]
+  (->> ((-likely-misspelled value known-keys) key)
+       (map (juxt #(-levenshtein (str %) (str key)) identity))
+       (filter first)
+       (sort-by first)
+       (map second)
+       not-empty))
+
+;;
 ;; public api
 ;;
 
@@ -125,7 +171,35 @@
   ([explanation]
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
-   (update explanation :errors (partial map #(f (with-error-message % options))))))
+   (when explanation
+     (update explanation :errors (partial map #(f (with-error-message % options)))))))
+
+(defn with-spell-checking
+  ([explanation]
+   (with-spell-checking explanation nil))
+  ([explanation {:keys [remove-likely-misspelled-of]}]
+   (when explanation
+     (let [!likely-misspelling-of (atom #{})]
+       (update
+         explanation
+         :errors
+         (fn [errors]
+           (as-> errors $
+                 (mapv (fn [{:keys [schema in type] :as error}]
+                         (if (= type ::m/extra-key)
+                           (let [keys (->> schema (m/map-entries) (map first) (set))
+                                 value (get-in (:value explanation) (butlast in))
+                                 similar (-most-similar-to value (last in) keys)
+                                 likely-misspelling-of (mapv (partial conj (vec (butlast in))) (vec similar))]
+                             (swap! !likely-misspelling-of into likely-misspelling-of)
+                             (cond-> error similar (assoc :type ::misspelled-key
+                                                          ::likely-misspelling-of likely-misspelling-of)))
+                           error)) $)
+                 (if remove-likely-misspelled-of
+                   (remove (fn [{:keys [in type]}]
+                             (and (@!likely-misspelling-of in)
+                                  (= type ::m/missing-key))) $)
+                   $))))))))
 
 (defn humanize
   ([explanation]

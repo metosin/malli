@@ -177,7 +177,7 @@
 (defn with-spell-checking
   ([explanation]
    (with-spell-checking explanation nil))
-  ([explanation {:keys [remove-likely-misspelled-of]}]
+  ([explanation {:keys [keep-likely-misspelled-of]}]
    (when explanation
      (let [!likely-misspelling-of (atom #{})]
        (update
@@ -195,7 +195,7 @@
                              (cond-> error similar (assoc :type ::misspelled-key
                                                           ::likely-misspelling-of likely-misspelling-of)))
                            error)) $)
-                 (if remove-likely-misspelled-of
+                 (if-not keep-likely-misspelled-of
                    (remove (fn [{:keys [in type]}]
                              (and (@!likely-misspelling-of in)
                                   (= type ::m/missing-key))) $)

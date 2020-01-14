@@ -30,10 +30,7 @@
   (let [get-errors (fn [explanation] (->> explanation :errors (mapv #(select-keys % [:in :type ::me/likely-misspelling-of :message]))))]
 
     (testing "simple"
-      (is (= [{:in [:deliver]
-               :type :malli.core/missing-key
-               :message "missing required key"}
-              {:in [:deliverz]
+      (is (= [{:in [:deliverz]
                :type ::me/misspelled-key
                ::me/likely-misspelling-of [[:deliver]]
                :message "should be spelled :deliver"}]
@@ -49,13 +46,7 @@
     (testing "nested"
 
       (testing "with defaults"
-        (is (= [{:in [:address :street1]
-                 :type ::m/missing-key
-                 :message "missing required key"}
-                {:in [:address :street2]
-                 :type ::m/missing-key
-                 :message "missing required key"}
-                {:in [:address :streetz]
+        (is (= [{:in [:address :streetz]
                  :type ::me/misspelled-key
                  ::me/likely-misspelling-of [[:address :street1] [:address :street2]],
                  :message "should be spelled :street1 or :street2"}]
@@ -70,7 +61,13 @@
                    (get-errors)))))
 
       (testing "stripping likely-misspelled-of fields"
-        (is (= [{:in [:address :streetz]
+        (is (= [{:in [:address :street1]
+                 :type ::m/missing-key
+                 :message "missing required key"}
+                {:in [:address :street2]
+                 :type ::m/missing-key
+                 :message "missing required key"}
+                {:in [:address :streetz]
                  :type ::me/misspelled-key
                  ::me/likely-misspelling-of [[:address :street1] [:address :street2]]
                  :message "should be spelled :street1 or :street2"}]
@@ -80,7 +77,7 @@
                                [:street2 string?]]]]
                    (mu/closed-schema)
                    (m/explain {:address {:streetz "123"}})
-                   (me/with-spell-checking {:remove-likely-misspelled-of true})
+                   (me/with-spell-checking {:keep-likely-misspelled-of true})
                    (me/with-error-messages)
                    (get-errors))))))))
 

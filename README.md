@@ -249,6 +249,23 @@ Errors can be targetted using `:error/path` property:
 ; {:password2 ["passwords don't match"]}
 ```
 
+## Spell Checking
+
+For closed schemas, key spelling can be checked with:
+
+```clj
+(-> [:map [:address [:map [:street string?]]]]
+    (mu/closed-schema)
+    (m/explain
+      {:name "Lie-mi"
+       :address {:streetz "Hämeenkatu 14"}})
+    (me/with-spell-checking)
+    (me/humanize))
+;{:address {:street ["missing required key"]
+;           :streetz ["should be spelled :street"]}
+; :name ["disallowed key"]}
+```
+
 ## Value Transformation
 
 ```clj
@@ -497,7 +514,9 @@ Closing and opening all `:map` schemas recursively:
 ; [:c [:map {:closed true}
 ;      [:d int?]]]]
 
-(-> abcd mu/closed-schema mu/open-schema)
+(-> abcd 
+    mu/closed-schema
+    mu/open-schema)
 ;[:map {:title "abcd"}
 ; [:a int?]
 ; [:b {:optional true} int?]
@@ -1056,13 +1075,14 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 - Schema https://github.com/plumatic/schema
 - Clojure.spec https://clojure.org/guides/spec
+- Spell-spec https://github.com/bhauman/spell-spec
+- JSON Schema https://json-schema.org/understanding-json-schema/index.html
+- Spec-provider: https://github.com/stathissideris/spec-provider
+- F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Core.typed https://github.com/clojure/core.typed
 - TypeScript https://www.typescriptlang.org/
 - Struct https://funcool.github.io/struct/latest/
 - JOI https://github.com/hapijs/joi
-- JSON Schema https://json-schema.org/understanding-json-schema/index.html
-- Spec-provider: https://github.com/stathissideris/spec-provider
-- F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 
 ## Running tests
 

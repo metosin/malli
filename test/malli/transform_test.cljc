@@ -59,6 +59,13 @@
   (is (= #inst "2018-04-27T05:00:00Z" (mt/string->date #inst "2018-04-27T08:00:00+03:00")))
   (is (= "abba" (mt/string->date "abba"))))
 
+#?(:clj
+   (deftest string->decimal
+     (is (= 42M (mt/string->decimal "42")))
+     (is (= 42.24M (mt/string->decimal "42.24")))
+     (is (= nil (mt/string->decimal nil)))
+     (is (= "42.42M" (mt/string->decimal "42.42M")))))
+
 (deftest date->string
   (is (= "2014-02-18T18:25:37.000Z" (mt/date->string #inst "2014-02-18T18:25:37Z")))
   (is (= "abba" (mt/date->string "abba"))))

@@ -144,6 +144,14 @@
      (-> (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
          (.withZone (ZoneId/of "UTC")))))
 
+#?(:clj
+   (defn string->decimal [x]
+     (if (string? x)
+       (try
+         (BigDecimal. ^String x)
+         (catch Exception _ x))
+       x)))
+
 (defn date->string [x]
   (if (inst? x)
     (try
@@ -239,6 +247,7 @@
      'float? string->double
      'double? string->double
      #?@(:clj ['rational? string->double])
+     #?@(:clj ['decimal? string->decimal])
 
      'boolean? string->boolean
      'false? string->boolean

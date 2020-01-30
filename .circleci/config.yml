@@ -9,7 +9,7 @@ jobs:
           keys:
             - 'clj-v1-{{ checksum "deps.edn" }}-{{ checksum "package-lock.json" }}'
             - 'clj-v1'
-      - run: npm install
+      - run: npm ci
       - run: mkdir -p test-results
       - run: bin/kaocha --plugin kaocha.plugin/junit-xml --junit-xml-file  test-results/kaocha/results.xml
       - store_test_results:

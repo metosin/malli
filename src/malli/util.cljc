@@ -96,25 +96,29 @@
 (defn closed-schema
   "Closes recursively all :map schemas by adding `{:closed true}`
   property, unless schema explicitely open with `{:closed false}`"
-  [schema]
-  (m/accept
-    schema
-    (m/schema-visitor
-      (fn [schema]
-        (if (and (= :map (m/name schema))
-                 (-> schema m/properties :closed false? not))
-          (update-properties schema assoc :closed true)
-          schema)))))
+  ([schema]
+   (closed-schema schema nil))
+  ([schema options]
+   (m/accept
+     schema
+     (m/schema-visitor
+       (fn [schema]
+         (if (and (= :map (m/name schema options))
+                  (-> schema m/properties :closed false? not))
+           (update-properties schema assoc :closed true)
+           schema))))))
 
 (defn open-schema
   "Closes recursively all :map schemas by removing `:closed`
   property, unless schema explicitely open with `{:closed false}`"
-  [schema]
-  (m/accept
-    schema
-    (m/schema-visitor
-      (fn [schema]
-        (if (and (= :map (m/name schema))
-                 (-> schema m/properties :closed false? not))
-          (update-properties schema dissoc :closed)
-          schema)))))
+  ([schema]
+   (open-schema schema nil))
+  ([schema options]
+   (m/accept
+     schema
+     (m/schema-visitor
+       (fn [schema]
+         (if (and (= :map (m/name schema options))
+                  (-> schema m/properties :closed false? not))
+           (update-properties schema dissoc :closed)
+           schema))))))

@@ -162,3 +162,17 @@
                             [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
                    [:x 0 0 0 0 1 :y 0])
                  boolean?)))
+
+(deftest dissoc-test
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/dissoc schema :a)
+                   [:map {:title "map"}
+                    [:b {:optional true} int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/dissoc schema :b)
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:c string?]]))))

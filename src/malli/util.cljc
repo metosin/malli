@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys get-in])
+  (:refer-clojure :exclude [merge select-keys get-in dissoc])
   (:require [malli.core :as m]))
 
 (defn ^:no-doc equals
@@ -13,7 +13,7 @@
     (not s) [k ?p]
     (and ?p (false? (:optional ?p)) (= 1 (count ?p))) [k s]
     (not (seq ?p)) [k s]
-    (false? (:optional ?p)) [k (dissoc ?p :optional) s]
+    (false? (:optional ?p)) [k (clojure.core/dissoc ?p :optional) s]
     :else [k ?p s]))
 
 (defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge options]
@@ -120,7 +120,7 @@
        (fn [schema]
          (if (and (= :map (m/name schema options))
                   (-> schema m/properties :closed false? not))
-           (update-properties schema dissoc :closed)
+           (update-properties schema clojure.core/dissoc :closed)
            schema))))))
 
 (defn select-keys
@@ -136,7 +136,7 @@
      (m/into-schema name (m/properties schema) entries))))
 
 (defn get-in
-  "Like [[clojure.core/get-in]], but for MapSchemas."
+  "Like [[clojure.core/get-in]], but for LookupSchemas."
   ([?schema ks]
    (get-in ?schema ks nil))
   ([?schema ks options]
@@ -149,3 +149,14 @@
            (if-not (identical? sentinel v)
              (recur sentinel v (next ks))))
          schema)))))
+
+(defn dissoc
+  "Like [[clojure.core/dissoc]], but for MapSchemas."
+  ([?schema key]
+   (dissoc ?schema key nil))
+  ([?schema key options]
+   (let [schema (m/schema ?schema options)
+         name (m/name schema)
+         entries (->> (m/map-entries schema options)
+                      (remove (fn [[k]] (= key k))))]
+     (m/into-schema name (m/properties schema) entries))))

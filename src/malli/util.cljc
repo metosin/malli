@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys get-in dissoc])
+  (:refer-clojure :exclude [merge select-keys get-in dissoc assoc])
   (:require [malli.core :as m]))
 
 (defn ^:no-doc equals
@@ -19,7 +19,7 @@
 (defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge options]
   (let [required (merge-required (m/required-map-entry? e1) (m/required-map-entry? e2))
         p (clojure.core/merge ?p1 ?p2)]
-    (simplify-map-entry [k (assoc p :optional (not required)) (merge s1 s2 options)])))
+    (simplify-map-entry [k (clojure.core/assoc p :optional (not required)) (merge s1 s2 options)])))
 
 ;;
 ;; public api
@@ -63,7 +63,7 @@
                                                   (-entry e1 e2 merge-required merge options)
                                                   e1)))
                                         [] (:form acc))
-                                      (assoc acc :form))
+                                      (clojure.core/assoc acc :form))
                                  (-> acc
                                      (update :form conj e2)
                                      (update :keys conj k2))))
@@ -105,7 +105,7 @@
        (fn [schema]
          (if (and (= :map (m/name schema options))
                   (-> schema m/properties :closed false? not))
-           (update-properties schema assoc :closed true)
+           (update-properties schema clojure.core/assoc :closed true)
            schema))))))
 
 (defn open-schema
@@ -159,4 +159,21 @@
          name (m/name schema)
          entries (->> (m/map-entries schema options)
                       (remove (fn [[k]] (= key k))))]
+     (m/into-schema name (m/properties schema) entries))))
+
+(defn assoc
+  "Like [[clojure.core/assoc]], but for MapSchemas."
+  ([?schema key value]
+   (assoc ?schema key value nil))
+  ([?schema key value options]
+   (let [schema (m/schema ?schema options)
+         [key properties] (if (vector? key) key [key])
+         value (m/schema value options)
+         name (m/name schema)
+         found (atom nil)
+         entries (cond-> (mapv (fn [[k p s]]
+                                 (if (= key k)
+                                   (do (reset! found true) [k properties value])
+                                   [k p s])) (m/map-entries schema options))
+                         (not @found) (conj [key properties value]))]
      (m/into-schema name (m/properties schema) entries))))

@@ -176,3 +176,24 @@
                    [:map {:title "map"}
                     [:a int?]
                     [:c string?]]))))
+
+(deftest assoc-test
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/assoc schema :a string?)
+                   [:map {:title "map"}
+                    [:a string?]
+                    [:b {:optional true} int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/assoc schema [:a {:optional true}] string?)
+                   [:map {:title "map"}
+                    [:a {:optional true} string?]
+                    [:b {:optional true} int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/assoc schema :b string?)
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:b string?]
+                    [:c string?]]))))

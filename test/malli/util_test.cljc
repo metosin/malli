@@ -151,3 +151,14 @@
                    [:map {:title "map"}
                     [:a int?]
                     [:b {:optional true} int?]]))))
+
+(deftest get-in-test
+  (is (mu/equals (mu/get-in
+                   [:map
+                    [:x [:vector
+                         [:list
+                          [:set
+                           [:sequential
+                            [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
+                   [:x 0 0 0 0 1 :y 0])
+                 boolean?)))

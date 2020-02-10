@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys])
+  (:refer-clojure :exclude [merge select-keys get-in])
   (:require [malli.core :as m]))
 
 (defn ^:no-doc equals
@@ -134,3 +134,18 @@
          entries (->> (m/map-entries schema options)
                       (filter (fn [[k]] (key-set k))))]
      (m/into-schema name (m/properties schema) entries))))
+
+(defn get-in
+  "Like [[clojure.core/get-in]], but for MapSchemas."
+  ([?schema ks]
+   (get-in ?schema ks nil))
+  ([?schema ks options]
+   (let [schema (m/schema ?schema options)]
+     (loop [sentinel #?(:clj (Object.) :cljs (js/Object.))
+            schema schema
+            ks (seq ks)]
+       (if ks
+         (let [v (m/-get schema (first ks) sentinel)]
+           (if-not (identical? sentinel v)
+             (recur sentinel v (next ks))))
+         schema)))))

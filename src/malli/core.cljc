@@ -23,6 +23,9 @@
 (defprotocol MapSchema
   (-map-entries [this] "returns map entries"))
 
+(defprotocol LookupSchema
+  (-get [this key default] "returns schema at key"))
+
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
@@ -280,7 +283,9 @@
           (-options [_] options)
           (-form [_] form)
           MapSchema
-          (-map-entries [_] entries))))))
+          (-map-entries [_] entries)
+          LookupSchema
+          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default)))))))
 
 (defn- -map-of-schema []
   ^{:type ::into-schema}
@@ -389,7 +394,9 @@
           (-accept [this visitor options] (visitor this [(-accept schema visitor options)] options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] form))))))
+          (-form [_] form)
+          LookupSchema
+          (-get [_ key default] (if (= 0 key) schema default)))))))
 
 (defn- -tuple-schema []
   ^{:type ::into-schema}
@@ -439,7 +446,9 @@
           (-accept [this visitor options] (visitor this (mapv #(-accept % visitor options) schemas) options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] form))))))
+          (-form [_] form)
+          LookupSchema
+          (-get [_ key default] (get schemas key default)))))))
 
 (defn- -enum-schema []
   ^{:type ::into-schema}
@@ -549,7 +558,9 @@
           (-accept [this visitor options] (visitor this [(-accept schema' visitor options)] options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] form))))))
+          (-form [_] form)
+          LookupSchema
+          (-get [_ key default] (if (= 0 key) schema' default)))))))
 
 (defn- -multi-schema []
   ^{:type ::into-schema}

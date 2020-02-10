@@ -977,20 +977,31 @@ Using a custom registry atom:
   (atom m/default-registry))
 
 (defn register! [k schema]
-  (swap! my-registry assoc k (m/schema schema))
+  (swap! my-registry assoc k (m/schema schema {:registry @my-registry))
   k)
 
 (register! ::id int?)
 ;; => :user/id
 
 (register! ::name string?)
-;; => :user/name
+;; => :user/name   
+
+(register! ::user-tup [:tuple ::id ::name])
+;; => :user/new-user
 
 (m/validate 
   [:tuple ::id ::name] 
   [18 "and life"] 
   {:registry @my-registry})
-; => true
+;; => true   
+
+; - OR -   
+
+(m/validate 
+  ::user-tup 
+  [18 "and life"] 
+  {:registry @my-registry})
+;; => true
 ```
 
 Mutating the default registry (not recommended):

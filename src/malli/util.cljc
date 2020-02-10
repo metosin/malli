@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge])
+  (:refer-clojure :exclude [merge select-keys])
   (:require [malli.core :as m]))
 
 (defn ^:no-doc equals
@@ -122,3 +122,15 @@
                   (-> schema m/properties :closed false? not))
            (update-properties schema dissoc :closed)
            schema))))))
+
+(defn select-keys
+  "Like [[clojure.core/select-keys]], but for MapSchemas."
+  ([?schema keys]
+   (select-keys ?schema keys nil))
+  ([?schema keys options]
+   (let [schema (m/schema ?schema options)
+         name (m/name schema)
+         key-set (set keys)
+         entries (->> (m/map-entries schema options)
+                      (filter (fn [[k]] (key-set k))))]
+     (m/into-schema name (m/properties schema) entries))))

@@ -135,3 +135,19 @@
 
       (is (mu/equals schema (mu/closed-schema schema)))
       (is (mu/equals schema (mu/open-schema schema))))))
+
+(deftest select-key-test
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/select-keys schema []) [:map {:title "map"}]))
+    (is (mu/equals (mu/select-keys schema nil) [:map {:title "map"}]))
+    (is (mu/equals (mu/select-keys schema [:a]) [:map {:title "map"} [:a int?]]))
+    (is (mu/equals (mu/select-keys schema #{:a}) [:map {:title "map"} [:a int?]]))
+    (is (mu/equals (mu/select-keys schema '(:a)) [:map {:title "map"} [:a int?]]))
+    (is (mu/equals (mu/select-keys schema [:a :b :c]) schema))
+    (is (mu/equals (mu/select-keys schema [:a :b :extra])
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:b {:optional true} int?]]))))

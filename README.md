@@ -986,7 +986,7 @@ Using a custom registry atom:
 (register! ::name string?)
 ;; => :user/name   
 
-(register! ::user-tup [:tuple ::id ::name])
+(register! ::new-user [:tuple ::id ::name])
 ;; => :user/new-user
 
 (m/validate 
@@ -998,7 +998,7 @@ Using a custom registry atom:
 ; - OR -   
 
 (m/validate 
-  ::user-tup 
+  ::new-user
   [18 "and life"] 
   {:registry @my-registry})
 ;; => true

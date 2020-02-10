@@ -152,6 +152,17 @@
                     [:a int?]
                     [:b {:optional true} int?]]))))
 
+(deftest get-test
+  (is (mu/equals (mu/get [:map [:x int?]] :x) int?))
+  (is (mu/equals (mu/get [:map [:x {:optional true} int?]] :x) int?))
+  (is (mu/equals (mu/get [:vector int?] 0) int?))
+  (is (mu/equals (mu/get [:list int?] 0) int?))
+  (is (mu/equals (mu/get [:set int?] 0) int?))
+  (is (mu/equals (mu/get [:sequential int?] 0) int?))
+  (is (mu/equals (mu/get [:tuple int? pos-int?] 1) pos-int?))
+  (is (= (mu/get [:map [:x int?]] :y)
+         (mu/get [:vector int?] 1))))
+
 (deftest get-in-test
   (is (mu/equals (mu/get-in
                    [:map

@@ -1,6 +1,7 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys get-in dissoc assoc])
-  (:require [malli.core :as m]))
+  (:refer-clojure :exclude [merge select-keys get get-in dissoc assoc update])
+  (:require [clojure.core :as c]
+            [malli.core :as m]))
 
 (defn ^:no-doc equals
   ([?schema1 ?schema2]
@@ -13,13 +14,13 @@
     (not s) [k ?p]
     (and ?p (false? (:optional ?p)) (= 1 (count ?p))) [k s]
     (not (seq ?p)) [k s]
-    (false? (:optional ?p)) [k (clojure.core/dissoc ?p :optional) s]
+    (false? (:optional ?p)) [k (c/dissoc ?p :optional) s]
     :else [k ?p s]))
 
 (defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge options]
   (let [required (merge-required (m/required-map-entry? e1) (m/required-map-entry? e2))
-        p (clojure.core/merge ?p1 ?p2)]
-    (simplify-map-entry [k (clojure.core/assoc p :optional (not required)) (merge s1 s2 options)])))
+        p (c/merge ?p1 ?p2)]
+    (simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
 ;;
 ;; public api
@@ -49,7 +50,7 @@
        (not schema1) schema2
        (not schema2) schema1
        (not= :map (m/name schema1) (m/name schema2)) (merge-default schema1 schema2 options)
-       :else (let [p (clojure.core/merge (m/properties schema1) (m/properties schema2))]
+       :else (let [p (c/merge (m/properties schema1) (m/properties schema2))]
                (-> [:map]
                    (cond-> p (conj p))
                    (into (:form
@@ -63,10 +64,10 @@
                                                   (-entry e1 e2 merge-required merge options)
                                                   e1)))
                                         [] (:form acc))
-                                      (clojure.core/assoc acc :form))
+                                      (c/assoc acc :form))
                                  (-> acc
-                                     (update :form conj e2)
-                                     (update :keys conj k2))))
+                                     (c/update :form conj e2)
+                                     (c/update :keys conj k2))))
                              {:keys #{}, :form []}
                              (mapcat m/map-entries schemas))))
                    (m/schema options)))))))
@@ -79,8 +80,8 @@
    (let [merge-default (fn [s1 s2 options] (if (equals s1 s2) s1 (m/schema [:or s1 s2] options)))
          merge-required (fn [r1 r2] (and r1 r2))]
      (merge ?schema1 ?schema2 (-> options
-                                  (update :merge-default (fnil identity merge-default))
-                                  (update :merge-required (fnil identity merge-required)))))))
+                                  (c/update :merge-default (fnil identity merge-default))
+                                  (c/update :merge-required (fnil identity merge-required)))))))
 
 (defn update-properties
   "Returns a Schema instance with updated properties."
@@ -105,7 +106,7 @@
        (fn [schema]
          (if (and (= :map (m/name schema options))
                   (-> schema m/properties :closed false? not))
-           (update-properties schema clojure.core/assoc :closed true)
+           (update-properties schema c/assoc :closed true)
            schema))))))
 
 (defn open-schema
@@ -120,7 +121,7 @@
        (fn [schema]
          (if (and (= :map (m/name schema options))
                   (-> schema m/properties :closed false? not))
-           (update-properties schema clojure.core/dissoc :closed)
+           (update-properties schema c/dissoc :closed)
            schema))))))
 
 (defn select-keys
@@ -149,6 +150,13 @@
            (if-not (identical? sentinel v)
              (recur sentinel v (next ks))))
          schema)))))
+
+(defn get
+  "Like [[clojure.core/get]], but for LookupSchemas."
+  ([?schema k]
+   (get ?schema k nil))
+  ([?schema k options]
+   (get-in ?schema [k] options)))
 
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."

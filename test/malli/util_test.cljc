@@ -264,3 +264,17 @@
                  [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/update-in [:map] [:a :b :c :d] (constantly int?))
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]])))
+
+(deftest optional-keys-test
+  (let [schema [:map [:x int?] [:y int?]]]
+    (is (mu/equals (mu/optional-keys schema)
+                   [:map [:x {:optional true} int?] [:y {:optional true} int?]]))
+    (is (mu/equals (mu/optional-keys schema [:x :extra nil])
+                   [:map [:x {:optional true} int?] [:y int?]]))))
+
+(deftest required-keys-test
+  (let [schema [:map [:x {:optional true} int?] [:y {:optional false} int?]]]
+    (is (mu/equals (mu/required-keys schema)
+                   [:map [:x int?] [:y int?]]))
+    (is (mu/equals (mu/required-keys schema [:x :extra nil])
+                   [:map [:x int?] [:y {:optional false} int?]]))))

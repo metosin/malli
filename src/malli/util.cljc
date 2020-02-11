@@ -22,6 +22,9 @@
         p (c/merge ?p1 ?p2)]
     (simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
+(defn- -open-map? [schema options]
+  (and (= :map (m/name schema options)) (-> schema m/properties :closed false? not)))
+
 ;;
 ;; public api
 ;;
@@ -104,8 +107,7 @@
      schema
      (m/schema-visitor
        (fn [schema]
-         (if (and (= :map (m/name schema options))
-                  (-> schema m/properties :closed false? not))
+         (if (-open-map? schema options)
            (update-properties schema c/assoc :closed true)
            schema))))))
 
@@ -119,10 +121,18 @@
      schema
      (m/schema-visitor
        (fn [schema]
-         (if (and (= :map (m/name schema options))
-                  (-> schema m/properties :closed false? not))
+         (if (-open-map? schema options)
            (update-properties schema c/dissoc :closed)
            schema))))))
+
+;;
+;; Entries
+;;
+
+(defn transform-entries
+  "Transforms map-entries with f."
+  [schema f options]
+  (m/into-schema (m/name schema) (m/properties schema) (f (m/map-entries schema options))))
 
 ;;
 ;; MapSchemas
@@ -134,22 +144,16 @@
    (select-keys ?schema keys nil))
   ([?schema keys options]
    (let [schema (m/schema ?schema options)
-         name (m/name schema)
-         key-set (set keys)
-         entries (->> (m/map-entries schema options)
-                      (filter (fn [[k]] (key-set k))))]
-     (m/into-schema name (m/properties schema) entries))))
+         key-set (set keys)]
+     (transform-entries schema (partial filter (fn [[k]] (key-set k))) options))))
 
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
-   (let [schema (m/schema ?schema options)
-         name (m/name schema)
-         entries (->> (m/map-entries schema options)
-                      (remove (fn [[k]] (= key k))))]
-     (m/into-schema name (m/properties schema) entries))))
+   (let [schema (m/schema ?schema options)]
+     (transform-entries schema (partial remove (fn [[k]] (= key k))) options))))
 
 ;;
 ;; LensSchemas
@@ -172,7 +176,8 @@
      (m/-set schema key value))))
 
 (defn update
-  "Like [[clojure.core/update]], but for LensSchemas."
+  "Like [[clojure.core/update]], but for LensSchemas.
+   Works only on Schema instances, not on Schema AST."
   [schema key f & args]
   (let [schema (m/schema schema)]
     (m/-set schema key (apply f (m/-get schema key nil) args))))
@@ -194,9 +199,37 @@
      (assoc schema k (if ks (assoc-in (get schema k) ks value) value)))))
 
 (defn update-in
-  "Like [[clojure.core/update-in]], but for LensSchemas."
+  "Like [[clojure.core/update-in]], but for LensSchemas.
+   Works only on Schema instances, not on Schema AST."
   [schema ks f & args]
   (letfn [(up [s [k & ks] f args]
             (assoc s k (if ks (up (get s k) ks f args)
                               (apply f (get s k) args))))]
     (up schema ks f args)))
+
+(defn optional-keys
+  "Makes map keys optional."
+  ([?schema]
+   (optional-keys ?schema nil nil))
+  ([?schema ?keys]
+   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
+     (optional-keys ?schema keys options)))
+  ([?schema keys options]
+   (let [schema (m/schema ?schema options)
+         accept (if keys (set keys) (constantly true))
+         mapper (fn [[k :as e]] (if (accept k) (c/update e 1 c/assoc :optional true) e))]
+     (transform-entries schema (partial map mapper) options))))
+
+(defn required-keys
+  "Makes map keys required."
+  ([?schema]
+   (required-keys ?schema nil nil))
+  ([?schema ?keys]
+   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
+     (required-keys ?schema keys options)))
+  ([?schema keys options]
+   (let [schema (m/schema ?schema options)
+         accept (if keys (set keys) (constantly true))
+         required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
+         mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
+     (transform-entries schema (partial map mapper) options))))

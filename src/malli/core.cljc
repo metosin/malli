@@ -175,7 +175,10 @@
             (visitor this (mapv #(-accept % visitor options) child-schemas) options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] (create-form name properties (map -form child-schemas))))))))
+          (-form [_] (create-form name properties (map -form child-schemas)))
+          LensSchema
+          (-get [_ key default] (get child-schemas key default))
+          (-set [_ key value] (into-schema name properties (assoc child-schemas key value))))))))
 
 (defn- -properties-and-children [xs]
   (if ((some-fn map? nil?) (first xs))

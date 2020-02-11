@@ -23,6 +23,10 @@
 (defprotocol MapSchema
   (-map-entries [this] "returns map entries"))
 
+(defprotocol LensSchema
+  (-get [this key default] "returns schema at key")
+  (-set [this key value] "returns a copy with key having new value"))
+
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
@@ -42,7 +46,7 @@
 ;; impl
 ;;
 
-(declare schema)
+(declare schema into-schema)
 (declare eval)
 (declare default-registry)
 
@@ -171,7 +175,10 @@
             (visitor this (mapv #(-accept % visitor options) child-schemas) options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] (create-form name properties (map -form child-schemas))))))))
+          (-form [_] (create-form name properties (map -form child-schemas)))
+          LensSchema
+          (-get [_ key default] (get child-schemas key default))
+          (-set [_ key value] (into-schema name properties (assoc child-schemas key value))))))))
 
 (defn- -properties-and-children [xs]
   (if ((some-fn map? nil?) (first xs))
@@ -280,7 +287,16 @@
           (-options [_] options)
           (-form [_] form)
           MapSchema
-          (-map-entries [_] entries))))))
+          (-map-entries [_] entries)
+          LensSchema
+          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
+          (-set [_ key value]
+            (let [found (atom nil)
+                  [key kprop] (if (vector? key) key [key])
+                  entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
+                                  (not @found) (conj [key kprop value])
+                                  :always (->> (filter (fn [e] (-> e last some?)))))]
+              (into-schema :map properties entries))))))))
 
 (defn- -map-of-schema []
   ^{:type ::into-schema}
@@ -389,7 +405,10 @@
           (-accept [this visitor options] (visitor this [(-accept schema visitor options)] options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] form))))))
+          (-form [_] form)
+          LensSchema
+          (-get [_ key default] (if (= 0 key) schema default))
+          (-set [_ key value] (if (= 0 key) (into-schema name properties [value]) schema)))))))
 
 (defn- -tuple-schema []
   ^{:type ::into-schema}
@@ -439,7 +458,10 @@
           (-accept [this visitor options] (visitor this (mapv #(-accept % visitor options) schemas) options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] form))))))
+          (-form [_] form)
+          LensSchema
+          (-get [_ key default] (get schemas key default))
+          (-set [_ key value] (into-schema :tuple properties (assoc schemas key value))))))))
 
 (defn- -enum-schema []
   ^{:type ::into-schema}
@@ -549,7 +571,10 @@
           (-accept [this visitor options] (visitor this [(-accept schema' visitor options)] options))
           (-properties [_] properties)
           (-options [_] options)
-          (-form [_] form))))))
+          (-form [_] form)
+          LensSchema
+          (-get [_ key default] (if (= 0 key) schema' default))
+          (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema')))))))
 
 (defn- -multi-schema []
   ^{:type ::into-schema}

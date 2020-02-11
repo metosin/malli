@@ -442,6 +442,79 @@ Single sweep of defaults & string encoding:
 (require '[malli.util :as mu])
 ```
 
+Updating Schema properties:
+
+```clj
+(mu/update-properties [:vector int?] assoc :min 1)
+; => [:vector {:min 1} int?]
+```
+
+Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `get`, `assoc`, `update`, `get-in`, `assoc-in`, `update-in`
+
+```clj
+(mu/get-in Address [:address :lonlat])
+; => [:tuple double? double?]
+
+(mu/update-in Address [:address] mu/assoc :country [:enum "fi" "po"])
+;[:map
+; [:id string?]
+; [:tags [:set keyword?]]
+; [:address
+;  [:map [:street string?]
+;   [:city string?]
+;   [:zip int?]
+;   [:lonlat [:tuple double? double?]]
+;   [:country [:enum "fi" "po"]]]]]
+
+(-> Address
+    (mu/dissoc :address)
+    (mu/update-properties assoc :title "Address"))
+;[:map {:title "Address"} 
+; [:id string?] 
+; [:tags [:set keyword?]]]
+```
+
+Making keys optional or required:
+
+```clj
+(mu/optional-keys [:map [:x int?] [:y int?]])
+;[:map 
+; [:x {:optional true} int?] 
+; [:y {:optional true} int?]]
+
+(mu/required-keys [:map [:x {:optional true} int?] [:y int?]])
+;[:map 
+; [:x int?] 
+; [:y int?]]
+```
+
+Closing and opening all `:map` schemas recursively:
+
+```clj
+(def abcd
+  [:map {:title "abcd"}
+   [:a int?]
+   [:b {:optional true} int?]
+   [:c [:map
+        [:d int?]]]])
+
+(mu/closed-schema abcd)
+;[:map {:title "abcd", :closed true}
+; [:a int?]
+; [:b {:optional true} int?]
+; [:c [:map {:closed true}
+;      [:d int?]]]]
+
+(-> abcd 
+    mu/closed-schema
+    mu/open-schema)
+;[:map {:title "abcd"}
+; [:a int?]
+; [:b {:optional true} int?]
+; [:c [:map
+;      [:d int?]]]]
+```
+
 Merging Schemas (last value wins):
 
 ```clj
@@ -488,40 +561,6 @@ Schema unions (merged values of both schemas are valid for union schema):
 ; [:address [:map
 ;            [:street string?]
 ;            [:country [:or [:enum "finland" "poland"] string?]]]]]
-```
-
-Updating Schema properties:
-
-```clj
-(mu/update-properties [:vector int?] assoc :min 1)
-; => [:vector {:min 1} int?]
-```
-
-Closing and opening all `:map` schemas recursively:
-
-```clj
-(def abcd
-  [:map {:title "abcd"}
-   [:a int?]
-   [:b {:optional true} int?]
-   [:c [:map
-        [:d int?]]]])
-
-(mu/closed-schema abcd)
-;[:map {:title "abcd", :closed true}
-; [:a int?]
-; [:b {:optional true} int?]
-; [:c [:map {:closed true}
-;      [:d int?]]]]
-
-(-> abcd 
-    mu/closed-schema
-    mu/open-schema)
-;[:map {:title "abcd"}
-; [:a int?]
-; [:b {:optional true} int?]
-; [:c [:map
-;      [:d int?]]]]
 ```
 
 Adding generated example values to Schemas:

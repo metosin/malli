@@ -8,12 +8,12 @@ Plain data Schemas for Clojure/Script.
 
 - Schemas as data
 - Schema-driven Validation
-- Schema-driven [Value Transformation](#value_transformation)
-- Schema-driven [Value Generation](#value_generation)
-- [Inferring Schemas](#inferring_schemas) from sample values
-- Tools for [programming with Schemas](#programming_with_schemas)
+- Schema-driven [Value Transformation](#value-transformation)
+- Schema-driven [Value Generation](#value-generation)
+- [Inferring Schemas](#inferring-schemas) from sample values
+- Tools for [programming with Schemas](#programming-with-schemas)
 - No global state, explicit everything
-- First class [error messages](#detailed_errors)
+- First class [error-messages](#detailed_errors)
 - [Fast](#performance)
 
 Try the [online demo](https://malli.io). Libraries using malli:

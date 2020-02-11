@@ -6,14 +6,14 @@ Plain data Schemas for Clojure/Script.
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
-- Schemas as data
+- Schemas [as data](#persisting-schemas)
 - Schema-driven Validation
 - Schema-driven [Value Transformation](#value-transformation)
 - Schema-driven [Value Generation](#value-generation)
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [programming with Schemas](#programming-with-schemas)
 - No global state, explicit everything
-- First class [error-messages](#detailed_errors)
+- First class [error-messages](#error-messages) including [spell checking](#spell-checking)
 - [Fast](#performance)
 
 Try the [online demo](https://malli.io). Libraries using malli:
@@ -98,7 +98,7 @@ Serializable function schemas using [sci](https://github.com/borkdude/sci):
 ; => false
 ```
 
-## Detailed Errors
+## Error Messages
 
 Detailed errors with `m/explain`:
 

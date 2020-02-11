@@ -126,7 +126,7 @@
            schema))))))
 
 ;;
-;; Entries
+;; MapSchemas
 ;;
 
 (defn transform-entries
@@ -134,9 +134,32 @@
   [schema f options]
   (m/into-schema (m/name schema) (m/properties schema) (f (m/map-entries schema options))))
 
-;;
-;; MapSchemas
-;;
+(defn optional-keys
+  "Makes map keys optional."
+  ([?schema]
+   (optional-keys ?schema nil nil))
+  ([?schema ?keys]
+   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
+     (optional-keys ?schema keys options)))
+  ([?schema keys options]
+   (let [schema (m/schema ?schema options)
+         accept (if keys (set keys) (constantly true))
+         mapper (fn [[k :as e]] (if (accept k) (c/update e 1 c/assoc :optional true) e))]
+     (transform-entries schema (partial map mapper) options))))
+
+(defn required-keys
+  "Makes map keys required."
+  ([?schema]
+   (required-keys ?schema nil nil))
+  ([?schema ?keys]
+   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
+     (required-keys ?schema keys options)))
+  ([?schema keys options]
+   (let [schema (m/schema ?schema options)
+         accept (if keys (set keys) (constantly true))
+         required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
+         mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
+     (transform-entries schema (partial map mapper) options))))
 
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."
@@ -206,30 +229,3 @@
             (assoc s k (if ks (up (get s k) ks f args)
                               (apply f (get s k) args))))]
     (up schema ks f args)))
-
-(defn optional-keys
-  "Makes map keys optional."
-  ([?schema]
-   (optional-keys ?schema nil nil))
-  ([?schema ?keys]
-   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
-     (optional-keys ?schema keys options)))
-  ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         accept (if keys (set keys) (constantly true))
-         mapper (fn [[k :as e]] (if (accept k) (c/update e 1 c/assoc :optional true) e))]
-     (transform-entries schema (partial map mapper) options))))
-
-(defn required-keys
-  "Makes map keys required."
-  ([?schema]
-   (required-keys ?schema nil nil))
-  ([?schema ?keys]
-   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
-     (required-keys ?schema keys options)))
-  ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         accept (if keys (set keys) (constantly true))
-         required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
-         mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
-     (transform-entries schema (partial map mapper) options))))

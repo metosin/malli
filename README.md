@@ -8,13 +8,13 @@ Plain data Schemas for Clojure/Script.
 
 - Schemas as data
 - Schema-driven Validation
-- Schema-driven Transformation
-- Schema-driven Value Generation
-- Infer Schemas from sample values
-- Tools for programming with Schemas
+- Schema-driven [Value Transformation](#value_transformation)
+- Schema-driven [Value Generation](#value_generation)
+- [Inferring Schemas](#inferring_schemas) from sample values
+- Tools for [programming with Schemas](#programming_with_schemas)
 - No global state, explicit everything
-- First class error messages
-- Fast
+- First class [error messages](#detailed_errors)
+- [Fast](#performance)
 
 Try the [online demo](https://malli.io). Libraries using malli:
 
@@ -728,7 +728,7 @@ Sampling values:
 ; => (25 39 51 13 53 43 57 15 26 27)
 ```
 
-## Inferring Schemas from sample data
+## Inferring Schemas
 
 Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):
 

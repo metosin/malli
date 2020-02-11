@@ -6,14 +6,16 @@ Plain data Schemas for Clojure/Script.
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
-- Schemas [as data](#persisting-schemas)
-- Schema-driven Validation
+- Schemas as plain data
+- Schema-driven [Validation](#examples)
 - Schema-driven [Value Transformation](#value-transformation)
 - Schema-driven [Value Generation](#value-generation)
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [programming with Schemas](#programming-with-schemas)
-- No global state, explicit everything
 - First class [error-messages](#error-messages) including [spell checking](#spell-checking)
+- [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
+- [Multi-schemas](#multi-schemas), [default values](#default-values) and [persisting schemas](#persisting-schemas)
+- No global state, explicit everything
 - [Fast](#performance)
 
 Try the [online demo](https://malli.io). Libraries using malli:
@@ -865,7 +867,7 @@ Full override with `:json-schema` property:
 ; {:type "file"}
 ```
 
-### Swagger2 Schema
+### Swagger2
 
 Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md):
 

@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys get get-in dissoc assoc update])
+  (:refer-clojure :exclude [merge select-keys get get-in dissoc assoc update assoc-in update-in])
   (:require [clojure.core :as c]
             [malli.core :as m]))
 
@@ -124,6 +124,10 @@
            (update-properties schema c/dissoc :closed)
            schema))))))
 
+;;
+;; MapSchemas
+;;
+
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."
   ([?schema keys]
@@ -136,28 +140,6 @@
                       (filter (fn [[k]] (key-set k))))]
      (m/into-schema name (m/properties schema) entries))))
 
-(defn get-in
-  "Like [[clojure.core/get-in]], but for LookupSchemas."
-  ([?schema ks]
-   (get-in ?schema ks nil))
-  ([?schema ks options]
-   (let [schema (m/schema ?schema options)]
-     (loop [sentinel #?(:clj (Object.) :cljs (js/Object.))
-            schema schema
-            ks (seq ks)]
-       (if ks
-         (let [v (m/-get schema (first ks) sentinel)]
-           (if-not (identical? sentinel v)
-             (recur sentinel v (next ks))))
-         schema)))))
-
-(defn get
-  "Like [[clojure.core/get]], but for LookupSchemas."
-  ([?schema k]
-   (get ?schema k nil))
-  ([?schema k options]
-   (get-in ?schema [k] options)))
-
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
   ([?schema key]
@@ -169,19 +151,52 @@
                       (remove (fn [[k]] (= key k))))]
      (m/into-schema name (m/properties schema) entries))))
 
+;;
+;; LensSchemas
+;;
+
+(defn get
+  "Like [[clojure.core/get]], but for LensSchemas."
+  ([?schema k]
+   (get ?schema k nil))
+  ([?schema k options]
+   (let [schema (m/schema (or ?schema :map) options)]
+     (m/-get schema k options))))
+
 (defn assoc
-  "Like [[clojure.core/assoc]], but for MapSchemas."
+  "Like [[clojure.core/assoc]], but for LensSchemas."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
-   (let [schema (m/schema ?schema options)
-         [key properties] (if (vector? key) key [key])
-         value (m/schema value options)
-         name (m/name schema)
-         found (atom nil)
-         entries (cond-> (mapv (fn [[k p s]]
-                                 (if (= key k)
-                                   (do (reset! found true) [k properties value])
-                                   [k p s])) (m/map-entries schema options))
-                         (not @found) (conj [key properties value]))]
-     (m/into-schema name (m/properties schema) entries))))
+   (let [schema (m/schema (or ?schema :map) options)]
+     (m/-set schema key value))))
+
+(defn update
+  "Like [[clojure.core/update]], but for LensSchemas."
+  [schema key f & args]
+  (let [schema (m/schema schema)]
+    (m/-set schema key (apply f (m/-get schema key nil) args))))
+
+(defn get-in
+  "Like [[clojure.core/get-in]], but for LensSchemas."
+  ([?schema ks]
+   (get-in ?schema ks nil))
+  ([?schema [k & ks] options]
+   (let [schema (get (m/schema (or ?schema :map) options) k)]
+     (if ks (get-in schema ks) schema))))
+
+(defn assoc-in
+  "Like [[clojure.core/assoc-in]], but for LensSchemas."
+  ([?schema ks value]
+   (assoc-in ?schema ks value nil))
+  ([?schema [k & ks] value options]
+   (let [schema (m/schema (or ?schema :map) options)]
+     (assoc schema k (if ks (assoc-in (get schema k) ks value) value)))))
+
+(defn update-in
+  "Like [[clojure.core/update-in]], but for LensSchemas."
+  [schema ks f & args]
+  (letfn [(up [s [k & ks] f args]
+            (assoc s k (if ks (up (get s k) ks f args)
+                              (apply f (get s k) args))))]
+    (up schema ks f args)))

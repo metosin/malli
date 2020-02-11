@@ -23,8 +23,9 @@
 (defprotocol MapSchema
   (-map-entries [this] "returns map entries"))
 
-(defprotocol LookupSchema
-  (-get [this key default] "returns schema at key"))
+(defprotocol LensSchema
+  (-get [this key default] "returns schema at key")
+  (-set [this key value] "returns a copy with key having new value"))
 
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
@@ -45,7 +46,7 @@
 ;; impl
 ;;
 
-(declare schema)
+(declare schema into-schema)
 (declare eval)
 (declare default-registry)
 
@@ -284,8 +285,15 @@
           (-form [_] form)
           MapSchema
           (-map-entries [_] entries)
-          LookupSchema
-          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default)))))))
+          LensSchema
+          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
+          (-set [_ key value]
+            (let [found (atom nil)
+                  [key kprop] (if (vector? key) key [key])
+                  entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
+                                  (not @found) (conj [key kprop value])
+                                  :always (->> (filter (fn [e] (-> e last some?)))))]
+              (into-schema :map properties entries))))))))
 
 (defn- -map-of-schema []
   ^{:type ::into-schema}
@@ -395,8 +403,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
-          LookupSchema
-          (-get [_ key default] (if (= 0 key) schema default)))))))
+          LensSchema
+          (-get [_ key default] (if (= 0 key) schema default))
+          (-set [_ key value] (if (= 0 key) (into-schema name properties [value]) schema)))))))
 
 (defn- -tuple-schema []
   ^{:type ::into-schema}
@@ -447,8 +456,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
-          LookupSchema
-          (-get [_ key default] (get schemas key default)))))))
+          LensSchema
+          (-get [_ key default] (get schemas key default))
+          (-set [_ key value] (into-schema :tuple properties (assoc schemas key value))))))))
 
 (defn- -enum-schema []
   ^{:type ::into-schema}
@@ -559,8 +569,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
-          LookupSchema
-          (-get [_ key default] (if (= 0 key) schema' default)))))))
+          LensSchema
+          (-get [_ key default] (if (= 0 key) schema' default))
+          (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema')))))))
 
 (defn- -multi-schema []
   ^{:type ::into-schema}

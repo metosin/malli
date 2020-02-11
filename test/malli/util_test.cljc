@@ -189,6 +189,11 @@
                     [:c string?]]))))
 
 (deftest assoc-test
+  (is (mu/equals (mu/assoc [:vector int?] 0 string?) [:vector string?]))
+  (is (mu/equals (mu/assoc [:tuple int? int?] 1 string?) [:tuple int? string?]))
+  (is (mu/equals (mu/assoc [:tuple int? int?] 2 string?) [:tuple int? int? string?]))
+  (is (mu/equals (mu/assoc [:maybe int?] 0 string?) [:maybe string?]))
+  (is (mu/equals (mu/assoc [:map [:x int?] [:y int?]] :x nil) [:map [:y int?]]))
   (let [schema [:map {:title "map"}
                 [:a int?]
                 [:b {:optional true} int?]
@@ -208,3 +213,54 @@
                     [:a int?]
                     [:b string?]
                     [:c string?]]))))
+
+(deftest update-test
+  (is (mu/equals (mu/update [:vector int?] 0 (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update [:tuple int? int?] 1 (constantly string?)) [:tuple int? string?]))
+  (is (mu/equals (mu/update [:tuple int? int?] 2 (constantly string?)) [:tuple int? int? string?]))
+  (is (mu/equals (mu/update [:maybe int?] 0 (constantly string?)) [:maybe string?]))
+  (is (mu/equals (mu/update [:map [:x int?] [:y int?]] :x (constantly nil)) [:map [:y int?]]))
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/update schema :a mu/update-properties assoc :title "a")
+                   [:map {:title "map"}
+                    [:a [int? {:title "a"}]]
+                    [:b {:optional true} int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/update schema :a (constantly string?))
+                   [:map {:title "map"}
+                    [:a string?]
+                    [:b {:optional true} int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/update schema [:a {:optional true}] (constantly string?))
+                   [:map {:title "map"}
+                    [:a {:optional true} string?]
+                    [:b {:optional true} int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/update schema :b (constantly string?))
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:b string?]
+                    [:c string?]]))))
+
+(deftest assoc-in-test
+  (is (mu/equals (mu/assoc-in [:vector int?] [0] string?) [:vector string?]))
+  (is (mu/equals (mu/assoc-in [:tuple int? int?] [1] string?) [:tuple int? string?]))
+  (is (mu/equals (mu/assoc-in [:tuple int? int?] [2] string?) [:tuple int? int? string?]))
+  (is (mu/equals (mu/assoc-in [:maybe int?] [0] string?) [:maybe string?]))
+  (is (mu/equals (mu/assoc-in nil [:a [:b {:optional true}] :c :d] int?)
+                 [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
+  (is (mu/equals (mu/assoc-in [:map] [:a :b :c :d] int?)
+                 [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]])))
+
+(deftest update-in-test
+  (is (mu/equals (mu/update-in [:vector int?] [0] (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update-in [:tuple int? int?] [1] (constantly string?)) [:tuple int? string?]))
+  (is (mu/equals (mu/update-in [:tuple int? int?] [2] (constantly string?)) [:tuple int? int? string?]))
+  (is (mu/equals (mu/update-in [:maybe int?] [0] (constantly string?)) [:maybe string?]))
+  (is (mu/equals (mu/update-in nil [:a [:b {:optional true}] :c :d] (constantly int?))
+                 [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
+  (is (mu/equals (mu/update-in [:map] [:a :b :c :d] (constantly int?))
+                 [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]])))

@@ -188,7 +188,7 @@
    (get ?schema k nil))
   ([?schema k options]
    (let [schema (m/schema (or ?schema :map) options)]
-     (m/-get schema k options))))
+     (m/-get schema k nil))))
 
 (defn assoc
   "Like [[clojure.core/assoc]], but for LensSchemas."

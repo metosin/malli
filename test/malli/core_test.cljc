@@ -279,6 +279,15 @@
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
 
+
+    (testing "fn schema with bindings"
+      (let [dumb #{:a :b :c}
+            schema [:fn
+                    {:bindings {'dumb dumb}}
+                    '(fn [value] (some? (dumb value)))]]
+        (is (true? (m/validate schema :a)))
+        (is (false? (m/validate schema :z)))))
+
     (testing "non-terminating functions fail fast"
       (let [schema [:fn '(fn [x] (< x (apply max (range))))]]
         (is (false? (m/validate schema 1)))

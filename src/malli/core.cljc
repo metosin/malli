@@ -520,7 +520,7 @@
     (-into-schema [_ properties children options]
       (when-not (= 1 (count children))
         (fail! ::child-error {:name :fn, :properties properties, :children children, :min 1, :max 1}))
-      (let [f (eval (first children))
+      (let [f (eval (first children) (:bindings properties))
             validator (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false)))]
         ^{:type ::schema}
         (reify Schema
@@ -790,12 +790,17 @@
      (if (satisfies? MapSchema schema)
        (-map-entries schema)))))
 
-(defn ^:no-doc eval [?code]
-  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
-                                                      :bindings {'m/properties properties
-                                                                 'm/name name
-                                                                 'm/children children
-                                                                 'm/map-entries map-entries}})))
+(defn ^:no-doc eval
+  ([?code]
+   (eval ?code {}))
+  ([?code bindings]
+   (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset   :termination-safe
+                                                       :bindings (merge
+                                                                   bindings
+                                                                   {'m/properties  properties
+                                                                    'm/name        name
+                                                                    'm/children    children
+                                                                    'm/map-entries map-entries})}))))
 ;;
 ;; Visitors
 ;;

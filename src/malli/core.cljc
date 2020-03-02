@@ -82,8 +82,10 @@
 (defn- -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn- -chain [phase chain]
-  (let [f (case phase, :enter identity, :leave reverse)]
-    (some->> chain (keep identity) (seq) (f) (reverse) (apply comp))))
+  (when-let [fns (->> (case phase, :enter (rseq chain), :leave chain)
+                      (keep identity)
+                      (seq))]
+    (apply comp fns)))
 
 (defn- -leaf-schema [name ->validator-and-children]
   ^{:type ::into-schema}
@@ -753,7 +755,7 @@
        :else identity))))
 
 (defn decode
-  "Transforms a value with a given decoding transformer agains a schema."
+  "Transforms a value with a given decoding transformer against a schema."
   ([?schema value t]
    (decode ?schema value nil t))
   ([?schema value options t]
@@ -773,7 +775,7 @@
        :else identity))))
 
 (defn encode
-  "Transforms a value with a given encoding transformer agains a schema."
+  "Transforms a value with a given encoding transformer against a schema."
   ([?schema value t]
    (encode ?schema value nil t))
   ([?schema value options t]

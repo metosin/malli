@@ -365,7 +365,7 @@
        [:leave :map]
        [:leave :multi]])))
 
-(deftest default-tranformers
+(deftest default-transformers
   (let [state (atom nil)
         schema (m/schema [:map [:x int?] [:y string?]])
         transformer (mt/transformer {:decoders {'int? identity}
@@ -390,7 +390,7 @@
               [:encode "2"]]
              @state)))))
 
-(deftest schema-hinted-tranformation
+(deftest schema-hinted-transformation
   (let [schema [string? {:title "lower-upper-string"
                          :decode/string 'str/upper-case
                          :encode/string 'str/lower-case}]

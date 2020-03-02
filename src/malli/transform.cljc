@@ -61,18 +61,18 @@
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
     (if (seq chain)
-	    (reify
-	      m/Transformer
-	      (-transformer-chain [_] chain)
-	      (-value-transformer [_ schema method options]
-	        (reduce
-	          (fn [acc {{:keys [key default transformers]} method}]
-	            (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
-	                                      (get transformers (m/name schema))
-	                                      default)]
-	              (let [interceptor (->interceptor ?interceptor schema options)]
-	                (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))
-	              acc)) nil chain'))))))
+      (reify
+        m/Transformer
+        (-transformer-chain [_] chain)
+        (-value-transformer [_ schema method options]
+          (reduce
+            (fn [acc {{:keys [key default transformers]} method}]
+              (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
+                                        (get transformers (m/name schema))
+                                        default)]
+                (let [interceptor (->interceptor ?interceptor schema options)]
+                  (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))
+                acc)) nil chain'))))))
 
 ;;
 ;; From Strings

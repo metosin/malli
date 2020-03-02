@@ -755,7 +755,7 @@
        :else identity))))
 
 (defn decode
-  "Transforms a value with a given decoding transformer agains a schema."
+  "Transforms a value with a given decoding transformer against a schema."
   ([?schema value t]
    (decode ?schema value nil t))
   ([?schema value options t]
@@ -775,7 +775,7 @@
        :else identity))))
 
 (defn encode
-  "Transforms a value with a given encoding transformer agains a schema."
+  "Transforms a value with a given encoding transformer against a schema."
   ([?schema value t]
    (encode ?schema value nil t))
   ([?schema value options t]

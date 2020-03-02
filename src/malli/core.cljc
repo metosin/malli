@@ -82,8 +82,10 @@
 (defn- -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn- -chain [phase chain]
-  (let [f (case phase, :enter identity, :leave reverse)]
-    (some->> chain (keep identity) (seq) (f) (reverse) (apply comp))))
+  (when-let [fns (->> (case phase, :enter (rseq chain), :leave chain)
+                      (keep identity)
+                      (seq))]
+    (apply comp fns)))
 
 (defn- -leaf-schema [name ->validator-and-children]
   ^{:type ::into-schema}

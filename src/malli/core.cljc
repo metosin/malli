@@ -407,7 +407,7 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this [(-accept schema visitor (conj in ::in) options)] in options))
+            (visitor this [(-accept schema visitor (conj in 0) options)] in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)

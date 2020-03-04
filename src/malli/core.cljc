@@ -15,7 +15,7 @@
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
   (-transformer [this transformer method options] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
-  (-accept [this visitor path in options] "accepts the visitor to visit schema and it's children")
+  (-accept [this visitor in options] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
   (-form [this] "returns original form of the schema"))
@@ -103,8 +103,8 @@
               (if-not (validator value) (conj acc (error path in this value)) acc)))
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
-          (-accept [this visitor path in options]
-            (visitor this (vec children) path in options))
+          (-accept [this visitor in options]
+            (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form))))))
@@ -174,8 +174,8 @@
                                         (?->this x) ->children)))))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
-            (visitor this (mapv #(-accept % visitor path in options) child-schemas) path in options))
+          (-accept [this visitor in options]
+            (visitor this (mapv #(-accept % visitor in options) child-schemas) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] (create-form name properties (map -form child-schemas)))
@@ -284,13 +284,8 @@
                             (-chain phase [->this (-guard map? apply->children)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
-            (visitor this
-                     (mapv (fn [[i [k p s]]]
-                             (let [key-distance (if (seq p) 2 1)]
-                               [k p (-accept s visitor (into path [(+ i distance) key-distance]) (conj in k) options)]))
-                           (map-indexed vector entries))
-                     path in options))
+          (-accept [this visitor in options]
+            (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor (conj in k) options)]) entries) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
@@ -355,10 +350,9 @@
                             (-chain phase [->this (-guard map? apply->key-child)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
-            (prn key-schema value-schema)
-            (visitor this [#(-accept key-schema visitor (conj path distance) in options)
-                           #(-accept value-schema visitor (conj path (inc distance)) in options)] path in options))
+          (-accept [this visitor in options]
+            (visitor this [#(-accept key-schema visitor in options)
+                           #(-accept value-schema visitor in options)] in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
@@ -412,8 +406,8 @@
                             (-chain phase [->this (-guard coll? ->child)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
-            (visitor this [(-accept schema visitor (conj path distance) (conj in ::>) options)] path in options))
+          (-accept [this visitor in options]
+            (visitor this [(-accept schema visitor (conj in ::in) options)] in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
@@ -466,10 +460,10 @@
                             (-chain phase [->this (-guard vector? apply->children)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
+          (-accept [this visitor in options]
             (visitor this (mapv
-                            (fn [[i s]] (-accept s visitor (conj path (+ i distance)) (conj in (+ i distance)) options))
-                            (map-indexed vector schemas)) path in options))
+                            (fn [[i s]] (-accept s visitor (conj in (+ i distance)) options))
+                            (map-indexed vector schemas)) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
@@ -495,8 +489,8 @@
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
-          (-accept [this visitor path in options]
-            (visitor this (vec children) path in options))
+          (-accept [this visitor in options]
+            (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] (create-form :enum properties children)))))))
@@ -524,8 +518,8 @@
                   (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
-          (-accept [this visitor path in options]
-            (visitor this (vec children) path in options))
+          (-accept [this visitor in options]
+            (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form))))))
@@ -552,8 +546,8 @@
                   (conj acc (error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
-          (-accept [this visitor path in options]
-            (visitor this (vec children) path in options))
+          (-accept [this visitor in options]
+            (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] (create-form :fn properties children)))))))
@@ -585,8 +579,8 @@
                               (or ->this ->child))))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
-            (visitor this [(-accept schema' visitor path in options)] path in options))
+          (-accept [this visitor in options]
+            (visitor this [(-accept schema' visitor in options)] in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
@@ -635,8 +629,8 @@
                             (-chain phase [->this ->child])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-accept [this visitor path in options]
-            (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor path in options)]) entries) path in options))
+          (-accept [this visitor in options]
+            (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor in options)]) entries) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form))))))
@@ -698,7 +692,7 @@
   ([?schema visitor]
    (accept ?schema visitor nil))
   ([?schema visitor options]
-   (-accept (schema ?schema options) visitor [] [] options)))
+   (-accept (schema ?schema options) visitor [] options)))
 
 (defn properties
   ([?schema]
@@ -823,11 +817,9 @@
   (fn [schema children _ _ options]
     (f (into-schema (name schema) (properties schema) children options))))
 
-(defn ^:no-doc map-syntax-visitor [schema children path in _]
+(defn ^:no-doc map-syntax-visitor [schema children in _]
   (let [properties (properties schema)]
-    (cond-> {:name (name schema)
-             :path path
-             :in in}
+    (cond-> {:name (name schema), :in in}
             (seq properties) (assoc :properties properties)
             (seq children) (assoc :children children))))
 

@@ -884,3 +884,33 @@
 (deftest custom-into-schema-test
   (doseq [value [[1 2 3] '(1 2 3)]]
     (is (= true (m/validate [sequential int?] value)))))
+
+(deftest visitor-in-test
+  (is (form= [:map {:in []}
+              [:id [string? {:in [:id]}]]
+              [:tags [:set {:in [:tags]} [keyword? {:in [:tags :malli.core/in]}]]]
+              [:address
+               [:maybe {:in [:address]}
+                [:vector {:in [:address]}
+                 [:map {:in [:address :malli.core/in]}
+                  [:street [string? {:in [:address :malli.core/in :street]}]]
+                  [:lonlat
+                   [:tuple {:in [:address :malli.core/in :lonlat]}
+                    [double? {:in [:address :malli.core/in :lonlat 0]}]
+                    [double? {:in [:address :malli.core/in :lonlat 1]}]]]]]]]]
+             (m/accept
+               [:map
+                [:id string?]
+                [:tags [:set keyword?]]
+                [:address
+                 [:maybe
+                  [:vector
+                   [:map
+                    [:street string?]
+                    [:lonlat [:tuple double? double?]]]]]]]
+               (fn [schema children in options]
+                 (m/into-schema
+                   (m/name schema)
+                   (assoc (m/properties schema) :in in)
+                   children
+                   options))))))

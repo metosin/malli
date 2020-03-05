@@ -88,7 +88,7 @@
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
 
-(defn- -json-schema-visitor [schema children options]
+(defn- -json-schema-visitor [schema children _in options]
   (or (maybe-prefix schema :json-schema)
       (merge (accept (m/name schema) schema children options)
              (json-schema-props schema "json-schema"))))

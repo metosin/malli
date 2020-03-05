@@ -428,16 +428,16 @@
 
       (is (results= {:schema schema,
                      :value {:type :sized, :size "size"},
-                     :errors [{:path [2 1], :in [:size], :schema int?, :value "size"}]}
+                     :errors [{:path [2 1 2 1], :in [:size], :schema int?, :value "size"}]}
                     (m/explain schema invalid1)))
 
       (is (results= {:schema schema,
                      :value {:type :human, :namez "inkeri"},
-                     :errors [{:path [2 0]
+                     :errors [{:path [3 1 2 0]
                                :in [:name]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
                                :type :malli.core/missing-key}
-                              {:path [3 0]
+                              {:path [3 1 3 0]
                                :in [:address]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
                                :type :malli.core/missing-key}]}

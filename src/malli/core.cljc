@@ -586,7 +586,8 @@
             forms (map-entry-forms entries)
             dispatch (eval (:dispatch properties))
             dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))
-            form (create-form :multi properties forms)]
+            form (create-form :multi properties forms)
+            distance (if properties 2 1)]
         (when-not dispatch
           (fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}
@@ -599,7 +600,12 @@
                   (validator x)
                   false))))
           (-explainer [this path]
-            (let [explainers (reduce-kv (fn [acc k s] (assoc acc k (-explainer s path))) {} dispatch-map)]
+            (let [explainers (reduce
+                               (fn [acc [i [key key-properties schema]]]
+                                 (let [key-distance (if (seq key-properties) 2 1)
+                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))]
+                                   (assoc acc key (fn [x in acc] (explainer x in acc)))))
+                               {} (map-indexed vector entries))]
               (fn [x in acc]
                 (if-let [explainer (explainers (dispatch x))]
                   (explainer x in acc)

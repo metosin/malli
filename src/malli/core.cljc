@@ -351,8 +351,7 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this [#(-accept key-schema visitor in options)
-                           #(-accept value-schema visitor in options)] in options))
+            (visitor this (mapv #(-accept % visitor in options) schemas) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] (create-form :map-of properties (mapv -form schemas))))))))
@@ -407,7 +406,7 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this [(-accept schema visitor (conj in 0) options)] in options))
+            (visitor this [(-accept schema visitor (conj in ::in) options)] in options))
           (-properties [_] properties)
           (-options [_] options)
           (-form [_] form)
@@ -462,7 +461,7 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this (mapv
-                            (fn [[i s]] (-accept s visitor (conj in (+ i distance)) options))
+                            (fn [[i s]] (-accept s visitor (conj in i) options))
                             (map-indexed vector schemas)) in options))
           (-properties [_] properties)
           (-options [_] options)
@@ -814,12 +813,12 @@
 ;;
 
 (defn schema-visitor [f]
-  (fn [schema children _ _ options]
+  (fn [schema children _ options]
     (f (into-schema (name schema) (properties schema) children options))))
 
-(defn ^:no-doc map-syntax-visitor [schema children in _]
+(defn ^:no-doc map-syntax-visitor [schema children _ _]
   (let [properties (properties schema)]
-    (cond-> {:name (name schema), :in in}
+    (cond-> {:name (name schema)}
             (seq properties) (assoc :properties properties)
             (seq children) (assoc :children children))))
 

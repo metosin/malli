@@ -586,6 +586,74 @@
                                         [false [:sequential int?] #{1 2 3}]
                                         [false [:sequential int?] nil]]
 
+                          "cat" [; same as [:cat {:into nil} ...]
+                                 [true [:cat [:x int?]] '(1)]
+                                 [true [:cat [:x int?]] [1]]
+
+                                 ; aka :cat*
+                                 [true [:cat {:into :any} [:x int?]] '(1)]
+                                 [true [:cat {:into :any} [:x int?]] [1]]
+
+                                 ; aka :catl
+                                 [true [:cat {:into :list} [:x int?]] '(1)]
+                                 [false [:cat {:into :list} [:x int?]] [1]]
+
+                                 ; aka :catv
+                                 [false [:cat {:into :vector} [:x int?]] '(1)]
+                                 [true [:cat {:into :vector} [:x int?]] [1]]
+
+                                 ; concatenated sequences
+                                 [true [:cat [:a [:cat [:ax int?] [:ay int?]]]
+                                             [:b [:cat [:bx int?] [:by int?]]]] [1 2 3 4]]
+
+                                 ; sequence hierarchy
+                                 [true [:cat [:a [:cat {:into :any} [:ax int?] [:ay int?]]]
+                                             [:b [:cat {:into :any} [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]
+
+                                 ; aka :acat
+                                 [true [:cat {:anonymous true} int? int? [:* string?]] [1 2 "a" "b"]]
+
+                                 ; :?, :+ and :* are all alias of [:repeat {:min a, :max b} ...]
+
+                                 [true [:cat [:x [:? int?] [:y [string?]] ["a"]]]]
+                                 [true [:cat [:x [:? int?] [:y [string?]] [1 "a"]]]]
+                                 [false [:cat [:x [:? int?] [:y [string?]] [1 2 "a"]]]]
+
+                                 [false [:cat [:x [:+ int?] [:y [string?]] ["a"]]]]
+                                 [true [:cat [:x [:+ int?] [:y [string?]] [1 "a"]]]]
+                                 [true [:cat [:x [:+ int?] [:y [string?]] [1 2 "a"]]]]
+
+                                 [true [:cat [:x [:* int?] [:y [string?]] ["a"]]]]
+                                 [true [:cat [:x [:* int?] [:y [string?]] [1 "a"]]]]
+                                 [true [:cat [:x [:* int?] [:y [string?]] [1 2 "a"]]]]
+
+                                 [true [:cat [:x [:? [:cat [:s string?] [:i int?]]]]] []]
+                                 [true [:cat [:x [:? [:cat [:s string?] [:i int?]]]]] ["a" 1]]
+                                 [false [:cat [:x [:? [:cat [:s string?] [:i int?]]]]] ["a" 1 "b" 2]]
+
+                                 [false [:cat [:x [:+ [:cat [:s string?] [:i int?]]]]] []]
+                                 [true [:cat [:x [:+ [:cat [:s string?] [:i int?]]]]] ["a" 1]]
+                                 [true [:cat [:x [:+ [:cat [:s string?] [:i int?]]]]] ["a" 1 "b" 2]]
+
+                                 [true [:cat [:x [:* [:cat [:x string?] [:y int?]]]]] []]
+                                 [true [:cat [:x [:* [:cat [:x string?] [:y int?]]]]] ["a" 1]]
+                                 [true [:cat [:x [:* [:cat [:x string?] [:y int?]]]]] ["a" 1 "b" 2]]
+
+                                 [true [:cat [:x int?] [:y int?]] [1 2]]
+                                 [true [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2]]
+                                 [true [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 "a" "b"]]
+                                 [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 "2"]]
+                                 [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 3]]]
+
+                          "alt" [[true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a"]]
+                                 [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 false]]
+                                 [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 2]]
+                                 [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1]]
+
+                                 ; aka [:acat [:aalt ...]]
+                                 ; aka [:aalt ...] within implicit :acat   <-- maybe not - to be discussed
+                                 [true [:cat {:anonymous true} [:alt {:anonymous true} string? boolean?]]] ["a"]]
+
                           "set" [[true [:set int?] #{1 2 3}]
                                  [false [:set int?] #{1 "2" 3}]
                                  [false [:set int?] #{1 2 "3"}]

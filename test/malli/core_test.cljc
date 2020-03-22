@@ -586,32 +586,32 @@
                                         [false [:sequential int?] #{1 2 3}]
                                         [false [:sequential int?] nil]]
 
-                          "cat" [; same as [:cat {:into nil} ...]
+                          "cat" [; [:seq-of ...] wrapper is implicitly used around [:cat ...]
                                  [true [:cat [:x int?]] '(1)]
                                  [true [:cat [:x int?]] [1]]
 
-                                 ; aka :cat*
-                                 [true [:cat {:into :any} [:x int?]] '(1)]
-                                 [true [:cat {:into :any} [:x int?]] [1]]
+                                 [true [:seq-of [:cat [:x int?]]] '(1)]
+                                 [true [:seq-of [:cat [:x int?]]] [1]]
 
-                                 ; aka :catl
-                                 [true [:cat {:into :list} [:x int?]] '(1)]
-                                 [false [:cat {:into :list} [:x int?]] [1]]
+                                 [true [:list-of [:cat [:x int?]]] '(1)]
+                                 [false [:list-of [:cat [:x int?]]] [1]]
 
-                                 ; aka :catv
-                                 [false [:cat {:into :vector} [:x int?]] '(1)]
-                                 [true [:cat {:into :vector} [:x int?]] [1]]
+                                 [false [:vector-of [:cat [:x int?]]] '(1)]
+                                 [true [:vector-of [:cat [:x int?]]] [1]]
 
                                  ; concatenated sequences
                                  [true [:cat [:a [:cat [:ax int?] [:ay int?]]]
                                              [:b [:cat [:bx int?] [:by int?]]]] [1 2 3 4]]
 
                                  ; sequence hierarchy
-                                 [true [:cat [:a [:cat {:into :any} [:ax int?] [:ay int?]]]
-                                             [:b [:cat {:into :any} [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]
+                                 ; :seq-of is needed explicitly when used as element of a :cat sequence
+                                 [true [:cat [:a [:seq-of [:cat [:ax int?] [:ay int?]]]]
+                                             [:b [:seq-of [:cat [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]]
+                                 [true [:cat [:a [:list-of [:cat [:ax int?] [:ay int?]]]]
+                                             [:b [:vector-of [:cat [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]]
 
-                                 ; aka :acat
-                                 [true [:cat {:anonymous true} int? int? [:* string?]] [1 2 "a" "b"]]
+                                 ; nameless variant, aka :cat-
+                                 [true [:cat {:named false} int? int? [:* string?]] [1 2 "a" "b"]]
 
                                  ; :?, :+ and :* are all alias of [:repeat {:min a, :max b} ...]
 
@@ -645,14 +645,27 @@
                                  [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 "2"]]
                                  [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 3]]]
 
-                          "alt" [[true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a"]]
+                          "alt" [; [:cat- ...] wrapper is implicitly used around [:alt ...]
+                                 [true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                             [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 true]]]
+                                 [true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                             [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 "a" 2]]]
+                                 [false [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                              [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 2]]]
+                                 [false [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                              [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 "a" 2 3]]]
+
+                                 ; Note:
+                                 ;   [:alt [:s string?] [:b boolean?]] is implicitly treated as
+                                 ;   [:alt [:s [:cat- string?]] [:b [:cat- boolean?]]]
+                                 [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a"]]
                                  [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 false]]
                                  [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 2]]
+                                 [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a" 2]]
                                  [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1]]
 
-                                 ; aka [:acat [:aalt ...]]
-                                 ; aka [:aalt ...] within implicit :acat   <-- maybe not - to be discussed
-                                 [true [:cat {:anonymous true} [:alt {:anonymous true} string? boolean?]]] ["a"]]
+                                 ; aka [:cat- [:alt- ...]]
+                                 [true [:cat {:named false} [:alt {:named false} string? boolean?]]] ["a"]]
 
                           "set" [[true [:set int?] #{1 2 3}]
                                  [false [:set int?] #{1 "2" 3}]

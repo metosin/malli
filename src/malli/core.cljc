@@ -364,10 +364,8 @@
         (fail! ::child-error {:name name, :properties properties, :children children, :min 1, :max 1}))
       (let [schema (schema (first children) options)
             form (create-form name properties [(-form schema)])
-            fwrap (fn [x]
-                    (if (coll? x)
-                      (fwrap x)
-                      x))
+            collection? #(or (sequential? %) (set? %))
+            fwrap (fn [x] (if (collection? x) (fwrap x) x))
             validate-limits (cond
                               (not (or min max)) (constantly true)
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
@@ -402,7 +400,7 @@
                                           (if fempty
                                             #(into (if % fempty) (map ct) %)
                                             #(map ct %)))]
-                            (-chain phase [->this (-guard coll? ->child)])))]
+                            (-chain phase [->this (-guard collection? ->child)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]

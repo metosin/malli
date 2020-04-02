@@ -632,6 +632,7 @@
             (is (= expected (m/validate (over-the-wire schema) value)))))))
 
     (testing "transform"
+      (is (= {:x 1} (m/decode [:vector [:map [:x int?]]] {:x 1} (mt/transformer {:name "test"}))))
       (is (= [24 30 36 42]
              (m/decode
                [:sequential
@@ -645,6 +646,7 @@
                 [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]
                 [int? {:decode/string '{:enter (partial + 3), :leave (partial * 4)}}]]
                [1 2 3 4] mt/string-transformer)))
+
       (testing "changing type results in children not being called"
         (are [schema data]
           (is (= "age:31"

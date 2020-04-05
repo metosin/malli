@@ -192,7 +192,15 @@
   (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])]
     [k p (f (schema v options))]))
 
+(defn- -valid-child? [child]
+  (or (== 2 (count child))
+      (and (== 3 (count child))
+           (or (nil? (second child))
+               (map? (second child))))))
+
 (defn- -parse-map-entries [children options]
+  (when-let [children (seq (remove -valid-child? children))]
+     (fail! ::child-error {:children children}))
   (->> children (mapv #(-expand-key % options identity))))
 
 (defn ^:no-doc map-entry-forms [entries]

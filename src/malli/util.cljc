@@ -185,10 +185,12 @@
 (defn get
   "Like [[clojure.core/get]], but for LensSchemas."
   ([?schema k]
-   (get ?schema k nil))
-  ([?schema k options]
+   (get ?schema k nil nil))
+  ([?schema k default]
+   (get ?schema k default nil))
+  ([?schema k default options]
    (let [schema (m/schema (or ?schema :map) options)]
-     (m/-get schema k nil))))
+     (m/-get schema k default))))
 
 (defn assoc
   "Like [[clojure.core/assoc]], but for LensSchemas."
@@ -208,10 +210,12 @@
 (defn get-in
   "Like [[clojure.core/get-in]], but for LensSchemas."
   ([?schema ks]
-   (get-in ?schema ks nil))
-  ([?schema [k & ks] options]
-   (let [schema (get (m/schema (or ?schema :map) options) k)]
-     (if ks (get-in schema ks) schema))))
+   (get-in ?schema ks nil nil))
+  ([?schema ks default]
+   (get-in ?schema ks default nil))
+  ([?schema [k & ks] default options]
+   (let [schema (get (m/schema (or ?schema :map) options) k default)]
+     (if ks (get-in schema ks default) schema))))
 
 (defn assoc-in
   "Like [[clojure.core/assoc-in]], but for LensSchemas."

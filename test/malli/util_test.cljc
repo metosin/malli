@@ -162,19 +162,40 @@
   (is (mu/equals (mu/get [:or int? pos-int?] 1) pos-int?))
   (is (mu/equals (mu/get [:and int? pos-int?] 1) pos-int?))
   (is (mu/equals (mu/get [:tuple int? pos-int?] 1) pos-int?))
+  (is (mu/equals (mu/get [:tuple int? pos-int?] 9 boolean?) boolean?))
+  (is (mu/equals (mu/get [:map [:x int?]] :y boolean?) boolean?))
+  (is (nil? (mu/get [:map [:x int?]] :y)))
   (is (= (mu/get [:map [:x int?]] :y)
          (mu/get [:vector int?] 1))))
 
 (deftest get-in-test
   (is (mu/equals (mu/get-in
-                   [:map
-                    [:x [:vector
-                         [:list
-                          [:set
-                           [:sequential
-                            [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
-                   [:x 0 0 0 0 1 :y 0])
-                 boolean?)))
+                  [:map
+                   [:x [:vector
+                        [:list
+                         [:set
+                          [:sequential
+                           [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
+                  [:x 0 0 0 0 1 :y 0])
+                 boolean?))
+  (is (mu/equals (mu/get-in
+                  [:map
+                   [:x [:vector
+                        [:list
+                         [:set
+                          [:sequential
+                           [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
+                  [:x 0 0 0 0 1 :y 9]
+                  pos-int?)
+                 pos-int?))
+  (is (nil? (mu/get-in
+             [:map
+              [:x [:vector
+                   [:list
+                    [:set
+                     [:sequential
+                      [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
+             [:x 0 0 0 0 1 :y 9]))))
 
 (deftest dissoc-test
   (let [schema [:map {:title "map"}

@@ -191,31 +191,53 @@
 (defn- ->vector [v]
   (if (vector? v) v [v]))
 
+(defn- -map-entry-qualified-keyword? [?k]
+  (let [[k p v] (->vector ?k)]
+    (and (qualified-keyword? k)
+         (nil? p)
+         (nil? v))))
+
+(defn- -map-entry-qualified-keyword-with-options? [?k]
+  (let [[k p v] (->vector ?k)]
+    (and (qualified-keyword? k)
+         (or (map? p) (nil? p))
+         (nil? v))))
+
+(defn- -map-entry-regular? [?k]
+  (let [[k p v] (->vector ?k)]
+    (and (some? k)
+         (some? p)
+         (nil? v))))
+
+(defn- -map-entry-regular-with-options? [?k]
+  (let [[k p v] (->vector ?k)]
+    (and (some? k)
+         (or (map? p) (nil? p))
+         (some? v))))
+
 (defn- -expand-key [?k options f]
   (let [[k p v] (->vector ?k)]
     (cond
-      (and (qualified-keyword? k)
-           (nil? v)
-           (or (nil? p)
-               (map? p)))
+      (-map-entry-qualified-keyword? ?k)
       [k p (schema k options)]
-      (or (nil? p)
-          (map? p))
-      [k p (f (schema v options))]
-      :else
-      [k nil (f (schema p options))])))
 
-(defn- -valid-child? [child]
-  (or (qualified-keyword? child)
-      (and (== 1 (count child))
-           (qualified-keyword? (first child)))
-      (== 2 (count child))
-      (and (== 3 (count child))
-           (or (nil? (second child))
-               (map? (second child))))))
+      (-map-entry-qualified-keyword-with-options? ?k)
+      [k p (schema k options)]
+
+      (-map-entry-regular? ?k)
+      [k nil (f (schema p options))]
+
+      (-map-entry-regular-with-options? ?k)
+      [k p (f (schema v options))])))
+
+(defn- -valid-map-entry? [k]
+  (or (-map-entry-qualified-keyword? k)
+      (-map-entry-qualified-keyword-with-options? k)
+      (-map-entry-regular? k)
+      (-map-entry-regular-with-options? k)))
 
 (defn- -parse-map-entries [children options]
-  (when-let [children (seq (remove -valid-child? children))]
+  (when-let [children (seq (remove -valid-map-entry? children))]
     (fail! ::child-error {:children children}))
   (mapv #(-expand-key % options identity) children))
 

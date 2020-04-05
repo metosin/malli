@@ -1007,6 +1007,25 @@ Predicate Schemas don't work anymore:
 ; :malli.core/invalid-schema
 ```
 
+### Custom qualified schema keys in a map
+
+Example to use a registered qualified keyword in your map. If you don't provide
+a schema to this key, it will look in the registry. You can also provide
+options using this method.
+
+``` clj
+(def registry
+  (merge m/default-registry {::id int?
+                             ::country string?}))
+
+(m/schema
+  [:map
+   ::id
+   [:name string?]
+   [::country {:optional true}]]
+  {:registry registry})
+```
+
 ### Mutable registry
 
 [clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. There is no such thing in `malli`, but you can create it yourself.

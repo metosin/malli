@@ -188,20 +188,36 @@
     [(first xs) (rest xs)]
     [nil xs]))
 
-(defn- -expand-key [[k ?p ?v] options f]
-  (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])]
-    [k p (f (schema v options))]))
+(defn- ->vector [v]
+  (if (vector? v) v [v]))
+
+(defn- -expand-key [?k options f]
+  (let [[k p v] (->vector ?k)]
+    (cond
+      (and (qualified-keyword? k)
+           (nil? v)
+           (or (nil? p)
+               (map? p)))
+      [k p (schema k options)]
+      (or (nil? p)
+          (map? p))
+      [k p (f (schema v options))]
+      :else
+      [k nil (f (schema p options))])))
 
 (defn- -valid-child? [child]
-  (or (== 2 (count child))
+  (or (qualified-keyword? child)
+      (and (== 1 (count child))
+           (qualified-keyword? (first child)))
+      (== 2 (count child))
       (and (== 3 (count child))
            (or (nil? (second child))
                (map? (second child))))))
 
 (defn- -parse-map-entries [children options]
   (when-let [children (seq (remove -valid-child? children))]
-     (fail! ::child-error {:children children}))
-  (->> children (mapv #(-expand-key % options identity))))
+    (fail! ::child-error {:children children}))
+  (mapv #(-expand-key % options identity) children))
 
 (defn ^:no-doc map-entry-forms [entries]
   (mapv (fn [[k p v]] (let [v' (-form v)] (if p [k p v'] [k v']))) entries))
@@ -303,7 +319,7 @@
           (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
           (-set [_ key value]
             (let [found (atom nil)
-                  [key kprop] (if (vector? key) key [key])
+                  [key kprop] (->vector key)
                   entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
                                   (not @found) (conj [key kprop value])
                                   :always (->> (filter (fn [e] (-> e last some?)))))]

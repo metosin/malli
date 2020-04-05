@@ -916,3 +916,19 @@
                    (assoc (m/properties schema) :in in)
                    children
                    options))))))
+
+(deftest custom-registry-qualified-keyword-in-map-test
+  (let [registry
+        (merge m/default-registry {::id int?
+                                   ::country string?})
+        s (m/schema
+           [:map
+            ::id
+            [:name string?]
+            [::country {:optional true}]]
+           {:registry registry})]
+    (testing "Example with qualified keyword + optional, regular key"
+      (is (m/validate s {::id 123 ::country "Finland" :name "Malli"})))
+
+    (testing "Optional qualified keyword is optional"
+      (is (m/validate s {::id 123 :name "Malli"})))))

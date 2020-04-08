@@ -30,14 +30,23 @@
 
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
-        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options)))
+        value-gen (fn [k o s]
+                    (let [{:gen/keys [gen fmap elements]} o
+                          gen (or (when elements (gen/elements elements))
+                                  gen
+                                  (generator s options))]
+                      (gen/fmap
+                       (fn [v] [k v])
+                       (if fmap
+                         (gen/fmap (m/eval fmap) gen)
+                         gen))))
         gen-req (->> entries
                      (remove #(-> % second :optional))
-                     (map (fn [[k _ s]] (value-gen k s)))
+                     (map (fn [[k o s]] (value-gen k o s)))
                      (apply gen/tuple))
         gen-opt (->> entries
                      (filter #(-> % second :optional))
-                     (map (fn [[k _ s]] (gen/one-of [(gen/return nil) (value-gen k s)])))
+                     (map (fn [[k o s]] (gen/one-of [(gen/return nil) (value-gen k o s)])))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 

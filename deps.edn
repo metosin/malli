@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
  :aliases {:test {:extra-paths ["test"]
-                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-554"}
-                               lambdaisland/kaocha-cljs {:mvn/version "0.0-59"}
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-601"}
+                               lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}
                                metosin/spec-tools {:mvn/version "0.10.0"}
                                metosin/schema-tools {:mvn/version "0.12.0"}

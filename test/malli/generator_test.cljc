@@ -51,11 +51,22 @@
       (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
   (testing "gen/elements"
     (dotimes [_ 1000]
-      (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?])))
+      (is (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?]))))
     (dotimes [_ 1000]
-      (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?]))))
+      (is (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?])))))
   (testing "gen/gen"
     (dotimes [_ 1000]
-      (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?])))
+      (is (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?]))))
     (dotimes [_ 1000]
-      (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?])))))
+      (is (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?])))))
+
+  (testing "custom generators on map entries"
+    (testing "gen/elements"
+      (dotimes [_ 1000]
+        (is (#{{:foo 1} {:foo 2}} (mg/generate [:map [:foo {:gen/elements [1 2]} int?]])))))
+    (testing "gen/gen"
+      (dotimes [_ 1000]
+        (is (#{{:foo 100} {:foo 101}} (mg/generate [:map [:foo {:gen/gen (gen/choose 100 101)} int?]])))))
+    (testing "gen/fmap"
+      (dotimes [_ 1000]
+        (is (#{{:foo ":a"} {:foo ":b"}} (mg/generate [:map [:foo {:gen/fmap str} [:enum :a :b]]])))))))

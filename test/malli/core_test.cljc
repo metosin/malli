@@ -586,18 +586,8 @@
                                         [false [:sequential int?] #{1 2 3}]
                                         [false [:sequential int?] nil]]
 
-                          "cat" [; [:seq-of ...] wrapper is implicitly used around [:cat ...]
-                                 [true [:cat [:x int?]] '(1)]
+                          "cat" [[true [:cat [:x int?]] '(1)]
                                  [true [:cat [:x int?]] [1]]
-
-                                 [true [:seq-of [:cat [:x int?]]] '(1)]
-                                 [true [:seq-of [:cat [:x int?]]] [1]]
-
-                                 [true [:list-of [:cat [:x int?]]] '(1)]
-                                 [false [:list-of [:cat [:x int?]]] [1]]
-
-                                 [false [:vector-of [:cat [:x int?]]] '(1)]
-                                 [true [:vector-of [:cat [:x int?]]] [1]]
 
                                  ; concatenated sequences
                                  [true [:cat [:a [:cat [:ax int?] [:ay int?]]]
@@ -607,8 +597,8 @@
                                  ; :seq-of is needed explicitly when used as element of a :cat sequence
                                  [true [:cat [:a [:seq-of [:cat [:ax int?] [:ay int?]]]]
                                              [:b [:seq-of [:cat [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]]
-                                 [true [:cat [:a [:list-of [:cat [:ax int?] [:ay int?]]]]
-                                             [:b [:vector-of [:cat [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]]
+                                 [true [:cat [:a [:and list? [:cat [:ax int?] [:ay int?]]]]
+                                             [:b [:and vector? [:cat [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]]
 
                                  ; nameless variant, aka :cat-
                                  [true [:cat {:named false} int? int? [:* string?]] [1 2 "a" "b"]]

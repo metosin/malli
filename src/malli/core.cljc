@@ -23,6 +23,9 @@
 (defprotocol MapSchema
   (-map-entries [this] "returns map entries"))
 
+(defprotocol SeqSchema
+  (-left-overs [this s] "returns a lazy sequence of possible remainings of the sequence `s` after consumption by this schema."))
+
 (defprotocol LensSchema
   (-get [this key default] "returns schema at key")
   (-set [this key value] "returns a copy with key having new value"))
@@ -640,6 +643,57 @@
           (-options [_] options)
           (-form [_] form))))))
 
+(defn- -cat-schema [named]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (let [children (cond->> children (not named) (map-indexed vector))
+            entries (-parse-map-entries children options)
+            left-overs (fn left-overs [entries s]
+                         (if (seq entries)
+                           (let [[[_ _ p] & next-entries] entries
+                                 left-overs-coll (if (satisfies? SeqSchema p)
+                                                   (-left-overs p s)
+                                                   (if (and (seq s)
+                                                            ((-validator p) (first s)))
+                                                       (list (next s))
+                                                       '()))]
+                             (mapcat #(left-overs next-entries %) left-overs-coll))
+                           (list s)))
+            forms (map-entry-forms entries)
+            form (create-form :cat properties forms)]
+       (when-not (seq children)
+         (fail! ::child-error {:name :cat, :properties properties, :children children, :min 1}))
+       ^{:type ::schema}
+       (reify Schema
+         (-name [_] :cat)
+         (-validator [_]
+           (fn [s]
+             (and (seqable? s)
+                  (boolean (some nil? (left-overs entries s))))))
+         (-explainer [this path]
+           (fn [value in acc] acc))
+         (-transformer [this transformer method options]
+           {:enter identity
+            :leave identity})
+         (-accept [this visitor in options] ; copied from -map-schema
+           (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor (conj in k) options)]) entries) in options))
+         (-properties [_] properties)
+         (-options [_] options)
+         (-form [_] form)
+         SeqSchema
+         (-left-overs [_ s]
+           (left-overs entries s))
+         LensSchema ; copied from -map-schema
+         (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
+         (-set [_ key value]
+           (let [found (atom nil)
+                 [key kprop] (if (vector? key) key [key])
+                 entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
+                                 (not @found) (conj [key kprop value])
+                                 :always (->> (filter (fn [e] (-> e last some?)))))]
+             (into-schema :cat properties entries))))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -858,6 +912,15 @@
    :list (-collection-schema :list list? seq nil)
    :sequential (-collection-schema :sequential sequential? seq nil)
    :set (-collection-schema :set set? set #{})
+   ;:seq-of (-seq-of-schema nil any?)
+   :cat (-cat-schema true)
+   :cat- (-cat-schema false)
+   ;:alt (-alt-schema true)
+   ;:alt- (-alt-schema false)
+   ;:? (-repeat-schema 0 1)
+   ;:+ (-repeat-schema 1 ##Inf)
+   ;:* (-repeat-schema 0 ##Inf)
+   ;:repeat (-repeat-schema nil nil)
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

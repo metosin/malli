@@ -594,15 +594,16 @@
                                              [:b [:cat [:bx int?] [:by int?]]]] [1 2 3 4]]
 
                                  ; sequence hierarchy
-                                 ; :seq-of is needed explicitly when used as element of a :cat sequence
-                                 ;[true [:cat [:a [:seq-of [:cat [:ax int?] [:ay int?]]]]
-                                 ;            [:b [:seq-of [:cat [:bx int?] [:by int?]]]]] ['(1 2) [3 4]]]
+                                 ; {:sequence-op false} is used only on elements within a sequence schema
+                                 [true [:cat [:a [:cat {:sequence-op false} [:ax int?] [:ay int?]]]
+                                             [:b [:cat {:sequence-op false} [:bx int?] [:by int?]]]] ['(1 2) [3 4]]]
                                  [true [:cat [:a [:and list? [:cat [:ax int?] [:ay int?]]]]
-                                             [:b [:and vector? [:cat [:bx int?] [:by int?]]]]] ['(1 2) [3 4]]]]
-                          ;
-                          ;       ; nameless variant, aka :cat-
-                          ;       [true [:cat {:named false} int? int? [:* string?]] [1 2 "a" "b"]]
-                          ;
+                                             [:b [:and vector? [:cat [:bx int?] [:by int?]]]]] ['(1 2) [3 4]]]
+
+                                 ; nameless variant, aka :cat-
+                                 [true [:cat {:named false} int? int?] [1 2]]
+                                 [true [:cat- int? int?] [1 2]]]
+
                           ;       ; :?, :+ and :* are all alias of [:repeat {:min a, :max b} ...]
                           ;
                           ;       [true [:cat [:x [:? int?] [:y [string?]] ["a"]]]]

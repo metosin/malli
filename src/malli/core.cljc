@@ -643,30 +643,49 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -cat-schema [named]
+(defn- seq-entry-forms [named entries]
+  (mapv (fn [[k p v]]
+          (let [v' (-form v)]
+            (if named
+              (if p [k p v'] [k v'])
+              v')))
+        entries))
+
+(defn- -sequence-op? [schema]
+  (get (-properties schema) :sequence-op false))
+
+(defn- -parse-seq-schema-entries [named children options]
+  (mapv (fn [[k ?p ?v]]
+          (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
+                s (schema v options)]
+            [k p s (-sequence-op? s) (-validator s)]))
+        (cond->> children (not named) (map-indexed vector))))
+
+(defn- -cat-schema [name named]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [children (cond->> children (not named) (map-indexed vector))
-            entries (-parse-map-entries children options)
+      (let [named (:named properties named)
+            entries (-parse-seq-schema-entries named children options)
             left-overs (fn left-overs [entries s]
                          (if (seq entries)
-                           (let [[[_ _ p] & next-entries] entries
-                                 left-overs-coll (if (satisfies? SeqSchema p)
+                           (let [[[_ _ p seq-op? validator] & next-entries] entries
+                                 left-overs-coll (if seq-op?
                                                    (-left-overs p s)
                                                    (if (and (seq s)
-                                                            ((-validator p) (first s)))
-                                                       (list (next s))
-                                                       '()))]
+                                                            (validator (first s)))
+                                                     (list (next s))
+                                                     '()))]
                              (mapcat #(left-overs next-entries %) left-overs-coll))
                            (list s)))
-            forms (map-entry-forms entries)
-            form (create-form :cat properties forms)]
+            forms (seq-entry-forms named entries)
+            form (create-form name properties forms)
+            properties' (assoc properties :sequence-op (:sequence-op properties true))]
        (when-not (seq children)
-         (fail! ::child-error {:name :cat, :properties properties, :children children, :min 1}))
+         (fail! ::child-error {:name name, :properties properties, :children children, :min 1}))
        ^{:type ::schema}
        (reify Schema
-         (-name [_] :cat)
+         (-name [_] name)
          (-validator [_]
            (fn [s]
              (and (seqable? s)
@@ -678,7 +697,7 @@
             :leave identity})
          (-accept [this visitor in options] ; copied from -map-schema
            (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor (conj in k) options)]) entries) in options))
-         (-properties [_] properties)
+         (-properties [_] properties')
          (-options [_] options)
          (-form [_] form)
          SeqSchema
@@ -692,7 +711,7 @@
                  entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
                                  (not @found) (conj [key kprop value])
                                  :always (->> (filter (fn [e] (-> e last some?)))))]
-             (into-schema :cat properties entries))))))))
+             (into-schema name properties entries))))))))
 
 (defn- -register [registry k schema]
   (if (contains? registry k)
@@ -912,9 +931,8 @@
    :list (-collection-schema :list list? seq nil)
    :sequential (-collection-schema :sequential sequential? seq nil)
    :set (-collection-schema :set set? set #{})
-   ;:seq-of (-seq-of-schema nil any?)
-   :cat (-cat-schema true)
-   :cat- (-cat-schema false)
+   :cat (-cat-schema :cat true)
+   :cat- (-cat-schema :cat- false)
    ;:alt (-alt-schema true)
    ;:alt- (-alt-schema false)
    ;:? (-repeat-schema 0 1)

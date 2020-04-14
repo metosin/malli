@@ -635,27 +635,24 @@
                                  [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 "a"]]
                                  [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 3]]]
 
-                          ;"alt" [; [:cat- ...] wrapper is implicitly used around [:alt ...]
-                          ;       [true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
-                          ;                   [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 true]]]
-                          ;       [true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
-                          ;                   [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 "a" 2]]]
-                          ;       [false [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
-                          ;                    [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 2]]]
-                          ;       [false [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
-                          ;                    [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 "a" 2 3]]]
-                          ;
-                          ;       ; Note:
-                          ;       ;   [:alt [:s string?] [:b boolean?]] is implicitly treated as
-                          ;       ;   [:alt [:s [:cat- string?]] [:b [:cat- boolean?]]]
-                          ;       [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a"]]
-                          ;       [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 false]]
-                          ;       [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 2]]
-                          ;       [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a" 2]]
-                          ;       [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1]]
-                          ;
-                          ;       ; aka [:cat- [:alt- ...]]
-                          ;       [true [:cat {:named false} [:alt {:named false} string? boolean?]]] ["a"]]
+                          "alt" [[true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                             [:kind2 [:cat [:a int?] [:b string?] [:c int?]]]] [1 true]]
+                                 [true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                             [:kind2 [:cat [:a int?] [:b string?] [:c int?]]]] [1 "a" 2]]
+                                 [false [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                              [:kind2 [:cat [:a int?] [:b string?] [:c int?]]]] [1 2]]
+                                 [false [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
+                                              [:kind2 [:cat [:a int?] [:b string?] [:c int?]]]] [1 "a" 2 3]]
+
+                                 [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a"]]
+                                 [true [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 false]]
+                                 [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 2]]
+                                 [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1 "a" 2]]
+                                 [false [:cat [:x int?] [:y [:alt [:s string?] [:b boolean?]]]] [1]]
+
+                                 ; nameless variant, aka :alt-
+                                 [true [:alt {:named false} string? boolean?] ["a"]]
+                                 [true [:alt- string? boolean?] ["a"]]]
 
                           "set" [[true [:set int?] #{1 2 3}]
                                  [false [:set int?] #{1 "2" 3}]

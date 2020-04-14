@@ -713,6 +713,56 @@
                                  :always (->> (filter (fn [e] (-> e last some?)))))]
              (into-schema name properties entries))))))))
 
+(defn- -alt-schema [name named]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (let [named (:named properties named)
+            entries (-parse-seq-schema-entries named children options)
+            forms (seq-entry-forms named entries)
+            form (create-form name properties forms)
+            properties' (assoc properties :sequence-op (:sequence-op properties true))
+            left-overs (fn left-overs [entries s]
+                         (mapcat (fn [[_ _ p seq-op? validator]]
+                                   (if seq-op?
+                                     (-left-overs p s)
+                                     (if (and (seq s)
+                                              (validator (first s)))
+                                       (list (next s))
+                                       '())))
+                                 entries))]
+       (when-not (seq children)
+         (fail! ::child-error {:name name, :properties properties, :children children, :min 1}))
+       ^{:type ::schema}
+       (reify Schema
+         (-name [_] name)
+         (-validator [_]
+           (fn [x]
+             (and (seqable? x)
+                  (boolean (some nil? (left-overs entries (seq x)))))))
+         (-explainer [this path]
+           (fn [value in acc] acc))
+         (-transformer [this transformer method options]
+           {:enter identity
+            :leave identity})
+         (-accept [this visitor in options] ; copied from -map-schema
+           (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor (conj in k) options)]) entries) in options))
+         (-properties [_] properties')
+         (-options [_] options)
+         (-form [_] form)
+         SeqSchema
+         (-left-overs [_ s]
+           (left-overs entries s))
+         LensSchema ; copied from -map-schema
+         (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
+         (-set [_ key value]
+           (let [found (atom nil)
+                 [key kprop] (if (vector? key) key [key])
+                 entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
+                                 (not @found) (conj [key kprop value])
+                                 :always (->> (filter (fn [e] (-> e last some?)))))]
+             (into-schema name properties entries))))))))
+
 (defn- -repeat-schema [name min max]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -993,8 +1043,8 @@
    :set (-collection-schema :set set? set #{})
    :cat (-cat-schema :cat true)
    :cat- (-cat-schema :cat- false)
-   ;:alt (-alt-schema true)
-   ;:alt- (-alt-schema false)
+   :alt (-alt-schema :alt true)
+   :alt- (-alt-schema :alt- false)
    :? (-repeat-schema :? 0 1)
    :+ (-repeat-schema :+ 1 ##Inf)
    :* (-repeat-schema :* 0 ##Inf)

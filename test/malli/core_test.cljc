@@ -602,40 +602,39 @@
 
                                  ; nameless variant, aka :cat-
                                  [true [:cat {:named false} int? int?] [1 2]]
-                                 [true [:cat- int? int?] [1 2]]]
+                                 [true [:cat- int? int?] [1 2]]
 
-                          ;       ; :?, :+ and :* are all alias of [:repeat {:min a, :max b} ...]
-                          ;
-                          ;       [true [:cat [:x [:? int?] [:y [string?]] ["a"]]]]
-                          ;       [true [:cat [:x [:? int?] [:y [string?]] [1 "a"]]]]
-                          ;       [false [:cat [:x [:? int?] [:y [string?]] [1 2 "a"]]]]
-                          ;
-                          ;       [false [:cat [:x [:+ int?] [:y [string?]] ["a"]]]]
-                          ;       [true [:cat [:x [:+ int?] [:y [string?]] [1 "a"]]]]
-                          ;       [true [:cat [:x [:+ int?] [:y [string?]] [1 2 "a"]]]]
-                          ;
-                          ;       [true [:cat [:x [:* int?] [:y [string?]] ["a"]]]]
-                          ;       [true [:cat [:x [:* int?] [:y [string?]] [1 "a"]]]]
-                          ;       [true [:cat [:x [:* int?] [:y [string?]] [1 2 "a"]]]]
-                          ;
-                          ;       [true [:cat [:x [:? [:cat [:s string?] [:i int?]]]]] []]
-                          ;       [true [:cat [:x [:? [:cat [:s string?] [:i int?]]]]] ["a" 1]]
-                          ;       [false [:cat [:x [:? [:cat [:s string?] [:i int?]]]]] ["a" 1 "b" 2]]
-                          ;
-                          ;       [false [:cat [:x [:+ [:cat [:s string?] [:i int?]]]]] []]
-                          ;       [true [:cat [:x [:+ [:cat [:s string?] [:i int?]]]]] ["a" 1]]
-                          ;       [true [:cat [:x [:+ [:cat [:s string?] [:i int?]]]]] ["a" 1 "b" 2]]
-                          ;
-                          ;       [true [:cat [:x [:* [:cat [:x string?] [:y int?]]]]] []]
-                          ;       [true [:cat [:x [:* [:cat [:x string?] [:y int?]]]]] ["a" 1]]
-                          ;       [true [:cat [:x [:* [:cat [:x string?] [:y int?]]]]] ["a" 1 "b" 2]]
-                          ;
-                          ;       [true [:cat [:x int?] [:y int?]] [1 2]]
-                          ;       [true [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2]]
-                          ;       [true [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 "a" "b"]]
-                          ;       [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 "2"]]
-                          ;       [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 3]]]
-                          ;
+                                 ; :?, :+ and :* are all alias of [:repeat {:min a, :max b} ...]
+
+                                 [true [:cat [:x [:? int?]] [:y [string?]]] ["a"]]
+                                 [true [:cat [:x [:? int?]] [:y [string?]]] [1 "a"]]
+                                 [false [:cat [:x [:? int?]] [:y [string?]]] [1 2 "a"]]
+
+                                 [false [:cat [:x [:+ int?]] [:y [string?]]] ["a"]]
+                                 [true [:cat [:x [:+ int?]] [:y [string?]]] [1 "a"]]
+                                 [true [:cat [:x [:+ int?]] [:y [string?]]] [1 2 "a"]]
+
+                                 [true [:cat [:x [:* int?]] [:y [string?]]] ["a"]]
+                                 [true [:cat [:x [:* int?]] [:y [string?]]] [1 "a"]]
+                                 [true [:cat [:x [:* int?]] [:y [string?]]] [1 2 "a"]]
+
+                                 [true [:? [:cat [:s string?] [:i int?]]] []]
+                                 [true [:? [:cat [:s string?] [:i int?]]] ["a" 1]]
+                                 [false [:? [:cat [:s string?] [:i int?]]] ["a" 1 "b" 2]]
+
+                                 [false [:+ [:cat [:s string?] [:i int?]]] []]
+                                 [true [:+ [:cat [:s string?] [:i int?]]] ["a" 1]]
+                                 [true [:+ [:cat [:s string?] [:i int?]]] ["a" 1 "b" 2]]
+
+                                 [true [:* [:cat [:x string?] [:y int?]]] []]
+                                 [true [:* [:cat [:x string?] [:y int?]]] ["a" 1]]
+                                 [true [:* [:cat [:x string?] [:y int?]]] ["a" 1 "b" 2]]
+
+                                 [true [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2]]
+                                 [true [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 "a" "b"]]
+                                 [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 "a"]]
+                                 [false [:cat [:x int?] [:y int?] [:rest [:* string?]]] [1 2 3]]]
+
                           ;"alt" [; [:cat- ...] wrapper is implicitly used around [:alt ...]
                           ;       [true [:alt [:kind1 [:cat [:x int?] [:y boolean?]]]
                           ;                   [:kind2 [:cat [:a int?] [:b string?] [:c int?]]] [1 true]]]

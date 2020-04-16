@@ -69,13 +69,15 @@
   ([stats]
    (schema stats nil))
   ([{:keys [types] :as stats} options]
-   (if (= 1 (count (keys types)))
+   (cond
+     (= 1 (count (keys types)))
      (let [type (-> types keys first)]
        (case type
          :value (-value-schema (type types))
          (:set :vector :list :sequential) [type (-> types type :values (schema options))]
          :map (-map-schema (type types) options)))
-     (into [:or] (map (fn [[type]] (schema (update stats :types select-keys [type]) options)) types)))))
+     (nil? types) (m/schema any?)
+     :else (into [:or] (map (fn [[type]] (schema (update stats :types select-keys [type]) options)) types)))))
 
 (defn provide
   ([xs]

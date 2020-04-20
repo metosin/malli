@@ -72,5 +72,4 @@
            }
            Order o-- OrderLine
            Order *-- OrderDelivery"
-        (mm/uml Order))))
-
+        (mm/class-diagram Order))))

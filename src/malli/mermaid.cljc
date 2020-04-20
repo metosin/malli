@@ -1,6 +1,8 @@
 (ns malli.mermaid
   (:require [malli.core :as m]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            #?@(:cljs [[goog.string :as gstring]
+                       [goog.string.format]])))
 
 (defn leaf? [schema]
   (let [found (atom nil)]
@@ -35,7 +37,7 @@
           {:name id})
         (if h (recur (butlast h) (conj t (last h))))))))
 
-(defn uml [?schema]
+(defn class-diagram [?schema]
   (with-out-str
     (let [in->id (collect ?schema)
           classes (atom {})]
@@ -54,10 +56,10 @@
         (when embedded
           (println "    <<embedded>>"))
         (doseq [[k _ s] (m/map-entries schema)]
-          (when-let [s' (or (:name (class-info in->id (conj (first in) k))) (m/form s))]
-            (printf "    + %s %s\n" k s')))
+          (when-let [s' (or (:name (class-info in->id (conj (first in) k))) (str (m/form s)))]
+            (println (#?(:clj format, :cljs gstring/format) "    + %s %s" k s'))))
         (println "  }")
         (doseq [[k _ _] (m/map-entries schema)]
           (when-let [info (class-info in->id (conj (first in) k))]
-            (printf "  %s %s %s\n" name (if (:embedded info) "*--" "o--") (:name info))))))))
+            (println (#?(:clj format, :cljs gstring/format) "  %s %s %s" name (if (:embedded info) "*--" "o--") (:name info)))))))))
 

@@ -37,10 +37,16 @@
 (deftest mermaid-test
   (is (trimmed=
         "classDiagram
+           class CountryName {
+             <<enum>>
+             + :FI
+             + :PO
+           }
            class Country {
-             + :name [:enum :FI :PO]
+             + :name CountryName
              + :neighbors any?
            }
+           Country *-- CountryName
            class Burger {
              + :name string?
              + :description string?

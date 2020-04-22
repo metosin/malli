@@ -4,12 +4,17 @@
             #?@(:cljs [[goog.string :as gstring]
                        [goog.string.format]])))
 
+(defmulti schema-info (fn [schema] (m/name schema)) :default ::default)
+(defmethod schema-info ::default [_])
+(defmethod schema-info :map [_] {:type :map})
+(defmethod schema-info :enum [_] {:type :enum})
+
 (defn leaf? [schema]
   (let [found (atom nil)]
     (m/accept
       schema
       (fn [schema _ _ _]
-        (when (m/map-entries schema)
+        (when (schema-info schema)
           (reset! found true))))
     (not @found)))
 
@@ -44,20 +49,25 @@
       (m/accept
         ?schema
         (fn [schema _ in _]
-          (when (m/map-entries schema)
-            (let [{:keys [name] :as info} (class-info in->id in)]
+          (when-let [sinfo (schema-info schema)]
+            (let [{:keys [name] :as cinfo} (class-info in->id in)]
               (swap! classes update name #(-> %
-                                              (merge info)
+                                              (merge cinfo)
+                                              (merge sinfo)
                                               (assoc :schema schema)
                                               (update :in (fnil conj #{}) in)))))))
       (println "classDiagram")
-      (doseq [{:keys [name schema in embedded]} (vals @classes)]
+      (doseq [{:keys [name schema in embedded type]} (vals @classes)]
         (println "  class" name "{")
-        (when embedded
-          (println "    <<embedded>>"))
-        (doseq [[k _ s] (m/map-entries schema)]
-          (when-let [s' (or (:name (class-info in->id (conj (first in) k))) (str (m/form s)))]
-            (println (#?(:clj format, :cljs gstring/format) "    + %s %s" k s'))))
+        (cond
+          (= :enum type) (println "    <<enum>>")
+          embedded (println "    <<embedded>>"))
+        (case type
+          :map (doseq [[k _ s] (m/map-entries schema)]
+                 (when-let [s' (or (:name (class-info in->id (conj (first in) k))) (str (m/form s)))]
+                   (println "    +" k s')))
+          :enum (doseq [s (m/children schema)]
+                  (println "    +" s)))
         (println "  }")
         (doseq [[k _ _] (m/map-entries schema)]
           (when-let [info (class-info in->id (conj (first in) k))]

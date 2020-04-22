@@ -1,8 +1,6 @@
 (ns malli.mermaid
   (:require [malli.core :as m]
-            [clojure.string :as str]
-            #?@(:cljs [[goog.string :as gstring]
-                       [goog.string.format]])))
+            [clojure.string :as str]))
 
 (defmulti schema-info (fn [schema] (m/name schema)) :default ::default)
 (defmethod schema-info ::default [_])
@@ -71,5 +69,5 @@
         (println "  }")
         (doseq [[k _ _] (m/map-entries schema)]
           (when-let [info (class-info in->id (conj (first in) k))]
-            (println (#?(:clj format, :cljs gstring/format) "  %s %s %s" name (if (:embedded info) "*--" "o--") (:name info)))))))))
+            (println "  " name (if (:embedded info) "*--" "o--") (:name info))))))))
 

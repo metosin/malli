@@ -97,6 +97,10 @@
   (testing "predicates"
     (testing "decode"
       (is (= 1 (m/decode int? "1" mt/string-transformer)))
+      (is (= "1abc" (m/decode int? "1abc" mt/string-transformer)))
+      (is (= "+1-2" (m/decode int? "+1-2" mt/string-transformer)))
+      (is (= 1 (m/decode int? "+1" mt/string-transformer)))
+      (is (= -1 (m/decode int? "-1" mt/string-transformer)))
       (is (= "1" (m/decode int? "1" mt/json-transformer)))
       (is (= 1.0 (m/decode double? 1 mt/json-transformer)))
       (is (= 1 (m/decode double? 1 mt/string-transformer)))

@@ -154,15 +154,7 @@
             (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (map #(-transformer % transformer method options) child-schemas)
                   build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ?->this (or ->this identity)
-                                ->children (into [] (keep phase) child-transformers)]
-                            (if (not (seq ->children))
-                              ->this
-                              (fn [x]
-                                (reduce-kv
-                                  (fn [x' _ t] (t x'))
-                                  (?->this x) ->children)))))]
+                          (-chain phase (apply vector (phase this-transformer) (map phase child-transformers))))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]

@@ -422,6 +422,29 @@
                 "10"
                 transformer))))
 
+  (testing "and"
+    (testing "decode"
+      (are [x expected]
+        (is (= expected
+               (m/decode [:and {:decode/string {:enter #(if (re-matches #"\d{2}" %) (str % "0") %)
+                                                :leave #(if (>= % 100) (* 10 %) %)}}
+                          int?
+                          [any? {:decode/string {:enter inc
+                                                 :leave (partial * 2)}}]]
+                         x mt/string-transformer)))
+        "1" 4
+        "11" 2220))
+    (testing "encode"
+      (are [x expected]
+        (is (= expected
+               (m/encode [:and {:encode/string {:enter #(if (> % 10) (* % 10) %)
+                                                :leave #(if (re-matches #"<<\d{3}>>" %) (str "<<" % ">>") %)}}
+                          keyword?
+                          [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
+                          int?] x mt/string-transformer)))
+        1 "<<1>>"
+        11 "<<<<110>>>>")))
+
   (testing "or"
     (testing "decode"
       (are [x expected]

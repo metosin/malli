@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             [malli.edn :as me]
-            [malli.transform :as mt]))
+            [malli.transform :as mt]
+            [malli.util :as mu]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -134,6 +135,51 @@
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
+
+    (testing "transforming :or"
+      (testing "first valid transformed branch is used"
+        (are [input result]
+          (is (= (m/decode
+                   [:or
+                    [:map [:x keyword?]]
+                    int?
+                    [:map [:y keyword?]]
+                    keyword?]
+                   input
+                   mt/string-transformer)
+                 result))
+
+          {:x "true", :y "true"} {:x :true, :y "true"}
+          {:x false, :y "true"} {:x false, :y :true}
+          {:x false, :y false} {:x false, :y false}
+          1 1
+          "kikka" :kikka))
+
+      (testing "top-level transformations are retained"
+        (are [input result]
+          (is (= (m/decode
+                   (mu/closed-schema
+                     [:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
+                                           :leave (fn [m] (update m :leave #(or % true)))}}
+                      [:map
+                       [:x keyword?]
+                       [:enter boolean?]
+                       [:leave boolean?]]
+                      [:map
+                       [:y keyword?]
+                       [:enter boolean?]
+                       [:leave boolean?]]])
+                   input
+                   mt/string-transformer)
+                 result))
+
+          {:x "true"} {:x :true, :enter true, :leave true}
+          {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
+
+          {:y "true"} {:y :true, :enter true, :leave true}
+          {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
+
+          {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true})))
 
     (testing "explain with branches"
       (let [schema [:and pos-int? neg-int?]]

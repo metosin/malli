@@ -163,12 +163,10 @@
                                            :leave (fn [m] (update m :leave #(or % true)))}}
                       [:map
                        [:x keyword?]
-                       [:enter boolean?]
-                       [:leave boolean?]]
+                       [:enter boolean?]]
                       [:map
                        [:y keyword?]
-                       [:enter boolean?]
-                       [:leave boolean?]]])
+                       [:enter boolean?]]])
                    input
                    mt/string-transformer)
                  result))

@@ -409,17 +409,6 @@
       (is (= value (m/decode schema value mt/json-transformer)))
       (is (= value (m/encode schema value mt/json-transformer)))))
 
-  (testing "encoding or shortcircuits"
-    (are [x expected]
-      (is (= expected
-             (m/encode [:or
-                        keyword?
-                        [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
-                        int?] x mt/string-transformer)))
-
-      1 "<<1>>"
-      -1 "-1"))
-
   (let [transformer (mt/transformer
                       {:name :before}
                       mt/string-transformer
@@ -431,7 +420,34 @@
                 [int? {:decode/before '{:leave inc}
                        :decode/after '(partial * 2)}]
                 "10"
-                transformer)))))
+                transformer))))
+
+  (testing "or"
+    (testing "decode"
+      (are [x expected]
+        (is (= expected
+               (m/decode [:or {:decode/string {:enter #(if (re-matches #"\d{2}" %) (str % "0") %)
+                                               :leave #(cond (and (int? %) (>= % 100)) (* 10 %)
+                                                             (keyword? %) (keyword "decoded" (name %))
+                                                             :else %)}}
+                          [pos-int? {:decode/string {:enter mt/string->long
+                                                     :leave #(if (int? %) (inc %) %)}}]
+                          keyword?]
+                         x mt/string-transformer)))
+        "1" 2
+        "11" 1110
+        "-1" :decoded/-1))
+    (testing "encode"
+      (are [x expected]
+        (is (= expected
+               (m/encode [:or {:encode/string {:enter #(if (> % 10) (* % 10) %)
+                                               :leave #(if (re-matches #"<<\d{3}>>" %) (str "<<" % ">>") %)}}
+                          keyword?
+                          [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
+                          int?] x mt/string-transformer)))
+        1 "<<1>>"
+        -1 "-1"
+        11 "<<<<110>>>>"))))
 
 (deftest transformation-targets
   (let [P1 {:decode/string 'str/upper-case}

@@ -218,7 +218,7 @@
 
                               ;; decode, on the way out, we take the first transformed value that is valid
                               decode? (fn [xs]
-                                        (let [xs (mapv ?->this xs)]
+                                        (?->this
                                           (reduce-kv
                                             (fn [acc i x]
                                               (let [x' ((nth ->children i) x)]
@@ -227,16 +227,17 @@
 
                               ;; encode, on the way in, we take the first valid valud and it's index
                               (= :enter phase) (fn [x]
-                                                 (reduce-kv
-                                                   (fn [acc i v]
-                                                     (if (v x)
-                                                       (reduced [((nth ->children i) x) i]) acc))
-                                                   [x] validators))
+                                                 (let [x (?->this x)]
+                                                   (reduce-kv
+                                                     (fn [acc i v]
+                                                       (if (v x)
+                                                         (reduced [((nth ->children i) x) i]) acc))
+                                                     [x] validators)))
 
                               ;; encode, on the way out, we transform the value using the index
                               :else (fn [[x i]]
-                                      (let [x (?->this x)]
-                                        (if i ((nth ->children i) x) x))))))]
+                                      (?->this (if i ((nth ->children i) x) x))))))]
+
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]

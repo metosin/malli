@@ -203,6 +203,7 @@
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (map #(-transformer % transformer method options) child-schemas)
+                  decode? (= :decode method)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ?->this (or ->this identity)
@@ -210,17 +211,32 @@
                                 validators (mapv -validator child-schemas)]
                             (cond
                               (not (seq ->children)) ->this
-                              ;; on the way in, we transforma all values into vector + the original
-                              (= :enter phase) (let [->children (conj ->children identity)]
-                                                 (fn [x] (let [x (?->this x)] (mapv #(% x) ->children))))
-                              ;; on the way out, we take the first transformed value that is valid
-                              :else (fn [xs]
-                                      (let [xs (mapv ?->this xs)]
-                                        (reduce-kv
-                                          (fn [acc i x]
-                                            (let [x' ((nth ->children i) x)]
-                                              (if ((nth validators i) x') (reduced x') acc)))
-                                          (peek xs) (pop xs)))))))]
+
+                              ;; decode, on the way in, we transforma all values into vector + the original
+                              (and decode? (= :enter phase)) (let [->children (conj ->children identity)]
+                                                               (fn [x] (let [x (?->this x)] (mapv #(% x) ->children))))
+
+                              ;; decode, on the way out, we take the first transformed value that is valid
+                              decode? (fn [xs]
+                                        (let [xs (mapv ?->this xs)]
+                                          (reduce-kv
+                                            (fn [acc i x]
+                                              (let [x' ((nth ->children i) x)]
+                                                (if ((nth validators i) x') (reduced x') acc)))
+                                            (peek xs) (pop xs))))
+
+                              ;; encode, on the way in, we take the first valid valud and it's index
+                              (= :enter phase) (fn [x]
+                                                 (reduce-kv
+                                                   (fn [acc i v]
+                                                     (if (v x)
+                                                       (reduced [((nth ->children i) x) i]) acc))
+                                                   [x] validators))
+
+                              ;; encode, on the way out, we transform the value using the index
+                              :else (fn [[x i]]
+                                      (let [x (?->this x)]
+                                        (if i ((nth ->children i) x) x))))))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]

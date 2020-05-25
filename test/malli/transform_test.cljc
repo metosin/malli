@@ -409,6 +409,17 @@
       (is (= value (m/decode schema value mt/json-transformer)))
       (is (= value (m/encode schema value mt/json-transformer)))))
 
+  (testing "encoding or shortcircuits"
+    (are [x expected]
+      (is (= expected
+             (m/encode [:or
+                        keyword?
+                        [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
+                        int?] x mt/string-transformer)))
+
+      1 "<<1>>"
+      -1 "-1"))
+
   (let [transformer (mt/transformer
                       {:name :before}
                       mt/string-transformer

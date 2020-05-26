@@ -18,6 +18,10 @@ Plain data Schemas for Clojure/Script.
 - No global state, explicit everything
 - [Fast](#performance)
 
+Presentations:
+
+- ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas).
+
 Try the [online demo](https://malli.io). Libraries using malli:
 
 - [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.

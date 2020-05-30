@@ -896,6 +896,20 @@
             (seq children) (assoc :children children))))
 
 ;;
+;; map-syntax
+;;
+
+(defn ^:no-doc to-map-syntax
+  ([?schema] (to-map-syntax ?schema nil))
+  ([?schema options] (accept ?schema map-syntax-visitor options)))
+
+(defn ^:no-doc from-map-syntax
+  ([m] (from-map-syntax m nil))
+  ([{:keys [name properties children]} options]
+   (let [<-child (if (-> children first vector?) (fn [f] #(update % 2 f)) identity)]
+     (into-schema name properties (mapv (<-child #(from-map-syntax % options)) children)))))
+
+;;
 ;; registries
 ;;
 

@@ -960,3 +960,28 @@
                    (assoc (m/properties schema) :in in)
                    children
                    options))))))
+
+(deftest to-from-maps-test
+  (let [schema [:map
+                [:id string?]
+                [:tags [:set keyword?]]
+                [:address
+                 [:vector
+                  [:map
+                   [:street string?]
+                   [:lonlat [:tuple double? double?]]]]]]]
+
+    (testing "to-map-syntax"
+      (is (= {:name :map,
+              :children [[:id nil {:name 'string?}]
+                         [:tags nil {:name :set
+                                     :children [{:name 'keyword?}]}]
+                         [:address nil {:name :vector,
+                                        :children [{:name :map,
+                                                    :children [[:street nil {:name 'string?}]
+                                                               [:lonlat nil {:name :tuple
+                                                                             :children [{:name 'double?} {:name 'double?}]}]]}]}]]}
+             (m/to-map-syntax schema))))
+
+    (testing "from-map-syntax"
+      (is (true? (mu/equals schema (-> schema (m/to-map-syntax) (m/from-map-syntax))))))))

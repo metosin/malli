@@ -922,6 +922,38 @@ Full override with `:swagger` property:
 ; {:type "file"}
 ```
 
+## Map-syntax for Schemas
+
+Schemas can converted into map-syntax (with keys `:name`, `:properties` and `:children`):
+
+```clj
+(def Schema
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:lonlat [:tuple double? double?]]]]])
+
+(m/to-map-syntax Schema)
+;{:name :map,
+; :children [[:id nil {:name string?}]
+;            [:tags nil {:name :set
+;                        :children [{:name keyword?}]}]
+;            [:address nil {:name :map,
+;                           :children [[:street nil {:name string?}]
+;                                      [:lonlat nil {:name :tuple
+;                                                    :children [{:name double?} {:name double?}]}]]}]]}
+```
+
+... and back:
+
+```clj
+(-> Schema (m/to-map-syntax) (m/from-map-syntax) (mu/equals Schema))
+; => true
+```
+
 ## Performance
 
 Validation:

@@ -798,7 +798,7 @@ The identity visitor:
 ;   [:lonlat [:tuple double? double?]]]]]
 ```
 
-Transforming schemas into map-syntax:
+Transforming schemas into [map-syntax](#map-syntax):
 
 ```clj
 (m/accept
@@ -922,9 +922,9 @@ Full override with `:swagger` property:
 ; {:type "file"}
 ```
 
-## Map-syntax for Schemas
+## Map-syntax
 
-Schemas can converted into map-syntax (with keys `:name`, `:properties` and `:children`):
+Schemas can converted into map-syntax (with keys `:name` and optionally `:properties` and `:children`):
 
 ```clj
 (def Schema

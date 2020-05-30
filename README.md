@@ -1181,6 +1181,13 @@ npm install
 bin/kaocha
 ```
 
+## Installing locally
+
+```bash
+clj -Ajar
+clj -Ainstall
+```
+
 ## License
 
 Copyright © 2018-2020 Metosin Oy and contributors.

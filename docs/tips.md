@@ -30,3 +30,5 @@ Schemas can be walked over recursively using `m/accept`:
 ; [:profile map?] 
 ; [:nested :map]]
 ```
+
+In the example, `:tags` key was removed as it's contents would have been an empty `:vector`, which is not legal Schema syntax. Empty `:map` is ok.

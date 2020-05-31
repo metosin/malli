@@ -20,7 +20,7 @@ Schemas can be walked over recursively using `m/accept`:
   (fn [schema children _ options]
     ;; return nil if Schema has the property 
     (when-not (:deleteMe (m/properties schema))
-      ;; there are two syntaxes: normal and the map-entry-one, handle separatly
+      ;; there are two syntaxes: normal and the map-entry, handle separatly
       (let [children (if (m/map-entries schema) (filterv last children) children)]
         ;; create a new Schema with the updated children, or return nil
         (try (m/into-schema (m/name schema) (m/properties schema) children options)

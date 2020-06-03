@@ -20,7 +20,8 @@ Plain data Schemas for Clojure/Script.
 
 Presentations:
 
-- ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas).
+- ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
+- CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
 
 Try the [online demo](https://malli.io). Libraries using malli:
 
@@ -86,6 +87,24 @@ Maps can be closed with `:closed` property:
   {:x 1, :extra "key"})
 ; => false
 ``` 
+
+Maps keys are not limited to keywords:
+
+```clj
+(m/validate
+  [:map
+   ["status" [:enum "ok"]]
+   [1 any?]
+   [nil any?]
+   [::a string?]
+   [[1 2 3] number?]]
+  {"status" "ok"
+   1 'number
+   nil :yay
+   ::a "properly awesome"
+   [1 2 3] 1})
+; => true
+```
 
 Serializable function schemas using [sci](https://github.com/borkdude/sci):
 

@@ -944,6 +944,7 @@
    :tuple (-tuple-schema)
    :multi (-multi-schema)
    :re (-re-schema false)
+   :instance (-partial-fn-schema :instance #(instance? (eval %2) %1))
    :fn (-fn-schema)})
 
 (def default-registry

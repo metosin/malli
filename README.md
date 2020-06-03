@@ -106,6 +106,25 @@ Maps keys are not limited to keywords:
 ; => true
 ```
 
+## Function schemas
+
+`:fn` allows any predicat function to be used:  
+ 
+```clj
+(def my-schema
+  [:and
+   [:map
+    [:x int?]
+    [:y int?]]
+   [:fn (fn [{:keys [x y]}] (> x y))]])
+   
+(m/validate my-schema {:x 1, :y 0})
+; => true
+
+(m/validate my-schema {:x 1, :y 2})
+; => false
+```
+
 Serializable function schemas using [sci](https://github.com/borkdude/sci):
 
 ```clj

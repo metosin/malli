@@ -2,6 +2,9 @@
   (:require [malli.json-schema :as json-schema]
             [malli.core :as m]))
 
+(defprotocol SwaggerSchema
+  (-accept [this children options] "transforms schema to Swagger Schema"))
+
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
 (defmethod accept ::default [name schema children options] (json-schema/accept name schema children options))
@@ -22,7 +25,11 @@
 (defn- -swagger-visitor [schema children _in options]
   (or (json-schema/maybe-prefix schema :swagger)
       (json-schema/maybe-prefix schema :json-schema)
-      (merge (accept (m/name schema) schema children options)
+      (merge (json-schema/schema-props schema)
+             (if (satisfies? SwaggerSchema schema)
+               (-accept schema children options)
+               (accept (m/name schema) schema children options))
+             (json-schema/json-schema-props schema "json-schema")
              (json-schema/json-schema-props schema "swagger"))))
 
 ;;

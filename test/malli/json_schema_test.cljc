@@ -59,6 +59,9 @@
    [(reify
       m/Schema
       (-properties [_])
+      (-name [_])
+      (-form [_])
+      (-validator [_] int?)
       (-accept [t v i o] (v t nil i o))
       json-schema/JsonSchema
       (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])

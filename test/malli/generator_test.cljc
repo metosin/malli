@@ -24,6 +24,10 @@
         (doseq [value (mg/sample ?schema {:seed 123})]
           (is (m/validate ?schema value))))))
 
+  (testing "string"
+    (let [schema [:string {:min 1, :max 4}]]
+      (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]
               (m/validate re (mg/generate re)))
@@ -40,6 +44,7 @@
           #?(:clj Exception, :cljs js/Error)
           #":malli.generator/no-generator"
           (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
+
   (testing "generator override"
     (testing "without generator"
       (let [schema [:fn {:gen/fmap '(fn [_] (rand-int 10))}
@@ -49,11 +54,13 @@
           (m/validate schema (mg/generate generator)))))
     (testing "with generator"
       (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
+
   (testing "gen/elements"
     (dotimes [_ 1000]
       (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?])))
     (dotimes [_ 1000]
       (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?]))))
+
   (testing "gen/gen"
     (dotimes [_ 1000]
       (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?])))

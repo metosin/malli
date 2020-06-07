@@ -63,7 +63,8 @@
                               :items {}
                               :x-items [{:type "string"}
                                         {:type "string"}]}]
-   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]])
+   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
+   [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLenght 4}]])
 
 (deftest swagger-test
   (doseq [[schema swagger-schema] expectations]

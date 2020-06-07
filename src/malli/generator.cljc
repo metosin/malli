@@ -13,6 +13,15 @@
 
 (defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
+(defn- -string-gen [schema options]
+  (let [{:keys [min max]} (m/properties schema options)]
+    (cond
+      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
+      (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
+      min (gen/fmap str/join (gen/vector gen/char-alphanumeric min (* 2 max)))
+      max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
+      :else gen/string-alpha-numeric)))
+
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (m/properties schema options)
         gen (-> schema m/children first (generator options))]
@@ -78,6 +87,7 @@
 (defmethod -generator :maybe [schema options] (gen/one-of [(gen/return nil) (-> schema (m/children options) first (generator options))]))
 (defmethod -generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -generator :re [schema options] (-re-gen schema options)))
+(defmethod -generator :string [schema options] (-string-gen schema options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)

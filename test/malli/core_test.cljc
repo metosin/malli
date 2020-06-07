@@ -268,6 +268,38 @@
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
+  (testing "string schemas"
+    (let [schema (m/schema [:string {:min 1, :max 4}])]
+
+      (is (true? (m/validate schema "abba")))
+      (is (false? (m/validate schema "")))
+      (is (false? (m/validate schema "invalid")))
+      (is (false? (m/validate schema false)))
+
+      (is (nil? (m/explain schema "1")))
+      (is (results= {:schema [:string {:min 1, :max 4}]
+                     :value false
+                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value false, :type ::m/invalid-type}]}
+                    (m/explain schema false)))
+      (is (results= {:schema [:string {:min 1, :max 4}]
+                     :value "invalid"
+                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value "invalid", :type ::m/limits}]}
+                    (m/explain schema "invalid")))
+
+      (is (= "1" (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= "<-->" (m/decode
+                      [:string {:decode/string {:enter #(str "<" %), :leave #(str % ">")}}]
+                      "--" mt/string-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema) "123")))
+
+      (is (= {:name :string, :properties {:min 1, :max 4}}
+             (m/accept schema m/map-syntax-visitor)))
+
+      (is (= [:string {:min 1, :max 4}] (m/form schema)))))
+
   (testing "re schemas"
     (doseq [form [[:re "^[a-z]+\\.[a-z]+$"]
                   [:re #"^[a-z]+\.[a-z]+$"]

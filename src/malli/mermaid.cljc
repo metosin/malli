@@ -2,30 +2,28 @@
   (:require [malli.core :as m]
             [clojure.string :as str]))
 
-(defmulti schema-info (fn [schema] (m/name schema)) :default ::default)
-(defmethod schema-info ::default [_])
-(defmethod schema-info :map [_] {:type :map})
-(defmethod schema-info :enum [_] {:type :enum})
+(defn schema-type [schema {::keys [types] :or {types #{:map :enum}}}]
+  (some-> schema (m/name) types))
 
-(defn leaf? [schema]
+(defn leaf? [schema options]
   (let [found (atom nil)]
     (m/accept
       schema
       (fn [schema _ _ _]
-        (when (schema-info schema)
+        (when (schema-type schema options)
           (reset! found true))))
     (not @found)))
 
 (defn prune [in] (seq (remove #{:malli.core/in} in)))
 
-(defn collect [?schema]
+(defn collect [?schema options]
   (let [in->id (atom {})]
     (m/accept
       ?schema
       (fn [schema _ in _]
         (let [{:keys [id]} (m/properties schema)
               id (if id {:id id} {:form (str (m/form schema))})]
-          (when-not (leaf? schema)
+          (when-not (leaf? schema options)
             (swap! in->id update (prune in) #(or % id))))))
     @in->id))
 
@@ -40,19 +38,20 @@
           {:name id})
         (if h (recur (butlast h) (conj t (last h))))))))
 
-(defn class-diagram [?schema]
+(defn class-diagram
+  ([?schema] (class-diagram ?schema nil))
+  ([?schema options]
   (with-out-str
-    (let [in->id (collect ?schema)
+     (let [in->id (collect ?schema options)
           classes (atom {})]
       (m/accept
         ?schema
         (fn [schema _ in _]
-          (when-let [sinfo (schema-info schema)]
+           (when-let [type (schema-type schema options)]
             (let [{:keys [name] :as cinfo} (class-info in->id in)]
               (swap! classes update name #(-> %
                                               (merge cinfo)
-                                              (merge sinfo)
-                                              (assoc :schema schema)
+                                               (merge {:type type, :schema schema})
                                               (update :in (fnil conj #{}) in)))))))
       (println "classDiagram")
       (doseq [{:keys [name schema in embedded type]} (vals @classes)]
@@ -63,11 +62,11 @@
         (case type
           :map (doseq [[k _ s] (m/map-entries schema)]
                  (when-let [s' (or (:name (class-info in->id (conj (first in) k))) (str (m/form s)))]
-                   (println "    +" k s')))
+                    (println "   " k s')))
           :enum (doseq [s (m/children schema)]
-                  (println "    +" s)))
+                   (println "   " s)))
         (println "  }")
         (doseq [[k _ _] (m/map-entries schema)]
           (when-let [info (class-info in->id (conj (first in) k))]
-            (println "  " name (if (:embedded info) "*--" "o--") (:name info))))))))
+             (println " " name (if (:embedded info) "*--" "o--") (:name info)))))))))
 

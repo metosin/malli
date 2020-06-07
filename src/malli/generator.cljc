@@ -10,7 +10,7 @@
 (declare generator)
 
 (defprotocol Generator
-  (-generator [this] "returns generator for schema"))
+  (-generator [this options] "returns generator for schema"))
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
@@ -93,7 +93,7 @@
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)
-        gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema) (-schema-generator schema options))))
+        gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))
         elements (when elements (gen/elements elements))]
     (cond
       fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))

@@ -2,6 +2,14 @@
   (:require [malli.core :as m]
             [clojure.string :as str]))
 
+(defprotocol SchemaError
+  (-error [this] "error data structure for the Schema"))
+
+(extend-protocol SchemaError
+  #?(:clj  Object
+     :cljs default)
+  (-error [_]))
+
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
@@ -65,8 +73,8 @@
   (if (map? x) (get x locale) x))
 
 (defn- -message [error x locale options]
-  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
-      (-maybe-localized (:error/message x) locale)))
+  (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
+            (-maybe-localized (:error/message x) locale))))
 
 (defn- -ensure [x k]
   (if (sequential? x)
@@ -159,9 +167,11 @@
     {:keys [errors locale default-locale]
      :or {errors default-errors
           default-locale :en} :as options}]
-   (or (-message error (m/properties schema) locale options)
+   (or (-message error (-error schema) locale options)
+       (-message error (m/properties schema) locale options)
        (-message error (errors (m/name schema)) locale options)
        (-message error (errors type) locale options)
+       (-message error (-error schema) default-locale options)
        (-message error (m/properties schema) default-locale options)
        (-message error (errors (m/name schema)) default-locale options)
        (-message error (errors type) default-locale options)

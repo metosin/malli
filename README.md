@@ -106,6 +106,24 @@ Maps keys are not limited to keywords:
 ; => true
 ```
 
+## String schemas
+
+Using a predicate:
+
+```clj
+(m/validate string? "kikka")
+```
+
+Using `:string` Schema:
+
+```clj
+(m/validate :string "kikka")
+; => true
+
+(m/validate [:string {:min 1, :max 4}] "")
+; => false
+```
+
 ## Function schemas
 
 `:fn` allows any predicat function to be used:  

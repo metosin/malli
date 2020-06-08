@@ -52,7 +52,14 @@
    'associative? {:error/message {:en "should be associative"}}
    'sequential? {:error/message {:en "should be sequential"}}
    #?@(:clj ['ratio? {:error/message {:en "should be ratio"}}])
-   #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])})
+   #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
+   :string {:error/fn {:en (fn [{:keys [schema]} _]
+                             (let [{:keys [min max]} (m/properties schema)]
+                               (cond
+                                 (not (or min max)) "should be string"
+                                 (and min max) (str "should be between " min " and " max " characters")
+                                 min (str "should be at least " min " characters")
+                                 max (str "should be at most " max " characters"))))}}})
 
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))

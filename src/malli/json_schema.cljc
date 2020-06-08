@@ -1,5 +1,6 @@
 (ns malli.json-schema
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [clojure.set :as set]))
 
 (defn unlift-keys [m ns-str]
   (reduce-kv #(if (= ns-str (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
@@ -87,6 +88,9 @@
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
+
+(defmethod accept :string [_ schema _ _]
+  (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLenght}))))
 
 (defn- -json-schema-visitor [schema children _in options]
   (or (maybe-prefix schema :json-schema)

@@ -707,6 +707,35 @@
           (-options [_] options)
           (-form [_] form))))))
 
+(defn- -string-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ {:keys [min max] :as properties} children options]
+      (when-not (zero? (count children))
+        (fail! ::child-error {:name :string, :properties properties, :children children, :min 0, :max 0}))
+      (let [count-validator (cond
+                              (not (or min max)) nil
+                              (and min max) (fn [x] (let [size (count x)] (<= min size max)))
+                              min (fn [x] (<= min (count x)))
+                              max (fn [x] (<= (count x) max)))
+            validator (if count-validator  (fn [x] (and (string? x) (count-validator x))) string?)
+            form (create-form :string properties children)]
+        ^{:type ::schema}
+        (reify Schema
+          (-name [_] :string)
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (if (or (not (string? x)) (and count-validator (not (count-validator x))))
+                (conj acc (error path in this x)) acc)))
+          (-transformer [this transformer method options]
+            (-value-transformer transformer this method options))
+          (-accept [this visitor in options]
+            (visitor this (vec children) in options))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-form [_] form))))))
+
 (defn- -register [registry k schema]
   (if (contains? registry k)
     (fail! ::schema-already-registered {:key k, :registry registry}))
@@ -944,7 +973,8 @@
    :tuple (-tuple-schema)
    :multi (-multi-schema)
    :re (-re-schema false)
-   :fn (-fn-schema)})
+   :fn (-fn-schema)
+   :string (-string-schema)})
 
 (def default-registry
   (clojure.core/merge predicate-registry class-registry comparator-registry base-registry))

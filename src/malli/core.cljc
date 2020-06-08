@@ -727,7 +727,7 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if (or (not (string? x)) (and count-validator (not (count-validator x))))
-                (conj acc (error path in this x ::string)) acc)))
+                (conj acc (error path in this x)) acc)))
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
           (-accept [this visitor in options]

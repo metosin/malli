@@ -279,11 +279,11 @@
       (is (nil? (m/explain schema "1")))
       (is (results= {:schema [:string {:min 1, :max 4}]
                      :value false
-                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value false, :type ::m/invalid-type}]}
+                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value false}]}
                     (m/explain schema false)))
       (is (results= {:schema [:string {:min 1, :max 4}]
                      :value "invalid"
-                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value "invalid", :type ::m/limits}]}
+                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value "invalid"}]}
                     (m/explain schema "invalid")))
 
       (is (= "1" (m/decode schema "1" mt/string-transformer)))

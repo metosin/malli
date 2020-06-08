@@ -1073,7 +1073,7 @@ Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:
 
 ### Custom registry
 
-Example to create a custom registry without the default core predicates and with `:string` and `:int` Schemas:
+Example to create a custom registry without the default core predicates and with `:bool` and `:int` Schemas:
 
 ```clj
 (def registry
@@ -1082,12 +1082,12 @@ Example to create a custom registry without the default core predicates and with
     m/comparator-registry
     m/base-registry
     {:int (m/fn-schema :int int?)
-     :string (m/fn-schema :string string?)}))
+     :bool (m/fn-schema :string boolean?)}))
 
-(m/validate [:or :int :string] 'kikka {:registry registry})
+(m/validate [:or :int :bool] 'kikka {:registry registry})
 ; => false
 
-(m/validate [:or :int :string] 123 {:registry registry})
+(m/validate [:or :int :bool] 123 {:registry registry})
 ; => true
 ```
 

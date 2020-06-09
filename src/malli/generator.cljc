@@ -1,7 +1,7 @@
 (ns malli.generator
   (:require [clojure.test.check.generators :as gen]
             #?(:clj [com.gfredericks.test.chuck.generators :as gen2])
-            #?(:clj [clojure.string :as str])
+            [clojure.string :as str]
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
@@ -19,11 +19,11 @@
 (defn- -string-gen [schema options]
   (let [{:keys [min max]} (m/properties schema options)]
     (cond
-      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
-      (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
-      min (gen/fmap str/join (gen/vector gen/char-alphanumeric min (* 2 max)))
-      max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
-      :else gen/string-alpha-numeric)))
+      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char min))
+      (and min max) (gen/fmap str/join (gen/vector gen/char min max))
+      min (gen/fmap str/join (gen/vector gen/char min (* 2 max)))
+      max (gen/fmap str/join (gen/vector gen/char 0 max))
+      :else gen/string)))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (m/properties schema options)
@@ -90,6 +90,7 @@
 (defmethod -schema-generator :maybe [schema options] (gen/one-of [(gen/return nil) (-> schema (m/children options) first (generator options))]))
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
+(defmethod -schema-generator :string [schema options] (-string-gen schema options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)

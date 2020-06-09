@@ -15,4 +15,5 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 ## UNRELEASED
 
 * 9.6.2020 
+  * **BREAKING:** `malli.core/name` & `malli.core/-name` renamed to `malli.core/type` & `malli.core/-type`
   * **BREAKING:** `malli.generator/-generator` is renamed to `malli.generator/-schema-generator`

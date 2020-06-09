@@ -92,7 +92,6 @@
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 
-
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)
         gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))

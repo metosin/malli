@@ -2,14 +2,20 @@
   (:require [malli.core :as m]
             [clojure.set :as set]))
 
+(defprotocol JsonSchema
+  (-accept [this children options] "transforms schema to JSON Schema"))
+
 (defn unlift-keys [m ns-str]
   (reduce-kv #(if (= ns-str (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
 (defn maybe-prefix [schema prefix]
   (some-> schema m/properties (get prefix)))
 
+(defn schema-props [schema]
+  (select-keys (m/properties schema) [:title :description :default]))
+
 (defn json-schema-props [schema prefix]
-  (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ prefix))))
+  (unlift-keys (m/properties schema) prefix))
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
@@ -94,7 +100,10 @@
 
 (defn- -json-schema-visitor [schema children _in options]
   (or (maybe-prefix schema :json-schema)
-      (merge (accept (m/name schema) schema children options)
+      (merge (schema-props schema)
+             (if (satisfies? JsonSchema schema)
+               (-accept schema children options)
+               (accept (m/name schema) schema children options))
              (json-schema-props schema "json-schema"))))
 
 ;;

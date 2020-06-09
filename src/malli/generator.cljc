@@ -1,13 +1,16 @@
 (ns malli.generator
   (:require [clojure.test.check.generators :as gen]
-            [com.gfredericks.test.chuck.generators :as gen2]
+            #?(:clj [com.gfredericks.test.chuck.generators :as gen2])
+            [clojure.string :as str]
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]
-            [clojure.string :as str]))
+            [malli.core :as m]))
 
 (declare generator)
+
+(defprotocol Generator
+  (-generator [this options] "returns generator for schema"))
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
@@ -16,11 +19,11 @@
 (defn- -string-gen [schema options]
   (let [{:keys [min max]} (m/properties schema options)]
     (cond
-      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
-      (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
-      min (gen/fmap str/join (gen/vector gen/char-alphanumeric min (* 2 max)))
-      max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
-      :else gen/string-alpha-numeric)))
+      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char min))
+      (and min max) (gen/fmap str/join (gen/vector gen/char min max))
+      min (gen/fmap str/join (gen/vector gen/char min (* 2 max)))
+      max (gen/fmap str/join (gen/vector gen/char 0 max))
+      :else gen/string)))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (m/properties schema options)
@@ -63,35 +66,35 @@
 ;; generators
 ;;
 
-(defmulti -generator (fn [schema options] (m/name schema options)) :default ::default)
+(defmulti -schema-generator (fn [schema options] (m/name schema options)) :default ::default)
 
-(defmethod -generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
+(defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
-(defmethod -generator :> [schema options] (-double-gen {:min (-> schema (m/children options) first inc)}))
-(defmethod -generator :>= [schema options] (-double-gen {:min (-> schema (m/children options) first)}))
-(defmethod -generator :< [schema options] (-double-gen {:max (-> schema (m/children options) first dec)}))
-(defmethod -generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
-(defmethod -generator := [schema options] (gen/return (first (m/children schema options))))
-(defmethod -generator :not= [schema options] (gen/such-that (partial not= (-> schema (m/children options) first)) gen/any-printable 100))
+(defmethod -schema-generator :> [schema options] (-double-gen {:min (-> schema (m/children options) first inc)}))
+(defmethod -schema-generator :>= [schema options] (-double-gen {:min (-> schema (m/children options) first)}))
+(defmethod -schema-generator :< [schema options] (-double-gen {:max (-> schema (m/children options) first dec)}))
+(defmethod -schema-generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
+(defmethod -schema-generator := [schema options] (gen/return (first (m/children schema options))))
+(defmethod -schema-generator :not= [schema options] (gen/such-that (partial not= (-> schema (m/children options) first)) gen/any-printable 100))
 
-(defmethod -generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
-(defmethod -generator :or [schema options] (gen/one-of (mapv #(generator % options) (m/children schema options))))
-(defmethod -generator :map [schema options] (-map-gen schema options))
-(defmethod -generator :map-of [schema options] (-map-of-gen schema options))
-(defmethod -generator :multi [schema options] (gen/one-of (mapv #(generator (second %) options) (m/children schema options))))
-(defmethod -generator :vector [schema options] (-coll-gen schema identity options))
-(defmethod -generator :list [schema options] (-coll-gen schema (partial apply list) options))
-(defmethod -generator :sequential [schema options] (-coll-gen schema identity options))
-(defmethod -generator :set [schema options] (-coll-distict-gen schema set options))
-(defmethod -generator :enum [schema options] (gen/elements (m/children schema options)))
-(defmethod -generator :maybe [schema options] (gen/one-of [(gen/return nil) (-> schema (m/children options) first (generator options))]))
-(defmethod -generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
-#?(:clj (defmethod -generator :re [schema options] (-re-gen schema options)))
-(defmethod -generator :string [schema options] (-string-gen schema options))
+(defmethod -schema-generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
+(defmethod -schema-generator :or [schema options] (gen/one-of (mapv #(generator % options) (m/children schema options))))
+(defmethod -schema-generator :map [schema options] (-map-gen schema options))
+(defmethod -schema-generator :map-of [schema options] (-map-of-gen schema options))
+(defmethod -schema-generator :multi [schema options] (gen/one-of (mapv #(generator (second %) options) (m/children schema options))))
+(defmethod -schema-generator :vector [schema options] (-coll-gen schema identity options))
+(defmethod -schema-generator :list [schema options] (-coll-gen schema (partial apply list) options))
+(defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))
+(defmethod -schema-generator :set [schema options] (-coll-distict-gen schema set options))
+(defmethod -schema-generator :enum [schema options] (gen/elements (m/children schema options)))
+(defmethod -schema-generator :maybe [schema options] (gen/one-of [(gen/return nil) (-> schema (m/children options) first (generator options))]))
+(defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
+#?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
+(defmethod -schema-generator :string [schema options] (-string-gen schema options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)
-        gen (or gen (when-not elements (-generator schema options)))
+        gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))
         elements (when elements (gen/elements elements))]
     (cond
       fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))

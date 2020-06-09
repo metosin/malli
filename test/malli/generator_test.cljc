@@ -57,12 +57,23 @@
 
   (testing "gen/elements"
     (dotimes [_ 1000]
-      (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?])))
+      (is (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?]))))
     (dotimes [_ 1000]
-      (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?]))))
+      (is (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?])))))
 
   (testing "gen/gen"
     (dotimes [_ 1000]
-      (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?])))
+      (is (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?]))))
     (dotimes [_ 1000]
-      (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?])))))
+      (is (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?]))))))
+
+(deftest protocol-test
+  (let [values #{1 2 3 5 8 13}
+        schema (reify
+                 m/Schema
+                 (-validator [_] int?)
+                 (-properties [_])
+                 mg/Generator
+                 (-generator [_ _] (gen/elements values)))]
+    (dotimes [_ 1000]
+      (is (values (mg/generate schema))))))

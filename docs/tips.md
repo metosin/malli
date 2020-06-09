@@ -32,3 +32,33 @@ Schemas can be walked over recursively using `m/accept`:
 ```
 
 In the example, `:tags` key was removed as it's contents would have been an empty `:vector`, which is not legal Schema syntax. Empty `:map` is ok.
+
+## Trimming strings
+
+Example how to trim all `:string` values using a custom transformer:
+
+```clj
+(require '[malli.transform :as mt])
+(require '[malli.core :as m])
+(require '[clojure.string :as str])
+
+;; a decoding transformer, only mounting to :string schemas with truthy :string/trim property
+(defn string-trimmer []
+  (mt/transformer
+    {:decoders
+     {:string
+      {:compile (fn [schema _]
+                  (let [{:string/keys [trim]} (m/properties schema)]
+                    (when trim #(cond-> % (string? %) str/trim))))}}}))
+
+;; no trimming
+(m/decode [:string {:min 1}] "    " string-trimmer)
+; => "    "
+
+;; trim me please
+(m/decode [:string {:string/trim true, :min 1}] "    " string-trimmer)
+; => ""
+
+;; without :string/trim is a no-op
+(m/decoder :string string-trimmer)
+```

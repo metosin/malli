@@ -48,7 +48,7 @@
   (is (= 2 ((m/eval '(fn [x] (inc x))) 1)))
   (is (= 2 ((m/eval "(fn [x] (inc x))") 1)))
   (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
-  (is (= :maybe (m/eval "(m/name [:maybe int?])")))
+  (is (= :maybe (m/eval "(m/type [:maybe int?])")))
   (is (= ['int? 'string?] (m/eval "(m/children [:or {:some \"props\"} int? string?])")))
   (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
 
@@ -96,7 +96,7 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= {:name 'int?}
+      (is (= {:type 'int?}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= 'int? (m/form schema)))))
@@ -127,11 +127,11 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= {:name :and
-              :children [{:name 'int?}
-                         {:name :or
-                          :children [{:name 'pos-int?}
-                                     {:name 'neg-int?}]}]}
+      (is (= {:type :and
+              :children [{:type 'int?}
+                         {:type :or
+                          :children [{:type 'pos-int?}
+                                     {:type 'neg-int?}]}]}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
@@ -211,7 +211,7 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= {:name :>, :children [0]}
+      (is (= {:type :>, :children [0]}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:> 0] (m/form schema)))))
@@ -238,7 +238,7 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= {:name :enum, :children [1 2]}
+      (is (= {:type :enum, :children [1 2]}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:enum 1 2] (m/form schema)))))
@@ -263,7 +263,7 @@
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
-      (is (= {:name :maybe, :children [{:name 'int?}]}
+      (is (= {:type :maybe, :children [{:type 'int?}]}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:maybe 'int?] (m/form schema)))))
@@ -295,7 +295,7 @@
 
       (is (true? (m/validate (over-the-wire schema) "123")))
 
-      (is (= {:name :string, :properties {:min 1, :max 4}}
+      (is (= {:type :string, :properties {:min 1, :max 4}}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:string {:min 1, :max 4}] (m/form schema)))))
@@ -322,7 +322,7 @@
 
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
-        (is (= {:name :re, :children [re]}
+        (is (= {:type :re, :children [re]}
                (m/accept schema m/map-syntax-visitor)))
 
         (is (= form (m/form schema))))))
@@ -347,7 +347,7 @@
 
         (is (true? (m/validate (over-the-wire schema) 12)))
 
-        (is (= {:name :fn
+        (is (= {:type :fn
                 :children [fn]
                 :properties {:description "number between 10 and 18"}}
                (m/accept schema m/map-syntax-visitor)))
@@ -449,10 +449,10 @@
 
       (is (true? (m/validate (over-the-wire schema) valid)))
 
-      (is (= {:name :map
-              :children [[:x nil {:name 'boolean?}]
-                         [:y {:optional true} {:name 'int?}]
-                         [:z {:optional false} {:name 'string?}]]}
+      (is (= {:type :map
+              :children [[:x nil {:type 'boolean?}]
+                         [:y {:optional true} {:type 'int?}]
+                         [:z {:optional false} {:type 'string?}]]}
              (m/accept schema m/map-syntax-visitor)))
 
       (is (= [:map
@@ -544,16 +544,16 @@
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
-      (is (= {:name :multi
+      (is (= {:type :multi
               :properties {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}
-              :children [[:sized nil {:name :map
-                                      :children [[:type nil {:name 'keyword?}]
-                                                 [:size nil {:name 'int?}]]}]
-                         [:human nil {:name :map
-                                      :children [[:type nil {:name 'keyword?}]
-                                                 [:name nil {:name 'string?}]
-                                                 [:address nil {:name :map
-                                                                :children [[:country nil {:name 'keyword?}]]}]]}]]}
+              :children [[:sized nil {:type :map
+                                      :children [[:type nil {:type 'keyword?}]
+                                                 [:size nil {:type 'int?}]]}]
+                         [:human nil {:type :map
+                                      :children [[:type nil {:type 'keyword?}]
+                                                 [:name nil {:type 'string?}]
+                                                 [:address nil {:type :map
+                                                                :children [[:country nil {:type 'keyword?}]]}]]}]]}
 
 
              (m/accept schema m/map-syntax-visitor)))
@@ -602,7 +602,7 @@
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
-    (is (= {:name :map-of, :children [{:name 'int?} {:name 'pos-int?}]}
+    (is (= {:type :map-of, :children [{:type 'int?} {:type 'pos-int?}]}
            (m/accept [:map-of int? pos-int?] m/map-syntax-visitor)))
 
     (testing "keyword keys are transformed via strings"
@@ -876,9 +876,9 @@
 
     (testing "visit"
       (doseq [name [:vector :list :sequential :set]]
-        (is (= {:name name, :children [{:name 'int?}]}
+        (is (= {:type name, :children [{:type 'int?}]}
                (m/accept [name int?] m/map-syntax-visitor))))
-      (is (= {:name :tuple, :children [{:name 'int?} {:name 'int?}]}
+      (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
              (m/accept [:tuple int? int?] m/map-syntax-visitor))))))
 
 (deftest path-with-properties-test
@@ -988,7 +988,7 @@
                     [:lonlat [:tuple double? double?]]]]]]]
                (fn [schema children in options]
                  (m/into-schema
-                   (m/name schema)
+                   (m/type schema)
                    (assoc (m/properties schema) :in in)
                    children
                    options))))))
@@ -1004,15 +1004,15 @@
                    [:lonlat [:tuple double? double?]]]]]]]
 
     (testing "to-map-syntax"
-      (is (= {:name :map,
-              :children [[:id nil {:name 'string?}]
-                         [:tags nil {:name :set
-                                     :children [{:name 'keyword?}]}]
-                         [:address nil {:name :vector,
-                                        :children [{:name :map,
-                                                    :children [[:street nil {:name 'string?}]
-                                                               [:lonlat nil {:name :tuple
-                                                                             :children [{:name 'double?} {:name 'double?}]}]]}]}]]}
+      (is (= {:type :map,
+              :children [[:id nil {:type 'string?}]
+                         [:tags nil {:type :set
+                                     :children [{:type 'keyword?}]}]
+                         [:address nil {:type :vector,
+                                        :children [{:type :map,
+                                                    :children [[:street nil {:type 'string?}]
+                                                               [:lonlat nil {:type :tuple
+                                                                             :children [{:type 'double?} {:type 'double?}]}]]}]}]]}
              (m/to-map-syntax schema))))
 
     (testing "from-map-syntax"

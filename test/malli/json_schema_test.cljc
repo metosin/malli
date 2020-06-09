@@ -59,7 +59,7 @@
    [(reify
       m/Schema
       (-properties [_])
-      (-name [_])
+      (-type [_])
       (-form [_])
       (-validator [_] int?)
       (-accept [t v i o] (v t nil i o))

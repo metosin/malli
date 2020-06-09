@@ -13,7 +13,7 @@
 
 (defn- ->infer-schemas [{:keys [registry] :or {registry m/default-registry}}]
   (let [registry-schemas (registry-schemas registry)]
-    (fn [x] (-> registry-schemas (->> (filter #(-safe? m/validate % x)) (map m/name)) (zipmap (repeat 1))))))
+    (fn [x] (-> registry-schemas (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1))))))
 
 (defn- -infer-map [acc x options]
   (reduce-kv (fn [acc k v] (update-in acc [:keys k] (->infer options) v)) acc x))

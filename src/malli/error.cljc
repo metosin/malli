@@ -169,11 +169,11 @@
           default-locale :en} :as options}]
    (or (-message error (-error schema) locale options)
        (-message error (m/properties schema) locale options)
-       (-message error (errors (m/name schema)) locale options)
+       (-message error (errors (m/type schema)) locale options)
        (-message error (errors type) locale options)
        (-message error (-error schema) default-locale options)
        (-message error (m/properties schema) default-locale options)
-       (-message error (errors (m/name schema)) default-locale options)
+       (-message error (errors (m/type schema)) default-locale options)
        (-message error (errors type) default-locale options)
        (-message error (errors ::unknown) locale options)
        (-message error (errors ::unknown) default-locale options))))

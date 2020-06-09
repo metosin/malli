@@ -28,7 +28,7 @@
       (merge (json-schema/schema-props schema)
              (if (satisfies? SwaggerSchema schema)
                (-accept schema children options)
-               (accept (m/name schema) schema children options))
+               (accept (m/type schema) schema children options))
              (json-schema/json-schema-props schema "json-schema")
              (json-schema/json-schema-props schema "swagger"))))
 

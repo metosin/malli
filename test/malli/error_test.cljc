@@ -16,7 +16,7 @@
              [[int? {:error/message msg, :error/fn fn2}] "kikka" "should be an int, was kikka"]
              [(reify
                 m/Schema
-                (-name [_])
+                (-type [_])
                 (-properties [_])
                 (-explainer [this path]
                   (fn [value in acc]

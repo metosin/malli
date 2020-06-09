@@ -66,7 +66,7 @@
 ;; generators
 ;;
 
-(defmulti -schema-generator (fn [schema options] (m/name schema options)) :default ::default)
+(defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 

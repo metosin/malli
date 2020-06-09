@@ -103,7 +103,7 @@
       (merge (schema-props schema)
              (if (satisfies? JsonSchema schema)
                (-accept schema children options)
-               (accept (m/name schema) schema children options))
+               (accept (m/type schema) schema children options))
              (json-schema-props schema "json-schema"))))
 
 ;;

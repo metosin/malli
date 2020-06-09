@@ -23,7 +23,7 @@
     (simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
 (defn- -open-map? [schema options]
-  (and (= :map (m/name schema options)) (-> schema m/properties :closed false? not)))
+  (and (= :map (m/type schema options)) (-> schema m/properties :closed false? not)))
 
 ;;
 ;; public api
@@ -52,7 +52,7 @@
      (cond
        (not schema1) schema2
        (not schema2) schema1
-       (not= :map (m/name schema1) (m/name schema2)) (merge-default schema1 schema2 options)
+       (not= :map (m/type schema1) (m/type schema2)) (merge-default schema1 schema2 options)
        :else (let [p (c/merge (m/properties schema1) (m/properties schema2))]
                (-> [:map]
                    (cond-> p (conj p))
@@ -92,7 +92,7 @@
   (let [schema (m/schema schema)
         properties (apply f (m/properties schema) args)]
     (m/into-schema
-      (m/name schema)
+      (m/type schema)
       (if (seq properties) properties)
       (m/children schema)
       (m/options schema))))
@@ -132,7 +132,7 @@
 (defn transform-entries
   "Transforms map-entries with f."
   [schema f options]
-  (m/into-schema (m/name schema) (m/properties schema) (f (m/map-entries schema options))))
+  (m/into-schema (m/type schema) (m/properties schema) (f (m/map-entries schema options))))
 
 (defn optional-keys
   "Makes map keys optional."

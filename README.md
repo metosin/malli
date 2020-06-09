@@ -861,20 +861,20 @@ Transforming schemas into [map-syntax](#map-syntax):
   Address
   (fn [schema children _]
     (let [properties (m/properties schema)]
-      (cond-> {:name (m/name schema)}
+      (cond-> {:type (m/type schema)}
               (seq properties) (assoc :properties properties)
               (seq children) (assoc :children children)))))
-;{:name :map,
-; :children [[:id nil {:name string?}]
-;            [:tags nil {:name :set
-;                        :children [{:name keyword?}]}]
-;            [:address nil {:name :map,
-;                           :children [[:street nil {:name string?}]
-;                                      [:city nil {:name string?}]
-;                                      [:zip nil {:name int?}]
-;                                      [:lonlat nil {:name :tuple
-;                                                    :children [{:name double?} 
-;                                                               {:name double?}]}]]}]]}
+;{:type :map,
+; :children [[:id nil {:type string?}]
+;            [:tags nil {:type :set
+;                        :children [{:type keyword?}]}]
+;            [:address nil {:type :map,z
+;                           :children [[:street nil {:type string?}]
+;                                      [:city nil {:type string?}]
+;                                      [:zip nil {:type int?}]
+;                                      [:lonlat nil {:type :tuple
+;                                                    :children [{:type double?} 
+;                                                               {:type double?}]}]]}]]}
 ```
 
 ### JSON Schema
@@ -980,7 +980,7 @@ Full override with `:swagger` property:
 
 ## Map-syntax
 
-Schemas can converted into map-syntax (with keys `:name` and optionally `:properties` and `:children`):
+Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
 
 ```clj
 (def Schema
@@ -993,14 +993,14 @@ Schemas can converted into map-syntax (with keys `:name` and optionally `:proper
      [:lonlat [:tuple double? double?]]]]])
 
 (m/to-map-syntax Schema)
-;{:name :map,
-; :children [[:id nil {:name string?}]
-;            [:tags nil {:name :set
-;                        :children [{:name keyword?}]}]
-;            [:address nil {:name :map,
-;                           :children [[:street nil {:name string?}]
-;                                      [:lonlat nil {:name :tuple
-;                                                    :children [{:name double?} {:name double?}]}]]}]]}
+;{:type :map,
+; :children [[:id nil {:type string?}]
+;            [:tags nil {:type :set
+;                        :children [{:type keyword?}]}]
+;            [:address nil {:type :map,
+;                           :children [[:street nil {:type string?}]
+;                                      [:lonlat nil {:type :tuple
+;                                                    :children [{:type double?} {:type double?}]}]]}]]}
 ```
 
 ... and back:

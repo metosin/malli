@@ -66,7 +66,7 @@
 ;; generators
 ;;
 
-(defmulti -schema-generator (fn [schema options] (m/name schema options)) :default ::default)
+(defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
@@ -91,6 +91,7 @@
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
+
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)

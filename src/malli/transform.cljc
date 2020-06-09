@@ -68,7 +68,7 @@
           (reduce
             (fn [acc {{:keys [key default transformers]} method}]
               (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
-                                        (get transformers (m/name schema))
+                                        (get transformers (m/type schema))
                                         default)]
                 (let [interceptor (->interceptor ?interceptor schema options)]
                   (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))

@@ -23,7 +23,7 @@ Schemas can be walked over recursively using `m/accept`:
       ;; there are two syntaxes: normal and the map-entry, handle separatly
       (let [children (if (m/map-entries schema) (filterv last children) children)]
         ;; create a new Schema with the updated children, or return nil
-        (try (m/into-schema (m/name schema) (m/properties schema) children options)
+        (try (m/into-schema (m/type schema) (m/properties schema) children options)
              (catch #?(:clj Exception, :cljs js/Error) _))))))
 ;[:map
 ; [:user map?] 

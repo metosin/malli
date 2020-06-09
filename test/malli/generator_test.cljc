@@ -8,7 +8,7 @@
 (deftest generator-test
   (doseq [[?schema] json-schema-test/expectations
           ;; cljs doesn't have a regex generator :(
-          #?@(:cljs [:when (not= (m/name ?schema) :re)])]
+          #?@(:cljs [:when (not= (m/type ?schema) :re)])]
     (testing (m/form ?schema)
       (testing "generate"
         (is (= (mg/generate ?schema {:seed 123})

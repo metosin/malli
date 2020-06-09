@@ -51,14 +51,15 @@ Example how to trim all `:string` values using a custom transformer:
                   (let [{:string/keys [trim]} (m/properties schema)]
                     (when trim #(cond-> % (string? %) str/trim))))}}}))
 
-;; no trimming
-(m/decode [:string {:min 1}] "    " string-trimmer)
-; => "    "
-
 ;; trim me please
-(m/decode [:string {:string/trim true, :min 1}] "    " string-trimmer)
+(m/decode [:string {:string/trim true, :min 1}] " " string-trimmer)
 ; => ""
 
-;; without :string/trim is a no-op
+;; no trimming
+(m/decode [:string {:min 1}] "    " string-trimmer)
+; => " "
+
+;; without :string/trim, decoding is a no-op
 (m/decoder :string string-trimmer)
+; => #object[clojure.core$identity]
 ```

@@ -1244,6 +1244,12 @@ clj -Ajar
 clj -Ainstall
 ```
 
+## Bundle size for cljs
+
+```bash
+npx shadow-cljs run shadow.cljs.build-report malli /tmp/report.html
+```
+
 ## License
 
 Copyright © 2018-2020 Metosin Oy and contributors.

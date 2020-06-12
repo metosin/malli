@@ -1,0 +1,9 @@
+{:deps {:aliases [:test]}
+ :builds {:malli {:target :browser
+                  :modules {:cljs {:entries [cljs.core]}
+                            :sci {:entries [sci.core]
+                                  :depends-on #{:cljs}}
+                            :malli {:entries [malli.core]
+                                    :depends-on #{:cljs :sci}}
+                            :app {:entries [malli.app]
+                                  :depends-on #{:malli}}}}}}

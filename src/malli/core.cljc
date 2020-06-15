@@ -47,9 +47,7 @@
 ;; impl
 ;;
 
-(declare schema into-schema)
-(declare eval)
-(declare simple-registry +registry+)
+(declare schema into-schema eval +registry+)
 
 (defn keyword->string [x]
   (if (keyword? x)

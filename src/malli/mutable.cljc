@@ -13,4 +13,6 @@
 (defn default-registry [] (registry (m/default-schemas)))
 
 (defn register! [type ?schema]
-  (swap! state assoc type (m/schema ?schema {:registry (m/registry)})))
+  (if ?schema
+    (swap! state assoc type (m/schema ?schema {:registry (m/registry)}))
+    (swap! state dissoc type)))

@@ -47,7 +47,7 @@
 ;; impl
 ;;
 
-(declare schema into-schema eval +registry+)
+(declare schema into-schema eval default-registry)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -748,12 +748,8 @@
         (assoc @v schema))))
 
 (defn registry
-  ([] +registry+)
-  ([{:keys [registry]}]
-   (cond
-     (map? registry) (mr/simple-registry registry)
-     (nil? registry) +registry+
-     :else registry)))
+  ([] default-registry)
+  ([{:keys [registry]}] (mr/registry registry default-registry)))
 
 (defn- -schema [?schema options]
   (let [registry (registry options)]
@@ -947,7 +943,7 @@
      (into-schema type properties (mapv (<-child #(from-map-syntax % options)) children)))))
 
 ;;
-;; registries
+;; registry
 ;;
 
 (defn predicate-schemas []
@@ -987,13 +983,4 @@
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
 
-;; the default registry can only be swapped once
-#?(:cljs (goog-define REGISTRY "")
-   :clj  (def REGISTRY (System/getProperty "malli.registry")))
-
-(def ^:private +registry+
-  (if (some-> REGISTRY count pos?)
-    (or (if-let [registry (some-> REGISTRY symbol requiring-resolve deref (apply nil))]
-          (and (mr/registry? registry) registry))
-        (fail! ::invalid-registry {:registry REGISTRY}))
-    (mr/simple-registry (default-schemas))))
+(def ^:private default-registry (mr/default-registry (default-schemas)))

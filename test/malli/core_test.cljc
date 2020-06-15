@@ -920,7 +920,7 @@
 (deftest options-test
   (testing "options can be set and retrieved"
     (let [opts {:tyyris "tyllero"
-                :registry (m/default-registry)}
+                :registry (m/default-schemas)}
           schema (m/into-schema 'int? {} nil opts)]
       (is (= opts
              (m/options schema))))))
@@ -941,8 +941,8 @@
 
 (deftest custom-registry-test
   (let [registry (merge
-                   (m/comparator-registry)
-                   (m/base-registry)
+                   (m/comparator-schemas)
+                   (m/base-schemas)
                    {:int (m/fn-schema :int int?)
                     :string (m/fn-schema :string string?)})]
     (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
@@ -950,7 +950,7 @@
 
 (deftest encode-decode-test
   (testing "works with custom registry"
-    (let [opts {:registry (merge (m/default-registry) {:test keyword?})}
+    (let [opts {:registry (merge (m/default-schemas) {:test keyword?})}
           encoded (m/encode :test :foo opts mt/string-transformer)
           decoded (m/decode :test encoded opts mt/string-transformer)]
       (is (= "foo" encoded))

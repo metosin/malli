@@ -1,6 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type])
-  (:require [sci.core :as sci])
+  (:require [sci.core :as sci]
+            [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
@@ -32,11 +33,6 @@
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
 (defrecord SchemaError [path in schema value type message])
-
-(defprotocol Registry
-  (-get-schema [this name] "returns the schema from a registry")
-  (-get-schemas [this] "returns all schemas from a registry")
-  (-register-schema [this name schema] "returns the registry with schema registered"))
 
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
           (.write w (str "#Error" (->> v (filter val) (into {}))))))
@@ -753,17 +749,19 @@
         (assoc name schema)
         (assoc @v schema))))
 
-(defn -get-registry [{:keys [registry]}]
-  (cond
-    (map? registry) (simple-registry registry)
-    (nil? registry) +registry+
-    :else registry))
+(defn registry
+  ([] +registry+)
+  ([{:keys [registry]}]
+   (cond
+     (map? registry) (mr/simple-registry registry)
+     (nil? registry) +registry+
+     :else registry)))
 
 (defn- -schema [?schema options]
-  (let [registry (-get-registry options)]
+  (let [registry (registry options)]
     (or (if (satisfies? IntoSchema ?schema) ?schema)
-        (-get-schema registry ?schema)
-        (some-> registry (-get-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+        (mr/-get-schema registry ?schema)
+        (some-> registry (mr/-get-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
 
 (defn ^:no-doc into-transformer [x]
   (cond
@@ -954,7 +952,7 @@
 ;; registries
 ;;
 
-(defn predicate-registry []
+(defn predicate-schemas []
   (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'float? #'double?
         #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
         #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
@@ -962,16 +960,16 @@
         #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)]
        (reduce -register-var {})))
 
-(defn class-registry []
+(defn class-schemas []
   {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})
 
-(defn comparator-registry []
+(defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
        (map (fn [[k v]] [k (-partial-fn-schema k v)]))
        (into {})
        (reduce-kv assoc nil)))
 
-(defn base-registry []
+(defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
    :map (-map-schema)
@@ -988,30 +986,16 @@
    :fn (-fn-schema)
    :string (-string-schema)})
 
-(defn default-registry []
-  (merge (predicate-registry) (class-registry) (comparator-registry) (base-registry)))
-
-;;
-;; the registry
-;;
-
-(defn simple-registry [registry]
-  (reify
-    Registry
-    (-get-schema [_ name] (get registry name))
-    (-get-schemas [_] registry)
-    (-register-schema [registry name schema]
-      (if (contains? registry name)
-        (fail! ::schema-already-registered {:name name, :registry registry})
-        (simple-registry (assoc registry name schema))))))
+(defn default-schemas []
+  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
 
 ;; the default registry can only be swapped once
 #?(:cljs (goog-define REGISTRY "")
    :clj  (def REGISTRY (System/getProperty "malli.registry")))
 
 (def ^:private +registry+
-  (if (and REGISTRY (not= "" REGISTRY))
-    (or (if-let [registry (some-> REGISTRY symbol requiring-resolve deref)]
-          (and (satisfies? Registry registry) registry))
+  (if (some-> REGISTRY count pos?)
+    (or (if-let [registry (some-> REGISTRY symbol requiring-resolve deref (apply nil))]
+          (and (mr/registry? registry) registry))
         (fail! ::invalid-registry {:registry REGISTRY}))
-    (simple-registry (default-registry))))
+    (mr/simple-registry (default-schemas))))

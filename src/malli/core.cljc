@@ -947,7 +947,7 @@
 ;; registries
 ;;
 
-(def predicate-registry
+(defn predicate-registry []
   (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'float? #'double?
         #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
         #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
@@ -955,10 +955,10 @@
         #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)]
        (reduce -register-var {})))
 
-(def class-registry
+(defn class-registry []
   {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})
 
-(def comparator-registry
+(defn comparator-registry []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
        (map (fn [[k v]] [k (-partial-fn-schema k v)]))
        (into {})
@@ -981,9 +981,6 @@
    :fn (-fn-schema)
    :string (-string-schema)})
 
-(def default-registry
-  (clojure.core/merge predicate-registry class-registry comparator-registry base-registry))
-
 ;;
 ;; the registry
 ;;
@@ -1000,11 +997,12 @@
 
 ;; the default registry can only be swapped once
 #?(:cljs (goog-define REGISTRY false)
-   :clj  (def REGISTRY (System/getProperty "malli.core.registry")))
+   :clj  (def REGISTRY (System/getProperty "malli.registry")))
 
 (def ^:private +registry+
   (if REGISTRY
     (or (if-let [registry (some-> REGISTRY symbol requiring-resolve deref)]
           (and (satisfies? Registry registry) registry))
-        (fail! ::invalid-registry {:name REGISTRY}))
-    (simple-registry default-registry)))
+        (fail! ::invalid-registry {:registry REGISTRY}))
+    (simple-registry
+      (merge (predicate-registry) (class-registry) (comparator-registry) (base-registry)))))

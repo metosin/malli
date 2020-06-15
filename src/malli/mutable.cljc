@@ -7,8 +7,8 @@
 (defn registry [schemas]
   (reify
     mr/Registry
-    (-get-schema [_ name] (or (get schemas name) (get @state name)))
-    (-get-schemas [_] (merge @state schemas))))
+    (-schema [_ name] (or (get schemas name) (get @state name)))
+    (-schemas [_] (merge @state schemas))))
 
 (defn default-registry [] (registry (m/default-schemas)))
 

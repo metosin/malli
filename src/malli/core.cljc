@@ -754,8 +754,8 @@
 (defn- -schema [?schema options]
   (let [registry (registry options)]
     (or (if (satisfies? IntoSchema ?schema) ?schema)
-        (mr/-get-schema registry ?schema)
-        (some-> registry (mr/-get-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+        (mr/-schema registry ?schema)
+        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
 
 (defn ^:no-doc into-transformer [x]
   (cond

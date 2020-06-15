@@ -9,10 +9,10 @@
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [registry] (->> registry (vals) (keep (partial -safe? m/schema))))
+(defn- registry-schemas [options] (->> options (m/-get-registry) (m/-get-schemas) (vals) (keep (partial -safe? m/schema))))
 
-(defn- ->infer-schemas [{:keys [registry] :or {registry m/default-registry}}]
-  (let [registry-schemas (registry-schemas registry)]
+(defn- ->infer-schemas [options]
+  (let [registry-schemas (registry-schemas options)]
     (fn [x] (-> registry-schemas (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1))))))
 
 (defn- -infer-map [acc x options]

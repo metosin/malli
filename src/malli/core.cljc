@@ -34,8 +34,9 @@
 (defrecord SchemaError [path in schema value type message])
 
 (defprotocol Registry
-  (-register-schema [this name schema] "returns the registry with schema registered")
-  (-get-schema [this name] "returns the schema from a registry"))
+  (-get-schema [this name] "returns the schema from a registry")
+  (-get-schemas [this] "returns all schemas from a registry")
+  (-register-schema [this name schema] "returns the registry with schema registered"))
 
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
           (.write w (str "#Error" (->> v (filter val) (into {}))))))
@@ -752,11 +753,17 @@
         (assoc name schema)
         (assoc @v schema))))
 
-(defn- -schema [?schema {:keys [registry] :as options :or {registry +registry+}}]
-  (let [registry (if (map? registry) (simple-registry registry) registry)]
+(defn -get-registry [{:keys [registry]}]
+  (cond
+    (map? registry) (simple-registry registry)
+    (nil? registry) +registry+
+    :else registry))
+
+(defn- -schema [?schema options]
+  (let [registry (-get-registry options)]
     (or (if (satisfies? IntoSchema ?schema) ?schema)
         (-get-schema registry ?schema)
-        (some-> registry (-get-schema (type ?schema)) (-into-schema nil [?schema] options)))))
+        (some-> registry (-get-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
 
 (defn ^:no-doc into-transformer [x]
   (cond
@@ -964,7 +971,7 @@
        (into {})
        (reduce-kv assoc nil)))
 
-(def base-registry
+(defn base-registry []
   {:and (-and-schema)
    :or (-or-schema)
    :map (-map-schema)
@@ -981,6 +988,9 @@
    :fn (-fn-schema)
    :string (-string-schema)})
 
+(defn default-registry []
+  (merge (predicate-registry) (class-registry) (comparator-registry) (base-registry)))
+
 ;;
 ;; the registry
 ;;
@@ -989,20 +999,19 @@
   (reify
     Registry
     (-get-schema [_ name] (get registry name))
+    (-get-schemas [_] registry)
     (-register-schema [registry name schema]
       (if (contains? registry name)
         (fail! ::schema-already-registered {:name name, :registry registry})
         (simple-registry (assoc registry name schema))))))
 
-
 ;; the default registry can only be swapped once
-#?(:cljs (goog-define REGISTRY false)
+#?(:cljs (goog-define REGISTRY "")
    :clj  (def REGISTRY (System/getProperty "malli.registry")))
 
 (def ^:private +registry+
-  (if REGISTRY
+  (if (and REGISTRY (not= "" REGISTRY))
     (or (if-let [registry (some-> REGISTRY symbol requiring-resolve deref)]
           (and (satisfies? Registry registry) registry))
         (fail! ::invalid-registry {:registry REGISTRY}))
-    (simple-registry
-      (merge (predicate-registry) (class-registry) (comparator-registry) (base-registry)))))
+    (simple-registry (default-registry))))

@@ -749,7 +749,7 @@
 
 (defn registry
   ([] default-registry)
-  ([{:keys [registry]}] (mr/registry registry default-registry)))
+  ([{:keys [registry]}] (or (mr/registry registry) default-registry)))
 
 (defn- -schema [?schema options]
   (let [registry (registry options)]
@@ -984,4 +984,6 @@
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
 
 (def default-registry
-  (mr/default-registry (if (identical? mr/type "default") (default-schemas))))
+  (mr/registry (cond (identical? mr/type "default") (default-schemas)
+                     (identical? mr/type "managed") (mr/managed-registry)
+                     :else (throw (ex-info (str "invalid registry malli.registry/type " mr/type) {})))))

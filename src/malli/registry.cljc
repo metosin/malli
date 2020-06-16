@@ -25,7 +25,9 @@
 (def ^:private state (atom (registry {})))
 
 (defn set-default-registry! [?registry]
-  (reset! state (registry ?registry)))
+  (if (identical? type "managed")
+    (reset! state (registry ?registry))
+    (throw (ex-info "invalid registry type" {:type type}))))
 
 (defn managed-registry []
   (reify
@@ -33,13 +35,23 @@
     (-schema [_ name] (-schema @state name))
     (-schemas [_] (-schemas @state))))
 
-;;
-;; mutable
-;;
+(defn composite-registry [& ?registries]
+    (let [registries (mapv registry ?registries)]
+      (reify
+        Registry
+        (-schema [_ name] (some #(-schema % name) registries))
+        (-schemas [_] (reduce merge (map -schemas (reverse registries)))))))
 
-(defn mutable-registry [?registry db]
-  (let [registry (registry ?registry)]
-    (reify
-      Registry
-      (-schema [_ name] (or (-schema registry name) (get @db name)))
-      (-schemas [_] (merge @db (-schema registry name))))))
+(defn mutable-registry [db]
+  (reify
+    Registry
+    (-schema [_ name] (get @db name))
+    (-schemas [_] @db)))
+
+(def ^:dynamic *registry* {})
+
+(defn dynamic-registry []
+  (reify
+    Registry
+    (-schema [_ name] (get *registry* name))
+    (-schemas [_] *registry*)))

@@ -986,4 +986,4 @@
 (def default-registry
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
                      (identical? mr/type "managed") (mr/managed-registry)
-                     :else (throw (ex-info (str "invalid registry malli.registry/type " mr/type) {})))))
+                     :else (fail! ::invalid-registry.type {:type mr/type}))))

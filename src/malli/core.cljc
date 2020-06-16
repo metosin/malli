@@ -116,7 +116,7 @@
         (fail! ::child-error {:type type, :properties properties, :children children, :min 0, :max 0}))
       [f children])))
 
-(defn- -partial-fn-schema [type f]
+(defn -partial-fn-schema [type f]
   (-leaf-schema
     type
     (fn [properties [child :as children] _]
@@ -124,7 +124,7 @@
         (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
       [#(try (f % child) (catch #?(:clj Exception, :cljs js/Error) _ false)) children])))
 
-(defn- -and-schema []
+(defn -and-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -165,7 +165,7 @@
           (-get [_ key default] (get child-schemas key default))
           (-set [_ key value] (into-schema :and properties (assoc child-schemas key value))))))))
 
-(defn- -or-schema []
+(defn -or-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -266,7 +266,7 @@
 (defn ^:no-doc required-map-entry? [[_ ?p]]
   (not (and (map? ?p) (true? (:optional ?p)))))
 
-(defn- -map-schema []
+(defn -map-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [closed] :as properties} children options]
@@ -366,7 +366,7 @@
                                   :always (->> (filter (fn [e] (-> e last some?)))))]
               (into-schema :map properties entries))))))))
 
-(defn- -map-of-schema []
+(defn -map-of-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -422,7 +422,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -collection-schema [type fpred fwrap fempty]
+(defn -collection-schema [type fpred fwrap fempty]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
@@ -478,7 +478,7 @@
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [_ key value] (if (= 0 key) (into-schema type properties [value]) schema)))))))
 
-(defn- -tuple-schema []
+(defn -tuple-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -534,7 +534,7 @@
           (-get [_ key default] (get schemas key default))
           (-set [_ key value] (into-schema :tuple properties (assoc schemas key value))))))))
 
-(defn- -enum-schema []
+(defn -enum-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -559,7 +559,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -re-schema [class?]
+(defn -re-schema [class?]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [child :as children] options]
@@ -588,7 +588,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -fn-schema []
+(defn -fn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -617,7 +617,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -maybe-schema []
+(defn -maybe-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -653,7 +653,7 @@
           (-get [_ key default] (if (= 0 key) schema' default))
           (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema')))))))
 
-(defn- -multi-schema []
+(defn -multi-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -706,7 +706,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -string-schema []
+(defn -string-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]

@@ -1,12 +1,13 @@
 (ns malli.mutable-test
   (:require [clojure.test :refer [deftest testing is]]
             [malli.core :as m]
-            [malli.mutable :as mm]))
+            [malli.registry :as mr]))
 
 (deftest mutable-test
-  (let [registry (mm/default-registry)]
+  (let [registry* (atom {})
+        registry (mr/mutable-registry (m/default-schemas) registry*)
+        register! (fn [t ?s] (swap! registry* assoc t (m/schema ?s)))]
     (testing "default registy"
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validate ::id 1 {:registry registry})))
-      (mm/register! ::id int?)
-      (is (true? (m/validate ::id 1 {:registry registry})))
-      (mm/register! ::id nil))))
+      (register! ::id int?)
+      (is (true? (m/validate ::id 1 {:registry registry}))))))

@@ -32,3 +32,14 @@
     Registry
     (-schema [_ name] (-schema @state name))
     (-schemas [_] (-schemas @state))))
+
+;;
+;; mutable
+;;
+
+(defn mutable-registry [?registry db]
+  (let [registry (registry ?registry)]
+    (reify
+      Registry
+      (-schema [_ name] (or (-schema registry name) (get @db name)))
+      (-schemas [_] (merge @db (-schema registry name))))))

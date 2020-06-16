@@ -23,4 +23,5 @@
 (defn default-registry [schemas]
   (if (identical? type "default")
     (registry schemas nil)
-    (some-> type symbol requiring-resolve (apply nil))))
+    (or (some-> type symbol requiring-resolve (apply nil) (registry))
+        (throw (ex-info (str "invalid registry malli.registry/type " type) {})))))

@@ -10,8 +10,6 @@
     (-schema [_ name] (or (get schemas name) (get @state name)))
     (-schemas [_] (merge @state schemas))))
 
-(defn default-registry [] (registry (m/default-schemas)))
-
 (defn register! [type ?schema]
   (if ?schema
     (swap! state assoc type (m/schema ?schema {:registry (m/registry)}))

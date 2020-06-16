@@ -1,4 +1,5 @@
-(ns malli.registry)
+(ns malli.registry
+  (:refer-clojure :exclude [type]))
 
 (defprotocol Registry
   (-schema [this name] "returns the schema from a registry")
@@ -10,15 +11,16 @@
     (-schema [_ name] (get schemas name))
     (-schemas [_] schemas)))
 
-(defn registry [x default]
-  (cond (satisfies? Registry x) x
-        (map? x) (simple-registry x)
-        :else default))
+(defn registry
+  ([x] (registry x nil))
+  ([x default] (cond (satisfies? Registry x) x
+                     (map? x) (simple-registry x)
+                     :else default)))
 
-#?(:cljs (goog-define REGISTRY ""))
+#?(:cljs (goog-define type "default")
+   :clj  (def type (System/getProperty "malli.registry/type")))
 
-#?(:clj
-   (defmacro default-registry [default]
-     (if-let [registry (some-> (System/getProperty "malli.registry") symbol requiring-resolve)]
-       `(~registry)
-       `(simple-registry ~default))))
+(defn default-registry [schemas]
+  (if (identical? type "default")
+    (registry schemas nil)
+    (some-> type symbol requiring-resolve (apply nil))))

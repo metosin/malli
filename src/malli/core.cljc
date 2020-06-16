@@ -983,4 +983,5 @@
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
 
-(def ^:private default-registry (mr/default-registry (default-schemas)))
+(def ^:private default-registry
+  (mr/default-registry (if (identical? mr/type "default") (default-schemas))))

@@ -6,10 +6,11 @@
                                metosin/spec-tools {:mvn/version "0.10.3"}
                                metosin/schema-tools {:mvn/version "0.12.2"}
                                prismatic/schema {:mvn/version "1.1.12"}
-                               thheller/shadow-cljs {:mvn/version "2.10.6"}
                                meta-merge {:mvn/version "1.0.0"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "8498f9cb352135579b6d3a0a5d15c40e5c2647ce"}}}
+           :app {:extra-paths ["app"]
+                 :extra-deps {thheller/shadow-cljs {:mvn/version "2.10.6"}}}
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
                                :sha "5c5dae9ae4b75941485a17872aa59e040a500aa4"}}

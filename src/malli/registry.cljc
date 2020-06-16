@@ -18,7 +18,7 @@
                      :else default)))
 
 #?(:cljs (goog-define type "default")
-   :clj  (def type (System/getProperty "malli.registry/type")))
+   :clj  (def type (or (System/getProperty "malli.registry/type") "default")))
 
 (defn default-registry [schemas]
   (if (identical? type "default")

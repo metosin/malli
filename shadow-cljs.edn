@@ -1,6 +1,6 @@
 {:deps {:aliases [:app]}
  :builds {:app {:target :browser
-                :closure-defines {malli.registry/type "default2"}
+                :closure-defines {malli.registry/type "default"}
                 :modules {:cljs {:entries [cljs.core]}
                           :sci {:entries [sci.core]
                                 :depends-on #{:cljs}}

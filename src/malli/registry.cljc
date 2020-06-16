@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [type]))
 
 #?(:cljs (goog-define type "default")
-   :clj  (def type (.intern (or (System/getProperty "malli.registry/type") "default"))))
+   :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
 
 (defprotocol Registry
   (-schema [this name] "returns the schema from a registry")

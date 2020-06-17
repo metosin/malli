@@ -984,5 +984,5 @@
 
 (def default-registry
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
-                     (identical? mr/type "managed") (mr/managed-registry)
+                     (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (fail! ::invalid-registry.type {:type mr/type}))))

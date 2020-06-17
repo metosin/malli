@@ -19,17 +19,17 @@
         (map? ?registry) (simple-registry ?registry)))
 
 ;;
-;; managed
+;; custom
 ;;
 
 (def ^:private registry* (atom (registry {})))
 
 (defn set-default-registry! [?registry]
-  (if (identical? type "managed")
+  (if (identical? type "custom")
     (reset! registry* (registry ?registry))
-    (throw (ex-info "invalid registry type" {:type type}))))
+    (throw (ex-info "can't set default registry" {:type type}))))
 
-(defn managed-registry []
+(defn ^:no-doc custom-default-registry []
   (reify
     Registry
     (-schema [_ type] (-schema @registry* type))

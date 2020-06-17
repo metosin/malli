@@ -1053,7 +1053,7 @@ Coercion:
 
 ## Schema Registry
 
-Schemas are looked up using a `malli.registry/Registry` protocol, effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
+Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
 
 Custom `Registry` can be passed in to all/most malli public apis via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
 
@@ -1115,23 +1115,23 @@ Predicate Schemas don't work anymore:
 
 ### Changing the default registry
 
-Using custom registries via explicit option is a simple solution, but introduces a lot of boilerplate as it has to be done in all public api calls of malli. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination, even if the schemas are not used in the application.
+Using custom registries via `:registry` option is a simple solution, but this needs to be done for all public api calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
 
-To solve this, malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
-   * cljs: `:closure-defines {malli.registry/type "managed"}`
-   * clj: `:jvm-opts ["-Dmalli.registry/type=managed"]`
-   
-After the bootstrap, a call to `malli.registry/set-default-registy!` changes the default registry implementation. Pick you flavor and contents!
+Malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
+   * cljs: `:closure-defines {malli.registry/type "custom"}`
+   * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
+
+It changes the default registry to empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enableds DCE for all unsed schema implementations.
+
+Malli supports multiple types of registries.
 
 ### Immutable registry
-
-Like the default immutable registry, but with custom contents:
 
 ```clj
 (require '[malli.registry :as mr])
 
-;; - cljs: :closure-defines {malli.registry/type "managed"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   {:string (m/-string-schema)
    :maybe (m/-maybe-schema)
@@ -1157,15 +1157,14 @@ Using a custom registry atom:
          :maybe (m/-maybe-schema)
          :map (m/-map-schema)}))
 
-;; - cljs: :closure-defines {malli.registry/type "managed"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   (mr/mutable-registry registry*))
 
 (defn register! [type ?schema]
   (swap! registry* assoc type ?schema))
 
-;; mutate like a boss
 (register! :non-empty-string [:string {:min 1}])
 
 (m/validate :non-empty-string "malli")
@@ -1186,8 +1185,8 @@ The mutable registry can also passed in as explicit option:
 If you know what you are doing, you can also use [dynamic scope](https://stuartsierra.com/2013/03/29/perils-of-dynamic-scope) to pass in default schema registry:
 
 ```clj
-;; - cljs: :closure-defines {malli.registry/type "managed"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   (mr/dynamic-registry))
 
@@ -1213,8 +1212,8 @@ Registries can be composed:
 (defn register! [type schema]
   (swap! registry assoc type schema))
 
-;; - cljs: :closure-defines {malli.registry/type "managed"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   ;; linear search
   (mr/composite-registry
@@ -1225,7 +1224,7 @@ Registries can be composed:
     ;; on the perils of dynamic scope
     (mr/dynamic-registry)))
 
-;; like a boss
+;; mutate like a boss
 (register! :maybe (m/-maybe-schema))
 
 ;; ☆.。.:*・°☆.。.:*・°☆.。.:*・°☆.。.:*・°☆

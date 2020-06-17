@@ -1147,7 +1147,7 @@ Malli supports multiple types of registries.
 
 ### Mutable registry
 
-[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. The mutable registry in malli forced you to bring in your own state atom and function how to work with it:
+[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. The mutable registry in malli forced you to bring in your own state atom and functions how to work with it:
 
 Using a custom registry atom:
 
@@ -1157,13 +1157,13 @@ Using a custom registry atom:
          :maybe (m/-maybe-schema)
          :map (m/-map-schema)}))
 
+(defn register! [type ?schema]
+  (swap! registry* assoc type ?schema))
+
 ;; - cljs: :closure-defines {malli.registry/type "custom"}
 ;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   (mr/mutable-registry registry*))
-
-(defn register! [type ?schema]
-  (swap! registry* assoc type ?schema))
 
 (register! :non-empty-string [:string {:min 1}])
 

@@ -111,10 +111,10 @@
       (is (= "user/kikka" (m/encode keyword? :user/kikka mt/string-transformer)))))
   (testing "comparators"
     (testing "decode"
-      (doseq [schema (keys m/comparator-registry)]
+      (doseq [schema (keys (m/comparator-schemas))]
         (is (= 1 (m/decode [schema 1] "1" mt/string-transformer)))))
     (testing "encode"
-      (doseq [schema (keys m/comparator-registry)]
+      (doseq [schema (keys (m/comparator-schemas))]
         (is (= "1" (m/encode [schema 1] 1 mt/string-transformer))))))
   (testing "and"
     (testing "decode"

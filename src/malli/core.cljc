@@ -1,6 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type])
-  (:require [sci.core :as sci])
+  (:require [sci.core :as sci]
+            [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
@@ -46,9 +47,7 @@
 ;; impl
 ;;
 
-(declare schema into-schema)
-(declare eval)
-(declare default-registry)
+(declare schema into-schema eval default-registry)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -117,7 +116,7 @@
         (fail! ::child-error {:type type, :properties properties, :children children, :min 0, :max 0}))
       [f children])))
 
-(defn- -partial-fn-schema [type f]
+(defn -partial-fn-schema [type f]
   (-leaf-schema
     type
     (fn [properties [child :as children] _]
@@ -125,7 +124,7 @@
         (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
       [#(try (f % child) (catch #?(:clj Exception, :cljs js/Error) _ false)) children])))
 
-(defn- -and-schema []
+(defn -and-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -166,7 +165,7 @@
           (-get [_ key default] (get child-schemas key default))
           (-set [_ key value] (into-schema :and properties (assoc child-schemas key value))))))))
 
-(defn- -or-schema []
+(defn -or-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -267,7 +266,7 @@
 (defn ^:no-doc required-map-entry? [[_ ?p]]
   (not (and (map? ?p) (true? (:optional ?p)))))
 
-(defn- -map-schema []
+(defn -map-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [closed] :as properties} children options]
@@ -367,7 +366,7 @@
                                   :always (->> (filter (fn [e] (-> e last some?)))))]
               (into-schema :map properties entries))))))))
 
-(defn- -map-of-schema []
+(defn -map-of-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -423,7 +422,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -collection-schema [type fpred fwrap fempty]
+(defn -collection-schema [type fpred fwrap fempty]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
@@ -479,7 +478,7 @@
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [_ key value] (if (= 0 key) (into-schema type properties [value]) schema)))))))
 
-(defn- -tuple-schema []
+(defn -tuple-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -535,7 +534,7 @@
           (-get [_ key default] (get schemas key default))
           (-set [_ key value] (into-schema :tuple properties (assoc schemas key value))))))))
 
-(defn- -enum-schema []
+(defn -enum-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -560,7 +559,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -re-schema [class?]
+(defn -re-schema [class?]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [child :as children] options]
@@ -589,7 +588,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -fn-schema []
+(defn -fn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -618,7 +617,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -maybe-schema []
+(defn -maybe-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -654,7 +653,7 @@
           (-get [_ key default] (if (= 0 key) schema' default))
           (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema')))))))
 
-(defn- -multi-schema []
+(defn -multi-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -707,7 +706,7 @@
           (-options [_] options)
           (-form [_] form))))))
 
-(defn- -string-schema []
+(defn -string-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
@@ -745,13 +744,18 @@
   (let [name (-> v meta :name)
         schema (fn-schema name @v)]
     (-> registry
-        (-register name schema)
-        (-register @v schema))))
+        (assoc name schema)
+        (assoc @v schema))))
 
-(defn- -schema [?schema {:keys [registry] :as options :or {registry default-registry}}]
-  (or (if (satisfies? IntoSchema ?schema) ?schema)
-      (get registry ?schema)
-      (some-> registry (get (clojure.core/type ?schema)) (-into-schema nil [?schema] options))))
+(defn registry
+  ([] default-registry)
+  ([{:keys [registry]}] (or (mr/registry registry) default-registry)))
+
+(defn- -schema [?schema options]
+  (let [registry (registry options)]
+    (or (if (satisfies? IntoSchema ?schema) ?schema)
+        (mr/-schema registry ?schema)
+        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
 
 (defn ^:no-doc into-transformer [x]
   (cond
@@ -939,10 +943,10 @@
      (into-schema type properties (mapv (<-child #(from-map-syntax % options)) children)))))
 
 ;;
-;; registries
+;; registry
 ;;
 
-(def predicate-registry
+(defn predicate-schemas []
   (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'float? #'double?
         #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
         #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
@@ -950,16 +954,15 @@
         #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)]
        (reduce -register-var {})))
 
-(def class-registry
+(defn class-schemas []
   {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})
 
-(def comparator-registry
+(defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
        (map (fn [[k v]] [k (-partial-fn-schema k v)]))
-       (into {})
-       (reduce-kv -register nil)))
+       (into {}) (reduce-kv assoc nil)))
 
-(def base-registry
+(defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
    :map (-map-schema)
@@ -976,5 +979,10 @@
    :fn (-fn-schema)
    :string (-string-schema)})
 
+(defn default-schemas []
+  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
+
 (def default-registry
-  (clojure.core/merge predicate-registry class-registry comparator-registry base-registry))
+  (mr/registry (cond (identical? mr/type "default") (default-schemas)
+                     (identical? mr/type "custom") (mr/custom-default-registry)
+                     :else (fail! ::invalid-registry.type {:type mr/type}))))

@@ -1,9 +1,19 @@
-{:deps {:aliases [:test]}
- :builds {:malli {:target :browser
-                  :modules {:cljs {:entries [cljs.core]}
-                            :sci {:entries [sci.core]
-                                  :depends-on #{:cljs}}
-                            :malli {:entries [malli.core]
-                                    :depends-on #{:cljs :sci}}
-                            :app {:entries [malli.app]
-                                  :depends-on #{:malli}}}}}}
+{:deps {:aliases [:shadow]}
+ :builds {:app {:target :browser
+                :closure-defines {malli.registry/type "default"}
+                :modules {:cljs {:entries [cljs.core]}
+                          :sci {:entries [sci.core]
+                                :depends-on #{:cljs}}
+                          :malli {:entries [malli.core]
+                                  :depends-on #{:cljs :sci}}
+                          :app {:entries [malli.app]
+                                :depends-on #{:malli}}}}
+          :app2 {:target :browser
+                 :closure-defines {malli.registry/type "custom"}
+                 :modules {:cljs {:entries [cljs.core]}
+                           :sci {:entries [sci.core]
+                                 :depends-on #{:cljs}}
+                           :malli {:entries [malli.core]
+                                   :depends-on #{:cljs :sci}}
+                           :app {:entries [malli.app2]
+                                 :depends-on #{:malli}}}}}}

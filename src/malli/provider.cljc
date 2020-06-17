@@ -1,5 +1,6 @@
 (ns malli.provider
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [malli.registry :as mr]))
 
 (declare ->infer)
 (declare schema)
@@ -9,11 +10,10 @@
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [registry] (->> registry (vals) (keep (partial -safe? m/schema))))
+(defn- registry-schemas [options] (->> options (m/registry) (mr/-schemas) (vals) (keep (partial -safe? m/schema))))
 
-(defn- ->infer-schemas [{:keys [registry] :or {registry m/default-registry}}]
-  (let [registry-schemas (registry-schemas registry)]
-    (fn [x] (-> registry-schemas (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1))))))
+(defn- ->infer-schemas [options]
+  (fn [x] (-> options (registry-schemas) (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1)))))
 
 (defn- -infer-map [acc x options]
   (reduce-kv (fn [acc k v] (update-in acc [:keys k] (->infer options) v)) acc x))

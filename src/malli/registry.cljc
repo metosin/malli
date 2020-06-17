@@ -5,7 +5,7 @@
    :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
 
 (defprotocol Registry
-  (-schema [this name] "returns the schema from a registry")
+  (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
 (defn simple-registry [schemas]
@@ -22,30 +22,30 @@
 ;; managed
 ;;
 
-(def ^:private state (atom (registry {})))
+(def ^:private registry* (atom (registry {})))
 
 (defn set-default-registry! [?registry]
   (if (identical? type "managed")
-    (reset! state (registry ?registry))
+    (reset! registry* (registry ?registry))
     (throw (ex-info "invalid registry type" {:type type}))))
 
 (defn managed-registry []
   (reify
     Registry
-    (-schema [_ name] (-schema @state name))
-    (-schemas [_] (-schemas @state))))
+    (-schema [_ type] (-schema @registry* type))
+    (-schemas [_] (-schemas @registry*))))
 
 (defn composite-registry [& ?registries]
-    (let [registries (mapv registry ?registries)]
-      (reify
-        Registry
-        (-schema [_ name] (some #(-schema % name) registries))
-        (-schemas [_] (reduce merge (map -schemas (reverse registries)))))))
+  (let [registries (mapv registry ?registries)]
+    (reify
+      Registry
+      (-schema [_ type] (some #(-schema % type) registries))
+      (-schemas [_] (reduce merge (map -schemas (reverse registries)))))))
 
 (defn mutable-registry [db]
   (reify
     Registry
-    (-schema [_ name] (get @db name))
+    (-schema [_ type] (get @db type))
     (-schemas [_] @db)))
 
 (def ^:dynamic *registry* {})
@@ -53,5 +53,5 @@
 (defn dynamic-registry []
   (reify
     Registry
-    (-schema [_ name] (get *registry* name))
+    (-schema [_ type] (get *registry* type))
     (-schemas [_] *registry*)))

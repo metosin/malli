@@ -15,7 +15,7 @@ Plain data Schemas for Clojure/Script.
 - First class [error-messages](#error-messages) including [spell checking](#spell-checking)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [default values](#default-values) and [persisting schemas](#persisting-schemas)
-- No global state, explicit everything
+- Immutable, Mutable and Dynamic [Schema Registries](#schema-registry)
 - [Fast](#performance)
 
 Presentations:
@@ -1051,23 +1051,37 @@ Coercion:
     (transform {:id "1", :name "kikka"})))
 ```
 
-## Registry
+## Schema Registry
 
-All public functions take optional options map with optional `:registry` key. It is an map of `name->IntoSchema`.  It defaults to `malli.core/default-registry` which is an merge of the following subregistries:
+Schemas are looked up using a `malli.registry/Registry` protocol, effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
 
-#### `malli.core/predicate-registry`
+Custom `Registry` can be passed in to all/most malli public apis via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
+
+```clj
+;; the default registry
+(m/validate [:maybe string?] "kikka")
+; => true
+
+;; registry as explicit options
+(m/validate [:maybe string?] "kikka" {:registry m/default-registry})
+; => true
+```
+
+The default immutable registry is merged from the following parts, enabling easy re-composition of custom schema sets:
+
+#### `malli.core/predicate-schemas`
 
 Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
 
-#### `malli.core/class-registry`
+#### `malli.core/class-schemas`
 
 Class-based schemas, contains `java.util.regex.Pattern` & `js/RegExp`.
 
-#### `malli.core/comparator-registry`
+#### `malli.core/comparator-schemas`
 
 Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
-#### `malli.core/base-registry`
+#### `malli.core/base-schemas`
 
 Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
 
@@ -1078,11 +1092,11 @@ Example to create a custom registry without the default core predicates and with
 ```clj
 (def registry
   (merge
-    m/class-registry
-    m/comparator-registry
-    m/base-registry
+    (m/class-schemas)
+    (m/comparator-schemas)
+    (m/base-schemas)
     {:int (m/fn-schema :int int?)
-     :bool (m/fn-schema :string boolean?)}))
+     :bool (m/fn-schema :bool boolean?)}))
 
 (m/validate [:or :int :bool] 'kikka {:registry registry})
 ; => false
@@ -1099,58 +1113,126 @@ Predicate Schemas don't work anymore:
 ; :malli.core/invalid-schema
 ```
 
+### Changing the default registry
+
+Using custom registries via explicit option is a simple solution, but introduces a lot of boilerplate as it has to be done in all public api calls of malli. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination, even if the schemas are not used in the application.
+
+To solve this, malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
+   * cljs: `:closure-defines {malli.registry/type "managed"}`
+   * clj: `:jvm-opts ["-Dmalli.registry/type=managed"]`
+   
+After the bootstrap, a call to `malli.registry/set-default-registy!` changes the default registry implementation. Pick you flavor and contents!
+
+### Immutable registry
+
+Like the default immutable registry, but with custom contents:
+
+```clj
+(require '[malli.registry :as mr])
+
+;; - cljs: :closure-defines {malli.registry/type "managed"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+(mr/set-default-registry!
+  {:string (m/-string-schema)
+   :maybe (m/-maybe-schema)
+   :map (m/-map-schema)})
+
+(m/validate
+  [:map [:maybe [:maybe :string]]]
+  {:maybe "sheep"})
+; => true
+
+;; gzipped malli.core size as js down from 12Kb -> 1.2Kb
+```
+
 ### Mutable registry
 
-[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. There is no such thing in `malli`, but you can create it yourself.
+[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. The mutable registry in malli forced you to bring in your own state atom and function how to work with it:
 
 Using a custom registry atom:
 
 ```clj
-(defonce my-registry
-  (atom m/default-registry))
+(def registry*
+  (atom {:string (m/-string-schema)
+         :maybe (m/-maybe-schema)
+         :map (m/-map-schema)}))
 
-(defn register! [k schema]
-  (swap! my-registry assoc k (m/schema schema {:registry @my-registry))
-  k)
+;; - cljs: :closure-defines {malli.registry/type "managed"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+(mr/set-default-registry!
+  (mr/mutable-registry registry*))
 
-(register! ::id int?)
-;; => :user/id
+(defn register! [type ?schema]
+  (swap! registry* assoc type ?schema))
 
-(register! ::name string?)
-;; => :user/name   
+;; mutate like a boss
+(register! :non-empty-string [:string {:min 1}])
 
-(register! ::new-user [:tuple ::id ::name])
-;; => :user/new-user
-
-(m/validate 
-  [:tuple ::id ::name] 
-  [18 "and life"] 
-  {:registry @my-registry})
-;; => true   
-
-; - OR -   
-
-(m/validate 
-  ::new-user
-  [18 "and life"] 
-  {:registry @my-registry})
-;; => true
+(m/validate :non-empty-string "malli")
+; => true
 ```
 
-Mutating the default registry (not recommended):
+The mutable registry can also passed in as explicit option:
 
 ```clj
-(defn evil-register! [k ?schema]
-  (alter-var-root
-    #'m/default-registry
-    (constantly
-      (assoc m/default-registry k (m/schema ?schema))))
-  k)
+(def registry (mr/mutable-registry registry*))
 
-(evil-register! ::int int?)
-; :user/int
+(m/validate :non-empty-string "malli" {:registry registry})
+; => true
+```
 
-(m/validate ::int 1)
+### Dynamic Registry
+
+If you know what you are doing, you can also use [dynamic scope](https://stuartsierra.com/2013/03/29/perils-of-dynamic-scope) to pass in default schema registry:
+
+```clj
+;; - cljs: :closure-defines {malli.registry/type "managed"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+(mr/set-default-registry!
+  (mr/dynamic-registry))
+
+(binding [mr/*registry* {:string (m/-string-schema)
+                         :maybe (m/-maybe-schema)
+                         :map (m/-map-schema)
+                         :non-empty-string [:string {:min 1}]}]
+  (m/validate :non-empty-string "malli"))
+; => true
+```
+
+### Composite Registry
+
+Registries can be composed:
+
+```clj
+(require '[malli.core :as m])
+(require '[malli.registry :as mr])
+
+;; bring your own evil
+(def registry (atom {}))
+
+(defn register! [type schema]
+  (swap! registry assoc type schema))
+
+;; - cljs: :closure-defines {malli.registry/type "managed"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=managed"]
+(mr/set-default-registry!
+  ;; linear search
+  (mr/composite-registry
+    ;; immutable registry
+    {:map (m/-map-schema)}
+    ;; mutable (spec-like) registry
+    (mr/mutable-registry registry)
+    ;; on the perils of dynamic scope
+    (mr/dynamic-registry)))
+
+;; like a boss
+(register! :maybe (m/-maybe-schema))
+
+;; ☆.。.:*・°☆.。.:*・°☆.。.:*・°☆.。.:*・°☆
+(binding [mr/*registry* {:string (m/-string-schema)}]
+  (m/validate
+    [:map [:maybe [:maybe :string]]]
+    {:maybe "sheep"}))
 ; => true
 ```
 
@@ -1247,7 +1329,13 @@ clj -Ainstall
 ## Bundle size for cljs
 
 ```bash
-npx shadow-cljs run shadow.cljs.build-report malli /tmp/report.html
+npx shadow-cljs run shadow.cljs.build-report app /tmp/report.html
+```
+
+## Checking the generated code
+
+```bash
+npx shadow-cljs release app --pseudo-names
 ```
 
 ## License

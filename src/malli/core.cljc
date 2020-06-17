@@ -960,8 +960,7 @@
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
        (map (fn [[k v]] [k (-partial-fn-schema k v)]))
-       (into {})
-       (reduce-kv assoc nil)))
+       (into {}) (reduce-kv assoc nil)))
 
 (defn base-schemas []
   {:and (-and-schema)

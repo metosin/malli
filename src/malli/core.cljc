@@ -1,8 +1,9 @@
 (ns malli.core
-  (:refer-clojure :exclude [eval type])
+  (:refer-clojure :exclude [eval type -deref])
   (:require [sci.core :as sci]
             [malli.registry :as mr])
-  #?(:clj (:import (java.util.regex Pattern))))
+  #?(:clj (:import (java.util.regex Pattern)
+                   (clojure.lang IDeref))))
 
 ;;
 ;; protocols and records
@@ -29,6 +30,9 @@
   (-get [this key default] "returns schema at key")
   (-set [this key value] "returns a copy with key having new value"))
 
+(defprotocol RefSchema
+  (-deref [this] "returns the referenced schema"))
+
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
@@ -43,6 +47,9 @@
 
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w]
           (.write w (pr-str (-form v)))))
+
+#?(:clj (defmethod print-method ::ref [_ ^java.io.Writer w]
+          (.write w "<<ref>>")))
 
 ;;
 ;; impl
@@ -70,7 +77,7 @@
   ([type]
    (fail! type nil))
   ([type data]
-   (throw (ex-info (str type) {:type type, :data data}))))
+   (throw (ex-info (str type " " data) {:type type, :data data}))))
 
 (defn create-form [type properties children]
   (cond
@@ -502,10 +509,10 @@
           (-type [_] :tuple)
           (-validator [_]
             (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
-            (fn [x] (and (vector? x)
-                         (= (count x) size)
-                         (reduce-kv
-                           (fn [acc i validator]
+              (fn [x] (and (vector? x)
+                           (= (count x) size)
+                           (reduce-kv
+                             (fn [acc i validator]
                                (if (validator (nth x i)) acc (reduced false))) true validators)))))
           (-explainer [this path]
             (let [distance (-distance properties)
@@ -647,7 +654,7 @@
               (fn [x] (or (nil? x) (validator' x)))))
           (-explainer [_ path]
             (let [explainer' (-explainer schema (conj path (-distance properties)))]
-            (fn explain [x in acc]
+              (fn explain [x in acc]
                 (if (nil? x) acc (explainer' x in acc)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
@@ -753,6 +760,44 @@
           (-children [_] children)
           (-form [_] form))))))
 
+(defn- -ref-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties [ref :as children] options]
+      (when-not (= 1 (count children))
+        (fail! ::child-error {:name :ref, :properties properties, :children children, :min 1, :max 1}))
+      (let [-ref (get-in options [::refs ref])
+            -memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
+            form (create-form :ref properties children)]
+        (when-not -ref
+          (fail! ::invalid-ref {:name :ref, :ref ref, :refs (-> options ::refs keys set)}))
+        ^{:type ::schema}
+        (reify Schema
+          (-type [_] :ref)
+          (-validator [_]
+            (let [validator (-memoize (fn [] (-validator (-ref))))]
+              (fn [x] ((validator) x))))
+          (-explainer [_ path]
+            (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
+              (fn [x in acc] ((explainer) x in acc))))
+          (-transformer [_ transformer method options]
+            (let [enter (-memoize (fn [] (:enter (-transformer (-ref) transformer method options))))
+                  leave (-memoize (fn [] (:leave (-transformer (-ref) transformer method options))))]
+              {:enter (fn [x] ((enter) x))
+               :leave (fn [x] ((leave) x))}))
+          (-accept [this visitor in options]
+            (let [accept (fn [] (-accept (-ref) visitor in (update options ::ref-accepted (fnil conj #{}) ref)))
+                  accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))]
+              (visitor this (vec children) in (assoc options ::ref-accept accept-ref))))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          LensSchema
+          (-get [_ key default] (if (= key 0) (-ref) default))
+          (-set [_ key value] (if (= key 0) (into-schema :ref properties [value])))
+          RefSchema
+          (-deref [_] (-ref)))))))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -797,8 +842,11 @@
    (cond
      (schema? ?schema) ?schema
      (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (apply into-schema (concat [(-schema (first ?schema) options)]
-                                                  (-properties-and-children (rest ?schema)) [options]))
+     (vector? ?schema) (let [[id p c] (-id-properties-and-children (rest ?schema))
+                             ref (if id (let [value (atom nil)] (fn ([] @value) ([x] (reset! value x)))))
+                             schema (into-schema (-schema (first ?schema) options) p c (cond-> options ref (assoc-in [::refs id] ref)))]
+                         (when ref (ref schema))
+                         schema)
      :else (or (some-> ?schema (-schema options) (schema options)) (fail! ::invalid-schema {:schema ?schema})))))
 
 (defn form
@@ -989,7 +1037,8 @@
    :multi (-multi-schema)
    :re (-re-schema false)
    :fn (-fn-schema)
-   :string (-string-schema)})
+   :string (-string-schema)
+   :ref (-ref-schema)})
 
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))

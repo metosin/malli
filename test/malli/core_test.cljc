@@ -49,7 +49,7 @@
   (is (= 2 ((m/eval "(fn [x] (inc x))") 1)))
   (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
   (is (= :maybe (m/eval "(m/type [:maybe int?])")))
-  (is (= ['int? 'string?] (m/eval "(m/children [:or {:some \"props\"} int? string?])")))
+  (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
   (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
 
 (deftest into-schema-test
@@ -223,8 +223,8 @@
       (is (false? (m/validate schema "abba")))
 
       (is (nil? (m/explain schema 1)))
-      (is (results= {:schema [:enum 1 2], :value 0, :errors [{:path [], :in [], :schema [:enum 1 2], :value 0}]}
-                    (m/explain schema 0)))
+      (is (results= {:schema [:enum 1 2], :value 0, :errors [{:path [0], :in [], :schema [:enum 1 2], :value 0}]}
+                    (m/explain [:enum 1 2] 0)))
 
       ;; TODO: infer type from :enum
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -250,8 +250,8 @@
       (is (false? (m/validate schema "abba")))
 
       (is (nil? (m/explain schema 1)))
-      (is (results= {:schema [:maybe int?], :value "abba", :errors [{:path [], :in [], :schema [:maybe int?], :value "abba"}]}
-                    (m/explain schema "abba")))
+      (is (results= {:schema [:maybe int?], :value "abba", :errors [{:path [1], :in [], :schema int?, :value "abba"}]}
+                    (m/explain [:maybe int?] "abba")))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -854,18 +854,18 @@
                                         [schema {:x "non-x" :y "y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "y"}
-                                          :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
+                                          :errors [{:path [1 1 0], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
 
                                         [schema {:x "x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "x" :y "non-y"}
-                                          :errors [{:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
+                                          :errors [{:path [2 1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
 
                                         [schema {:x "non-x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "non-y"}
-                                          :errors [{:path [1 1], :in [:x], :schema [:enum "x"], :value "non-x"}
-                                                   {:path [2 1], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
+                                          :errors [{:path [1 1 0], :in [:x], :schema [:enum "x"], :value "non-x"}
+                                                   {:path [2 1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
             expectations (assoc expectations "sequential" (concat (get expectations "list") (get expectations "vector")))]
 
         (doseq [[name data] expectations
@@ -912,10 +912,12 @@
 
 (deftest children-test
   (testing "children can be set and retrieved"
-    (is (= ['int? 'pos-int?]
-           (m/children [:and {:a 1} int? pos-int?])
-           (m/children [:and {} int? pos-int?])
-           (m/children [:and int? pos-int?])))))
+    (let [schema1 (m/schema int?)
+          schema2 (m/schema pos-int?)]
+      (is (= [schema1 schema2]
+             (m/children [:and {:a 1} schema1 schema2])
+             (m/children [:and {} schema1 schema2])
+             (m/children [:and schema1 schema2]))))))
 
 (deftest options-test
   (testing "options can be set and retrieved"

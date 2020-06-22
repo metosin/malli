@@ -19,6 +19,7 @@
   (-accept [this visitor in options] "accepts the visitor to visit schema and it's children")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
+  (-children [this] "returns schema children")
   (-form [this] "returns original form of the schema"))
 
 (defprotocol MapSchema
@@ -78,6 +79,8 @@
     (seq children) (into [type] children)
     :else type))
 
+(defn- -distance [properties] (if (seq properties) 2 1))
+
 (defn- -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn- -chain [phase chain]
@@ -106,6 +109,7 @@
             (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
 (defn fn-schema [type f]
@@ -130,17 +134,16 @@
     (-into-schema [_ properties children options]
       (when-not (seq children)
         (fail! ::no-children {:type :and, :properties properties}))
-      (let [child-schemas (mapv #(schema % options) children)
-            validators (distinct (map -validator child-schemas))
-            validator (apply every-pred validators)
-            form (create-form :and properties (map -form child-schemas))]
+      (let [children (mapv #(schema % options) children)
+            form (create-form :and properties (map -form children))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :and)
-          (-validator [_] validator)
+          (-validator [_]
+            (apply every-pred (distinct (map -validator children))))
           (-explainer [_ path]
-            (let [distance (if (seq properties) 2 1)
-                  explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector child-schemas))]
+            (let [distance (-distance properties)
+                  explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector children))]
               (fn explain [x in acc]
                 (reduce
                   (fn [acc' explainer]
@@ -151,19 +154,20 @@
                   acc explainers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (map #(-transformer % transformer method options) child-schemas)
+                  child-transformers (map #(-transformer % transformer method options) children)
                   build (fn [phase]
                           (-chain phase (apply vector (phase this-transformer) (map phase child-transformers))))]
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this (mapv #(-accept % visitor in options) child-schemas) in options))
+            (visitor this (mapv #(-accept % visitor in options) children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-get [_ key default] (get child-schemas key default))
-          (-set [_ key value] (into-schema :and properties (assoc child-schemas key value))))))))
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :and properties (assoc children key value))))))))
 
 (defn -or-schema []
   ^{:type ::into-schema}
@@ -171,17 +175,16 @@
     (-into-schema [_ properties children options]
       (when-not (seq children)
         (fail! ::no-children {:type :or, :properties properties}))
-      (let [child-schemas (mapv #(schema % options) children)
-            validators (distinct (map -validator child-schemas))
-            validator (apply some-fn validators)
-            form (create-form :or properties (map -form child-schemas))]
+      (let [children (mapv #(schema % options) children)
+            form (create-form :or properties (map -form children))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :or)
-          (-validator [_] validator)
+          (-validator [_]
+            (apply some-fn (distinct (map -validator children))))
           (-explainer [_ path]
-            (let [distance (if (seq properties) 2 1)
-                  explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector child-schemas))]
+            (let [distance (-distance properties)
+                  explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector children))]
               (fn explain [x in acc]
                 (reduce
                   (fn [acc' explainer]
@@ -193,13 +196,13 @@
                   acc explainers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (map #(-transformer % transformer method options) child-schemas)
+                  child-transformers (map #(-transformer % transformer method options) children)
                   decode? (= :decode method)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ?->this (or ->this identity)
                                 ->children (mapv #(or (phase %) identity) child-transformers)
-                                validators (mapv -validator child-schemas)]
+                                validators (mapv -validator children)]
                             (cond
                               (not (seq ->children)) ->this
 
@@ -232,18 +235,19 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this (mapv #(-accept % visitor in options) child-schemas) in options))
+            (visitor this (mapv #(-accept % visitor in options) children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-get [_ key default] (get child-schemas key default))
-          (-set [_ key value] (into-schema :or properties (assoc child-schemas key value))))))))
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
 
-(defn- -properties-and-children [xs]
-  (if ((some-fn map? nil?) (first xs))
-    [(first xs) (rest xs)]
-    [nil xs]))
+(defn- -id-properties-and-children [[x :as xs]]
+  (if ((some-fn map? nil?) x)
+    [(:id x) x (rest xs)]
+    [nil nil xs]))
 
 (defn- -expand-key [[k ?p ?v] options f]
   (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])]
@@ -260,8 +264,8 @@
     (fail! ::child-error {:children children}))
   (->> children (mapv #(-expand-key % options identity))))
 
-(defn ^:no-doc map-entry-forms [entries]
-  (mapv (fn [[k p v]] (let [v' (-form v)] (if p [k p v'] [k v']))) entries))
+(defn ^:no-doc -map-map-entries [f entries]
+  (mapv (comp #(update % (dec (count %)) f) vec (partial keep identity)) entries))
 
 (defn ^:no-doc required-map-entry? [[_ ?p]]
   (not (and (map? ?p) (true? (:optional ?p)))))
@@ -271,10 +275,9 @@
   (reify IntoSchema
     (-into-schema [_ {:keys [closed] :as properties} children options]
       (let [entries (-parse-map-entries children options)
+            children (-map-map-entries #(schema % options) children)
             keyset (->> entries (map first) (set))
-            forms (map-entry-forms entries)
-            form (create-form :map properties forms)
-            distance (if (seq properties) 2 1)]
+            form (create-form :map properties (-map-map-entries -form children))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :map)
@@ -300,9 +303,10 @@
                                   :cljs (reduce #(or (%2 m) (reduced false)) true validators))))]
               (fn [m] (and (map? m) (validate m)))))
           (-explainer [this path]
-            (let [explainers (cond-> (mapv
+            (let [distance (-distance properties)
+                  explainers (cond-> (mapv
                                        (fn [[i [key {:keys [optional] :as key-properties} schema]]]
-                                         (let [key-distance (if (seq key-properties) 2 1)
+                                         (let [key-distance (-distance key-properties)
                                                explainer (-explainer schema (into path [(+ i distance) key-distance]))
                                                key-path (into path [(+ i distance) 0])]
                                            (fn [x in acc]
@@ -353,6 +357,7 @@
             (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor (conj in k) options)]) entries) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form)
           MapSchema
           (-map-entries [_] entries)
@@ -372,22 +377,23 @@
     (-into-schema [_ properties children options]
       (when-not (and (seq children) (= 2 (count children)))
         (fail! ::child-error {:type :vector, :properties properties, :children children, :min 2, :max 2}))
-      (let [[key-schema value-schema :as schemas] (mapv #(schema % options) children)
-            key-valid? (-validator key-schema)
-            value-valid? (-validator value-schema)
-            validate (fn [m]
-                       (reduce-kv
-                         (fn [_ key value]
-                           (or (and (key-valid? key) (value-valid? value)) (reduced false)))
-                         true m))
-            distance (if (seq properties) 2 1)
-            form (create-form :map-of properties (mapv -form schemas))]
+      (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
+            form (create-form :map-of properties (mapv -form children))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :map-of)
-          (-validator [_] (fn [m] (and (map? m) (validate m))))
+          (-validator [_]
+            (let [key-valid? (-validator key-schema)
+                  value-valid? (-validator value-schema)]
+              (fn [m]
+                (and (map? m)
+                     (reduce-kv
+                       (fn [_ key value]
+                         (or (and (key-valid? key) (value-valid? value)) (reduced false)))
+                       true m)))))
           (-explainer [this path]
-            (let [key-explainer (-explainer key-schema (conj path distance))
+            (let [distance (-distance properties)
+                  key-explainer (-explainer key-schema (conj path distance))
                   value-explainer (-explainer value-schema (conj path (inc distance)))]
               (fn explain [m in acc]
                 (if-not (map? m)
@@ -417,9 +423,10 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this (mapv #(-accept % visitor in options) schemas) in options))
+            (visitor this (mapv #(-accept % visitor in options) children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
 (defn -collection-schema [type fpred fwrap fempty]
@@ -436,8 +443,7 @@
                               (not (or min max)) (constantly true)
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
                               min (fn [x] (let [size (count x)] (<= min size)))
-                              max (fn [x] (let [size (count x)] (<= size max))))
-            distance (if (seq properties) 2 1)]
+                              max (fn [x] (let [size (count x)] (<= size max))))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] type)
@@ -447,7 +453,8 @@
                            (validate-limits x)
                            (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
           (-explainer [this path]
-            (let [explainer (-explainer schema (conj path distance))]
+            (let [distance (-distance properties)
+                  explainer (-explainer schema (conj path distance))]
               (fn [x in acc]
                 (cond
                   (not (fpred x)) (conj acc (error path in this x ::invalid-type))
@@ -458,7 +465,9 @@
                               (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
           (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
+            (let [collection? #(or (sequential? %) (set? %))
+                  fwrap (fn [x] (if (collection? x) (fwrap x) x))
+                  this-transformer (-value-transformer transformer this method options)
                   child-transformer (-transformer schema transformer method options)
                   build (fn [phase]
                           (let [->this (or (phase this-transformer) fwrap)
@@ -473,6 +482,7 @@
             (visitor this [(-accept schema visitor (conj in ::in) options)] in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] [schema])
           (-form [_] form)
           LensSchema
           (-get [_ key default] (if (= 0 key) schema default))
@@ -482,26 +492,26 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [schemas (mapv #(schema % options) children)
-            size (count schemas)
-            form (create-form :tuple properties (map -form schemas))
-            validators (into (array-map) (map-indexed vector (mapv -validator schemas)))
-            distance (if (seq properties) 2 1)]
+      (let [children (mapv #(schema % options) children)
+            size (count children)
+            form (create-form :tuple properties (map -form children))]
         (when-not (seq children)
           (fail! ::child-error {:type :tuple, :properties properties, :children children, :min 1}))
         ^{:type ::schema}
         (reify Schema
           (-type [_] :tuple)
           (-validator [_]
+            (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
             (fn [x] (and (vector? x)
                          (= (count x) size)
                          (reduce-kv
                            (fn [acc i validator]
-                             (if (validator (nth x i)) acc (reduced false))) true validators))))
+                               (if (validator (nth x i)) acc (reduced false))) true validators)))))
           (-explainer [this path]
-            (let [explainers (mapv (fn [[i s]]
+            (let [distance (-distance properties)
+                  explainers (mapv (fn [[i s]]
                                      (-explainer s (conj path (+ i distance))))
-                                   (map-indexed vector schemas))]
+                                   (map-indexed vector children))]
               (fn [x in acc]
                 (cond
                   (not (vector? x)) (conj acc (error path in this x ::invalid-type))
@@ -510,7 +520,7 @@
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (->> schemas
+                  child-transformers (->> children
                                           (mapv #(-transformer % transformer method options))
                                           (map-indexed vector)
                                           (into {}))
@@ -526,13 +536,14 @@
           (-accept [this visitor in options]
             (visitor this (mapv
                             (fn [[i s]] (-accept s visitor (conj in i) options))
-                            (map-indexed vector schemas)) in options))
+                            (map-indexed vector children)) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-get [_ key default] (get schemas key default))
-          (-set [_ key value] (into-schema :tuple properties (assoc schemas key value))))))))
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :tuple properties (assoc children key value))))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}
@@ -541,15 +552,15 @@
       (when-not (seq children)
         (fail! ::no-children {:type :enum, :properties properties}))
       (let [schema (set children)
-            validator (fn [x] (contains? schema x))
             form (create-form :enum properties children)]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :enum)
-          (-validator [_] validator)
+          (-validator [_]
+            (fn [x] (contains? schema x)))
           (-explainer [this path]
             (fn explain [x in acc]
-              (if-not (validator x) (conj acc (error path in this x)) acc)))
+              (if-not (contains? schema x) (conj acc (error (conj path 0) in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
             (-value-transformer transformer this method options))
@@ -557,6 +568,7 @@
             (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
 (defn -re-schema [class?]
@@ -566,12 +578,12 @@
       (when-not (= 1 (count children))
         (fail! ::child-error {:type :re, :properties properties, :children children, :min 1, :max 1}))
       (let [re (re-pattern child)
-            validator (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
             form (if class? re (create-form :re properties children))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :re)
-          (-validator [_] validator)
+          (-validator [_]
+            (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false))))
           (-explainer [this path]
             (fn explain [x in acc]
               (try
@@ -586,6 +598,7 @@
             (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
 (defn -fn-schema []
@@ -595,12 +608,12 @@
       (when-not (= 1 (count children))
         (fail! ::child-error {:type :fn, :properties properties, :children children, :min 1, :max 1}))
       (let [f (eval (first children))
-            validator (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false)))
             form (create-form :fn properties children)]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :fn)
-          (-validator [_] validator)
+          (-validator [_]
+            (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false))))
           (-explainer [this path]
             (fn explain [x in acc]
               (try
@@ -615,6 +628,7 @@
             (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
 (defn -maybe-schema []
@@ -622,20 +636,22 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (when-not (= 1 (count children))
-        (fail! ::child-error {:type :vector, :properties properties, :children children, :min 1, :max 1}))
-      (let [schema' (-> children first (schema options))
-            validator' (-validator schema')
-            form (create-form :maybe properties [(-form schema')])]
+        (fail! ::child-error {:name :maybe, :properties properties, :children children, :min 1, :max 1}))
+      (let [[schema :as children] (map #(schema % options) children)
+            form (create-form :maybe properties (map -form children))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :maybe)
-          (-validator [_] (fn [x] (or (nil? x) (validator' x))))
-          (-explainer [this path]
+          (-validator [_]
+            (let [validator' (-validator schema)]
+              (fn [x] (or (nil? x) (validator' x)))))
+          (-explainer [_ path]
+            (let [explainer' (-explainer schema (conj path (-distance properties)))]
             (fn explain [x in acc]
-              (if-not (or (nil? x) (validator' x)) (conj acc (error path in this x)) acc)))
+                (if (nil? x) acc (explainer' x in acc)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformer (-transformer schema' transformer method options)
+                  child-transformer (-transformer schema transformer method options)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
                                 ->child (phase child-transformer)]
@@ -645,24 +661,24 @@
               {:enter (build :enter)
                :leave (build :leave)}))
           (-accept [this visitor in options]
-            (visitor this [(-accept schema' visitor in options)] in options))
+            (visitor this [(-accept schema visitor in options)] in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-get [_ key default] (if (= 0 key) schema' default))
-          (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema')))))))
+          (-get [_ key default] (if (= 0 key) schema default))
+          (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema)))))))
 
-(defn -multi-schema []
+(defn- -multi-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [entries (-parse-map-entries children options)
-            forms (map-entry-forms entries)
+      (let [children (-map-map-entries #(schema % options) children)
+            entries (-parse-map-entries children options)
             dispatch (eval (:dispatch properties))
             dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))
-            form (create-form :multi properties forms)
-            distance (if properties 2 1)]
+            form (create-form :multi properties (-map-map-entries -form children))]
         (when-not dispatch
           (fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}
@@ -678,8 +694,8 @@
           (-explainer [this path]
             (let [explainers (reduce
                                (fn [acc [i [key key-properties schema]]]
-                                 (let [key-distance (if (seq key-properties) 2 1)
-                                       explainer (-explainer schema (into path [(+ i distance) key-distance]))]
+                                 (let [key-distance (-distance key-properties)
+                                       explainer (-explainer schema (into path [(+ i (-distance properties)) key-distance]))]
                                    (assoc acc key (fn [x in acc] (explainer x in acc)))))
                                {} (map-indexed vector entries))]
               (fn [x in acc]
@@ -704,6 +720,7 @@
             (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor in options)]) entries) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
 (defn -string-schema []
@@ -733,12 +750,9 @@
             (visitor this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
+          (-children [_] children)
           (-form [_] form))))))
 
-(defn- -register [registry k schema]
-  (if (contains? registry k)
-    (fail! ::schema-already-registered {:key k, :registry registry}))
-  (assoc registry k schema))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -815,10 +829,8 @@
   ([?schema]
    (children ?schema nil))
   ([?schema options]
-   (let [schema (schema ?schema options)
-         form (-form schema)]
-     (if (vector? form)
-       (->> form (drop (if (seq (-properties schema)) 2 1)))))))
+   (let [schema (schema ?schema options)]
+     (-children schema))))
 
 (defn type
   ([?schema]

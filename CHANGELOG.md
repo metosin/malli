@@ -14,6 +14,8 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## UNRELEASED
 
+* ???
+  * **BREAKING:** new `-children` method in `Schema`, to return child schemas as instances (instead of just AST)
 * 17.6.2020
   * **BREAKING:** change all `malli.core/*-registy` defs into `malli.core/*-schemas` defns to enable DCE for clojurescript
 * 9.6.2020 

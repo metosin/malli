@@ -802,6 +802,16 @@
           RefSchema
           (-deref [_] (-ref)))))))
 
+(defn- -registry-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ {local-registry :registry :as properties} [ref :as children] options]
+      (when-not (= 1 (count children))
+        (fail! ::child-error {:type :registry, :properties properties, :children children, :min 1, :max 1}))
+      (when-not local-registry
+        (fail! ::invalid-properties {:type :registry, :properties properties, :keys #{:registry}}))
+      (schema ref (update options :registry (fn [r] (mr/composite-registry local-registry (or r (registry)))))))))
+
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
         schema (fn-schema name @v)]
@@ -1042,7 +1052,8 @@
    :re (-re-schema false)
    :fn (-fn-schema)
    :string (-string-schema)
-   :ref (-ref-schema)})
+   :ref (-ref-schema)
+   :registry (-registry-schema)})
 
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))

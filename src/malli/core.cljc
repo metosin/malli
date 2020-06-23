@@ -783,11 +783,12 @@
           (-explainer [_ path]
             (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
               (fn [x in acc] ((explainer) x in acc))))
-          (-transformer [_ transformer method options]
-            (let [enter (-memoize (fn [] (:enter (-transformer (-ref) transformer method options))))
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)
+                  enter (-memoize (fn [] (:enter (-transformer (-ref) transformer method options))))
                   leave (-memoize (fn [] (:leave (-transformer (-ref) transformer method options))))]
-              {:enter (fn [x] ((enter) x))
-               :leave (fn [x] ((leave) x))}))
+              {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
+               :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
           (-accept [this visitor in options]
             (let [accept (fn [] (-accept (-ref) visitor in (update options ::ref-accepted (fnil conj #{}) ref)))
                   accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))]

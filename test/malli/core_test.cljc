@@ -299,6 +299,47 @@
 
       (is (= [:string {:min 1, :max 4}] (m/form schema)))))
 
+  (testing "ref schemas"
+    (testing "local recursion"
+      (let [ConsCell [:maybe {:id :cons}
+                      [:tuple int? [:ref :cons]]]]
+
+        (is (true? (m/validate ConsCell [1 nil])))
+        (is (true? (m/validate ConsCell [1 [2 nil]])))
+        (is (false? (m/validate ConsCell [1 [2]])))
+
+        (is (nil? (m/explain ConsCell [1 [2 nil]])))
+        (is (results= {:schema ConsCell
+                       :value [1 [2]]
+                       :errors [{:in [1]
+                                 :path [2 2 0 2]
+                                 :schema (mu/get ConsCell 0)
+                                 :type :malli.core/tuple-size
+                                 :value [2]}]}
+                      (m/explain ConsCell [1 [2]])))
+
+        (is (= [1 ["two" [3 nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/string-transformer)))
+        (is (= ["1" ["two" ["3" nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/json-transformer)))
+        (is (= [1 [2 [3 [4 ::end]]]]
+               (m/decode
+                 [:maybe {:id :cons}
+                  [:tuple int? [:ref {:decode/string (fnil identity ::end)} :cons]]]
+                 [1 [2 [3 [4 nil]]]]
+                 mt/string-transformer)))
+
+        (is (true? (m/validate (over-the-wire ConsCell) [1 [2 nil]])))
+
+        (is (= {:type :maybe
+                :properties {:id :cons}
+                :children [{:type :tuple
+                            :children [{:type 'int?}
+                                       {:type :ref
+                                        :children [:cons]}]}]}
+               (m/accept ConsCell m/map-syntax-visitor)))
+
+        (is (= [:maybe {:id :cons}
+                [:tuple 'int? [:ref :cons]]] (m/form ConsCell))))))
+
   (testing "re schemas"
     (doseq [form [[:re "^[a-z]+\\.[a-z]+$"]
                   [:re #"^[a-z]+\.[a-z]+$"]

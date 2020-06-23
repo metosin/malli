@@ -817,7 +817,8 @@
   (let [registry (registry options)]
     (or (if (satisfies? IntoSchema ?schema) ?schema)
         (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options))
+        (fail! ::invalid-schema {:schema ?schema}))))
 
 (defn ^:no-doc into-transformer [x]
   (cond
@@ -850,7 +851,7 @@
                              schema (into-schema (-schema (first ?schema) options) p c (cond-> options ref (assoc-in [::refs id] ref)))]
                          (when ref (ref schema))
                          schema)
-     :else (or (some-> ?schema (-schema options) (schema options)) (fail! ::invalid-schema {:schema ?schema})))))
+     :else (some-> ?schema (-schema options) (schema options)))))
 
 (defn form
   ([?schema]

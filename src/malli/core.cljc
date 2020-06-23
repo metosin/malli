@@ -765,9 +765,9 @@
   (reify IntoSchema
     (-into-schema [_ properties [ref :as children] options]
       (when-not (= 1 (count children))
-        (fail! ::child-error {:name :ref, :properties properties, :children children, :min 1, :max 1}))
-      (let [-ref (get-in options [::refs ref])
-            -memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
+        (fail! ::child-error {:type :ref, :properties properties, :children children, :min 1, :max 1}))
+      (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
+            -ref (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))) (get-in options [::refs ref]))
             form (create-form :ref properties children)]
         (when-not -ref
           (fail! ::invalid-ref {:name :ref, :ref ref, :refs (-> options ::refs keys set)}))

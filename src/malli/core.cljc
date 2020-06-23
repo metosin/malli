@@ -55,7 +55,7 @@
 ;; impl
 ;;
 
-(declare schema into-schema eval default-registry)
+(declare schema into-schema eval registry default-registry)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -643,7 +643,7 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (when-not (= 1 (count children))
-        (fail! ::child-error {:name :maybe, :properties properties, :children children, :min 1, :max 1}))
+        (fail! ::child-error {:type :maybe, :properties properties, :children children, :min 1, :max 1}))
       (let [[schema :as children] (map #(schema % options) children)
             form (create-form :maybe properties (map -form children))]
         ^{:type ::schema}

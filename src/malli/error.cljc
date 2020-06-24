@@ -6,8 +6,7 @@
   (-error [this] "error data structure for the Schema"))
 
 (extend-protocol SchemaError
-  #?(:clj  Object
-     :cljs default)
+  #?(:clj Object, :cljs default)
   (-error [_]))
 
 (def default-errors

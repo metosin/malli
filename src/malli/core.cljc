@@ -763,16 +763,20 @@
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties [ref :as children] options]
+    (-into-schema [_ {:keys [type] :as properties} [ref :as children] options]
       (when-not (= 1 (count children))
         (fail! ::child-error {:type :ref, :properties properties, :children children, :min 1, :max 1}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
             -local-ref (get-in options [::refs ref])
             -registry-ref (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
-            -ref (cond
-                   (and -local-ref -registry-ref) (fail! ::ambiguous-ref {:type :ref, :ref ref})
-                   (not (or -local-ref -registry-ref)) (fail! ::invalid-ref {:type :ref, :ref ref, :refs (-> options ::refs keys set)})
-                   :else (or -local-ref -registry-ref))
+            -ref (or (case type
+                       :local -local-ref
+                       :registry -registry-ref
+                       nil (if (and -local-ref -registry-ref)
+                             (fail! ::ambiguous-ref {:type :ref, :ref ref})
+                             (or -local-ref -registry-ref))
+                       (fail! ::invalid-property {:type :ref, :properties properties, :key :type, :value type}))
+                     (fail! ::invalid-ref {:type :ref, :ref ref, :refs (-> options ::refs keys set)}))
             form (create-form :ref properties children)]
         ^{:type ::schema}
         (reify Schema

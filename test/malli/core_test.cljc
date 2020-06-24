@@ -3,7 +3,8 @@
             [malli.core :as m]
             [malli.edn :as me]
             [malli.transform :as mt]
-            [malli.util :as mu]))
+            [malli.util :as mu]
+            [malli.registry :as mr]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -300,6 +301,7 @@
       (is (= [:string {:min 1, :max 4}] (m/form schema)))))
 
   (testing "ref schemas"
+
     (testing "local recursion"
       (let [ConsCell [:maybe {:id :cons}
                       [:tuple int? [:ref :cons]]]]
@@ -338,7 +340,53 @@
                (m/accept ConsCell m/map-syntax-visitor)))
 
         (is (= [:maybe {:id :cons}
-                [:tuple 'int? [:ref :cons]]] (m/form ConsCell))))))
+                [:tuple 'int? [:ref :cons]]] (m/form ConsCell)))))
+
+    (testing "registry-based recursion"
+      (let [registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                      ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}]
+
+        (is (true? (m/validate
+                     ::ping
+                     ["ping" ["pong" nil]]
+                     {:registry (mr/composite-registry (m/default-schemas) registry)})))
+
+        (is (true? (m/validate
+                     [:registry
+                      {:registry registry}
+                      ::ping]
+                     ["ping" ["pong" nil]])))))
+
+    (testing "targetted refs"
+
+      (testing "fails with"
+        (are [ref text]
+          (testing text
+            (is (thrown?
+                  #?(:clj Exception, :cljs js/Error)
+                  (m/validate
+                    [:registry
+                     {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] ref]]
+                                 ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref ::ping]]]}}
+                     ::ping]
+                    ["ping" ["ping" nil]]))))
+
+          [:ref ::invalid] "missing :ref"
+          [:ref ::pong] "ambiguous :ref"
+          [:ref {:type :invalid} ::pong] "invalid :ref :type"))
+
+      (testing "succeeds with"
+        (are [type value text]
+          (testing text
+            (is (m/validate
+                  [:registry
+                   {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] [:ref {:type type} ::pong]]]
+                               ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref {:type type} ::ping]]]}}
+                   ::ping]
+                  value)))
+
+          :local ["ping" ["ping" nil]] "local ref"
+          :registry ["ping" ["pong" nil]] "registry ref"))))
 
   (testing "re schemas"
     (doseq [form [[:re "^[a-z]+\\.[a-z]+$"]

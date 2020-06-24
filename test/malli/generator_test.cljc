@@ -28,6 +28,19 @@
     (let [schema [:string {:min 1, :max 4}]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
+  ;; TODO: fail on cljs on maximum call stack
+   #?(:clj (testing "ref"
+             (testing "local recursion"
+               (let [schema [:maybe {:id :cons}
+                             [:tuple int? [:ref :cons]]]]
+                 (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+             (testing "mutual recursion"
+               (let [schema [:registry
+                             {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                                         ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                             ::ping]]
+                 (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))))
+
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]
               (m/validate re (mg/generate re)))
@@ -56,16 +69,12 @@
       (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
 
   (testing "gen/elements"
-    (dotimes [_ 1000]
-      (is (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?]))))
-    (dotimes [_ 1000]
-      (is (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?])))))
+    (is (every? #{1 2} (mg/sample [:and {:gen/elements [1 2]} int?] {:size 1000})))
+    (is (every? #{"1" "2"} (mg/sample [:and {:gen/elements [1 2], :gen/fmap 'str} int?] {:size 1000}))))
 
   (testing "gen/gen"
-    (dotimes [_ 1000]
-      (is (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?]))))
-    (dotimes [_ 1000]
-      (is (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?]))))))
+    (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
+    (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
 
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}
@@ -75,5 +84,4 @@
                  (-properties [_])
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]
-    (dotimes [_ 1000]
-      (is (values (mg/generate schema))))))
+    (is (every? values (mg/sample schema {:size 1000})))))

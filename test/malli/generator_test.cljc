@@ -35,7 +35,7 @@
                              [:tuple int? [:ref :cons]]]]
                  (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
              (testing "mutual recursion"
-               (let [schema [:registry
+              (let [schema [:and
                              {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                          ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                              ::ping]]

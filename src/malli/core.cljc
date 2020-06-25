@@ -55,7 +55,7 @@
 ;; impl
 ;;
 
-(declare schema into-schema eval registry default-registry)
+(declare schema into-schema into-schema? eval registry default-registry)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -763,7 +763,7 @@
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ {:keys [type] :as properties} [ref :as children] options]
+    (-into-schema [_ {:keys [type] :as properties} [ref :as children] {::keys [allow-invalid-refs] :as options}]
       (when-not (= 1 (count children))
         (fail! ::child-error {:type :ref, :properties properties, :children children, :min 1, :max 1}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
@@ -776,7 +776,8 @@
                              (fail! ::ambiguous-ref {:type :ref, :ref ref})
                              (or -local-ref -registry-ref))
                        (fail! ::invalid-property {:type :ref, :properties properties, :key :type, :value type}))
-                     (fail! ::invalid-ref {:type :ref, :ref ref, :refs (-> options ::refs keys set)}))
+                     (when-not allow-invalid-refs
+                       (fail! ::invalid-ref {:type :ref, :ref ref, :refs (-> options ::refs keys set)})))
             form (create-form :ref properties children)]
         ^{:type ::schema}
         (reify Schema
@@ -807,6 +808,7 @@
           RefSchema
           (-deref [_] (-ref)))))))
 
+;; TODO: not needed unless registries are introduced
 (defn- -registry-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -830,7 +832,7 @@
 
 (defn- -schema [?schema options]
   (let [registry (registry options)]
-    (or (if (satisfies? IntoSchema ?schema) ?schema)
+    (or (if (into-schema? ?schema) ?schema)
         (mr/-schema registry ?schema)
         (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options))
         (fail! ::invalid-schema {:schema ?schema}))))
@@ -840,6 +842,10 @@
     (satisfies? Transformer x) x
     (fn? x) (into-transformer (x))
     :else (fail! ::invalid-transformer {:value x})))
+
+(defn- -property-registry [m options]
+  (let [options (assoc options ::allow-invalid-refs true)]
+    (reduce-kv (fn [acc k v] (assoc acc k (-form (schema v options)))) {} m)))
 
 ;;
 ;; public api
@@ -854,14 +860,21 @@
 (defn schema? [x]
   (satisfies? Schema x))
 
+(defn into-schema? [x]
+  (satisfies? IntoSchema x))
+
 (defn schema
   ([?schema]
    (schema ?schema nil))
   ([?schema options]
    (cond
      (schema? ?schema) ?schema
-     (satisfies? IntoSchema ?schema) (-into-schema ?schema nil nil options)
+     (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [[id p c] (-id-properties-and-children (rest ?schema))
+                             [p options] (if-let [r (some-> p :registry)]
+                                           (let [options (update options :registry #(mr/composite-registry r (or % (registry options))))]
+                                             [(assoc p :registry (-property-registry r options)) options])
+                                           [p options])
                              ref (if id (let [value (atom nil)] (fn ([] @value) ([x] (reset! value x)))))
                              schema (into-schema (-schema (first ?schema) options) p c (cond-> options ref (assoc-in [::refs id] ref)))]
                          (when ref (ref schema))

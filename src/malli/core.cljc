@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [eval type -deref])
+  (:refer-clojure :exclude [eval type -deref -lookup])
   (:require [sci.core :as sci]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
@@ -55,7 +55,7 @@
 ;; impl
 ;;
 
-(declare schema into-schema into-schema? eval registry default-registry)
+(declare schema schema? into-schema into-schema? eval registry default-registry)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -810,6 +810,35 @@
           RefSchema
           (-deref [_] (-ref)))))))
 
+(defn -schema-schema [id]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties [child :as children] options]
+      (when-not (= 1 (count children))
+        (fail! ::child-error {:type :schema, :properties properties, :children children, :min 1, :max 1}))
+      (let [child (schema child options)
+            form (or id (create-form :schema properties [(-form child)]))]
+        ^{:type ::schema}
+        (reify Schema
+          (-type [_] :schema)
+          (-validator [_] (-validator child))
+          (-explainer [_ path] (-explainer child path))
+          (-transformer [_ transformer method options] (-transformer child transformer method options))
+          (-accept [this visitor in options]
+            (if id
+              (visitor this [id] in options)
+              (visitor this [(-accept child visitor in options)] in options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          ;; TODO: are this correct
+          LensSchema
+          (-get [_ key default] (if id (-get child key default) (if (= key 0) (-get child key default))))
+          (-set [_ key value] (if (= key 0) (-set child key value)))
+          RefSchema
+          (-deref [_] child))))))
+
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
         schema (fn-schema name @v)]
@@ -821,12 +850,15 @@
   ([] default-registry)
   ([{:keys [registry]}] (or (mr/registry registry) default-registry)))
 
-(defn- -schema [?schema options]
+(defn- -lookup [?schema options]
   (let [registry (registry options)]
-    (or (if (into-schema? ?schema) ?schema)
-        (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options))
-        (fail! ::invalid-schema {:schema ?schema}))))
+    (or (mr/-schema registry ?schema)
+        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+
+(defn- -schema [?schema options]
+  (or (and (or (schema? ?schema) (into-schema? ?schema)) ?schema)
+      (-lookup ?schema options)
+      (fail! ::invalid-schema {:schema ?schema})))
 
 (defn ^:no-doc into-transformer [x]
   (cond
@@ -870,7 +902,9 @@
                              schema (into-schema (-schema (first ?schema) options) p c (cond-> options ref (assoc-in [::refs id] ref)))]
                          (when ref (ref schema))
                          schema)
-     :else (some-> ?schema (-schema options) (schema options)))))
+     :else (if-let [?schema' (and (qualified-keyword? ?schema) (-lookup ?schema options))]
+             (-into-schema (-schema-schema ?schema) nil [(schema ?schema' options)] options)
+             (-> ?schema (-schema options) (schema options))))))
 
 (defn form
   ([?schema]
@@ -1061,7 +1095,8 @@
    :re (-re-schema false)
    :fn (-fn-schema)
    :string (-string-schema)
-   :ref (-ref-schema)})
+   :ref (-ref-schema)
+   :schema (-schema-schema nil)})
 
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))

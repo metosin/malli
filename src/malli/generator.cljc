@@ -7,7 +7,7 @@
             [clojure.spec.gen.alpha :as ga]
             [malli.core :as m]))
 
-(declare generator)
+(declare generator -create)
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
@@ -99,6 +99,8 @@
     (if (< ref-count ref-max)
       (generator (m/-deref schema) (update-in options [::ref-count ref] (fnil inc 0)))
       (gen/fmap (fn [_] (m/fail! :ref-max-exceeded {:ref-max ref-max, :schema schema})) (gen/return nil)))))
+
+(defmethod -schema-generator :schema [schema options] (-create (m/-deref schema) options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)

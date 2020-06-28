@@ -389,6 +389,53 @@
           :local ["ping" ["ping" nil]] "local ref"
           :registry ["ping" ["pong" nil]] "registry ref"))))
 
+  (testing "schema schemas"
+    (let [schema [:and
+                  {:registry {::a ::b
+                              ::b ::c
+                              ::c [:schema pos-int?]}}
+                  [:and ::a ::b ::c]]]
+
+      (is (true? (m/validate schema 1)))
+      (is (false? (m/validate schema -1)))
+
+      (is (nil? (m/explain schema 1)))
+      (is (results= {:schema schema
+                     :value -1
+                     :errors [{:path [2 1] :in [] :schema pos-int?, :value -1}
+                              {:path [2 2], :in [], :schema pos-int?, :value -1}
+                              {:path [2 3], :in [], :schema pos-int?, :value -1}]}
+
+                    (m/explain schema -1)))
+
+      (is (= 1 (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (testing "deref"
+        (is (mu/equals (m/schema int?) (m/-deref (m/schema [:schema int?])))))
+
+      (is (true? (m/validate (over-the-wire schema) 1)))
+
+      (is (= {:type :and
+              :children [{:type :and
+                          :children [{:type :schema
+                                      :children [::a]}
+                                     {:type :schema
+                                      :children [::b]}
+                                     {:type :schema
+                                      :children [::c]}]}]
+              :properties {:registry {::a ::b
+                                      ::b ::c
+                                      ::c [:schema 'pos-int?]}}}
+             (m/accept schema m/map-syntax-visitor)))
+
+      (is (= [:and
+              {:registry {::a ::b
+                          ::b ::c
+                          ::c [:schema 'pos-int?]}}
+              [:and ::a ::b ::c]]
+             (m/form schema)))))
+
   (testing "re schemas"
     (doseq [form [[:re "^[a-z]+\\.[a-z]+$"]
                   [:re #"^[a-z]+\.[a-z]+$"]

@@ -352,8 +352,7 @@
                      {:registry (mr/composite-registry (m/default-schemas) registry)})))
 
         (is (true? (m/validate
-                     [:registry
-                      {:registry registry}
+                     [:and {:registry registry}
                       ::ping]
                      ["ping" ["pong" nil]])))))
 
@@ -379,7 +378,7 @@
         (are [type value text]
           (testing text
             (is (m/validate
-                  [:registry
+                  [:and
                    {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] [:ref {:type type} ::pong]]]
                                ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref {:type type} ::ping]]]}}
                    ::ping]

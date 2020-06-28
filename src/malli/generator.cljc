@@ -93,7 +93,7 @@
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 
 ;; TODO: ref-max need to favor the non-recursive part, not to fail
-(defmethod -schema-generator :ref [schema {::keys [ref-max] :or {ref-max 10} :as options}]
+(defmethod -schema-generator :ref [schema {::keys [ref-max] :or {ref-max 50} :as options}]
   (let [ref (first (m/children schema options))
         ref-count (get-in options [::ref-count ref] 0)]
     (if (< ref-count ref-max)

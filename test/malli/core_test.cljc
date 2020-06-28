@@ -305,9 +305,9 @@
 
   (testing "ref schemas"
 
-    (testing "local recursion"
-      (let [ConsCell [:maybe {:id :cons}
-                      [:tuple int? [:ref :cons]]]]
+    (testing "recursion"
+      (let [ConsCell [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
+                      ::cons]]
 
         (is (true? (m/validate ConsCell [1 nil])))
         (is (true? (m/validate ConsCell [1 [2 nil]])))
@@ -317,7 +317,7 @@
         (is (results= {:schema ConsCell
                        :value [1 [2]]
                        :errors [{:in [1]
-                                 :path [2 2 0 2]
+                                 :path [1 2 0 1]
                                  :schema (mu/get ConsCell 0)
                                  :type :malli.core/tuple-size
                                  :value [2]}]}
@@ -327,25 +327,23 @@
         (is (= ["1" ["two" ["3" nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/json-transformer)))
         (is (= [1 [2 [3 [4 ::end]]]]
                (m/decode
-                 [:maybe {:id :cons}
-                  [:tuple int? [:ref {:decode/string (fnil identity ::end)} :cons]]]
+                 [:schema {:registry {::cons [:maybe [:tuple int? [:ref {:decode/string (fnil identity ::end)} ::cons]]]}}
+                  ::cons]
                  [1 [2 [3 [4 nil]]]]
                  mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire ConsCell) [1 [2 nil]])))
 
-        (is (= {:type :maybe
-                :properties {:id :cons}
-                :children [{:type :tuple
-                            :children [{:type 'int?}
-                                       {:type :ref
-                                        :children [:cons]}]}]}
+        (is (= {:type :schema
+                :properties {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
+                :children [{:type :malli.core/schema, :children [::cons]}]}
                (m/accept ConsCell m/map-syntax-visitor)))
 
-        (is (= [:maybe {:id :cons}
-                [:tuple 'int? [:ref :cons]]] (m/form ConsCell)))))
+        (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
+                ::cons]
+               (m/form ConsCell)))))
 
-    (testing "registry-based recursion"
+    (testing "mutual recursion"
       (let [registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}]
 
@@ -355,40 +353,29 @@
                      {:registry (mr/composite-registry (m/default-schemas) registry)})))
 
         (is (true? (m/validate
-                     [:and {:registry registry}
+                     [:schema {:registry registry}
                       ::ping]
                      ["ping" ["pong" nil]])))))
 
-    (testing "targetted refs"
+    (testing "fails with missing :ref"
+      (is (thrown?
+            #?(:clj Exception, :cljs js/Error)
+            (m/validate
+              [:schema
+               {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] [:ref ::invalid]]]
+                           ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref ::ping]]]}}
+               ::ping]
+              ["ping" ["ping" nil]])))))
 
-      (testing "fails with"
-        (are [ref text]
-          (testing text
-            (is (thrown?
-                  #?(:clj Exception, :cljs js/Error)
-                  (m/validate
-                    [:registry
-                     {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] ref]]
-                                 ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref ::ping]]]}}
-                     ::ping]
-                    ["ping" ["ping" nil]]))))
-
-          [:ref ::invalid] "missing :ref"
-          [:ref ::pong] "ambiguous :ref"
-          [:ref {:type :invalid} ::pong] "invalid :ref :type"))
-
-      (testing "succeeds with"
-        (are [type value text]
-          (testing text
-            (is (m/validate
-                  [:and
-                   {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] [:ref {:type type} ::pong]]]
-                               ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref {:type type} ::ping]]]}}
-                   ::ping]
-                  value)))
-
-          :local ["ping" ["ping" nil]] "local ref"
-          :registry ["ping" ["pong" nil]] "registry ref"))))
+  (testing "malli.core/schema"
+    (is (= [::m/schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
+            ::cons]
+           (m/form [::m/schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
+                    ::cons])))
+    (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
+            ::cons]
+           (m/form [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
+                    [::m/schema ::cons]]))))
 
   (testing "schema schemas"
     (let [schema [:and
@@ -419,11 +406,11 @@
 
       (is (= {:type :and
               :children [{:type :and
-                          :children [{:type :schema
+                          :children [{:type ::m/schema
                                       :children [::a]}
-                                     {:type :schema
+                                     {:type ::m/schema
                                       :children [::b]}
-                                     {:type :schema
+                                     {:type ::m/schema
                                       :children [::c]}]}]
               :properties {:registry {::a ::b
                                       ::b ::c
@@ -1133,9 +1120,10 @@
                    options))))))
 
 (deftest to-from-maps-test
-  (let [schema [:map
+  (let [schema [:map {:registry {::size [:enum "S" "M" "L"]}}
                 [:id string?]
                 [:tags [:set keyword?]]
+                [:size ::size]
                 [:address
                  [:vector
                   [:map
@@ -1144,9 +1132,12 @@
 
     (testing "to-map-syntax"
       (is (= {:type :map,
+              :properties {:registry {::size [:enum "S" "M" "L"]}}
               :children [[:id nil {:type 'string?}]
                          [:tags nil {:type :set
                                      :children [{:type 'keyword?}]}]
+                         [:size nil {:type ::m/schema
+                                     :children [::size]}]
                          [:address nil {:type :vector,
                                         :children [{:type :map,
                                                     :children [[:street nil {:type 'string?}]

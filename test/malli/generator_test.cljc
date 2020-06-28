@@ -29,17 +29,17 @@
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
   ;; TODO: fail on cljs on maximum call stack
-   #?(:clj (testing "ref"
-             (testing "local recursion"
-               (let [schema [:maybe {:id :cons}
-                             [:tuple int? [:ref :cons]]]]
-                 (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
-             (testing "mutual recursion"
-              (let [schema [:and
-                             {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                                         ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-                             ::ping]]
-                 (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))))
+  #?(:clj (testing "ref"
+            (testing "recursion"
+              (let [schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
+                            ::cons]]
+                (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+            (testing "mutual recursion"
+              (let [schema [:schema
+                            {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                                        ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                            ::ping]]
+                (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))))
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]

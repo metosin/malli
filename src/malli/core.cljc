@@ -255,10 +255,10 @@
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
 
-(defn- -id-properties-and-children [[x :as xs]]
+(defn- -properties-and-children [[x :as xs]]
   (if ((some-fn map? nil?) x)
-    [(:id x) x (rest xs)]
-    [nil nil xs]))
+    [x (rest xs)]
+    [nil xs]))
 
 (defn- -expand-key [[k ?p ?v] options f]
   (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])]
@@ -767,21 +767,13 @@
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ {:keys [type] :as properties} [ref :as children] {::keys [allow-invalid-refs] :as options}]
+    (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
       (when-not (= 1 (count children))
         (fail! ::child-error {:type :ref, :properties properties, :children children, :min 1, :max 1}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
-            -local-ref (get-in options [::refs ref])
-            -registry-ref (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
-            -ref (or (case type
-                       :local -local-ref
-                       :registry -registry-ref
-                       nil (if (and -local-ref -registry-ref)
-                             (fail! ::ambiguous-ref {:type :ref, :ref ref})
-                             (or -local-ref -registry-ref))
-                       (fail! ::invalid-property {:type :ref, :properties properties, :key :type, :value type}))
+            -ref (or (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
                      (when-not allow-invalid-refs
-                       (fail! ::invalid-ref {:type :ref, :ref ref, :refs (-> options ::refs keys set)})))
+                       (fail! ::invalid-ref {:type :ref, :ref ref})))
             form (create-form :ref properties children)]
         ^{:type ::schema}
         (reify Schema
@@ -812,34 +804,36 @@
           RefSchema
           (-deref [_] (-ref)))))))
 
-(defn -schema-schema [id]
+(defn -schema-schema [{:keys [id raw]}]
   ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties [child :as children] options]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type :schema, :properties properties, :children children, :min 1, :max 1}))
-      (let [child (schema child options)
-            form (or id (create-form :schema properties [(-form child)]))]
-        ^{:type ::schema}
-        (reify Schema
-          (-type [_] :schema)
-          (-validator [_] (-validator child))
-          (-explainer [_ path] (-explainer child path))
-          (-transformer [_ transformer method options] (-transformer child transformer method options))
-          (-accept [this visitor in options]
-            (if id
-              (visitor this [id] in options)
-              (visitor this [(-accept child visitor in options)] in options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          ;; TODO: are this correct
-          LensSchema
-          (-get [_ key default] (if id (-get child key default) (if (= key 0) (-get child key default))))
-          (-set [_ key value] (if (= key 0) (-set child key value)))
-          RefSchema
-          (-deref [_] child))))))
+  (let [type (if (or id raw) ::schema :schema)]
+    (reify IntoSchema
+      (-into-schema [_ properties [child :as children] options]
+        (when-not (= 1 (count children))
+          (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
+        (let [child (schema child options)
+              form (or (and (empty? properties) (or id (and raw (-form child))))
+                       (create-form type properties [(-form child)]))]
+          ^{:type ::schema}
+          (reify Schema
+            (-type [_] type)
+            (-validator [_] (-validator child))
+            (-explainer [_ path] (-explainer child path))
+            (-transformer [_ transformer method options] (-transformer child transformer method options))
+            (-accept [this visitor in options]
+              (if id
+                (visitor this [id] in options)
+                (visitor this [(-accept child visitor in options)] in options)))
+            (-properties [_] properties)
+            (-options [_] options)
+            (-children [_] children)
+            (-form [_] form)
+            ;; TODO: are this correct
+            LensSchema
+            (-get [_ key default] (if id (-get child key default) (if (= key 0) (-get child key default))))
+            (-set [_ key value] (if (= key 0) (-set child key value)))
+            RefSchema
+            (-deref [_] child)))))))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -872,6 +866,12 @@
   (let [options (assoc options ::allow-invalid-refs true)]
     (reduce-kv (fn [acc k v] (assoc acc k (-form (schema v options)))) {} m)))
 
+(defn -properties-and-options [properties options]
+  (if-let [r (some-> properties :registry)]
+    (let [options (update options :registry #(mr/composite-registry r (or % (registry options))))]
+      [(assoc properties :registry (-property-registry r options)) options])
+    [properties options]))
+
 ;;
 ;; public api
 ;;
@@ -880,7 +880,8 @@
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (-into-schema (-schema type options) (if (seq properties) properties) children options)))
+   (let [[properties options] (-properties-and-options properties options)]
+     (-into-schema (-schema type options) (if (seq properties) properties) children options))))
 
 (defn schema? [x]
   (satisfies? Schema x))
@@ -895,17 +896,10 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [[id p c] (-id-properties-and-children (rest ?schema))
-                             [p options] (if-let [r (some-> p :registry)]
-                                           (let [options (update options :registry #(mr/composite-registry r (or % (registry options))))]
-                                             [(assoc p :registry (-property-registry r options)) options])
-                                           [p options])
-                             ref (if id (let [value (atom nil)] (fn ([] @value) ([x] (reset! value x)))))
-                             schema (into-schema (-schema (first ?schema) options) p c (cond-> options ref (assoc-in [::refs id] ref)))]
-                         (when ref (ref schema))
-                         schema)
+     (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
+                         (into-schema (-schema (first ?schema) options) p c options))
      :else (if-let [?schema' (and (qualified-keyword? ?schema) (-lookup ?schema options))]
-             (-into-schema (-schema-schema ?schema) nil [(schema ?schema' options)] options)
+             (-into-schema (-schema-schema {:id ?schema}) nil [(schema ?schema' options)] options)
              (-> ?schema (-schema options) (schema options))))))
 
 (defn form
@@ -1057,9 +1051,12 @@
 
 (defn ^:no-doc from-map-syntax
   ([m] (from-map-syntax m nil))
-  ([{:keys [type properties children]} options]
-   (let [<-child (if (-> children first vector?) (fn [f] #(update % 2 f)) identity)]
-     (into-schema type properties (mapv (<-child #(from-map-syntax % options)) children)))))
+  ([{:keys [type properties children] :as m} options]
+   (if (map? m)
+     (let [<-child (if (-> children first vector?) (fn [f] #(update % 2 f)) identity)
+           [properties options] (-properties-and-options properties options)]
+       (into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
+     m)))
 
 ;;
 ;; registry
@@ -1098,7 +1095,8 @@
    :fn (-fn-schema)
    :string (-string-schema)
    :ref (-ref-schema)
-   :schema (-schema-schema nil)})
+   :schema (-schema-schema nil)
+   ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))

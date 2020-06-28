@@ -101,6 +101,7 @@
       (gen/fmap (fn [_] (m/fail! :ref-max-exceeded {:ref-max ref-max, :schema schema})) (gen/return nil)))))
 
 (defmethod -schema-generator :schema [schema options] (-create (m/-deref schema) options))
+(defmethod -schema-generator ::m/schema [schema options] (-create (m/-deref schema) options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)

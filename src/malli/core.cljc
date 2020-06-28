@@ -147,7 +147,9 @@
         (reify Schema
           (-type [_] :and)
           (-validator [_]
-            (apply every-pred (distinct (map -validator children))))
+            (let [validators (distinct (map -validator children))
+                  f (if (= 1 (count validators)) first (partial apply every-pred))]
+              (f validators)))
           (-explainer [_ path]
             (let [distance (-distance properties)
                   explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector children))]

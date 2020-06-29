@@ -14,8 +14,9 @@ Plain data Schemas for Clojure/Script.
 - Tools for [programming with Schemas](#programming-with-schemas)
 - First class [error-messages](#error-messages) including [spell checking](#spell-checking)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
-- [Multi-schemas](#multi-schemas), [default values](#default-values) and [persisting schemas](#persisting-schemas)
-- Immutable, Mutable and Dynamic [Schema Registries](#schema-registry)
+- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
+ - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
+- Immutable, Mutable, Dynamic and Local [Schema Registries](#schema-registry)
 - [Fast](#performance)
 
 Presentations:
@@ -718,6 +719,41 @@ Any (serializable) function can be used for `:dispatch`:
 ; :address {:country :finland}}
 ```
 
+## Recursive Schemas
+
+[Local Registy](#local-registry) allows an easy way to create recursive schemas:
+
+```clj
+(mg/generate
+  [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+   ::cons]
+  {:size 7, :seed 86})
+; => [16 [64 [26 [1 [13 nil]]]]]
+```
+
+Mutual recursion works too;
+
+```clj
+(mg/generate
+  [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   ::ping]
+  {:size 7, :seed 86})
+; => ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]]
+```
+
+Recursion defined via nesting:
+
+```clj
+(mg/generate
+  [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                       ::pong any?}} ;; effectively unreachable
+   [:schema {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+    ::ping]]
+  {:size 7, :seed 86})
+; => ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]]
+```
+
 ## Value Generation
 
 Schemas can be used to generate values:
@@ -1112,6 +1148,32 @@ Predicate Schemas don't work anymore:
 ; Syntax error (ExceptionInfo) compiling
 ; :malli.core/invalid-schema
 ```
+
+### Local registry
+
+Any schema can define a local registry using `:registry` schema property:
+
+```clj
+(def Adult
+  [:map
+   {:registry {::age [:and int? [:> 18]]}}
+   [:age ::age]])
+
+(mg/generate Adult {:size 10, :seed 1})
+; => {:age 92}
+```
+
+Local registries can be persisted:
+
+```clj
+(-> Adult
+    (malli.edn/write-string)
+    (malli.edn/read-string)
+    (m/validate {:age 46}))
+; => true
+```
+
+See also [Recursive Schemas](#recursive-schemas).
 
 ### Changing the default registry
 

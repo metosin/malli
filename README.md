@@ -724,25 +724,25 @@ Any (serializable) function can be used for `:dispatch`:
 [Local Registy](#local-registry) allows an easy way to create recursive schemas:
 
 ```clj
-(mg/generate
+(m/validate
   [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
    ::cons]
-  {:size 7, :seed 86})
-; => [16 [64 [26 [1 [13 nil]]]]]
+  [16 [64 [26 [1 [13 nil]]]]])
+; => true
 ```
 
-Mutual recursion works too;
+Mutual recursion works too:
 
 ```clj
-(mg/generate
+(m/validate
   [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                        ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
    ::ping]
-  {:size 7, :seed 86})
-; => ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]]
+  ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
+; => true
 ```
 
-Recursion defined via nesting:
+Recursion defined via nesting, last definition wins:
 
 ```clj
 (mg/generate
@@ -1155,8 +1155,7 @@ Any schema can define a local registry using `:registry` schema property:
 
 ```clj
 (def Adult
-  [:map
-   {:registry {::age [:and int? [:> 18]]}}
+  [:map {:registry {::age [:and int? [:> 18]]}}
    [:age ::age]])
 
 (mg/generate Adult {:size 10, :seed 1})

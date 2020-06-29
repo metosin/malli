@@ -14,6 +14,12 @@
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
+(defn -recursion-options [schema {::keys [recursion-limit] :or {recursion-limit 5} :as options}]
+  (let [form (m/form schema)
+        i (get-in options [::recursion form] 0)]
+    (if (<= i recursion-limit)
+      (assoc-in options [::recursion form] (inc i)))))
+
 (defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
 (defn- -string-gen [schema options]
@@ -87,21 +93,17 @@
 (defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :set [schema options] (-coll-distict-gen schema set options))
 (defmethod -schema-generator :enum [schema options] (gen/elements (m/children schema options)))
-(defmethod -schema-generator :maybe [schema options] (gen/one-of [(gen/return nil) (-> schema (m/children options) first (generator options))]))
+
+(defmethod -schema-generator :maybe [schema options]
+  (let [options' (-recursion-options schema options)]
+    (gen/one-of (into [(gen/return nil)] (if options' [(-> schema (m/children options') first (generator options'))])))))
+
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
-
-;; TODO: ref-max need to favor the non-recursive part, not to fail
-(defmethod -schema-generator :ref [schema {::keys [ref-max] :or {ref-max 50} :as options}]
-  (let [ref (first (m/children schema options))
-        ref-count (get-in options [::ref-count ref] 0)]
-    (if (< ref-count ref-max)
-      (generator (m/-deref schema) (update-in options [::ref-count ref] (fnil inc 0)))
-      (gen/fmap (fn [_] (m/fail! :ref-max-exceeded {:ref-max ref-max, :schema schema})) (gen/return nil)))))
-
-(defmethod -schema-generator :schema [schema options] (-create (m/-deref schema) options))
-(defmethod -schema-generator ::m/schema [schema options] (-create (m/-deref schema) options))
+(defmethod -schema-generator :ref [schema options] (generator (m/-deref schema) options))
+(defmethod -schema-generator :schema [schema options] (generator (m/-deref schema) options))
+(defmethod -schema-generator ::m/schema [schema options] (generator (m/-deref schema) options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (m/properties schema options)

@@ -742,16 +742,16 @@ Mutual recursion works too:
 ; => true
 ```
 
-Recursion defined via nesting, last definition wins:
+Nested registries, last definition wins:
 
 ```clj
-(mg/generate
+(m/validate
   [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                        ::pong any?}} ;; effectively unreachable
    [:schema {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
     ::ping]]
-  {:size 7, :seed 86})
-; => ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]]
+  ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
+; => true
 ```
 
 ## Value Generation

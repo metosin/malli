@@ -869,6 +869,38 @@ All samples are valid against the inferred schema:
 ; => true
 ```
 
+## Map-syntax
+
+Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
+
+```clj
+(def Schema
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:lonlat [:tuple double? double?]]]]])
+
+(m/to-map-syntax Schema)
+;{:type :map,
+; :children [[:id nil {:type string?}]
+;            [:tags nil {:type :set
+;                        :children [{:type keyword?}]}]
+;            [:address nil {:type :map,
+;                           :children [[:street nil {:type string?}]
+;                                      [:lonlat nil {:type :tuple
+;                                                    :children [{:type double?} {:type double?}]}]]}]]}
+```
+
+... and back:
+
+```clj
+(-> Schema (m/to-map-syntax) (m/from-map-syntax) (mu/equals Schema))
+; => true
+```
+
 ## Schema Transformation
 
 Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern).
@@ -1012,38 +1044,6 @@ Full override with `:swagger` property:
   [:map {:swagger {:type "file"}} 
    [:file any?]])
 ; {:type "file"}
-```
-
-## Map-syntax
-
-Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
-
-```clj
-(def Schema
-  [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:map
-     [:street string?]
-     [:lonlat [:tuple double? double?]]]]])
-
-(m/to-map-syntax Schema)
-;{:type :map,
-; :children [[:id nil {:type string?}]
-;            [:tags nil {:type :set
-;                        :children [{:type keyword?}]}]
-;            [:address nil {:type :map,
-;                           :children [[:street nil {:type string?}]
-;                                      [:lonlat nil {:type :tuple
-;                                                    :children [{:type double?} {:type double?}]}]]}]]}
-```
-
-... and back:
-
-```clj
-(-> Schema (m/to-map-syntax) (m/from-map-syntax) (mu/equals Schema))
-; => true
 ```
 
 ## Performance

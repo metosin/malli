@@ -9,10 +9,10 @@ Plain data Schemas for Clojure/Script.
 - Schemas as plain data
 - Schema-driven [Validation](#examples)
 - Schema-driven [Value Transformation](#value-transformation)
-- Schema-driven [Value Generation](#value-generation)
+- [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [programming with Schemas](#programming-with-schemas)
-- First class [error-messages](#error-messages) including [spell checking](#spell-checking)
+- First class [error-messages](#error-messages) and [spell checking](#spell-checking)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
  - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
@@ -922,27 +922,67 @@ The identity visitor:
 ;   [:lonlat [:tuple double? double?]]]]]
 ```
 
-Transforming schemas into [map-syntax](#map-syntax):
+Adding `:title` property to schemas:
 
 ```clj
 (m/accept
   Address
-  (fn [schema children _]
-    (let [properties (m/properties schema)]
-      (cond-> {:type (m/type schema)}
-              (seq properties) (assoc :properties properties)
-              (seq children) (assoc :children children)))))
-;{:type :map,
-; :children [[:id nil {:type string?}]
-;            [:tags nil {:type :set
-;                        :children [{:type keyword?}]}]
-;            [:address nil {:type :map,z
-;                           :children [[:street nil {:type string?}]
-;                                      [:city nil {:type string?}]
-;                                      [:zip nil {:type int?}]
-;                                      [:lonlat nil {:type :tuple
-;                                                    :children [{:type double?} 
-;                                                               {:type double?}]}]]}]]}
+  (m/schema-visitor #(mu/update-properties % assoc :title (name (m/type %)))))
+;[:map {:title "map"}
+; [:id [string? {:title "string?"}]]
+; [:tags [:set {:title "set"} [keyword? {:title "keyword?"}]]]
+; [:address
+;  [:map {:title "map"}
+;   [:street [string? {:title "string?"}]]
+;   [:city [string? {:title "string?"}]]
+;   [:zip [int? {:title "int?"}]]
+;   [:lonlat [:tuple {:title "tuple"} [double? {:title "double?"}] [double? {:title "double?"}]]]]]]
+```
+
+Adding `:path` property to schemas:
+
+```clj
+(m/accept
+  Address
+  (fn [schema children in options]
+    (m/into-schema
+      (m/type schema)
+      (cond-> (m/properties schema) (seq in) (assoc :path in))
+      children options)))
+;[:map [:id [string? {:path [:id]}]]
+; [:tags [:set {:path [:tags]}
+;         [keyword? {:path [:tags :malli.core/in]}]]]
+; [:address
+;  [:map {:path [:address]}
+;   [:street [string? {:path [:address :street]}]]
+;   [:city [string? {:path [:address :city]}]]
+;   [:zip [int? {:path [:address :zip]}]]
+;   [:lonlat
+;    [:tuple {:path [:address :lonlat]}
+;     [double? {:path [:address :lonlat 0]}]
+;     [double? {:path [:address :lonlat 1]}]]]]]]
+```
+
+Transforming schemas into nested maps:
+
+```clj
+(m/accept
+  Address
+  (fn [schema children _ _]
+    (-> (m/properties schema)
+        (assoc :malli/type (m/type schema))
+        (cond-> (seq children) (assoc :malli/children children)))))
+;{:malli/type :map,
+; :malli/children [[:id nil {:malli/type string?}]
+;                  [:tags nil {:malli/type :set
+;                              :malli/children [{:malli/type keyword?}]}]
+;                  [:address nil {:malli/type :map,
+;                                 :malli/children [[:street nil {:malli/type string?}]
+;                                                  [:city nil {:malli/type string?}]
+;                                                  [:zip nil {:malli/type int?}]
+;                                                  [:lonlat nil {:malli/type :tuple
+;                                                                :malli/children [{:malli/type double?}
+;                                                                                 {:malli/type double?}]}]]}]]}
 ```
 
 ### JSON Schema

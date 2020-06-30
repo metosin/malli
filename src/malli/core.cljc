@@ -732,7 +732,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          MapSchema
+          (-map-entries [_] entries))))))
 
 (defn -string-schema []
   ^{:type ::into-schema}

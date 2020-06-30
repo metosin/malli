@@ -682,6 +682,10 @@
 
              (m/accept schema m/map-syntax-visitor)))
 
+      (is (entries= [[:sized nil [:map [:type keyword?] [:size int?]]]
+                     [:human nil [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+                    (m/map-entries schema)))
+
       (is (= [:multi
               {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}
               [:sized [:map [:type 'keyword?] [:size 'int?]]]

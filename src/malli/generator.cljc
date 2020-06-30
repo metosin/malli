@@ -46,6 +46,12 @@
         gen (-> schema m/children first (generator options))]
     (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))
 
+(defn -or-gen [schema options]
+  (gen/one-of (keep #(some->> (-recursion-options % options) (generator %)) (m/children schema options))))
+
+(defn -multi-gen [schema options]
+  (gen/one-of (keep #(some->> (-recursion-options (last %) options) (generator (last %))) (m/map-entries schema options))))
+
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
         options' (-recursion-options schema options)
@@ -59,9 +65,6 @@
                      (map (fn [[k _ s]] (gen/one-of (into [(gen/return nil)] (if options' [(value-gen k s)])))))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
-
-(defn -or-gen [schema options]
-  (gen/one-of (keep #(some->> (-recursion-options % options) (generator %)) (m/children schema options))))
 
 (defn -map-of-gen [schema options]
   (let [[k-gen v-gen] (map #(generator % options) (m/children schema options))]
@@ -91,7 +94,7 @@
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))
 (defmethod -schema-generator :map [schema options] (-map-gen schema options))
 (defmethod -schema-generator :map-of [schema options] (-map-of-gen schema options))
-(defmethod -schema-generator :multi [schema options] (gen/one-of (mapv #(generator (second %) options) (m/children schema options))))
+(defmethod -schema-generator :multi [schema options] (-multi-gen schema options))
 (defmethod -schema-generator :vector [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :list [schema options] (-coll-gen schema (partial apply list) options))
 (defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))

@@ -46,7 +46,11 @@
         [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
         [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
         [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
-                             ::or [:or int? ::tuple]}} ::or])))
+                             ::or [:or int? ::tuple]}} ::or]
+        [:schema {:registry {::multi
+                             [:multi {:dispatch :type}
+                              [:int [:map [:type [:= :int]] [:int int?]]]
+                              [:multi [:map [:type [:= :multi]] [:multi [:ref ::multi]]]]]}} [:ref ::multi]])))
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]

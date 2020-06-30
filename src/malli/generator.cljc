@@ -14,7 +14,7 @@
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
-(defn -recursion-options [schema {::keys [recursion-limit] :or {recursion-limit 5} :as options}]
+(defn -recursion-options [schema {::keys [recursion-limit] :or {recursion-limit 4} :as options}]
   (let [form (m/form schema)
         i (get-in options [::recursion form] 0)]
     (if (<= i recursion-limit)

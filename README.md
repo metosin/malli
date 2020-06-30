@@ -1440,6 +1440,6 @@ npx shadow-cljs release app --pseudo-names
 
 ## License
 
-Copyright © 2018-2020 Metosin Oy and contributors.
+Copyright © 2019-2020 Metosin Oy and contributors.
 
 Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

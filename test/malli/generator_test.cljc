@@ -50,7 +50,7 @@
         [:schema {:registry {::multi
                              [:multi {:dispatch :type}
                               [:int [:map [:type [:= :int]] [:int int?]]]
-                              [:multi [:map [:type [:= :multi]] [:multi [:ref ::multi]]]]]}} [:ref ::multi]])))
+                              [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]}} ::multi])))
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]

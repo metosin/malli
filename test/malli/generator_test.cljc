@@ -44,7 +44,9 @@
         (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))
 
         [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
-        [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec])))
+        [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
+        [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
+                             ::or [:or int? ::tuple]}} ::or])))
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]

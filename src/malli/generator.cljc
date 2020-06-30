@@ -60,6 +60,9 @@
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
+(defn -or-gen [schema options]
+  (gen/one-of (keep #(some->> (-recursion-options % options) (generator %)) (m/children schema options))))
+
 (defn -map-of-gen [schema options]
   (let [[k-gen v-gen] (map #(generator % options) (m/children schema options))]
     (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
@@ -85,7 +88,7 @@
 (defmethod -schema-generator :not= [schema options] (gen/such-that (partial not= (-> schema (m/children options) first)) gen/any-printable 100))
 
 (defmethod -schema-generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
-(defmethod -schema-generator :or [schema options] (gen/one-of (mapv #(generator % options) (m/children schema options))))
+(defmethod -schema-generator :or [schema options] (-or-gen schema options))
 (defmethod -schema-generator :map [schema options] (-map-gen schema options))
 (defmethod -schema-generator :map-of [schema options] (-map-of-gen schema options))
 (defmethod -schema-generator :multi [schema options] (gen/one-of (mapv #(generator (second %) options) (m/children schema options))))

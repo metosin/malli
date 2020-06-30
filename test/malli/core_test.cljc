@@ -3,7 +3,9 @@
             [malli.core :as m]
             [malli.edn :as me]
             [malli.transform :as mt]
-            [malli.util :as mu]))
+            [malli.util :as mu]
+            ;; TODO: separate tests for sci
+            [sci.core]))
 
 (defn with-schema-forms [result]
   (some-> result

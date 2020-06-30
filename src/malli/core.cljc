@@ -1,7 +1,8 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type])
-  (:require [sci.core :as sci]
-            [malli.registry :as mr])
+  (:require [malli.registry :as mr]
+            #?(:clj [malli.impl.clj.dynaload :as dynaload]
+               :cljs [malli.impl.cljs.dynaload :as dynaload]))
   #?(:clj (:import (java.util.regex Pattern))))
 
 ;;
@@ -909,11 +910,12 @@
        (-map-entries schema)))))
 
 (defn ^:no-doc eval [?code]
-  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
-                                                      :bindings {'m/properties properties
-                                                                 'm/type type
-                                                                 'm/children children
-                                                                 'm/map-entries map-entries}})))
+  (if (fn? ?code) ?code (@dynaload/eval-string
+                         (str ?code) {:preset :termination-safe
+                                      :bindings {'m/properties properties
+                                                 'm/type type
+                                                 'm/children children
+                                                 'm/map-entries map-entries}})))
 ;;
 ;; Visitors
 ;;

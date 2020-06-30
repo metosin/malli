@@ -27,10 +27,10 @@
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.1"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"
-                             "-Dclojure.compiler.direct-linking=true"]}}
+                             "-Dclojure.compiler.direct-linking=true"]}
+           :sci {:extra-deps {borkdude/sci {:git/url "https://github.com/borkdude/sci"
+                                            :sha "eb97e01a5913fb81859da814ba55a25b807dd6cc"}}}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        borkdude/sci {:git/url "https://github.com/borkdude/sci"
-                      :sha "eb97e01a5913fb81859da814ba55a25b807dd6cc"}
         borkdude/edamame {:mvn/version "0.0.11-alpha.12"}
         org.clojure/test.check {:mvn/version "1.0.0"}
         com.gfredericks/test.chuck {:mvn/version "0.2.10"}}}

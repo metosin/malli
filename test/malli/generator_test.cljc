@@ -1,5 +1,5 @@
 (ns malli.generator-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.test :refer [deftest testing is are]]
             [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
             [malli.generator :as mg]
@@ -27,6 +27,30 @@
   (testing "string"
     (let [schema [:string {:min 1, :max 4}]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+
+  (testing "ref"
+    (testing "recursion"
+      (let [schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
+                    ::cons]]
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+    (testing "mutual recursion"
+      (let [schema [:schema
+                    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                    ::ping]]
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+    (testing "recursion limiting"
+      (are [schema]
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))
+
+        [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
+        [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
+        [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
+                             ::or [:or int? ::tuple]}} ::or]
+        [:schema {:registry {::multi
+                             [:multi {:dispatch :type}
+                              [:int [:map [:type [:= :int]] [:int int?]]]
+                              [:multi [:map [:type [:= :multi]] [:multi [:ref ::multi]]]]]}} [:ref ::multi]])))
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]
@@ -56,16 +80,12 @@
       (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
 
   (testing "gen/elements"
-    (dotimes [_ 1000]
-      (is (#{1 2} (mg/generate [:and {:gen/elements [1 2]} int?]))))
-    (dotimes [_ 1000]
-      (is (#{"1" "2"} (mg/generate [:and {:gen/elements [1 2], :gen/fmap 'str} int?])))))
+    (is (every? #{1 2} (mg/sample [:and {:gen/elements [1 2]} int?] {:size 1000})))
+    (is (every? #{"1" "2"} (mg/sample [:and {:gen/elements [1 2], :gen/fmap 'str} int?] {:size 1000}))))
 
   (testing "gen/gen"
-    (dotimes [_ 1000]
-      (is (#{1 2} (mg/generate [:and {:gen/gen (gen/elements [1 2])} int?]))))
-    (dotimes [_ 1000]
-      (is (#{"1" "2"} (mg/generate [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?]))))))
+    (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
+    (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
 
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}
@@ -75,5 +95,4 @@
                  (-properties [_])
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]
-    (dotimes [_ 1000]
-      (is (values (mg/generate schema))))))
+    (is (every? values (mg/sample schema {:size 1000})))))

@@ -14,8 +14,9 @@ Plain data Schemas for Clojure/Script.
 - Tools for [programming with Schemas](#programming-with-schemas)
 - First class [error-messages](#error-messages) including [spell checking](#spell-checking)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
-- [Multi-schemas](#multi-schemas), [default values](#default-values) and [persisting schemas](#persisting-schemas)
-- Immutable, Mutable and Dynamic [Schema Registries](#schema-registry)
+- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
+ - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
+- Immutable, Mutable, Dynamic and Local [Schema Registries](#schema-registry)
 - [Fast](#performance)
 
 Presentations:
@@ -718,6 +719,41 @@ Any (serializable) function can be used for `:dispatch`:
 ; :address {:country :finland}}
 ```
 
+## Recursive Schemas
+
+[Local Registy](#local-registry) allows an easy way to create recursive schemas:
+
+```clj
+(m/validate
+  [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+   ::cons]
+  [16 [64 [26 [1 [13 nil]]]]])
+; => true
+```
+
+Mutual recursion works too:
+
+```clj
+(m/validate
+  [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   ::ping]
+  ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
+; => true
+```
+
+Nested registries, last definition wins:
+
+```clj
+(m/validate
+  [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                       ::pong any?}} ;; effectively unreachable
+   [:schema {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+    ::ping]]
+  ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
+; => true
+```
+
 ## Value Generation
 
 Schemas can be used to generate values:
@@ -830,6 +866,38 @@ All samples are valid against the inferred schema:
 
 ```clj
 (every? (partial m/validate (mp/provide samples)) samples)
+; => true
+```
+
+## Map-syntax
+
+Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
+
+```clj
+(def Schema
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:lonlat [:tuple double? double?]]]]])
+
+(m/to-map-syntax Schema)
+;{:type :map,
+; :children [[:id nil {:type string?}]
+;            [:tags nil {:type :set
+;                        :children [{:type keyword?}]}]
+;            [:address nil {:type :map,
+;                           :children [[:street nil {:type string?}]
+;                                      [:lonlat nil {:type :tuple
+;                                                    :children [{:type double?} {:type double?}]}]]}]]}
+```
+
+... and back:
+
+```clj
+(-> Schema (m/to-map-syntax) (m/from-map-syntax) (mu/equals Schema))
 ; => true
 ```
 
@@ -978,38 +1046,6 @@ Full override with `:swagger` property:
 ; {:type "file"}
 ```
 
-## Map-syntax
-
-Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
-
-```clj
-(def Schema
-  [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:map
-     [:street string?]
-     [:lonlat [:tuple double? double?]]]]])
-
-(m/to-map-syntax Schema)
-;{:type :map,
-; :children [[:id nil {:type string?}]
-;            [:tags nil {:type :set
-;                        :children [{:type keyword?}]}]
-;            [:address nil {:type :map,
-;                           :children [[:street nil {:type string?}]
-;                                      [:lonlat nil {:type :tuple
-;                                                    :children [{:type double?} {:type double?}]}]]}]]}
-```
-
-... and back:
-
-```clj
-(-> Schema (m/to-map-syntax) (m/from-map-syntax) (mu/equals Schema))
-; => true
-```
-
 ## Performance
 
 Validation:
@@ -1112,6 +1148,31 @@ Predicate Schemas don't work anymore:
 ; Syntax error (ExceptionInfo) compiling
 ; :malli.core/invalid-schema
 ```
+
+### Local registry
+
+Any schema can define a local registry using `:registry` schema property:
+
+```clj
+(def Adult
+  [:map {:registry {::age [:and int? [:> 18]]}}
+   [:age ::age]])
+
+(mg/generate Adult {:size 10, :seed 1})
+; => {:age 92}
+```
+
+Local registries can be persisted:
+
+```clj
+(-> Adult
+    (malli.edn/write-string)
+    (malli.edn/read-string)
+    (m/validate {:age 46}))
+; => true
+```
+
+See also [Recursive Schemas](#recursive-schemas).
 
 ### Changing the default registry
 

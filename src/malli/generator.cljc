@@ -48,14 +48,15 @@
 
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
-        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options)))
+        options' (-recursion-options schema options)
+        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options')))
         gen-req (->> entries
                      (remove #(-> % second :optional))
                      (map (fn [[k _ s]] (value-gen k s)))
                      (apply gen/tuple))
         gen-opt (->> entries
                      (filter #(-> % second :optional))
-                     (map (fn [[k _ s]] (gen/one-of [(gen/return nil) (value-gen k s)])))
+                     (map (fn [[k _ s]] (gen/one-of (into [(gen/return nil)] (if options' [(value-gen k s)])))))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 

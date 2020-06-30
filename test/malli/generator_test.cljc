@@ -1,5 +1,5 @@
 (ns malli.generator-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.test :refer [deftest testing is are]]
             [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
             [malli.generator :as mg]
@@ -38,7 +38,13 @@
                     {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                 ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                     ::ping]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000}))))))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+    (testing "recursion limiting"
+      (are [schema]
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))
+
+        [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
+        [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec])))
 
   #?(:clj (testing "regex"
             (let [re #"^\d+ \d+$"]

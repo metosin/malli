@@ -43,11 +43,23 @@
                                        :else (throw (ex-info "Can't produce malli schema" {:p p})))))
 
 (defn- parse-top-level [js-schema]
-  (let [keys- (set (keys js-schema))]
+  (let [-keys (keys js-schema)
+        -key (first -keys)]
+    (when (pos? (dec (count -keys)))
+      (throw (ex-info "Invalid declaration"
+                      {:number-of-keys (count -keys)
+                       :schema js-schema})))
     (cond
-      (keys- :oneOf) (into [:or]
-                           (map type->malli)
-                           (:oneOf js-schema)))))
+      (#{:oneOf :anyOf} -key) (into
+                       ;; TODO Split :oneOf from :anyOf and figure out
+                       ;; how to make it exclusively select o schema
+                       [:or]
+                       (map type->malli)
+                       (:oneOf js-schema))
+      (= :allOf -key) (into
+                       [:and]
+                       (map type->malli)
+                       (:oneOf js-schema)))))
 
 (defn- map-values
   ([-fn] (map (fn [[k v]] [k (-fn v)])))

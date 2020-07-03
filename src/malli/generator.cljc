@@ -23,7 +23,7 @@
 (defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
 (defn- -string-gen [schema options]
-  (let [{:keys [min max]} (m/properties schema options)]
+  (let [{:keys [min max]} (-min-max schema options)]
     (cond
       (and min (= min max)) (gen/fmap str/join (gen/vector gen/char min))
       (and min max) (gen/fmap str/join (gen/vector gen/char min max))

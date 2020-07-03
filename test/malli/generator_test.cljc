@@ -97,15 +97,20 @@
 
       [:vector {:min 10, :max 20} int?]
       [:set {:min 10, :max 20} int?]
+      [:string {:min 10, :max 20}]
+
 
       [:vector {:gen/min 10, :max 20} int?]
       [:set {:gen/min 10, :max 20} int?]
+      [:string {:gen/min 10, :max 20}]
 
       [:vector {:min 10, :gen/max 20} int?]
       [:set {:min 10, :gen/max 20} int?]
+      [:string {:gen/min 10, :max 20}]
 
       [:vector {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
-      [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]))
+      [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:string {:min 1, :gen/min 10, :max 100, :gen/max 20}]))
 
   (testing "invalid properties"
     (are [schema]
@@ -114,10 +119,12 @@
       ;; :gen/min less than :min
       [:vector {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]
       [:set {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:string {:min 11, :gen/min 10, :max 100, :gen/max 20}]
 
       ;; :gen/max over :max
       [:vector {:min 1, :gen/min 10, :max 100, :gen/max 200} int?]
-      [:set {:min 1, :gen/min 10, :max 100, :gen/max 200} int?])))
+      [:set {:min 1, :gen/min 10, :max 100, :gen/max 200} int?]
+      [:string {:min 1, :gen/min 10, :max 100, :gen/max 200}])))
 
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}

@@ -33,38 +33,38 @@
 (deftest mermaid-test
   (is (trimmed=
         "classDiagram
+           class Burger {
+             :description string?
+             :name string?
+             :origin [:maybe Country]
+             :price pos-int?
+           }
            class Country {
              :name [:enum :FI :PO]
              :neighbors [:vector [:ref Country]]
            }
-           class Burger {
-             :name string?
-             :description string?
-             :origin [:maybe Country]
-             :price pos-int?
+           class Order {
+             :delivery Order_Delivery
+             :lines [:vector OrderLine]
            }
            class OrderLine {
-             :burger Burger
              :amount int?
-           }
-           class Order {
-             :lines [:vector OrderLine]
-             :delivery Order_Delivery
-           }
-           class Order_Delivery_Address {
-             :street string?
-             :zip int?
-             :country Country
+             :burger Burger
            }
            class Order_Delivery {
-             :delivered boolean?
              :address Order_Delivery_Address
+             :delivered boolean?
            }
-           Country o-- Country
+           class Order_Delivery_Address {
+             :country Country
+             :street string?
+             :zip int?
+           }
            Burger o-- Country
-           OrderLine o-- Burger
+           Country o-- Country
            Order o-- OrderLine
            Order *-- Order_Delivery
-           Order_Delivery_Address o-- Country
-           Order_Delivery *-- Order_Delivery_Address"
+           OrderLine o-- Burger
+           Order_Delivery *-- Order_Delivery_Address
+           Order_Delivery_Address o-- Country"
         (mm/class-diagram Order))))

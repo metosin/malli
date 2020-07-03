@@ -49,12 +49,12 @@
          links (get-links registry)]
      (with-out-str
        (println "classDiagram")
-       (doseq [[k v] registry]
+       (doseq [[k v] (sort registry)]
          (println "  class" k "{")
-         (doseq [[k _ s] (m/map-entries v)]
+         (doseq [[k _ s] (sort (m/map-entries v))]
            (println "   " k s))
          (println "  }"))
-       (doseq [[from tos] links
+       (doseq [[from tos] (sort links)
                to tos]
          (let [root (::root (m/properties (get registry to)))]
            (println " " from (if root "*--" "o--") to)))))))

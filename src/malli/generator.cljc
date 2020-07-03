@@ -20,6 +20,15 @@
     (if (<= i recursion-limit)
       (assoc-in options [::recursion form] (inc i)))))
 
+(defn -min-max [schema options]
+  (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
+    (when (and min gen-min (< gen-min min))
+      (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+    (when (and max gen-max (> gen-max max))
+      (m/fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
+    {:min (or gen-min min)
+     :max (or gen-max max)}))
+
 (defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
 (defn- -string-gen [schema options]
@@ -30,15 +39,6 @@
       min (gen/fmap str/join (gen/vector gen/char min (* 2 min)))
       max (gen/fmap str/join (gen/vector gen/char 0 max))
       :else gen/string)))
-
-(defn -min-max [schema options]
-  (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
-    (when (and min gen-min (< gen-min min))
-      (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
-    (when (and max gen-max (> gen-max max))
-      (m/fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
-    {:min (or gen-min min)
-     :max (or gen-max max)}))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)

@@ -32,21 +32,23 @@
     (testing "recursion"
       (let [schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
                     ::cons]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
     (testing "mutual recursion"
       (let [schema [:schema
                     {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                 ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                     ::ping]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
     (testing "recursion limiting"
       (are [schema]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))
 
         [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
         [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
         [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
                              ::or [:or int? ::tuple]}} ::or]
+        [:schema {:registry {::rec [:tuple int? [:vector {:max 2} [:ref ::rec]]]}} ::rec]
+        [:schema {:registry {::rec [:tuple int? [:set {:max 2} [:ref ::rec]]]}} ::rec]
         [:schema {:registry {::multi
                              [:multi {:dispatch :type}
                               [:int [:map [:type [:= :int]] [:int int?]]]
@@ -86,6 +88,43 @@
   (testing "gen/gen"
     (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
+
+(deftest min-max-test
+
+  (testing "valid properties"
+    (are [schema]
+      (is (every? #(<= 10 % 20) (map count (mg/sample schema {:size 1000}))))
+
+      [:vector {:min 10, :max 20} int?]
+      [:set {:min 10, :max 20} int?]
+      [:string {:min 10, :max 20}]
+
+
+      [:vector {:gen/min 10, :max 20} int?]
+      [:set {:gen/min 10, :max 20} int?]
+      [:string {:gen/min 10, :max 20}]
+
+      [:vector {:min 10, :gen/max 20} int?]
+      [:set {:min 10, :gen/max 20} int?]
+      [:string {:gen/min 10, :max 20}]
+
+      [:vector {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:string {:min 1, :gen/min 10, :max 100, :gen/max 20}]))
+
+  (testing "invalid properties"
+    (are [schema]
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (mg/sample schema {:size 1000})))
+
+      ;; :gen/min less than :min
+      [:vector {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:set {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:string {:min 11, :gen/min 10, :max 100, :gen/max 20}]
+
+      ;; :gen/max over :max
+      [:vector {:min 1, :gen/min 10, :max 100, :gen/max 200} int?]
+      [:set {:min 1, :gen/min 10, :max 100, :gen/max 200} int?]
+      [:string {:min 1, :gen/min 10, :max 100, :gen/max 200}])))
 
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}

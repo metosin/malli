@@ -31,6 +31,7 @@
   (-set [this key value] "returns a copy with key having new value"))
 
 (defprotocol RefSchema
+  (-ref [this] "returns the reference name")
   (-deref [this] "returns the referenced schema"))
 
 (defprotocol Transformer
@@ -804,6 +805,7 @@
           (-get [_ key default] (if (= key 0) (-ref) default))
           (-set [_ key value] (if (= key 0) (into-schema :ref properties [value])))
           RefSchema
+          (-ref [_] ref)
           (-deref [_] (-ref)))))))
 
 (defn -schema-schema [{:keys [id raw]}]
@@ -835,6 +837,7 @@
             (-get [_ key default] (if id (-get child key default) (if (= key 0) (-get child key default))))
             (-set [_ key value] (if (= key 0) (-set child key value)))
             RefSchema
+            (-ref [_] id)
             (-deref [_] child)))))))
 
 (defn- -register-var [registry v]
@@ -864,32 +867,35 @@
     (fn? x) (into-transformer (x))
     :else (fail! ::invalid-transformer {:value x})))
 
-(defn- -property-registry [m options]
+(defn- -property-registry [m options f]
   (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (-form (schema v options)))) {} m)))
+    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
 
-(defn -properties-and-options [properties options]
+(defn -properties-and-options [properties options f]
   (if-let [r (some-> properties :registry)]
     (let [options (update options :registry #(mr/composite-registry r (or % (registry options))))]
-      [(assoc properties :registry (-property-registry r options)) options])
+      [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
+
+(defn -ref-key? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
 
 ;;
 ;; public api
 ;;
 
-(defn into-schema
-  ([type properties children]
-   (into-schema type properties children nil))
-  ([type properties children options]
-   (let [[properties options] (-properties-and-options properties options)]
-     (-into-schema (-schema type options) (if (seq properties) properties) children options))))
 
 (defn schema? [x]
   (satisfies? Schema x))
 
 (defn into-schema? [x]
   (satisfies? IntoSchema x))
+
+(defn into-schema
+  ([type properties children]
+   (into-schema type properties children nil))
+  ([type properties children options]
+   (let [[properties options] (-properties-and-options properties options -form)]
+     (-into-schema (-schema type options) (if (seq properties) properties) children options))))
 
 (defn schema
   ([?schema]
@@ -900,7 +906,7 @@
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
                          (into-schema (-schema (first ?schema) options) p c options))
-     :else (if-let [?schema' (and (qualified-keyword? ?schema) (-lookup ?schema options))]
+     :else (if-let [?schema' (and (-ref-key? ?schema) (-lookup ?schema options))]
              (-into-schema (-schema-schema {:id ?schema}) nil [(schema ?schema' options)] options)
              (-> ?schema (-schema options) (schema options))))))
 
@@ -1056,7 +1062,7 @@
   ([{:keys [type properties children] :as m} options]
    (if (map? m)
      (let [<-child (if (-> children first vector?) (fn [f] #(update % 2 f)) identity)
-           [properties options] (-properties-and-options properties options)]
+           [properties options] (-properties-and-options properties options -form)]
        (into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
      m)))
 

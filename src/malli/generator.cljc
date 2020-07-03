@@ -35,8 +35,8 @@
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
     (when (and min gen-min (< gen-min min))
       (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
-    (when (and max gen-max (< gen-max max))
-      (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+    (when (and max gen-max (> gen-max max))
+      (m/fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
     {:min (or gen-min min)
      :max (or gen-max max)}))
 
@@ -55,7 +55,7 @@
                   :else (gen/vector gen)))))
 
 (defn- -coll-distict-gen [schema f options]
-  (let [{:keys [min max]} (m/properties schema options)
+  (let [{:keys [min max]} (-min-max schema options)
         options' (-recursion-options schema options)
         child (-> schema m/children first)
         gen (if-not (and (= :ref (m/type child)) (not options') (<= (or min 0) 0))

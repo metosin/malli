@@ -89,6 +89,36 @@
     (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
 
+(deftest min-max-test
+
+  (testing "valid properties"
+    (are [schema]
+      (is (every? #(<= 10 % 20) (map count (mg/sample schema {:size 1000}))))
+
+      [:vector {:min 10, :max 20} int?]
+      [:set {:min 10, :max 20} int?]
+
+      [:vector {:gen/min 10, :max 20} int?]
+      [:set {:gen/min 10, :max 20} int?]
+
+      [:vector {:min 10, :gen/max 20} int?]
+      [:set {:min 10, :gen/max 20} int?]
+
+      [:vector {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]))
+
+  (testing "invalid properties"
+    (are [schema]
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (mg/sample schema {:size 1000})))
+
+      ;; :gen/min less than :min
+      [:vector {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]
+      [:set {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]
+
+      ;; :gen/max over :max
+      [:vector {:min 1, :gen/min 10, :max 100, :gen/max 200} int?]
+      [:set {:min 1, :gen/min 10, :max 100, :gen/max 200} int?])))
+
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}
         schema (reify

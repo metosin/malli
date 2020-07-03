@@ -31,10 +31,23 @@
       max (gen/fmap str/join (gen/vector gen/char 0 max))
       :else gen/string)))
 
+(defn -min-max [schema options]
+  (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
+    (when (and min gen-min (< gen-min min))
+      (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+    (when (and max gen-max (< gen-max max))
+      (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+    {:min (or gen-min min)
+     :max (or gen-max max)}))
+
 (defn- -coll-gen [schema f options]
-  (let [{:keys [min max]} (m/properties schema options)
-        gen (-> schema m/children first (generator options))]
+  (let [{:keys [min max]} (-min-max schema options)
+        options' (-recursion-options schema options)
+        child (-> schema m/children first)
+        gen (if-not (and (= :ref (m/type child)) (not options') (<= (or min 0) 0))
+              (generator child options'))]
     (gen/fmap f (cond
+                  (not gen) (gen/vector gen/any 0 0)
                   (and min (= min max)) (gen/vector gen min)
                   (and min max) (gen/vector gen min max)
                   min (gen/vector gen min (* 2 min))
@@ -43,8 +56,13 @@
 
 (defn- -coll-distict-gen [schema f options]
   (let [{:keys [min max]} (m/properties schema options)
-        gen (-> schema m/children first (generator options))]
-    (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))
+        options' (-recursion-options schema options)
+        child (-> schema m/children first)
+        gen (if-not (and (= :ref (m/type child)) (not options') (<= (or min 0) 0))
+              (generator child options'))]
+    (gen/fmap f (if gen
+                  (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
+                  (gen/vector gen/any 0 0)))))
 
 (defn -or-gen [schema options]
   (gen/one-of (keep #(some->> (-recursion-options % options) (generator %)) (m/children schema options))))

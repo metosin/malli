@@ -3,32 +3,28 @@
             [malli.mermaid :as mm]
             [clojure.string :as str]))
 
-(def Country
-  [:map {:id "Country"}
-   [:name [:enum :FI :PO]]
-   [:neighbors any?]])
-
-(def Burger
-  [:map {:id "Burger"}
-   [:name string?]
-   [:description {:optional true} string?]
-   [:origin [:maybe [:maybe Country]]]
-   [:price pos-int?]])
-
-(def OrderLine
-  [:map {:id "OrderLine"}
-   [:burger Burger]
-   [:amount int?]])
-
 (def Order
-  [:map {:id "Order"}
-   [:lines [:vector OrderLine]]
-   [:delivery [:map
-               [:delivered boolean?]
-               [:address [:map
-                          [:street string?]
-                          [:zip int?]
-                          [:country Country]]]]]])
+  [:schema
+   {:registry {"Country" [:map
+                          [:name [:enum :FI :PO]]
+                          [:neighbors [:vector [:ref "Country"]]]]
+               "Burger" [:map
+                         [:name string?]
+                         [:description {:optional true} string?]
+                         [:origin [:maybe "Country"]]
+                         [:price pos-int?]]
+               "OrderLine" [:map
+                            [:burger "Burger"]
+                            [:amount int?]]
+               "Order" [:map
+                        [:lines [:vector "OrderLine"]]
+                        [:delivery [:map
+                                    [:delivered boolean?]
+                                    [:address [:map
+                                               [:street string?]
+                                               [:zip int?]
+                                               [:country "Country"]]]]]]}}
+   "Order"])
 
 (defn trimmed= [s1 s2]
   (letfn [(trim [x] (str/trim (str/replace x #"\s+" " ")))]
@@ -37,45 +33,38 @@
 (deftest mermaid-test
   (is (trimmed=
         "classDiagram
-           class CountryName {
-             <<enum>>
-             + :FI
-             + :PO
-           }
            class Country {
-             + :name CountryName
-             + :neighbors any?
+             :name [:enum :FI :PO]
+             :neighbors [:vector [:ref Country]]
            }
-           Country *-- CountryName
            class Burger {
-             + :name string?
-             + :description string?
-             + :origin Country
-             + :price pos-int?
+             :name string?
+             :description string?
+             :origin [:maybe Country]
+             :price pos-int?
            }
-           Burger o-- Country
            class OrderLine {
-             + :burger Burger
-             + :amount int?
+             :burger Burger
+             :amount int?
            }
-           OrderLine o-- Burger
-           class OrderDeliveryAddress {
-             <<embedded>>
-             + :street string?
-             + :zip int?
-             + :country Country
-           }
-           OrderDeliveryAddress o-- Country
-           class OrderDelivery {
-             <<embedded>>
-             + :delivered boolean?
-             + :address OrderDeliveryAddress
-           }
-           OrderDelivery *-- OrderDeliveryAddress
            class Order {
-             + :lines OrderLine
-             + :delivery OrderDelivery
+             :lines [:vector OrderLine]
+             :delivery Order_Delivery
            }
+           class Order_Delivery_Address {
+             :street string?
+             :zip int?
+             :country Country
+           }
+           class Order_Delivery {
+             :delivered boolean?
+             :address Order_Delivery_Address
+           }
+           Country o-- Country
+           Burger o-- Country
+           OrderLine o-- Burger
            Order o-- OrderLine
-           Order *-- OrderDelivery"
+           Order *-- Order_Delivery
+           Order_Delivery_Address o-- Country
+           Order_Delivery *-- Order_Delivery_Address"
         (mm/class-diagram Order))))

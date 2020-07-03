@@ -32,21 +32,23 @@
     (testing "recursion"
       (let [schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
                     ::cons]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
     (testing "mutual recursion"
       (let [schema [:schema
                     {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                 ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                     ::ping]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
     (testing "recursion limiting"
       (are [schema]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))
+        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))
 
         [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
         [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
         [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
                              ::or [:or int? ::tuple]}} ::or]
+        [:schema {:registry {::rec [:tuple int? [:vector {:max 2} [:ref ::rec]]]}} ::rec]
+        [:schema {:registry {::rec [:tuple int? [:set {:max 2} [:ref ::rec]]]}} ::rec]
         [:schema {:registry {::multi
                              [:multi {:dispatch :type}
                               [:int [:map [:type [:= :int]] [:int int?]]]

@@ -52,7 +52,7 @@
        (doseq [[k v] (sort registry)]
          (println "  class" k "{")
          (doseq [[k _ s] (sort (m/map-entries v))]
-           (println "   " k s))
+           (println "   " k (m/form s)))
          (println "  }"))
        (doseq [[from tos] (sort links)
                to tos]

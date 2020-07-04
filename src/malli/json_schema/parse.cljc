@@ -1,5 +1,6 @@
 (ns malli.json-schema.parse
   (:require [malli.core :as m]
+            [malli.util :as mu]
             [clojure.string :as str]))
 
 ;; Utility Functions
@@ -18,6 +19,11 @@
   (let [-keys (set (keys js-schema))]
     (cond
       (-keys :type) (type->malli js-schema)
+
+      (-keys :enum) (into [:enum]
+                          (:enum js-schema))
+
+      (-keys :const) [:enum (:const js-schema)]
 
       ;; Aggregates
       (-keys :oneOf)
@@ -44,7 +50,8 @@
       (-keys :$ref) ($ref (:$ref js-schema))
 
       :else
-      (throw (ex-info "Not supported" {:js-schema js-schema})))))
+      (throw (ex-info "Not supported" {:json-schema js-schema
+                                       :reason ::schema-type})))))
 
 (defn properties->malli [{:keys [required]} [k v]]
   (cond-> [k]
@@ -53,6 +60,7 @@
 
 (defn object->malli [v]
   (let [required (into #{}
+                       ;; TODO Should use the same fn as $ref
                        (map keyword)
                        (:required v))
         closed? (false? (:additionalProperties v))]
@@ -62,11 +70,33 @@
                        (map (partial properties->malli {:required required}))
                        (:properties v))))))
 
-(defmethod type->malli "string" [p] string?)
-(defmethod type->malli "integer" [p] int?)
-(defmethod type->malli "number" [p]
-  ;; TODO support decimal/double
-  number?)
+(defmethod type->malli "string" [{:keys [pattern minLength maxLength enum]}]
+  ;; `format` metadata is deliberately not considered.
+  ;; String enums are stricter, so they're also implemented here.
+  (cond
+    pattern [:re pattern]
+    enum [:and
+          :string
+          (into [:enum] enum)]
+    [:string (cond-> {}
+               minLength (assoc :min minLength)
+               maxLength (assoc :max maxLength))]))
+
+(defmethod type->malli "integer" [{:keys [minimum maximum exclusiveMinimum exclusiveMaximum multipleOf]
+                                   :or {minimum Integer/MIN_VALUE
+                                        maximum Integer/MAX_VALUE}}]
+  ;; On draft 4, exclusive{Minimum,Maximum} is a boolean.
+  ;; TODO Decide on whether draft 4 will be supported
+  ;; TODO Implement exclusive{Minimum,Maximum} support
+  ;; TODO Implement multipleOf support
+  ;; TODO Wrap, when it makes sense, the values below with range checkers, i.e. [:< maximum]
+  ;; TODO extract ranges logic and reuse with number
+  (cond
+    (pos? minimum) pos-int?
+    (neg? maximum) neg-int?
+    :else int?))
+
+(defmethod type->malli "number" [p] number?)
 (defmethod type->malli "boolean" [p] boolean?)
 (defmethod type->malli "null" [p] nil?)
 (defmethod type->malli "object" [p] (object->malli p))
@@ -76,7 +106,8 @@
                                                         (map schema->malli)
                                                         items)
                                        (map? items) [:vector (schema->malli items)]
-                                       :else (throw (ex-info "Can't produce malli schema" {:p p})))))
+                                       :else (throw (ex-info "Not Supported" {:json-schema p
+                                                                              :reason ::array-items})))))
 
 (defn json-schema-document->malli [obj]
   [:schema {:registry (into {}

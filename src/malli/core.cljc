@@ -49,9 +49,6 @@
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w]
           (.write w (pr-str (-form v)))))
 
-#?(:clj (defmethod print-method ::ref [_ ^java.io.Writer w]
-          (.write w "<<ref>>")))
-
 ;;
 ;; impl
 ;;

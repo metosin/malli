@@ -323,7 +323,7 @@
                                  (let [entries (m/map-entries schema)
                                        defaults (->> entries
                                                      (keep (fn [[k _ v]]
-                                                             (if-let [default (get-default v)]
+                                                             (if-some [default (get-default v)]
                                                                [k default])))
                                                      (into {}))]
                                    (if (seq defaults)

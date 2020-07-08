@@ -60,6 +60,10 @@
    'sequential? {:error/message {:en "should be sequential"}}
    #?@(:clj ['ratio? {:error/message {:en "should be ratio"}}])
    #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
+   :enum {:error/fn {:en (fn [{:keys [schema]} _]
+                           (->> (m/children schema)
+                                (str/join "|")
+                                (str "should be either: ")))}}
    :string {:error/fn {:en (fn [{:keys [schema]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond

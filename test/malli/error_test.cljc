@@ -280,3 +280,14 @@
                 :c "invalid"
                 :d ""})
              (me/humanize)))))
+
+(deftest enum-test
+  (is (= nil
+         (-> [:enum "foo" "bar"]
+             (m/explain "foo")
+             (me/humanize))))
+
+  (is (= ["should be either: foo|bar"]
+         (-> [:enum "foo" "bar"]
+             (m/explain "baz")
+             (me/humanize)))))

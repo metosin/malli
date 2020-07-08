@@ -84,17 +84,17 @@
     (seq children) (into [type] children)
     :else type))
 
-(defn- -distance [properties] (if (seq properties) 2 1))
+(defn -distance [properties] (if (seq properties) 2 1))
 
-(defn- -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
+(defn -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
-(defn- -chain [phase chain]
+(defn -chain [phase chain]
   (when-let [fns (->> (case phase, :enter (rseq chain), :leave chain)
                       (keep identity)
                       (seq))]
     (apply comp fns)))
 
-(defn- -leaf-schema [type ->validator-and-children]
+(defn -leaf-schema [type ->validator-and-children]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]

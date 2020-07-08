@@ -521,16 +521,22 @@
                   [:d [:map
                        [:x [int? {:default 42}]]
                        [:y int?]]]
-                  [:e int?]]]
+                  [:e int?]
+                  [:f [boolean? {:default true}]]
+                  [:g [boolean? {:default false}]]]]
 
       (is (= {:a 1
               :b [1 2 3]
-              :c {:x 42}}
+              :c {:x 42}
+              :f true
+              :g false}
              (m/encode schema nil mt/default-value-transformer)))
 
       (is (= {:a "1"
               :b ["1" "2" "3"]
-              :c {:x "42"}}
+              :c {:x "42"}
+              :f true
+              :g false}
              (m/encode schema nil (mt/transformer
                                     mt/default-value-transformer
                                     mt/string-transformer)))))))

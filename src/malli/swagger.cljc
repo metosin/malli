@@ -23,14 +23,15 @@
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
 (defn- -swagger-visitor [schema children _in options]
-  (or (json-schema/maybe-prefix schema :swagger)
-      (json-schema/maybe-prefix schema :json-schema)
-      (merge (json-schema/schema-props schema)
-             (if (satisfies? SwaggerSchema schema)
-               (-accept schema children options)
-               (accept (m/type schema) schema children options))
-             (json-schema/json-schema-props schema "json-schema")
-             (json-schema/json-schema-props schema "swagger"))))
+  (let [p (m/properties schema)]
+    (or (json-schema/unlift p :swagger)
+        (json-schema/unlift p :json-schema)
+        (merge (json-schema/select p)
+               (if (satisfies? SwaggerSchema schema)
+                 (-accept schema children options)
+                 (accept (m/type schema) schema children options))
+               (json-schema/unlift-keys p :json-schema)
+               (json-schema/unlift-keys p :swagger)))))
 
 ;;
 ;; public api

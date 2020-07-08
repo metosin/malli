@@ -258,23 +258,16 @@
     [x (rest xs)]
     [nil xs]))
 
-(defn- -expand-key [[k ?p ?v] options f]
-  (let [[p v] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])]
-    [k p (f (schema v options))]))
-
-(defn- -valid-child? [child]
-  (or (== 2 (count child))
-      (and (== 3 (count child))
-           (or (nil? (second child))
-               (map? (second child))))))
-
-(defn- -parse-map-entries [children options]
-  (when-let [children (seq (remove -valid-child? children))]
-    (fail! ::child-error {:children children}))
-  (->> children (mapv #(-expand-key % options identity))))
-
-(defn ^:no-doc -map-map-entries [f entries]
-  (mapv (comp #(update % (dec (count %)) f) vec (partial keep identity)) entries))
+(defn -parse-entry-syntax [ast options]
+  (let [-parse (fn [[k ?p ?v :as e] f expand]
+                 (let [[p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p]), s (f k p ?s)]
+                   (if expand [k p s] (->> (assoc (vec e) (dec (count e)) s) (keep identity) (vec)))))
+        children (->> ast (keep identity) (mapv #(-parse % (fn [_ _ s] (schema s options)) false)))
+        entries (->> children (mapv #(-parse % (fn [_ _ s] s) true)))
+        forms (->> children (mapv #(-parse % (fn [_ _ s] (-form s)) false)))]
+    {:children children
+     :entries entries
+     :forms forms}))
 
 (defn ^:no-doc required-map-entry? [[_ ?p]]
   (not (and (map? ?p) (true? (:optional ?p)))))
@@ -283,10 +276,9 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [closed] :as properties} children options]
-      (let [entries (-parse-map-entries children options)
-            children (-map-map-entries #(schema % options) children)
-            keyset (->> entries (map first) (set))
-            form (create-form :map properties (-map-map-entries -form children))]
+      (let [{:keys [children entries forms]} (-parse-entry-syntax children options)
+            form (create-form :map properties forms)
+            keyset (->> entries (map first) (set))]
         ^{:type ::schema}
         (reify Schema
           (-type [_] :map)
@@ -683,11 +675,10 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [children (-map-map-entries #(schema % options) children)
-            entries (-parse-map-entries children options)
+      (let [{:keys [children entries forms]} (-parse-entry-syntax children options)
+            form (create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
-            dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))
-            form (create-form :multi properties (-map-map-entries -form children))]
+            dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))]
         (when-not dispatch
           (fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}

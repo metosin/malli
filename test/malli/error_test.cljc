@@ -97,19 +97,19 @@
                   (me/humanize)))))
 
   (testing "top-level error"
-    (is (= ["should be int"]
+    (is (= ["should be an int"]
            (-> int?
                (m/explain "1")
                (me/humanize)))))
 
   (testing "vector"
-    (is (= [nil nil [nil ["should be int"]]]
+    (is (= [nil nil [nil ["should be an int"]]]
            (-> [:vector [:vector int?]]
                (m/explain [[1 2] [2 2] [3 "4"]])
                (me/humanize)))))
 
   (testing "set"
-    (is (= #{#{["should be int"]}}
+    (is (= #{#{["should be an int"]}}
            (-> [:set [:set int?]]
                (m/explain #{#{1} #{"2"}})
                (me/humanize)))))
@@ -122,7 +122,7 @@
 
   (testing "mixed bag"
     (is (= [nil
-            {:x [nil ["should be int"] ["should be int"]]}
+            {:x [nil ["should be an int"] ["should be an int"]]}
             {:x ["invalid type"]}]
            (-> [:vector [:map [:x [:vector int?]]]]
                (m/explain
@@ -132,10 +132,10 @@
                (me/humanize)))))
 
   (testing "so nested"
-    (is (= {:data [{:x [["should be int"] nil ["should be int"]]}
-                   {:x [["should be int"] nil ["should be int"]]}
+    (is (= {:data [{:x [["should be an int"] nil ["should be an int"]]}
+                   {:x [["should be an int"] nil ["should be an int"]]}
                    nil
-                   {:x [["should be int"]]}]}
+                   {:x [["should be an int"]]}]}
            (-> [:map [:data [:vector [:map [:x [:vector int?]]]]]]
                (m/explain
                  {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
@@ -170,8 +170,8 @@
                :d {:f "invalid"}}]
 
     (testing "with default locale"
-      (is (= {:a ["should be int"]
-              :b ["should be positive int"]
+      (is (= {:a ["should be an int"]
+              :b ["should be a positive int"]
               :c ["STAY POSITIVE"],
               :d {:e ["missing required key"]
                   :f ["SHOULD BE ZIP"]}}
@@ -180,7 +180,7 @@
 
     (testing "localization is applied, if available"
       (is (= {:a ["NUMERO"]
-              :b ["should be positive int"]
+              :b ["should be a positive int"]
               :c ["POSITIIVINEN"],
               :d {:e ["PUUTTUVA AVAIN"]
                   :f ["PITÄISI OLLA NUMERO"]}}
@@ -201,7 +201,7 @@
                   [:fn {:error/message "(> x y)"}
                    '(fn [{:keys [x y]}] (> x y))]]]
 
-      (is (= {:z ["should be int"], :malli/error ["(> x y)"]}
+      (is (= {:z ["should be an int"], :malli/error ["(> x y)"]}
              (-> schema
                  (m/explain {:x 1 :y 2, :z "1"})
                  (me/humanize)))))
@@ -232,7 +232,7 @@
              (-> schema
                  (m/explain [-2 1])
                  (me/humanize))))
-      (is (= [nil ["should be int"]]
+      (is (= [nil ["should be an int"]]
              (-> schema
                  (m/explain [-2 "1"])
                  (me/humanize))))
@@ -251,7 +251,7 @@
              (-> schema
                  (m/explain 0)
                  (me/humanize))))
-      (is (= ["should be int"]
+      (is (= ["should be an int"]
              (-> schema
                  (m/explain "kikka")
                  (me/humanize))))
@@ -265,7 +265,7 @@
                  (me/humanize)))))))
 
 (deftest string-test
-  (is (= {:a ["should be string"],
+  (is (= {:a ["should be a string"],
           :b ["should be at least 1 characters"],
           :c ["should be at most 4 characters"],
           :d ["should be between 1 and 4 characters"]}

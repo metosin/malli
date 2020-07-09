@@ -15,6 +15,11 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 ## UNRELEASED
 
 * ???
+  * **BREAKING:**: Visitor is implemented using a Walker.
+    * `m/accept` -> `m/walk`
+    * `m/schema-visitor` -> `m/schema-walker`
+    * `m/map-syntax-visitor` -> `m/map-syntax-walker`
+* 31.6.2020
   * **BREAKING:** new `-children` method in `Schema`, to return child schemas as instances (instead of just AST)
 * 17.6.2020
   * **BREAKING:** change all `malli.core/*-registy` defs into `malli.core/*-schemas` defns to enable DCE for clojurescript

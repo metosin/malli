@@ -629,7 +629,7 @@ Schema unions (merged values of both schemas are valid for union schema):
 Adding generated example values to Schemas:
 
 ```clj
-(m/accept
+(m/walk
   [:map
    [:name string?]
    [:description string?]
@@ -637,7 +637,7 @@ Adding generated example values to Schemas:
     [:map
      [:street string?]
      [:country [:enum "finland" "poland"]]]]]
-  (m/schema-visitor
+  (m/schema-walker
     (fn [schema]
       (mu/update-properties schema assoc :examples (mg/sample schema {:size 2, :seed 20})))))
 ;[:map
@@ -903,14 +903,14 @@ Schemas can converted into map-syntax (with keys `:type` and optionally `:proper
 
 ## Schema Transformation
 
-Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern).
+Schemas can be transformed using post-walking, e.g. the [Visitor Pattern](https://en.wikipedia.org/wiki/visitor_pattern).
 
-The identity visitor:
+The identity walker:
 
 ```clj
-(m/accept 
+(m/walk 
   Address 
-  (m/schema-visitor identity))
+  (m/schema-walker identity))
 ;[:map
 ; [:id string?]
 ; [:tags [:set keyword?]]
@@ -925,9 +925,9 @@ The identity visitor:
 Adding `:title` property to schemas:
 
 ```clj
-(m/accept
+(m/walk
   Address
-  (m/schema-visitor #(mu/update-properties % assoc :title (name (m/type %)))))
+  (m/schema-walker #(mu/update-properties % assoc :title (name (m/type %)))))
 ;[:map {:title "map"}
 ; [:id [string? {:title "string?"}]]
 ; [:tags [:set {:title "set"} [keyword? {:title "keyword?"}]]]
@@ -942,7 +942,7 @@ Adding `:title` property to schemas:
 Adding `:path` property to schemas:
 
 ```clj
-(m/accept
+(m/walk
   Address
   (fn [schema children in options]
     (m/into-schema
@@ -966,7 +966,7 @@ Adding `:path` property to schemas:
 Transforming schemas into nested maps:
 
 ```clj
-(m/accept
+(m/walk
   Address
   (fn [schema children _ _]
     (-> (m/properties schema)

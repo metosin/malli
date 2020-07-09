@@ -2,7 +2,7 @@
 
 ## Removing Schemas based on a property
 
-Schemas can be walked over recursively using `m/accept`:
+Schemas can be walked over recursively using `m/walk`:
 
 ```clj
 (require '[malli.core :as m])
@@ -15,7 +15,7 @@ Schemas can be walked over recursively using `m/accept`:
    [:nested [:map [:x [:tuple {:deleteMe true} string? string?]]]]
    [:token [string? {:deleteMe true}]]])
 
-(m/accept
+(m/walk
   Schema
   (fn [schema children _ options]
     ;; return nil if Schema has the property 

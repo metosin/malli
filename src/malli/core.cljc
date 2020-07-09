@@ -948,9 +948,9 @@
   ([?schema options]
    (-type (schema ?schema options))))
 
-(defn accept
+(defn walk
   ([?schema f]
-   (accept ?schema f nil))
+   (walk ?schema f nil))
   ([?schema f options]
    (-walk
      (schema ?schema options)
@@ -1063,14 +1063,14 @@
                                                                  'm/children children
                                                                  'm/map-entries map-entries}})))
 ;;
-;; Visitors
+;; Walkers
 ;;
 
-(defn schema-visitor [f]
+(defn schema-walker [f]
   (fn [schema children _ options]
     (f (into-schema (type schema) (properties schema) children options))))
 
-(defn ^:no-doc map-syntax-visitor [schema children _ _]
+(defn ^:no-doc map-syntax-walker [schema children _ _]
   (let [properties (properties schema)]
     (cond-> {:type (type schema)}
             (seq properties) (assoc :properties properties)
@@ -1082,7 +1082,7 @@
 
 (defn ^:no-doc to-map-syntax
   ([?schema] (to-map-syntax ?schema nil))
-  ([?schema options] (accept ?schema map-syntax-visitor options)))
+  ([?schema options] (walk ?schema map-syntax-walker options)))
 
 (defn ^:no-doc from-map-syntax
   ([m] (from-map-syntax m nil))

@@ -103,9 +103,9 @@
   ([schema]
    (closed-schema schema nil))
   ([schema options]
-   (m/accept
+   (m/walk
      schema
-     (m/schema-visitor
+     (m/schema-walker
        (fn [schema]
          (if (-open-map? schema options)
            (update-properties schema c/assoc :closed true)
@@ -117,9 +117,9 @@
   ([schema]
    (open-schema schema nil))
   ([schema options]
-   (m/accept
+   (m/walk
      schema
-     (m/schema-visitor
+     (m/schema-walker
        (fn [schema]
          (if (-open-map? schema options)
            (update-properties schema c/dissoc :closed)

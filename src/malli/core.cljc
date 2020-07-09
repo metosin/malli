@@ -547,9 +547,7 @@
                :leave (build :leave)}))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (mapv
-                                    (fn [[i s]] (-inner walker s (conj in i) options))
-                                    (map-indexed vector children)) in options)))
+              (-outer walker this (mapv (fn [[i s]] (-inner walker s (conj in i) options)) (map-indexed vector children)) in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -800,9 +798,9 @@
               {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
                :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
           (-walk [this walker in options]
-            (let [accept (fn [] (-inner walker (-ref) in (update options ::ref-accepted (fnil conj #{}) ref)))
+            (let [accept (fn [] (-inner walker (-ref) in (update options ::ref-walked (fnil conj #{}) ref)))
                   accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))
-                  options (assoc options ::ref-accept accept-ref)]
+                  options (assoc options ::ref-walk accept-ref)]
               (if (-accept walker this in options)
                 (-outer walker this (vec children) in options))))
           (-properties [_] properties)
@@ -962,9 +960,9 @@
        (-outer [_ s c in options] (f s c in options)))
      [] options)))
 
-(defn search
+(defn ^:no-doc find-first
   ([?schema f]
-   (search ?schema f nil))
+   (find-first ?schema f nil))
   ([?schema f options]
    (let [result (atom nil)]
      (-walk
@@ -1142,11 +1140,3 @@
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
                      (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (fail! ::invalid-registry.type {:type mr/type}))))
-
-(comment
-  (search
-    [:vector [:tuple [:map [:x int?] [:y [:tuple [:and int?]]] [:z [:tuple int?]] [:u [:tuple int?]]]]]
-    (fn [s in options]
-      (println "search:" s)
-      (if (= :and (type s)) s)
-      )))

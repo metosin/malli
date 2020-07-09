@@ -1159,3 +1159,17 @@
 
     (testing "from-map-syntax"
       (is (true? (mu/equals schema (-> schema (m/to-map-syntax) (m/from-map-syntax))))))))
+
+(deftest search-test
+  (is (= "turvassa"
+         (m/find-first
+           [:map
+            [:x int?]
+            [:y [:vector [:tuple
+                          [:maybe int?]
+                          [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                          [:schema {:salaisuus "vaarassa"} false?]]]]
+            [:z [:string {:salaisuus "piilossa"}]]]
+           (fn [s _in _options]
+             (some-> s m/properties :salaisuus))))))
+

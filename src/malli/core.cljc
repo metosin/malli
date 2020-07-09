@@ -968,7 +968,7 @@
      (-walk
        (schema ?schema options)
        (reify Walker
-         (-accept [_ s in options] (not (reset! result (f s in options))))
+         (-accept [_ s in options] (not (or @result (reset! result (f s in options)))))
          (-inner [this s in options] (if-not @result (-walk s this in options)))
          (-outer [_ _ _ _ _]))
        [] options)

@@ -117,7 +117,7 @@
             (-value-transformer transformer this method options))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (-children this) in options)))
+              (-outer walker this children in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -491,7 +491,7 @@
                :leave (build :leave)}))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (mapv #(-inner walker % (conj in ::in) options) children) in options)))
+              (-outer walker this [(-inner walker schema (conj in ::in) options)] in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] [schema])

@@ -70,7 +70,7 @@
    [(reify
       m/Schema
       (-properties [_])
-      (-accept [t v i o] (v t nil i o))
+      (-walk [t w i o] (m/-outer w t nil i o))
       swagger/SwaggerSchema
       (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])
 

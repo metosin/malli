@@ -955,7 +955,7 @@
    (-walk
      (schema ?schema options)
      (reify Walker
-       (-accept [_ s _in _options] s)
+       (-accept [_ s _ _] s)
        (-inner [this s in options] (-walk s this in options))
        (-outer [_ s c in options] (f s c in options)))
      [] options)))

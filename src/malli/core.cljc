@@ -174,7 +174,7 @@
                :leave (build :leave)}))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (mapv #(-inner walker % in options) (-children this)) in options)))
+              (-outer walker this (mapv #(-inner walker % in options) children) in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -446,7 +446,7 @@
     (-into-schema [_ {:keys [min max] :as properties} children options]
       (when-not (= 1 (count children))
         (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
-      (let [[schema :as children] (mapv #(schema % options) children)
+      (let [schema (schema (first children) options)
             form (create-form type properties [(-form schema)])
             collection? #(or (sequential? %) (set? %))
             fwrap (fn [x] (if (collection? x) (fwrap x) x))
@@ -491,7 +491,7 @@
                :leave (build :leave)}))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (mapv #(-inner walker % (conj in ::in) options) (-children this)) in options)))
+              (-outer walker this (mapv #(-inner walker % (conj in ::in) options) children) in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] [schema])

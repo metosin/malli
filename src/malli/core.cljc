@@ -18,6 +18,7 @@
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
   (-transformer [this transformer method options] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
   (-accept [this visitor in options] "accepts the visitor to visit schema and it's children")
+  (-walk [this walker in options] "walks the schema and it's children")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
   (-children [this] "returns schema children")
@@ -33,6 +34,12 @@
 (defprotocol RefSchema
   (-ref [this] "returns the reference name")
   (-deref [this] "returns the referenced schema"))
+
+(defprotocol Walker
+  (-apply [this schema in options])
+  (-continue [this schema in options])
+  (-inner [this schema in options])
+  (-outer [this schema children in options]))
 
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
@@ -112,6 +119,11 @@
             (-value-transformer transformer this method options))
           (-accept [this visitor in options]
             (visitor this (vec children) in options))
+          (-walk [this walker in options]
+            (let [this (-apply walker this in options)]
+              (if (-continue walker this in options)
+                (-outer walker this (-children this) in options)
+                this)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -168,6 +180,11 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this (mapv #(-accept % visitor in options) children) in options))
+          (-walk [this walker in options]
+            (let [this (-apply walker this in options)]
+              (if (-continue walker this in options)
+                (-outer walker this (mapv #(-inner walker % in options) (-children this)) in options)
+                this)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -245,6 +262,8 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this (mapv #(-accept % visitor in options) children) in options))
+          (-walk [this walker in options]
+            (-outer walker this (mapv #(-inner walker % in options) children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -356,6 +375,8 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor (conj in k) options)]) entries) in options))
+          (-walk [this walker in options]
+            (-outer walker this (mapv (fn [[k p s]] [k p (-inner walker s (conj in k) options)]) entries) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -425,6 +446,8 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this (mapv #(-accept % visitor in options) children) in options))
+          (-walk [this walker in options]
+            (-outer walker this (mapv #(-inner walker % in options) children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -436,7 +459,7 @@
     (-into-schema [_ {:keys [min max] :as properties} children options]
       (when-not (= 1 (count children))
         (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
-      (let [schema (schema (first children) options)
+      (let [[schema :as children] (mapv #(schema % options) children)
             form (create-form type properties [(-form schema)])
             collection? #(or (sequential? %) (set? %))
             fwrap (fn [x] (if (collection? x) (fwrap x) x))
@@ -481,6 +504,11 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this [(-accept schema visitor (conj in ::in) options)] in options))
+          (-walk [this walker in options]
+            (let [this (-apply walker this in options)]
+              (if (-continue walker this in options)
+                (-outer walker this (mapv #(-inner walker % (conj in ::in) options) (-children this)) in options)
+                this)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] [schema])
@@ -538,6 +566,10 @@
             (visitor this (mapv
                             (fn [[i s]] (-accept s visitor (conj in i) options))
                             (map-indexed vector children)) in options))
+          (-walk [this walker in options]
+            (-outer walker this (mapv
+                                  (fn [[i s]] (-inner walker s (conj in i) options))
+                                  (map-indexed vector children)) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -567,6 +599,8 @@
             (-value-transformer transformer this method options))
           (-accept [this visitor in options]
             (visitor this (vec children) in options))
+          (-walk [this walker in options]
+            (-outer walker this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -597,6 +631,8 @@
             (-value-transformer transformer this method options))
           (-accept [this visitor in options]
             (visitor this (vec children) in options))
+          (-walk [this walker in options]
+            (-outer walker this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -627,6 +663,8 @@
             (-value-transformer transformer this method options))
           (-accept [this visitor in options]
             (visitor this (vec children) in options))
+          (-walk [this walker in options]
+            (-outer walker this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -663,6 +701,8 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this [(-accept schema visitor in options)] in options))
+          (-walk [this walker in options]
+            (-outer walker this [(-inner walker schema in options)] in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -718,6 +758,8 @@
                :leave (build :leave)}))
           (-accept [this visitor in options]
             (visitor this (mapv (fn [[k p s]] [k p (-accept s visitor in options)]) entries) in options))
+          (-walk [this walker in options]
+            (-outer walker this (mapv (fn [[k p s]] [k p (-inner walker s in options)]) entries) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -750,6 +792,8 @@
             (-value-transformer transformer this method options))
           (-accept [this visitor in options]
             (visitor this (vec children) in options))
+          (-walk [this walker in options]
+            (-outer walker this (vec children) in options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -785,6 +829,10 @@
             (let [accept (fn [] (-accept (-ref) visitor in (update options ::ref-accepted (fnil conj #{}) ref)))
                   accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))]
               (visitor this (vec children) in (assoc options ::ref-accept accept-ref))))
+          (-walk [this walker in options]
+            (let [accept (fn [] (-inner walker (-ref) in (update options ::ref-accepted (fnil conj #{}) ref)))
+                  accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))]
+              (-outer walker this (vec children) in (assoc options ::ref-accept accept-ref))))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -816,6 +864,10 @@
               (if id
                 (visitor this [id] in options)
                 (visitor this [(-accept child visitor in options)] in options)))
+            (-walk [this walker in options]
+              (if id
+                (-outer walker this [id] in options)
+                (-outer walker this [(-inner walker child in options)] in options)))
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)
@@ -1019,10 +1071,10 @@
 
 (defn ^:no-doc eval [?code]
   (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
-                                                      :bindings {'m/properties properties
-                                                                 'm/type type
-                                                                 'm/children children
-                                                                 'm/map-entries map-entries}})))
+                                                      :bindings {'properties properties
+                                                                 'type type
+                                                                 'children children
+                                                                 'map-entries map-entries}})))
 ;;
 ;; Visitors
 ;;
@@ -1101,3 +1153,47 @@
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
                      (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (fail! ::invalid-registry.type {:type mr/type}))))
+
+(defn post-walk
+  ([?schema f]
+   (post-walk ?schema f nil))
+  ([?schema f options]
+   (-walk
+     (schema ?schema options)
+     (reify Walker
+       (-apply [_ s _in _options] s)
+       (-continue [_ s _in _options] (schema? s))
+       (-inner [this s in options] (-walk s this in options))
+       (-outer [_ s c in options] (f s c in options)))
+     [] options)))
+
+(defn pre-walk
+  ([?schema f]
+   (pre-walk ?schema f nil))
+  ([?schema f options]
+   (-walk
+     (schema ?schema options)
+     (reify Walker
+       (-apply [_ s in options] (f s (-children s) in options))
+       (-continue [_ s _in _options] (schema? s))
+       (-inner [this s in options] (-walk s this in options))
+       (-outer [_ s c _in _options] (if (every? schema? c) s (first c))))
+     [] options)))
+
+(post-walk
+  [:vector [:and int?]]
+  (fn [schema children _in _options]
+    (println "post-walk:" schema)
+    (let [properties (properties schema)]
+      (cond-> {:type (type schema)}
+              (seq properties) (assoc :properties properties)
+              (seq children) (assoc :children children)))))
+
+
+(pre-walk
+  [:and [:vector [:list [:and int?]]]]
+  (fn [schema children in options]
+    (println "pre-walk:" schema)
+    (if (not= :list (type schema))
+      schema
+      (str (-form schema)))))

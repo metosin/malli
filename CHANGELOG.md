@@ -14,7 +14,8 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## UNRELEASED
 
-* ???
+* 10.7.2020
+  * `[metosin/malli "0.0.1-20200710.075225-19"]`
   * **BREAKING:**: Visitor is implemented using a Walker.
     * `m/accept` -> `m/walk`
     * `m/schema-visitor` -> `m/schema-walker`

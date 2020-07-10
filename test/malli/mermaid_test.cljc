@@ -31,6 +31,16 @@
     (= (trim s1) (trim s2))))
 
 (deftest mermaid-test
+
+  (is (trimmed=
+        "classDiagram
+           class Schema {
+              :x :string
+           }"
+        (mm/class-diagram
+          [:map {:x 1}
+           [:x {:x 1} :string]])))
+
   (is (trimmed=
         "classDiagram
            class Burger {

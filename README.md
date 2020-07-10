@@ -537,6 +537,21 @@ Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `g
 ; [:tags [:set keyword?]]]
 ```
 
+Finding first value (prewalk):
+
+```clj
+(mu/find-first
+  [:map
+   [:x int?]
+   [:y [:vector [:tuple
+                 [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                 [:schema {:salaisuus "vaarassa"} false?]]]]
+   [:z [:string {:salaisuus "piilossa"}]]]
+  (fn [schema _ _]
+    (-> schema m/properties :salaisuus)))
+; => "turvassa"
+```
+
 Making keys optional or required:
 
 ```clj

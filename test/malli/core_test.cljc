@@ -1159,29 +1159,3 @@
 
     (testing "from-map-syntax"
       (is (true? (mu/equals schema (-> schema (m/to-map-syntax) (m/from-map-syntax))))))))
-
-(deftest find-first-test
-  (let [schema [:map
-                [:x int?]
-                [:y [:vector [:tuple
-                              [:maybe int?]
-                              [:or [:and {:salaisuus "turvassa"} boolean?] int?]
-                              [:schema {:salaisuus "vaarassa"} false?]]]]
-                [:z [:string {:salaisuus "piilossa"}]]]]
-
-    (let [walked-properties (atom [])]
-      (is (= "turvassa" (m/find-first
-                          schema
-                          (fn [s _in _options]
-                            (some->> s m/properties (swap! walked-properties conj))
-                            (some-> s m/properties :salaisuus)))))
-      (is (= [{:salaisuus "turvassa"}] @walked-properties)))
-
-    (let [walked-properties (atom [])]
-      (is (= "vaarassa" (m/find-first
-                          schema
-                          (fn [s _in _options]
-                            (some->> s m/properties (swap! walked-properties conj))
-                            (some-> s m/properties :salaisuus #{"vaarassa"})))))
-      (is (= [{:salaisuus "turvassa"}
-              {:salaisuus "vaarassa"}] @walked-properties)))))

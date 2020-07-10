@@ -1,6 +1,7 @@
 (ns malli.util-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [malli.util :as mu]))
+            [malli.util :as mu]
+            [malli.core :as m]))
 
 (deftest equals-test
   (is (true? (mu/equals int? int?)))
@@ -284,3 +285,29 @@
                    [:map [:x int?] [:y int?]]))
     (is (mu/equals (mu/required-keys schema [:x :extra nil])
                    [:map [:x int?] [:y {:optional false} int?]]))))
+
+(deftest find-first-test
+  (let [schema [:map
+                [:x int?]
+                [:y [:vector [:tuple
+                              [:maybe int?]
+                              [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                              [:schema {:salaisuus "vaarassa"} false?]]]]
+                [:z [:string {:salaisuus "piilossa"}]]]]
+
+    (let [walked-properties (atom [])]
+      (is (= "turvassa" (mu/find-first
+                          schema
+                          (fn [s _in _options]
+                            (some->> s m/properties (swap! walked-properties conj))
+                            (some-> s m/properties :salaisuus)))))
+      (is (= [{:salaisuus "turvassa"}] @walked-properties)))
+
+    (let [walked-properties (atom [])]
+      (is (= "vaarassa" (mu/find-first
+                          schema
+                          (fn [s _in _options]
+                            (some->> s m/properties (swap! walked-properties conj))
+                            (some-> s m/properties :salaisuus #{"vaarassa"})))))
+      (is (= [{:salaisuus "turvassa"}
+              {:salaisuus "vaarassa"}] @walked-properties)))))

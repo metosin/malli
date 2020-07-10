@@ -960,20 +960,6 @@
        (-outer [_ s c in options] (f s c in options)))
      [] options)))
 
-(defn ^:no-doc find-first
-  ([?schema f]
-   (find-first ?schema f nil))
-  ([?schema f options]
-   (let [result (atom nil)]
-     (-walk
-       (schema ?schema options)
-       (reify Walker
-         (-accept [_ s in options] (not (or @result (reset! result (f s in options)))))
-         (-inner [this s in options] (if-not @result (-walk s this in options)))
-         (-outer [_ _ _ _ _]))
-       [] options)
-     @result)))
-
 (defn validator
   ([?schema]
    (validator ?schema nil))

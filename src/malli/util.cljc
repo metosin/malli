@@ -29,6 +29,22 @@
 ;; public api
 ;;
 
+(defn find-first
+  "Prewalks the Schema recursively with a 3-arity fn [schema in options], returns with
+  and as soon as the function returns non-null value."
+  ([?schema f]
+   (find-first ?schema f nil))
+  ([?schema f options]
+   (let [result (atom nil)]
+     (m/-walk
+       (m/schema ?schema options)
+       (reify m/Walker
+         (-accept [_ s in options] (not (or @result (reset! result (f s in options)))))
+         (-inner [this s in options] (if-not @result (m/-walk s this in options)))
+         (-outer [_ _ _ _ _]))
+       [] options)
+     @result)))
+
 (defn merge
   "Merges two schemas into one with the following rules:
 

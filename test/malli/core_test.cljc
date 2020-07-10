@@ -65,9 +65,9 @@
   (is (form= [:map {:closed true} [:x int?]]
              (m/into-schema :map {:closed true} [[:x int?]]))))
 
-(deftest schema-visitor-test
+(deftest schema-walker-test
   (is (form= [:map {:closed true} [:x int?]]
-             (m/accept [:map {:closed true} [:x int?]] (m/schema-visitor identity)))))
+             (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity)))))
 
 (deftest validation-test
 
@@ -105,7 +105,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type 'int?}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= 'int? (m/form schema)))))
 
@@ -143,7 +143,7 @@
                          {:type :or
                           :children [{:type 'pos-int?}
                                      {:type 'neg-int?}]}]}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
 
@@ -223,7 +223,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type :>, :children [0]}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -250,7 +250,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type :enum, :children [1 2]}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:enum 1 2] (m/form schema)))))
 
@@ -275,7 +275,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type :maybe, :children [{:type 'int?}]}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
@@ -307,7 +307,7 @@
       (is (true? (m/validate (over-the-wire schema) "123")))
 
       (is (= {:type :string, :properties {:min 1, :max 4}}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:string {:min 1, :max 4}] (m/form schema)))))
 
@@ -345,7 +345,7 @@
         (is (= {:type :schema
                 :properties {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 :children [{:type :malli.core/schema, :children [::cons]}]}
-               (m/accept ConsCell m/map-syntax-visitor)))
+               (m/walk ConsCell m/map-syntax-walker)))
 
         (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 ::cons]
@@ -423,7 +423,7 @@
               :properties {:registry {::a ::b
                                       ::b ::c
                                       ::c [:schema 'pos-int?]}}}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:and
               {:registry {::a ::b
@@ -455,7 +455,7 @@
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
         (is (= {:type :re, :children [re]}
-               (m/accept schema m/map-syntax-visitor)))
+               (m/walk schema m/map-syntax-walker)))
 
         (is (= form (m/form schema))))))
 
@@ -482,7 +482,7 @@
         (is (= {:type :fn
                 :children [fn]
                 :properties {:description "number between 10 and 18"}}
-               (m/accept schema m/map-syntax-visitor)))
+               (m/walk schema m/map-syntax-walker)))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
@@ -585,7 +585,7 @@
               :children [[:x nil {:type 'boolean?}]
                          [:y {:optional true} {:type 'int?}]
                          [:z {:optional false} {:type 'string?}]]}
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (= [:map
               [:x 'boolean?]
@@ -688,7 +688,7 @@
                                                                 :children [[:country nil {:type 'keyword?}]]}]]}]]}
 
 
-             (m/accept schema m/map-syntax-visitor)))
+             (m/walk schema m/map-syntax-walker)))
 
       (is (entries= [[:sized nil [:map [:type keyword?] [:size int?]]]
                      [:human nil [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
@@ -739,7 +739,7 @@
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
     (is (= {:type :map-of, :children [{:type 'int?} {:type 'pos-int?}]}
-           (m/accept [:map-of int? pos-int?] m/map-syntax-visitor)))
+           (m/walk [:map-of int? pos-int?] m/map-syntax-walker)))
 
     (testing "keyword keys are transformed via strings"
       (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} mt/string-transformer)))))
@@ -1013,9 +1013,9 @@
     (testing "visit"
       (doseq [name [:vector :list :sequential :set]]
         (is (= {:type name, :children [{:type 'int?}]}
-               (m/accept [name int?] m/map-syntax-visitor))))
+               (m/walk [name int?] m/map-syntax-walker))))
       (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
-             (m/accept [:tuple int? int?] m/map-syntax-visitor))))))
+             (m/walk [:tuple int? int?] m/map-syntax-walker))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]
@@ -1101,7 +1101,7 @@
   (doseq [value [[1 2 3] '(1 2 3)]]
     (is (= true (m/validate [sequential int?] value)))))
 
-(deftest visitor-in-test
+(deftest walker-in-test
   (is (form= [:map {:in []}
               [:id [string? {:in [:id]}]]
               [:tags [:set {:in [:tags]} [keyword? {:in [:tags :malli.core/in]}]]]
@@ -1114,7 +1114,7 @@
                    [:tuple {:in [:address :malli.core/in :lonlat]}
                     [double? {:in [:address :malli.core/in :lonlat 0]}]
                     [double? {:in [:address :malli.core/in :lonlat 1]}]]]]]]]]
-             (m/accept
+             (m/walk
                [:map
                 [:id string?]
                 [:tags [:set keyword?]]

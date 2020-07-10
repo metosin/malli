@@ -6,7 +6,7 @@
 
 (defn collect [schema]
   (let [state (atom {})]
-    (m/accept
+    (m/walk
       schema
       (fn [schema _ _ _]
         (let [properties (m/properties schema)]
@@ -22,7 +22,7 @@
   (let [registry* (atom registry)]
     (doseq [[k v] registry]
       (swap! registry* assoc k
-             (m/accept v (fn [schema children in _]
+             (m/walk v (fn [schema children in _]
                            (let [options (update (m/options schema) :registry (partial mr/composite-registry @registry*))
                                  schema (m/into-schema (m/type schema) (m/properties schema) children options)]
                              (if (and (seq in) (= :map (m/type schema)))
@@ -35,7 +35,7 @@
 (defn get-links [registry]
   (let [links (atom {})]
     (doseq [[from schema] registry]
-      (m/accept
+      (m/walk
         schema
         (fn [schema _ _ _]
           (when-let [to (if (satisfies? m/RefSchema schema) (m/-ref schema))]

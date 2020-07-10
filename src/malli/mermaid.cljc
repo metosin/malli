@@ -4,6 +4,10 @@
             [malli.registry :as mr]
             [clojure.string :as str]))
 
+;; TODO: need an unique name
+(defn pre-process [schema]
+  (if (m/map-entries schema) [:and {:registry {"Schema" schema}} schema] schema))
+
 (defn collect [schema]
   (let [state (atom {})]
     (m/walk
@@ -45,7 +49,7 @@
 (defn class-diagram
   ([?schema] (class-diagram ?schema nil))
   ([?schema options]
-   (let [registry (-> ?schema (m/schema options) collect normalize :registry)
+   (let [registry (-> ?schema (m/schema options) pre-process collect normalize :registry)
          links (get-links registry)]
      (with-out-str
        (println "classDiagram")

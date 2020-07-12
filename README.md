@@ -537,21 +537,6 @@ Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `g
 ; [:tags [:set keyword?]]]
 ```
 
-Finding first value (prewalk):
-
-```clj
-(mu/find-first
-  [:map
-   [:x int?]
-   [:y [:vector [:tuple
-                 [:or [:and {:salaisuus "turvassa"} boolean?] int?]
-                 [:schema {:salaisuus "vaarassa"} false?]]]]
-   [:z [:string {:salaisuus "piilossa"}]]]
-  (fn [schema _ _]
-    (-> schema m/properties :salaisuus)))
-; => "turvassa"
-```
-
 Making keys optional or required:
 
 ```clj
@@ -665,6 +650,21 @@ Adding generated example values to Schemas:
 ;   {:examples ({:street "", :country "finland"} {:street "W", :country "poland"})}
 ;   [:street [string? {:examples ("" "")}]]
 ;   [:country [:enum {:examples ("finland" "poland")} "finland" "poland"]]]]]
+```
+
+Finding first value (prewalk):
+
+```clj
+(mu/find-first
+  [:map
+   [:x int?]
+   [:y [:vector [:tuple
+                 [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                 [:schema {:salaisuus "vaarassa"} false?]]]]
+   [:z [:string {:salaisuus "piilossa"}]]]
+  (fn [schema _ _]
+    (-> schema m/properties :salaisuus)))
+; => "turvassa"
 ```
 
 ## Persisting Schemas 
@@ -954,31 +954,7 @@ Adding `:title` property to schemas:
 ;   [:lonlat [:tuple {:title "tuple"} [double? {:title "double?"}] [double? {:title "double?"}]]]]]]
 ```
 
-Adding `:path` property to schemas:
-
-```clj
-(m/walk
-  Address
-  (fn [schema children in options]
-    (m/into-schema
-      (m/type schema)
-      (cond-> (m/properties schema) (seq in) (assoc :path in))
-      children options)))
-;[:map [:id [string? {:path [:id]}]]
-; [:tags [:set {:path [:tags]}
-;         [keyword? {:path [:tags :malli.core/in]}]]]
-; [:address
-;  [:map {:path [:address]}
-;   [:street [string? {:path [:address :street]}]]
-;   [:city [string? {:path [:address :city]}]]
-;   [:zip [int? {:path [:address :zip]}]]
-;   [:lonlat
-;    [:tuple {:path [:address :lonlat]}
-;     [double? {:path [:address :lonlat 0]}]
-;     [double? {:path [:address :lonlat 1]}]]]]]]
-```
-
-Transforming schemas into nested maps:
+Transforming schemas into maps:
 
 ```clj
 (m/walk

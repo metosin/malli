@@ -1403,7 +1403,7 @@ Transforming Schmas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph
 
 Visualized with [Graphviz](https://graphviz.org/):
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png" width=130 align="right"/>
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
 
 ## Entities and Values
 

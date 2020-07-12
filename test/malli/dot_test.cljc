@@ -37,7 +37,7 @@
            node [shape=\"record\", style=\"filled\", color=\"#000000\"]
            edge [dir=\"back\", arrowtail=\"none\"]
 
-           \":malli.dot/schema\" [label=\"{:malli.dot/schema|[:enum \\{:title enum\\}  S M L]\\l}\", fillcolor=\"#fff0cd\"]
+           \":malli.dot/schema\" [label=\"{:malli.dot/schema|[:enum \\{:title \\\"enum\\\"\\}  \\\"S\\\" \\\"M\\\" \\\"L\\\"]\\l}\", fillcolor=\"#fff0cd\"]
          }"
         (md/transform
           [:enum {:title "enum"} "S" "M" "L"])))
@@ -58,9 +58,9 @@
            node [shape=\"record\", style=\"filled\", color=\"#000000\"]
            edge [dir=\"back\", arrowtail=\"none\"]
 
-           \"Burger\" [label=\"{Burger|:name string?\\l:description string?\\l:origin [:maybe Country]\\l:price pos-int?\\l}\", fillcolor=\"#fff0cd\"]
-           \"Country\" [label=\"{Country|:name [:enum :FI :PO]\\l:neighbors [:vector [:ref Country]]\\l}\", fillcolor=\"#fff0cd\"]
-           \"Order\" [label=\"{Order|:lines [:vector OrderLine]\\l:delivery Order$Delivery\\l}\", fillcolor=\"#fff0cd\"]
+           \"Burger\" [label=\"{Burger|:name string?\\l:description string?\\l:origin [:maybe \\\"Country\\\"]\\l:price pos-int?\\l}\", fillcolor=\"#fff0cd\"]
+           \"Country\" [label=\"{Country|:name [:enum :FI :PO]\\l:neighbors [:vector [:ref \\\"Country\\\"]]\\l}\", fillcolor=\"#fff0cd\"]
+           \"Order\" [label=\"{Order|:lines [:vector \\\"OrderLine\\\"]\\l:delivery Order$Delivery\\l}\", fillcolor=\"#fff0cd\"]
            \"Order$Delivery\" [label=\"{Order$Delivery|:delivered boolean?\\l:address Order$Delivery$Address\\l}\", fillcolor=\"#e6caab\"]
            \"Order$Delivery$Address\" [label=\"{Order$Delivery$Address|:street string?\\l:zip int?\\l:country Country\\l}\", fillcolor=\"#e6caab\"]
            \"OrderLine\" [label=\"{OrderLine|:burger Burger\\l:amount int?\\l}\", fillcolor=\"#fff0cd\"]

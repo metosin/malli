@@ -45,10 +45,10 @@
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        [continue options'] (-recur schema options)
+        [continue options] (-recur schema options)
         child (-> schema m/children first)
         gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
-              (generator child options'))]
+              (generator child options))]
     (gen/fmap f (cond
                   (not gen) (gen/vector gen/any 0 0)
                   (and min (= min max)) (gen/vector gen min)
@@ -59,10 +59,10 @@
 
 (defn- -coll-distict-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        [continue options'] (-recur schema options)
+        [continue options] (-recur schema options)
         child (-> schema m/children first)
         gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
-              (generator child options'))]
+              (generator child options))]
     (gen/fmap f (if gen
                   (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
                   (gen/vector gen/any 0 0)))))
@@ -75,8 +75,8 @@
 
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
-        [continue options'] (-recur schema options)
-        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options')))
+        [continue options] (-recur schema options)
+        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options)))
         gen-req (->> entries
                      (remove #(-> % second :optional))
                      (map (fn [[k _ s]] (value-gen k s)))
@@ -123,8 +123,8 @@
 (defmethod -schema-generator :enum [schema options] (gen/elements (m/children schema options)))
 
 (defmethod -schema-generator :maybe [schema options]
-  (let [[continue options'] (-recur schema options)]
-    (gen/one-of (into [(gen/return nil)] (if continue [(-> schema (m/children options') first (generator options'))])))))
+  (let [[continue options] (-recur schema options)]
+    (gen/one-of (into [(gen/return nil)] (if continue [(-> schema (m/children options) first (generator options))])))))
 
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))

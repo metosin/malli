@@ -272,7 +272,10 @@
                    (if expand [k p s] (->> (assoc (vec e) (dec (count e)) s) (keep identity) (vec)))))
         children (->> ast (keep identity) (mapv #(-parse % (fn [_ _ s] (schema s options)) false)))
         entries (->> children (mapv #(-parse % (fn [_ _ s] s) true)))
-        forms (->> children (mapv #(-parse % (fn [_ _ s] (-form s)) false)))]
+        forms (->> children (mapv #(-parse % (fn [_ _ s] (-form s)) false)))
+        keys (->> children (map first))]
+    (when-not (= keys (distinct keys))
+      (fail! ::non-distinct-entry-keys {:keys keys}))
     {:children children
      :entries entries
      :forms forms}))

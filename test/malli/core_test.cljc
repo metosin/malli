@@ -47,7 +47,11 @@
                     entries)))
     (testing "children"
       (is (= [2 3]
-             (map count children))))))
+             (map count children)))))
+  (is (thrown? #?(:clj Exception, :cljs js/Error)
+               (m/-parse-entry-syntax
+                 [[:x int?]
+                  [:x boolean?]] nil))))
 
 (deftest eval-test
   (is (= 2 ((m/eval inc) 1)))

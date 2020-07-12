@@ -7,16 +7,16 @@ Plain data Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schemas as plain data
-- Schema-driven [Validation](#examples)
-- Schema-driven [Value Transformation](#value-transformation)
+- [Validation](#examples) and [Value Transformation](#value-transformation)
+- First class [Error Messages](#error-messages) witg [Spell Checking](#spell-checking)
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
-- Tools for [programming with Schemas](#programming-with-schemas)
-- First class [error-messages](#error-messages) and [spell checking](#spell-checking)
+- Tools for [Programming with Schemas](#programming-with-schemas)
+- [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
+- Immutable, Mutable, Dynamic and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
- - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
-- Immutable, Mutable, Dynamic and Local [Schema Registries](#schema-registry)
+- [Visualizing Schemas](#visualizing-schemas) with DOT
 - [Fast](#performance)
 
 Presentations:
@@ -1350,6 +1350,60 @@ Registries can be composed:
     {:maybe "sheep"}))
 ; => true
 ```
+
+## Visualizing Schemas
+
+Transforming Schmas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
+
+```clj
+(require '[malli.dot :as md])
+
+(md/transform
+  [:schema
+   {:registry {"Country" [:map
+                          [:name [:enum :FI :PO]]
+                          [:neighbors [:vector [:ref "Country"]]]]
+               "Burger" [:map
+                         [:name string?]
+                         [:description {:optional true} string?]
+                         [:origin [:maybe "Country"]]
+                         [:price pos-int?]]
+               "OrderLine" [:map
+                            [:burger "Burger"]
+                            [:amount int?]]
+               "Order" [:map
+                        [:lines [:vector "OrderLine"]]
+                        [:delivery [:map
+                                    [:delivered boolean?]
+                                    [:address [:map
+                                               [:street string?]
+                                               [:zip int?]
+                                               [:country "Country"]]]]]]}}
+   "Order"])
+; digraph {
+;   node [shape="record", style="filled", color="#000000"]
+;   edge [dir="back", arrowtail="none"]
+;  
+;   "Burger" [label="{Burger|:name string?\l:description string?\l:origin [:maybe \"Country\"]\l:price pos-int?\l}", fillcolor="#fff0cd"]
+;   "Country" [label="{Country|:name [:enum :FI :PO]\l:neighbors [:vector [:ref \"Country\"]]\l}", fillcolor="#fff0cd"]
+;   "Order" [label="{Order|:lines [:vector \"OrderLine\"]\l:delivery Order$Delivery\l}", fillcolor="#fff0cd"]
+;   "Order$Delivery" [label="{Order$Delivery|:delivered boolean?\l:address Order$Delivery$Address\l}", fillcolor="#e6caab"]
+;   "Order$Delivery$Address" [label="{Order$Delivery$Address|:street string?\l:zip int?\l:country Country\l}", fillcolor="#e6caab"]
+;   "OrderLine" [label="{OrderLine|:burger Burger\l:amount int?\l}", fillcolor="#fff0cd"]
+;  
+;   "Burger" -> "Country" [arrowtail="odiamond"]
+;   "Country" -> "Country" [arrowtail="odiamond"]
+;   "Order" -> "OrderLine" [arrowtail="odiamond"]
+;   "Order" -> "Order$Delivery" [arrowtail="diamond"]
+;   "Order$Delivery" -> "Order$Delivery$Address" [arrowtail="diamond"]
+;   "Order$Delivery$Address" -> "Country" [arrowtail="odiamond"]
+;   "OrderLine" -> "Burger" [arrowtail="odiamond"]
+; }
+```
+
+Visualized with [Graphviz](https://graphviz.org/):
+
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png" width=130 align="right"/>
 
 ## Entities and Values
 

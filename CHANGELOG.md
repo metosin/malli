@@ -14,6 +14,8 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## UNRELEASED
 
+* 12.7.2020
+  * **BREAKING:**: `malli.mermaid` is removed (in favor of `malli.dot`)  
 * 10.7.2020
   * `[metosin/malli "0.0.1-20200710.075225-19"]`
   * **BREAKING:**: Visitor is implemented using a Walker.

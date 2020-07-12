@@ -1353,7 +1353,7 @@ Registries can be composed:
 
 ## Visualizing Schemas
 
-Using the [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)).
+Transforming Schmas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
 
 ```clj
 (require '[malli.dot :as md])
@@ -1400,6 +1400,8 @@ Using the [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_la
 ;   "OrderLine" -> "Burger" [arrowtail="odiamond"]
 ; }
 ```
+
+Visualized with [Graphviz](https://graphviz.org/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png" width=130 align="right"/>
 

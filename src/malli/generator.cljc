@@ -14,11 +14,14 @@
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
-(defn -recursion-options [schema {::keys [recursion-limit] :or {recursion-limit 4} :as options}]
+(defn -recur [schema {::keys [recursion-limit] :or {recursion-limit 4} :as options}]
   (let [form (m/form schema)
         i (get-in options [::recursion form] 0)]
-    (if (<= i recursion-limit)
-      (assoc-in options [::recursion form] (inc i)))))
+    [(<= i recursion-limit) (assoc-in options [::recursion form] (inc i))]))
+
+(defn -maybe-recur [schema options]
+  (let [[recur options] (-recur schema options)]
+    (if recur options)))
 
 (defn -min-max [schema options]
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
@@ -42,9 +45,9 @@
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        options' (-recursion-options schema options)
+        [continue options'] (-recur schema options)
         child (-> schema m/children first)
-        gen (if-not (and (= :ref (m/type child)) (not options') (<= (or min 0) 0))
+        gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
               (generator child options'))]
     (gen/fmap f (cond
                   (not gen) (gen/vector gen/any 0 0)
@@ -56,23 +59,23 @@
 
 (defn- -coll-distict-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        options' (-recursion-options schema options)
+        [continue options'] (-recur schema options)
         child (-> schema m/children first)
-        gen (if-not (and (= :ref (m/type child)) (not options') (<= (or min 0) 0))
+        gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
               (generator child options'))]
     (gen/fmap f (if gen
                   (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
                   (gen/vector gen/any 0 0)))))
 
 (defn -or-gen [schema options]
-  (gen/one-of (keep #(some->> (-recursion-options % options) (generator %)) (m/children schema options))))
+  (gen/one-of (keep #(some->> (-maybe-recur % options) (generator %)) (m/children schema options))))
 
 (defn -multi-gen [schema options]
-  (gen/one-of (keep #(some->> (-recursion-options (last %) options) (generator (last %))) (m/map-entries schema options))))
+  (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/map-entries schema options))))
 
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
-        options' (-recursion-options schema options)
+        [continue options'] (-recur schema options)
         value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options')))
         gen-req (->> entries
                      (remove #(-> % second :optional))
@@ -80,7 +83,7 @@
                      (apply gen/tuple))
         gen-opt (->> entries
                      (filter #(-> % second :optional))
-                     (map (fn [[k _ s]] (gen/one-of (into [(gen/return nil)] (if options' [(value-gen k s)])))))
+                     (map (fn [[k _ s]] (gen/one-of (into [(gen/return nil)] (if continue [(value-gen k s)])))))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
@@ -120,8 +123,8 @@
 (defmethod -schema-generator :enum [schema options] (gen/elements (m/children schema options)))
 
 (defmethod -schema-generator :maybe [schema options]
-  (let [options' (-recursion-options schema options)]
-    (gen/one-of (into [(gen/return nil)] (if options' [(-> schema (m/children options') first (generator options'))])))))
+  (let [[continue options'] (-recur schema options)]
+    (gen/one-of (into [(gen/return nil)] (if continue [(-> schema (m/children options') first (generator options'))])))))
 
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))

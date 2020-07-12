@@ -57,7 +57,7 @@
    (let [registry (-> ?schema (m/schema options) -lift -collect -normalize :registry)
          entity? #(->> % (get registry) m/properties ::entity)
          props #(str "[" (str/join ", " (map (fn [[k v]] (str (name k) "=" (if (fn? v) (v) (pr-str v)))) %)) "]")
-         esc #(str/escape (str %) {\> ">", \{ "\\{", \} "\\}", \< "<", \" "\\\""})
+         esc #(str/escape (str %) {\> ">", \{ "\\{", \} "\\}", \< "<", \" ""})
          sorted #(sort-by (comp str first) %)
          wrap #(str "\"" % "\"")
          label (fn [k v] (str "\"{" k "|"

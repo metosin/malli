@@ -832,7 +832,17 @@
             (-type [_] type)
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
-            (-transformer [_ transformer method options] (-transformer child transformer method options))
+            (-transformer [this transformer method options]
+              (let [this-transformer (-value-transformer transformer this method options)
+                    child-transformer (-transformer child transformer method options)
+                    build (fn [phase]
+                            (let [->this (phase this-transformer)
+                                  ->child (phase child-transformer)]
+                              (if (and ->this ->child)
+                                (comp ->child ->this)
+                                (or ->this ->child))))]
+                {:enter (build :enter)
+                 :leave (build :leave)}))
             (-walk [this walker in options]
               (if (-accept walker this in options)
                 (if id

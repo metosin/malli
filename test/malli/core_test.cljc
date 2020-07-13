@@ -390,7 +390,12 @@
     (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
             ::cons]
            (m/form [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
-                    [::m/schema ::cons]]))))
+                    [::m/schema ::cons]])))
+
+    (is (= "$kikka"
+           (m/decode
+             [:schema {:decode/custom (partial str "$")} string?] "kikka"
+             (mt/transformer {:name :custom})))))
 
   (testing "schema schemas"
     (let [schema [:and
@@ -413,6 +418,11 @@
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= "$kikka"
+             (m/decode
+               [:schema {:decode/custom (partial str "$")} string?] "kikka"
+               (mt/transformer {:name :custom}))))
 
       (testing "deref"
         (is (mu/equals (m/schema int?) (m/-deref (m/schema [:schema int?])))))

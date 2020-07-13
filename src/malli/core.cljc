@@ -1056,8 +1056,8 @@
 ;;
 
 (defn schema-walker [f]
-  (fn [schema children _ options]
-    (f (into-schema (type schema) (properties schema) children options))))
+  (fn [schema children _ _]
+    (f (into-schema (-type schema) (-properties schema) children (-options schema)))))
 
 (defn ^:no-doc map-syntax-walker [schema children _ _]
   (let [properties (properties schema)]

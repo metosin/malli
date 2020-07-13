@@ -71,7 +71,10 @@
 
 (deftest schema-walker-test
   (is (form= [:map {:closed true} [:x int?]]
-             (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity)))))
+             (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity))))
+  (is (form= [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
+             (m/walk [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
+                     (m/schema-walker identity)))))
 
 (deftest validation-test
 

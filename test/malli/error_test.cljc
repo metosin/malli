@@ -287,7 +287,7 @@
              (m/explain "foo")
              (me/humanize))))
 
-  (is (= ["should be either: foo|bar"]
-         (-> [:enum "foo" "bar"]
+  (is (= ["should be either foo, bar or buzz"]
+         (-> [:enum "foo" "bar" "buzz"]
              (m/explain "baz")
              (me/humanize)))))

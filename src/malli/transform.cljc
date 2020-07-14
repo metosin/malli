@@ -303,16 +303,16 @@
         :encoders {:map transform}}))))
 
 (defn key-transformer [{:keys [decode encode]}]
-  (let [transform (fn [f]
-                    (if f {:leave (fn [x]
+  (let [transform (fn [f stage]
+                    (if f {stage (fn [x]
                                     (if (map? x)
                                       (reduce-kv
                                         (fn [m k v] (assoc m (f k) v))
                                         (empty x) x)
                                       x))}))]
     (transformer
-      {:decoders {:map (transform decode)}
-       :encoders {:map (transform encode)}})))
+      {:decoders {:map (transform decode :enter)}
+       :encoders {:map (transform encode :leave)}})))
 
 (defn default-value-transformer []
   (let [get-default (fn [schema] (some-> schema m/properties :default))

@@ -232,19 +232,19 @@
       (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))))
 
   (let [transformer (mt/transformer
-                      mt/string-transformer
-                      mt/strip-extra-keys-transformer
                       (mt/key-transformer
-                        {:decode #(-> % name (str "_key") keyword)
-                         :encode #(-> % name (str "_key"))}))]
+                        {:decode #(-> % (subs 4) keyword)
+                         :encode #(->> % name (str "key_"))})
+                      (mt/string-transformer)
+                      (mt/strip-extra-keys-transformer))]
     (testing "decode"
-      (is (= {:x_key 18 :y_key "john"}
+      (is (= {:x 18 :y "john"}
              (m/decode
                [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
-               {:x "18" :y "john" :a "doe"}
+               {"key_x" "18" "key_y" "john" "key_a" "doe"}
                transformer))))
     (testing "encode"
-      (is (= {"x_key" "18" "y_key" "john"}
+      (is (= {"key_x" "18" "key_y" "john"}
              (m/encode
                [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                {:x 18 :y "john" :a "doe"}
@@ -283,7 +283,20 @@
       (is (= {"x_key" 18 "y_key" "john" "a_key" "doe"}
              (m/encode [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
                        {:x 18 :y "john" :a "doe"}
-                       key-transformer))))))
+                       key-transformer)))))
+
+  (testing "from strings and back"
+    (let [schema [:map
+                  [:id :string]
+                  [:github-followers pos-int?]]
+          transformer (mt/transformer
+                        (mt/key-transformer {:decode keyword, :encode name})
+                        (mt/string-transformer))
+          value {"id" "123", "github-followers" "10"}]
+      (is (= {:id "123", :github-followers 10}
+             (as-> value $ (m/decode schema $ transformer))))
+      (is (= value
+             (as-> value $ (m/decode schema $ transformer) (m/encode schema $ transformer)))))))
 
 (deftest interceptor-style-transformers
   (testing "map"

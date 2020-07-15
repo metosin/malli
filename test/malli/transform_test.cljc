@@ -552,4 +552,8 @@
               :g false}
              (m/encode schema nil (mt/transformer
                                     mt/default-value-transformer
-                                    mt/string-transformer)))))))
+                                    mt/string-transformer))))))
+
+  (testing "default false"
+    (is (= {:user/verified false} (m/decode [:map [:user/verified [:and {:default false} boolean?]]] {} mt/default-value-transformer)))
+    (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer)))))

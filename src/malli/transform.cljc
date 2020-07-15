@@ -317,7 +317,7 @@
 (defn default-value-transformer []
   (let [get-default (fn [schema] (some-> schema m/properties :default))
         set-default {:compile (fn [schema _]
-                                (if-let [default (get-default schema)]
+                                (if-some [default (get-default schema)]
                                   (fn [x] (if (nil? x) default x))))}
         add-defaults {:compile (fn [schema _]
                                  (let [entries (m/map-entries schema)

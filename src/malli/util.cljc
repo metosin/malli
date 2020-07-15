@@ -141,6 +141,19 @@
            (update-properties schema c/dissoc :closed)
            schema))))))
 
+(defn path-schemas
+  "Return a ordered map from value path -> schema"
+  [schema]
+  (let [state (atom {:m {}, :v []})]
+    (find-first
+      schema
+      (fn [s i _]
+        (swap! state #(cond-> % (not (c/get-in % [:m i]))
+                              (-> (c/update :m c/assoc i s)
+                                  (c/update :v into [i s]))))
+        nil))
+    (->> @state :v (apply array-map))))
+
 ;;
 ;; MapSchemas
 ;;

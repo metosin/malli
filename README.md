@@ -667,6 +667,42 @@ Finding first value (prewalk):
 ; => "turvassa"
 ```
 
+Finding (sub)schemas for paths, retaining order:
+
+```clj
+(mu/path-schemas
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:and
+     [:map
+      [:street {:optional true} string?]
+      [:lonlat {:optional true} [:tuple double? double?]]]
+     [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]])
+;{[] [:map
+;     [:id string?]
+;     [:tags [:set keyword?]]
+;     [:address
+;      [:and
+;       [:map 
+;        [:street {:optional true} string?] 
+;        [:lonlat {:optional true} [:tuple double? double?]]]
+;       [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]
+; [:id] string?
+; [:tags] [:set keyword?]
+; [:tags :malli.core/in] keyword?
+; [:address] [:and
+;             [:map 
+;              [:street {:optional true} string?] 
+;              [:lonlat {:optional true} [:tuple double? double?]]]
+;             [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]
+; [:address :street] string?
+; [:address :lonlat] [:tuple double? double?]
+; [:address :lonlat 0] double?
+; [:address :lonlat 1] double?}
+```
+
 ## Persisting Schemas 
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.

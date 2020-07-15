@@ -311,3 +311,53 @@
                             (some-> s m/properties :salaisuus #{"vaarassa"})))))
       (is (= [{:salaisuus "turvassa"}
               {:salaisuus "vaarassa"}] @walked-properties)))))
+
+(deftest path-schema-test
+  (let [schema [:and
+                [:map
+                 [:a int?]
+                 [:b [:set boolean?]]
+                 [:c [:vector
+                      [:and
+                       [:fn '(constantly true)]
+                       [:map
+                        [:d string?]]]]]]
+                [:fn '(constantly true)]]]
+
+    (testing "retains original order"
+      (= [[]
+          [:a]
+          [:b]
+          [:b :malli.core/in]
+          [:c]
+          [:c :malli.core/in]
+          [:c :malli.core/in :d]]
+         (keys (mu/path-schemas schema))))
+
+    (testing "path-schemas are correct"
+      (is (= (->> {[] [:and
+                       [:map
+                        [:a int?]
+                        [:b [:set boolean?]]
+                        [:c [:vector
+                             [:and
+                              [:fn '(constantly true)]
+                              [:map
+                               [:d string?]]]]]]
+                       [:fn '(constantly true)]]
+                   [:a] int?
+                   [:b] [:set boolean?]
+                   [:b :malli.core/in] boolean?
+                   [:c] [:vector
+                         [:and
+                          [:fn '(constantly true)]
+                          [:map
+                           [:d string?]]]]
+                   [:c :malli.core/in] [:and
+                                        [:fn '(constantly true)]
+                                        [:map
+                                         [:d string?]]]
+                   [:c :malli.core/in :d] string?}
+                  (map (fn [[k v]] [k (m/form v)])))
+             (->> (mu/path-schemas schema)
+                  (map (fn [[k v]] [k (m/form v)]))))))))

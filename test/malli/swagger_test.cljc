@@ -77,6 +77,7 @@
 (deftest swagger-test
   (doseq [[schema swagger-schema] expectations]
     (is (= swagger-schema (swagger/transform schema))))
+
   (testing "full override"
     (is (= {:type "file"}
            (swagger/transform
@@ -88,6 +89,23 @@
            (swagger/transform
              [:map {:swagger {:type "file"}
                     :json-schema {:type "file2"}} [:file any?]]))))
+
+  (testing "map-entry overrides"
+    (is (= {:type "object",
+            :properties {:x1 {:title "x", :type "string"},
+                         :x2 {:title "x"},
+                         :x3 {:title "x", :type "string", :default "x"},
+                         :x4 {:title "x-string", :default "x2"},
+                         :x5 {:type "x-string"}},
+            :required [:x1 :x2 :x3 :x4 :x5]}
+           (swagger/transform
+             [:map
+              [:x1 {:swagger/title "x"} :string]
+              [:x2 {:swagger {:title "x"}} [:string {:swagger/default "x"}]]
+              [:x3 {:swagger/title "x"} [:string {:swagger/default "x"}]]
+              [:x4 {:swagger/title "x-string"} [:string {:swagger {:default "x2"}}]]
+              [:x5 {:swagger {:type "x-string"}} [:string {:swagger {:default "x"}}]]]))))
+
   (testing "with properties"
     (is (= {:title "age"
             :type "integer"

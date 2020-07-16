@@ -41,4 +41,4 @@
   ([?schema]
    (transform ?schema nil))
   ([?schema options]
-   (m/walk ?schema -swagger-walker options)))
+   (m/walk ?schema -swagger-walker (assoc options ::m/walk-map-entries true))))

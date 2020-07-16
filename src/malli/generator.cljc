@@ -76,14 +76,14 @@
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
         [continue options] (-recur schema options)
-        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options)))
+        value-gen (fn [k p s] (gen/fmap (fn [v] [k v]) (generator (m/-entry-schema s p) options)))
         gen-req (->> entries
                      (remove #(-> % second :optional))
-                     (map (fn [[k _ s]] (value-gen k s)))
+                     (map (fn [[k p s]] (value-gen k p s)))
                      (apply gen/tuple))
         gen-opt (->> entries
                      (filter #(-> % second :optional))
-                     (map (fn [[k _ s]] (gen/one-of (into [(gen/return nil)] (if continue [(value-gen k s)])))))
+                     (map (fn [[k p s]] (gen/one-of (into [(gen/return nil)] (if continue [(value-gen k p s)])))))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
@@ -117,6 +117,7 @@
 
 (defmethod -schema-generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))
+(defmethod -schema-generator ::m/entry [schema options] (generator (first (m/children schema)) options))
 (defmethod -schema-generator :map [schema options] (-map-gen schema options))
 (defmethod -schema-generator :map-of [schema options] (-map-of-gen schema options))
 (defmethod -schema-generator :multi [schema options] (-multi-gen schema options))

@@ -564,8 +564,31 @@
                                         :children [{:type :map,
                                                     :children [[:street nil {:type 'string?}]
                                                                [:lonlat nil {:type :tuple
-                                                                             :children [{:type 'double?} {:type 'double?}]}]]}]}]]}
+                                                                             :children [{:type 'double?}
+                                                                                        {:type 'double?}]}]]}]}]]}
              (mu/to-map-syntax schema))))
 
     (testing "from-map-syntax"
-      (is (true? (mu/equals schema (-> schema (mu/to-map-syntax) (mu/from-map-syntax))))))))
+      (is (true? (mu/equals schema (-> schema (mu/to-map-syntax) (mu/from-map-syntax))))))
+
+    (testing "walking entries"
+      (is (= {:type :map,
+              :properties {:registry {::size [:enum "S" "M" "L"]}}
+              :children [[:id nil {:type ::m/entry
+                                   :children [{:type 'string?}]}]
+                         [:tags nil {:type ::m/entry
+                                     :children [{:type :set
+                                                 :children [{:type 'keyword?}]}]}]
+                         [:size nil {:type ::m/entry
+                                     :children [{:type ::m/schema
+                                                 :children [::size]}]}]
+                         [:address nil {:type ::m/entry
+                                        :children [{:type :vector,
+                                                    :children [{:type :map,
+                                                                :children [[:street nil {:type ::m/entry
+                                                                                         :children [{:type 'string?}]}]
+                                                                           [:lonlat nil {:type ::m/entry
+                                                                                         :children [{:type :tuple
+                                                                                                     :children [{:type 'double?}
+                                                                                                                {:type 'double?}]}]}]]}]}]}]]}
+             (mu/to-map-syntax schema {::m/walk-map-entries true}))))))

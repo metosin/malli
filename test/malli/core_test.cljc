@@ -574,12 +574,13 @@
                                                (mt/key-transformer
                                                  {:decode #(-> % name (str "_key") keyword)}))))
 
-      (is (= {:x 24}
+      (is (= {:x 32}
              (m/decode
-               [:map
-                {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
-                [:x [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]
-               {:x 1} mt/string-transformer)))
+               [:map {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
+                [:x {:decode/string '{:enter inc, :leave inc}}
+                 [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]
+               {:x 1}
+               mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) valid)))
 

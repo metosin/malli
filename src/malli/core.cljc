@@ -54,7 +54,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -schema-schema -registry)
+(declare schema schema? into-schema into-schema? eval default-registry -schema-schema -entry-schema -registry)
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -96,7 +96,7 @@
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
 (defn -inner-entries [walker path entries options]
-  (mapv (fn [[k p s]] [k p (-inner walker s (conj path k) options)]) entries))
+  (mapv (fn [[k p s]] [k p (-inner walker (-entry-schema s p) (conj path k) options)]) entries))
 
 (defn -get-entries [schema key default]
   (or (some (fn [[k _ s]] (if (= k key) s)) (-map-entries schema)) default))
@@ -283,6 +283,35 @@
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
 
+(defn -entry-schema
+  ([]
+   ^{:type ::into-schema}
+   (reify IntoSchema
+     (-into-schema [_ properties children options]
+       (-check-children! ::entry properties children {:min 1, :max 1})
+       (let [[schema :as children] (map #(schema % options) children)]
+         ^{:type ::schema}
+         (reify Schema
+           (-type [_] ::entry)
+           (-validator [_] (-validator schema))
+           (-explainer [_ path] (-explainer schema path))
+           (-transformer [this transformer method options]
+             (-parent-children-transformer this children transformer method options))
+           (-walk [this walker in options]
+             (if (::walk-map-entries options)
+               (if (-accept walker this in options)
+                 (-outer walker this [(-inner walker schema in options)] in options))
+               (-walk schema walker in options)))
+           (-properties [_] properties)
+           (-options [_] (-options schema))
+           (-children [_] children)
+           (-form [_] (-form schema))
+           LensSchema
+           (-get [_ key default] (if (= 0 key) schema default))
+           (-set [_ key value] (if (= 0 key) (-entry-schema value properties))))))))
+  ([schema properties]
+   (-into-schema (-entry-schema) properties [schema] (-options schema))))
+
 (defn- -properties-and-children [[x :as xs]]
   (if ((some-fn map? nil?) x)
     [x (rest xs)]
@@ -367,7 +396,7 @@
              (let [this-transformer (-value-transformer transformer this method options)
                    transformers (some->>
                                   entries
-                                  (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method options)] [k t])))
+                                  (keep (fn [[k p s]] (if-let [t (-transformer (-entry-schema s p) transformer method options)] [k t])))
                                   (into {}))
                    build (fn [phase]
                            (let [->this (phase this-transformer)
@@ -718,7 +747,7 @@
       (let [{:keys [children entries forms]} (-parse-entry-syntax children false options)
             form (-create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
-            dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))]
+            dispatch-map (->> (for [[k p s] entries] [k [s p]]) (into {}))]
         (when-not dispatch
           (-fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}
@@ -726,7 +755,7 @@
           Schema
           (-type [_] :multi)
           (-validator [_]
-            (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
+            (let [validators (reduce-kv (fn [acc k [s]] (assoc acc k (-validator s))) {} dispatch-map)]
               (fn [x]
                 (if-let [validator (validators (dispatch x))]
                   (validator x)
@@ -744,7 +773,7 @@
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (reduce-kv
-                                       #(assoc %1 %2 (-transformer %3 transformer method options))
+                                       (fn [acc k [s p]] (assoc acc k (-transformer (-entry-schema s p) transformer method options)))
                                        {} dispatch-map)
                   build (fn [phase]
                           (let [->this (phase this-transformer)

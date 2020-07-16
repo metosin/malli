@@ -61,12 +61,14 @@
    #?@(:clj ['ratio? {:error/message {:en "should be a ratio"}}])
    #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
-                           (str "should be either "
-                                (->> (m/children schema)
-                                     butlast
-                                     (str/join ", "))
-                                " or "
-                                (last (m/children schema))))}}
+                           (if (= 1 (count (m/children schema)))
+                             (str "should be " (first (m/children schema)))
+                             (str "should be either "
+                                  (->> (m/children schema)
+                                       butlast
+                                       (str/join ", "))
+                                  " or "
+                                  (last (m/children schema)))))}}
    :string {:error/fn {:en (fn [{:keys [schema]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond

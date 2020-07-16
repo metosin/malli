@@ -282,12 +282,27 @@
              (me/humanize)))))
 
 (deftest enum-test
-  (is (= nil
-         (-> [:enum "foo" "bar"]
-             (m/explain "foo")
-             (me/humanize))))
-
-  (is (= ["should be either foo, bar or buzz"]
-         (-> [:enum "foo" "bar" "buzz"]
-             (m/explain "baz")
-             (me/humanize)))))
+  (testing "success"
+    (is (= nil
+           (-> [:enum "foo" "bar"]
+               (m/explain "foo")
+               (me/humanize)))))
+  (testing "error with 1 value"
+    (is (= ["should be foo"]
+           (-> [:enum "foo"]
+               (m/explain "baz")
+               (me/humanize)))))
+  (testing "error with 2 values"
+    (is (= ["should be either foo or bar"]
+           (-> [:enum "foo" "bar"]
+               (m/explain "baz")
+               (me/humanize)))))
+  (testing "more than 2 values"
+    (is (= ["should be either foo, bar or buzz"]
+           (-> [:enum "foo" "bar" "buzz"]
+               (m/explain "baz")
+               (me/humanize))))
+    (is (= ["should be either foo, bar, buzz or biff"]
+           (-> [:enum "foo" "bar" "buzz" "biff"]
+               (m/explain "baz")
+               (me/humanize))))))

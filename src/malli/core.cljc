@@ -101,6 +101,13 @@
   (when-let [fns (->> (case phase, :enter (rseq chain), :leave chain) (keep identity) (seq))]
     (apply comp fns)))
 
+(defn -parent-children-transformer [parent children transformer method options]
+  (let [parent-transformer (-value-transformer transformer parent method options)
+        child-transformers (map #(-transformer % transformer method options) children)
+        build (fn [phase] (-chain phase (apply vector (phase parent-transformer) (map phase child-transformers))))]
+    {:enter (build :enter)
+     :leave (build :leave)}))
+
 (defn -leaf-schema [type ->validator-and-children]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -166,12 +173,7 @@
                         :else acc'')))
                   acc explainers))))
           (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (map #(-transformer % transformer method options) children)
-                  build (fn [phase]
-                          (-chain phase (apply vector (phase this-transformer) (map phase child-transformers))))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
+            (-parent-children-transformer this children transformer method options))
           (-walk [this walker in options]
             (if (-accept walker this in options)
               (-outer walker this (mapv #(-inner walker % in options) children) in options)))
@@ -659,16 +661,7 @@
               (fn explain [x in acc]
                 (if (nil? x) acc (explainer' x in acc)))))
           (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformer (-transformer schema transformer method options)
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ->child (phase child-transformer)]
-                            (if (and ->this ->child)
-                              (comp ->child ->this)
-                              (or ->this ->child))))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
+            (-parent-children-transformer this children transformer method options))
           (-walk [this walker in options]
             (if (-accept walker this in options)
               (-outer walker this [(-inner walker schema in options)] in options)))
@@ -822,16 +815,7 @@
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
             (-transformer [this transformer method options]
-              (let [this-transformer (-value-transformer transformer this method options)
-                    child-transformer (-transformer child transformer method options)
-                    build (fn [phase]
-                            (let [->this (phase this-transformer)
-                                  ->child (phase child-transformer)]
-                              (if (and ->this ->child)
-                                (comp ->child ->this)
-                                (or ->this ->child))))]
-                {:enter (build :enter)
-                 :leave (build :leave)}))
+              (-parent-children-transformer this children transformer method options))
             (-walk [this walker in options]
               (if (-accept walker this in options)
                 (if id

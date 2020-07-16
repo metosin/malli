@@ -82,6 +82,10 @@
   ([type data]
    (throw (ex-info (str type " " data) {:type type, :data data}))))
 
+(defn -check-children! [type properties children {:keys [min max] :as opts}]
+  (if (or (and min (< (count children) min)) (and max (> (count children) max)))
+    (fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
+
 (defn create-form [type properties children]
   (cond
     (and (seq properties) (seq children)) (into [type properties] children)
@@ -135,16 +139,14 @@
   (-leaf-schema
     type
     (fn [properties [child :as children] _]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
+      (-check-children! type properties children {:min 1, :max 1})
       [#(try (f % child) (catch #?(:clj Exception, :cljs js/Error) _ false)) children])))
 
 (defn -and-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (when-not (seq children)
-        (fail! ::no-children {:type :and, :properties properties}))
+      (-check-children! :and properties children {:min 1})
       (let [children (mapv #(schema % options) children)
             form (create-form :and properties (map -form children))]
         ^{:type ::schema}
@@ -187,8 +189,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (when-not (seq children)
-        (fail! ::no-children {:type :or, :properties properties}))
+      (-check-children! :or properties children {:min 1})
       (let [children (mapv #(schema % options) children)
             form (create-form :or properties (map -form children))]
         ^{:type ::schema}
@@ -388,8 +389,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (when-not (and (seq children) (= 2 (count children)))
-        (fail! ::child-error {:type :vector, :properties properties, :children children, :min 2, :max 2}))
+      (-check-children! :map-of properties children {:min 2 :max 2})
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
             form (create-form :map-of properties (mapv -form children))]
         ^{:type ::schema}
@@ -447,8 +447,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
+      (-check-children! type properties children {:min 1 :max 1})
       (let [schema (schema (first children) options)
             form (create-form type properties [(-form schema)])
             collection? #(or (sequential? %) (set? %))
@@ -510,8 +509,7 @@
       (let [children (mapv #(schema % options) children)
             size (count children)
             form (create-form :tuple properties (map -form children))]
-        (when-not (seq children)
-          (fail! ::child-error {:type :tuple, :properties properties, :children children, :min 1}))
+        (-check-children! :tuple properties children {:min 1})
         ^{:type ::schema}
         (reify Schema
           (-type [_] :tuple)
@@ -563,8 +561,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (when-not (seq children)
-        (fail! ::no-children {:type :enum, :properties properties}))
+      (-check-children! :enum properties children {:min 1})
       (let [schema (set children)
             form (create-form :enum properties children)]
         ^{:type ::schema}
@@ -590,8 +587,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [child :as children] options]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type :re, :properties properties, :children children, :min 1, :max 1}))
+      (-check-children! :re properties children {:min 1, :max 1})
       (let [re (re-pattern child)
             form (if class? re (create-form :re properties children))]
         ^{:type ::schema}
@@ -621,8 +617,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type :fn, :properties properties, :children children, :min 1, :max 1}))
+      (-check-children! :fn properties children {:min 1, :max 1})
       (let [f (eval (first children))
             form (create-form :fn properties children)]
         ^{:type ::schema}
@@ -652,8 +647,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type :maybe, :properties properties, :children children, :min 1, :max 1}))
+      (-check-children! :maybe properties children {:min 1, :max 1})
       (let [[schema :as children] (map #(schema % options) children)
             form (create-form :maybe properties (map -form children))]
         ^{:type ::schema}
@@ -747,8 +741,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
-      (when-not (zero? (count children))
-        (fail! ::child-error {:type :string, :properties properties, :children children, :min 0, :max 0}))
+      (-check-children! :string properties children {:min 0, :max 0})
       (let [count-validator (cond
                               (not (or min max)) nil
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
@@ -778,8 +771,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
-      (when-not (= 1 (count children))
-        (fail! ::child-error {:type :ref, :properties properties, :children children, :min 1, :max 1}))
+      (-check-children! :ref properties children {:min 1, :max 1})
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
             -ref (or (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
                      (when-not allow-invalid-refs
@@ -822,8 +814,7 @@
   (let [type (if (or id raw) ::schema :schema)]
     (reify IntoSchema
       (-into-schema [_ properties [child :as children] options]
-        (when-not (= 1 (count children))
-          (fail! ::child-error {:type type, :properties properties, :children children, :min 1, :max 1}))
+        (-check-children! type properties children {:min 1, :max 1})
         (let [child (schema child options)
               form (or (and (empty? properties) (or id (and raw (-form child))))
                        (create-form type properties [(-form child)]))]

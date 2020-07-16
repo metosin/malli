@@ -317,6 +317,7 @@
     [x (rest xs)]
     [nil xs]))
 
+;; TODO: raw-entries
 (defn -parse-entry-syntax [children naked-keys options]
   (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
                                              (qualified-keyword? e) (if naked-keys [[e nil e] e])
@@ -339,7 +340,7 @@
    ^{:type ::into-schema}
    (reify IntoSchema
      (-into-schema [_ {:keys [closed] :as properties} children options]
-       (let [{:keys [children entries forms]} (-parse-entry-syntax children naked-keys options)
+       (let [{:keys [children raw-entries entries forms]} (-parse-entry-syntax children naked-keys options)
              form (-create-form :map properties forms)
              keyset (->> entries (map first) (set))]
          ^{:type ::schema}
@@ -423,7 +424,7 @@
            (-children [_] children)
            (-form [_] form)
            MapSchema
-           (-map-entries [_] entries)
+           (-map-entries [_] raw-entries)
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
@@ -744,10 +745,10 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [{:keys [children entries forms]} (-parse-entry-syntax children false options)
+      (let [{:keys [children raw-entries entries forms]} (-parse-entry-syntax children false options)
             form (-create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
-            dispatch-map (->> (for [[k p s] entries] [k [s p]]) (into {}))]
+            dispatch-map (->> (for [[k _ s] entries] [k s]) (into {}))]
         (when-not dispatch
           (-fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}
@@ -755,7 +756,7 @@
           Schema
           (-type [_] :multi)
           (-validator [_]
-            (let [validators (reduce-kv (fn [acc k [s]] (assoc acc k (-validator s))) {} dispatch-map)]
+            (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
               (fn [x]
                 (if-let [validator (validators (dispatch x))]
                   (validator x)
@@ -773,7 +774,7 @@
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   child-transformers (reduce-kv
-                                       (fn [acc k [s p]] (assoc acc k (-transformer (-entry-schema s p) transformer method options)))
+                                       (fn [acc k s] (assoc acc k (-transformer s transformer method options)))
                                        {} dispatch-map)
                   build (fn [phase]
                           (let [->this (phase this-transformer)
@@ -784,15 +785,15 @@
                             (-chain phase [->this ->child])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-entries walker path entries options) options)))
+          (-walk [this walker in options]
+            (if (-accept walker this in options)
+              (-outer walker this (mapv (fn [[k p s]] [k p (-inner walker s in options)]) entries) in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
           MapSchema
-          (-map-entries [_] entries)
+          (-map-entries [_] raw-entries)
           LensSchema
           (-keep [_])
           (-get [this key default] (-get-entries this key default))

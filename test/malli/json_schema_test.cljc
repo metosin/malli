@@ -76,10 +76,28 @@
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]
     (is (= json-schema (json-schema/transform schema))))
+
   (testing "full override"
     (is (= {:type "file"}
            (json-schema/transform
              [:map {:json-schema {:type "file"}} [:file any?]]))))
+
+  (testing "map-entry overrides"
+    (is (= {:type "object",
+            :properties {:x1 {:title "x", :type "string"},
+                         :x2 {:title "x"},
+                         :x3 {:title "x", :type "string", :default "x"},
+                         :x4 {:title "x-string", :default "x2"},
+                         :x5 {:type "x-string"}},
+            :required [:x1 :x2 :x3 :x4 :x5]}
+           (json-schema/transform
+             [:map
+              [:x1 {:json-schema/title "x"} :string]
+              [:x2 {:json-schema {:title "x"}} [:string {:json-schema/default "x"}]]
+              [:x3 {:json-schema/title "x"} [:string {:json-schema/default "x"}]]
+              [:x4 {:json-schema/title "x-string"} [:string {:json-schema {:default "x2"}}]]
+              [:x5 {:json-schema {:type "x-string"}} [:string {:json-schema {:default "x"}}]]]))))
+
   (testing "with properties"
     (is (= {:allOf [{:type "integer", :format "int64"}]
             :title "age"

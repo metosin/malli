@@ -382,8 +382,8 @@
         add-defaults {:compile (fn [schema _]
                                  (let [entries (m/map-entries schema)
                                        defaults (->> entries
-                                                     (keep (fn [[k _ v]]
-                                                             (if-some [default (get-default v)]
+                                                     (keep (fn [[k {:keys [default]} v]]
+                                                             (if-some [default (if (some? default) default (get-default v))]
                                                                [k default])))
                                                      (into {}))]
                                    (if (seq defaults)

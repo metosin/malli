@@ -595,7 +595,7 @@
 
   (testing "nested"
     (let [schema [:map {:default {}}
-                  [:a [int? {:default 1}]]
+                  [:a {:default 1} int?]
                   [:b [:vector {:default [1 2 3]} int?]]
                   [:c [:map {:default {}}
                        [:x [int? {:default 42}]]
@@ -625,4 +625,5 @@
 
   (testing "default false"
     (is (= {:user/verified false} (m/decode [:map [:user/verified [:and {:default false} boolean?]]] {} mt/default-value-transformer)))
+    (is (= {:user/verified false} (m/decode [:map [:user/verified {:default false} boolean?]] {} mt/default-value-transformer)))
     (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer)))))

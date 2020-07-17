@@ -184,6 +184,43 @@
       (into {} (map (fn [[k v]] [(transform k) v])) x)
       x)))
 
+;;
+;; sequential
+;;
+
+(defn sequential->set [x]
+  (cond
+    (set? x) x
+    (sequential? x) (set x)
+    :else x))
+
+(defn sequential->vector [x]
+  (cond
+    (vector? x) x
+    (sequential? x) (vec x)
+    :else x))
+
+(defn sequential->seq [x]
+  (cond
+    (vector? x) (seq x)
+    :else x))
+
+;;
+;; sequential or set
+;;
+
+(defn sequential-or-set->vector [x]
+  (cond
+    (vector? x) x
+    (set? x) (vec x)
+    (sequential? x) (vec x)
+    :else x))
+
+(defn sequential-or-set->seq [x]
+  (cond
+    (vector? x) (seq x)
+    (set? x) (seq x)
+    :else x))
 
 ;;
 ;; decoders
@@ -206,7 +243,10 @@
    'double? number->double
    'inst? string->date
 
-   :map-of (coerce-map-keys m/keyword->string)})
+   :map-of (coerce-map-keys m/keyword->string)
+   :set sequential->set
+   :sequential sequential->seq
+   :list sequential->seq})
 
 (defn json-encoders []
   {'keyword? m/keyword->string
@@ -250,7 +290,9 @@
 
      'boolean? string->boolean
      'false? string->boolean
-     'true? string->boolean}))
+     'true? string->boolean
+
+     :vector sequential->vector}))
 
 (defn string-encoders []
   (merge
@@ -275,11 +317,14 @@
 ;; transformers
 ;;
 
-(defn json-transformer []
-  (transformer
-    {:name :json
-     :decoders (json-decoders)
-     :encoders (string-encoders)}))
+(defn json-transformer
+  ([]
+   (json-transformer nil))
+  ([{::keys [json-arrays]}]
+   (transformer
+     {:name :json
+      :decoders (cond-> (json-decoders) (not json-arrays) (assoc :vector sequential->vector))
+      :encoders (json-encoders)})))
 
 (defn string-transformer []
   (transformer
@@ -302,11 +347,11 @@
 (defn key-transformer [{:keys [decode encode]}]
   (let [transform (fn [f stage]
                     (if f {stage (fn [x]
-                                    (if (map? x)
-                                      (reduce-kv
-                                        (fn [m k v] (assoc m (f k) v))
-                                        (empty x) x)
-                                      x))}))]
+                                   (if (map? x)
+                                     (reduce-kv
+                                       (fn [m k v] (assoc m (f k) v))
+                                       (empty x) x)
+                                     x))}))]
     (transformer
       {:decoders {:map (transform decode :enter)}
        :encoders {:map (transform encode :leave)}})))
@@ -340,5 +385,11 @@
        :encoders {:map add-defaults}})))
 
 (defn collection-transformer []
-  (transformer
-    {:name ::collection}))
+  (let [coders {:vector sequential->vector
+                :list sequential->seq
+                :sequential sequential->seq
+                :set sequential->set}]
+    (transformer
+      {:name :collection
+       :decoders coders
+       :encoders coders})))

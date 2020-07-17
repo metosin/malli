@@ -443,15 +443,13 @@
           (-children [_] children)
           (-form [_] form))))))
 
-(defn -collection-schema [type fpred fwrap fempty]
+(defn -collection-schema [type fpred fempty]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
       (-check-children! type properties children {:min 1 :max 1})
       (let [schema (schema (first children) options)
             form (create-form type properties [(-form schema)])
-            collection? #(or (sequential? %) (set? %))
-            fwrap (fn [x] (if (collection? x) (fwrap x) x))
             validate-limits (cond
                               (not (or min max)) (constantly true)
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
@@ -479,11 +477,10 @@
                               acc)))))))
           (-transformer [this transformer method options]
             (let [collection? #(or (sequential? %) (set? %))
-                  fwrap (fn [x] (if (collection? x) (fwrap x) x))
                   this-transformer (-value-transformer transformer this method options)
                   child-transformer (-transformer schema transformer method options)
                   build (fn [phase]
-                          (let [->this (or (phase this-transformer) fwrap)
+                          (let [->this (phase this-transformer)
                                 ->child (if-let [ct (phase child-transformer)]
                                           (if fempty
                                             #(into (if % fempty) (map ct) %)
@@ -1090,10 +1087,10 @@
    :or (-or-schema)
    :map (-map-schema)
    :map-of (-map-of-schema)
-   :vector (-collection-schema :vector vector? vec [])
-   :list (-collection-schema :list list? seq nil)
-   :sequential (-collection-schema :sequential sequential? seq nil)
-   :set (-collection-schema :set set? set #{})
+   :vector (-collection-schema :vector vector? [])
+   :list (-collection-schema :list list? nil)
+   :sequential (-collection-schema :sequential sequential? nil)
+   :set (-collection-schema :set set? #{})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

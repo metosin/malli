@@ -94,6 +94,7 @@
   (is (= nil (mt/any->any nil))))
 
 (deftest transform-test
+
   (testing "predicates"
     (testing "decode"
       (is (= 1 (m/decode int? "1" mt/string-transformer)))
@@ -107,8 +108,9 @@
       (is (= :user/kikka (m/decode keyword? "user/kikka" mt/string-transformer))))
     (testing "encode"
       (is (= "1" (m/encode int? 1 mt/string-transformer)))
-      (is (= "1" (m/encode int? 1 mt/json-transformer)))
+      (is (= 1 (m/encode int? 1 mt/json-transformer)))
       (is (= "user/kikka" (m/encode keyword? :user/kikka mt/string-transformer)))))
+
   (testing "comparators"
     (testing "decode"
       (doseq [schema (keys (m/comparator-schemas))]
@@ -116,6 +118,7 @@
     (testing "encode"
       (doseq [schema (keys (m/comparator-schemas))]
         (is (= "1" (m/encode [schema 1] 1 mt/string-transformer))))))
+
   (testing "and"
     (testing "decode"
       (is (= 1 (m/decode [:and int?] "1" mt/string-transformer)))
@@ -131,6 +134,7 @@
       (is (= "1" (m/encode [:and int? [:enum 1 2]] 1 mt/string-transformer)))
       (is (= "1" (m/encode [:and keyword? int?] :1 mt/string-transformer)))
       (is (= ["1"] (m/encode [:and [:vector int?]] [1] mt/string-transformer)))))
+
   (testing "or"
     (testing "decode"
       (is (= 1 (m/decode [:or int? keyword?] "1" mt/string-transformer)))
@@ -140,19 +144,63 @@
       (is (= "1" (m/encode [:or int? keyword?] 1 mt/string-transformer)))
       (is (= "1" (m/encode [:or int? [:enum 1 2]] 1 mt/string-transformer)))
       (is (= "1" (m/encode [:or keyword? int?] 1 mt/string-transformer)))))
+
   ;; TODO: encode
   (testing "collections"
-    (is (= #{1 2 3} (m/decode [:set int?] ["1" 2 "3"] mt/string-transformer)))
-    (is (= #{"1" 2 "3"} (m/decode [:set [:enum 1 2]] ["1" 2 "3"] mt/string-transformer)))
-    (is (= #{"1" 2 "3"} (m/decode [:set int?] ["1" 2 "3"] mt/json-transformer)))
-    (is (= [:1 2 :3] (m/decode [:vector keyword?] ["1" 2 "3"] mt/string-transformer)))
-    (is (= [:1 2 :3] (m/decode [:sequential keyword?] ["1" 2 "3"] mt/string-transformer)))
-    (is (= '(:1 2 :3) (m/decode [:sequential keyword?] '("1" 2 "3") mt/string-transformer)))
-    (is (= '(:1 2 :3) (m/decode [:list keyword?] '("1" 2 "3") mt/string-transformer)))
-    (is (= '(:1 2 :3) (m/decode [:list keyword?] (seq '("1" 2 "3")) mt/string-transformer)))
-    (is (= '(:1 2 :3) (m/decode [:list keyword?] (lazy-seq '("1" 2 "3")) mt/string-transformer)))
-    (is (= nil (m/decode [:vector keyword?] nil mt/string-transformer)))
-    (is (= ::invalid (m/decode [:vector keyword?] ::invalid mt/string-transformer))))
+    (doseq [t [mt/string-transformer mt/json-transformer]]
+      (testing "string transformer"
+        (are [schema value expected f]
+          (do
+            (is (= expected (m/decode schema value t)))
+            (is (f (m/decode schema value t))))
+
+          [:set [:enum 1 2]] ["1" 2 "3"] #{"1" 2 "3"} set?
+
+          [:set keyword?] nil nil nil?
+          [:set keyword?] ["1" 2 "3"] #{:1 2 :3} set?
+          [:set keyword?] '("1" 2 "3") #{:1 2 :3} set?
+          [:set keyword?] (lazy-seq '("1" 2 "3")) #{:1 2 :3} set?
+          [:set keyword?] ::invalid ::invalid keyword?
+
+          [:set string?] ["1" 2 "3"] #{"1" 2 "3"} set?
+          [:set string?] #{"1" 2 "3"} #{"1" 2 "3"} set?
+
+          [:vector keyword?] nil nil nil?
+          [:vector keyword?] ["1" 2 "3"] [:1 2 :3] vector?
+          [:vector keyword?] '("1" 2 "3") [:1 2 :3] vector?
+          [:vector keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] vector?
+
+          [:vector string?] ["1" 2 "3"] ["1" 2 "3"] vector?
+          [:vector string?] #{"1" 2 "3"} #{"1" 2 "3"} set?
+
+          [:sequential keyword?] nil nil nil?
+          [:sequential keyword?] ["1" 2 "3"] [:1 2 :3] sequential?
+          [:sequential keyword?] '("1" 2 "3") [:1 2 :3] sequential?
+          [:sequential keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] sequential?
+
+          [:sequential string?] ["1" 2 "3"] ["1" 2 "3"] sequential?
+          [:sequential string?] #{"1" 2 "3"} #{"1" 2 "3"} set?
+
+          [:list keyword?] nil nil nil?
+          [:list keyword?] ["1" 2 "3"] [:1 2 :3] sequential?
+          [:list keyword?] '("1" 2 "3") [:1 2 :3] sequential?
+          [:list keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] sequential?
+
+          [:list string?] ["1" 2 "3"] ["1" 2 "3"] sequential?
+          [:list string?] #{"1" 2 "3"} #{"1" 2 "3"} set?)))
+
+    (testing "json transformer"
+      (testing "json vectors"
+        (testing "by default"
+          (testing "sequences are decoded as vectors"
+            (is (vector? (m/decode [:vector string?] '("1") (mt/json-transformer)))))
+          (testing "sets are not"
+            (is (set? (m/decode [:vector string?] #{"1"} (mt/json-transformer))))))
+        (testing "using option"
+          (testing "decoding can be turned off"
+            (is (list? (m/decode [:vector string?] '("1") (mt/json-transformer {::mt/json-arrays true}))))
+            (is (set? (m/decode [:vector string?] #{"1"} (mt/json-transformer {::mt/json-arrays true})))))))))
+
   (testing "map"
     (testing "decode"
       (is (= {:c1 1, ::c2 :kikka} (m/decode [:map [:c1 int?] [::c2 keyword?]] {:c1 "1", ::c2 "kikka"} mt/string-transformer)))
@@ -164,11 +212,13 @@
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
       (is (= nil (m/encode [:map] nil mt/string-transformer)))
       (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
+
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
     (is (= {"1" :abba, "2" :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
+
   (testing "maybe"
     (testing "decode"
       (is (= 1 (m/decode [:maybe int?] "1" mt/string-transformer)))
@@ -176,6 +226,7 @@
     (testing "encode"
       (is (= "1" (m/encode [:maybe int?] 1 mt/string-transformer)))
       (is (= nil (m/encode [:maybe int?] nil mt/string-transformer)))))
+
   (testing "tuple"
     (testing "decode"
       (is (= [1] (m/decode [:tuple int?] ["1"] mt/string-transformer)))

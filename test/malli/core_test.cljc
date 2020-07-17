@@ -1112,7 +1112,7 @@
       (is (= "foo" encoded))
       (is (= :foo decoded)))))
 
-(def sequential (#'m/-collection-schema `sequential sequential? seq nil))
+(def sequential (m/-collection-schema `sequential sequential? nil))
 
 (deftest custom-into-schema-test
   (doseq [value [[1 2 3] '(1 2 3)]]

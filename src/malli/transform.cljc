@@ -192,7 +192,7 @@
 ;; decoders
 ;;
 
-(def +json-decoders+
+(defn json-decoders []
   {'ident? string->keyword
    'simple-ident? string->keyword
    'qualified-ident? string->keyword
@@ -211,7 +211,7 @@
 
    :map-of (coerce-map-keys m/keyword->string)})
 
-(def +json-encoders+
+(defn json-encoders []
   {'keyword? m/keyword->string
    'simple-keyword? m/keyword->string
    'qualified-keyword? m/keyword->string
@@ -228,9 +228,9 @@
    'inst? date->string
    #?@(:clj ['ratio? number->double])})
 
-(def +string-decoders+
+(defn string-decoders []
   (merge
-    +json-decoders+
+    (json-decoders)
     {'integer? string->long
      'int? string->long
      'pos-int? string->long
@@ -255,9 +255,9 @@
      'false? string->boolean
      'true? string->boolean}))
 
-(def +string-encoders+
+(defn string-encoders []
   (merge
-    +json-encoders+
+    (json-encoders)
     {'integer? any->string
      'int? any->string
      'pos-int? any->string
@@ -281,14 +281,14 @@
 (defn json-transformer []
   (transformer
     {:name :json
-     :decoders +json-decoders+
-     :encoders +string-encoders+}))
+     :decoders (json-decoders)
+     :encoders (string-encoders)}))
 
 (defn string-transformer []
   (transformer
     {:name :string
-     :decoders +string-decoders+
-     :encoders +string-encoders+}))
+     :decoders (string-decoders)
+     :encoders (string-encoders)}))
 
 (defn strip-extra-keys-transformer
   ([]

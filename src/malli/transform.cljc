@@ -181,10 +181,7 @@
 (defn coerce-map-keys [transform]
   (fn [x]
     (if (map? x)
-      (into {}
-            (map
-              (fn [[k v]] [(transform k) v]))
-            x)
+      (into {} (map (fn [[k v]] [(transform k) v])) x)
       x)))
 
 

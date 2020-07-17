@@ -6,7 +6,7 @@
 
 (deftest ->interceptor-test
   (are [?interceptor expected]
-    (= expected (is (#'mt/->interceptor ?interceptor {} {})))
+    (= expected (is (#'mt/-interceptor ?interceptor {} {})))
 
     inc {:enter inc}
     {:enter inc} {:enter inc}
@@ -18,80 +18,80 @@
   (let [?interceptor {:compile (constantly {:compile (constantly inc)})}]
     (testing "shallow compilation succeeds"
       (binding [mt/*max-compile-depth* 2]
-        (is (= {:enter inc} (#'mt/->interceptor ?interceptor {} {})))))
+        (is (= {:enter inc} (#'mt/-interceptor ?interceptor {} {})))))
     (testing "too deep compilation fails"
       (binding [mt/*max-compile-depth* 1]
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/->interceptor ?interceptor {} {})))))))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/-interceptor ?interceptor {} {})))))))
 
 (deftest string->long
-  (is (= 1 (mt/string->long "1")))
-  (is (= 1 (mt/string->long 1)))
-  (is (= "abba" (mt/string->long "abba"))))
+  (is (= 1 (mt/-string->long "1")))
+  (is (= 1 (mt/-string->long 1)))
+  (is (= "abba" (mt/-string->long "abba"))))
 
 (deftest string->double
-  (is (= 1.0 (mt/string->double "1")))
-  (is (= 1.0 (mt/string->double 1.0)))
-  (is (= 1 (mt/string->double 1)))
-  (is (= "abba" (mt/string->double "abba"))))
+  (is (= 1.0 (mt/-string->double "1")))
+  (is (= 1.0 (mt/-string->double 1.0)))
+  (is (= 1 (mt/-string->double 1)))
+  (is (= "abba" (mt/-string->double "abba"))))
 
 (deftest string->keyword
-  (is (= :abba (mt/string->keyword "abba")))
-  (is (= :abba (mt/string->keyword :abba))))
+  (is (= :abba (mt/-string->keyword "abba")))
+  (is (= :abba (mt/-string->keyword :abba))))
 
 (deftest string->boolean
-  (is (= true (mt/string->boolean "true")))
-  (is (= false (mt/string->boolean "false")))
-  (is (= "abba" (mt/string->boolean "abba"))))
+  (is (= true (mt/-string->boolean "true")))
+  (is (= false (mt/-string->boolean "false")))
+  (is (= "abba" (mt/-string->boolean "abba"))))
 
 (deftest string->uuid
-  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
-  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/string->uuid #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce")))
-  (is (= "abba" (mt/string->uuid "abba"))))
+  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= "abba" (mt/-string->uuid "abba"))))
 
 (deftest string->date
-  (is (= #inst "2018-04-27T18:25:37Z" (mt/string->date "2018-04-27T18:25:37Z")))
-  (is (= #inst "2018-04-27T00:00:00Z" (mt/string->date "2018-04-27")))
-  (is (= #inst "2018-04-27T05:00:00Z" (mt/string->date "2018-04-27T08:00:00+03:00")))
-  (is (= #inst "2018-04-27T18:25:37Z" (mt/string->date "2018-04-27T18:25:37.000Z")))
-  (is (= #inst "2018-04-27T18:25:37Z" (mt/string->date "2018-04-27T18:25:37.000+0000")))
-  (is (= #inst "2014-02-18T18:25:37Z" (mt/string->date #inst "2014-02-18T18:25:37Z")))
-  (is (= #inst "2018-04-27T00:00:00Z" (mt/string->date #inst "2018-04-27")))
-  (is (= #inst "2018-04-27T05:00:00Z" (mt/string->date #inst "2018-04-27T08:00:00+03:00")))
-  (is (= "abba" (mt/string->date "abba"))))
+  (is (= #inst "2018-04-27T18:25:37Z" (mt/-string->date "2018-04-27T18:25:37Z")))
+  (is (= #inst "2018-04-27T00:00:00Z" (mt/-string->date "2018-04-27")))
+  (is (= #inst "2018-04-27T05:00:00Z" (mt/-string->date "2018-04-27T08:00:00+03:00")))
+  (is (= #inst "2018-04-27T18:25:37Z" (mt/-string->date "2018-04-27T18:25:37.000Z")))
+  (is (= #inst "2018-04-27T18:25:37Z" (mt/-string->date "2018-04-27T18:25:37.000+0000")))
+  (is (= #inst "2014-02-18T18:25:37Z" (mt/-string->date #inst "2014-02-18T18:25:37Z")))
+  (is (= #inst "2018-04-27T00:00:00Z" (mt/-string->date #inst "2018-04-27")))
+  (is (= #inst "2018-04-27T05:00:00Z" (mt/-string->date #inst "2018-04-27T08:00:00+03:00")))
+  (is (= "abba" (mt/-string->date "abba"))))
 
 #?(:clj
    (deftest string->decimal
-     (is (= 42M (mt/string->decimal "42")))
-     (is (= 42.24M (mt/string->decimal "42.24")))
-     (is (= nil (mt/string->decimal nil)))
-     (is (= "42.42M" (mt/string->decimal "42.42M")))))
+     (is (= 42M (mt/-string->decimal "42")))
+     (is (= 42.24M (mt/-string->decimal "42.24")))
+     (is (= nil (mt/-string->decimal nil)))
+     (is (= "42.42M" (mt/-string->decimal "42.42M")))))
 
 (deftest date->string
-  (is (= "2014-02-18T18:25:37.000Z" (mt/date->string #inst "2014-02-18T18:25:37Z")))
-  (is (= "abba" (mt/date->string "abba"))))
+  (is (= "2014-02-18T18:25:37.000Z" (mt/-date->string #inst "2014-02-18T18:25:37Z")))
+  (is (= "abba" (mt/-date->string "abba"))))
 
 (deftest string->symbol
-  (is (= 'inc (mt/string->symbol "inc")))
-  (is (= 'inc (mt/string->symbol 'inc))))
+  (is (= 'inc (mt/-string->symbol "inc")))
+  (is (= 'inc (mt/-string->symbol 'inc))))
 
 (deftest string->nil
-  (is (= nil (mt/string->nil "")))
-  (is (= nil (mt/string->nil nil))))
+  (is (= nil (mt/-string->nil "")))
+  (is (= nil (mt/-string->nil nil))))
 
 (deftest number->double
-  #?(:clj (is (= 0.5 (mt/number->double 1/2))))
-  (is (= 1.0 (mt/number->double 1)))
-  (is (= "kikka" (mt/number->double "kikka"))))
+  #?(:clj (is (= 0.5 (mt/-number->double 1/2))))
+  (is (= 1.0 (mt/-number->double 1)))
+  (is (= "kikka" (mt/-number->double "kikka"))))
 
 (deftest any->string
-  #?(:clj (is (= "1/2" (mt/any->string 1/2))))
-  (is (= "0.5" (mt/any->string 0.5)))
-  (is (= nil (mt/any->string nil))))
+  #?(:clj (is (= "1/2" (mt/-any->string 1/2))))
+  (is (= "0.5" (mt/-any->string 0.5)))
+  (is (= nil (mt/-any->string nil))))
 
 (deftest any->any
-  #?(:clj (is (= 1/2 (mt/any->any 1/2))))
-  (is (= 0.5 (mt/any->any 0.5)))
-  (is (= nil (mt/any->any nil))))
+  #?(:clj (is (= 1/2 (mt/-any->any 1/2))))
+  (is (= 0.5 (mt/-any->any 0.5)))
+  (is (= nil (mt/-any->any nil))))
 
 (deftest transform-test
 
@@ -517,7 +517,7 @@
                                                :leave #(cond (and (int? %) (>= % 100)) (* 10 %)
                                                              (keyword? %) (keyword "decoded" (name %))
                                                              :else %)}}
-                          [pos-int? {:decode/string {:enter mt/string->long
+                          [pos-int? {:decode/string {:enter mt/-string->long
                                                      :leave #(if (int? %) (inc %) %)}}]
                           keyword?]
                          x mt/string-transformer)))

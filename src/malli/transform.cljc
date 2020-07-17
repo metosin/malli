@@ -11,7 +11,7 @@
 
 (def ^:dynamic *max-compile-depth* 10)
 
-(defn- ->interceptor
+(defn -interceptor
   "Utility function to convert input into an interceptor. Works with functions,
   map and sequence of those."
   [?interceptor schema options]
@@ -25,7 +25,7 @@
           options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
         (m/fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
-      (if-let [interceptor (->interceptor ((:compile ?interceptor) schema options) schema options)]
+      (if-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
           (dissoc ?interceptor :compile)
           interceptor)))
@@ -44,11 +44,255 @@
                       (comp new-leave leave)
                       (or leave new-leave))]
           {:enter enter :leave leave}))
-      (keep #(->interceptor % schema options) ?interceptor))
+      (keep #(-interceptor % schema options) ?interceptor))
 
     (nil? ?interceptor) nil
 
     :else (m/fail! ::invalid-transformer {:value ?interceptor})))
+
+;;
+;; from strings
+;;
+
+(defn -string->long [x]
+  (if (string? x)
+    (try
+      #?(:clj  (Long/parseLong x)
+         :cljs (let [x' (if (re-find #"\D" (subs x 1))
+                          ##NaN
+                          (js/parseInt x 10))]
+                 (if (js/isNaN x') x x')))
+      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    x))
+
+(defn -string->double [x]
+  (if (string? x)
+    (try
+      #?(:clj  (Double/parseDouble x)
+         :cljs (let [x' (js/parseFloat x)]
+                 (if (js/isNaN x') x x')))
+      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    x))
+
+(defn -number->double [x]
+  (if (number? x) (double x) x))
+
+(defn -string->keyword [x]
+  (if (string? x)
+    (keyword x)
+    x))
+
+(defn -string->boolean [x]
+  (if (string? x)
+    (cond
+      (= "true" x) true
+      (= "false" x) false
+      :else x)
+    x))
+
+(defn -string->uuid [x]
+  (if (string? x)
+    (try
+      #?(:clj  (UUID/fromString x)
+         ;; http://stackoverflow.com/questions/7905929/how-to-test-valid-uuid-guid
+         :cljs (if (re-find #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" x)
+                 (uuid x)
+                 x))
+      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    x))
+
+#?(:clj
+   (def ^DateTimeFormatter +string->date-format+
+     (-> (DateTimeFormatterBuilder.)
+         (.appendPattern "yyyy-MM-dd['T'HH:mm:ss[.SSS][XXXX][XXXXX]]")
+         (.parseDefaulting ChronoField/HOUR_OF_DAY 0)
+         (.parseDefaulting ChronoField/OFFSET_SECONDS 0)
+         (.toFormatter))))
+
+(defn -string->date [x]
+  (if (string? x)
+    (try
+      #?(:clj  (Date/from (Instant/from (.parse +string->date-format+ x)))
+         :cljs (js/Date. (.getTime (goog.date.UtcDateTime.fromIsoString x))))
+      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    x))
+
+#?(:clj
+   (defn -string->decimal [x]
+     (if (string? x)
+       (try
+         (BigDecimal. ^String x)
+         (catch Exception _ x))
+       x)))
+
+(defn -string->symbol [x]
+  (if (string? x)
+    (symbol x)
+    x))
+
+(defn -string->nil [x]
+  (if (= "" x)
+    nil
+    x))
+
+;;
+;; misc
+;;
+
+(defn -any->string [x]
+  (if-not (nil? x)
+    (str x)))
+
+(defn -any->any [x] x)
+
+#?(:clj
+   (def ^DateTimeFormatter +date->string-format+
+     (-> (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+         (.withZone (ZoneId/of "UTC")))))
+
+(defn -date->string [x]
+  (if (inst? x)
+    (try
+      #?(:clj  (.format +date->string-format+ (Instant/ofEpochMilli (inst-ms x)))
+         :cljs (.toISOString x))
+      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    x))
+
+(defn -transform-map-keys [f]
+  #(cond->> % (map? %) (into {} (map (fn [[k v]] [(f k) v])))))
+
+;;
+;; sequential
+;;
+
+(defn -sequential->set [x]
+  (cond
+    (set? x) x
+    (sequential? x) (set x)
+    :else x))
+
+(defn -sequential->vector [x]
+  (cond
+    (vector? x) x
+    (sequential? x) (vec x)
+    :else x))
+
+(defn -sequential->seq [x]
+  (cond
+    (vector? x) (seq x)
+    :else x))
+
+;;
+;; sequential or set
+;;
+
+(defn -sequential-or-set->vector [x]
+  (cond
+    (vector? x) x
+    (set? x) (vec x)
+    (sequential? x) (vec x)
+    :else x))
+
+(defn -sequential-or-set->seq [x]
+  (cond
+    (vector? x) (seq x)
+    (set? x) (seq x)
+    :else x))
+
+;;
+;; decoders
+;;
+
+(defn -json-decoders []
+  {'ident? -string->keyword
+   'simple-ident? -string->keyword
+   'qualified-ident? -string->keyword
+
+   'keyword? -string->keyword
+   'simple-keyword? -string->keyword
+   'qualified-keyword? -string->keyword
+
+   'symbol? -string->symbol
+   'simple-symbol? -string->symbol
+   'qualified-symbol? -string->symbol
+
+   'uuid? -string->uuid
+   'double? -number->double
+   'inst? -string->date
+
+   :map-of (-transform-map-keys m/keyword->string)
+   :set -sequential->set
+   :sequential -sequential->seq
+   :list -sequential->seq})
+
+(defn -json-encoders []
+  {'keyword? m/keyword->string
+   'simple-keyword? m/keyword->string
+   'qualified-keyword? m/keyword->string
+
+   'symbol? -any->string
+   'simple-symbol? -any->string
+   'qualified-symbol? -any->string
+
+   'uuid? -any->string
+
+   ;:uri any->string
+   ;:bigdec any->string
+
+   'inst? -date->string
+   #?@(:clj ['ratio? -number->double])})
+
+(defn -string-decoders []
+  (merge
+    (-json-decoders)
+    {'integer? -string->long
+     'int? -string->long
+     'pos-int? -string->long
+     'neg-int? -string->long
+     'nat-int? -string->long
+     'zero? -string->long
+
+     :> -string->long
+     :>= -string->long
+     :< -string->long
+     :<= -string->long
+     := -string->long
+     :not= -string->long
+
+     'number? -string->double
+     'float? -string->double
+     'double? -string->double
+     #?@(:clj ['rational? -string->double])
+     #?@(:clj ['decimal? -string->decimal])
+
+     'boolean? -string->boolean
+     'false? -string->boolean
+     'true? -string->boolean
+
+     :vector -sequential->vector}))
+
+(defn -string-encoders []
+  (merge
+    (-json-encoders)
+    {'integer? -any->string
+     'int? -any->string
+     'pos-int? -any->string
+     'neg-int? -any->string
+     'nat-int? -any->string
+     'zero? -any->string
+
+     :> -any->string
+     :>= -any->string
+     :< -any->string
+     :<= -any->string
+     := -any->string
+     :not= -any->string
+
+     'double -any->string}))
+
+;;
+;; transformers
+;;
 
 (defn transformer [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
@@ -70,252 +314,9 @@
               (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
                                         (get transformers (m/type schema))
                                         default)]
-                (let [interceptor (->interceptor ?interceptor schema options)]
-                  (if (nil? acc) interceptor (->interceptor [acc interceptor] schema options)))
+                (let [interceptor (-interceptor ?interceptor schema options)]
+                  (if (nil? acc) interceptor (-interceptor [acc interceptor] schema options)))
                 acc)) nil chain'))))))
-
-;;
-;; From Strings
-;;
-
-(defn string->long [x]
-  (if (string? x)
-    (try
-      #?(:clj  (Long/parseLong x)
-         :cljs (let [x' (if (re-find #"\D" (subs x 1))
-                          ##NaN
-                          (js/parseInt x 10))]
-                 (if (js/isNaN x') x x')))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
-    x))
-
-(defn string->double [x]
-  (if (string? x)
-    (try
-      #?(:clj  (Double/parseDouble x)
-         :cljs (let [x' (js/parseFloat x)]
-                 (if (js/isNaN x') x x')))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
-    x))
-
-(defn number->double [x]
-  (if (number? x) (double x) x))
-
-(defn string->keyword [x]
-  (if (string? x)
-    (keyword x)
-    x))
-
-(defn string->boolean [x]
-  (if (string? x)
-    (cond
-      (= "true" x) true
-      (= "false" x) false
-      :else x)
-    x))
-
-(defn string->uuid [x]
-  (if (string? x)
-    (try
-      #?(:clj  (UUID/fromString x)
-         ;; http://stackoverflow.com/questions/7905929/how-to-test-valid-uuid-guid
-         :cljs (if (re-find #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" x)
-                 (uuid x)
-                 x))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
-    x))
-
-#?(:clj
-   (def ^DateTimeFormatter +string->date-format+
-     (-> (DateTimeFormatterBuilder.)
-         (.appendPattern "yyyy-MM-dd['T'HH:mm:ss[.SSS][XXXX][XXXXX]]")
-         (.parseDefaulting ChronoField/HOUR_OF_DAY 0)
-         (.parseDefaulting ChronoField/OFFSET_SECONDS 0)
-         (.toFormatter))))
-
-(defn string->date [x]
-  (if (string? x)
-    (try
-      #?(:clj  (Date/from (Instant/from (.parse +string->date-format+ x)))
-         :cljs (js/Date. (.getTime (goog.date.UtcDateTime.fromIsoString x))))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
-    x))
-
-#?(:clj
-   (def ^DateTimeFormatter +date->string-format+
-     (-> (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-         (.withZone (ZoneId/of "UTC")))))
-
-#?(:clj
-   (defn string->decimal [x]
-     (if (string? x)
-       (try
-         (BigDecimal. ^String x)
-         (catch Exception _ x))
-       x)))
-
-(defn date->string [x]
-  (if (inst? x)
-    (try
-      #?(:clj  (.format +date->string-format+ (Instant/ofEpochMilli (inst-ms x)))
-         :cljs (.toISOString x))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
-    x))
-
-(defn string->symbol [x]
-  (if (string? x)
-    (symbol x)
-    x))
-
-(defn string->nil [x]
-  (if (= "" x)
-    nil
-    x))
-
-(defn any->string [x]
-  (if-not (nil? x)
-    (str x)))
-
-(defn any->any [x] x)
-
-(defn coerce-map-keys [transform]
-  (fn [x]
-    (if (map? x)
-      (into {} (map (fn [[k v]] [(transform k) v])) x)
-      x)))
-
-;;
-;; sequential
-;;
-
-(defn sequential->set [x]
-  (cond
-    (set? x) x
-    (sequential? x) (set x)
-    :else x))
-
-(defn sequential->vector [x]
-  (cond
-    (vector? x) x
-    (sequential? x) (vec x)
-    :else x))
-
-(defn sequential->seq [x]
-  (cond
-    (vector? x) (seq x)
-    :else x))
-
-;;
-;; sequential or set
-;;
-
-(defn sequential-or-set->vector [x]
-  (cond
-    (vector? x) x
-    (set? x) (vec x)
-    (sequential? x) (vec x)
-    :else x))
-
-(defn sequential-or-set->seq [x]
-  (cond
-    (vector? x) (seq x)
-    (set? x) (seq x)
-    :else x))
-
-;;
-;; decoders
-;;
-
-(defn json-decoders []
-  {'ident? string->keyword
-   'simple-ident? string->keyword
-   'qualified-ident? string->keyword
-
-   'keyword? string->keyword
-   'simple-keyword? string->keyword
-   'qualified-keyword? string->keyword
-
-   'symbol? string->symbol
-   'simple-symbol? string->symbol
-   'qualified-symbol? string->symbol
-
-   'uuid? string->uuid
-   'double? number->double
-   'inst? string->date
-
-   :map-of (coerce-map-keys m/keyword->string)
-   :set sequential->set
-   :sequential sequential->seq
-   :list sequential->seq})
-
-(defn json-encoders []
-  {'keyword? m/keyword->string
-   'simple-keyword? m/keyword->string
-   'qualified-keyword? m/keyword->string
-
-   'symbol? any->string
-   'simple-symbol? any->string
-   'qualified-symbol? any->string
-
-   'uuid? any->string
-
-   ;:uri any->string
-   ;:bigdec any->string
-
-   'inst? date->string
-   #?@(:clj ['ratio? number->double])})
-
-(defn string-decoders []
-  (merge
-    (json-decoders)
-    {'integer? string->long
-     'int? string->long
-     'pos-int? string->long
-     'neg-int? string->long
-     'nat-int? string->long
-     'zero? string->long
-
-     :> string->long
-     :>= string->long
-     :< string->long
-     :<= string->long
-     := string->long
-     :not= string->long
-
-     'number? string->double
-     'float? string->double
-     'double? string->double
-     #?@(:clj ['rational? string->double])
-     #?@(:clj ['decimal? string->decimal])
-
-     'boolean? string->boolean
-     'false? string->boolean
-     'true? string->boolean
-
-     :vector sequential->vector}))
-
-(defn string-encoders []
-  (merge
-    (json-encoders)
-    {'integer? any->string
-     'int? any->string
-     'pos-int? any->string
-     'neg-int? any->string
-     'nat-int? any->string
-     'zero? any->string
-
-     :> any->string
-     :>= any->string
-     :< any->string
-     :<= any->string
-     := any->string
-     :not= any->string
-
-     'double any->string}))
-
-;;
-;; transformers
-;;
 
 (defn json-transformer
   ([]
@@ -323,14 +324,14 @@
   ([{::keys [json-arrays]}]
    (transformer
      {:name :json
-      :decoders (cond-> (json-decoders) (not json-arrays) (assoc :vector sequential->vector))
-      :encoders (json-encoders)})))
+      :decoders (cond-> (-json-decoders) (not json-arrays) (assoc :vector -sequential->vector))
+      :encoders (-json-encoders)})))
 
 (defn string-transformer []
   (transformer
     {:name :string
-     :decoders (string-decoders)
-     :encoders (string-encoders)}))
+     :decoders (-string-decoders)
+     :encoders (-string-encoders)}))
 
 (defn strip-extra-keys-transformer
   ([]
@@ -385,10 +386,10 @@
        :encoders {:map add-defaults}})))
 
 (defn collection-transformer []
-  (let [coders {:vector sequential->vector
-                :list sequential->seq
-                :sequential sequential->seq
-                :set sequential->set}]
+  (let [coders {:vector -sequential->vector
+                :list -sequential->seq
+                :sequential -sequential->seq
+                :set -sequential->set}]
     (transformer
       {:name :collection
        :decoders coders

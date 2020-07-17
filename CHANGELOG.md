@@ -15,7 +15,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 ## UNRELEASED
 
 * ???
-  * **BREAKING:**: decoders & encoders in `malli.transform` are renamed and moved from def to defns
+  * **BREAKING:**: big cleanup of `malli.transform` internals.
 * 12.7.2020
   * **BREAKING:**: `malli.mermaid` is removed (in favor of `malli.dot`)  
 * 10.7.2020

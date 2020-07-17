@@ -801,9 +801,9 @@
   ^{:type ::into-schema}
   (let [type (if (or id raw) ::schema :schema)]
     (reify IntoSchema
-      (-into-schema [_ properties [child :as children] options]
+      (-into-schema [_ properties children options]
         (-check-children! type properties children {:min 1, :max 1})
-        (let [child (schema child options)
+        (let [[child :as children] (map #(schema % options) children)
               form (or (and (empty? properties) (or id (and raw (-form child))))
                        (create-form type properties [(-form child)]))]
           ^{:type ::schema}

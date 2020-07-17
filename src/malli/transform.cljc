@@ -385,11 +385,12 @@
       {:decoders {:map add-defaults}
        :encoders {:map add-defaults}})))
 
+;; TODO: test me
 (defn collection-transformer []
-  (let [coders {:vector -sequential->vector
-                :list -sequential->seq
-                :sequential -sequential->seq
-                :set -sequential->set}]
+  (let [coders {:vector -sequential-or-set->vector
+                :list -sequential-or-set->seq
+                :sequential -sequential-or-set->seq
+                :set -sequential->seq}]
     (transformer
       {:name :collection
        :decoders coders

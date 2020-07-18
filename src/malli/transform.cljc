@@ -321,10 +321,10 @@
 (defn json-transformer
   ([]
    (json-transformer nil))
-  ([{::keys [json-arrays]}]
+  ([{::keys [json-vectors]}]
    (transformer
      {:name :json
-      :decoders (cond-> (-json-decoders) (not json-arrays) (assoc :vector -sequential->vector))
+      :decoders (cond-> (-json-decoders) json-vectors (assoc :vector -sequential->vector))
       :encoders (-json-encoders)})))
 
 (defn string-transformer []
@@ -385,13 +385,11 @@
       {:decoders {:map add-defaults}
        :encoders {:map add-defaults}})))
 
-;; TODO: test me
 (defn collection-transformer []
   (let [coders {:vector -sequential-or-set->vector
                 :list -sequential-or-set->seq
                 :sequential -sequential-or-set->seq
-                :set -sequential->seq}]
+                :set -sequential->set}]
     (transformer
-      {:name :collection
-       :decoders coders
+      {:decoders coders
        :encoders coders})))

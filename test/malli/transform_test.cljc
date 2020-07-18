@@ -192,14 +192,15 @@
     (testing "json transformer"
       (testing "json vectors"
         (testing "by default"
-          (testing "sequences are decoded as vectors"
-            (is (vector? (m/decode [:vector string?] '("1") (mt/json-transformer)))))
+          (testing "sequences are not decoded as vectors"
+            (is (list? (m/decode [:vector string?] '("1") (mt/json-transformer)))))
           (testing "sets are not"
             (is (set? (m/decode [:vector string?] #{"1"} (mt/json-transformer))))))
         (testing "using option"
-          (testing "decoding can be turned off"
-            (is (list? (m/decode [:vector string?] '("1") (mt/json-transformer {::mt/json-arrays true}))))
-            (is (set? (m/decode [:vector string?] #{"1"} (mt/json-transformer {::mt/json-arrays true})))))))))
+          (testing "sequences are decoded as vectors"
+            (is (vector? (m/decode [:vector string?] '("1") (mt/json-transformer {::mt/json-vectors true})))))
+          (testing "sets are not"
+            (is (set? (m/decode [:vector string?] #{"1"} (mt/json-transformer {::mt/json-vectors true})))))))))
 
   (testing "map"
     (testing "decode"
@@ -243,7 +244,6 @@
       (is (= nil (m/encode [:tuple keyword? int?] nil mt/string-transformer)))
       (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer))))))
 
-;; TODO: this is wrong!
 (deftest collection-transform-test
   (testing "decode"
     (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer)))

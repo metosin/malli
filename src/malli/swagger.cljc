@@ -22,6 +22,8 @@
 
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
+(defmethod accept :enum [_ _ children _] {:type "enum" :enum children})
+
 (defn- -swagger-walker [schema children _in options]
   (let [p (m/properties schema)]
     (or (json-schema/unlift p :swagger)

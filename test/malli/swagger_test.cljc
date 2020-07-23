@@ -58,7 +58,7 @@
    [[:set string?] {:type "array"
                     :items {:type "string"}
                     :uniqueItems true}]
-   [[:enum 1 2 3] {:enum [1 2 3]}]
+   [[:enum 1 2 3] {:enum [1 2 3] :type "enum"}]
    [[:maybe string?] {:type "string", :x-nullable true}]
    [[:tuple string? string?] {:type "array"
                               :items {}

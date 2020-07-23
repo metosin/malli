@@ -65,7 +65,7 @@
                               :x-items [{:type "string"}
                                         {:type "string"}]}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
-   [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLenght 4}]
+   [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    ;; protocols
    [(reify
       m/Schema

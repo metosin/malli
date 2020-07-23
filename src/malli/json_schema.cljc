@@ -91,7 +91,7 @@
 (defmethod accept :fn [_ _ _ _] {})
 
 (defmethod accept :string [_ schema _ _]
-  (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLenght}))))
+  (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))
 
 (defn- -json-schema-walker [schema children _in options]
   (let [p (m/properties schema)]

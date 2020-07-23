@@ -615,7 +615,7 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! :fn properties children {:min 1, :max 1})
-      (let [f (eval (first children))
+      (let [f (eval (first children) options)
             form (create-form :fn properties children)]
         ^{:type ::schema}
         (reify Schema
@@ -676,7 +676,7 @@
     (-into-schema [_ properties children options]
       (let [{:keys [children entries forms]} (-parse-entry-syntax children options)
             form (create-form :multi properties forms)
-            dispatch (eval (:dispatch properties))
+            dispatch (eval (:dispatch properties) options)
             dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))]
         (when-not dispatch
           (fail! ::missing-property {:key :dispatch}))
@@ -1025,17 +1025,13 @@
      (if (satisfies? MapSchema schema)
        (-map-entries schema)))))
 
-;;
-;; eval
-;;
-
 (let [-eval (or (ms/evaluator {:preset :termination-safe
                                :bindings {'m/properties properties
                                           'm/type type
                                           'm/children children
                                           'm/map-entries map-entries}})
                 #(fail! :sci-not-available {:code %}))]
-  (defn eval [?code] (if (fn? ?code) ?code (-eval (str ?code)))))
+  (defn eval [?code _options] (if (fn? ?code) ?code (-eval (str ?code)))))
 
 ;;
 ;; Walkers

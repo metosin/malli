@@ -79,7 +79,7 @@
   (if (map? x) (get x locale) x))
 
 (defn- -message [error x locale options]
-  (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
+  (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn options) error options))
             (-maybe-localized (:error/message x) locale))))
 
 (defn- -ensure [x k]

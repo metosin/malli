@@ -54,16 +54,16 @@
                   [:x boolean?]] nil))))
 
 (deftest eval-test
-  (is (= 2 ((m/eval inc) 1)))
-  (is (= 2 ((m/eval 'inc) 1)))
-  (is (= 2 ((m/eval '#(inc %)) 1)))
-  (is (= 2 ((m/eval '#(inc %1)) 1)))
-  (is (= 2 ((m/eval '(fn [x] (inc x))) 1)))
-  (is (= 2 ((m/eval "(fn [x] (inc x))") 1)))
-  (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
-  (is (= :maybe (m/eval "(m/type [:maybe int?])")))
-  (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
-  (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
+  (is (= 2 ((m/eval inc nil) 1)))
+  (is (= 2 ((m/eval 'inc nil) 1)))
+  (is (= 2 ((m/eval '#(inc %) nil) 1)))
+  (is (= 2 ((m/eval '#(inc %1) nil) 1)))
+  (is (= 2 ((m/eval '(fn [x] (inc x)) nil) 1)))
+  (is (= 2 ((m/eval "(fn [x] (inc x))" nil) 1)))
+  (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])" nil)))
+  (is (= :maybe (m/eval "(m/type [:maybe int?])" nil)))
+  (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])" nil))))
+  (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])" nil))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]

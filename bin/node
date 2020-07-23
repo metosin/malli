@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+echo 'Running CLJS test in Node with optimizations :none'
+clojure -A:test:cljs-test-runner -c '{:optimizations :none, :preloads [sci.core]}' $@
+
+echo 'Running CLJS test in Node with optimizations :advanced'
+clojure -A:test:cljs-test-runner -c '{:optimizations :advanced, :preloads [sci.core]}' $@

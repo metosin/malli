@@ -12,6 +12,7 @@ jobs:
       - run: npm ci
       - run: mkdir -p test-results
       - run: bin/kaocha --plugin kaocha.plugin/junit-xml --junit-xml-file  test-results/kaocha/results.xml
+      - run: bin/node
       - store_test_results:
           path: test-results
       - save_cache:

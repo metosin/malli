@@ -60,6 +60,7 @@
    'sequential? {:error/message {:en "should be a sequential"}}
    #?@(:clj ['ratio? {:error/message {:en "should be a ratio"}}])
    #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
+   :re {:error/message {:en "should match regex"}}
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
                            (str "should be "
                                 (if (= 1 (count (m/children schema)))

@@ -281,6 +281,18 @@
                 :d ""})
              (me/humanize)))))
 
+(deftest re-test
+  (testing "success"
+    (is (= nil
+           (-> [:re #"bla"]
+               (m/explain "bla")
+               (me/humanize)))))
+  (testing "failure"
+    (is (= ["should match regex"]
+           (-> [:re "#bla"]
+               (m/explain "gogo")
+               (me/humanize))))))
+
 (deftest enum-test
   (testing "success"
     (is (= nil

@@ -1,6 +1,6 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref -lookup])
-  (:require [sci.core :as sci]
+  (:require [malli.sci :as ms]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang IDeref))))
@@ -1025,12 +1025,18 @@
      (if (satisfies? MapSchema schema)
        (-map-entries schema)))))
 
-(defn ^:no-doc eval [?code]
-  (if (fn? ?code) ?code (sci/eval-string (str ?code) {:preset :termination-safe
-                                                      :bindings {'m/properties properties
-                                                                 'm/type type
-                                                                 'm/children children
-                                                                 'm/map-entries map-entries}})))
+;;
+;; eval
+;;
+
+(let [-eval (or (ms/evaluator {:preset :termination-safe
+                               :bindings {'m/properties properties
+                                          'm/type type
+                                          'm/children children
+                                          'm/map-entries map-entries}})
+                #(fail! :sci-not-available {:code %}))]
+  (defn eval [?code] (if (fn? ?code) ?code (-eval (str ?code)))))
+
 ;;
 ;; Walkers
 ;;

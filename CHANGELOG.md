@@ -14,7 +14,11 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## UNRELEASED
 
-* ???
+* 23.7.2020
+  * **BREAKING:**: `sci` is not a default dependency. Enabling sci-support:
+    * **Clojure**: add a dependency to `borkdude/sci`
+    * **ClojureScript**: also require `sci.core` (directly or via `:preloads`)
+* 18.7.2020
   * **BREAKING:**: big cleanup of `malli.transform` internals.
 * 12.7.2020
   * **BREAKING:**: `malli.mermaid` is removed (in favor of `malli.dot`)  

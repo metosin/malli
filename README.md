@@ -9,6 +9,7 @@ Plain data Schemas for Clojure/Script.
 - Schemas as plain data
 - [Validation](#examples) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) witg [Spell Checking](#spell-checking)
+- [Serializable function schemas](#serializable-functions)
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [Programming with Schemas](#programming-with-schemas)
@@ -144,7 +145,12 @@ Using `:string` Schema:
 ; => false
 ```
 
-Serializable function schemas using [sci](https://github.com/borkdude/sci):
+## Serializable Functions
+
+Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
+it is not present, the malli function evaluater throws `:sci-not-available` exception.
+
+For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
 
 ```clj
 (def my-schema

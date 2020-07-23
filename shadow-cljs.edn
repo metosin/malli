@@ -19,8 +19,6 @@
           :app2 {:target :browser
                  :closure-defines {malli.registry/type "custom"}
                  :modules {:cljs {:entries [cljs.core]}
-                           #_#_:sci {:entries [sci.core]
-                                     :depends-on #{:cljs}}
                            :malli {:entries [malli.core]
                                    :depends-on #{:cljs}}
                            :app {:entries [malli.app2]

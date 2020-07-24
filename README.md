@@ -125,6 +125,14 @@ Using `:string` Schema:
 (m/validate [:string {:min 1, :max 4}] "")
 ; => false
 ```
+(m/validate [:string {:length 3}] "ab")
+; => false
+
+(m/validate [:string {:length 3}] "abc")
+; => true
+
+(m/validate [:string {:length 3}] "abcd")
+; => false
 
 ## Function schemas
 

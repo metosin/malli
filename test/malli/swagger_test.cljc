@@ -66,6 +66,7 @@
                                         {:type "string"}]}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
+   [[:string {:length 10}] {:type "string", :minLength 10, :maxLength 10}]
    ;; protocols
    [(reify
       m/Schema

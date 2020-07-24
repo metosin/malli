@@ -90,8 +90,14 @@
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
 
+(defn min-max-length
+  [{:keys [min max length] :as properties}]
+  (cond
+   (or min max) (set/rename-keys properties {:min :minLength :max :maxLength})
+   length (-> (dissoc properties :length) (merge {:minLength length :maxLength length}))))
+
 (defmethod accept :string [_ schema _ _]
-  (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))
+  (merge {:type "string"} (-> schema m/properties min-max-length)))
 
 (defn- -json-schema-walker [schema children _in options]
   (let [p (m/properties schema)]

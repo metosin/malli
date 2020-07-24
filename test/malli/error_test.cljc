@@ -268,17 +268,23 @@
   (is (= {:a ["should be a string"],
           :b ["should be at least 1 characters"],
           :c ["should be at most 4 characters"],
-          :d ["should be between 1 and 4 characters"]}
+          :d ["should be between 1 and 4 characters"]
+          :e ["should be exactly 3 characters"]
+          :f ["should be exactly 3 characters"]}
          (-> [:map
               [:a :string]
               [:b [:string {:min 1}]]
               [:c [:string {:max 4}]]
-              [:d [:string {:min 1, :max 4}]]]
+              [:d [:string {:min 1, :max 4}]]
+              [:e [:string {:length 3}]]
+              [:f [:string {:length 3}]]]
              (m/explain
                {:a 123
                 :b ""
                 :c "invalid"
-                :d ""})
+                :d ""
+                :e "12"
+                :f "1234"})
              (me/humanize)))))
 
 (deftest re-test

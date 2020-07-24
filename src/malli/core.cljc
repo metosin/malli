@@ -728,9 +728,10 @@
 (defn -string-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ {:keys [min max] :as properties} children options]
+    (-into-schema [_ {:keys [min max length] :as properties} children options]
       (-check-children! :string properties children {:min 0, :max 0})
       (let [count-validator (cond
+                              length (fn [x] (= (count x) length))
                               (not (or min max)) nil
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
                               min (fn [x] (<= min (count x)))

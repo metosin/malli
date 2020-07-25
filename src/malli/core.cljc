@@ -1,7 +1,8 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref -lookup])
-  (:require [malli.sci :as ms]
-            [malli.registry :as mr])
+  (:require [malli.options :as mo]
+            [malli.registry :as mr]
+            [malli.sci-dynamic :as msd])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang IDeref))))
 
@@ -58,7 +59,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval registry default-registry)
+(declare schema schema? into-schema into-schema? eval registry default-options)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -837,10 +838,6 @@
         (assoc name schema)
         (assoc @v schema))))
 
-(defn registry
-  ([] default-registry)
-  ([{:keys [registry]}] (or (mr/registry registry) default-registry)))
-
 (defn- -lookup [?schema options]
   (let [registry (registry options)]
     (or (mr/-schema registry ?schema)
@@ -862,7 +859,7 @@
     (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
 
 (defn -properties-and-options [properties options f]
-  (if-let [r (some-> properties :registry)]
+  (if-let [r (:registry properties)]
     (let [options (update options :registry #(mr/composite-registry r (or % (registry options))))]
       [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
@@ -873,6 +870,8 @@
 ;; public api
 ;;
 
+(defn registry [options]
+  (or (-> options :registry mr/registry) (-> (default-options) :registry mr/registry)))
 
 (defn schema? [x]
   (satisfies? Schema x))
@@ -882,14 +881,14 @@
 
 (defn into-schema
   ([type properties children]
-   (into-schema type properties children nil))
+   (into-schema type properties children (default-options)))
   ([type properties children options]
    (let [[properties options] (-properties-and-options properties options -form)]
      (-into-schema (-schema type options) (if (seq properties) properties) children options))))
 
 (defn schema
   ([?schema]
-   (schema ?schema nil))
+   (schema ?schema (default-options)))
   ([?schema options]
    (cond
      (schema? ?schema) ?schema
@@ -902,38 +901,38 @@
 
 (defn form
   ([?schema]
-   (form ?schema nil))
+   (form ?schema (default-options)))
   ([?schema options]
    (-form (schema ?schema options))))
 
 (defn properties
   ([?schema]
-   (properties ?schema nil))
+   (properties ?schema (default-options)))
   ([?schema options]
    (-properties (schema ?schema options))))
 
 (defn options
   ([?schema]
-   (options ?schema nil))
+   (options ?schema (default-options)))
   ([?schema options]
    (-options (schema ?schema options))))
 
 (defn children
   ([?schema]
-   (children ?schema nil))
+   (children ?schema (default-options)))
   ([?schema options]
    (let [schema (schema ?schema options)]
      (-children schema))))
 
 (defn type
   ([?schema]
-   (type ?schema nil))
+   (type ?schema (default-options)))
   ([?schema options]
    (-type (schema ?schema options))))
 
 (defn walk
   ([?schema f]
-   (walk ?schema f nil))
+   (walk ?schema f (default-options)))
   ([?schema f options]
    (-walk
      (schema ?schema options)
@@ -945,19 +944,19 @@
 
 (defn validator
   ([?schema]
-   (validator ?schema nil))
+   (validator ?schema (default-options)))
   ([?schema options]
    (-validator (schema ?schema options))))
 
 (defn validate
   ([?schema value]
-   (validate ?schema value nil))
+   (validate ?schema value (default-options)))
   ([?schema value options]
    ((validator ?schema options) value)))
 
 (defn explainer
   ([?schema]
-   (explainer ?schema nil))
+   (explainer ?schema (default-options)))
   ([?schema options]
    (let [schema' (schema ?schema options)
          explainer' (-explainer schema' [])]
@@ -972,14 +971,14 @@
 
 (defn explain
   ([?schema value]
-   (explain ?schema value nil))
+   (explain ?schema value (default-options)))
   ([?schema value options]
    ((explainer ?schema options) value [] [])))
 
 (defn decoder
   "Creates a value decoding transformer given a transformer and a schema."
   ([?schema t]
-   (decoder ?schema nil t))
+   (decoder ?schema (default-options) t))
   ([?schema options t]
    (let [{:keys [enter leave]} (-transformer (schema ?schema options) (into-transformer t) :decode options)]
      (cond
@@ -990,7 +989,7 @@
 (defn decode
   "Transforms a value with a given decoding transformer against a schema."
   ([?schema value t]
-   (decode ?schema value nil t))
+   (decode ?schema value (default-options) t))
   ([?schema value options t]
    (if-let [transform (decoder ?schema options t)]
      (transform value)
@@ -999,7 +998,7 @@
 (defn encoder
   "Creates a value encoding transformer given a transformer and a schema."
   ([?schema t]
-   (encoder ?schema nil t))
+   (encoder ?schema (default-options) t))
   ([?schema options t]
    (let [{:keys [enter leave]} (-transformer (schema ?schema options) (into-transformer t) :encode options)]
      (cond
@@ -1010,7 +1009,7 @@
 (defn encode
   "Transforms a value with a given encoding transformer against a schema."
   ([?schema value t]
-   (encode ?schema value nil t))
+   (encode ?schema value (default-options) t))
   ([?schema value options t]
    (if-let [transform (encoder ?schema options t)]
      (transform value)
@@ -1019,19 +1018,22 @@
 (defn map-entries
   "Returns a sequence of 3-element map-entry tuples of type `key ?properties schema`"
   ([?schema]
-   (map-entries ?schema nil))
+   (map-entries ?schema (default-options)))
   ([?schema options]
    (if-let [schema (schema ?schema options)]
      (if (satisfies? MapSchema schema)
        (-map-entries schema)))))
 
-(let [-eval (or (ms/evaluator {:preset :termination-safe
-                               :bindings {'m/properties properties
-                                          'm/type type
-                                          'm/children children
-                                          'm/map-entries map-entries}})
-                #(fail! :sci-not-available {:code %}))]
-  (defn eval [?code _options] (if (fn? ?code) ?code (-eval (str ?code)))))
+;;
+;; eval
+;;
+
+(defn eval [?code options]
+  (if (fn? ?code)
+    ?code
+    (if-let [-eval (if-let [e (find options :evaluator)] (val e) (:evaluator (default-options)))]
+      (-eval (str ?code))
+      #(fail! :evaluator-not-available {:code %}))))
 
 ;;
 ;; Walkers
@@ -1041,22 +1043,22 @@
   (fn [schema children _ _]
     (f (into-schema (-type schema) (-properties schema) children (-options schema)))))
 
+;;
+;; map-syntax
+;;
+
 (defn ^:no-doc map-syntax-walker [schema children _ _]
   (let [properties (properties schema)]
     (cond-> {:type (type schema)}
             (seq properties) (assoc :properties properties)
             (seq children) (assoc :children children))))
 
-;;
-;; map-syntax
-;;
-
 (defn ^:no-doc to-map-syntax
-  ([?schema] (to-map-syntax ?schema nil))
+  ([?schema] (to-map-syntax ?schema (default-options)))
   ([?schema options] (walk ?schema map-syntax-walker options)))
 
 (defn ^:no-doc from-map-syntax
-  ([m] (from-map-syntax m nil))
+  ([m] (from-map-syntax m (default-options)))
   ([{:keys [type properties children] :as m} options]
    (if (map? m)
      (let [<-child (if (-> children first vector?) (fn [f] #(update % 2 f)) identity)
@@ -1107,7 +1109,23 @@
 (defn default-schemas []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
 
-(def default-registry
-  (mr/registry (cond (identical? mr/type "default") (default-schemas)
-                     (identical? mr/type "custom") (mr/custom-default-registry)
-                     :else (fail! ::invalid-registry.type {:type mr/type}))))
+;;
+;; options
+;;
+
+(defn default-evaluator-options []
+  {:preset :termination-safe
+   :bindings {'m/properties properties
+              'm/type type
+              'm/children children
+              'm/map-entries map-entries}})
+
+(let [options (cond (identical? mo/type "default") (mo/options
+                                                     {:registry (mr/registry (default-schemas))
+                                                      :evaluator (msd/evaluator (default-evaluator-options))})
+                    (identical? mo/type "custom") (mo/reset-custom-default-options!
+                                                    {:registry (mr/registry {})
+                                                     :evaluator (msd/evaluator (default-evaluator-options))})
+                    (identical? mo/type "empty") (mo/reset-custom-default-options! {})
+                    :else (fail! ::invalid-options-type {:type mo/type}))]
+  (defn default-options [] @options))

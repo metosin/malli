@@ -149,20 +149,20 @@
 
 (defn generator
   ([?schema]
-   (generator ?schema nil))
+   (generator ?schema (m/default-options)))
   ([?schema options]
    (-create (m/schema ?schema options) options)))
 
 (defn generate
   ([?gen-or-schema]
-   (generate ?gen-or-schema nil))
+   (generate ?gen-or-schema (m/default-options)))
   ([?gen-or-schema {:keys [seed size] :or {size 1} :as options}]
    (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
      (rose/root (gen/call-gen gen (-random seed) size)))))
 
 (defn sample
   ([?gen-or-schema]
-   (sample ?gen-or-schema nil))
+   (sample ?gen-or-schema (m/default-options)))
   ([?gen-or-schema {:keys [seed size] :or {size 10} :as options}]
    (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
      (->> (gen/make-size-range-seq size)

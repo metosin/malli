@@ -36,7 +36,8 @@
 (deftest parse-entry-syntax-test
   (let [{:keys [children entries forms]} (m/-parse-entry-syntax
                                            [[:x int?]
-                                            [:y {:optional true, :title "boolean"} boolean?]] nil)]
+                                            [:y {:optional true, :title "boolean"} boolean?]]
+                                           (m/default-options))]
     (testing "forms"
       (is (= [[:x 'int?]
               [:y {:optional true, :title "boolean"} 'boolean?]]
@@ -54,16 +55,22 @@
                   [:x boolean?]] nil))))
 
 (deftest eval-test
-  (is (= 2 ((m/eval inc nil) 1)))
-  (is (= 2 ((m/eval 'inc nil) 1)))
-  (is (= 2 ((m/eval '#(inc %) nil) 1)))
-  (is (= 2 ((m/eval '#(inc %1) nil) 1)))
-  (is (= 2 ((m/eval '(fn [x] (inc x)) nil) 1)))
-  (is (= 2 ((m/eval "(fn [x] (inc x))" nil) 1)))
-  (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])" nil)))
-  (is (= :maybe (m/eval "(m/type [:maybe int?])" nil)))
-  (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])" nil))))
-  (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])" nil))))
+  (testing "with default options"
+    (let [eval (fn [x] (m/eval x (m/default-options)))]
+      (is (= 2 ((eval inc) 1)))
+      (is (= 2 ((eval 'inc) 1)))
+      (is (= 2 ((eval '#(inc %)) 1)))
+      (is (= 2 ((eval '#(inc %1)) 1)))
+      (is (= 2 ((eval '(fn [x] (inc x))) 1)))
+      (is (= 2 ((eval "(fn [x] (inc x))") 1)))
+      (is (= {:district 9} (eval "(m/properties [int? {:district 9}])")))
+      (is (= :maybe (eval "(m/type [:maybe int?])")))
+      (is (= ['int? 'string?] (map m/form (eval "(m/children [:or {:some \"props\"} int? string?])"))))
+      (is (entries= [[:x nil 'int?] [:y nil 'string?]] (eval "(m/map-entries [:map [:x int?] [:y string?]])")))))
+  (testing "without evaluator"
+    (let [eval (fn [x] (m/eval x {:evaluator nil}))]
+      (is (= 2 ((eval inc) 1)))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) ((eval 'inc) 1))))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]

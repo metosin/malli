@@ -162,13 +162,13 @@
 
 (defn error-path
   ([error]
-   (error-path error nil))
+   (error-path error (m/default-options)))
   ([error options]
    (into (:in error) (-path error options))))
 
 (defn error-message
   ([error]
-   (error-message error nil))
+   (error-message error (m/default-options)))
   ([{:keys [schema type] :as error}
     {:keys [errors locale default-locale]
      :or {errors default-errors
@@ -186,21 +186,21 @@
 
 (defn with-error-message
   ([error]
-   (with-error-message error nil))
+   (with-error-message error (m/default-options)))
   ([error options]
    (assoc error :message (error-message error options))))
 
 (defn with-error-messages
   ([explanation]
-   (with-error-messages explanation nil))
-  ([explanation {f :wrap :or {f identity} :as options}]
+   (with-error-messages explanation (m/default-options)))
+  ([explanation {f ::wrap :or {f identity} :as options}]
    (when explanation
      (update explanation :errors (partial map #(f (with-error-message % options)))))))
 
 (defn with-spell-checking
   ([explanation]
-   (with-spell-checking explanation nil))
-  ([explanation {:keys [keep-likely-misspelled-of]}]
+   (with-spell-checking explanation (m/default-options)))
+  ([explanation {::keys [keep-likely-misspelled-of]}]
    (when explanation
      (let [!likely-misspelling-of (atom #{})]
        (update
@@ -226,8 +226,8 @@
 
 (defn humanize
   ([explanation]
-   (humanize explanation nil))
-  ([{:keys [value errors]} {f :wrap :or {f :message} :as options}]
+   (humanize explanation (m/default-options)))
+  ([{:keys [value errors]} {f ::wrap :or {f :message} :as options}]
    (if errors
      (if (coll? value)
        (reduce

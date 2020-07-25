@@ -3,24 +3,24 @@
 ;; - npx shadow-cljs release app2 --pseudo-names
 (ns malli.app2
   (:require [malli.core :as m]
-            [malli.registry :as mr]))
+            [malli.options :as mo]))
 
-;; - cljs: :closure-defines {malli.registry/type "custom"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
+;; - cljs: :closure-defines {malli.options/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.options/type=custom"]
 
 ;; just what is needed (1.2kb gzipped)
-(def registry
-  {:string (m/-string-schema)
-   :maybe (m/-maybe-schema)
-   :map (m/-map-schema)})
+(def options
+  {:registry {:string (m/-string-schema)
+              :maybe (m/-maybe-schema)
+              :map (m/-map-schema)}})
 
 (m/validate
   [:map [:maybe [:maybe :string]]]
   {:maybe "sheep"}
-  {:registry registry})
+  options)
 ; => true
 
-(mr/set-default-registry! registry)
+(mo/reset-custom-default-options! options)
 
 (m/validate
   [:map [:maybe [:maybe :string]]]

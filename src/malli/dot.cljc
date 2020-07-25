@@ -52,7 +52,7 @@
 ;;
 
 (defn transform
-  ([?schema] (transform ?schema nil))
+  ([?schema] (transform ?schema (m/default-options)))
   ([?schema options]
    (let [registry (-> ?schema (m/schema options) -lift -collect -normalize :registry)
          entity? #(->> % (get registry) m/properties ::entity)

@@ -86,7 +86,7 @@
                                [:street2 string?]]]]
                    (mu/closed-schema)
                    (m/explain {:address {:streetz "123"}})
-                   (me/with-spell-checking {:keep-likely-misspelled-of true})
+                   (me/with-spell-checking {::me/keep-likely-misspelled-of true})
                    (me/with-error-messages)
                    (get-errors))))))))
 

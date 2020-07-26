@@ -67,10 +67,10 @@
                                   (first (m/children schema))
                                   (str "either " (->> (m/children schema) butlast (str/join ", "))
                                        " or " (last (m/children schema))))))}}
-   :string {:error/fn {:en (fn [{:keys [schema]} _]
+   :string {:error/fn {:en (fn [{:keys [schema value]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond
-                                 (not (or min max)) "should be a string"
+                                 (not (string? value)) "should be a string"
                                  (and min max) (str "should be between " min " and " max " characters")
                                  min (str "should be at least " min " characters")
                                  max (str "should be at most " max " characters"))))}}})

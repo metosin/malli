@@ -138,7 +138,7 @@
         gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))
         elements (when elements (gen/elements elements))]
     (cond
-      fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))
+      fmap (gen/fmap (m/eval fmap options) (or elements gen (gen/return nil)))
       elements elements
       gen gen
       :else (m/fail! ::no-generator {:schema schema, :options options}))))
@@ -148,23 +148,22 @@
 ;;
 
 (defn generator
-  ([?schema]
-   (generator ?schema nil))
-  ([?schema options]
-   (-create (m/schema ?schema options) options)))
+  ([?schema-or-generator]
+   (generator ?schema-or-generator (m/default-options)))
+  ([?schema-or-generator options]
+   (if (gen/generator? ?schema-or-generator) ?schema-or-generator (-create (m/schema ?schema-or-generator options) options))))
 
 (defn generate
-  ([?gen-or-schema]
-   (generate ?gen-or-schema nil))
-  ([?gen-or-schema {:keys [seed size] :or {size 1} :as options}]
-   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
-     (rose/root (gen/call-gen gen (-random seed) size)))))
+  ([?schema-or-generator]
+   (generate ?schema-or-generator (m/default-options)))
+  ([?schema-or-generator {:keys [seed size] :or {size 1} :as options}]
+   (rose/root (gen/call-gen (generator ?schema-or-generator options) (-random seed) size))))
 
 (defn sample
-  ([?gen-or-schema]
-   (sample ?gen-or-schema nil))
-  ([?gen-or-schema {:keys [seed size] :or {size 10} :as options}]
-   (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
+  ([?schema-or-generator]
+   (sample ?schema-or-generator (m/default-options)))
+  ([?schema-or-generator {:keys [seed size] :or {size 10} :as options}]
+   (let [gen (generator ?schema-or-generator options)]
      (->> (gen/make-size-range-seq size)
           (map #(rose/root (gen/call-gen gen %1 %2))
                (gen/lazy-random-states (-random seed)))

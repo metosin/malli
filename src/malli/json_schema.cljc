@@ -108,6 +108,6 @@
 
 (defn transform
   ([?schema]
-   (transform ?schema nil))
+   (transform ?schema (m/default-options)))
   ([?schema options]
    (m/walk ?schema -json-schema-walker options)))

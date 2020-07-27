@@ -298,7 +298,7 @@
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
-        ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
+        ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x options)))
         ->chain (comp m/-transformer-chain m/into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
@@ -311,7 +311,7 @@
         (-value-transformer [_ schema method options]
           (reduce
             (fn [acc {{:keys [key default transformers]} method}]
-              (if-let [?interceptor (or (some-> (get (m/properties schema) key) ->eval)
+              (if-let [?interceptor (or (some-> (get (m/properties schema) key) (->eval options))
                                         (get transformers (m/type schema))
                                         default)]
                 (let [interceptor (-interceptor ?interceptor schema options)]

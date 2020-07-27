@@ -5,7 +5,7 @@
 
 (defn ^:no-doc equals
   ([?schema1 ?schema2]
-   (equals ?schema1 ?schema2 nil))
+   (equals ?schema1 ?schema2 (m/default-options)))
   ([?schema1 ?schema2 options]
    (= (m/form ?schema1 options) (m/form ?schema2 options))))
 
@@ -33,7 +33,7 @@
   "Prewalks the Schema recursively with a 3-arity fn [schema in options], returns with
   and as soon as the function returns non-null value."
   ([?schema f]
-   (find-first ?schema f nil))
+   (find-first ?schema f (m/default-options)))
   ([?schema f options]
    (let [result (atom nil)]
      (m/-walk
@@ -58,7 +58,7 @@
   | `:merge-default`  | `schema1 schema2 options -> schema` fn to merge unknown entries
   | `:merge-required` | `boolean boolean -> boolean` fn to resolve how required keys are merged"
   ([?schema1 ?schema2]
-   (merge ?schema1 ?schema2 nil))
+   (merge ?schema1 ?schema2 (m/default-options)))
   ([?schema1 ?schema2 options]
    (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/schema ?schema1 options))
                                         (if ?schema2 (m/schema ?schema2 options))]
@@ -94,7 +94,7 @@
 (defn union
   "Union of two schemas. See [[merge]] for more details."
   ([?schema1 ?schema2]
-   (union ?schema1 ?schema2 nil))
+   (union ?schema1 ?schema2 (m/default-options)))
   ([?schema1 ?schema2 options]
    (let [merge-default (fn [s1 s2 options] (if (equals s1 s2) s1 (m/schema [:or s1 s2] options)))
          merge-required (fn [r1 r2] (and r1 r2))]
@@ -117,7 +117,7 @@
   "Closes recursively all :map schemas by adding `{:closed true}`
   property, unless schema explicitely open with `{:closed false}`"
   ([schema]
-   (closed-schema schema nil))
+   (closed-schema schema (m/default-options)))
   ([schema options]
    (m/walk
      schema
@@ -131,7 +131,7 @@
   "Closes recursively all :map schemas by removing `:closed`
   property, unless schema explicitely open with `{:closed false}`"
   ([schema]
-   (open-schema schema nil))
+   (open-schema schema (m/default-options)))
   ([schema options]
    (m/walk
      schema
@@ -166,9 +166,9 @@
 (defn optional-keys
   "Makes map keys optional."
   ([?schema]
-   (optional-keys ?schema nil nil))
+   (optional-keys ?schema nil (m/default-options)))
   ([?schema ?keys]
-   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
+   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys (m/default-options)])]
      (optional-keys ?schema keys options)))
   ([?schema keys options]
    (let [schema (m/schema ?schema options)
@@ -179,9 +179,9 @@
 (defn required-keys
   "Makes map keys required."
   ([?schema]
-   (required-keys ?schema nil nil))
+   (required-keys ?schema nil (m/default-options)))
   ([?schema ?keys]
-   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
+   (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys (m/default-options)])]
      (required-keys ?schema keys options)))
   ([?schema keys options]
    (let [schema (m/schema ?schema options)
@@ -193,7 +193,7 @@
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."
   ([?schema keys]
-   (select-keys ?schema keys nil))
+   (select-keys ?schema keys (m/default-options)))
   ([?schema keys options]
    (let [schema (m/schema ?schema options)
          key-set (set keys)]
@@ -202,7 +202,7 @@
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
   ([?schema key]
-   (dissoc ?schema key nil))
+   (dissoc ?schema key (m/default-options)))
   ([?schema key options]
    (let [schema (m/schema ?schema options)]
      (transform-entries schema (partial remove (fn [[k]] (= key k))) options))))
@@ -214,7 +214,7 @@
 (defn get
   "Like [[clojure.core/get]], but for LensSchemas."
   ([?schema k]
-   (get ?schema k nil))
+   (get ?schema k (m/default-options)))
   ([?schema k options]
    (let [schema (m/schema (or ?schema :map) options)]
      (m/-get schema k nil))))
@@ -222,7 +222,7 @@
 (defn assoc
   "Like [[clojure.core/assoc]], but for LensSchemas."
   ([?schema key value]
-   (assoc ?schema key value nil))
+   (assoc ?schema key value (m/default-options)))
   ([?schema key value options]
    (let [schema (m/schema (or ?schema :map) options)]
      (m/-set schema key value))))
@@ -237,7 +237,7 @@
 (defn get-in
   "Like [[clojure.core/get-in]], but for LensSchemas."
   ([?schema ks]
-   (get-in ?schema ks nil))
+   (get-in ?schema ks (m/default-options)))
   ([?schema [k & ks] options]
    (let [schema (get (m/schema (or ?schema :map) options) k)]
      (if ks (get-in schema ks) schema))))
@@ -245,7 +245,7 @@
 (defn assoc-in
   "Like [[clojure.core/assoc-in]], but for LensSchemas."
   ([?schema ks value]
-   (assoc-in ?schema ks value nil))
+   (assoc-in ?schema ks value (m/default-options)))
   ([?schema [k & ks] value options]
    (let [schema (m/schema (or ?schema :map) options)]
      (assoc schema k (if ks (assoc-in (get schema k) ks value) value)))))

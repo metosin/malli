@@ -1,8 +1,4 @@
-(ns malli.registry
-  (:refer-clojure :exclude [type]))
-
-#?(:cljs (goog-define type "default")
-   :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
+(ns malli.registry)
 
 (defprotocol Registry
   (-schema [this type] "returns the schema from a registry")
@@ -17,23 +13,6 @@
 (defn registry [?registry]
   (cond (satisfies? Registry ?registry) ?registry
         (map? ?registry) (simple-registry ?registry)))
-
-;;
-;; custom
-;;
-
-(def ^:private registry* (atom (registry {})))
-
-(defn set-default-registry! [?registry]
-  (if (identical? type "custom")
-    (reset! registry* (registry ?registry))
-    (throw (ex-info "can't set default registry" {:type type}))))
-
-(defn ^:no-doc custom-default-registry []
-  (reify
-    Registry
-    (-schema [_ type] (-schema @registry* type))
-    (-schemas [_] (-schemas @registry*))))
 
 (defn composite-registry [& ?registries]
   (let [registries (mapv registry ?registries)]

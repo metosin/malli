@@ -1,13 +1,13 @@
 {:deps {:aliases [:shadow :sci]}
  :builds {:app {:target :browser
-                :closure-defines {malli.registry/type "default"}
+                :closure-defines {malli.options/type "default"}
                 :modules {:cljs {:entries [cljs.core]}
                           :malli {:entries [malli.core]
                                   :depends-on #{:cljs}}
                           :app {:entries [malli.app]
                                 :depends-on #{:malli}}}}
           :app-sci {:target :browser
-                    :closure-defines {malli.registry/type "default"}
+                    :closure-defines {malli.options/type "default"}
                     :devtools {:preloads [sci.core]}
                     :modules {:cljs {:entries [cljs.core]}
                               :sci {:entries [sci.core]
@@ -17,14 +17,14 @@
                               :app {:entries [malli.app]
                                     :depends-on #{:malli}}}}
           :app2 {:target :browser
-                 :closure-defines {malli.registry/type "custom"}
+                 :closure-defines {malli.options/type "custom"}
                  :modules {:cljs {:entries [cljs.core]}
                            :malli {:entries [malli.core]
                                    :depends-on #{:cljs}}
                            :app {:entries [malli.app2]
                                  :depends-on #{:malli}}}}
           :app2-sci {:target :browser
-                     :closure-defines {malli.registry/type "custom"}
+                     :closure-defines {malli.options/type "custom"}
                      :devtools {:preloads [sci.core]}
                      :modules {:cljs {:entries [cljs.core]}
                                :sci {:entries [sci.core]
@@ -32,4 +32,11 @@
                                :malli {:entries [malli.core]
                                        :depends-on #{:cljs :sci}}
                                :app {:entries [malli.app2]
-                                     :depends-on #{:malli}}}}}}
+                                     :depends-on #{:malli}}}}
+          :app3 {:target :browser
+                 :closure-defines {malli.options/type "empty"}
+                 :modules {:cljs {:entries [cljs.core]}
+                           :malli {:entries [malli.core]
+                                   :depends-on #{:cljs}}
+                           :app {:entries [malli.app3]
+                                 :depends-on #{:malli}}}}}}

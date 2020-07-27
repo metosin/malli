@@ -61,13 +61,13 @@
 
 (defn stats
   ([xs]
-   (stats xs nil))
+   (stats xs (m/default-options)))
   ([xs options]
    (reduce (->infer options) options xs)))
 
 (defn schema
   ([stats]
-   (schema stats nil))
+   (schema stats (m/default-options)))
   ([{:keys [types] :as stats} options]
    (cond
      (= 1 (count (keys types)))
@@ -81,6 +81,6 @@
 
 (defn provide
   ([xs]
-   (provide xs nil))
+   (provide xs (m/default-options)))
   ([xs options]
    (-> xs (stats options) (schema options))))

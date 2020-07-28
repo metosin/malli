@@ -167,15 +167,17 @@
          (mu/get [:vector int?] 1))))
 
 (deftest get-in-test
-  (is (mu/equals (mu/get-in
+  (is (mu/equals boolean?
+                 (mu/get-in
                    [:map
                     [:x [:vector
                          [:list
                           [:set
                            [:sequential
                             [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
-                   [:x 0 0 0 0 1 :y 0])
-                 boolean?)))
+                   [:x 0 0 0 0 1 :y 0])))
+  (is (mu/equals [:maybe [:tuple int? boolean?]]
+                 (mu/get-in [:maybe [:tuple int? boolean?]] []))))
 
 (deftest dissoc-test
   (let [schema [:map {:title "map"}

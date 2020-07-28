@@ -239,8 +239,10 @@
   ([?schema ks]
    (get-in ?schema ks nil))
   ([?schema [k & ks] options]
-   (let [schema (get (m/schema (or ?schema :map) options) k)]
-     (if ks (get-in schema ks) schema))))
+   (if-not k
+     (m/schema ?schema options)
+     (let [schema (get (m/schema (or ?schema :map) options) k)]
+       (if ks (get-in schema ks) schema)))))
 
 (defn assoc-in
   "Like [[clojure.core/assoc-in]], but for LensSchemas."

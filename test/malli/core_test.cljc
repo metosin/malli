@@ -131,8 +131,8 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema,
                      :value 0,
-                     :errors [{:path [2 1], :in [], :schema pos-int?, :value 0}
-                              {:path [2 2], :in [], :schema neg-int?, :value 0}]}
+                     :errors [{:path [1 0], :in [], :schema pos-int?, :value 0}
+                              {:path [1 1], :in [], :schema neg-int?, :value 0}]}
                     (m/explain schema 0)))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -201,12 +201,12 @@
       (let [schema [:and pos-int? neg-int?]]
         (is (results= {:schema schema,
                        :value -1,
-                       :errors [{:path [1], :in [], :schema pos-int?, :value -1}]}
+                       :errors [{:path [0], :in [], :schema pos-int?, :value -1}]}
                       (m/explain schema -1))))
       (let [schema [:and pos-int? neg-int?]]
         (is (results= {:schema schema,
                        :value 1,
-                       :errors [{:path [2], :in [], :schema neg-int?, :value 1}]}
+                       :errors [{:path [1], :in [], :schema neg-int?, :value 1}]}
                       (m/explain schema 1))))))
 
   (testing "comparator schemas"
@@ -269,7 +269,7 @@
       (is (false? (m/validate schema "abba")))
 
       (is (nil? (m/explain schema 1)))
-      (is (results= {:schema [:maybe int?], :value "abba", :errors [{:path [1], :in [], :schema int?, :value "abba"}]}
+      (is (results= {:schema [:maybe int?], :value "abba", :errors [{:path [0], :in [], :schema int?, :value "abba"}]}
                     (m/explain [:maybe int?] "abba")))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -332,7 +332,7 @@
         (is (results= {:schema ConsCell
                        :value [1 [2]]
                        :errors [{:in [1]
-                                 :path [1 2 0 1]
+                                 :path [0 1 0 0]
                                  :schema (mu/get ConsCell 0)
                                  :type :malli.core/tuple-size
                                  :value [2]}]}
@@ -410,9 +410,9 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema
                      :value -1
-                     :errors [{:path [2 1] :in [] :schema pos-int?, :value -1}
-                              {:path [2 2], :in [], :schema pos-int?, :value -1}
-                              {:path [2 3], :in [], :schema pos-int?, :value -1}]}
+                     :errors [{:path [0 0] :in [] :schema pos-int?, :value -1}
+                              {:path [0 1], :in [], :schema pos-int?, :value -1}
+                              {:path [0 2], :in [], :schema pos-int?, :value -1}]}
 
                     (m/explain schema -1)))
 
@@ -553,14 +553,14 @@
       (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
                      :errors
-                     [{:path [1 0], :in [:x], :schema schema, :type ::m/missing-key}
-                      {:path [2 2], :in [:y], :schema int?, :value "invalid"}]}
+                     [{:path [0], :in [:x], :schema schema, :type ::m/missing-key}
+                      {:path [1], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema {:y "invalid" :z "kikka"})))
 
       (is (results= {:schema schema,
                      :value {:x "invalid"},
-                     :errors [{:path [1 1], :in [:x], :schema boolean?, :value "invalid"}
-                              {:path [3 0],
+                     :errors [{:path [0], :in [:x], :schema boolean?, :value "invalid"}
+                              {:path [2],
                                :in [:z],
                                :schema schema,
                                :type :malli.core/missing-key}]}
@@ -653,16 +653,16 @@
 
       (is (results= {:schema schema,
                      :value {:type :sized, :size "size"},
-                     :errors [{:path [2 1 2 1], :in [:size], :schema int?, :value "size"}]}
+                     :errors [{:path [0 1], :in [:size], :schema int?, :value "size"}]}
                     (m/explain schema invalid1)))
 
       (is (results= {:schema schema,
                      :value {:type :human, :namez "inkeri"},
-                     :errors [{:path [3 1 2 0]
+                     :errors [{:path [1 1]
                                :in [:name]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
                                :type :malli.core/missing-key}
-                              {:path [3 1 3 0]
+                              {:path [1 2]
                                :in [:address]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
                                :type :malli.core/missing-key}]}
@@ -728,18 +728,18 @@
     (is (some? (m/explain [:map-of string? int?] ::invalid)))
     (is (results= {:schema [:map-of string? int?],
                    :value {:age 18},
-                   :errors [{:path [1],
+                   :errors [{:path [0],
                              :in [:age],
                              :schema string?,
                              :value :age}]}
                   (m/explain [:map-of string? int?] {:age 18})))
     (is (results= {:schema [:map-of string? int?],
                    :value {:age "18"},
-                   :errors [{:path [1],
+                   :errors [{:path [0],
                              :in [:age],
                              :schema string?,
                              :value :age}
-                            {:path [2],
+                            {:path [1],
                              :in [:age],
                              :schema int?,
                              :value "18"}]}
@@ -928,7 +928,7 @@
                                       [schema [1 2 "3"]
                                        {:schema schema
                                         :value [1 2 "3"]
-                                        :errors [{:path [2], :in [2], :schema int?, :value "3"}]}]])
+                                        :errors [{:path [0], :in [2], :schema int?, :value "3"}]}]])
 
                           "list" (let [schema [:list {:min 2, :max 3} int?]]
 
@@ -953,7 +953,7 @@
                                     [schema '(1 2 "3")
                                      {:schema schema
                                       :value '(1 2 "3")
-                                      :errors [{:path [2], :in [2], :schema int?, :value "3"}]}]])
+                                      :errors [{:path [0], :in [2], :schema int?, :value "3"}]}]])
 
                           "set" (let [schema [:set {:min 2, :max 3} int?]]
 
@@ -978,7 +978,7 @@
                                    [schema #{1 2 "3"}
                                     {:schema schema
                                      :value #{1 2 "3"}
-                                     :errors [{:path [2], :in [0], :schema int?, :value "3"}]}]])
+                                     :errors [{:path [0], :in [0], :schema int?, :value "3"}]}]])
 
                           "tuple" (let [schema [:tuple int? string?]]
 
@@ -998,8 +998,10 @@
                                      [schema [1 2]
                                       {:schema schema
                                        :value [1 2]
-                                       :errors [{:path [2], :in [1], :schema string?, :value 2}]}]])
-                          "map+enum" (let [schema [:map [:x [:enum "x"]]
+                                       :errors [{:path [1], :in [1], :schema string?, :value 2}]}]])
+
+                          "map+enum" (let [schema [:map
+                                                   [:x [:enum "x"]]
                                                    [:y [:enum "y"]]]]
 
                                        [[schema {:x "x" :y "y"}
@@ -1008,18 +1010,18 @@
                                         [schema {:x "non-x" :y "y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "y"}
-                                          :errors [{:path [1 1 0], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
+                                          :errors [{:path [0 0], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
 
                                         [schema {:x "x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "x" :y "non-y"}
-                                          :errors [{:path [2 1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
+                                          :errors [{:path [1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
 
                                         [schema {:x "non-x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "non-y"}
-                                          :errors [{:path [1 1 0], :in [:x], :schema [:enum "x"], :value "non-x"}
-                                                   {:path [2 1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
+                                          :errors [{:path [0 0], :in [:x], :schema [:enum "x"], :value "non-x"}
+                                                   {:path [1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
             expectations (assoc expectations "sequential" (concat (get expectations "list") (get expectations "vector")))]
 
         (doseq [[name data] expectations
@@ -1037,18 +1039,18 @@
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]
 
-    (is (= [1] (?path (m/explain [:and int?] "2"))))
-    (is (= [2] (?path (m/explain [:and {:name "int?"} int?] "2"))))
+    (is (= [0] (?path (m/explain [:and int?] "2"))))
+    (is (= [0] (?path (m/explain [:and {:name "int?"} int?] "2"))))
 
-    (is (= [1] (?path (m/explain [:vector int?] ["2"]))))
-    (is (= [2] (?path (m/explain [:vector {:name "int?"} [int?]] ["2"]))))
+    (is (= [0] (?path (m/explain [:vector int?] ["2"]))))
+    (is (= [0] (?path (m/explain [:vector {:name "int?"} [int?]] ["2"]))))
 
-    (is (= [1] (?path (m/explain [:tuple int?] ["2"]))))
-    (is (= [2] (?path (m/explain [:tuple {:name "int?"} [int?]] ["2"]))))
+    (is (= [0] (?path (m/explain [:tuple int?] ["2"]))))
+    (is (= [0] (?path (m/explain [:tuple {:name "int?"} [int?]] ["2"]))))
 
-    (is (= [1 1] (?path (m/explain [:map [:x int?]] {:x "1"}))))
-    (is (= [2 1] (?path (m/explain [:map {:name int?} [:x int?]] {:x "1"}))))
-    (is (= [2 2] (?path (m/explain [:map {:name int?} [:x {:optional false} int?]] {:x "1"}))))))
+    (is (= [0] (?path (m/explain [:map [:x int?]] {:x "1"}))))
+    (is (= [0] (?path (m/explain [:map {:name int?} [:x int?]] {:x "1"}))))
+    (is (= [0] (?path (m/explain [:map {:name int?} [:x {:optional false} int?]] {:x "1"}))))))
 
 (deftest properties-test
   (testing "properties can be set and retrieved"

@@ -93,8 +93,6 @@
     (seq children) (into [type] children)
     :else type))
 
-(defn -distance [properties] (if (seq properties) 2 1))
-
 (defn -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn -chain [phase chain]
@@ -162,8 +160,7 @@
                   f (if (seq (rest validators)) (partial apply every-pred) first)]
               (f validators)))
           (-explainer [_ path]
-            (let [distance (-distance properties)
-                  explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector children))]
+            (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
                 (reduce
                   (fn [acc' explainer]
@@ -200,8 +197,7 @@
                   f (if (seq (rest validators)) (partial apply some-fn) first)]
               (f validators)))
           (-explainer [_ path]
-            (let [distance (-distance properties)
-                  explainers (mapv (fn [[i c]] (-explainer c (into path [(+ i distance)]))) (map-indexed vector children))]
+            (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
                 (reduce
                   (fn [acc' explainer]
@@ -316,17 +312,14 @@
                                   :cljs (reduce #(or (%2 m) (reduced false)) true validators))))]
               (fn [m] (and (map? m) (validate m)))))
           (-explainer [this path]
-            (let [distance (-distance properties)
-                  explainers (cond-> (mapv
-                                       (fn [[i [key {:keys [optional] :as key-properties} schema]]]
-                                         (let [key-distance (-distance key-properties)
-                                               explainer (-explainer schema (into path [(+ i distance) key-distance]))
-                                               key-path (into path [(+ i distance) 0])]
+            (let [explainers (cond-> (mapv
+                                       (fn [[i [key {:keys [optional]} schema]]]
+                                         (let [explainer (-explainer schema (conj path i))]
                                            (fn [x in acc]
                                              (if-let [e (find x key)]
                                                (explainer (val e) (conj in key) acc)
                                                (if-not optional
-                                                 (conj acc (error key-path (conj in key) this nil ::missing-key))
+                                                 (conj acc (error (conj path i) (conj in key) this nil ::missing-key))
                                                  acc)))))
                                        (map-indexed vector entries))
                                      closed (into [(fn [x in acc]
@@ -405,9 +398,8 @@
                          (or (and (key-valid? key) (value-valid? value)) (reduced false)))
                        true m)))))
           (-explainer [this path]
-            (let [distance (-distance properties)
-                  key-explainer (-explainer key-schema (conj path distance))
-                  value-explainer (-explainer value-schema (conj path (inc distance)))]
+            (let [key-explainer (-explainer key-schema (conj path 0))
+                  value-explainer (-explainer value-schema (conj path 1))]
               (fn explain [m in acc]
                 (if-not (map? m)
                   (conj acc (error path in this m ::invalid-type))
@@ -464,8 +456,7 @@
                            (validate-limits x)
                            (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
           (-explainer [this path]
-            (let [distance (-distance properties)
-                  explainer (-explainer schema (conj path distance))]
+            (let [explainer (-explainer schema (conj path 0))]
               (fn [x in acc]
                 (cond
                   (not (fpred x)) (conj acc (error path in this x ::invalid-type))
@@ -518,10 +509,7 @@
                              (fn [acc i validator]
                                (if (validator (nth x i)) acc (reduced false))) true validators)))))
           (-explainer [this path]
-            (let [distance (-distance properties)
-                  explainers (mapv (fn [[i s]]
-                                     (-explainer s (conj path (+ i distance))))
-                                   (map-indexed vector children))]
+            (let [explainers (mapv (fn [[i s]] (-explainer s (conj path i))) (map-indexed vector children))]
               (fn [x in acc]
                 (cond
                   (not (vector? x)) (conj acc (error path in this x ::invalid-type))
@@ -654,7 +642,7 @@
             (let [validator' (-validator schema)]
               (fn [x] (or (nil? x) (validator' x)))))
           (-explainer [_ path]
-            (let [explainer' (-explainer schema (conj path (-distance properties)))]
+            (let [explainer' (-explainer schema (conj path 0))]
               (fn explain [x in acc]
                 (if (nil? x) acc (explainer' x in acc)))))
           (-transformer [this transformer method options]
@@ -692,9 +680,8 @@
           ;; is path ok?
           (-explainer [this path]
             (let [explainers (reduce
-                               (fn [acc [i [key key-properties schema]]]
-                                 (let [key-distance (-distance key-properties)
-                                       explainer (-explainer schema (into path [(+ i (-distance properties)) key-distance]))]
+                               (fn [acc [i [key _ schema]]]
+                                 (let [explainer (-explainer schema (conj path i))]
                                    (assoc acc key (fn [x in acc] (explainer x in acc)))))
                                {} (map-indexed vector entries))]
               (fn [x in acc]

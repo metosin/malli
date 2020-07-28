@@ -723,7 +723,16 @@
           (-children [_] children)
           (-form [_] form)
           MapSchema
-          (-map-entries [_] entries))))))
+          (-map-entries [_] entries)
+          LensSchema
+          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
+          (-set [_ key value]
+            (let [found (atom nil)
+                  [key kprop] (if (vector? key) key [key])
+                  entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
+                                  (not @found) (conj [key kprop value])
+                                  :always (->> (filter (fn [e] (-> e last some?)))))]
+              (into-schema :multiu properties entries))))))))
 
 (defn -string-schema []
   ^{:type ::into-schema}

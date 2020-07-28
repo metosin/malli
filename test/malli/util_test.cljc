@@ -224,9 +224,27 @@
   (is (mu/equals (mu/update [:vector int?] 0 (constantly string?)) [:vector string?]))
   (is (mu/equals (mu/update [:tuple int? int?] 1 (constantly string?)) [:tuple int? string?]))
   (is (mu/equals (mu/update [:tuple int? int?] 2 (constantly string?)) [:tuple int? int? string?]))
+  (is (mu/equals (mu/update [:or int? int?] 1 (constantly string?)) [:or int? string?]))
+  (is (mu/equals (mu/update [:or int? int?] 2 (constantly string?)) [:or int? int? string?]))
   (is (mu/equals (mu/update [:and int? int?] 1 (constantly string?)) [:and int? string?]))
+  (is (mu/equals (mu/update [:and int? int?] 2 (constantly string?)) [:and int? int? string?]))
   (is (mu/equals (mu/update [:maybe int?] 0 (constantly string?)) [:maybe string?]))
   (is (mu/equals (mu/update [:map [:x int?] [:y int?]] :x (constantly nil)) [:map [:y int?]]))
+  (is (mu/equals (mu/update [:ref {:registry {::a int?, ::b string?}} ::a] 0 (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/update [:schema int?] 0 (constantly string?)) [:schema string?]))
+
+  (testing "index-out-of-bounds"
+    (are [schema i]
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (mu/update schema i (constantly string?))))
+
+      [:vector int?] 1
+      [:tuple int? int?] 3
+      [:or int? int?] 3
+      [:and int? int?] 3
+      [:maybe int?] 2
+      [:ref {:registry {::a int?}} ::a] 2
+      [:schema int?] 2))
+
   (let [schema [:map {:title "map"}
                 [:a int?]
                 [:b {:optional true} int?]
@@ -256,23 +274,33 @@
   (is (mu/equals (mu/assoc-in [:vector int?] [0] string?) [:vector string?]))
   (is (mu/equals (mu/assoc-in [:tuple int? int?] [1] string?) [:tuple int? string?]))
   (is (mu/equals (mu/assoc-in [:tuple int? int?] [2] string?) [:tuple int? int? string?]))
+  (is (mu/equals (mu/assoc-in [:or int? int?] [1] string?) [:or int? string?]))
+  (is (mu/equals (mu/assoc-in [:or int? int?] [2] string?) [:or int? int? string?]))
   (is (mu/equals (mu/assoc-in [:and int? int?] [1] string?) [:and int? string?]))
+  (is (mu/equals (mu/assoc-in [:and int? int?] [2] string?) [:and int? int? string?]))
   (is (mu/equals (mu/assoc-in [:maybe int?] [0] string?) [:maybe string?]))
   (is (mu/equals (mu/assoc-in nil [:a [:b {:optional true}] :c :d] int?)
                  [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/assoc-in [:map] [:a :b :c :d] int?)
-                 [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]])))
+                 [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
+  (is (mu/equals (mu/assoc-in [:ref {:registry {::a int?, ::b string?}} ::a] [0] ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/assoc-in [:schema int?] [0] string?) [:schema string?])))
 
 (deftest update-in-test
   (is (mu/equals (mu/update-in [:vector int?] [0] (constantly string?)) [:vector string?]))
   (is (mu/equals (mu/update-in [:tuple int? int?] [1] (constantly string?)) [:tuple int? string?]))
   (is (mu/equals (mu/update-in [:tuple int? int?] [2] (constantly string?)) [:tuple int? int? string?]))
+  (is (mu/equals (mu/update-in [:or int? int?] [1] (constantly string?)) [:or int? string?]))
+  (is (mu/equals (mu/update-in [:or int? int?] [2] (constantly string?)) [:or int? int? string?]))
   (is (mu/equals (mu/update-in [:and int? int?] [1] (constantly string?)) [:and int? string?]))
+  (is (mu/equals (mu/update-in [:and int? int?] [2] (constantly string?)) [:and int? int? string?]))
   (is (mu/equals (mu/update-in [:maybe int?] [0] (constantly string?)) [:maybe string?]))
   (is (mu/equals (mu/update-in nil [:a [:b {:optional true}] :c :d] (constantly int?))
                  [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/update-in [:map] [:a :b :c :d] (constantly int?))
-                 [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]])))
+                 [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
+  (is (mu/equals (mu/update-in [:ref {:registry {::a int?, ::b string?}} ::a] [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/update-in [:schema int?] [0] (constantly string?)) [:schema string?])))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]

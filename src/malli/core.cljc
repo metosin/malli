@@ -488,7 +488,9 @@
           (-form [_] form)
           LensSchema
           (-get [_ key default] (if (= 0 key) schema default))
-          (-set [_ key value] (if (= 0 key) (into-schema type properties [value]) schema)))))))
+          (-set [this key value] (if (= 0 key)
+                                   (into-schema type properties [value])
+                                   (fail! ::index-out-of-bounds {:schema this, :key key}))))))))
 
 (defn -tuple-schema []
   ^{:type ::into-schema}
@@ -656,7 +658,9 @@
           (-form [_] form)
           LensSchema
           (-get [_ key default] (if (= 0 key) schema default))
-          (-set [_ key value] (if (= 0 key) (into-schema :maybe properties [value]) schema)))))))
+          (-set [this key value] (if (= 0 key)
+                                   (into-schema :maybe properties [value])
+                                   (fail! ::index-out-of-bounds {:schema this, :key key}))))))))
 
 (defn- -multi-schema []
   ^{:type ::into-schema}
@@ -788,7 +792,9 @@
           (-form [_] form)
           LensSchema
           (-get [_ key default] (if (= key 0) (-ref) default))
-          (-set [_ key value] (if (= key 0) (into-schema :ref properties [value])))
+          (-set [this key value] (if (= key 0)
+                                   (into-schema :ref properties [value])
+                                   (fail! ::index-out-of-bounds {:schema this, :key key})))
           RefSchema
           (-ref [_] ref)
           (-deref [_] (-ref)))))))
@@ -818,10 +824,12 @@
             (-options [_] options)
             (-children [_] children)
             (-form [_] form)
-            ;; TODO: are this correct
             LensSchema
-            (-get [_ key default] (if id (-get child key default) (if (= key 0) (-get child key default))))
-            (-set [_ key value] (if (= key 0) (-set child key value)))
+            (-get [_ key default] (if id (-get child key default) (if (= key 0) child)))
+            (-set [this key value] (cond
+                                     id (-set child key value)
+                                     (= key 0) (into-schema type properties [value])
+                                     :else (fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)))))))

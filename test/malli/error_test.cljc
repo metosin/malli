@@ -269,19 +269,22 @@
           :b ["should be at least 1 characters"],
           :c ["should be at most 4 characters"],
           :d ["should be between 1 and 4 characters"],
-          :e ["should be a string"]}
+          :e ["should be a string"]
+          :f ["should be 4 characters"]}
          (-> [:map
               [:a :string]
               [:b [:string {:min 1}]]
               [:c [:string {:max 4}]]
               [:d [:string {:min 1, :max 4}]]
-              [:e [:string {:min 1, :max 4}]]]
+              [:e [:string {:min 1, :max 4}]]
+              [:f [:string {:min 4, :max 4}]]]
              (m/explain
                {:a 123
                 :b ""
                 :c "invalid"
                 :d ""
-                :e 123})
+                :e 123
+                :f "invalid"})
              (me/humanize)))))
 
 (deftest re-test

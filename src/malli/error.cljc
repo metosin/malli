@@ -71,6 +71,7 @@
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond
                                  (not (string? value)) "should be a string"
+                                 (and min (= min max)) (str "should be " min " characters")
                                  (and min max) (str "should be between " min " and " max " characters")
                                  min (str "should be at least " min " characters")
                                  max (str "should be at most " max " characters"))))}}})

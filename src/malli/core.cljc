@@ -564,7 +564,8 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! :enum properties children {:min 1})
-      (let [schema (set children)
+      (let [children (vec children)
+            schema (set children)
             form (create-form :enum properties children)]
         ^{:type ::schema}
         (reify
@@ -585,15 +586,17 @@
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
-          ;; TODO: LensSchema
-          )))))
+          LensSchema
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :enum properties (assoc children key value))))))))
 
 (defn -re-schema [class?]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [child :as children] options]
       (-check-children! :re properties children {:min 1, :max 1})
-      (let [re (re-pattern child)
+      (let [children (vec children)
+            re (re-pattern child)
             form (if class? re (create-form :re properties children))]
         ^{:type ::schema}
         (reify
@@ -613,20 +616,22 @@
             (-value-transformer transformer this method options))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (vec children) in options)))
+              (-outer walker this children in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
-          ;; TODO: LensSchema
-          )))))
+          LensSchema
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :re properties (assoc children key value))))))))
 
 (defn -fn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! :fn properties children {:min 1, :max 1})
-      (let [f (eval (first children))
+      (let [children (vec children)
+            f (eval (first children))
             form (create-form :fn properties children)]
         ^{:type ::schema}
         (reify
@@ -646,13 +651,14 @@
             (-value-transformer transformer this method options))
           (-walk [this walker in options]
             (if (-accept walker this in options)
-              (-outer walker this (vec children) in options)))
+              (-outer walker this children in options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
-          ;; TODO: LensSchema
-          )))))
+          LensSchema
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :fn properties (assoc children key value))))))))
 
 (defn -maybe-schema []
   ^{:type ::into-schema}
@@ -781,8 +787,9 @@
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
-          ;; TODO: LensSchema
-          )))))
+          LensSchema
+          (-get [_ _ default] default)
+          (-set [this key _] (fail! ::non-associative-schema {:schema this, :key key})))))))
 
 (defn -ref-key? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
 

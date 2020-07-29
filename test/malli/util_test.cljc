@@ -158,6 +158,12 @@
 
 (deftest get-test
   (is (form= (mu/get int? 0) nil))
+  (let [re #"kikka"]
+    (is (form= (mu/get [:re re] 0) re)))
+  (let [f int?]
+    (is (form= (mu/get [:fn f] 0) f)))
+  (is (form= (mu/get [:string {:min 1}] 0) nil))
+  (is (form= (mu/get [:enum "A" "B"] 0) "A"))
   (is (mu/equals (mu/get [:map [:x int?]] :x) int?))
   (is (mu/equals (mu/get [:map [:x {:optional true} int?]] :x) int?))
   (is (mu/equals (mu/get [:vector int?] 0) int?))
@@ -206,7 +212,16 @@
                     [:a int?]
                     [:c string?]]))))
 
+(let [re #"kikka"]
+  (mu/assoc [:re #"kukka"] 0 re))
+
 (deftest assoc-test
+  (let [re #"kikka"]
+    (is (mu/equals (mu/assoc [:re #"kukka"] 0 re) [:re re])))
+  (let [f 'int?]
+    (is (mu/equals (mu/assoc [:fn 'string?] 0 f) [:fn f])))
+  (is (mu/equals (mu/assoc [:enum "A" "B"] 1 "C") [:enum "A" "C"]))
+  (is (mu/equals (mu/assoc [:enum "A" "B"] 2 "C") [:enum "A" "B" "C"]))
   (is (mu/equals (mu/assoc [:vector int?] 0 string?) [:vector string?]))
   (is (mu/equals (mu/assoc [:tuple int? int?] 1 string?) [:tuple int? string?]))
   (is (mu/equals (mu/assoc [:tuple int? int?] 2 string?) [:tuple int? int? string?]))
@@ -222,15 +237,16 @@
     (are [schema i]
       (is (thrown? #?(:clj Exception, :cljs js/Error) (mu/assoc schema i string?)))
 
-      int? 1
+      int? 0
+      [:string {:min 1}] 0
       [:vector int?] 1
       [:tuple int? int?] 3
       [:or int? int?] 3
       [:and int? int?] 3
-      [:maybe int?] 2
+      [:maybe int?] 1
       [:map-of int? int?] 2
-      [:ref {:registry {::a int?}} ::a] 2
-      [:schema int?] 2))
+      [:ref {:registry {::a int?}} ::a] 1
+      [:schema int?] 1))
 
   (let [schema [:map {:title "map"}
                 [:a int?]

@@ -58,7 +58,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval registry default-registry)
+(declare schema schema? into-schema into-schema? -schema-schema eval registry default-registry)
 
 (defn keyword->string [x]
   (if (keyword? x)
@@ -92,6 +92,9 @@
     (seq properties) [type properties]
     (seq children) (into [type] children)
     :else type))
+
+(defn -pointer [id schema options]
+  (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
 (defn -guard [pred tf] (if tf (fn [x] (if (pred x) (tf x) x))))
 
@@ -128,7 +131,10 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          LensSchema
+          (-get [_ _ default] default)
+          (-set [this key _] (fail! ::non-associative-schema {:schema this, :key key})))))))
 
 (defn fn-schema [type f]
   (-leaf-schema
@@ -153,7 +159,8 @@
       (let [children (mapv #(schema % options) children)
             form (create-form :and properties (map -form children))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :and)
           (-validator [_]
             (let [validators (distinct (map -validator children))
@@ -190,7 +197,8 @@
       (let [children (mapv #(schema % options) children)
             form (create-form :or properties (map -form children))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :or)
           (-validator [_]
             (let [validators (distinct (map -validator children))
@@ -288,7 +296,8 @@
             form (create-form :map properties forms)
             keyset (->> entries (map first) (set))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :map)
           (-validator [_]
             (let [validators (cond-> (mapv
@@ -386,7 +395,8 @@
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
             form (create-form :map-of properties (mapv -form children))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :map-of)
           (-validator [_]
             (let [key-valid? (-validator key-schema)
@@ -433,7 +443,10 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          LensSchema
+          (-get [_ key default] (get children key default))
+          (-set [_ key value] (into-schema :map-of properties (assoc children key value))))))))
 
 (defn -collection-schema [type fpred fempty]
   ^{:type ::into-schema}
@@ -448,7 +461,8 @@
                               min (fn [x] (let [size (count x)] (<= min size)))
                               max (fn [x] (let [size (count x)] (<= size max))))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] type)
           (-validator [_]
             (let [validator (-validator schema)]
@@ -501,7 +515,8 @@
             form (create-form :tuple properties (map -form children))]
         (-check-children! :tuple properties children {:min 1})
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :tuple)
           (-validator [_]
             (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
@@ -552,7 +567,8 @@
       (let [schema (set children)
             form (create-form :enum properties children)]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :enum)
           (-validator [_]
             (fn [x] (contains? schema x)))
@@ -568,7 +584,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          ;; TODO: LensSchema
+          )))))
 
 (defn -re-schema [class?]
   ^{:type ::into-schema}
@@ -578,7 +596,8 @@
       (let [re (re-pattern child)
             form (if class? re (create-form :re properties children))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :re)
           (-validator [_]
             (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false))))
@@ -598,7 +617,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          ;; TODO: LensSchema
+          )))))
 
 (defn -fn-schema []
   ^{:type ::into-schema}
@@ -608,7 +629,8 @@
       (let [f (eval (first children))
             form (create-form :fn properties children)]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :fn)
           (-validator [_]
             (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false))))
@@ -628,7 +650,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          ;; TODO: LensSchema
+          )))))
 
 (defn -maybe-schema []
   ^{:type ::into-schema}
@@ -638,7 +662,8 @@
       (let [[schema :as children] (map #(schema % options) children)
             form (create-form :maybe properties (map -form children))]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :maybe)
           (-validator [_]
             (let [validator' (-validator schema)]
@@ -673,7 +698,8 @@
         (when-not dispatch
           (fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :multi)
           (-validator [_]
             (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
@@ -738,7 +764,8 @@
             validator (if count-validator (fn [x] (and (string? x) (count-validator x))) string?)
             form (create-form :string properties children)]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :string)
           (-validator [_] validator)
           (-explainer [this path]
@@ -753,7 +780,9 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-form [_] form))))))
+          (-form [_] form)
+          ;; TODO: LensSchema
+          )))))
 
 (defn -ref-key? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
 
@@ -765,12 +794,15 @@
       (when-not (-ref-key? ref)
         (fail! ::invalid-ref {:ref ref}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
-            -ref (or (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
+            -ref (or (when-not (-ref-key? ref)
+                       (fail! ::invalid-ref {:type :ref, :ref ref}))
+                     (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
                      (when-not allow-invalid-refs
                        (fail! ::invalid-ref {:type :ref, :ref ref})))
             form (create-form :ref properties children)]
         ^{:type ::schema}
-        (reify Schema
+        (reify
+          Schema
           (-type [_] :ref)
           (-validator [_]
             (let [validator (-memoize (fn [] (-validator (-ref))))]
@@ -795,7 +827,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-get [_ key default] (if (= key 0) (-ref) default))
+          (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
           (-set [this key value] (if (= key 0)
                                    (into-schema :ref properties [value])
                                    (fail! ::index-out-of-bounds {:schema this, :key key})))
@@ -813,7 +845,8 @@
               form (or (and (empty? properties) (or id (and raw (-form child))))
                        (create-form type properties [(-form child)]))]
           ^{:type ::schema}
-          (reify Schema
+          (reify
+            Schema
             (-type [_] type)
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
@@ -829,11 +862,10 @@
             (-children [_] children)
             (-form [_] form)
             LensSchema
-            (-get [_ key default] (if id (-get child key default) (if (= key 0) child)))
-            (-set [this key value] (cond
-                                     id (-set child key value)
-                                     (= key 0) (into-schema type properties [value])
-                                     :else (fail! ::index-out-of-bounds {:schema this, :key key})))
+            (-get [_ key default] (if (= key 0) child default))
+            (-set [this key value] (if (= key 0)
+                                     (into-schema type properties [value])
+                                     (fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)))))))
@@ -903,7 +935,7 @@
      (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
                          (into-schema (-schema (first ?schema) options) p c options))
      :else (if-let [?schema' (and (-ref-key? ?schema) (-lookup ?schema options))]
-             (-into-schema (-schema-schema {:id ?schema}) nil [(schema ?schema' options)] options)
+             (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))
 
 (defn form

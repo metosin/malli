@@ -3,6 +3,9 @@
             [malli.util :as mu]
             [malli.core :as m]))
 
+(defn form= [& ?schemas]
+  (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))
+
 (deftest equals-test
   (is (true? (mu/equals int? int?)))
   (is (true? (mu/equals [:map [:x int?]] [:map [:x int?]])))
@@ -154,6 +157,7 @@
                     [:b {:optional true} int?]]))))
 
 (deftest get-test
+  (is (form= (mu/get int? 0) nil))
   (is (mu/equals (mu/get [:map [:x int?]] :x) int?))
   (is (mu/equals (mu/get [:map [:x {:optional true} int?]] :x) int?))
   (is (mu/equals (mu/get [:vector int?] 0) int?))
@@ -163,8 +167,13 @@
   (is (mu/equals (mu/get [:or int? pos-int?] 1) pos-int?))
   (is (mu/equals (mu/get [:and int? pos-int?] 1) pos-int?))
   (is (mu/equals (mu/get [:tuple int? pos-int?] 1) pos-int?))
-  (is (= (mu/get [:map [:x int?]] :y)
-         (mu/get [:vector int?] 1))))
+  (is (form= (mu/get [:map [:x int?]] :y)
+             (mu/get [:vector int?] 1)
+             nil))
+  (is (mu/equals (mu/get [:map-of int? pos-int?] 0) int?))
+  (is (mu/equals (mu/get [:map-of int? pos-int?] 1) pos-int?))
+  (is (form= (mu/get [:ref {:registry {::a int?, ::b string?}} ::a] 0) ::a))
+  (is (mu/equals (mu/get [:schema int?] 0) int?)))
 
 (deftest get-in-test
   (is (mu/equals boolean?
@@ -177,7 +186,11 @@
                             [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
                    [:x 0 0 0 0 1 :y 0])))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
-                 (mu/get-in [:maybe [:tuple int? boolean?]] []))))
+                 (mu/get-in [:maybe [:tuple int? boolean?]] [])))
+  (is (form= (mu/get-in [:ref {:registry {::a int?, ::b string?}} ::a] [0]) ::a))
+  (is (mu/equals (mu/get-in [:ref {:registry {::a int?, ::b string?}} ::a] [0 0]) int?))
+  (is (form= (mu/get-in [:schema {:registry {::a int?, ::b string?}} ::a] [0]) ::a))
+  (is (mu/equals (mu/get-in [:schema {:registry {::a int?, ::b string?}} ::a] [0 0]) int?)))
 
 (deftest dissoc-test
   (let [schema [:map {:title "map"}
@@ -200,6 +213,25 @@
   (is (mu/equals (mu/assoc [:and int? int?] 1 string?) [:and int? string?]))
   (is (mu/equals (mu/assoc [:maybe int?] 0 string?) [:maybe string?]))
   (is (mu/equals (mu/assoc [:map [:x int?] [:y int?]] :x nil) [:map [:y int?]]))
+  (is (mu/equals (mu/assoc [:map-of int? int?] 0 string?) [:map-of string? int?]))
+  (is (mu/equals (mu/assoc [:map-of int? int?] 1 string?) [:map-of int? string?]))
+  (is (mu/equals (mu/assoc [:ref {:registry {::a int?, ::b string?}} ::a] 0 ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/assoc [:schema int?] 0 string?) [:schema string?]))
+
+  (testing "invalid assoc throws"
+    (are [schema i]
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (mu/assoc schema i string?)))
+
+      int? 1
+      [:vector int?] 1
+      [:tuple int? int?] 3
+      [:or int? int?] 3
+      [:and int? int?] 3
+      [:maybe int?] 2
+      [:map-of int? int?] 2
+      [:ref {:registry {::a int?}} ::a] 2
+      [:schema int?] 2))
+
   (let [schema [:map {:title "map"}
                 [:a int?]
                 [:b {:optional true} int?]
@@ -232,18 +264,6 @@
   (is (mu/equals (mu/update [:map [:x int?] [:y int?]] :x (constantly nil)) [:map [:y int?]]))
   (is (mu/equals (mu/update [:ref {:registry {::a int?, ::b string?}} ::a] 0 (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
   (is (mu/equals (mu/update [:schema int?] 0 (constantly string?)) [:schema string?]))
-
-  (testing "index-out-of-bounds"
-    (are [schema i]
-      (is (thrown? #?(:clj Exception, :cljs js/Error) (mu/update schema i (constantly string?))))
-
-      [:vector int?] 1
-      [:tuple int? int?] 3
-      [:or int? int?] 3
-      [:and int? int?] 3
-      [:maybe int?] 2
-      [:ref {:registry {::a int?}} ::a] 2
-      [:schema int?] 2))
 
   (let [schema [:map {:title "map"}
                 [:a int?]

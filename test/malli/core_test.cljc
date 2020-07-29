@@ -338,7 +338,7 @@
                        :value [1 [2]]
                        :errors [{:in [1]
                                  :path [0 1 0 0]
-                                 :schema (mu/get ConsCell 0)
+                                 :schema (mu/get-in ConsCell [0 0 0])
                                  :type :malli.core/tuple-size
                                  :value [2]}]}
                       (m/explain ConsCell [1 [2]])))

@@ -713,10 +713,9 @@
                 (if-let [validator (validators (dispatch x))]
                   (validator x)
                   false))))
-          ;; is path ok?
           (-explainer [this path]
             (let [explainers (reduce
-                               (fn [acc [key _properties schema]] ;; https://clojure.atlassian.net/browse/CLJS-1575
+                               (fn [acc [key _properties schema]] ;; https://clojure.atlassian.net/browse/CLJS-1575 ??
                                  (let [explainer (-explainer schema (conj path key))]
                                    (assoc acc key (fn [x in acc] (explainer x in acc)))))
                                {} entries)]

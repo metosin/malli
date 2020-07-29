@@ -558,14 +558,14 @@
       (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
                      :errors
-                     [{:path [0], :in [:x], :schema schema, :type ::m/missing-key}
-                      {:path [1], :in [:y], :schema int?, :value "invalid"}]}
+                     [{:path [:x], :in [:x], :schema schema, :type ::m/missing-key}
+                      {:path [:y], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema {:y "invalid" :z "kikka"})))
 
       (is (results= {:schema schema,
                      :value {:x "invalid"},
-                     :errors [{:path [0], :in [:x], :schema boolean?, :value "invalid"}
-                              {:path [2],
+                     :errors [{:path [:x], :in [:x], :schema boolean?, :value "invalid"}
+                              {:path [:z],
                                :in [:z],
                                :schema schema,
                                :type :malli.core/missing-key}]}
@@ -658,16 +658,16 @@
 
       (is (results= {:schema schema,
                      :value {:type :sized, :size "size"},
-                     :errors [{:path [0 1], :in [:size], :schema int?, :value "size"}]}
+                     :errors [{:path [:sized :size], :in [:size], :schema int?, :value "size"}]}
                     (m/explain schema invalid1)))
 
       (is (results= {:schema schema,
                      :value {:type :human, :namez "inkeri"},
-                     :errors [{:path [1 1]
+                     :errors [{:path [:human :name]
                                :in [:name]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
                                :type :malli.core/missing-key}
-                              {:path [1 2]
+                              {:path [:human :address]
                                :in [:address]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
                                :type :malli.core/missing-key}]}
@@ -1015,18 +1015,18 @@
                                         [schema {:x "non-x" :y "y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "y"}
-                                          :errors [{:path [0 0], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
+                                          :errors [{:path [:x 0], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
 
                                         [schema {:x "x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "x" :y "non-y"}
-                                          :errors [{:path [1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
+                                          :errors [{:path [:y 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
 
                                         [schema {:x "non-x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "non-y"}
-                                          :errors [{:path [0 0], :in [:x], :schema [:enum "x"], :value "non-x"}
-                                                   {:path [1 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
+                                          :errors [{:path [:x 0], :in [:x], :schema [:enum "x"], :value "non-x"}
+                                                   {:path [:y 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
             expectations (assoc expectations "sequential" (concat (get expectations "list") (get expectations "vector")))]
 
         (doseq [[name data] expectations
@@ -1053,9 +1053,9 @@
     (is (= [0] (?path (m/explain [:tuple int?] ["2"]))))
     (is (= [0] (?path (m/explain [:tuple {:name "int?"} [int?]] ["2"]))))
 
-    (is (= [0] (?path (m/explain [:map [:x int?]] {:x "1"}))))
-    (is (= [0] (?path (m/explain [:map {:name int?} [:x int?]] {:x "1"}))))
-    (is (= [0] (?path (m/explain [:map {:name int?} [:x {:optional false} int?]] {:x "1"}))))))
+    (is (= [:x] (?path (m/explain [:map [:x int?]] {:x "1"}))))
+    (is (= [:x] (?path (m/explain [:map {:name int?} [:x int?]] {:x "1"}))))
+    (is (= [:x] (?path (m/explain [:map {:name int?} [:x {:optional false} int?]] {:x "1"}))))))
 
 (deftest properties-test
   (testing "properties can be set and retrieved"

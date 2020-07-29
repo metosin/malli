@@ -322,15 +322,15 @@
               (fn [m] (and (map? m) (validate m)))))
           (-explainer [this path]
             (let [explainers (cond-> (mapv
-                                       (fn [[i [key {:keys [optional]} schema]]]
-                                         (let [explainer (-explainer schema (conj path i))]
+                                       (fn [[key {:keys [optional]} schema]]
+                                         (let [explainer (-explainer schema (conj path key))]
                                            (fn [x in acc]
                                              (if-let [e (find x key)]
                                                (explainer (val e) (conj in key) acc)
                                                (if-not optional
-                                                 (conj acc (error (conj path i) (conj in key) this nil ::missing-key))
+                                                 (conj acc (error (conj path key) (conj in key) this nil ::missing-key))
                                                  acc)))))
-                                       (map-indexed vector entries))
+                                       entries)
                                      closed (into [(fn [x in acc]
                                                      (reduce
                                                        (fn [acc k]
@@ -716,10 +716,10 @@
           ;; is path ok?
           (-explainer [this path]
             (let [explainers (reduce
-                               (fn [acc [i [key _ schema]]]
-                                 (let [explainer (-explainer schema (conj path i))]
+                               (fn [acc [key _ schema]]
+                                 (let [explainer (-explainer schema (conj path key))]
                                    (assoc acc key (fn [x in acc] (explainer x in acc)))))
-                               {} (map-indexed vector entries))]
+                               {} entries)]
               (fn [x in acc]
                 (if-let [explainer (explainers (dispatch x))]
                   (explainer x in acc)

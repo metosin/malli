@@ -755,11 +755,15 @@
           (-children [_] children)
           (-form [_] form))))))
 
+(defn -ref-key? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
+
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
       (-check-children! :ref properties children {:min 1, :max 1})
+      (when-not (-ref-key? ref)
+        (fail! ::invalid-ref {:ref ref}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
             -ref (or (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
                      (when-not allow-invalid-refs
@@ -870,8 +874,6 @@
     (let [options (update options :registry #(mr/composite-registry r (or % (registry options))))]
       [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
-
-(defn -ref-key? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
 
 ;;
 ;; public api

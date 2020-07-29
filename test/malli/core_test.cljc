@@ -320,6 +320,11 @@
 
   (testing "ref schemas"
 
+    (testing "invalid refs fail"
+      (is (thrown?
+            #?(:clj Exception, :cljs js/Error)
+            (m/schema [:ref int?]))))
+
     (testing "recursion"
       (let [ConsCell [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
                       ::cons]]

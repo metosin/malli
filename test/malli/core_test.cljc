@@ -326,8 +326,8 @@
             (m/schema [:ref int?]))))
 
     (testing "recursion"
-      (let [ConsCell [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
-                      ::cons]]
+      (let [ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
+                                ::cons])]
 
         (is (true? (m/validate ConsCell [1 nil])))
         (is (true? (m/validate ConsCell [1 [2 nil]])))

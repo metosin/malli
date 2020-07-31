@@ -157,46 +157,46 @@
                     [:b {:optional true} int?]]))))
 
 (deftest get-test
-  (is (form= (mu/get int? 0) nil))
+  (is (form= (mu/get (m/schema int?) 0) nil))
   (let [re #"kikka"]
-    (is (form= (mu/get [:re re] 0) re)))
+    (is (form= (mu/get (m/schema [:re re]) 0) re)))
   (let [f int?]
-    (is (form= (mu/get [:fn f] 0) f)))
-  (is (form= (mu/get [:string {:min 1}] 0) nil))
-  (is (form= (mu/get [:enum "A" "B"] 0) "A"))
-  (is (mu/equals (mu/get [:map [:x int?]] :x) int?))
-  (is (mu/equals (mu/get [:map [:x {:optional true} int?]] :x) int?))
-  (is (mu/equals (mu/get [:vector int?] 0) int?))
-  (is (mu/equals (mu/get [:list int?] 0) int?))
-  (is (mu/equals (mu/get [:set int?] 0) int?))
-  (is (mu/equals (mu/get [:sequential int?] 0) int?))
-  (is (mu/equals (mu/get [:or int? pos-int?] 1) pos-int?))
-  (is (mu/equals (mu/get [:and int? pos-int?] 1) pos-int?))
-  (is (mu/equals (mu/get [:tuple int? pos-int?] 1) pos-int?))
-  (is (form= (mu/get [:map [:x int?]] :y)
-             (mu/get [:vector int?] 1)
+    (is (form= (mu/get (m/schema [:fn f]) 0) f)))
+  (is (form= (mu/get (m/schema [:string {:min 1}]) 0) nil))
+  (is (form= (mu/get (m/schema [:enum "A" "B"]) 0) "A"))
+  (is (mu/equals (mu/get (m/schema [:map [:x int?]]) :x) int?))
+  (is (mu/equals (mu/get (m/schema [:map [:x {:optional true} int?]]) :x) int?))
+  (is (mu/equals (mu/get (m/schema [:vector int?]) 0) int?))
+  (is (mu/equals (mu/get (m/schema [:list int?]) 0) int?))
+  (is (mu/equals (mu/get (m/schema [:set int?]) 0) int?))
+  (is (mu/equals (mu/get (m/schema [:sequential int?]) 0) int?))
+  (is (mu/equals (mu/get (m/schema [:or int? pos-int?]) 1) pos-int?))
+  (is (mu/equals (mu/get (m/schema [:and int? pos-int?]) 1) pos-int?))
+  (is (mu/equals (mu/get (m/schema [:tuple int? pos-int?]) 1) pos-int?))
+  (is (form= (mu/get (m/schema [:map [:x int?]]) :y)
+             (mu/get (m/schema [:maybe int?]) 1)
              nil))
-  (is (mu/equals (mu/get [:map-of int? pos-int?] 0) int?))
-  (is (mu/equals (mu/get [:map-of int? pos-int?] 1) pos-int?))
-  (is (form= (mu/get [:ref {:registry {::a int?, ::b string?}} ::a] 0) ::a))
-  (is (mu/equals (mu/get [:schema int?] 0) int?)))
+  (is (mu/equals (mu/get (m/schema [:map-of int? pos-int?]) 0) int?))
+  (is (mu/equals (mu/get (m/schema [:map-of int? pos-int?]) 1) pos-int?))
+  (is (form= (mu/get (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) 0) ::a))
+  (is (mu/equals (mu/get (m/schema [:schema int?]) 0) int?)))
 
 (deftest get-in-test
   (is (mu/equals boolean?
                  (mu/get-in
-                   [:map
-                    [:x [:vector
-                         [:list
-                          [:set
-                           [:sequential
-                            [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
+                   (m/schema [:map
+                              [:x [:vector
+                                   [:list
+                                    [:set
+                                     [:sequential
+                                      [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]])
                    [:x 0 0 0 0 1 :y 0])))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
-                 (mu/get-in [:maybe [:tuple int? boolean?]] [])))
-  (is (form= (mu/get-in [:ref {:registry {::a int?, ::b string?}} ::a] [0]) ::a))
-  (is (mu/equals (mu/get-in [:ref {:registry {::a int?, ::b string?}} ::a] [0 0]) int?))
-  (is (form= (mu/get-in [:schema {:registry {::a int?, ::b string?}} ::a] [0]) ::a))
-  (is (mu/equals (mu/get-in [:schema {:registry {::a int?, ::b string?}} ::a] [0 0]) int?)))
+                 (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
+  (is (form= (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))
+  (is (mu/equals (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0 0]) int?))
+  (is (form= (mu/get-in (m/schema [:schema {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))
+  (is (mu/equals (mu/get-in (m/schema [:schema {:registry {::a int?, ::b string?}} ::a]) [0 0]) int?)))
 
 (deftest dissoc-test
   (let [schema [:map {:title "map"}
@@ -212,31 +212,29 @@
                     [:a int?]
                     [:c string?]]))))
 
-(let [re #"kikka"]
-  (mu/assoc [:re #"kukka"] 0 re))
-
 (deftest assoc-test
   (let [re #"kikka"]
-    (is (mu/equals (mu/assoc [:re #"kukka"] 0 re) [:re re])))
+    (is (mu/equals (mu/assoc (m/schema [:re #"kukka"]) 0 re) [:re re])))
   (let [f 'int?]
-    (is (mu/equals (mu/assoc [:fn 'string?] 0 f) [:fn f])))
-  (is (mu/equals (mu/assoc [:enum "A" "B"] 1 "C") [:enum "A" "C"]))
-  (is (mu/equals (mu/assoc [:enum "A" "B"] 2 "C") [:enum "A" "B" "C"]))
-  (is (mu/equals (mu/assoc [:vector int?] 0 string?) [:vector string?]))
-  (is (mu/equals (mu/assoc [:tuple int? int?] 1 string?) [:tuple int? string?]))
-  (is (mu/equals (mu/assoc [:tuple int? int?] 2 string?) [:tuple int? int? string?]))
-  (is (mu/equals (mu/assoc [:and int? int?] 1 string?) [:and int? string?]))
-  (is (mu/equals (mu/assoc [:maybe int?] 0 string?) [:maybe string?]))
-  (is (mu/equals (mu/assoc [:map [:x int?] [:y int?]] :x nil) [:map [:y int?]]))
-  (is (mu/equals (mu/assoc [:map-of int? int?] 0 string?) [:map-of string? int?]))
-  (is (mu/equals (mu/assoc [:map-of int? int?] 1 string?) [:map-of int? string?]))
-  (is (mu/equals (mu/assoc [:ref {:registry {::a int?, ::b string?}} ::a] 0 ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/assoc [:schema int?] 0 string?) [:schema string?]))
+    (is (mu/equals (mu/assoc (m/schema [:fn 'string?]) 0 f) [:fn f])))
+  (is (mu/equals (mu/assoc (m/schema [:enum "A" "B"]) 1 "C") [:enum "A" "C"]))
+  (is (mu/equals (mu/assoc (m/schema [:enum "A" "B"]) 2 "C") [:enum "A" "B" "C"]))
+  (is (mu/equals (mu/assoc (m/schema [:vector int?]) 0 string?) [:vector string?]))
+  (is (mu/equals (mu/assoc (m/schema [:tuple int? int?]) 1 string?) [:tuple int? string?]))
+  (is (mu/equals (mu/assoc (m/schema [:tuple int? int?]) 2 string?) [:tuple int? int? string?]))
+  (is (mu/equals (mu/assoc (m/schema [:and int? int?]) 1 string?) [:and int? string?]))
+  (is (mu/equals (mu/assoc (m/schema [:maybe int?]) 0 string?) [:maybe string?]))
+  (is (mu/equals (mu/assoc (m/schema [:map [:x int?] [:y int?]]) :x nil) [:map [:y int?]]))
+  (is (mu/equals (mu/assoc (m/schema [:map-of int? int?]) 0 string?) [:map-of string? int?]))
+  (is (mu/equals (mu/assoc (m/schema [:map-of int? int?]) 1 string?) [:map-of int? string?]))
+  (is (mu/equals (mu/assoc (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) 0 ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/assoc (m/schema [:schema int?]) 0 string?) [:schema string?]))
 
   (testing "invalid assoc throws"
     (are [schema i]
       (is (thrown? #?(:clj Exception, :cljs js/Error) (mu/assoc schema i string?)))
 
+      nil :x
       int? 0
       [:string {:min 1}] 0
       [:vector int?] 1
@@ -248,10 +246,11 @@
       [:ref {:registry {::a int?}} ::a] 1
       [:schema int?] 1))
 
-  (let [schema [:map {:title "map"}
-                [:a int?]
-                [:b {:optional true} int?]
-                [:c string?]]]
+  (let [schema (m/schema
+                 [:map {:title "map"}
+                  [:a int?]
+                  [:b {:optional true} int?]
+                  [:c string?]])]
     (is (mu/equals (mu/assoc schema :a string?)
                    [:map {:title "map"}
                     [:a string?]
@@ -269,22 +268,23 @@
                     [:c string?]]))))
 
 (deftest update-test
-  (is (mu/equals (mu/update [:vector int?] 0 (constantly string?)) [:vector string?]))
-  (is (mu/equals (mu/update [:tuple int? int?] 1 (constantly string?)) [:tuple int? string?]))
-  (is (mu/equals (mu/update [:tuple int? int?] 2 (constantly string?)) [:tuple int? int? string?]))
-  (is (mu/equals (mu/update [:or int? int?] 1 (constantly string?)) [:or int? string?]))
-  (is (mu/equals (mu/update [:or int? int?] 2 (constantly string?)) [:or int? int? string?]))
-  (is (mu/equals (mu/update [:and int? int?] 1 (constantly string?)) [:and int? string?]))
-  (is (mu/equals (mu/update [:and int? int?] 2 (constantly string?)) [:and int? int? string?]))
-  (is (mu/equals (mu/update [:maybe int?] 0 (constantly string?)) [:maybe string?]))
-  (is (mu/equals (mu/update [:map [:x int?] [:y int?]] :x (constantly nil)) [:map [:y int?]]))
-  (is (mu/equals (mu/update [:ref {:registry {::a int?, ::b string?}} ::a] 0 (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/update [:schema int?] 0 (constantly string?)) [:schema string?]))
+  (is (mu/equals (mu/update (m/schema [:vector int?]) 0 (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 1 (constantly string?)) [:tuple int? string?]))
+  (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 2 (constantly string?)) [:tuple int? int? string?]))
+  (is (mu/equals (mu/update (m/schema [:or int? int?]) 1 (constantly string?)) [:or int? string?]))
+  (is (mu/equals (mu/update (m/schema [:or int? int?]) 2 (constantly string?)) [:or int? int? string?]))
+  (is (mu/equals (mu/update (m/schema [:and int? int?]) 1 (constantly string?)) [:and int? string?]))
+  (is (mu/equals (mu/update (m/schema [:and int? int?]) 2 (constantly string?)) [:and int? int? string?]))
+  (is (mu/equals (mu/update (m/schema [:maybe int?]) 0 (constantly string?)) [:maybe string?]))
+  (is (mu/equals (mu/update (m/schema [:map [:x int?] [:y int?]]) :x (constantly nil)) [:map [:y int?]]))
+  (is (mu/equals (mu/update (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) 0 (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/update (m/schema [:schema int?]) 0 (constantly string?)) [:schema string?]))
 
-  (let [schema [:map {:title "map"}
-                [:a int?]
-                [:b {:optional true} int?]
-                [:c string?]]]
+  (let [schema (m/schema
+                 [:map {:title "map"}
+                  [:a int?]
+                  [:b {:optional true} int?]
+                  [:c string?]])]
     (is (mu/equals (mu/update schema :a mu/update-properties assoc :title "a")
                    [:map {:title "map"}
                     [:a [int? {:title "a"}]]
@@ -307,36 +307,32 @@
                     [:c string?]]))))
 
 (deftest assoc-in-test
-  (is (mu/equals (mu/assoc-in [:vector int?] [0] string?) [:vector string?]))
-  (is (mu/equals (mu/assoc-in [:tuple int? int?] [1] string?) [:tuple int? string?]))
-  (is (mu/equals (mu/assoc-in [:tuple int? int?] [2] string?) [:tuple int? int? string?]))
-  (is (mu/equals (mu/assoc-in [:or int? int?] [1] string?) [:or int? string?]))
-  (is (mu/equals (mu/assoc-in [:or int? int?] [2] string?) [:or int? int? string?]))
-  (is (mu/equals (mu/assoc-in [:and int? int?] [1] string?) [:and int? string?]))
-  (is (mu/equals (mu/assoc-in [:and int? int?] [2] string?) [:and int? int? string?]))
-  (is (mu/equals (mu/assoc-in [:maybe int?] [0] string?) [:maybe string?]))
-  (is (mu/equals (mu/assoc-in nil [:a [:b {:optional true}] :c :d] int?)
-                 [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
-  (is (mu/equals (mu/assoc-in [:map] [:a :b :c :d] int?)
+  (is (mu/equals (mu/assoc-in (m/schema [:vector int?]) [0] string?) [:vector string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:tuple int? int?]) [1] string?) [:tuple int? string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:tuple int? int?]) [2] string?) [:tuple int? int? string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:or int? int?]) [1] string?) [:or int? string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:or int? int?]) [2] string?) [:or int? int? string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:and int? int?]) [1] string?) [:and int? string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:and int? int?]) [2] string?) [:and int? int? string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:maybe int?]) [0] string?) [:maybe string?]))
+  (is (mu/equals (mu/assoc-in (m/schema [:map]) [:a :b :c :d] int?)
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
-  (is (mu/equals (mu/assoc-in [:ref {:registry {::a int?, ::b string?}} ::a] [0] ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/assoc-in [:schema int?] [0] string?) [:schema string?])))
+  (is (mu/equals (mu/assoc-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/assoc-in (m/schema [:schema int?]) [0] string?) [:schema string?])))
 
 (deftest update-in-test
-  (is (mu/equals (mu/update-in [:vector int?] [0] (constantly string?)) [:vector string?]))
-  (is (mu/equals (mu/update-in [:tuple int? int?] [1] (constantly string?)) [:tuple int? string?]))
-  (is (mu/equals (mu/update-in [:tuple int? int?] [2] (constantly string?)) [:tuple int? int? string?]))
-  (is (mu/equals (mu/update-in [:or int? int?] [1] (constantly string?)) [:or int? string?]))
-  (is (mu/equals (mu/update-in [:or int? int?] [2] (constantly string?)) [:or int? int? string?]))
-  (is (mu/equals (mu/update-in [:and int? int?] [1] (constantly string?)) [:and int? string?]))
-  (is (mu/equals (mu/update-in [:and int? int?] [2] (constantly string?)) [:and int? int? string?]))
-  (is (mu/equals (mu/update-in [:maybe int?] [0] (constantly string?)) [:maybe string?]))
-  (is (mu/equals (mu/update-in nil [:a [:b {:optional true}] :c :d] (constantly int?))
-                 [:map [:a [:map [:b {:optional true} [:map [:c [:map [:d int?]]]]]]]]))
-  (is (mu/equals (mu/update-in [:map] [:a :b :c :d] (constantly int?))
+  (is (mu/equals (mu/update-in (m/schema [:vector int?]) [0] (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update-in (m/schema [:tuple int? int?]) [1] (constantly string?)) [:tuple int? string?]))
+  (is (mu/equals (mu/update-in (m/schema [:tuple int? int?]) [2] (constantly string?)) [:tuple int? int? string?]))
+  (is (mu/equals (mu/update-in (m/schema [:or int? int?]) [1] (constantly string?)) [:or int? string?]))
+  (is (mu/equals (mu/update-in (m/schema [:or int? int?]) [2] (constantly string?)) [:or int? int? string?]))
+  (is (mu/equals (mu/update-in (m/schema [:and int? int?]) [1] (constantly string?)) [:and int? string?]))
+  (is (mu/equals (mu/update-in (m/schema [:and int? int?]) [2] (constantly string?)) [:and int? int? string?]))
+  (is (mu/equals (mu/update-in (m/schema [:maybe int?]) [0] (constantly string?)) [:maybe string?]))
+  (is (mu/equals (mu/update-in (m/schema [:map]) [:a :b :c :d] (constantly int?))
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
-  (is (mu/equals (mu/update-in [:ref {:registry {::a int?, ::b string?}} ::a] [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/update-in [:schema int?] [0] (constantly string?)) [:schema string?])))
+  (is (mu/equals (mu/update-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
+  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?])))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]

@@ -213,55 +213,49 @@
      (transform-entries schema (partial remove (fn [[k]] (= key k))) options))))
 
 ;;
-;; LensSchemas
+;; LensSchemas: in
 ;;
 
 (defn get
-  "Like [[clojure.core/get]], but for LensSchemas."
-  ([?schema k]
-   (get ?schema k nil))
-  ([?schema k options]
-   (let [schema (m/schema (or ?schema :map) options)]
-     (m/-get schema k nil))))
+  "Like [[clojure.core/get]], but for LensSchemas using :in syntax."
+  ([schema k]
+   (get schema k nil))
+  ([schema k default]
+   (if schema (m/-get schema k default))))
 
 (defn assoc
-  "Like [[clojure.core/assoc]], but for LensSchemas."
-  ([?schema key value]
-   (assoc ?schema key value nil))
-  ([?schema key value options]
-   (let [schema (m/schema (or ?schema :map) options)]
-     (m/-set schema key value))))
+  "Like [[clojure.core/assoc]], but for LensSchemas using :in syntax."
+  [schema key value]
+  (m/-set schema key value))
 
 (defn update
-  "Like [[clojure.core/update]], but for LensSchemas.
-   Works only on Schema instances, not on Schema AST."
+  "Like [[clojure.core/update]], but for LensSchemas using :in syntax."
   [schema key f & args]
-  (let [schema (m/schema schema)]
-    (m/-set schema key (apply f (m/-get schema key nil) args))))
+  (assoc schema key (apply f (get schema key (m/schema :map (m/options schema))) args)))
 
 (defn get-in
-  "Like [[clojure.core/get-in]], but for LensSchemas."
-  ([?schema ks]
-   (get-in ?schema ks nil))
-  ([?schema [k & ks] options]
+  "Like [[clojure.core/get-in]], but for LensSchemas using :in syntax."
+  ([schema ks]
+   (get-in schema ks nil))
+  ([schema [k & ks] default]
    (if-not k
-     (m/schema ?schema options)
-     (let [schema (get (m/schema (or ?schema :map) options) k)]
-       (if ks (get-in schema ks) schema)))))
+     schema
+     (let [sentinel #?(:clj (Object.), :cljs (js-obj))
+           schema (get schema k sentinel)]
+       (cond
+         (identical? schema sentinel) default
+         ks (get-in schema ks default)
+         :else schema)))))
 
 (defn assoc-in
-  "Like [[clojure.core/assoc-in]], but for LensSchemas."
-  ([?schema ks value]
-   (assoc-in ?schema ks value nil))
-  ([?schema [k & ks] value options]
-   (let [schema (m/schema (or ?schema :map) options)]
-     (assoc schema k (if ks (assoc-in (get schema k) ks value) value)))))
+  "Like [[clojure.core/assoc-in]], but for LensSchemas using :in syntax."
+  [schema [k & ks] value]
+  (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value) value)))
 
 (defn update-in
-  "Like [[clojure.core/update-in]], but for LensSchemas.
-   Works only on Schema instances, not on Schema AST."
+  "Like [[clojure.core/update-in]], but for LensSchemas using :in syntax."
   [schema ks f & args]
   (letfn [(up [s [k & ks] f args]
-            (assoc s k (if ks (up (get s k) ks f args)
+            (assoc s k (if ks (up (get s k (m/schema :map (m/options schema))) ks f args)
                               (apply f (get s k) args))))]
     (up schema ks f args)))

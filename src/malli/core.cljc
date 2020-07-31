@@ -754,7 +754,7 @@
                   entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
                                   (not @found) (conj [key kprop value])
                                   :always (->> (filter (fn [e] (-> e last some?)))))]
-              (into-schema :multiu properties entries))))))))
+              (into-schema :multi properties entries))))))))
 
 (defn -string-schema []
   ^{:type ::into-schema}
@@ -800,9 +800,7 @@
       (when-not (-ref-key? ref)
         (fail! ::invalid-ref {:ref ref}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
-            -ref (or (when-not (-ref-key? ref)
-                       (fail! ::invalid-ref {:type :ref, :ref ref}))
-                     (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
+            -ref (or (if-let [s (mr/-schema (registry options) ref)] (-memoize (fn [] (schema s options))))
                      (when-not allow-invalid-refs
                        (fail! ::invalid-ref {:type :ref, :ref ref})))
             form (create-form :ref properties children)]

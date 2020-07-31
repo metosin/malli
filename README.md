@@ -213,17 +213,22 @@ Detailed errors with `m/explain`:
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},
-; :errors (#Error{:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
-;          #Error{:path [3 1],
-;                 :in [:address],
+; :errors (#Error{:path [:tags 0]
+;                 :in [:tags 0]
+;                 :schema keyword?
+                  ::value "coffee"}
+;          #Error{:path [:address :city],
+;                 :in [:address :city],
 ;                 :schema [:map
 ;                          [:street string?]
 ;                          [:city string?]
 ;                          [:zip int?]
 ;                          [:lonlat [:tuple double? double?]]],
-;                 :type :malli.core/missing-key,
-;                 :malli.core/key :city}
-;          #Error{:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
+;                 :type :malli.core/missing-key}
+;          #Error{:path [:address :lonlat 1]
+;                 :in [:address :lonlat 1]
+;                 :schema double?
+;                 :value nil})}
 ```
 
 ## Custom Error Messages
@@ -241,9 +246,9 @@ Explain results can be humanized with `malli.error/humanize`:
                  :zip 33100
                  :lonlat [61.4858322, nil]}})
     (me/humanize))
-;{:tags #{["should be keyword"]}
+;{:tags #{["should be a keyword"]}
 ; :address {:city ["missing required key"]
-;           :lonlat [nil ["should be double"]]}}
+;           :lonlat [nil ["should be a double"]]}}
 ```
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:

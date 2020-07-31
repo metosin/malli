@@ -381,11 +381,11 @@
           (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
           (-set [_ key value]
             (let [found (atom nil)
-                  [key kprop] (if (vector? key) key [key])
-                  entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
-                                  (not @found) (conj [key kprop value])
-                                  :always (->> (filter (fn [e] (-> e last some?)))))]
-              (into-schema :map properties entries))))))))
+                  [key :as new-child] (if (vector? key) (conj key value) [key value])
+                  children (cond-> (mapv (fn [[k :as child]] (if (= key k) (do (reset! found true) new-child) child)) children)
+                                   (not @found) (conj new-child)
+                                   :always (->> (filter (fn [e] (-> e last some?)))))]
+              (into-schema :map properties children))))))))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}

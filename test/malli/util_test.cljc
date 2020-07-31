@@ -156,30 +156,142 @@
                     [:a int?]
                     [:b {:optional true} int?]]))))
 
-(deftest get-test
-  (is (form= (mu/get (m/schema int?) 0) nil))
-  (let [re #"kikka"]
-    (is (form= (mu/get (m/schema [:re re]) 0) re)))
-  (let [f int?]
-    (is (form= (mu/get (m/schema [:fn f]) 0) f)))
-  (is (form= (mu/get (m/schema [:string {:min 1}]) 0) nil))
-  (is (form= (mu/get (m/schema [:enum "A" "B"]) 0) "A"))
-  (is (mu/equals (mu/get (m/schema [:map [:x int?]]) :x) int?))
-  (is (mu/equals (mu/get (m/schema [:map [:x {:optional true} int?]]) :x) int?))
-  (is (mu/equals (mu/get (m/schema [:vector int?]) 0) int?))
-  (is (mu/equals (mu/get (m/schema [:list int?]) 0) int?))
-  (is (mu/equals (mu/get (m/schema [:set int?]) 0) int?))
-  (is (mu/equals (mu/get (m/schema [:sequential int?]) 0) int?))
-  (is (mu/equals (mu/get (m/schema [:or int? pos-int?]) 1) pos-int?))
-  (is (mu/equals (mu/get (m/schema [:and int? pos-int?]) 1) pos-int?))
-  (is (mu/equals (mu/get (m/schema [:tuple int? pos-int?]) 1) pos-int?))
-  (is (form= (mu/get (m/schema [:map [:x int?]]) :y)
-             (mu/get (m/schema [:maybe int?]) 1)
-             nil))
-  (is (mu/equals (mu/get (m/schema [:map-of int? pos-int?]) 0) int?))
-  (is (mu/equals (mu/get (m/schema [:map-of int? pos-int?]) 1) pos-int?))
-  (is (form= (mu/get (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) 0) ::a))
-  (is (mu/equals (mu/get (m/schema [:schema int?]) 0) int?)))
+;;
+;; LensSchemas
+;;
+
+
+(deftest basic-lens-schema-test
+  (let [re #"kikka"
+        int? (m/schema int?)]
+
+    (testing "get"
+      (are [schema key expected]
+        (is (form= (try
+                     (mu/get (m/schema schema) key)
+                     (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
+                   expected))
+
+        nil 0 ::throws
+
+        int? 0 nil
+        int? 1 nil
+
+        [:re re] 0 re
+        [:re re] 1 nil
+
+        [:fn 'int?] 0 int?
+        [:fn 'int?] 1 nil
+
+        [:string {:min 1}] 0 nil
+        [:string {:min 1}] 1 nil
+
+        [:enum "A" "B"] 0 "A"
+        [:enum "A" "B"] 2 nil
+
+        [:map [:x int?]] :x int?
+        [:map [:x int?]] :y nil
+
+        [:map [:x {:optional true} int?]] :x int?
+        [:map [:x {:optional true} int?]] :y nil
+
+        [:vector int?] 0 int?
+        [:vector int?] 1 int?
+
+        [:list int?] 0 int?
+        [:list int?] 1 int?
+
+        [:set int?] 0 int?
+        [:set int?] 1 int?
+
+        [:sequential int?] 0 int?
+        [:sequential int?] 1 int?
+
+        [:or false? int?] 1 int?
+        [:or false? int?] 2 nil
+
+        [:and false? int?] 1 int?
+        [:and false? int?] 2 nil
+
+        [:tuple false? int?] 1 int?
+        [:tuple false? int?] 2 nil
+
+        [:map-of false? int?] 1 int?
+        [:map-of false? int?] 2 nil
+
+        [:ref {:registry {::a int?, ::b string?}} ::a] 0 ::a
+        [:ref {:registry {::a int?, ::b string?}} ::a] 1 nil
+
+        [:schema int?] 0 int?
+        [:schema int?] 1 nil))
+
+    (testing "assoc"
+      (are [schema key value expected]
+        (is (form= (try
+                     (mu/assoc (m/schema schema) key value)
+                     (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
+                   expected))
+
+        nil 0 'int? ::throws
+
+        int? 0 'int? ::throws
+
+        [:re #"kukka"] 0 re [:re re]
+        [:re #"kukka"] 1 re ::throws
+
+        [:fn 'string?] 0 'int? [:fn 'int?]
+        [:fn 'string?] 1 'int? ::throws
+
+        [:string {:min 1}] 0 'int? ::throws
+
+        [:enum "A" "B"] 1 "C" [:enum "A" "C"]
+        [:enum "A" "B"] 2 "C" [:enum "A" "B" "C"]
+        [:enum "A" "B"] 3 "C" ::throws
+
+        [:map [:x string?]] :x int? [:map [:x 'int?]]
+        [:map [:x {:optional true} string?]] :x int? [:map [:x 'int?]]
+        [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
+        ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
+        [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
+        [:map [:x {:optional true} string?]] :y string? [:map [:x {:optional true} 'string?] [:y 'string?]]
+        [:map [:x string?]] [:y {:optional true}] string? [:map [:x 'string?] [:y {:optional true} 'string?]]
+        [:map [:x string?]] [] int? ::throws
+
+        [:vector string?] 0 int? [:vector 'int?]
+        [:vector string?] 1 int? [:vector 'int?]
+
+        [:list string?] 0 int? [:list 'int?]
+        [:list string?] 1 int? [:list 'int?]
+
+        [:set string?] 0 int? [:set 'int?]
+        [:set string?] 1 int? [:set 'int?]
+
+        [:sequential string?] 0 int? [:sequential 'int?]
+        [:sequential string?] 1 int? [:sequential 'int?]
+
+        [:or false? string?] 1 int? [:or 'false? 'int?]
+        [:or false? string?] 2 int? [:or 'false? 'string? 'int?]
+        [:or false? string?] 3 int? ::throws
+
+        [:and false? string?] 1 int? [:and 'false? 'int?]
+        [:and false? string?] 2 int? [:and 'false? 'string? 'int?]
+        [:and false? string?] 3 int? ::throws
+
+        [:tuple false? string?] 1 int? [:tuple 'false? 'int?]
+        [:tuple false? string?] 2 int? [:tuple 'false? 'string? 'int?]
+        [:tuple false? string?] 3 int? ::throws
+
+        [:map-of false? string?] 0 int? [:map-of 'int? 'string?]
+        [:map-of false? string?] 1 int? [:map-of 'false? 'int?]
+        [:map-of false? string?] 2 int? ::throws
+
+        [:ref {:registry {::a int?, ::b string?}} ::a] 0 ::b [:ref {:registry {::a 'int?, ::b 'string?}} ::b]
+        [:ref {:registry {::a int?, ::b string?}} ::a] 0 "invalid" ::throws
+        [:ref {:registry {::a int?, ::b string?}} ::a] 1 ::b ::throws
+
+        [:schema string?] 0 int? [:schema 'int?]
+        [:schema string?] 0 "invalid" ::throws
+        [:schema string?] 1 int? ::throws))))
 
 (deftest get-in-test
   (is (mu/equals boolean?
@@ -210,61 +322,6 @@
     (is (mu/equals (mu/dissoc schema :b)
                    [:map {:title "map"}
                     [:a int?]
-                    [:c string?]]))))
-
-(deftest assoc-test
-  (let [re #"kikka"]
-    (is (mu/equals (mu/assoc (m/schema [:re #"kukka"]) 0 re) [:re re])))
-  (let [f 'int?]
-    (is (mu/equals (mu/assoc (m/schema [:fn 'string?]) 0 f) [:fn f])))
-  (is (mu/equals (mu/assoc (m/schema [:enum "A" "B"]) 1 "C") [:enum "A" "C"]))
-  (is (mu/equals (mu/assoc (m/schema [:enum "A" "B"]) 2 "C") [:enum "A" "B" "C"]))
-  (is (mu/equals (mu/assoc (m/schema [:vector int?]) 0 string?) [:vector string?]))
-  (is (mu/equals (mu/assoc (m/schema [:tuple int? int?]) 1 string?) [:tuple int? string?]))
-  (is (mu/equals (mu/assoc (m/schema [:tuple int? int?]) 2 string?) [:tuple int? int? string?]))
-  (is (mu/equals (mu/assoc (m/schema [:and int? int?]) 1 string?) [:and int? string?]))
-  (is (mu/equals (mu/assoc (m/schema [:maybe int?]) 0 string?) [:maybe string?]))
-  (is (mu/equals (mu/assoc (m/schema [:map [:x int?] [:y int?]]) :x nil) [:map [:y int?]]))
-  (is (mu/equals (mu/assoc (m/schema [:map-of int? int?]) 0 string?) [:map-of string? int?]))
-  (is (mu/equals (mu/assoc (m/schema [:map-of int? int?]) 1 string?) [:map-of int? string?]))
-  (is (mu/equals (mu/assoc (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) 0 ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/assoc (m/schema [:schema int?]) 0 string?) [:schema string?]))
-
-  (testing "invalid assoc throws"
-    (are [schema i]
-      (is (thrown? #?(:clj Exception, :cljs js/Error) (mu/assoc schema i string?)))
-
-      nil :x
-      int? 0
-      [:string {:min 1}] 0
-      [:vector int?] 1
-      [:tuple int? int?] 3
-      [:or int? int?] 3
-      [:and int? int?] 3
-      [:maybe int?] 1
-      [:map-of int? int?] 2
-      [:ref {:registry {::a int?}} ::a] 1
-      [:schema int?] 1))
-
-  (let [schema (m/schema
-                 [:map {:title "map"}
-                  [:a int?]
-                  [:b {:optional true} int?]
-                  [:c string?]])]
-    (is (mu/equals (mu/assoc schema :a string?)
-                   [:map {:title "map"}
-                    [:a string?]
-                    [:b {:optional true} int?]
-                    [:c string?]]))
-    (is (mu/equals (mu/assoc schema [:a {:optional true}] string?)
-                   [:map {:title "map"}
-                    [:a {:optional true} string?]
-                    [:b {:optional true} int?]
-                    [:c string?]]))
-    (is (mu/equals (mu/assoc schema :b string?)
-                   [:map {:title "map"}
-                    [:a int?]
-                    [:b string?]
                     [:c string?]]))))
 
 (deftest update-test

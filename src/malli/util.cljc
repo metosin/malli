@@ -154,10 +154,10 @@
        (fn [s i _]
          (swap! state #(cond-> % (not (c/get-in % [:m i]))
                                (-> (c/update :m c/assoc i s)
-                                   (c/update :v into [i s]))))
+                                   (c/update :v into [{:path i, :schema s}]))))
          nil)
        options)
-     (->> @state :v (apply array-map)))))
+     (:v @state))))
 
 ;;
 ;; MapSchemas
@@ -289,7 +289,7 @@
   [schema key value]
   (-update* schema key (constantly value)))
 
-(defn update
+(defn update*
   "Like [[clojure.core/update]], but for LensSchemas using :path syntax."
   [schema key f & args]
   (assoc* schema key (apply f (get* schema key (m/schema :map (m/options schema))) args)))

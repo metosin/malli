@@ -678,7 +678,7 @@ Finding first value (prewalk):
 ; => "turvassa"
 ```
 
-Finding (sub)schemas for paths, retaining order:
+Finding (sub)schemas for all paths, retaining order:
 
 ```clj
 (mu/path-schemas
@@ -691,27 +691,28 @@ Finding (sub)schemas for paths, retaining order:
       [:street {:optional true} string?]
       [:lonlat {:optional true} [:tuple double? double?]]]
      [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]])
-;{[] [:map
-;     [:id string?]
-;     [:tags [:set keyword?]]
-;     [:address
-;      [:and
-;       [:map 
-;        [:street {:optional true} string?] 
-;        [:lonlat {:optional true} [:tuple double? double?]]]
-;       [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]
-; [:id] string?
-; [:tags] [:set keyword?]
-; [:tags :malli.core/in] keyword?
-; [:address] [:and
-;             [:map 
-;              [:street {:optional true} string?] 
-;              [:lonlat {:optional true} [:tuple double? double?]]]
-;             [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]
-; [:address :street] string?
-; [:address :lonlat] [:tuple double? double?]
-; [:address :lonlat 0] double?
-; [:address :lonlat 1] double?}
+;[{:path [], :schema [:map
+;                     [:id string?]
+;                     [:tags [:set keyword?]]
+;                     [:address
+;                      [:and
+;                       [:map
+;                        [:street {:optional true} string?]
+;                        [:lonlat {:optional true} [:tuple double? double?]]]
+;                       [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]}
+; {:path [:id], :schema string?}
+; {:path [:tags], :schema [:set keyword?]}
+; {:path [:tags :malli.core/in], :schema keyword?}
+; {:path [:address], :schema [:and
+;                             [:map
+;                              [:street {:optional true} string?]
+;                              [:lonlat {:optional true}
+;                               [:tuple double? double?]]]
+;                             [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
+; {:path [:address :street], :schema string?}
+; {:path [:address :lonlat], :schema [:tuple double? double?]}
+; {:path [:address :lonlat 0], :schema double?}
+; {:path [:address :lonlat 1], :schema double?}]
 ```
 
 ## Persisting Schemas 

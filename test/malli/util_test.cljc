@@ -375,51 +375,49 @@
               {:salaisuus "vaarassa"}] @walked-properties)))))
 
 (deftest path-schema-test
-  (let [schema [:and
-                [:map
-                 [:a int?]
-                 [:b [:set boolean?]]
-                 [:c [:vector
-                      [:and
-                       [:fn '(constantly true)]
-                       [:map
-                        [:d string?]]]]]]
-                [:fn '(constantly true)]]]
+  (let [with-forms (partial map #(update % :schema m/form))]
 
     (testing "retains original order"
-      (= [[]
-          [:a]
-          [:b]
-          [:b :malli.core/in]
-          [:c]
-          [:c :malli.core/in]
-          [:c :malli.core/in :d]]
-         (keys (mu/path-schemas schema))))
-
-    (testing "path-schemas are correct"
-      (is (= (->> {[] [:and
-                       [:map
-                        [:a int?]
-                        [:b [:set boolean?]]
-                        [:c [:vector
-                             [:and
-                              [:fn '(constantly true)]
-                              [:map
-                               [:d string?]]]]]]
-                       [:fn '(constantly true)]]
-                   [:a] int?
-                   [:b] [:set boolean?]
-                   [:b :malli.core/in] boolean?
-                   [:c] [:vector
-                         [:and
+      (is (= (with-forms
+               [{:path [],
+                 :schema [:and
+                          [:map
+                           [:a int?]
+                           [:b [:set boolean?]]
+                           [:c [:vector
+                                [:and
+                                 [:fn '(constantly true)]
+                                 [:map
+                                  [:d string?]]]]]]
+                          [:fn '(constantly true)]]}
+                {:path [:a]
+                 :schema int?}
+                {:path [:b]
+                 :schema [:set boolean?]}
+                {:path [:b :malli.core/in]
+                 :schema boolean?}
+                {:path [:c]
+                 :schema [:vector
+                          [:and
+                           [:fn '(constantly true)]
+                           [:map
+                            [:d string?]]]]}
+                {:path [:c :malli.core/in]
+                 :schema [:and
                           [:fn '(constantly true)]
                           [:map
-                           [:d string?]]]]
-                   [:c :malli.core/in] [:and
-                                        [:fn '(constantly true)]
-                                        [:map
-                                         [:d string?]]]
-                   [:c :malli.core/in :d] string?}
-                  (map (fn [[k v]] [k (m/form v)])))
-             (->> (mu/path-schemas schema)
-                  (map (fn [[k v]] [k (m/form v)]))))))))
+                           [:d string?]]]}
+                {:path [:c :malli.core/in :d]
+                 :schema string?}])
+             (with-forms
+               (mu/path-schemas
+                 [:and
+                  [:map
+                   [:a int?]
+                   [:b [:set boolean?]]
+                   [:c [:vector
+                        [:and
+                         [:fn '(constantly true)]
+                         [:map
+                          [:d string?]]]]]]
+                  [:fn '(constantly true)]])))))))

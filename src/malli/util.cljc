@@ -116,43 +116,48 @@
 (defn closed-schema
   "Closes recursively all :map schemas by adding `{:closed true}`
   property, unless schema explicitely open with `{:closed false}`"
-  ([schema]
-   (closed-schema schema nil))
-  ([schema options]
+  ([?schema]
+   (closed-schema ?schema nil))
+  ([?schema options]
    (m/walk
-     schema
+     ?schema
      (m/schema-walker
        (fn [schema]
          (if (-open-map? schema options)
            (update-properties schema c/assoc :closed true)
-           schema))))))
+           schema)))
+     options)))
 
 (defn open-schema
   "Closes recursively all :map schemas by removing `:closed`
   property, unless schema explicitely open with `{:closed false}`"
-  ([schema]
-   (open-schema schema nil))
-  ([schema options]
+  ([?schema]
+   (open-schema ?schema nil))
+  ([?schema options]
    (m/walk
-     schema
+     ?schema
      (m/schema-walker
        (fn [schema]
          (if (-open-map? schema options)
            (update-properties schema c/dissoc :closed)
-           schema))))))
+           schema)))
+     options)))
 
 (defn path-schemas
   "Return a ordered map from value path -> schema"
-  [schema]
-  (let [state (atom {:m {}, :v []})]
-    (find-first
-      schema
-      (fn [s i _]
-        (swap! state #(cond-> % (not (c/get-in % [:m i]))
-                              (-> (c/update :m c/assoc i s)
-                                  (c/update :v into [i s]))))
-        nil))
-    (->> @state :v (apply array-map))))
+  ([?schema]
+   (path-schemas ?schema nil))
+  ([?schema options]
+   (let [state (atom {:m {}, :v []})]
+     (find-first
+       ?schema
+       (fn [s i _]
+         (swap! state #(cond-> % (not (c/get-in % [:m i]))
+                               (-> (c/update :m c/assoc i s)
+                                   (c/update :v into [i s]))))
+         nil)
+       options)
+     (->> @state :v (apply array-map)))))
 
 ;;
 ;; MapSchemas

@@ -213,7 +213,7 @@
      (transform-entries schema (partial remove (fn [[k]] (= key k))) options))))
 
 ;;
-;; LensSchemas: in
+;; LensSchemas
 ;;
 
 (defn get
@@ -261,63 +261,16 @@
     (up schema ks f args)))
 
 ;;
-;; LensSchemas: path
+;; in->path->in
 ;;
 
-(defn -get* [schema]
-  (if schema
-    (if-let [k' (m/-key schema)]
-      (recur (m/-get schema k' nil))
-      schema)))
+(defn in->path [schema in]
+  (loop [i 0, s schema, acc []]
+    (or (and (>= i (count in)) acc)
+        (recur (inc i) (get s (in i)) (if-not (m/-key s) (conj acc (in i)) acc)))))
 
-(defn -update* [schema k f]
-  (if schema
-    (if-let [k' (m/-key schema)]
-      (m/-set schema k' (-update* (m/-get schema k' nil) k f))
-      (m/-set schema k (f (m/-get schema k nil))))))
-
-(defn get*
-  "Like [[clojure.core/get]], but for LensSchemas using :path syntax."
-  ([schema k]
-   (get* schema k nil))
-  ([schema k default]
-   (if-let [schema (-get* schema)]
-     (m/-get schema k default))))
-
-(defn assoc*
-  "Like [[clojure.core/assoc]], but for LensSchemas using :path syntax."
-  [schema key value]
-  (-update* schema key (constantly value)))
-
-(defn update*
-  "Like [[clojure.core/update]], but for LensSchemas using :path syntax."
-  [schema key f & args]
-  (assoc* schema key (apply f (get* schema key (m/schema :map (m/options schema))) args)))
-
-(defn get-in*
-  "Like [[clojure.core/get-in]], but for LensSchemas using :path syntax."
-  ([schema ks]
-   (get-in* schema ks nil))
-  ([schema [k & ks] default]
-   (if-not k
-     schema
-     (let [sentinel #?(:clj (Object.), :cljs (js-obj))
-           schema (get* schema k sentinel)]
-       (cond
-         (identical? schema sentinel) default
-         ks (get-in* schema ks default)
-         :else schema)))))
-
-(defn assoc-in*
-  "Like [[clojure.core/assoc-in]], but for LensSchemas using :path syntax."
-  [schema [k & ks] value]
-  (prn k ks schema)
-  (assoc* schema k (if ks (assoc-in* (get* schema k (m/schema :map (m/options schema))) ks value) value)))
-
-(defn update-in*
-  "Like [[clojure.core/update-in]], but for LensSchemas using :path syntax."
-  [schema ks f & args]
-  (letfn [(up [s [k & ks] f args]
-            (assoc* s k (if ks (up (get* s k (m/schema :map (m/options schema))) ks f args)
-                              (apply f (get* s k) args))))]
-    (up schema ks f args)))
+(defn path->in [schema path]
+  (loop [i 0, s schema, acc []]
+    (or (and (>= i (count path)) acc)
+        (let [[i k] (if-let [k (m/-key s)] [i k] [(inc i) (path i)])]
+          (recur i (get s k) (conj acc k))))))

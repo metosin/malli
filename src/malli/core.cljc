@@ -27,7 +27,7 @@
   (-map-entries [this] "returns map entries"))
 
 (defprotocol LensSchema
-  (-key [this] "returns key of default child if Schema does not contribute to value path")
+  (-keep [this] "returns truthy if schema contributes to value path")
   (-get [this key default] "returns schema at key")
   (-set [this key value] "returns a copy with key having new value"))
 
@@ -138,7 +138,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_])
           (-get [_ _ default] default)
           (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
 
@@ -192,7 +192,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_] 0)
+          (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :and properties (assoc children key value))))))))
 
@@ -270,7 +270,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_] ::or)
+          (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
 
@@ -383,7 +383,7 @@
           MapSchema
           (-map-entries [_] entries)
           LensSchema
-          (-key [_])
+          (-keep [_] true)
           (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
           (-set [_ key value]
             (let [found (atom nil)
@@ -451,7 +451,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_] 1)
+          (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :map-of properties (assoc children key value))))))))
 
@@ -508,7 +508,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_] true)
           (-get [_ _ _] schema)
           (-set [_ _ value] (into-schema type properties [value])))))))
 
@@ -562,7 +562,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_] true)
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :tuple properties (assoc children key value))))))))
 
@@ -594,7 +594,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :enum properties (assoc children key value))))))))
 
@@ -630,7 +630,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :re properties (assoc children key value))))))))
 
@@ -666,7 +666,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :fn properties (assoc children key value))))))))
 
@@ -698,7 +698,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_] 0)
+          (-keep [_])
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [this key value] (if (= 0 key)
                                    (into-schema :maybe properties [value])
@@ -758,7 +758,7 @@
           MapSchema
           (-map-entries [_] entries)
           LensSchema
-          (-key [_])
+          (-keep [_])
           (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
           (-set [_ key value]
             (let [found (atom nil)
@@ -799,7 +799,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-keep [_])
           (-get [_ _ default] default)
           (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
 
@@ -849,7 +849,7 @@
                                    (into-schema :ref properties [value])
                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
           RefSchema
-          (-key [_])
+          (-keep [_])
           (-ref [_] ref)
           (-deref [_] (-ref)))))))
 
@@ -880,7 +880,7 @@
             (-children [_] children)
             (-form [_] form)
             LensSchema
-            (-key [_])
+            (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
             (-set [this key value] (if (= key 0)
                                      (into-schema type properties [value])

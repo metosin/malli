@@ -164,7 +164,7 @@
 (defn path->in [schema path]
   (loop [i 0, s schema, acc []]
     (or (and (>= i (count path)) acc)
-        (recur (inc i) (m/-get s (path i) nil) (if-not (m/-key s) (conj acc (path i)) acc)))))
+        (recur (inc i) (m/-get s (path i) nil) (cond-> acc (m/-keep s) (conj (path i)))))))
 
 (defn in->paths [schema in]
   (let [state (atom [])

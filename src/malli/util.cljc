@@ -275,7 +275,7 @@
 ;; map-syntax
 ;;
 
-(defn -map-syntax-walker [schema children _ _]
+(defn -map-syntax-walker [schema _ children _]
   (let [properties (m/properties schema)]
     (cond-> {:type (m/type schema)}
             (seq properties) (clojure.core/assoc :properties properties)

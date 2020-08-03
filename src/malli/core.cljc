@@ -38,7 +38,7 @@
 (defprotocol Walker
   (-accept [this schema path options])
   (-inner [this schema path options])
-  (-outer [this schema children path options]))
+  (-outer [this schema path children options]))
 
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
@@ -132,7 +132,7 @@
             (-value-transformer transformer this method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this children path options)))
+              (-outer walker this path children options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -186,7 +186,7 @@
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-indexed walker path children options) path options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -264,7 +264,7 @@
                :leave (build :leave)}))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-indexed walker path children options) path options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -375,7 +375,7 @@
                :leave (build :leave)}))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-entries walker path entries options) path options)))
+              (-outer walker this path (-inner-entries walker path entries options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -445,7 +445,7 @@
                :leave (build :leave)}))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-indexed walker path children options) path options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -502,7 +502,7 @@
                :leave (build :leave)}))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this [(-inner walker schema (conj path ::in) options)] path options)))
+              (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -556,7 +556,7 @@
                :leave (build :leave)}))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-indexed walker path children options) path options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -588,7 +588,7 @@
             (-value-transformer transformer this method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this children path options)))
+              (-outer walker this path children options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -624,7 +624,7 @@
             (-value-transformer transformer this method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this children path options)))
+              (-outer walker this path children options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -660,7 +660,7 @@
             (-value-transformer transformer this method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this children path options)))
+              (-outer walker this path children options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -692,7 +692,7 @@
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-indexed walker path children options) path options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -750,7 +750,7 @@
                :leave (build :leave)}))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (-inner-entries walker path entries options) path options)))
+              (-outer walker this path (-inner-entries walker path entries options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -793,7 +793,7 @@
             (-value-transformer transformer this method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this (vec children) path options)))
+              (-outer walker this path (vec children) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -838,7 +838,7 @@
                   accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))
                   options (assoc options ::ref-walk accept-ref)]
               (if (-accept walker this path options)
-                (-outer walker this (vec children) path options))))
+                (-outer walker this path (vec children) options))))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -873,8 +873,8 @@
             (-walk [this walker path options]
               (if (-accept walker this path options)
                 (if id
-                  (-outer walker this [id] path options)
-                  (-outer walker this [(-inner walker child path options)] path options))))
+                  (-outer walker this path [id] options)
+                  (-outer walker this path [(-inner walker child path options)] options))))
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)
@@ -996,8 +996,8 @@
      (schema ?schema options)
      (reify Walker
        (-accept [_ s _ _] s)
-       (-inner [this s path options] (-walk s this path options))
-       (-outer [_ s c path options] (f s c path options)))
+       (-inner [this s p options] (-walk s this p options))
+       (-outer [_ s p c options] (f s p c options)))
      [] options)))
 
 (defn validator
@@ -1099,7 +1099,7 @@
 ;;
 
 (defn schema-walker [f]
-  (fn [schema children _ _]
+  (fn [schema _ children _]
     (f (into-schema (-type schema) (-properties schema) children (-options schema)))))
 
 ;;

@@ -62,7 +62,7 @@
       (-type [_])
       (-form [_])
       (-validator [_] int?)
-      (-walk [t w i o] (m/-outer w t nil i o))
+      (-walk [t w p o] (m/-outer w t p nil o))
       json-schema/JsonSchema
       (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])
 

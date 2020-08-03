@@ -22,7 +22,7 @@
 
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
-(defn- -swagger-walker [schema children _in options]
+(defn- -swagger-walker [schema _ children options]
   (let [p (m/properties schema)]
     (or (json-schema/unlift p :swagger)
         (json-schema/unlift p :json-schema)

@@ -1147,7 +1147,7 @@
                    [:map
                     [:street string?]
                     [:lonlat [:tuple double? double?]]]]]]]
-               (fn [schema children path options]
+               (fn [schema path children options]
                  (m/into-schema
                    (m/type schema)
                    (assoc (m/properties schema) :path path)

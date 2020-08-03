@@ -36,10 +36,10 @@
       (is (= message (-> (m/explain schema value) :errors first (me/error-message opts)))))))
 
 (deftest with-spell-checking-test
-  (let [get-errors (fn [explanation] (->> explanation :errors (mapv #(select-keys % [:in :type ::me/likely-misspelling-of :message]))))]
+  (let [get-errors (fn [explanation] (->> explanation :errors (mapv #(select-keys % [:path :type ::me/likely-misspelling-of :message]))))]
 
     (testing "simple"
-      (is (= [{:in [:deliverz]
+      (is (= [{:path [:deliverz]
                :type ::me/misspelled-key
                ::me/likely-misspelling-of [[:deliver]]
                :message "should be spelled :deliver"}]
@@ -55,14 +55,15 @@
     (testing "nested"
 
       (testing "with defaults"
-        (is (= [{:in [:address :streetz]
+        (is (= [{:path [0 :address 0 :streetz]
                  :type ::me/misspelled-key
-                 ::me/likely-misspelling-of [[:address :street1] [:address :street2]],
+                 ::me/likely-misspelling-of [[0 :address 0 :street1] [0 :address 0 :street2]],
                  :message "should be spelled :street1 or :street2"}]
-               (-> [:map
-                    [:address [:map
-                               [:street1 string?]
-                               [:street2 string?]]]]
+               (-> [:maybe [:map
+                            [:address [:and
+                                       [:map
+                                        [:street1 string?]
+                                        [:street2 string?]]]]]]
                    (mu/closed-schema)
                    (m/explain {:address {:streetz "123"}})
                    (me/with-spell-checking)
@@ -70,13 +71,13 @@
                    (get-errors)))))
 
       (testing "stripping likely-misspelled-of fields"
-        (is (= [{:in [:address :street1]
+        (is (= [{:path [:address :street1]
                  :type ::m/missing-key
                  :message "missing required key"}
-                {:in [:address :street2]
+                {:path [:address :street2]
                  :type ::m/missing-key
                  :message "missing required key"}
-                {:in [:address :streetz]
+                {:path [:address :streetz]
                  :type ::me/misspelled-key
                  ::me/likely-misspelling-of [[:address :street1] [:address :street2]]
                  :message "should be spelled :street1 or :street2"}]

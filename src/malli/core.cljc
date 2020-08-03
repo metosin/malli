@@ -340,7 +340,7 @@
                                                        (fn [acc k]
                                                          (if (contains? keyset k)
                                                            acc
-                                                           (conj acc (error path (conj in k) this nil ::extra-key))))
+                                                           (conj acc (error (conj path k) (conj in k) this nil ::extra-key))))
                                                        acc (keys x)))]))]
               (fn [x in acc]
                 (if-not (map? x)

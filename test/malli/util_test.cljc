@@ -482,10 +482,10 @@
 (deftest in-path-conversions
   (let [subschema (m/schema [:maybe int?])
         schema (m/schema [:maybe [:and [:map [:x [:maybe [:map [:y subschema]]]]]]])
-        path [:x :y]
-        in [0 0 :x 0 :y]]
-    (is (= in (mu/path->in schema path)))
+        path [0 0 :x 0 :y]
+        in [:x :y]]
     (is (= path (mu/in->path schema in)))
+    (is (= in (mu/path->in schema path)))
     (is (= subschema
-           (mu/get-in schema in)
-           (mu/get-in schema (mu/path->in schema path))))))
+           (mu/get-in schema path)
+           (mu/get-in schema (mu/in->path schema in))))))

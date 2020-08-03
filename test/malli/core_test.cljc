@@ -578,7 +578,7 @@
 
       (is (results= {:schema closed-schema
                      :value valid-with-extras
-                     :errors [{:path [],
+                     :errors [{:path [:extra],
                                :in [:extra],
                                :schema closed-schema,
                                :value nil,

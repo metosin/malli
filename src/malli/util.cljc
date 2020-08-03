@@ -170,9 +170,11 @@
   (let [state (atom [])
         in-equals (fn [[x & xs] [y & ys]] (cond (and x (= x y)) (recur xs ys), (= x y) true, (= ::m/in x) (recur xs ys)))
         parent-exists (fn [v1 v2] (let [i (min (count v1) (count v2))] (= (subvec v1 0 i) (subvec v2 0 i))))]
-    (find-first schema (fn [_ path _] (when (and (in-equals (path->in schema path) in)
-                                                 (not (some (partial parent-exists path) @state)))
-                                        (swap! state conj path) nil)))
+    (find-first
+      schema
+      (fn [_ path _]
+        (when (and (in-equals (path->in schema path) in) (not (some (partial parent-exists path) @state)))
+          (swap! state conj path) nil)))
     @state))
 
 ;;

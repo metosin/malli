@@ -679,17 +679,20 @@ Finding first value (prewalk):
 Finding all subschmas with paths, retaining order:
 
 ```clj
-(mu/subschemas
-  [:maybe
-   [:map
-    [:id string?]
-    [:tags [:set keyword?]]
-    [:address
-     [:and
-      [:map
-       [:street {:optional true} string?]
-       [:lonlat {:optional true} [:tuple double? double?]]]
-      [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]])
+(def Schema
+  (m/schema
+    [:maybe
+     [:map
+      [:id string?]
+      [:tags [:set keyword?]]
+      [:address
+       [:and
+        [:map
+         [:street {:optional true} string?]
+         [:lonlat {:optional true} [:tuple double? double?]]]
+        [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]]))
+
+(mu/subschemas Schema)
 ;[{:path [], :in [], :schema [:maybe
 ;                             [:map
 ;                              [:id string?]
@@ -730,16 +733,7 @@ Finding all subschmas with paths, retaining order:
 Collecting just unique value paths (`:in`):
 
 ```clj
-(->> [:maybe
-      [:map
-       [:id string?]
-       [:tags [:set keyword?]]
-       [:address
-        [:and
-         [:map
-          [:street {:optional true} string?]
-          [:lonlat {:optional true} [:tuple double? double?]]]
-         [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]]
+(->> Schema
      (mu/subschemas)
      (mu/distinct-by :id))
 ;[{:path [], :in [], :schema [:maybe
@@ -764,6 +758,16 @@ Collecting just unique value paths (`:in`):
 ; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple double? double?]}
 ; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema double?}
 ; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema double?}
+```
+
+Schema paths can be converted into value paths:
+
+```clj
+(mu/get-in Schema [0 :address 0 :lonlat])
+; => [:tuple double? double?]
+
+(mu/path->in Schema [0 :address 0 :lonlat])
+; => [:address :lonlat]
 ```
 
 ## Persisting Schemas 

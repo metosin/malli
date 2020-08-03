@@ -37,7 +37,7 @@
     (or (and (>= i (count in)) acc)
         (recur (inc i) (m/-get s (in i) nil) (if-not (m/-key s) (conj acc (in i)) acc)))))
 
-(defn in->path [schema path]
+(defn ^:no-doc in->path [schema path]
   (loop [i 0, s schema, acc []]
     (or (and (>= i (count path)) acc)
         (let [[i k] (if-let [k (m/-key s)] [i k] [(inc i) (path i)])]

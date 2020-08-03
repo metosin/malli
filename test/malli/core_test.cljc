@@ -1124,18 +1124,19 @@
     (is (= true (m/validate [sequential int?] value)))))
 
 (deftest walker-in-test
-  (is (form= [:map {:in []}
-              [:id [string? {:in [:id]}]]
-              [:tags [:set {:in [:tags]} [keyword? {:in [:tags :malli.core/in]}]]]
+  (is (form= [:map {:path []}
+              [:id [string? {:path [:id]}]]
+              [:tags [:set {:path [:tags]} [keyword? {:path [:tags ::m/in]}]]]
               [:address
-               [:maybe {:in [:address]}
-                [:vector {:in [:address]}
-                 [:map {:in [:address :malli.core/in]}
-                  [:street [string? {:in [:address :malli.core/in :street]}]]
+               [:maybe {:path [:address]}
+                [:vector {:path [:address 0]}
+                 [:map {:path [:address 0 :malli.core/in]}
+                  [:street [string? {:path [:address 0 ::m/in :street]}]]
                   [:lonlat
-                   [:tuple {:in [:address :malli.core/in :lonlat]}
-                    [double? {:in [:address :malli.core/in :lonlat 0]}]
-                    [double? {:in [:address :malli.core/in :lonlat 1]}]]]]]]]]
+                   [:tuple {:path [:address 0 ::m/in :lonlat]}
+                    [double? {:path [:address 0 ::m/in :lonlat 0]}]
+                    [double? {:path [:address 0 ::m/in :lonlat 1]}]]]]]]]]
+
              (m/walk
                [:map
                 [:id string?]
@@ -1146,9 +1147,9 @@
                    [:map
                     [:street string?]
                     [:lonlat [:tuple double? double?]]]]]]]
-               (fn [schema children in options]
+               (fn [schema children path options]
                  (m/into-schema
                    (m/type schema)
-                   (assoc (m/properties schema) :in in)
+                   (assoc (m/properties schema) :path path)
                    children
                    options))))))

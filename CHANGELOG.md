@@ -17,8 +17,11 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 * ???
   * `:path` in explain is re-implemented: map keys by value, others by child index
   * utilities for `LensSchema` in `malli.util` don't coerce data schemas into `Schema` instances
-  * `malli.util/path-schemas` return a vector of maps with `:path` and `:schema` keys
+  * `malli.util/path-schemas` replaced with `malli.util/subschemas` & `malli.util/distict-by`
   * `LensSchema` has a new `-key` method
+  * renamed some non-user apis in `malli.core` & `malli.util`
+  * moved map-syntax helpers from `malli.core` to `malli.util`
+  * dynaload `com.gfredericks/test.chuck`
 * 23.7.2020
   * `sci` is not a default dependency. Enabling sci-support:
     * **Clojure**: add a dependency to `borkdude/sci`

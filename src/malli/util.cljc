@@ -44,7 +44,7 @@
           (recur i (m/-get s k nil) (conj acc k))))))
 
 (defn find-first
-  "Prewalks the Schema recursively with a 3-arity fn [schema in options], returns with
+  "Prewalks the Schema recursively with a 3-arity fn [schema path options], returns with
   and as soon as the function returns non-null value."
   ([?schema f]
    (find-first ?schema f nil))
@@ -53,8 +53,8 @@
      (m/-walk
        (m/schema ?schema options)
        (reify m/Walker
-         (-accept [_ s in options] (not (or @result (reset! result (f s in options)))))
-         (-inner [this s in options] (if-not @result (m/-walk s this in options)))
+         (-accept [_ s path options] (not (or @result (reset! result (f s path options)))))
+         (-inner [this s path options] (if-not @result (m/-walk s this path options)))
          (-outer [_ _ _ _ _]))
        [] options)
      @result)))
@@ -157,21 +157,18 @@
            schema)))
      options)))
 
-(defn path-schemas
-  "Return a ordered map from value path -> schema"
+(defn subschemas
   ([?schema]
-   (path-schemas ?schema nil))
+   (subschemas ?schema nil))
   ([?schema options]
-   (let [state (atom {:m {}, :v []})]
-     (find-first
-       ?schema
-       (fn [s i _]
-         (swap! state #(cond-> % (not (c/get-in % [:m i]))
-                               (-> (c/update :m c/assoc i s)
-                                   (c/update :v into [{:path i, :schema s}]))))
-         nil)
-       options)
-     (:v @state))))
+   (let [schema (m/schema ?schema options)
+         state (atom [])]
+     (find-first schema (fn [s path _] (swap! state conj {:path path, :in (path->in schema path), :schema s}) nil))
+     @state)))
+
+(defn distinct-by [f coll]
+  (let [seen (atom #{})]
+    (filterv (fn [m] (let [v (f m)] (if-not (@seen v) (swap! seen conj v)))) coll)))
 
 ;;
 ;; MapSchemas
@@ -231,24 +228,24 @@
 ;;
 
 (defn get
-  "Like [[clojure.core/get]], but for LensSchemas using :in syntax."
+  "Like [[clojure.core/get]], but for LensSchemas."
   ([schema k]
    (get schema k nil))
   ([schema k default]
    (if schema (m/-get schema k default))))
 
 (defn assoc
-  "Like [[clojure.core/assoc]], but for LensSchemas using :in syntax."
+  "Like [[clojure.core/assoc]], but for LensSchemas."
   [schema key value]
   (m/-set schema key value))
 
 (defn update
-  "Like [[clojure.core/update]], but for LensSchemas using :in syntax."
+  "Like [[clojure.core/update]], but for LensSchemas."
   [schema key f & args]
   (assoc schema key (apply f (get schema key (m/schema :map (m/options schema))) args)))
 
 (defn get-in
-  "Like [[clojure.core/get-in]], but for LensSchemas using :in syntax."
+  "Like [[clojure.core/get-in]], but for LensSchemas."
   ([schema ks]
    (get-in schema ks nil))
   ([schema [k & ks] default]
@@ -262,12 +259,12 @@
          :else schema)))))
 
 (defn assoc-in
-  "Like [[clojure.core/assoc-in]], but for LensSchemas using :in syntax."
+  "Like [[clojure.core/assoc-in]], but for LensSchemas."
   [schema [k & ks] value]
   (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value) value)))
 
 (defn update-in
-  "Like [[clojure.core/update-in]], but for LensSchemas using :in syntax."
+  "Like [[clojure.core/update-in]], but for LensSchemas."
   [schema ks f & args]
   (letfn [(up [s [k & ks] f args]
             (assoc s k (if ks (up (get s k (m/schema :map (m/options schema))) ks f args)

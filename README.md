@@ -98,13 +98,11 @@ Maps keys are not limited to keywords:
    ["status" [:enum "ok"]]
    [1 any?]
    [nil any?]
-   [::a string?]
-   [[1 2 3] number?]]
+   [::a string?]]
   {"status" "ok"
    1 'number
    nil :yay
-   ::a "properly awesome"
-   [1 2 3] 1})
+   ::a "properly awesome"})
 ; => true
 ```
 
@@ -678,41 +676,94 @@ Finding first value (prewalk):
 ; => "turvassa"
 ```
 
-Finding (sub)schemas for all paths, retaining order:
+Finding all subschmas with paths, retaining order:
 
 ```clj
-(mu/path-schemas
-  [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:and
-     [:map
-      [:street {:optional true} string?]
-      [:lonlat {:optional true} [:tuple double? double?]]]
-     [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]])
-;[{:path [], :schema [:map
-;                     [:id string?]
-;                     [:tags [:set keyword?]]
-;                     [:address
-;                      [:and
-;                       [:map
-;                        [:street {:optional true} string?]
-;                        [:lonlat {:optional true} [:tuple double? double?]]]
-;                       [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]}
-; {:path [:id], :schema string?}
-; {:path [:tags], :schema [:set keyword?]}
-; {:path [:tags :malli.core/in], :schema keyword?}
-; {:path [:address], :schema [:and
+(mu/subschemas
+  [:maybe
+   [:map
+    [:id string?]
+    [:tags [:set keyword?]]
+    [:address
+     [:and
+      [:map
+       [:street {:optional true} string?]
+       [:lonlat {:optional true} [:tuple double? double?]]]
+      [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]])
+;[{:path [], :in [], :schema [:maybe
 ;                             [:map
-;                              [:street {:optional true} string?]
-;                              [:lonlat {:optional true}
-;                               [:tuple double? double?]]]
-;                             [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
-; {:path [:address :street], :schema string?}
-; {:path [:address :lonlat], :schema [:tuple double? double?]}
-; {:path [:address :lonlat 0], :schema double?}
-; {:path [:address :lonlat 1], :schema double?}]
+;                              [:id string?]
+;                              [:tags [:set keyword?]]
+;                              [:address
+;                               [:and
+;                                [:map
+;                                 [:street {:optional true} string?]
+;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]}
+; {:path [0], :in [], :schema [:map
+;                              [:id string?]
+;                              [:tags [:set keyword?]]
+;                              [:address
+;                               [:and
+;                                [:map
+;                                 [:street {:optional true} string?]
+;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]}
+; {:path [0 :id], :in [:id], :schema string?}
+; {:path [0 :tags], :in [:tags], :schema [:set keyword?]}
+; {:path [0 :tags :malli.core/in], :in [:tags :malli.core/in], :schema keyword?}
+; {:path [0 :address], :in [:address], :schema [:and
+;                                               [:map
+;                                                [:street {:optional true} string?]
+;                                                [:lonlat {:optional true} [:tuple double? double?]]]
+;                                               [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
+; {:path [0 :address 0], :in [:address], :schema [:map
+;                                                 [:street {:optional true} string?]
+;                                                 [:lonlat {:optional true} [:tuple double? double?]]]}
+; {:path [0 :address 0 :street], :in [:address :street], :schema string?}
+; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple double? double?]}
+; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema double?}
+; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema double?}
+; {:path [0 :address 1], :in [:address], :schema [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]}]
+```
+
+Collecting just unique value paths (`:in`):
+
+```clj
+(->> [:maybe
+      [:map
+       [:id string?]
+       [:tags [:set keyword?]]
+       [:address
+        [:and
+         [:map
+          [:street {:optional true} string?]
+          [:lonlat {:optional true} [:tuple double? double?]]]
+         [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]]
+     (mu/subschemas)
+     (mu/distinct-by :id))
+;[{:path [], :in [], :schema [:maybe
+;                             [:map
+;                              [:id string?]
+;                              [:tags [:set keyword?]]
+;                              [:address
+;                               [:and
+;                                [:map
+;                                 [:street {:optional true} string?]
+;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]}
+; {:path [0 :id], :in [:id], :schema string?}
+; {:path [0 :tags], :in [:tags], :schema [:set keyword?]}
+; {:path [0 :tags :malli.core/in], :in [:tags :malli.core/in], :schema keyword?}
+; {:path [0 :address], :in [:address], :schema [:and
+;                                               [:map
+;                                                [:street {:optional true} string?]
+;                                                [:lonlat {:optional true} [:tuple double? double?]]]
+;                                               [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
+; {:path [0 :address 0 :street], :in [:address :street], :schema string?}
+; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple double? double?]}
+; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema double?}
+; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema double?}
 ```
 
 ## Persisting Schemas 
@@ -946,7 +997,7 @@ Schemas can converted into map-syntax (with keys `:type` and optionally `:proper
      [:street string?]
      [:lonlat [:tuple double? double?]]]]])
 
-(m/to-map-syntax Schema)
+(mu/to-map-syntax Schema)
 ;{:type :map,
 ; :children [[:id nil {:type string?}]
 ;            [:tags nil {:type :set
@@ -960,7 +1011,7 @@ Schemas can converted into map-syntax (with keys `:type` and optionally `:proper
 ... and back:
 
 ```clj
-(-> Schema (m/to-map-syntax) (m/from-map-syntax) (mu/equals Schema))
+(-> Schema (mu/to-map-syntax) (mu/from-map-syntax) (mu/equals Schema))
 ; => true
 ```
 

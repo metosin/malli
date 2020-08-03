@@ -431,53 +431,78 @@
       (is (= [{:salaisuus "turvassa"}
               {:salaisuus "vaarassa"}] @walked-properties)))))
 
-(deftest path-schema-test
-  (let [with-forms (partial map #(update % :schema m/form))]
+(deftest subschemas-test
+  (let [with-forms (partial map #(update % :schema m/form))
+        fn '(constantly true)]
+    (testing "distinct :path"
+      (is (= (->> [{:path [], :in [], :schema [:and
+                                               [:map [:a int?] [:b [:set boolean?]] [:c [:vector [:and [:fn fn] [:map [:d string?]]]]]]
+                                               [:fn fn]]}
+                   {:path [0], :in [], :schema [:map [:a int?] [:b [:set boolean?]] [:c [:vector [:and [:fn fn] [:map [:d string?]]]]]]}
+                   {:path [0 :a], :in [:a], :schema int?}
+                   {:path [0 :b], :in [:b], :schema [:set boolean?]}
+                   {:path [0 :b :malli.core/in], :in [:b :malli.core/in], :schema boolean?}
+                   {:path [0 :c], :in [:c], :schema [:vector [:and [:fn fn] [:map [:d string?]]]]}
+                   {:path [0 :c :malli.core/in], :in [:c :malli.core/in], :schema [:and [:fn fn] [:map [:d string?]]]}
+                   {:path [0 :c :malli.core/in 0], :in [:c :malli.core/in], :schema [:fn fn]}
+                   {:path [0 :c :malli.core/in 1], :in [:c :malli.core/in], :schema [:map [:d string?]]}
+                   {:path [0 :c :malli.core/in 1 :d], :in [:c :malli.core/in :d], :schema string?}
+                   {:path [1], :in [], :schema [:fn fn]}]
+                  (with-forms))
+             (->> [:and
+                   [:map
+                    [:a int?]
+                    [:b [:set boolean?]]
+                    [:c [:vector
+                         [:and
+                          [:fn fn]
+                          [:map [:d string?]]]]]]
+                   [:fn fn]]
+                  (m/schema)
+                  (mu/subschemas)
+                  (with-forms))
+             (->> [:and
+                   [:map
+                    [:a int?]
+                    [:b [:set boolean?]]
+                    [:c [:vector
+                         [:and
+                          [:fn fn]
+                          [:map [:d string?]]]]]]
+                   [:fn fn]]
+                  (m/schema)
+                  (mu/subschemas)
+                  (mu/distinct-by :path)
+                  (with-forms)))))
 
-    (testing "retains original order"
-      (is (= (with-forms
-               [{:path [],
-                 :schema [:and
-                          [:map
-                           [:a int?]
-                           [:b [:set boolean?]]
-                           [:c [:vector
-                                [:and
-                                 [:fn '(constantly true)]
-                                 [:map
-                                  [:d string?]]]]]]
-                          [:fn '(constantly true)]]}
-                {:path [:a]
-                 :schema int?}
-                {:path [:b]
-                 :schema [:set boolean?]}
-                {:path [:b :malli.core/in]
-                 :schema boolean?}
-                {:path [:c]
-                 :schema [:vector
-                          [:and
-                           [:fn '(constantly true)]
-                           [:map
-                            [:d string?]]]]}
-                {:path [:c :malli.core/in]
-                 :schema [:and
-                          [:fn '(constantly true)]
-                          [:map
-                           [:d string?]]]}
-                {:path [:c :malli.core/in :d]
-                 :schema string?}])
-             (with-forms
-               (mu/path-schemas
-                 [:and
-                  [:map
-                   [:a int?]
-                   [:b [:set boolean?]]
-                   [:c [:vector
-                        [:and
-                         [:fn '(constantly true)]
-                         [:map
-                          [:d string?]]]]]]
-                  [:fn '(constantly true)]])))))))
+    (testing "distinct :in"
+      (is (= (->> [{:path [], :in [], :schema [:and
+                                               [:map
+                                                [:a int?]
+                                                [:b [:set boolean?]]
+                                                [:c [:vector [:and
+                                                              [:fn fn]
+                                                              [:map [:d string?]]]]]]
+                                               [:fn fn]]}
+                   {:path [0 :a], :in [:a], :schema int?}
+                   {:path [0 :b], :in [:b], :schema [:set boolean?]}
+                   {:path [0 :b :malli.core/in], :in [:b :malli.core/in], :schema boolean?}
+                   {:path [0 :c], :in [:c], :schema [:vector [:and [:fn fn] [:map [:d string?]]]]}
+                   {:path [0 :c :malli.core/in], :in [:c :malli.core/in], :schema [:and [:fn fn] [:map [:d string?]]]}
+                   {:path [0 :c :malli.core/in 1 :d], :in [:c :malli.core/in :d], :schema string?}]
+                  (with-forms))
+             (->> [:and
+                   [:map
+                    [:a int?]
+                    [:b [:set boolean?]]
+                    [:c [:vector [:and
+                                  [:fn fn]
+                                  [:map [:d string?]]]]]]
+                   [:fn fn]]
+                  (m/schema)
+                  (mu/subschemas)
+                  (mu/distinct-by :in)
+                  (with-forms)))))))
 
 (deftest in-path-conversions
   (let [subschema (m/schema [:maybe int?])

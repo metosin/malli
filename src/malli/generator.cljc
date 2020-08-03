@@ -1,6 +1,6 @@
 (ns malli.generator
   (:require [clojure.test.check.generators :as gen]
-            #?(:clj [com.gfredericks.test.chuck.generators :as gen2])
+            #?(:clj [borkdude.dynaload-clj :refer [dynaload]])
             [clojure.string :as str]
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
@@ -92,9 +92,11 @@
     (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
 
 #?(:clj
-   (defn -re-gen [schema options]
-     (let [re (or (first (m/children schema options)) (m/form schema options))]
-       (gen2/string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))))
+   ;; [com.gfredericks/test.chuck "0.2.10"+]
+   (when-let [string-from-regex @(dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
+     (defn -re-gen [schema options]
+       (let [re (or (first (m/children schema options)) (m/form schema options))]
+         (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1")))))))
 
 ;;
 ;; generators

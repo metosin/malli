@@ -20,7 +20,7 @@
                 (-properties [_])
                 (-explainer [this path]
                   (fn [value in acc]
-                    (if-not (int? value) (conj acc (m/error path in this value)) acc)))
+                    (if-not (int? value) (conj acc (m/-error path in this value)) acc)))
                 me/SchemaError
                 (-error [_] {:error/message "from schema"})) "kikka" "from schema"]
              ;; via defaults

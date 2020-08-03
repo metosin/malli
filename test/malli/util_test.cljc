@@ -489,3 +489,33 @@
     (is (= subschema
            (mu/get-in schema path)
            (mu/get-in schema (mu/in->path schema in))))))
+
+(deftest to-from-maps-test
+  (let [schema [:map {:registry {::size [:enum "S" "M" "L"]}}
+                [:id string?]
+                [:tags [:set keyword?]]
+                [:size ::size]
+                [:address
+                 [:vector
+                  [:map
+                   [:street string?]
+                   [:lonlat [:tuple double? double?]]]]]]]
+
+    (testing "to-map-syntax"
+      (is (= {:type :map,
+              :properties {:registry {::size [:enum "S" "M" "L"]}}
+              :children [[:id nil {:type 'string?}]
+                         [:tags nil {:type :set
+                                     :children [{:type 'keyword?}]}]
+                         [:size nil {:type ::m/schema
+                                     :children [::size]}]
+                         [:address nil {:type :vector,
+                                        :children [{:type :map,
+                                                    :children [[:street nil {:type 'string?}]
+                                                               [:lonlat nil {:type :tuple
+                                                                             :children [{:type 'double?} {:type 'double?}]}]]}]}]]}
+             (mu/to-map-syntax schema))))
+
+    (testing "from-map-syntax"
+      (is (true? (mu/equals schema (-> schema (mu/to-map-syntax) (mu/from-map-syntax))))))))
+

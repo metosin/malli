@@ -21,7 +21,7 @@
     @state))
 
 (defn -schema-name [base in]
-  (->> in (remove #{:malli.core/in}) (map (comp str/capitalize m/keyword->string)) (into [base]) (str/join "$")))
+  (->> in (remove #{:malli.core/in}) (map (comp str/capitalize m/-keyword->string)) (into [base]) (str/join "$")))
 
 (defn -normalize [{:keys [registry] :as ctx}]
   (let [registry* (atom registry)]

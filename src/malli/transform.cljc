@@ -24,7 +24,7 @@
     (let [compiled (::compiled options 0)
           options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
-        (m/fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
+        (m/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
       (if-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
           (dissoc ?interceptor :compile)
@@ -48,7 +48,7 @@
 
     (nil? ?interceptor) nil
 
-    :else (m/fail! ::invalid-transformer {:value ?interceptor})))
+    :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
 
 ;;
 ;; from strings
@@ -220,15 +220,15 @@
    'double? -number->double
    'inst? -string->date
 
-   :map-of (-transform-map-keys m/keyword->string)
+   :map-of (-transform-map-keys m/-keyword->string)
    :set -sequential->set
    :sequential -sequential->seq
    :list -sequential->seq})
 
 (defn -json-encoders []
-  {'keyword? m/keyword->string
-   'simple-keyword? m/keyword->string
-   'qualified-keyword? m/keyword->string
+  {'keyword? m/-keyword->string
+   'simple-keyword? m/-keyword->string
+   'qualified-keyword? m/-keyword->string
 
    'symbol? -any->string
    'simple-symbol? -any->string
@@ -299,7 +299,7 @@
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
-        ->chain (comp m/-transformer-chain m/into-transformer)
+        ->chain (comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")

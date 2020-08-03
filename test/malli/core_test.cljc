@@ -29,9 +29,9 @@
   (-> ?schema (me/write-string) (me/read-string)))
 
 (deftest keyword->string
-  (is (= "abba" (m/keyword->string :abba)))
-  (is (= "jabba/abba" (m/keyword->string :jabba/abba)))
-  (is (= "abba" (m/keyword->string "abba"))))
+  (is (= "abba" (m/-keyword->string :abba)))
+  (is (= "jabba/abba" (m/-keyword->string :jabba/abba)))
+  (is (= "abba" (m/-keyword->string "abba"))))
 
 (deftest parse-entry-syntax-test
   (let [{:keys [children entries forms]} (m/-parse-entry-syntax
@@ -69,7 +69,7 @@
   (is (form= [:map {:closed true} [:x int?]]
              (m/into-schema :map {:closed true} [[:x int?]]))))
 
-(deftest schema-walker-test
+#_(deftest schema-walker-test
   (is (form= [:map {:closed true} [:x int?]]
              (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity))))
   (is (form= [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
@@ -98,7 +98,7 @@
                      :errors [{:path [], :in [], :schema schema, :value "1"}]}
                     {:schema schema
                      :value "1"
-                     :errors [(m/error [] [] schema "1")]}
+                     :errors [(m/-error [] [] schema "1")]}
                     (m/explain schema "1")))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -112,7 +112,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type 'int?}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= 'int? (m/form schema)))))
 
@@ -150,7 +150,7 @@
                          {:type :or
                           :children [{:type 'pos-int?}
                                      {:type 'neg-int?}]}]}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
 
@@ -230,7 +230,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type :>, :children [0]}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:> 0] (m/form schema)))))
 
@@ -257,7 +257,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type :enum, :children [1 2]}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:enum 1 2] (m/form schema)))))
 
@@ -282,7 +282,7 @@
       (is (true? (m/validate (over-the-wire schema) 1)))
 
       (is (= {:type :maybe, :children [{:type 'int?}]}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
@@ -314,7 +314,7 @@
       (is (true? (m/validate (over-the-wire schema) "123")))
 
       (is (= {:type :string, :properties {:min 1, :max 4}}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:string {:min 1, :max 4}] (m/form schema)))))
 
@@ -357,7 +357,7 @@
         (is (= {:type :schema
                 :properties {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 :children [{:type :malli.core/schema, :children [::cons]}]}
-               (m/walk ConsCell m/map-syntax-walker)))
+               (mu/to-map-syntax ConsCell)))
 
         (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 ::cons]
@@ -445,7 +445,7 @@
               :properties {:registry {::a ::b
                                       ::b ::c
                                       ::c [:schema 'pos-int?]}}}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:and
               {:registry {::a ::b
@@ -477,7 +477,7 @@
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
         (is (= {:type :re, :children [re]}
-               (m/walk schema m/map-syntax-walker)))
+               (mu/to-map-syntax schema)))
 
         (is (= form (m/form schema))))))
 
@@ -504,7 +504,7 @@
         (is (= {:type :fn
                 :children [fn]
                 :properties {:description "number between 10 and 18"}}
-               (m/walk schema m/map-syntax-walker)))
+               (mu/to-map-syntax schema)))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
@@ -607,7 +607,7 @@
               :children [[:x nil {:type 'boolean?}]
                          [:y {:optional true} {:type 'int?}]
                          [:z {:optional false} {:type 'string?}]]}
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (= [:map
               [:x 'boolean?]
@@ -708,9 +708,7 @@
                                                  [:name nil {:type 'string?}]
                                                  [:address nil {:type :map
                                                                 :children [[:country nil {:type 'keyword?}]]}]]}]]}
-
-
-             (m/walk schema m/map-syntax-walker)))
+             (mu/to-map-syntax schema)))
 
       (is (entries= [[:sized nil [:map [:type keyword?] [:size int?]]]
                      [:human nil [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
@@ -761,7 +759,7 @@
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
     (is (= {:type :map-of, :children [{:type 'int?} {:type 'pos-int?}]}
-           (m/walk [:map-of int? pos-int?] m/map-syntax-walker)))
+           (mu/to-map-syntax [:map-of int? pos-int?])))
 
     (testing "keyword keys are transformed via strings"
       (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} mt/string-transformer)))))
@@ -1037,9 +1035,9 @@
     (testing "visit"
       (doseq [name [:vector :list :sequential :set]]
         (is (= {:type name, :children [{:type 'int?}]}
-               (m/walk [name int?] m/map-syntax-walker))))
+               (mu/to-map-syntax [name int?]))))
       (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
-             (m/walk [:tuple int? int?] m/map-syntax-walker))))))
+             (mu/to-map-syntax [:tuple int? int?]))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]
@@ -1106,8 +1104,8 @@
   (let [registry (merge
                    (m/comparator-schemas)
                    (m/base-schemas)
-                   {:int (m/fn-schema :int int?)
-                    :string (m/fn-schema :string string?)})]
+                   {:int (m/-predicate-schema :int int?)
+                    :string (m/-predicate-schema :string string?)})]
     (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
     (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))
 
@@ -1154,32 +1152,3 @@
                    (assoc (m/properties schema) :in in)
                    children
                    options))))))
-
-(deftest to-from-maps-test
-  (let [schema [:map {:registry {::size [:enum "S" "M" "L"]}}
-                [:id string?]
-                [:tags [:set keyword?]]
-                [:size ::size]
-                [:address
-                 [:vector
-                  [:map
-                   [:street string?]
-                   [:lonlat [:tuple double? double?]]]]]]]
-
-    (testing "to-map-syntax"
-      (is (= {:type :map,
-              :properties {:registry {::size [:enum "S" "M" "L"]}}
-              :children [[:id nil {:type 'string?}]
-                         [:tags nil {:type :set
-                                     :children [{:type 'keyword?}]}]
-                         [:size nil {:type ::m/schema
-                                     :children [::size]}]
-                         [:address nil {:type :vector,
-                                        :children [{:type :map,
-                                                    :children [[:street nil {:type 'string?}]
-                                                               [:lonlat nil {:type :tuple
-                                                                             :children [{:type 'double?} {:type 'double?}]}]]}]}]]}
-             (m/to-map-syntax schema))))
-
-    (testing "from-map-syntax"
-      (is (true? (mu/equals schema (-> schema (m/to-map-syntax) (m/from-map-syntax))))))))

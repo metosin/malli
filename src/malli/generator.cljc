@@ -26,9 +26,9 @@
 (defn -min-max [schema options]
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
     (when (and min gen-min (< gen-min min))
-      (m/fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+      (m/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
     (when (and max gen-max (> gen-max max))
-      (m/fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
+      (m/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
     {:min (or gen-min min)
      :max (or gen-max max)}))
 
@@ -143,7 +143,7 @@
       fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))
       elements elements
       gen gen
-      :else (m/fail! ::no-generator {:schema schema, :options options}))))
+      :else (m/-fail! ::no-generator {:schema schema, :options options}))))
 
 ;;
 ;; public api

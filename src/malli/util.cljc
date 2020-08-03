@@ -17,8 +17,11 @@
     (false? (:optional ?p)) [k (c/dissoc ?p :optional) s]
     :else [k ?p s]))
 
+(defn -required-map-entry? [[_ ?p]]
+  (not (and (map? ?p) (true? (:optional ?p)))))
+
 (defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge options]
-  (let [required (merge-required (m/required-map-entry? e1) (m/required-map-entry? e2))
+  (let [required (merge-required (-required-map-entry? e1) (-required-map-entry? e2))
         p (c/merge ?p1 ?p2)]
     (simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
@@ -28,6 +31,17 @@
 ;;
 ;; public api
 ;;
+
+(defn path->in [schema in]
+  (loop [i 0, s schema, acc []]
+    (or (and (>= i (count in)) acc)
+        (recur (inc i) (m/-get s (in i) nil) (if-not (m/-key s) (conj acc (in i)) acc)))))
+
+(defn in->path [schema path]
+  (loop [i 0, s schema, acc []]
+    (or (and (>= i (count path)) acc)
+        (let [[i k] (if-let [k (m/-key s)] [i k] [(inc i) (path i)])]
+          (recur i (m/-get s k nil) (conj acc k))))))
 
 (defn find-first
   "Prewalks the Schema recursively with a 3-arity fn [schema in options], returns with
@@ -261,16 +275,24 @@
     (up schema ks f args)))
 
 ;;
-;; in->path->in
+;; map-syntax
 ;;
 
-(defn path->in [schema in]
-  (loop [i 0, s schema, acc []]
-    (or (and (>= i (count in)) acc)
-        (recur (inc i) (get s (in i)) (if-not (m/-key s) (conj acc (in i)) acc)))))
+(defn -map-syntax-walker [schema children _ _]
+  (let [properties (m/properties schema)]
+    (cond-> {:type (m/type schema)}
+            (seq properties) (clojure.core/assoc :properties properties)
+            (seq children) (clojure.core/assoc :children children))))
 
-(defn in->path [schema path]
-  (loop [i 0, s schema, acc []]
-    (or (and (>= i (count path)) acc)
-        (let [[i k] (if-let [k (m/-key s)] [i k] [(inc i) (path i)])]
-          (recur i (get s k) (conj acc k))))))
+(defn to-map-syntax
+  ([?schema] (to-map-syntax ?schema nil))
+  ([?schema options] (m/walk ?schema -map-syntax-walker options)))
+
+(defn from-map-syntax
+  ([m] (from-map-syntax m nil))
+  ([{:keys [type properties children] :as m} options]
+   (if (map? m)
+     (let [<-child (if (-> children first vector?) (fn [f] #(clojure.core/update % 2 f)) identity)
+           [properties options] (m/-properties-and-options properties options m/-form)]
+       (m/into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
+     m)))

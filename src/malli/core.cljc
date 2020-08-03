@@ -270,7 +270,7 @@
           (-children [_] children)
           (-form [_] form)
           LensSchema
-          (-key [_])
+          (-key [_] ::or)
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
 

@@ -505,15 +505,28 @@
                   (with-forms)))))))
 
 (deftest in-path-conversions
-  (let [subschema (m/schema [:maybe int?])
-        schema (m/schema [:maybe [:and [:map [:x [:maybe [:map [:y subschema]]]]]]])
-        path [0 0 :x 0 :y]
-        in [:x :y]]
-    (is (= path (mu/in->path schema in)))
-    (is (= in (mu/path->in schema path)))
-    (is (= subschema
-           (mu/get-in schema path)
-           (mu/get-in schema (mu/in->path schema in))))))
+  (testing "symmetry of things"
+    (let [subschema (m/schema [:maybe int?])
+          schema (m/schema [:maybe [:and [:map [:x [:maybe [:map [:y subschema]]]]]]])
+          path [0 0 :x 0 :y]
+          in [:x :y]]
+      (is (= [path] (mu/in->paths schema in)))
+      (is (= in (mu/path->in schema path)))
+      (is (= subschema
+             (mu/get-in schema path)
+             (mu/get-in schema (first (mu/in->paths schema in)))))))
+  (testing "multiple paths for in"
+    (is (= [[0 0 :a :malli.core/in :b]
+            [0 1 :a 0 :malli.core/in 0 :b]]
+           (-> [:and
+                [:or
+                 [:map
+                  [:a [:vector [:map [:b [:maybe int?]]]]]]
+                 [:map
+                  [:a [:maybe [:list [:maybe [:map [:b [:and [:or int?]]]]]]]]]]
+                [:fn '(constantly true)]]
+               (m/schema)
+               (mu/in->paths [:a 0 :b]))))))
 
 (deftest to-from-maps-test
   (let [schema [:map {:registry {::size [:enum "S" "M" "L"]}}
@@ -543,4 +556,3 @@
 
     (testing "from-map-syntax"
       (is (true? (mu/equals schema (-> schema (mu/to-map-syntax) (mu/from-map-syntax))))))))
-

@@ -3,6 +3,8 @@
   (:require [clojure.core :as c]
             [malli.core :as m]))
 
+(declare path->in)
+
 (defn ^:no-doc equals
   ([?schema1 ?schema2]
    (equals ?schema1 ?schema2 nil))
@@ -31,17 +33,6 @@
 ;;
 ;; public api
 ;;
-
-(defn path->in [schema in]
-  (loop [i 0, s schema, acc []]
-    (or (and (>= i (count in)) acc)
-        (recur (inc i) (m/-get s (in i) nil) (if-not (m/-key s) (conj acc (in i)) acc)))))
-
-(defn ^:no-doc in->path [schema path]
-  (loop [i 0, s schema, acc []]
-    (or (and (>= i (count path)) acc)
-        (let [[i k] (if-let [k (m/-key s)] [i k] [(inc i) (path i)])]
-          (recur i (m/-get s k nil) (conj acc k))))))
 
 (defn find-first
   "Prewalks the Schema recursively with a 3-arity fn [schema path options], returns with
@@ -169,6 +160,20 @@
 (defn distinct-by [f coll]
   (let [seen (atom #{})]
     (filterv (fn [m] (let [v (f m)] (if-not (@seen v) (swap! seen conj v)))) coll)))
+
+(defn path->in [schema path]
+  (loop [i 0, s schema, acc []]
+    (or (and (>= i (count path)) acc)
+        (recur (inc i) (m/-get s (path i) nil) (if-not (m/-key s) (conj acc (path i)) acc)))))
+
+(defn in->paths [schema in]
+  (let [state (atom [])
+        in-equals (fn [[x & xs] [y & ys]] (cond (and x (= x y)) (recur xs ys), (= x y) true, (= ::m/in x) (recur xs ys)))
+        parent-exists (fn [v1 v2] (let [i (min (count v1) (count v2))] (= (subvec v1 0 i) (subvec v2 0 i))))]
+    (find-first schema (fn [_ path _] (when (and (in-equals (path->in schema path) in)
+                                                 (not (some (partial parent-exists path) @state)))
+                                        (swap! state conj path) nil)))
+    @state))
 
 ;;
 ;; MapSchemas

@@ -770,6 +770,13 @@ Schema paths can be converted into value paths:
 ; => [:address :lonlat]
 ```
 
+and back (returns all paths):
+
+```clj
+(mu/in->paths Schema [:address :lonlat])
+; => [[0 :address 0 :lonlat]]
+```
+
 ## Persisting Schemas 
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.

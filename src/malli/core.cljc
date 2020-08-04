@@ -46,14 +46,9 @@
 
 (defrecord SchemaError [path in schema value type message])
 
-#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w]
-          (.write w (str "#Error" (->> v (filter val) (into {}))))))
-
-#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w]
-          (.write w (str "#IntoSchema{:class " v "}"))))
-
-#?(:clj (defmethod print-method ::schema [v ^java.io.Writer w]
-          (.write w (pr-str (-form v)))))
+#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
+#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:class " v "}"))))
+#?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form v)))))
 
 ;;
 ;; impl
@@ -99,6 +94,17 @@
 
 (defn -inner-entries [walker path entries options]
   (mapv (fn [[k p s]] [k p (-inner walker s (conj path k) options)]) entries))
+
+(defn -get-entries [schema key default]
+  (or (some (fn [[k _ s]] (if (= k key) s)) (-map-entries schema)) default))
+
+(defn -set-entries [schema key value]
+  (let [found (atom nil)
+        [key :as new-child] (if (vector? key) (conj key value) [key value])
+        children (cond-> (mapv (fn [[k :as child]] (if (= key k) (do (reset! found true) new-child) child)) (-children schema))
+                         (not @found) (conj new-child)
+                         :always (->> (filter (fn [e] (-> e last some?)))))]
+    (into-schema (-type schema) (-properties schema) children)))
 
 (defn -guard [pred tf]
   (if tf (fn [x] (if (pred x) (tf x) x))))
@@ -384,14 +390,8 @@
           (-map-entries [_] entries)
           LensSchema
           (-keep [_] true)
-          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
-          (-set [_ key value]
-            (let [found (atom nil)
-                  [key :as new-child] (if (vector? key) (conj key value) [key value])
-                  children (cond-> (mapv (fn [[k :as child]] (if (= key k) (do (reset! found true) new-child) child)) children)
-                                   (not @found) (conj new-child)
-                                   :always (->> (filter (fn [e] (-> e last some?)))))]
-              (into-schema :map properties children))))))))
+          (-get [this key default] (-get-entries this key default))
+          (-set [this key value] (-set-entries this key value)))))))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}
@@ -759,14 +759,8 @@
           (-map-entries [_] entries)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (or (some (fn [[k _ s]] (if (= k key) s)) entries) default))
-          (-set [_ key value]
-            (let [found (atom nil)
-                  [key kprop] (if (vector? key) key [key])
-                  entries (cond-> (mapv (fn [[k p s]] (if (= key k) (do (reset! found true) [k kprop value]) [k p s])) entries)
-                                  (not @found) (conj [key kprop value])
-                                  :always (->> (filter (fn [e] (-> e last some?)))))]
-              (into-schema :multi properties entries))))))))
+          (-get [this key default] (-get-entries this key default))
+          (-set [this key value] (-set-entries this key value)))))))
 
 (defn -string-schema []
   ^{:type ::into-schema}

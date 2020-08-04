@@ -69,7 +69,7 @@
   (is (form= [:map {:closed true} [:x int?]]
              (m/into-schema :map {:closed true} [[:x int?]]))))
 
-#_(deftest schema-walker-test
+(deftest schema-walker-test
   (is (form= [:map {:closed true} [:x int?]]
              (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity))))
   (is (form= [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]

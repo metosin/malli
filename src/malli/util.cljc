@@ -11,7 +11,7 @@
   ([?schema1 ?schema2 options]
    (= (m/form ?schema1 options) (m/form ?schema2 options))))
 
-(defn ^:no-doc simplify-map-entry [[k ?p s]]
+(defn -simplify-map-entry [[k ?p s]]
   (cond
     (not s) [k ?p]
     (and ?p (false? (:optional ?p)) (= 1 (count ?p))) [k s]
@@ -25,7 +25,7 @@
 (defn- -entry [[k ?p1 s1 :as e1] [_ ?p2 s2 :as e2] merge-required merge options]
   (let [required (merge-required (-required-map-entry? e1) (-required-map-entry? e2))
         p (c/merge ?p1 ?p2)]
-    (simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
+    (-simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
 (defn- -open-map? [schema options]
   (and (= :map (m/type schema options)) (-> schema m/properties :closed false? not)))
@@ -110,8 +110,7 @@
 (defn update-properties
   "Returns a Schema instance with updated properties."
   [schema f & args]
-  (let [schema (m/schema schema)
-        properties (apply f (m/properties schema) args)]
+  (let [properties (apply f (m/properties schema) args)]
     (m/into-schema
       (m/type schema)
       (if (seq properties) properties)
@@ -158,9 +157,11 @@
      (find-first schema (fn [s path _] (swap! state conj {:path path, :in (path->in schema path), :schema s}) nil))
      @state)))
 
-(defn distinct-by [f coll]
+(defn distinct-by
+  "Returns a sequence of distict (f x) values)"
+  [f coll]
   (let [seen (atom #{})]
-    (filterv (fn [m] (let [v (f m)] (if-not (@seen v) (swap! seen conj v)))) coll)))
+    (filter (fn [x] (let [v (f x)] (if-not (@seen v) (swap! seen conj v)))) coll)))
 
 (defn path->in
   "Returns a value path for a given Schema and schema path"

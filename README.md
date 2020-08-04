@@ -730,34 +730,25 @@ Finding all subschmas with paths, retaining order:
 ; {:path [0 :address 1], :in [:address], :schema [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]}]
 ```
 
-Collecting just unique value paths (`:in`):
+Collecting unique value paths and their schema paths:
 
 ```clj
 (->> Schema
      (mu/subschemas)
-     (mu/distinct-by :id))
-;[{:path [], :in [], :schema [:maybe
-;                             [:map
-;                              [:id string?]
-;                              [:tags [:set keyword?]]
-;                              [:address
-;                               [:and
-;                                [:map
-;                                 [:street {:optional true} string?]
-;                                 [:lonlat {:optional true} [:tuple double? double?]]]
-;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]}
-; {:path [0 :id], :in [:id], :schema string?}
-; {:path [0 :tags], :in [:tags], :schema [:set keyword?]}
-; {:path [0 :tags :malli.core/in], :in [:tags :malli.core/in], :schema keyword?}
-; {:path [0 :address], :in [:address], :schema [:and
-;                                               [:map
-;                                                [:street {:optional true} string?]
-;                                                [:lonlat {:optional true} [:tuple double? double?]]]
-;                                               [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
-; {:path [0 :address 0 :street], :in [:address :street], :schema string?}
-; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple double? double?]}
-; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema double?}
-; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema double?}
+     (mu/distinct-by :id)
+     (mapv (juxt :in :path)))
+;[[[] []]
+; [[] [0]]
+; [[:id] [0 :id]]
+; [[:tags] [0 :tags]]
+; [[:tags :malli.core/in] [0 :tags :malli.core/in]]
+; [[:address] [0 :address]]
+; [[:address] [0 :address 0]]
+; [[:address :street] [0 :address 0 :street]]
+; [[:address :lonlat] [0 :address 0 :lonlat]]
+; [[:address :lonlat 0] [0 :address 0 :lonlat 0]]
+; [[:address :lonlat 1] [0 :address 0 :lonlat 1]]
+; [[:address] [0 :address 1]]]
 ```
 
 Schema paths can be converted into value paths:
@@ -770,7 +761,7 @@ Schema paths can be converted into value paths:
 ; => [:address :lonlat]
 ```
 
-and back (returns all paths):
+and back, returning all paths:
 
 ```clj
 (mu/in->paths Schema [:address :lonlat])

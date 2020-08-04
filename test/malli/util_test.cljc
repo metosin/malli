@@ -13,7 +13,7 @@
 
 (deftest simplify-map-entry-test
   (are [entry expected]
-    (is (= expected (mu/simplify-map-entry entry)))
+    (is (= expected (mu/-simplify-map-entry entry)))
 
     [:x 'int?] [:x 'int?]
     [:x nil 'int?] [:x 'int?]

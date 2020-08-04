@@ -18,7 +18,6 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
   * `:path` in explain is re-implemented: map keys by value, others by child index
   * `m/-walk` and `m/Walker` uses `:path`, not `:in`
   * `m/-outer` has new parameter order: `walker schema path children options`
-  * utilities for `LensSchema` in `malli.util` don't coerce data schemas into `Schema` instances
   * `malli.util/path-schemas` replaced with `malli.util/subschemas` & `malli.util/distict-by`
   * `LensSchema` has a new `-key` method
   * renamed some non-user apis in `malli.core` & `malli.util`

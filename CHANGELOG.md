@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## breaking changes in the pre-alpha era:
 
-* ???
+* 4.8.2020
   * `:path` in explain is re-implemented: map keys by value, others by child index
   * `m/-walk` and `m/Walker` uses `:path`, not `:in`
   * `m/-outer` has new parameter order: `walker schema path children options`

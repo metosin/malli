@@ -89,6 +89,9 @@
 (defn -pointer [id schema options]
   (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
+(defn -reference? [?schema]
+  (or (string? ?schema) (qualified-keyword? ?schema)))
+
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
@@ -797,14 +800,12 @@
           (-get [_ _ default] default)
           (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
 
-(defn -ref-key? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
-
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
       (-check-children! :ref properties children {:min 1, :max 1})
-      (when-not (-ref-key? ref)
+      (when-not (-reference? ref)
         (-fail! ::invalid-ref {:ref ref}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
             -ref (or (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
@@ -947,7 +948,7 @@
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
                          (into-schema (-schema (first ?schema) options) p c options))
-     :else (if-let [?schema' (and (-ref-key? ?schema) (-lookup ?schema options))]
+     :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))
 

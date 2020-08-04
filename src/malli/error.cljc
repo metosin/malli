@@ -209,19 +209,19 @@
          :errors
          (fn [errors]
            (as-> errors $
-                 (mapv (fn [{:keys [schema in type] :as error}]
+                 (mapv (fn [{:keys [schema path type] :as error}]
                          (if (= type ::m/extra-key)
                            (let [keys (->> schema (m/map-entries) (map first) (set))
-                                 value (get-in (:value explanation) (butlast in))
-                                 similar (-most-similar-to value (last in) keys)
-                                 likely-misspelling-of (mapv (partial conj (vec (butlast in))) (vec similar))]
+                                 value (get-in (:value explanation) (butlast path))
+                                 similar (-most-similar-to value (last path) keys)
+                                 likely-misspelling-of (mapv (partial conj (vec (butlast path))) (vec similar))]
                              (swap! !likely-misspelling-of into likely-misspelling-of)
                              (cond-> error similar (assoc :type ::misspelled-key
                                                           ::likely-misspelling-of likely-misspelling-of)))
                            error)) $)
                  (if-not keep-likely-misspelled-of
-                   (remove (fn [{:keys [in type]}]
-                             (and (@!likely-misspelling-of in)
+                   (remove (fn [{:keys [path type]}]
+                             (and (@!likely-misspelling-of path)
                                   (= type ::m/missing-key))) $)
                    $))))))))
 

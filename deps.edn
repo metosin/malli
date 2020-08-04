@@ -1,6 +1,7 @@
 {:paths ["src" "resources"]
  :aliases {:test {:extra-paths ["test"]
-                  :extra-deps {lambdaisland/kaocha {:mvn/version "1.0.632"}
+                  :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.10"}
+                               lambdaisland/kaocha {:mvn/version "1.0.632"}
                                lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}
                                metosin/spec-tools {:mvn/version "0.10.3"}
@@ -40,8 +41,6 @@
                              "-Xmx4096m"
                              "-Dclojure.compiler.direct-linking=true"]}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        borkdude/dynaload {:git/url "https://github.com/borkdude/dynaload.git"
-                           :sha "52f71bc2cb7389a932835fe02f185e3801f7e063"}
-        borkdude/edamame {:mvn/version "0.0.11-alpha.12"}
-        org.clojure/test.check {:mvn/version "1.0.0"}
-        com.gfredericks/test.chuck {:mvn/version "0.2.10"}}}
+        borkdude/dynaload {:mvn/version "0.1.0"}
+        borkdude/edamame {:mvn/version "0.0.11-alpha.13"}
+        org.clojure/test.check {:mvn/version "1.1.0"}}}

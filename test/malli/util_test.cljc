@@ -223,7 +223,10 @@
         [:ref {:registry {::a int?, ::b string?}} ::a] 1 nil
 
         [:schema int?] 0 int?
-        [:schema int?] 1 nil))
+        [:schema int?] 1 nil)
+      
+      (is (mu/equals (mu/get [:tuple int? pos-int?] 9 boolean?) boolean?))
+      (is (mu/equals (mu/get [:map [:x int?]] :y boolean?) boolean?)))
 
     (testing "assoc"
       (are [schema key value expected]
@@ -303,6 +306,16 @@
                                      [:sequential
                                       [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]])
                    [:x 0 0 0 0 1 :y 0])))
+  (is (mu/equals (mu/get-in
+                   [:map
+                    [:x [:vector
+                         [:list
+                          [:set
+                           [:sequential
+                            [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
+                   [:x 0 0 0 0 1 :y 9]
+                   pos-int?)
+                 pos-int?))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
                  (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
   (is (form= (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))

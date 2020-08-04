@@ -247,7 +247,7 @@
   ([?schema k default]
    (get ?schema k default nil))
   ([?schema k default options]
-   (let [schema (m/schema ?schema options)]
+   (let [schema (m/schema (or ?schema :map) options)]
      (if schema (m/-get schema k default)))))
 
 (defn assoc
@@ -269,7 +269,7 @@
   ([?schema ks default]
    (get-in ?schema ks default nil))
   ([?schema [k & ks] default options]
-   (let [schema (m/schema ?schema options)]
+   (let [schema (m/schema (or ?schema :map) options)]
      (if-not k
        schema
        (let [sentinel #?(:clj (Object.), :cljs (js-obj))

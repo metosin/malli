@@ -149,6 +149,7 @@
      options)))
 
 (defn subschemas
+  "Returns all subschemas for unique paths as a vector of maps with :schema, :path and :in keys"
   ([?schema]
    (subschemas ?schema nil))
   ([?schema options]
@@ -161,12 +162,16 @@
   (let [seen (atom #{})]
     (filterv (fn [m] (let [v (f m)] (if-not (@seen v) (swap! seen conj v)))) coll)))
 
-(defn path->in [schema path]
+(defn path->in
+  "Returns a value path for a given Schema and schema path"
+  [schema path]
   (loop [i 0, s schema, acc []]
     (or (and (>= i (count path)) acc)
         (recur (inc i) (m/-get s (path i) nil) (cond-> acc (m/-keep s) (conj (path i)))))))
 
-(defn in->paths [schema in]
+(defn in->paths
+  "Returns a vector of schema paths for a given Schema and value path"
+  [schema in]
   (let [state (atom [])
         in-equals (fn [[x & xs] [y & ys]] (cond (and x (= x y)) (recur xs ys), (= x y) true, (= ::m/in x) (recur xs ys)))
         parent-exists (fn [v1 v2] (let [i (min (count v1) (count v2))] (= (subvec v1 0 i) (subvec v2 0 i))))]

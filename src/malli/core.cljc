@@ -292,7 +292,7 @@
   (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
                                              (qualified-keyword? e) [[e nil e] e]
                                              (and (= 2 (count e)) (qualified-keyword? (first e)) (map? (last e))) [(conj e (first e)) e]
-                                             :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))))])
+                                             :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))) (keep identity) (vec))])
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
                          {:children [(->> e (keep identity) (vec))], :entries [e], :forms [f]}))

@@ -2,6 +2,13 @@
   (:require [malli.core :as m]
             [clojure.string :as str]))
 
+(defprotocol SchemaError
+  (-error [this] "error data structure for the Schema"))
+
+(extend-protocol SchemaError
+  #?(:clj Object, :cljs default)
+  (-error [_]))
+
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
@@ -11,55 +18,70 @@
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
    'any? {:error/message {:en "should be any"}}
    'some? {:error/message {:en "shoud be some"}}
-   'number? {:error/message {:en "should be number"}}
-   'integer? {:error/message {:en "should be integer"}}
-   'int? {:error/message {:en "should be int"}}
-   'pos-int? {:error/message {:en "should be positive int"}}
-   'neg-int? {:error/message {:en "should be negative int"}}
-   'nat-int? {:error/message {:en "should be non-negative int"}}
-   'float? {:error/message {:en "should be float"}}
-   'double? {:error/message {:en "should be double"}}
-   'boolean? {:error/message {:en "should be boolean"}}
-   'string? {:error/message {:en "should be string"}}
-   'ident? {:error/message {:en "should be ident"}}
-   'simple-ident? {:error/message {:en "should be simple ident"}}
-   'qualified-ident? {:error/message {:en "should be qualified ident"}}
-   'keyword? {:error/message {:en "should be keyword"}}
-   'simple-keyword? {:error/message {:en "should be simple keyword"}}
-   'qualified-keyword? {:error/message {:en "should be qualified keyword"}}
-   'symbol? {:error/message {:en "should be symbol"}}
-   'simple-symbol? {:error/message {:en "should be simple symbol"}}
-   'qualified-symbol? {:error/message {:en "should be qualified symbol"}}
-   'uuid? {:error/message {:en "should be uuid"}}
-   'uri? {:error/message {:en "should be uri"}}
-   #?@(:clj ['decimal? {:error/message {:en "should be decimal"}}])
-   'inst? {:error/message {:en "should be inst"}}
-   'seqable? {:error/message {:en "should be seqable"}}
-   'indexed? {:error/message {:en "should be indexed"}}
-   'map? {:error/message {:en "should be map"}}
-   'vector? {:error/message {:en "should be vector"}}
-   'list? {:error/message {:en "should be list"}}
-   'seq? {:error/message {:en "should be seq"}}
-   'char? {:error/message {:en "should be char"}}
-   'set? {:error/message {:en "should be set"}}
+   'number? {:error/message {:en "should be a number"}}
+   'integer? {:error/message {:en "should be an integer"}}
+   'int? {:error/message {:en "should be an int"}}
+   'pos-int? {:error/message {:en "should be a positive int"}}
+   'neg-int? {:error/message {:en "should be a negative int"}}
+   'nat-int? {:error/message {:en "should be a non-negative int"}}
+   'float? {:error/message {:en "should be a float"}}
+   'double? {:error/message {:en "should be a double"}}
+   'boolean? {:error/message {:en "should be a boolean"}}
+   'string? {:error/message {:en "should be a string"}}
+   'ident? {:error/message {:en "should be an ident"}}
+   'simple-ident? {:error/message {:en "should be a simple ident"}}
+   'qualified-ident? {:error/message {:en "should be a qualified ident"}}
+   'keyword? {:error/message {:en "should be a keyword"}}
+   'simple-keyword? {:error/message {:en "should be a simple keyword"}}
+   'qualified-keyword? {:error/message {:en "should be a qualified keyword"}}
+   'symbol? {:error/message {:en "should be a symbol"}}
+   'simple-symbol? {:error/message {:en "should be a simple symbol"}}
+   'qualified-symbol? {:error/message {:en "should be a qualified symbol"}}
+   'uuid? {:error/message {:en "should be a uuid"}}
+   'uri? {:error/message {:en "should be a uri"}}
+   #?@(:clj ['decimal? {:error/message {:en "should be a decimal"}}])
+   'inst? {:error/message {:en "should be an inst"}}
+   'seqable? {:error/message {:en "should be a seqable"}}
+   'indexed? {:error/message {:en "should be an indexed"}}
+   'map? {:error/message {:en "should be a map"}}
+   'vector? {:error/message {:en "should be a vector"}}
+   'list? {:error/message {:en "should be a list"}}
+   'seq? {:error/message {:en "should be a seq"}}
+   'char? {:error/message {:en "should be a char"}}
+   'set? {:error/message {:en "should be a set"}}
    'nil? {:error/message {:en "should be nil"}}
    'false? {:error/message {:en "should be false"}}
    'true? {:error/message {:en "should be true"}}
    'zero? {:error/message {:en "should be zero"}}
-   #?@(:clj ['rational? {:error/message {:en "should be rational"}}])
-   'coll? {:error/message {:en "should be coll"}}
+   #?@(:clj ['rational? {:error/message {:en "should be a rational"}}])
+   'coll? {:error/message {:en "should be a coll"}}
    'empty? {:error/message {:en "should be empty"}}
-   'associative? {:error/message {:en "should be associative"}}
-   'sequential? {:error/message {:en "should be sequential"}}
-   #?@(:clj ['ratio? {:error/message {:en "should be ratio"}}])
-   #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])})
+   'associative? {:error/message {:en "should be an associative"}}
+   'sequential? {:error/message {:en "should be a sequential"}}
+   #?@(:clj ['ratio? {:error/message {:en "should be a ratio"}}])
+   #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
+   :re {:error/message {:en "should match regex"}}
+   :enum {:error/fn {:en (fn [{:keys [schema]} _]
+                           (str "should be "
+                                (if (= 1 (count (m/children schema)))
+                                  (first (m/children schema))
+                                  (str "either " (->> (m/children schema) butlast (str/join ", "))
+                                       " or " (last (m/children schema))))))}}
+   :string {:error/fn {:en (fn [{:keys [schema value]} _]
+                             (let [{:keys [min max]} (m/properties schema)]
+                               (cond
+                                 (not (string? value)) "should be a string"
+                                 (and min (= min max)) (str "should be " min " characters")
+                                 (and min max) (str "should be between " min " and " max " characters")
+                                 min (str "should be at least " min " characters")
+                                 max (str "should be at most " max " characters"))))}}})
 
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))
 
 (defn- -message [error x locale options]
-  (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
-      (-maybe-localized (:error/message x) locale)))
+  (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
+            (-maybe-localized (:error/message x) locale))))
 
 (defn- -ensure [x k]
   (if (sequential? x)
@@ -152,11 +174,13 @@
     {:keys [errors locale default-locale]
      :or {errors default-errors
           default-locale :en} :as options}]
-   (or (-message error (m/properties schema) locale options)
-       (-message error (errors (m/name schema)) locale options)
+   (or (-message error (-error schema) locale options)
+       (-message error (m/properties schema) locale options)
+       (-message error (errors (m/type schema)) locale options)
        (-message error (errors type) locale options)
+       (-message error (-error schema) default-locale options)
        (-message error (m/properties schema) default-locale options)
-       (-message error (errors (m/name schema)) default-locale options)
+       (-message error (errors (m/type schema)) default-locale options)
        (-message error (errors type) default-locale options)
        (-message error (errors ::unknown) locale options)
        (-message error (errors ::unknown) default-locale options))))
@@ -185,19 +209,19 @@
          :errors
          (fn [errors]
            (as-> errors $
-                 (mapv (fn [{:keys [schema in type] :as error}]
+                 (mapv (fn [{:keys [schema path type] :as error}]
                          (if (= type ::m/extra-key)
                            (let [keys (->> schema (m/map-entries) (map first) (set))
-                                 value (get-in (:value explanation) (butlast in))
-                                 similar (-most-similar-to value (last in) keys)
-                                 likely-misspelling-of (mapv (partial conj (vec (butlast in))) (vec similar))]
+                                 value (get-in (:value explanation) (butlast path))
+                                 similar (-most-similar-to value (last path) keys)
+                                 likely-misspelling-of (mapv (partial conj (vec (butlast path))) (vec similar))]
                              (swap! !likely-misspelling-of into likely-misspelling-of)
                              (cond-> error similar (assoc :type ::misspelled-key
                                                           ::likely-misspelling-of likely-misspelling-of)))
                            error)) $)
                  (if-not keep-likely-misspelled-of
-                   (remove (fn [{:keys [in type]}]
-                             (and (@!likely-misspelling-of in)
+                   (remove (fn [{:keys [path type]}]
+                             (and (@!likely-misspelling-of path)
                                   (= type ::m/missing-key))) $)
                    $))))))))
 

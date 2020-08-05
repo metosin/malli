@@ -6,3 +6,4 @@ node_modules
 out
 .nrepl-port
 .dir-locals.el
+cljs-test-runner-out

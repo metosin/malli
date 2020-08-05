@@ -14,6 +14,15 @@
              [[int? {:error/fn fn1}] "kikka" "should be an int, was kikka"]
              [[int? {:error/fn fn2}] "kikka" "should be an int, was kikka"]
              [[int? {:error/message msg, :error/fn fn2}] "kikka" "should be an int, was kikka"]
+             [(reify
+                m/Schema
+                (-type [_])
+                (-properties [_])
+                (-explainer [this path]
+                  (fn [value in acc]
+                    (if-not (int? value) (conj acc (m/-error path in this value)) acc)))
+                me/SchemaError
+                (-error [_] {:error/message "from schema"})) "kikka" "from schema"]
              ;; via defaults
              [[int?] "kikka" "should be an int" {:errors {'int? {:error/message msg}}}]
              [[int?] "kikka" "should be an int, was kikka" {:errors {'int? {:error/fn fn1}}}]
@@ -27,10 +36,10 @@
       (is (= message (-> (m/explain schema value) :errors first (me/error-message opts)))))))
 
 (deftest with-spell-checking-test
-  (let [get-errors (fn [explanation] (->> explanation :errors (mapv #(select-keys % [:in :type ::me/likely-misspelling-of :message]))))]
+  (let [get-errors (fn [explanation] (->> explanation :errors (mapv #(select-keys % [:path :type ::me/likely-misspelling-of :message]))))]
 
     (testing "simple"
-      (is (= [{:in [:deliverz]
+      (is (= [{:path [:deliverz]
                :type ::me/misspelled-key
                ::me/likely-misspelling-of [[:deliver]]
                :message "should be spelled :deliver"}]
@@ -46,14 +55,15 @@
     (testing "nested"
 
       (testing "with defaults"
-        (is (= [{:in [:address :streetz]
+        (is (= [{:path [0 :address 0 :streetz]
                  :type ::me/misspelled-key
-                 ::me/likely-misspelling-of [[:address :street1] [:address :street2]],
+                 ::me/likely-misspelling-of [[0 :address 0 :street1] [0 :address 0 :street2]],
                  :message "should be spelled :street1 or :street2"}]
-               (-> [:map
-                    [:address [:map
-                               [:street1 string?]
-                               [:street2 string?]]]]
+               (-> [:maybe [:map
+                            [:address [:and
+                                       [:map
+                                        [:street1 string?]
+                                        [:street2 string?]]]]]]
                    (mu/closed-schema)
                    (m/explain {:address {:streetz "123"}})
                    (me/with-spell-checking)
@@ -61,13 +71,13 @@
                    (get-errors)))))
 
       (testing "stripping likely-misspelled-of fields"
-        (is (= [{:in [:address :street1]
+        (is (= [{:path [:address :street1]
                  :type ::m/missing-key
                  :message "missing required key"}
-                {:in [:address :street2]
+                {:path [:address :street2]
                  :type ::m/missing-key
                  :message "missing required key"}
-                {:in [:address :streetz]
+                {:path [:address :streetz]
                  :type ::me/misspelled-key
                  ::me/likely-misspelling-of [[:address :street1] [:address :street2]]
                  :message "should be spelled :street1 or :street2"}]
@@ -88,19 +98,19 @@
                   (me/humanize)))))
 
   (testing "top-level error"
-    (is (= ["should be int"]
+    (is (= ["should be an int"]
            (-> int?
                (m/explain "1")
                (me/humanize)))))
 
   (testing "vector"
-    (is (= [nil nil [nil ["should be int"]]]
+    (is (= [nil nil [nil ["should be an int"]]]
            (-> [:vector [:vector int?]]
                (m/explain [[1 2] [2 2] [3 "4"]])
                (me/humanize)))))
 
   (testing "set"
-    (is (= #{#{["should be int"]}}
+    (is (= #{#{["should be an int"]}}
            (-> [:set [:set int?]]
                (m/explain #{#{1} #{"2"}})
                (me/humanize)))))
@@ -113,7 +123,7 @@
 
   (testing "mixed bag"
     (is (= [nil
-            {:x [nil ["should be int"] ["should be int"]]}
+            {:x [nil ["should be an int"] ["should be an int"]]}
             {:x ["invalid type"]}]
            (-> [:vector [:map [:x [:vector int?]]]]
                (m/explain
@@ -123,10 +133,10 @@
                (me/humanize)))))
 
   (testing "so nested"
-    (is (= {:data [{:x [["should be int"] nil ["should be int"]]}
-                   {:x [["should be int"] nil ["should be int"]]}
+    (is (= {:data [{:x [["should be an int"] nil ["should be an int"]]}
+                   {:x [["should be an int"] nil ["should be an int"]]}
                    nil
-                   {:x [["should be int"]]}]}
+                   {:x [["should be an int"]]}]}
            (-> [:map [:data [:vector [:map [:x [:vector int?]]]]]]
                (m/explain
                  {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
@@ -161,8 +171,8 @@
                :d {:f "invalid"}}]
 
     (testing "with default locale"
-      (is (= {:a ["should be int"]
-              :b ["should be positive int"]
+      (is (= {:a ["should be an int"]
+              :b ["should be a positive int"]
               :c ["STAY POSITIVE"],
               :d {:e ["missing required key"]
                   :f ["SHOULD BE ZIP"]}}
@@ -171,7 +181,7 @@
 
     (testing "localization is applied, if available"
       (is (= {:a ["NUMERO"]
-              :b ["should be positive int"]
+              :b ["should be a positive int"]
               :c ["POSITIIVINEN"],
               :d {:e ["PUUTTUVA AVAIN"]
                   :f ["PITÄISI OLLA NUMERO"]}}
@@ -192,7 +202,7 @@
                   [:fn {:error/message "(> x y)"}
                    '(fn [{:keys [x y]}] (> x y))]]]
 
-      (is (= {:z ["should be int"], :malli/error ["(> x y)"]}
+      (is (= {:z ["should be an int"], :malli/error ["(> x y)"]}
              (-> schema
                  (m/explain {:x 1 :y 2, :z "1"})
                  (me/humanize)))))
@@ -223,7 +233,7 @@
              (-> schema
                  (m/explain [-2 1])
                  (me/humanize))))
-      (is (= [nil ["should be int"]]
+      (is (= [nil ["should be an int"]]
              (-> schema
                  (m/explain [-2 "1"])
                  (me/humanize))))
@@ -242,7 +252,7 @@
              (-> schema
                  (m/explain 0)
                  (me/humanize))))
-      (is (= ["should be int"]
+      (is (= ["should be an int"]
              (-> schema
                  (m/explain "kikka")
                  (me/humanize))))
@@ -254,3 +264,64 @@
              (-> schema
                  (m/explain 2)
                  (me/humanize)))))))
+
+(deftest string-test
+  (is (= {:a ["should be a string"],
+          :b ["should be at least 1 characters"],
+          :c ["should be at most 4 characters"],
+          :d ["should be between 1 and 4 characters"],
+          :e ["should be a string"]
+          :f ["should be 4 characters"]}
+         (-> [:map
+              [:a :string]
+              [:b [:string {:min 1}]]
+              [:c [:string {:max 4}]]
+              [:d [:string {:min 1, :max 4}]]
+              [:e [:string {:min 1, :max 4}]]
+              [:f [:string {:min 4, :max 4}]]]
+             (m/explain
+               {:a 123
+                :b ""
+                :c "invalid"
+                :d ""
+                :e 123
+                :f "invalid"})
+             (me/humanize)))))
+
+(deftest re-test
+  (testing "success"
+    (is (= nil
+           (-> [:re #"bla"]
+               (m/explain "bla")
+               (me/humanize)))))
+  (testing "failure"
+    (is (= ["should match regex"]
+           (-> [:re "#bla"]
+               (m/explain "gogo")
+               (me/humanize))))))
+
+(deftest enum-test
+  (testing "success"
+    (is (= nil
+           (-> [:enum "foo" "bar"]
+               (m/explain "foo")
+               (me/humanize)))))
+  (testing "error with 1 value"
+    (is (= ["should be foo"]
+           (-> [:enum "foo"]
+               (m/explain "baz")
+               (me/humanize)))))
+  (testing "error with 2 values"
+    (is (= ["should be either foo or bar"]
+           (-> [:enum "foo" "bar"]
+               (m/explain "baz")
+               (me/humanize)))))
+  (testing "more than 2 values"
+    (is (= ["should be either foo, bar or buzz"]
+           (-> [:enum "foo" "bar" "buzz"]
+               (m/explain "baz")
+               (me/humanize))))
+    (is (= ["should be either foo, bar, buzz or biff"]
+           (-> [:enum "foo" "bar" "buzz" "biff"]
+               (m/explain "baz")
+               (me/humanize))))))

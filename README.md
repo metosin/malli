@@ -7,16 +7,23 @@ Plain data Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schemas as plain data
-- Schema-driven [Validation](#examples)
-- Schema-driven [Value Transformation](#value-transformation)
-- Schema-driven [Value Generation](#value-generation)
+- [Validation](#examples) and [Value Transformation](#value-transformation)
+- First class [Error Messages](#error-messages) witg [Spell Checking](#spell-checking)
+- [Serializable function schemas](#serializable-functions)
+- [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
-- Tools for [programming with Schemas](#programming-with-schemas)
-- First class [error-messages](#error-messages) including [spell checking](#spell-checking)
+- Tools for [Programming with Schemas](#programming-with-schemas)
+- [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
+- Immutable, Mutable, Dynamic and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
-- [Multi-schemas](#multi-schemas), [default values](#default-values) and [persisting schemas](#persisting-schemas)
-- No global state, explicit everything
+- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
+- [Visualizing Schemas](#visualizing-schemas) with DOT
 - [Fast](#performance)
+
+Presentations:
+
+- ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
+- CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
 
 Try the [online demo](https://malli.io). Libraries using malli:
 
@@ -83,7 +90,83 @@ Maps can be closed with `:closed` property:
 ; => false
 ``` 
 
-Serializable function schemas using [sci](https://github.com/borkdude/sci):
+Maps keys are not limited to keywords:
+
+```clj
+(m/validate
+  [:map
+   ["status" [:enum "ok"]]
+   [1 any?]
+   [nil any?]
+   [::a string?]]
+  {"status" "ok"
+   1 'number
+   nil :yay
+   ::a "properly awesome"})
+; => true
+```
+
+## Qualified keys in a map
+
+Example to use a registered qualified keyword in your map. If you don't provide
+a schema to this key, it will look in the registry. You can also provide
+entry properties.
+
+```clj
+(m/validate
+  [:map {:registry {::id int?
+                    ::country string?}}
+   ::id
+   [:name string?]
+   [::country {:optional true}]]
+  {::id 1
+   :name "kikka"})
+; => true
+```
+
+## String schemas
+
+Using a predicate:
+
+```clj
+(m/validate string? "kikka")
+```
+
+Using `:string` Schema:
+
+```clj
+(m/validate :string "kikka")
+; => true
+
+(m/validate [:string {:min 1, :max 4}] "")
+; => false
+```
+
+## Function schemas
+
+`:fn` allows any predicat function to be used:  
+ 
+```clj
+(def my-schema
+  [:and
+   [:map
+    [:x int?]
+    [:y int?]]
+   [:fn (fn [{:keys [x y]}] (> x y))]])
+   
+(m/validate my-schema {:x 1, :y 0})
+; => true
+
+(m/validate my-schema {:x 1, :y 2})
+; => false
+```
+
+## Serializable Functions
+
+Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
+it is not present, the malli function evaluater throws `:sci-not-available` exception.
+
+For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
 
 ```clj
 (def my-schema
@@ -146,17 +229,22 @@ Detailed errors with `m/explain`:
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},
-; :errors (#Error{:path [2 1 1], :in [:tags 0], :schema keyword?, :value "coffee"}
-;          #Error{:path [3 1],
-;                 :in [:address],
+; :errors (#Error{:path [:tags 0]
+;                 :in [:tags 0]
+;                 :schema keyword?
+                  ::value "coffee"}
+;          #Error{:path [:address :city],
+;                 :in [:address :city],
 ;                 :schema [:map
 ;                          [:street string?]
 ;                          [:city string?]
 ;                          [:zip int?]
 ;                          [:lonlat [:tuple double? double?]]],
-;                 :type :malli.core/missing-key,
-;                 :malli.core/key :city}
-;          #Error{:path [3 1 4 1 2], :in [:address :lonlat 1], :schema double?, :value nil})}
+;                 :type :malli.core/missing-key}
+;          #Error{:path [:address :lonlat 1]
+;                 :in [:address :lonlat 1]
+;                 :schema double?
+;                 :value nil})}
 ```
 
 ## Custom Error Messages
@@ -174,9 +262,9 @@ Explain results can be humanized with `malli.error/humanize`:
                  :zip 33100
                  :lonlat [61.4858322, nil]}})
     (me/humanize))
-;{:tags #{["should be keyword"]}
+;{:tags #{["should be a keyword"]}
 ; :address {:city ["missing required key"]
-;           :lonlat [nil ["should be double"]]}}
+;           :lonlat [nil ["should be a double"]]}}
 ```
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:
@@ -568,7 +656,7 @@ Schema unions (merged values of both schemas are valid for union schema):
 Adding generated example values to Schemas:
 
 ```clj
-(m/accept
+(m/walk
   [:map
    [:name string?]
    [:description string?]
@@ -576,7 +664,7 @@ Adding generated example values to Schemas:
     [:map
      [:street string?]
      [:country [:enum "finland" "poland"]]]]]
-  (m/schema-visitor
+  (m/schema-walker
     (fn [schema]
       (mu/update-properties schema assoc :examples (mg/sample schema {:size 2, :seed 20})))))
 ;[:map
@@ -589,6 +677,113 @@ Adding generated example values to Schemas:
 ;   {:examples ({:street "", :country "finland"} {:street "W", :country "poland"})}
 ;   [:street [string? {:examples ("" "")}]]
 ;   [:country [:enum {:examples ("finland" "poland")} "finland" "poland"]]]]]
+```
+
+Finding first value (prewalk):
+
+```clj
+(mu/find-first
+  [:map
+   [:x int?]
+   [:y [:vector [:tuple
+                 [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                 [:schema {:salaisuus "vaarassa"} false?]]]]
+   [:z [:string {:salaisuus "piilossa"}]]]
+  (fn [schema _ _]
+    (-> schema m/properties :salaisuus)))
+; => "turvassa"
+```
+
+Finding all subschmas with paths, retaining order:
+
+```clj
+(def Schema
+  (m/schema
+    [:maybe
+     [:map
+      [:id string?]
+      [:tags [:set keyword?]]
+      [:address
+       [:and
+        [:map
+         [:street {:optional true} string?]
+         [:lonlat {:optional true} [:tuple double? double?]]]
+        [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]]))
+
+(mu/subschemas Schema)
+;[{:path [], :in [], :schema [:maybe
+;                             [:map
+;                              [:id string?]
+;                              [:tags [:set keyword?]]
+;                              [:address
+;                               [:and
+;                                [:map
+;                                 [:street {:optional true} string?]
+;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]}
+; {:path [0], :in [], :schema [:map
+;                              [:id string?]
+;                              [:tags [:set keyword?]]
+;                              [:address
+;                               [:and
+;                                [:map
+;                                 [:street {:optional true} string?]
+;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]}
+; {:path [0 :id], :in [:id], :schema string?}
+; {:path [0 :tags], :in [:tags], :schema [:set keyword?]}
+; {:path [0 :tags :malli.core/in], :in [:tags :malli.core/in], :schema keyword?}
+; {:path [0 :address], :in [:address], :schema [:and
+;                                               [:map
+;                                                [:street {:optional true} string?]
+;                                                [:lonlat {:optional true} [:tuple double? double?]]]
+;                                               [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
+; {:path [0 :address 0], :in [:address], :schema [:map
+;                                                 [:street {:optional true} string?]
+;                                                 [:lonlat {:optional true} [:tuple double? double?]]]}
+; {:path [0 :address 0 :street], :in [:address :street], :schema string?}
+; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple double? double?]}
+; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema double?}
+; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema double?}
+; {:path [0 :address 1], :in [:address], :schema [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]}]
+```
+
+Collecting unique value paths and their schema paths:
+
+```clj
+(->> Schema
+     (mu/subschemas)
+     (mu/distinct-by :id)
+     (mapv (juxt :in :path)))
+;[[[] []]
+; [[] [0]]
+; [[:id] [0 :id]]
+; [[:tags] [0 :tags]]
+; [[:tags :malli.core/in] [0 :tags :malli.core/in]]
+; [[:address] [0 :address]]
+; [[:address] [0 :address 0]]
+; [[:address :street] [0 :address 0 :street]]
+; [[:address :lonlat] [0 :address 0 :lonlat]]
+; [[:address :lonlat 0] [0 :address 0 :lonlat 0]]
+; [[:address :lonlat 1] [0 :address 0 :lonlat 1]]
+; [[:address] [0 :address 1]]]
+```
+
+Schema paths can be converted into value paths:
+
+```clj
+(mu/get-in Schema [0 :address 0 :lonlat])
+; => [:tuple double? double?]
+
+(mu/path->in Schema [0 :address 0 :lonlat])
+; => [:address :lonlat]
+```
+
+and back, returning all paths:
+
+```clj
+(mu/in->paths Schema [:address :lonlat])
+; => [[0 :address 0 :lonlat]]
 ```
 
 ## Persisting Schemas 
@@ -656,6 +851,41 @@ Any (serializable) function can be used for `:dispatch`:
 ;{:type :human
 ; :name "Tiina"
 ; :address {:country :finland}}
+```
+
+## Recursive Schemas
+
+[Local Registy](#local-registry) allows an easy way to create recursive schemas:
+
+```clj
+(m/validate
+  [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+   ::cons]
+  [16 [64 [26 [1 [13 nil]]]]])
+; => true
+```
+
+Mutual recursion works too:
+
+```clj
+(m/validate
+  [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   ::ping]
+  ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
+; => true
+```
+
+Nested registries, last definition wins:
+
+```clj
+(m/validate
+  [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                       ::pong any?}} ;; effectively unreachable
+   [:schema {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+    ::ping]]
+  ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
+; => true
 ```
 
 ## Value Generation
@@ -773,16 +1003,48 @@ All samples are valid against the inferred schema:
 ; => true
 ```
 
-## Schema Transformation
+## Map-syntax
 
-Schemas can be transformed using the [Visitor Pattern](https://en.wikipedia.org/wiki/Visitor_pattern).
-
-The identity visitor:
+Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
 
 ```clj
-(m/accept 
+(def Schema
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:lonlat [:tuple double? double?]]]]])
+
+(mu/to-map-syntax Schema)
+;{:type :map,
+; :children [[:id nil {:type string?}]
+;            [:tags nil {:type :set
+;                        :children [{:type keyword?}]}]
+;            [:address nil {:type :map,
+;                           :children [[:street nil {:type string?}]
+;                                      [:lonlat nil {:type :tuple
+;                                                    :children [{:type double?} {:type double?}]}]]}]]}
+```
+
+... and back:
+
+```clj
+(-> Schema (mu/to-map-syntax) (mu/from-map-syntax) (mu/equals Schema))
+; => true
+```
+
+## Schema Transformation
+
+Schemas can be transformed using post-walking, e.g. the [Visitor Pattern](https://en.wikipedia.org/wiki/visitor_pattern).
+
+The identity walker:
+
+```clj
+(m/walk 
   Address 
-  (m/schema-visitor identity))
+  (m/schema-walker identity))
 ;[:map
 ; [:id string?]
 ; [:tags [:set keyword?]]
@@ -794,27 +1056,43 @@ The identity visitor:
 ;   [:lonlat [:tuple double? double?]]]]]
 ```
 
-Transforming schemas into map-syntax:
+Adding `:title` property to schemas:
 
 ```clj
-(m/accept
+(m/walk
   Address
-  (fn [schema children _]
-    (let [properties (m/properties schema)]
-      (cond-> {:name (m/name schema)}
-              (seq properties) (assoc :properties properties)
-              (seq children) (assoc :children children)))))
-;{:name :map,
-; :children [[:id nil {:name string?}]
-;            [:tags nil {:name :set
-;                        :children [{:name keyword?}]}]
-;            [:address nil {:name :map,
-;                           :children [[:street nil {:name string?}]
-;                                      [:city nil {:name string?}]
-;                                      [:zip nil {:name int?}]
-;                                      [:lonlat nil {:name :tuple
-;                                                    :children [{:name double?} 
-;                                                               {:name double?}]}]]}]]}
+  (m/schema-walker #(mu/update-properties % assoc :title (name (m/type %)))))
+;[:map {:title "map"}
+; [:id [string? {:title "string?"}]]
+; [:tags [:set {:title "set"} [keyword? {:title "keyword?"}]]]
+; [:address
+;  [:map {:title "map"}
+;   [:street [string? {:title "string?"}]]
+;   [:city [string? {:title "string?"}]]
+;   [:zip [int? {:title "int?"}]]
+;   [:lonlat [:tuple {:title "tuple"} [double? {:title "double?"}] [double? {:title "double?"}]]]]]]
+```
+
+Transforming schemas into maps:
+
+```clj
+(m/walk
+  Address
+  (fn [schema children _ _]
+    (-> (m/properties schema)
+        (assoc :malli/type (m/type schema))
+        (cond-> (seq children) (assoc :malli/children children)))))
+;{:malli/type :map,
+; :malli/children [[:id nil {:malli/type string?}]
+;                  [:tags nil {:malli/type :set
+;                              :malli/children [{:malli/type keyword?}]}]
+;                  [:address nil {:malli/type :map,
+;                                 :malli/children [[:street nil {:malli/type string?}]
+;                                                  [:city nil {:malli/type string?}]
+;                                                  [:zip nil {:malli/type int?}]
+;                                                  [:lonlat nil {:malli/type :tuple
+;                                                                :malli/children [{:malli/type double?}
+;                                                                                 {:malli/type double?}]}]]}]]}
 ```
 
 ### JSON Schema
@@ -959,43 +1237,57 @@ Coercion:
     (transform {:id "1", :name "kikka"})))
 ```
 
-## Registry
+## Schema Registry
 
-All public functions take optional options map with optional `:registry` key. It is an map of `name->IntoSchema`.  It defaults to `malli.core/default-registry` which is an merge of the following subregistries:
+Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
 
-#### `malli.core/predicate-registry`
+Custom `Registry` can be passed in to all/most malli public apis via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
+
+```clj
+;; the default registry
+(m/validate [:maybe string?] "kikka")
+; => true
+
+;; registry as explicit options
+(m/validate [:maybe string?] "kikka" {:registry m/default-registry})
+; => true
+```
+
+The default immutable registry is merged from the following parts, enabling easy re-composition of custom schema sets:
+
+#### `malli.core/predicate-schemas`
 
 Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
 
-#### `malli.core/class-registry`
+#### `malli.core/class-schemas`
 
 Class-based schemas, contains `java.util.regex.Pattern` & `js/RegExp`.
 
-#### `malli.core/comparator-registry`
+#### `malli.core/comparator-schemas`
 
 Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
-#### `malli.core/base-registry`
+#### `malli.core/base-schemas`
 
 Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
 
 ### Custom registry
 
-Example to create a custom registry without the default core predicates and with `:string` and `:int` Schemas:
+Example to create a custom registry without the default core predicates and with `:bool` and `:int` Schemas:
 
 ```clj
 (def registry
   (merge
-    m/class-registry
-    m/comparator-registry
-    m/base-registry
+    (m/class-schemas)
+    (m/comparator-schemas)
+    (m/base-schemas)
     {:int (m/fn-schema :int int?)
-     :string (m/fn-schema :string string?)}))
+     :bool (m/fn-schema :bool boolean?)}))
 
-(m/validate [:or :int :string] 'kikka {:registry registry})
+(m/validate [:or :int :bool] 'kikka {:registry registry})
 ; => false
 
-(m/validate [:or :int :string] 123 {:registry registry})
+(m/validate [:or :int :bool] 123 {:registry registry})
 ; => true
 ```
 
@@ -1007,79 +1299,206 @@ Predicate Schemas don't work anymore:
 ; :malli.core/invalid-schema
 ```
 
-### Custom qualified schema keys in a map
+### Local registry
 
-Example to use a registered qualified keyword in your map. If you don't provide
-a schema to this key, it will look in the registry. You can also provide
-options using this method.
+Any schema can define a local registry using `:registry` schema property:
 
-``` clj
-(def registry
-  (merge m/default-registry {::id int?
-                             ::country string?}))
+```clj
+(def Adult
+  [:map {:registry {::age [:and int? [:> 18]]}}
+   [:age ::age]])
 
-(m/schema
-  [:map
-   ::id
-   [:name string?]
-   [::country {:optional true}]]
-  {:registry registry})
+(mg/generate Adult {:size 10, :seed 1})
+; => {:age 92}
+```
+
+Local registries can be persisted:
+
+```clj
+(-> Adult
+    (malli.edn/write-string)
+    (malli.edn/read-string)
+    (m/validate {:age 46}))
+; => true
+```
+
+See also [Recursive Schemas](#recursive-schemas).
+
+### Changing the default registry
+
+Using custom registries via `:registry` option is a simple solution, but this needs to be done for all public api calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
+
+Malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
+   * cljs: `:closure-defines {malli.registry/type "custom"}`
+   * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
+
+It changes the default registry to empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enableds DCE for all unsed schema implementations.
+
+Malli supports multiple types of registries.
+
+### Immutable registry
+
+```clj
+(require '[malli.registry :as mr])
+
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
+(mr/set-default-registry!
+  {:string (m/-string-schema)
+   :maybe (m/-maybe-schema)
+   :map (m/-map-schema)})
+
+(m/validate
+  [:map [:maybe [:maybe :string]]]
+  {:maybe "sheep"})
+; => true
+
+;; gzipped malli.core size as js down from 12Kb -> 1.2Kb
 ```
 
 ### Mutable registry
 
-[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. There is no such thing in `malli`, but you can create it yourself.
+[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. The mutable registry in malli forced you to bring in your own state atom and functions how to work with it:
 
 Using a custom registry atom:
 
 ```clj
-(defonce my-registry
-  (atom m/default-registry))
+(def registry*
+  (atom {:string (m/-string-schema)
+         :maybe (m/-maybe-schema)
+         :map (m/-map-schema)}))
 
-(defn register! [k schema]
-  (swap! my-registry assoc k (m/schema schema {:registry @my-registry))
-  k)
+(defn register! [type ?schema]
+  (swap! registry* assoc type ?schema))
 
-(register! ::id int?)
-;; => :user/id
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
+(mr/set-default-registry!
+  (mr/mutable-registry registry*))
 
-(register! ::name string?)
-;; => :user/name   
+(register! :non-empty-string [:string {:min 1}])
 
-(register! ::new-user [:tuple ::id ::name])
-;; => :user/new-user
-
-(m/validate 
-  [:tuple ::id ::name] 
-  [18 "and life"] 
-  {:registry @my-registry})
-;; => true   
-
-; - OR -   
-
-(m/validate 
-  ::new-user
-  [18 "and life"] 
-  {:registry @my-registry})
-;; => true
-```
-
-Mutating the default registry (not recommended):
-
-```clj
-(defn evil-register! [k ?schema]
-  (alter-var-root
-    #'m/default-registry
-    (constantly
-      (assoc m/default-registry k (m/schema ?schema))))
-  k)
-
-(evil-register! ::int int?)
-; :user/int
-
-(m/validate ::int 1)
+(m/validate :non-empty-string "malli")
 ; => true
 ```
+
+The mutable registry can also passed in as explicit option:
+
+```clj
+(def registry (mr/mutable-registry registry*))
+
+(m/validate :non-empty-string "malli" {:registry registry})
+; => true
+```
+
+### Dynamic Registry
+
+If you know what you are doing, you can also use [dynamic scope](https://stuartsierra.com/2013/03/29/perils-of-dynamic-scope) to pass in default schema registry:
+
+```clj
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
+(mr/set-default-registry!
+  (mr/dynamic-registry))
+
+(binding [mr/*registry* {:string (m/-string-schema)
+                         :maybe (m/-maybe-schema)
+                         :map (m/-map-schema)
+                         :non-empty-string [:string {:min 1}]}]
+  (m/validate :non-empty-string "malli"))
+; => true
+```
+
+### Composite Registry
+
+Registries can be composed:
+
+```clj
+(require '[malli.core :as m])
+(require '[malli.registry :as mr])
+
+;; bring your own evil
+(def registry (atom {}))
+
+(defn register! [type schema]
+  (swap! registry assoc type schema))
+
+;; - cljs: :closure-defines {malli.registry/type "custom"}
+;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
+(mr/set-default-registry!
+  ;; linear search
+  (mr/composite-registry
+    ;; immutable registry
+    {:map (m/-map-schema)}
+    ;; mutable (spec-like) registry
+    (mr/mutable-registry registry)
+    ;; on the perils of dynamic scope
+    (mr/dynamic-registry)))
+
+;; mutate like a boss
+(register! :maybe (m/-maybe-schema))
+
+;; ☆.。.:*・°☆.。.:*・°☆.。.:*・°☆.。.:*・°☆
+(binding [mr/*registry* {:string (m/-string-schema)}]
+  (m/validate
+    [:map [:maybe [:maybe :string]]]
+    {:maybe "sheep"}))
+; => true
+```
+
+## Visualizing Schemas
+
+Transforming Schmas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
+
+```clj
+(require '[malli.dot :as md])
+
+(md/transform
+  [:schema
+   {:registry {"Country" [:map
+                          [:name [:enum :FI :PO]]
+                          [:neighbors [:vector [:ref "Country"]]]]
+               "Burger" [:map
+                         [:name string?]
+                         [:description {:optional true} string?]
+                         [:origin [:maybe "Country"]]
+                         [:price pos-int?]]
+               "OrderLine" [:map
+                            [:burger "Burger"]
+                            [:amount int?]]
+               "Order" [:map
+                        [:lines [:vector "OrderLine"]]
+                        [:delivery [:map
+                                    [:delivered boolean?]
+                                    [:address [:map
+                                               [:street string?]
+                                               [:zip int?]
+                                               [:country "Country"]]]]]]}}
+   "Order"])
+; digraph {
+;   node [shape="record", style="filled", color="#000000"]
+;   edge [dir="back", arrowtail="none"]
+;  
+;   "Burger" [label="{Burger|:name string?\l:description string?\l:origin [:maybe \"Country\"]\l:price pos-int?\l}", fillcolor="#fff0cd"]
+;   "Country" [label="{Country|:name [:enum :FI :PO]\l:neighbors [:vector [:ref \"Country\"]]\l}", fillcolor="#fff0cd"]
+;   "Order" [label="{Order|:lines [:vector \"OrderLine\"]\l:delivery Order$Delivery\l}", fillcolor="#fff0cd"]
+;   "Order$Delivery" [label="{Order$Delivery|:delivered boolean?\l:address Order$Delivery$Address\l}", fillcolor="#e6caab"]
+;   "Order$Delivery$Address" [label="{Order$Delivery$Address|:street string?\l:zip int?\l:country Country\l}", fillcolor="#e6caab"]
+;   "OrderLine" [label="{OrderLine|:burger Burger\l:amount int?\l}", fillcolor="#fff0cd"]
+;  
+;   "Burger" -> "Country" [arrowtail="odiamond"]
+;   "Country" -> "Country" [arrowtail="odiamond"]
+;   "Order" -> "OrderLine" [arrowtail="odiamond"]
+;   "Order" -> "Order$Delivery" [arrowtail="diamond"]
+;   "Order$Delivery" -> "Order$Delivery$Address" [arrowtail="diamond"]
+;   "Order$Delivery$Address" -> "Country" [arrowtail="odiamond"]
+;   "OrderLine" -> "Burger" [arrowtail="odiamond"]
+; }
+```
+
+Visualized with [Graphviz](https://graphviz.org/):
+
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
 
 ## Entities and Values
 
@@ -1164,8 +1583,27 @@ npm install
 bin/kaocha
 ```
 
+## Installing locally
+
+```bash
+clj -Ajar
+clj -Ainstall
+```
+
+## Bundle size for cljs
+
+```bash
+npx shadow-cljs run shadow.cljs.build-report app /tmp/report.html
+```
+
+## Checking the generated code
+
+```bash
+npx shadow-cljs release app --pseudo-names
+```
+
 ## License
 
-Copyright © 2018-2020 Metosin Oy and contributors.
+Copyright © 2019-2020 Metosin Oy and contributors.
 
 Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

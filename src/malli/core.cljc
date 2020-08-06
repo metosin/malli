@@ -288,25 +288,26 @@
     [x (rest xs)]
     [nil xs]))
 
-(defn -parse-entry-syntax [ast options]
+(defn -parse-entry-syntax [children naked-keys options]
   (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
-                                             (qualified-keyword? e) [[e nil e] e]
-                                             (and (= 2 (count e)) (qualified-keyword? (first e)) (map? (last e))) [(conj e (first e)) e]
+                                             (qualified-keyword? e) (if naked-keys [[e nil e] e])
+                                             (and (= 2 (count e)) (qualified-keyword? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
                                              :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))) (keep identity) (vec))])
+                             _ (when (nil? k) (-fail! ::naked-keys-not-supported))
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
                          {:children [(->> e (keep identity) (vec))], :entries [e], :forms [f]}))
-        entries (reduce (partial merge-with into) (mapv -parse ast))
-        keys (->> entries :entries (map first))]
+        es (reduce (partial merge-with into) (mapv -parse children))
+        keys (->> es :entries (map first))]
     (when-not (= keys (distinct keys))
       (-fail! ::non-distinct-entry-keys {:keys keys}))
-    entries))
-      
-(defn -map-schema []
+    es))
+
+(defn -map-schema [{:keys [naked-keys]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [closed] :as properties} children options]
-      (let [{:keys [children entries forms]} (-parse-entry-syntax children options)
+      (let [{:keys [children entries forms]} (-parse-entry-syntax children naked-keys options)
             form (-create-form :map properties forms)
             keyset (->> entries (map first) (set))]
         ^{:type ::schema}
@@ -711,7 +712,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [{:keys [children entries forms]} (-parse-entry-syntax children options)
+      (let [{:keys [children entries forms]} (-parse-entry-syntax children false options)
             form (-create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
             dispatch-map (->> (for [[d _ s] entries] [d s]) (into {}))]
@@ -1120,7 +1121,7 @@
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
-   :map (-map-schema)
+   :map (-map-schema {:naked-keys true})
    :map-of (-map-of-schema)
    :vector (-collection-schema :vector vector? [])
    :list (-collection-schema :list list? nil)

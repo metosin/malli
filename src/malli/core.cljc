@@ -303,99 +303,102 @@
       (-fail! ::non-distinct-entry-keys {:keys keys}))
     es))
 
-(defn -map-schema [{:keys [naked-keys]}]
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ {:keys [closed] :as properties} children options]
-      (let [{:keys [children entries forms]} (-parse-entry-syntax children naked-keys options)
-            form (-create-form :map properties forms)
-            keyset (->> entries (map first) (set))]
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] :map)
-          (-validator [_]
-            (let [validators (cond-> (mapv
-                                       (fn [[key {:keys [optional]} value]]
-                                         (let [valid? (-validator value)
-                                               default (boolean optional)]
-                                           (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
-                                       entries)
-                                     closed (into [(fn [m]
-                                                     (reduce
-                                                       (fn [acc k] (if (contains? keyset k) acc (reduced false)))
-                                                       true (keys m)))]))
-                  validate (fn [m]
-                             (boolean
-                               #?(:clj  (let [it (.iterator ^Iterable validators)]
-                                          (boolean
-                                            (loop []
-                                              (if (.hasNext it)
-                                                (and ((.next it) m) (recur))
-                                                true))))
-                                  :cljs (reduce #(or (%2 m) (reduced false)) true validators))))]
-              (fn [m] (and (map? m) (validate m)))))
-          (-explainer [this path]
-            (let [explainers (cond-> (mapv
-                                       (fn [[key {:keys [optional]} schema]]
-                                         (let [explainer (-explainer schema (conj path key))]
-                                           (fn [x in acc]
-                                             (if-let [e (find x key)]
-                                               (explainer (val e) (conj in key) acc)
-                                               (if-not optional
-                                                 (conj acc (-error (conj path key) (conj in key) this nil ::missing-key))
-                                                 acc)))))
-                                       entries)
-                                     closed (into [(fn [x in acc]
-                                                     (reduce
-                                                       (fn [acc k]
-                                                         (if (contains? keyset k)
-                                                           acc
-                                                           (conj acc (-error (conj path k) (conj in k) this nil ::extra-key))))
-                                                       acc (keys x)))]))]
-              (fn [x in acc]
-                (if-not (map? x)
-                  (conj acc (-error path in this x ::invalid-type))
-                  (reduce
-                    (fn [acc explainer]
-                      (explainer x in acc))
-                    acc explainers)))))
-          (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
-                  transformers (some->>
-                                 entries
-                                 (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method options)] [k t])))
-                                 (into {}))
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ->children (->> transformers
-                                                (keep (fn extract-value-transformer-phase [[k t]]
-                                                        (if-let [phase-t (phase t)]
-                                                          [k phase-t])))
-                                                (into {}))
-                                apply->children (if (seq ->children)
-                                                  #(reduce-kv
-                                                     (fn reduce-child-transformers [m k t]
-                                                       (if-let [entry (find m k)]
-                                                         (assoc m k (t (val entry)))
-                                                         m))
-                                                     % ->children))]
-                            (-chain phase [->this (-guard map? apply->children)])))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-entries walker path entries options) options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          MapSchema
-          (-map-entries [_] entries)
-          LensSchema
-          (-keep [_] true)
-          (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this key value)))))))
+(defn -map-schema
+  ([]
+   (-map-schema true))
+  ([{:keys [naked-keys]}]
+   ^{:type ::into-schema}
+   (reify IntoSchema
+     (-into-schema [_ {:keys [closed] :as properties} children options]
+       (let [{:keys [children entries forms]} (-parse-entry-syntax children naked-keys options)
+             form (-create-form :map properties forms)
+             keyset (->> entries (map first) (set))]
+         ^{:type ::schema}
+         (reify
+           Schema
+           (-type [_] :map)
+           (-validator [_]
+             (let [validators (cond-> (mapv
+                                        (fn [[key {:keys [optional]} value]]
+                                          (let [valid? (-validator value)
+                                                default (boolean optional)]
+                                            (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
+                                        entries)
+                                      closed (into [(fn [m]
+                                                      (reduce
+                                                        (fn [acc k] (if (contains? keyset k) acc (reduced false)))
+                                                        true (keys m)))]))
+                   validate (fn [m]
+                              (boolean
+                                #?(:clj  (let [it (.iterator ^Iterable validators)]
+                                           (boolean
+                                             (loop []
+                                               (if (.hasNext it)
+                                                 (and ((.next it) m) (recur))
+                                                 true))))
+                                   :cljs (reduce #(or (%2 m) (reduced false)) true validators))))]
+               (fn [m] (and (map? m) (validate m)))))
+           (-explainer [this path]
+             (let [explainers (cond-> (mapv
+                                        (fn [[key {:keys [optional]} schema]]
+                                          (let [explainer (-explainer schema (conj path key))]
+                                            (fn [x in acc]
+                                              (if-let [e (find x key)]
+                                                (explainer (val e) (conj in key) acc)
+                                                (if-not optional
+                                                  (conj acc (-error (conj path key) (conj in key) this nil ::missing-key))
+                                                  acc)))))
+                                        entries)
+                                      closed (into [(fn [x in acc]
+                                                      (reduce
+                                                        (fn [acc k]
+                                                          (if (contains? keyset k)
+                                                            acc
+                                                            (conj acc (-error (conj path k) (conj in k) this nil ::extra-key))))
+                                                        acc (keys x)))]))]
+               (fn [x in acc]
+                 (if-not (map? x)
+                   (conj acc (-error path in this x ::invalid-type))
+                   (reduce
+                     (fn [acc explainer]
+                       (explainer x in acc))
+                     acc explainers)))))
+           (-transformer [this transformer method options]
+             (let [this-transformer (-value-transformer transformer this method options)
+                   transformers (some->>
+                                  entries
+                                  (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method options)] [k t])))
+                                  (into {}))
+                   build (fn [phase]
+                           (let [->this (phase this-transformer)
+                                 ->children (->> transformers
+                                                 (keep (fn extract-value-transformer-phase [[k t]]
+                                                         (if-let [phase-t (phase t)]
+                                                           [k phase-t])))
+                                                 (into {}))
+                                 apply->children (if (seq ->children)
+                                                   #(reduce-kv
+                                                      (fn reduce-child-transformers [m k t]
+                                                        (if-let [entry (find m k)]
+                                                          (assoc m k (t (val entry)))
+                                                          m))
+                                                      % ->children))]
+                             (-chain phase [->this (-guard map? apply->children)])))]
+               {:enter (build :enter)
+                :leave (build :leave)}))
+           (-walk [this walker path options]
+             (if (-accept walker this path options)
+               (-outer walker this path (-inner-entries walker path entries options) options)))
+           (-properties [_] properties)
+           (-options [_] options)
+           (-children [_] children)
+           (-form [_] form)
+           MapSchema
+           (-map-entries [_] entries)
+           LensSchema
+           (-keep [_] true)
+           (-get [this key default] (-get-entries this key default))
+           (-set [this key value] (-set-entries this key value))))))))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}

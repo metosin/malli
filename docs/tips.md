@@ -17,7 +17,7 @@ Schemas can be walked over recursively using `m/walk`:
 
 (m/walk
   Schema
-  (fn [schema children _ options]
+  (fn [schema _ children options]
     ;; return nil if Schema has the property 
     (when-not (:deleteMe (m/properties schema))
       ;; there are two syntaxes: normal and the map-entry, handle separatly

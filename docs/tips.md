@@ -52,14 +52,30 @@ Example how to trim all `:string` values using a custom transformer:
                     (when trim #(cond-> % (string? %) str/trim))))}}}))
 
 ;; trim me please
-(m/decode [:string {:string/trim true, :min 1}] " " string-trimmer)
-; => ""
+(m/decode [:string {:string/trim true, :min 1}] " kikka  " string-trimmer)
+; => "kikka"
 
 ;; no trimming
 (m/decode [:string {:min 1}] "    " string-trimmer)
-; => " "
+; => "    "
 
 ;; without :string/trim, decoding is a no-op
 (m/decoder :string string-trimmer)
 ; => #object[clojure.core$identity]
+```
+
+## Decoding collections
+
+Transforming a comma-separated string into a vector of ints:
+
+```clj
+(require '[malli.core :as m])
+(require '[malli.transform :as mt])
+(require '[clojure.string :as str])
+
+(m/decode 
+  [:vector {:decode/string #(str/split % #",")} int?] 
+  "1,2,3,4" 
+  (mt/string-transformer))
+; => [1 2 3 4]
 ```

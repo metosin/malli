@@ -36,22 +36,34 @@
 (deftest parse-entry-syntax-test
   (let [{:keys [children entries forms]} (m/-parse-entry-syntax
                                            [[:x int?]
-                                            [:y {:optional true, :title "boolean"} boolean?]] nil)]
+                                            ::x
+                                            [::y {:optional true}]
+                                            [:y {:optional true, :title "boolean"} boolean?]]
+                                           true {:registry (merge (m/default-schemas) {::x int?, ::y int?})})]
     (testing "forms"
       (is (= [[:x 'int?]
+              ::x
+              [::y {:optional true}]
               [:y {:optional true, :title "boolean"} 'boolean?]]
              forms)))
     (testing "entries"
-      (is (entries= [[:x nil int?]
-                     [:y {:optional true, :title "boolean"} boolean?]]
-                    entries)))
+      (is (= [[:x nil 'int?]
+              [::x nil ::x]
+              [::y {:optional true} ::y]
+              [:y {:optional true, :title "boolean"} 'boolean?]]
+             (map #(update % 2 m/form) entries))))
     (testing "children"
-      (is (= [2 3]
+      (is (= [2 2 3 3]
              (map count children)))))
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (m/-parse-entry-syntax
-                 [[:x int?]
-                  [:x boolean?]] nil))))
+  (testing "duplicate keys"
+    (is (thrown? #?(:clj Exception, :cljs js/Error)
+                 (m/-parse-entry-syntax
+                   [[:x int?]
+                    [:x boolean?]] true nil))))
+  (testing "naked keys fails when not supported"
+    (is (thrown? #?(:clj Exception, :cljs js/Error)
+                 (m/-parse-entry-syntax
+                   [::x] false nil)))))
 
 (deftest eval-test
   (is (= 2 ((m/eval inc) 1)))
@@ -1153,3 +1165,16 @@
                    (assoc (m/properties schema) :path path)
                    children
                    options))))))
+
+(deftest custom-registry-qualified-keyword-in-map-test
+  (let [schema [:map {:registry {::id int?
+                                 ::country string?}}
+                ::id
+                [:name string?]
+                [::country {:optional true}]]]
+
+    (testing "Example with qualified keyword + optional, regular key"
+      (is (m/validate schema {::id 123 ::country "Finland" :name "Malli"})))
+
+    (testing "Optional qualified keyword is optional"
+      (is (m/validate schema {::id 123 :name "Malli"})))))

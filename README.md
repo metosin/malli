@@ -106,6 +106,24 @@ Maps keys are not limited to keywords:
 ; => true
 ```
 
+## Qualified keys in a map
+
+Example to use a registered qualified keyword in your map. If you don't provide
+a schema to this key, it will look in the registry. You can also provide
+entry properties.
+
+```clj
+(m/validate
+  [:map {:registry {::id int?
+                    ::country string?}}
+   ::id
+   [:name string?]
+   [::country {:optional true}]]
+  {::id 1
+   :name "kikka"})
+; => true
+```
+
 ## String schemas
 
 Using a predicate:

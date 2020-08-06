@@ -1124,7 +1124,7 @@
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
-   :map (-map-schema {:naked-keys true})
+   :map (-map-schema)
    :map-of (-map-of-schema)
    :vector (-collection-schema :vector vector? [])
    :list (-collection-schema :list list? nil)

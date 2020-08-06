@@ -305,7 +305,7 @@
 
 (defn -map-schema
   ([]
-   (-map-schema true))
+   (-map-schema {:naked-keys true}))
   ([{:keys [naked-keys]}]
    ^{:type ::into-schema}
    (reify IntoSchema

@@ -1,17 +1,31 @@
 {:paths ["src" "resources"]
  :aliases {:test {:extra-paths ["test"]
-                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-554"}
-                               lambdaisland/kaocha-cljs {:mvn/version "0.0-59"}
+                  :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.10"}
+                               lambdaisland/kaocha {:mvn/version "1.0.632"}
+                               lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}
-                               metosin/spec-tools {:mvn/version "0.10.0"}
-                               metosin/schema-tools {:mvn/version "0.12.0"}
+                               metosin/spec-tools {:mvn/version "0.10.3"}
+                               metosin/schema-tools {:mvn/version "0.12.2"}
+                               borkdude/sci {:git/url "https://github.com/borkdude/sci.git"
+                                             :sha "b310358cd41f761d7bbd50227a36d1160938ce71"}
                                prismatic/schema {:mvn/version "1.1.12"}
                                meta-merge {:mvn/version "1.0.0"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
-                                                        :sha "cef04589198e18ac81b8de2142921e82b4dece48"}}}
+                                                        :sha "8498f9cb352135579b6d3a0a5d15c40e5c2647ce"}}}
+           :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.7.0"}}
+                              :extra-paths ["test" "cljs-test-runner-out/gen"]
+                              :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
+           :sci {:extra-deps {borkdude/sci {:git/url "https://github.com/borkdude/sci.git"
+                                            :sha "b310358cd41f761d7bbd50227a36d1160938ce71"}}}
+           :shadow {:extra-paths ["app"]
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.10.10"}}}
+           :slow {:extra-deps {io.dominic/slow-namespace-clj
+                               {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
+                                :sha "9a804bd37c662629c3ecda18375c59fd8d9f0928"}}
+                  :main-opts ["-m" "io.dominic.slow-namespace-clj.core"]}
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
-                               :sha "042c61410b1851957ae5f77cfe26a255837172cc"}}
+                               :sha "5c5dae9ae4b75941485a17872aa59e040a500aa4"}}
                  :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
                              "--project-path" "malli.jar"]}
            :deploy {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
@@ -22,13 +36,11 @@
                                  "malli.jar"]}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium {:mvn/version "0.4.5"}
-                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
+                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.1"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"
                              "-Dclojure.compiler.direct-linking=true"]}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        borkdude/sci {:git/url "https://github.com/borkdude/sci"
-                      :sha "29c6ab20416b8662296f64f3ce92fdbd826bc286"}
-        borkdude/edamame {:mvn/version "0.0.8-alpha.4"}
-        org.clojure/test.check {:mvn/version "0.10.0"}
-        com.gfredericks/test.chuck {:mvn/version "0.2.10"}}}
+        borkdude/dynaload {:mvn/version "0.1.0"}
+        borkdude/edamame {:mvn/version "0.0.11-alpha.13"}
+        org.clojure/test.check {:mvn/version "1.1.0"}}}

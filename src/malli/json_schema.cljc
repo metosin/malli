@@ -1,14 +1,18 @@
 (ns malli.json-schema
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [clojure.set :as set]))
 
-(defn unlift-keys [m ns-str]
-  (reduce-kv #(if (= ns-str (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
+(defprotocol JsonSchema
+  (-accept [this children options] "transforms schema to JSON Schema"))
 
-(defn maybe-prefix [schema prefix]
-  (some-> schema m/properties (get prefix)))
+(defn unlift-keys [m prefix]
+  (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn json-schema-props [schema prefix]
-  (as-> (m/properties schema) $ (merge (select-keys $ [:title :description :default]) (unlift-keys $ prefix))))
+(defn unlift [m prefix]
+  (get m prefix))
+
+(defn select [m]
+  (select-keys m [:title :description :default]))
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
@@ -68,13 +72,11 @@
 (defmethod accept :and [_ _ children _] {:allOf children})
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
-(defmethod accept :map [_ schema children _]
+(defmethod accept :map [_ _ children _]
   (let [required (->> children (filter (comp not :optional second)) (mapv first))]
-    (merge
-      {:type "object"
-       :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))
-       :required required}
-      (json-schema-props schema "json-schema"))))
+    {:type "object"
+     :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))
+     :required required}))
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
@@ -88,10 +90,17 @@
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
 
-(defn- -json-schema-visitor [schema children _in options]
-  (or (maybe-prefix schema :json-schema)
-      (merge (accept (m/name schema) schema children options)
-             (json-schema-props schema "json-schema"))))
+(defmethod accept :string [_ schema _ _]
+  (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))
+
+(defn- -json-schema-walker [schema _ children options]
+  (let [p (m/properties schema)]
+    (or (unlift p :json-schema)
+        (merge (select p)
+               (if (satisfies? JsonSchema schema)
+                 (-accept schema children options)
+                 (accept (m/type schema) schema children options))
+               (unlift-keys p :json-schema)))))
 
 ;;
 ;; public api
@@ -101,4 +110,4 @@
   ([?schema]
    (transform ?schema nil))
   ([?schema options]
-   (m/accept ?schema -json-schema-visitor options)))
+   (m/walk ?schema -json-schema-walker options)))

@@ -1,6 +1,7 @@
 (ns malli.json-schema-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [malli.json-schema :as json-schema]))
+            [malli.json-schema :as json-schema]
+            [malli.core :as m]))
 
 (def expectations
   [;; predicates
@@ -52,7 +53,18 @@
    [[:tuple string? string?] {:type "array"
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
-   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]])
+   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
+   [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
+   ;; protocols
+   [(reify
+      m/Schema
+      (-properties [_])
+      (-type [_])
+      (-form [_])
+      (-validator [_] int?)
+      (-walk [t w p o] (m/-outer w t p nil o))
+      json-schema/JsonSchema
+      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])
 
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]

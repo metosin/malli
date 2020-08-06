@@ -1,6 +1,7 @@
 (ns malli.swagger-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [malli.swagger :as swagger]))
+            [malli.swagger :as swagger]
+            [malli.core :as m]))
 
 (def expectations
   [;; predicates
@@ -63,22 +64,30 @@
                               :items {}
                               :x-items [{:type "string"}
                                         {:type "string"}]}]
-   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]])
+   [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
+   [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
+   ;; protocols
+   [(reify
+      m/Schema
+      (-properties [_])
+      (-walk [t w p o] (m/-outer w t p nil o))
+      swagger/SwaggerSchema
+      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])
 
 (deftest swagger-test
   (doseq [[schema swagger-schema] expectations]
     (is (= swagger-schema (swagger/transform schema))))
   (testing "full override"
     (is (= {:type "file"}
-           (swagger/transform 
+           (swagger/transform
              [:map {:swagger {:type "file"}} [:file any?]])))
     (is (= {:type "file"}
-           (swagger/transform 
+           (swagger/transform
              [:map {:json-schema {:type "file"}} [:file any?]])))
     (is (= {:type "file"}
-           (swagger/transform 
+           (swagger/transform
              [:map {:swagger {:type "file"}
-           	        :json-schema {:type "file2"}} [:file any?]]))))
+                    :json-schema {:type "file2"}} [:file any?]]))))
   (testing "with properties"
     (is (= {:title "age"
             :type "integer"
@@ -90,19 +99,37 @@
              [:and {:title "age"
                     :description "blabla"
                     :default 42} int?])))
-    (is (= {:title "age"
+    (is (= {:title "age2"
             :type "integer"
             :format "int64"
-            :description "blabla"
+            :description "blabla2"
             :default 422
             :example 422
             :x-allOf [{:type "integer", :format "int64"}]}
            (swagger/transform
              [:and {:title "age"
                     :json-schema/title "age2"
-                    :json-schema/swagger "age3"
                     :description "blabla"
                     :json-schema/description "blabla2"
                     :default 42
-                    :swagger/default 422
-                    :swagger/example 422} int?])))))
+                    :json-schema/default 422
+                    :json-schema/example 422} int?])))
+    (is (= {:title "age3"
+            :type "integer"
+            :format "int64"
+            :description "blabla3"
+            :default 4222
+            :example 4222
+            :x-allOf [{:type "integer", :format "int64"}]}
+           (swagger/transform
+             [:and {:title "age"
+                    :json-schema/title "age2"
+                    :swagger/title "age3"
+                    :description "blabla"
+                    :json-schema/description "blabla2"
+                    :swagger/description "blabla3"
+                    :default 42
+                    :json-schema/default 422
+                    :swagger/default 4222
+                    :json-schema/example 422
+                    :swagger/example 4222} int?])))))

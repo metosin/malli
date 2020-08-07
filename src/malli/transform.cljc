@@ -48,6 +48,9 @@
 
     (nil? ?interceptor) nil
 
+    (ifn? ?interceptor)
+    {:enter ?interceptor}
+
     :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
 
 ;;

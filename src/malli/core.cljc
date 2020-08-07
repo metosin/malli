@@ -1091,7 +1091,7 @@
                                           'm/children children
                                           'm/map-entries map-entries}})
                 #(-fail! :sci-not-available {:code %}))]
-  (defn eval [?code] (if (fn? ?code) ?code (-eval (str ?code)))))
+  (defn eval [?code] (if (ifn? ?code) ?code (-eval (str ?code)))))
 
 ;;
 ;; schema walker

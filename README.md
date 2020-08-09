@@ -1545,6 +1545,44 @@ Wrapping schemas into `m/schema` makes them first class entities. Here `User` is
 ; => true
 ```
 
+## Schemas for sequences
+
+You can use `:sequential` for any Clojure sequence, and `:vector` for vectors specifically.
+
+```clj
+(m/validate [:sequential any?] (list "this" 'is :number 42))
+;; => true
+
+(m/validate [:vector int?] [1 2 3])
+;; => true
+
+(m/validate [:vector int?] (list 1 2 3))
+;; => false
+```
+
+In Clojure, we often treat records as maps. In Malli, we would model a map-as-record with `:map`.
+
+```clj
+(m/validate [:map
+             [:name string?]
+             [:x number?]
+             [:y number?]]
+            {:name "A nice point."
+             :x 3.0
+             :y 4.0})
+;; => true
+```
+
+Other times, we use a map as a homogenous index. In this case, all our key-value
+pairs have the same type. For this use case, we can use the `:map-of` schema.
+
+```clj
+(m/validate [:map-of :string [:map [:lat number?] [:long number?]]]
+            {"oslo" {:lat 10 :long 10}
+             "helsinki" {:lat 60 :long 24}})
+;; => true
+```
+
 ## Motivation
 
 We are building dynamic multi-tenant systems where data-models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.

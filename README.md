@@ -124,6 +124,55 @@ entry properties.
 ; => true
 ```
 
+## Records
+
+Records can be modelled as `:map`s:
+
+```clj
+(defrecord NameXY [name x y])
+
+(def NameXYSchema
+  [:map
+   [:name string?]
+   [:x number?]
+   [:y number?]])
+
+(m/validate
+  NameXYSchema
+  (map->NameXY
+    {:name "A nice point."
+     :x 3.0
+     :y 4.0}))
+;; => true
+```
+
+Other times, we use a map as a homogenous index. In this case, all our key-value
+pairs have the same type. For this use case, we can use the `:map-of` schema.
+
+```clj
+(m/validate [:map-of :string [:map [:lat number?] [:long number?]]]
+            {"oslo" {:lat 10 :long 10}
+             "helsinki" {:lat 60 :long 24}})
+;; => true
+```
+
+## Sequence Schemas
+
+You can use `:sequential` for any homogenous Clojure sequence, and `:vector` for vectors specifically.
+
+```clj
+(m/validate [:sequential any?] (list "this" 'is :number 42))
+;; => true
+
+(m/validate [:vector int?] [1 2 3])
+;; => true
+
+(m/validate [:vector int?] (list 1 2 3))
+;; => false
+```
+
+Support for Heterogenous/Regex sequences are [coming later](https://github.com/metosin/malli/issues/180).
+
 ## String schemas
 
 Using a predicate:
@@ -1543,44 +1592,6 @@ Wrapping schemas into `m/schema` makes them first class entities. Here `User` is
   User 
   {:name "Mirjami", :age 62})
 ; => true
-```
-
-## Schemas for sequences
-
-You can use `:sequential` for any Clojure sequence, and `:vector` for vectors specifically.
-
-```clj
-(m/validate [:sequential any?] (list "this" 'is :number 42))
-;; => true
-
-(m/validate [:vector int?] [1 2 3])
-;; => true
-
-(m/validate [:vector int?] (list 1 2 3))
-;; => false
-```
-
-In Clojure, we often treat records as maps. In Malli, we would model a map-as-record with `:map`.
-
-```clj
-(m/validate [:map
-             [:name string?]
-             [:x number?]
-             [:y number?]]
-            {:name "A nice point."
-             :x 3.0
-             :y 4.0})
-;; => true
-```
-
-Other times, we use a map as a homogenous index. In this case, all our key-value
-pairs have the same type. For this use case, we can use the `:map-of` schema.
-
-```clj
-(m/validate [:map-of :string [:map [:lat number?] [:long number?]]]
-            {"oslo" {:lat 10 :long 10}
-             "helsinki" {:lat 60 :long 24}})
-;; => true
 ```
 
 ## Motivation

@@ -8,4 +8,4 @@
         fork @(dynaload 'sci.core/fork {:default nil})]
     (if (and eval-string* init fork)
       (let [ctx (init options)]
-        (fn eval [s] (eval-string* (fork ctx) s))))))
+        (fn eval [s] (eval-string* (fork ctx) (str s)))))))

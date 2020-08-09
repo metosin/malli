@@ -73,7 +73,7 @@
   ([type]
    (-fail! type nil))
   ([type data]
-   (throw (ex-info (str type " " data) {:type type, :data data}))))
+   (throw (ex-info (str type " " (pr-str data)) {:type type, :data data}))))
 
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
@@ -1090,8 +1090,12 @@
                                           'm/type type
                                           'm/children children
                                           'm/map-entries map-entries}})
-                #(-fail! :sci-not-available {:code %}))]
-  (defn eval [?code] (if (ifn? ?code) ?code (-eval (str ?code)))))
+                #(-fail! :sci-not-available {:code %}))
+      -eval? (some-fn symbol? string? sequential? symbol?)]
+  (defn eval [?code]
+    (cond (vector? ?code) ?code
+          (-eval? ?code) (-eval ?code)
+          :else ?code)))
 
 ;;
 ;; schema walker

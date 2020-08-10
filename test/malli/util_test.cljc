@@ -544,7 +544,7 @@
 (deftest to-from-maps-test
   (let [schema [:map {:registry {::size [:enum "S" "M" "L"]}}
                 [:id string?]
-                [:tags [:set keyword?]]
+                [:tags {:title "tag"} [:set keyword?]]
                 [:size ::size]
                 [:address
                  [:vector
@@ -556,8 +556,8 @@
       (is (= {:type :map,
               :properties {:registry {::size [:enum "S" "M" "L"]}}
               :children [[:id nil {:type 'string?}]
-                         [:tags nil {:type :set
-                                     :children [{:type 'keyword?}]}]
+                         [:tags {:title "tag"} {:type :set
+                                                :children [{:type 'keyword?}]}]
                          [:size nil {:type ::m/schema
                                      :children [::size]}]
                          [:address nil {:type :vector,
@@ -576,9 +576,10 @@
               :properties {:registry {::size [:enum "S" "M" "L"]}}
               :children [[:id nil {:type ::m/entry
                                    :children [{:type 'string?}]}]
-                         [:tags nil {:type ::m/entry
-                                     :children [{:type :set
-                                                 :children [{:type 'keyword?}]}]}]
+                         [:tags {:title "tag"} {:type ::m/entry
+                                                :properties {:title "tag"}
+                                                :children [{:type :set
+                                                            :children [{:type 'keyword?}]}]}]
                          [:size nil {:type ::m/entry
                                      :children [{:type ::m/schema
                                                  :children [::size]}]}]

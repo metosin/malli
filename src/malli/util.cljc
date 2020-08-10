@@ -93,7 +93,7 @@
                                      (c/update :form conj e2)
                                      (c/update :keys conj k2))))
                              {:keys #{}, :form []}
-                             (mapcat m/map-entries schemas))))
+                             (mapcat m/children schemas))))
                    (m/schema options)))))))
 
 (defn union

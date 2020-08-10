@@ -34,23 +34,18 @@
   (is (= "abba" (m/-keyword->string "abba"))))
 
 (deftest parse-entry-syntax-test
-  (let [{:keys [children raw-entries entries forms]} (m/-parse-entry-syntax
-                                                       [[:x int?]
-                                                        ::x
-                                                        [::y {:optional true}]
-                                                        [:y {:optional true, :title "boolean"} boolean?]]
-                                                       true {:registry (merge (m/default-schemas) {::x int?, ::y int?})})]
+  (let [{:keys [children entries forms]} (m/-parse-entry-syntax
+                                           [[:x int?]
+                                            ::x
+                                            [::y {:optional true}]
+                                            [:y {:optional true, :title "boolean"} boolean?]]
+                                           true {:registry (merge (m/default-schemas) {::x int?, ::y int?})})]
     (testing "forms"
       (is (= [[:x 'int?]
               ::x
               [::y {:optional true}]
               [:y {:optional true, :title "boolean"} 'boolean?]]
              forms)))
-    (testing "raw-entries"
-      (is (entries= [[:x nil int?]
-                     [:y {:optional true, :title "int"} int?]]
-                    raw-entries))
-      (is (every? #{'int?} (->> raw-entries (map last) (map m/type)))))
     (testing "entries"
       (is (= [[:x nil 'int?]
               [::x nil ::x]
@@ -58,8 +53,11 @@
               [:y {:optional true, :title "boolean"} 'boolean?]]
              (map #(update % 2 m/form) entries))))
     (testing "children"
-      (is (= [2 2 3 3]
-             (map count children)))))
+      (is (= [[:x nil 'int?]
+              [::x nil ::x]
+              [::y {:optional true} ::y]
+              [:y {:optional true, :title "boolean"} 'boolean?]]
+             (map #(update % 2 m/form) children)))))
   (testing "duplicate keys"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
                  (m/-parse-entry-syntax

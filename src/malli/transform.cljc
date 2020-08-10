@@ -380,8 +380,7 @@
                                 (if-some [default (get-default schema)]
                                   (fn [x] (if (nil? x) default x))))}
         add-defaults {:compile (fn [schema _]
-                                 (let [entries (m/map-entries schema)
-                                       defaults (->> entries
+                                 (let [defaults (->> (m/children schema)
                                                      (keep (fn [[k {:keys [default]} v]]
                                                              (if-some [default (if (some? default) default (get-default v))]
                                                                [k default])))

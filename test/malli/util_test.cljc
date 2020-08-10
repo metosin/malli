@@ -224,7 +224,7 @@
 
         [:schema int?] 0 int?
         [:schema int?] 1 nil)
-      
+
       (is (mu/equals (mu/get [:tuple int? pos-int?] 9 boolean?) boolean?))
       (is (mu/equals (mu/get [:map [:x int?]] :y boolean?) boolean?)))
 

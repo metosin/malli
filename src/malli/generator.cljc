@@ -76,7 +76,7 @@
 (defn -map-gen [schema options]
   (let [entries (m/map-entries schema)
         [continue options] (-recur schema options)
-        value-gen (fn [k p s] (gen/fmap (fn [v] [k v]) (generator (m/-entry-schema s p) options)))
+        value-gen (fn [k _ s] (gen/fmap (fn [v] [k v]) (generator s options)))
         gen-req (->> entries
                      (remove #(-> % second :optional))
                      (map (fn [[k p s]] (value-gen k p s)))

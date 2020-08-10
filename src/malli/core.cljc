@@ -54,7 +54,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -schema-schema -entry-schema -registry)
+(declare schema schema? into-schema into-schema? eval default-registry -schema-schema -registry)
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -96,10 +96,10 @@
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
 (defn -inner-entries [walker path entries options]
-  (mapv (fn [[k p s]] [k p (-inner walker (-entry-schema s p) (conj path k) options)]) entries))
+  (mapv (fn [[k p s]] [k p (-inner walker s (conj path k) options)]) entries))
 
 (defn -get-entries [schema key default]
-  (or (some (fn [[k _ s]] (if (= k key) s)) (-map-entries schema)) default))
+  (or (some (fn [[k _ s]] (if (= k key) s)) (-children schema)) default))
 
 (defn -set-entries [schema key value]
   (let [found (atom nil)
@@ -297,18 +297,22 @@
            (-explainer [_ path] (-explainer schema path))
            (-transformer [this transformer method options]
              (-parent-children-transformer this children transformer method options))
-           (-walk [this walker in options]
+           (-walk [this walker path options]
              (if (::walk-map-entries options)
-               (if (-accept walker this in options)
-                 (-outer walker this [(-inner walker schema in options)] in options))
-               (-walk schema walker in options)))
+               (if (-accept walker this path options)
+                 (-outer walker this path [(-inner walker schema path options)] options))
+               (-walk schema walker path options)))
            (-properties [_] properties)
            (-options [_] (-options schema))
            (-children [_] children)
            (-form [_] (-form schema))
            LensSchema
+           (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))
-           (-set [_ key value] (if (= 0 key) (-entry-schema value properties))))))))
+           (-set [_ key value] (if (= 0 key) (-entry-schema value properties)))
+           RefSchema
+           (-ref [_])
+           (-deref [_] schema))))))
   ([schema properties]
    (-into-schema (-entry-schema) properties [schema] (-options schema))))
 
@@ -317,7 +321,6 @@
     [x (rest xs)]
     [nil xs]))
 
-;; TODO: raw-entries
 (defn -parse-entry-syntax [children naked-keys options]
   (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
                                              (qualified-keyword? e) (if naked-keys [[e nil e] e])
@@ -326,7 +329,9 @@
                              _ (when (nil? k) (-fail! ::naked-keys-not-supported))
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
-                         {:children [(->> e (keep identity) (vec))], :entries [e], :forms [f]}))
+                         {:children [e]
+                          :entries [(update e 2 #(-entry-schema % p))]
+                          :forms [f]}))
         es (reduce (partial merge-with into) (mapv -parse children))
         keys (->> es :entries (map first))]
     (when-not (= keys (distinct keys))
@@ -340,7 +345,7 @@
    ^{:type ::into-schema}
    (reify IntoSchema
      (-into-schema [_ {:keys [closed] :as properties} children options]
-       (let [{:keys [children raw-entries entries forms]} (-parse-entry-syntax children naked-keys options)
+       (let [{:keys [children entries forms]} (-parse-entry-syntax children naked-keys options)
              form (-create-form :map properties forms)
              keyset (->> entries (map first) (set))]
          ^{:type ::schema}
@@ -397,7 +402,7 @@
              (let [this-transformer (-value-transformer transformer this method options)
                    transformers (some->>
                                   entries
-                                  (keep (fn [[k p s]] (if-let [t (-transformer (-entry-schema s p) transformer method options)] [k t])))
+                                  (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method options)] [k t])))
                                   (into {}))
                    build (fn [phase]
                            (let [->this (phase this-transformer)
@@ -424,7 +429,7 @@
            (-children [_] children)
            (-form [_] form)
            MapSchema
-           (-map-entries [_] raw-entries)
+           (-map-entries [_] entries)
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
@@ -745,7 +750,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [{:keys [children raw-entries entries forms]} (-parse-entry-syntax children false options)
+      (let [{:keys [children entries forms]} (-parse-entry-syntax children false options)
             form (-create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
             dispatch-map (->> (for [[k _ s] entries] [k s]) (into {}))]
@@ -785,15 +790,15 @@
                             (-chain phase [->this ->child])))]
               {:enter (build :enter)
                :leave (build :leave)}))
-          (-walk [this walker in options]
-            (if (-accept walker this in options)
-              (-outer walker this (mapv (fn [[k p s]] [k p (-inner walker s in options)]) entries) in options)))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-entries walker path entries options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
           MapSchema
-          (-map-entries [_] raw-entries)
+          (-map-entries [_] entries)
           LensSchema
           (-keep [_])
           (-get [this key default] (-get-entries this key default))

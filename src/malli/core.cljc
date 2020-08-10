@@ -99,7 +99,10 @@
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
 (defn -get-entries [schema key default]
-  (or (some (fn [[k _ s]] (if (= k key) s)) (-children schema)) default))
+  (or (if (and (vector? key) (= ::entry (nth key 0)))
+        (some (fn [[k s]] (if (= k (nth key 1)) s)) (-entries schema))
+        (some (fn [[k _ s]] (if (= k key) s)) (-children schema)))
+      default))
 
 (defn -set-entries [schema key value]
   (let [found (atom nil)
@@ -183,14 +186,7 @@
               (f validators)))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
-              (fn explain [x in acc]
-                (reduce
-                  (fn [acc' explainer]
-                    (let [acc'' (explainer x in acc')]
-                      (cond
-                        (nil? acc'') acc'
-                        :else acc'')))
-                  acc explainers))))
+              (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -226,10 +222,7 @@
                 (reduce
                   (fn [acc' explainer]
                     (let [acc'' (explainer x in acc')]
-                      (cond
-                        (identical? acc' acc'') (reduced acc)
-                        (nil? acc'') acc'
-                        :else acc'')))
+                      (if (identical? acc' acc'') (reduced acc) acc'')))
                   acc explainers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)

@@ -20,7 +20,7 @@
   (apply = (map with-schema-forms results)))
 
 (defn entries= [& entries]
-  (apply = (map (partial map #(update % 2 m/form)) entries)))
+  (apply = (map (partial map #(update % (dec (count %)) m/form)) entries)))
 
 (defn form= [& entries]
   (apply = (map m/form entries)))
@@ -47,11 +47,11 @@
               [:y {:optional true, :title "boolean"} 'boolean?]]
              forms)))
     (testing "entries"
-      (is (= [[:x nil 'int?]
-              [::x nil ::x]
-              [::y {:optional true} ::y]
-              [:y {:optional true, :title "boolean"} 'boolean?]]
-             (map #(update % 2 m/form) entries))))
+      (is (= [[:x 'int?]
+              [::x ::x]
+              [::y ::y]
+              [:y 'boolean?]]
+             (map #(update % 1 m/form) entries))))
     (testing "children"
       (is (= [[:x nil 'int?]
               [::x nil ::x]
@@ -78,7 +78,8 @@
   (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
   (is (= :maybe (m/eval "(m/type [:maybe int?])")))
   (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
-  (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/map-entries [:map [:x int?] [:y string?]])"))))
+  (is (entries= [[:x 'int?] [:y 'string?]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
+  (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])")))) ;
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -536,7 +537,7 @@
             [[:x nil boolean?]
              [:y {:optional true} int?]
              [:z {:optional false} string?]]
-            (m/map-entries schema)))
+            (m/children schema)))
 
       (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
@@ -696,7 +697,7 @@
 
       (is (entries= [[:sized nil [:map [:type keyword?] [:size int?]]]
                      [:human nil [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
-                    (m/map-entries schema)))
+                    (m/children schema)))
 
       (is (= [:multi
               {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}

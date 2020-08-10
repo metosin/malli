@@ -24,7 +24,7 @@
   (-form [this] "returns original form of the schema"))
 
 (defprotocol MapSchema
-  (-map-entries [this] "returns map entries"))
+  (-entries [this] "returns sequence of key-EntrySchema tuples"))
 
 (defprotocol LensSchema
   (-keep [this] "returns truthy if schema contributes to value path")
@@ -96,7 +96,7 @@
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
 (defn -inner-entries [walker path entries options]
-  (mapv (fn [[k p s]] [k p (-inner walker s (conj path k) options)]) entries))
+  (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
 (defn -get-entries [schema key default]
   (or (some (fn [[k _ s]] (if (= k key) s)) (-children schema)) default))
@@ -298,7 +298,7 @@
            (-transformer [this transformer method options]
              (-parent-children-transformer this children transformer method options))
            (-walk [this walker path options]
-             (if (::walk-map-entries options)
+             (if (::walk-entries options)
                (if (-accept walker this path options)
                  (-outer walker this path [(-inner walker schema path options)] options))
                (-walk schema walker path options)))
@@ -330,7 +330,7 @@
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
                          {:children [e]
-                          :entries [(update e 2 #(-entry-schema % p))]
+                          :entries [[k (-entry-schema (last e) p)]]
                           :forms [f]}))
         es (reduce (partial merge-with into) (mapv -parse children))
         keys (->> es :entries (map first))]
@@ -358,7 +358,7 @@
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
                                             (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
-                                        entries)
+                                        children)
                                       closed (into [(fn [m]
                                                       (reduce
                                                         (fn [acc k] (if (contains? keyset k) acc (reduced false)))
@@ -383,7 +383,7 @@
                                                 (if-not optional
                                                   (conj acc (-error (conj path key) (conj in key) this nil ::missing-key))
                                                   acc)))))
-                                        entries)
+                                        children)
                                       closed (into [(fn [x in acc]
                                                       (reduce
                                                         (fn [acc k]
@@ -402,7 +402,7 @@
              (let [this-transformer (-value-transformer transformer this method options)
                    transformers (some->>
                                   entries
-                                  (keep (fn [[k _ s]] (if-let [t (-transformer s transformer method options)] [k t])))
+                                  (keep (fn [[k s]] (if-let [t (-transformer s transformer method options)] [k t])))
                                   (into {}))
                    build (fn [phase]
                            (let [->this (phase this-transformer)
@@ -429,7 +429,7 @@
            (-children [_] children)
            (-form [_] form)
            MapSchema
-           (-map-entries [_] entries)
+           (-entries [_] entries)
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
@@ -753,7 +753,7 @@
       (let [{:keys [children entries forms]} (-parse-entry-syntax children false options)
             form (-create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
-            dispatch-map (->> (for [[k _ s] entries] [k s]) (into {}))]
+            dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
         (when-not dispatch
           (-fail! ::missing-property {:key :dispatch}))
         ^{:type ::schema}
@@ -768,7 +768,7 @@
                   false))))
           (-explainer [this path]
             (let [explainers (reduce
-                               (fn [acc [key _properties schema]] ;; https://clojure.atlassian.net/browse/CLJS-1575 ??
+                               (fn [acc [key schema]]
                                  (let [explainer (-explainer schema (conj path key))]
                                    (assoc acc key (fn [x in acc] (explainer x in acc)))))
                                {} entries)]
@@ -798,7 +798,7 @@
           (-children [_] children)
           (-form [_] form)
           MapSchema
-          (-map-entries [_] entries)
+          (-entries [_] entries)
           LensSchema
           (-keep [_])
           (-get [this key default] (-get-entries this key default))
@@ -1122,14 +1122,14 @@
      (transform value)
      value)))
 
-(defn map-entries
-  "Returns a sequence of 3-element map-entry tuples of type `key ?properties schema`"
+(defn entries
+  "Returns a sequence of 2-element tuples of type `key EntrySchema`"
   ([?schema]
-   (map-entries ?schema nil))
+   (entries ?schema nil))
   ([?schema options]
    (if-let [schema (schema ?schema options)]
      (if (satisfies? MapSchema schema)
-       (-map-entries schema)))))
+       (-entries schema)))))
 
 ;;
 ;; eval
@@ -1139,7 +1139,7 @@
                                :bindings {'m/properties properties
                                           'm/type type
                                           'm/children children
-                                          'm/map-entries map-entries}})
+                                          'm/entries entries}})
                 #(-fail! :sci-not-available {:code %}))
       -eval? (some-fn symbol? string? sequential?)]
   (defn eval [?code]

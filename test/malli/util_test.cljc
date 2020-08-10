@@ -591,4 +591,4 @@
                                                                                          :children [{:type :tuple
                                                                                                      :children [{:type 'double?}
                                                                                                                 {:type 'double?}]}]}]]}]}]}]]}
-             (mu/to-map-syntax schema {::m/walk-map-entries true}))))))
+             (mu/to-map-syntax schema {::m/walk-entries true}))))))

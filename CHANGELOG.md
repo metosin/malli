@@ -14,6 +14,9 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## breaking changes in the pre-alpha era:
 
+* ????
+  * `m/children` returns 3-tuple (key, properties, schma) for `MapSchema`s
+  * `m/map-entries` is removed, `m/entries` returns 2-tuple (key, entry-schema)  
 * 4.8.2020
   * `:path` in explain is re-implemented: map keys by value, others by child index
   * `m/-walk` and `m/Walker` uses `:path`, not `:in`

@@ -61,7 +61,7 @@
          sorted #(sort-by (comp str first) %)
          wrap #(str "\"" % "\"")
          label (fn [k v] (str "\"{" k "|"
-                              (or (some->> (m/map-entries v) (map (fn [[k _ s]] (str k " " (esc (m/form s))))) (str/join "\\l"))
+                              (or (some->> (m/entries v) (map (fn [[k s]] (str k " " (esc (m/form s))))) (str/join "\\l"))
                                   (esc (m/form v)))
                               "\\l}\""))
          > #(apply println %&)

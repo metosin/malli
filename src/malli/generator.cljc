@@ -71,19 +71,19 @@
   (gen/one-of (keep #(some->> (-maybe-recur % options) (generator %)) (m/children schema options))))
 
 (defn -multi-gen [schema options]
-  (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/map-entries schema options))))
+  (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/entries schema options))))
 
 (defn -map-gen [schema options]
-  (let [entries (m/map-entries schema)
+  (let [entries (m/entries schema)
         [continue options] (-recur schema options)
-        value-gen (fn [k _ s] (gen/fmap (fn [v] [k v]) (generator s options)))
+        value-gen (fn [k s] (gen/fmap (fn [v] [k v]) (generator s options)))
         gen-req (->> entries
-                     (remove #(-> % second :optional))
-                     (map (fn [[k p s]] (value-gen k p s)))
+                     (remove #(-> % last m/properties :optional))
+                     (map (fn [[k s]] (value-gen k s)))
                      (apply gen/tuple))
         gen-opt (->> entries
-                     (filter #(-> % second :optional))
-                     (map (fn [[k p s]] (gen/one-of (into [(gen/return nil)] (if continue [(value-gen k p s)])))))
+                     (filter #(-> % last m/properties :optional))
+                     (map (fn [[k s]] (gen/one-of (into [(gen/return nil)] (if continue [(value-gen k s)])))))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 

@@ -221,7 +221,7 @@
            (as-> errors $
                  (mapv (fn [{:keys [schema path type] :as error}]
                          (if (= type ::m/extra-key)
-                           (let [keys (->> schema (m/map-entries) (map first) (set))
+                           (let [keys (->> schema (m/entries) (map first) (set))
                                  value (get-in (:value explanation) (butlast path))
                                  similar (-most-similar-to value (last path) keys)
                                  likely-misspelling-of (mapv (partial conj (vec (butlast path))) (vec similar))]

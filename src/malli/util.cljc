@@ -188,9 +188,9 @@
 ;;
 
 (defn transform-entries
-  "Transforms map-entries with f."
+  "Transforms entries with f."
   [schema f options]
-  (m/into-schema (m/type schema) (m/properties schema) (f (m/map-entries schema options))))
+  (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema options))))
 
 (defn optional-keys
   "Makes map keys optional."

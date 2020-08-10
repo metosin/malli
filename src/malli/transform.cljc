@@ -362,7 +362,7 @@
   ([{:keys [accept] :or {accept (comp (some-fn nil? true?) :closed m/properties)}}]
    (let [transform {:compile (fn [schema _]
                                (if (accept schema)
-                                 (if-let [ks (some->> schema m/map-entries (map first) seq set)]
+                                 (if-let [ks (some->> schema m/entries (map first) seq set)]
                                    (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x))))))}]
      (transformer
        {:decoders {:map transform}

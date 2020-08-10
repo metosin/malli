@@ -4,7 +4,8 @@
             [malli.edn :as me]
             [malli.transform :as mt]
             [malli.util :as mu]
-            [malli.registry :as mr]))
+            [malli.registry :as mr]
+            [clojure.walk :as walk]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -19,8 +20,8 @@
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
 
-(defn entries= [& entries]
-  (apply = (map (partial map #(update % (dec (count %)) m/form)) entries)))
+(defn schema= [& entries]
+  (apply = (map (partial walk/postwalk (fn [x] (if (m/schema? x) (m/form x) x))) entries)))
 
 (defn form= [& entries]
   (apply = (map m/form entries)))
@@ -47,11 +48,11 @@
               [:y {:optional true, :title "boolean"} 'boolean?]]
              forms)))
     (testing "entries"
-      (is (= [[:x 'int?]
-              [::x ::x]
-              [::y ::y]
-              [:y 'boolean?]]
-             (map #(update % 1 m/form) entries))))
+      (is (schema= [[:x [::m/entry 'int?]]
+                    [::x [::m/entry ::x]]
+                    [::y [::m/entry {:optional true} ::y]]
+                    [:y [::m/entry {:optional true :title "boolean"} 'boolean?]]]
+                   entries)))
     (testing "children"
       (is (= [[:x nil 'int?]
               [::x nil ::x]
@@ -78,8 +79,12 @@
   (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
   (is (= :maybe (m/eval "(m/type [:maybe int?])")))
   (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
-  (is (entries= [[:x 'int?] [:y 'string?]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
-  (is (entries= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])")))) ;
+  (is (schema= [[:x [::m/entry 'int?]] [:y [::m/entry 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
+  (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])")))) ;
+
+(m/eval "(m/entries [:map [:x int?] [:y string?]])")
+
+(m/eval "(m/entries [:map [:x int?] [:y string?]])")
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -533,11 +538,10 @@
       (is (nil? (m/explain schema valid)))
       (is (nil? (m/explain schema valid2)))
 
-      (is (entries=
-            [[:x nil boolean?]
-             [:y {:optional true} int?]
-             [:z {:optional false} string?]]
-            (m/children schema)))
+      (is (schema= [[:x nil 'boolean?]
+                    [:y {:optional true} 'int?]
+                    [:z {:optional false} 'string?]]
+                   (m/children schema)))
 
       (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
@@ -695,9 +699,9 @@
                                                                 :children [[:country nil {:type 'keyword?}]]}]]}]]}
              (mu/to-map-syntax schema)))
 
-      (is (entries= [[:sized nil [:map [:type keyword?] [:size int?]]]
-                     [:human nil [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
-                    (m/children schema)))
+      (is (schema= [[:sized nil [:map [:type 'keyword?] [:size 'int?]]]
+                    [:human nil [:map [:type 'keyword?] [:name 'string?] [:address [:map [:country 'keyword?]]]]]]
+                   (m/children schema)))
 
       (is (= [:multi
               {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}

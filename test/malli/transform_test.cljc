@@ -454,12 +454,12 @@
       (reset! state nil)
       (m/decode schema {:x 1, :y "2"} transformer)
       (is (= [[:decode :enter :map {:x 1, :y "2"}]
-              [:decode :enter :malli.core/entry 1]
-              [:decode :enter :malli.core/entry "2"]
+              [:decode :enter ::m/entry 1]
+              [:decode :enter ::m/entry "2"]
               [:decode :enter 'string? "2"]
-              [:decode :leave :malli.core/entry 1]
+              [:decode :leave ::m/entry 1]
               [:decode :leave 'string? "2"]
-              [:decode :leave :malli.core/entry "2"]
+              [:decode :leave ::m/entry "2"]
               [:decode :leave :map {:x 1, :y "2"}]]
              @state)))
 
@@ -467,12 +467,12 @@
       (reset! state nil)
       (m/encode schema {:x 1, :y "2"} transformer)
       (is (= [[:encode :enter :map {:x 1, :y "2"}]
-              [:encode :enter :malli.core/entry 1]
-              [:encode :enter :malli.core/entry "2"]
+              [:encode :enter ::m/entry 1]
+              [:encode :enter ::m/entry "2"]
               [:encode :enter 'string? "2"]
-              [:encode :leave :malli.core/entry 1]
+              [:encode :leave ::m/entry 1]
               [:encode :leave 'string? "2"]
-              [:encode :leave :malli.core/entry "2"]
+              [:encode :leave ::m/entry "2"]
               [:encode :leave :map {:x 1, :y "2"}]]
              @state)))))
 

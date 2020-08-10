@@ -289,7 +289,8 @@
    (reify IntoSchema
      (-into-schema [_ properties children options]
        (-check-children! ::entry properties children {:min 1, :max 1})
-       (let [[schema :as children] (map #(schema % options) children)]
+       (let [[schema :as children] (map #(schema % options) children)
+             form (-create-form ::entry properties (map -form children))]
          ^{:type ::schema}
          (reify Schema
            (-type [_] ::entry)
@@ -305,7 +306,7 @@
            (-properties [_] properties)
            (-options [_] (-options schema))
            (-children [_] children)
-           (-form [_] (-form schema))
+           (-form [_] form)
            LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))

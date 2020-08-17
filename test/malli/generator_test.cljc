@@ -28,6 +28,10 @@
     (let [schema [:string {:min 1, :max 4}]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
+  (testing "int"
+    (let [schema [:int {:min 1, :max 4}]]
+      (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+
   (testing "ref"
     (testing "recursion"
       (let [schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}

@@ -131,6 +131,7 @@
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
+(defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
 (defmethod -schema-generator :ref [schema options] (generator (m/-deref schema) options))
 (defmethod -schema-generator :schema [schema options] (generator (m/-deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/-deref schema) options))

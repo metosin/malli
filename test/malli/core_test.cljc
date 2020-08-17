@@ -330,6 +330,39 @@
 
       (is (= [:string {:min 1, :max 4}] (m/form schema)))))
 
+  (testing "int schemas"
+    (let [schema (m/schema [:int {:min 1, :max 4}])]
+
+      (is (true? (m/validate schema 1)))
+      (is (true? (m/validate schema 4)))
+      (is (false? (m/validate schema nil)))
+      (is (false? (m/validate schema "invalid")))
+      (is (false? (m/validate schema 5)))
+
+      (is (nil? (m/explain schema 1)))
+      (is (results= {:schema [:int {:min 1, :max 4}]
+                     :value false
+                     :errors [{:path [], :in [], :schema [:int {:min 1, :max 4}], :value false}]}
+                    (m/explain schema false)))
+      (is (results= {:schema [:int {:min 1, :max 4}]
+                     :value 5
+                     :errors [{:path [], :in [], :schema [:int {:min 1, :max 4}], :value 5}]}
+                    (m/explain schema 5)))
+
+      (is (= 1 (m/decode schema "1" mt/string-transformer)))
+      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+
+      (is (= 3 (m/decode
+                 [:int {:decode/string {:enter inc, :leave inc}}]
+                 1 mt/string-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema) 3)))
+
+      (is (= {:type :int, :properties {:min 1, :max 4}}
+             (mu/to-map-syntax schema)))
+
+      (is (= [:int {:min 1, :max 4}] (m/form schema)))))
+
   (testing "ref schemas"
 
     (testing "invalid refs fail"

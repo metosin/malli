@@ -288,6 +288,29 @@
                 :f "invalid"})
              (me/humanize)))))
 
+(deftest int-test
+  (is (= {:a ["should be an integer"]
+          :b ["should be at least 1"]
+          :c ["should be at most 4"]
+          :d ["should be between 1 and 4"]
+          :e ["should be an integer"]
+          :f ["should be 4"]}
+         (-> [:map
+              [:a :int]
+              [:b [:int {:min 1}]]
+              [:c [:int {:max 4}]]
+              [:d [:int {:min 1, :max 4}]]
+              [:e [:int {:min 1, :max 4}]]
+              [:f [:int {:min 4, :max 4}]]]
+             (m/explain
+               {:a "123"
+                :b 0
+                :c 5
+                :d 0
+                :e "123"
+                :f 5})
+             (me/humanize)))))
+
 (deftest re-test
   (testing "success"
     (is (= nil

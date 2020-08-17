@@ -255,6 +255,8 @@
      'nat-int? -string->long
      'zero? -string->long
 
+     :int -string->long
+
      :> -string->long
      :>= -string->long
      :< -string->long

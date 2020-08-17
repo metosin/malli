@@ -808,6 +808,7 @@
           (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
 
 (defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
+(defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred identity)}))
 
 (defn- -ref-schema []
   ^{:type ::into-schema}
@@ -1146,6 +1147,7 @@
    :re (-re-schema false)
    :fn (-fn-schema)
    :string (-string-schema)
+   :int (-int-schema)
    :ref (-ref-schema)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})

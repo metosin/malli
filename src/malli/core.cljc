@@ -854,7 +854,6 @@
                                    (into-schema :ref properties [value])
                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
           RefSchema
-          (-keep [_])
           (-ref [_] ref)
           (-deref [_] (-ref)))))))
 

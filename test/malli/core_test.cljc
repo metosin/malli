@@ -1259,7 +1259,51 @@
                                           [:user/abba "user/abba" mt/json-transformer]
                                           [:user/abba "abba" mt/string-transformer [:qualified-keyword {:encode/string {:enter name, :leave str}}]]]
                                  :map-syntax {:type :qualified-keyword}
-                                 :form :qualified-keyword}}]
+                                 :form :qualified-keyword}
+             :symbol {:schema :symbol
+                      :validate {:success ['abba 'user/abba]
+                                 :failure [nil "invalid"]}
+                      :explain [['abba]
+                                [false {:schema :symbol
+                                        :value false
+                                        :errors [{:path []
+                                                  :in []
+                                                  :schema :symbol
+                                                  :value false}]}]]
+                      :decode [["abba" 'abba mt/string-transformer]
+                               ["user/abba" 'user/abba mt/string-transformer]
+                               ["abba" 'abba mt/json-transformer]
+                               ["user/abba" 'user/abba mt/json-transformer]
+                               ["abba" 'user/abba mt/string-transformer [:symbol {:decode/string {:enter (partial str "user/"), :leave symbol}}]]]
+                      :encode [['abba "abba" mt/string-transformer]
+                               ['user/abba "user/abba" mt/string-transformer]
+                               ['abba "abba" mt/json-transformer]
+                               ['user/abba "user/abba" mt/json-transformer]
+                               ['user/abba "abba" mt/string-transformer [:symbol {:encode/string {:enter name, :leave str}}]]]
+                      :map-syntax {:type :symbol}
+                      :form :symbol}
+             :qualified-symbol {:schema :qualified-symbol
+                                :validate {:success ['user/abba]
+                                           :failure ['abba nil "invalid"]}
+                                :explain [['user/abba]
+                                          [false {:schema :qualified-symbol
+                                                  :value false
+                                                  :errors [{:path []
+                                                            :in []
+                                                            :schema :qualified-symbol
+                                                            :value false}]}]]
+                                :decode [["abba" 'abba mt/string-transformer]
+                                         ["user/abba" 'user/abba mt/string-transformer]
+                                         ["abba" 'abba mt/json-transformer]
+                                         ["user/abba" 'user/abba mt/json-transformer]
+                                         ["abba" 'user/abba mt/string-transformer [:qualified-symbol {:decode/string {:enter (partial str "user/"), :leave symbol}}]]]
+                                :encode [['abba "abba" mt/string-transformer]
+                                         ['user/abba "user/abba" mt/string-transformer]
+                                         ['abba "abba" mt/json-transformer]
+                                         ['user/abba "user/abba" mt/json-transformer]
+                                         ['user/abba "abba" mt/string-transformer [:qualified-symbol {:encode/string {:enter name, :leave str}}]]]
+                                :map-syntax {:type :qualified-symbol}
+                                :form :qualified-symbol}}]
 
       (testing (str "simple-schema: " type)
 

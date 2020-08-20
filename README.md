@@ -1581,11 +1581,12 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Running tests
 
-We use Kaocha as a test runner. Before running the tests, you need to install NPM dependencies.
+We use [Kaocha](https://github.com/lambdaisland/kaocha) and [cljs-test-runner](https://github.com/Olical/cljs-test-runner) as a test runners. Before running the tests, you need to install NPM dependencies.
 
 ```bash
 npm install
-bin/kaocha
+./bin/kaocha
+./bin/node
 ```
 
 ## Installing locally

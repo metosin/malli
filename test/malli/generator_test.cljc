@@ -106,7 +106,6 @@
       [:set {:min 10, :max 20} int?]
       [:string {:min 10, :max 20}]
 
-
       [:vector {:gen/min 10, :max 20} int?]
       [:set {:gen/min 10, :max 20} int?]
       [:string {:gen/min 10, :max 20}]

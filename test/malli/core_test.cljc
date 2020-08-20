@@ -298,71 +298,6 @@
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
-  (testing "string schemas"
-    (let [schema (m/schema [:string {:min 1, :max 4}])]
-
-      (is (true? (m/validate schema "abba")))
-      (is (false? (m/validate schema "")))
-      (is (false? (m/validate schema "invalid")))
-      (is (false? (m/validate schema false)))
-
-      (is (nil? (m/explain schema "1")))
-      (is (results= {:schema [:string {:min 1, :max 4}]
-                     :value false
-                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value false}]}
-                    (m/explain schema false)))
-      (is (results= {:schema [:string {:min 1, :max 4}]
-                     :value "invalid"
-                     :errors [{:path [], :in [], :schema [:string {:min 1, :max 4}], :value "invalid"}]}
-                    (m/explain schema "invalid")))
-
-      (is (= "1" (m/decode schema "1" mt/string-transformer)))
-      (is (= "1" (m/decode schema "1" mt/json-transformer)))
-
-      (is (= "<-->" (m/decode
-                      [:string {:decode/string {:enter #(str "<" %), :leave #(str % ">")}}]
-                      "--" mt/string-transformer)))
-
-      (is (true? (m/validate (over-the-wire schema) "123")))
-
-      (is (= {:type :string, :properties {:min 1, :max 4}}
-             (mu/to-map-syntax schema)))
-
-      (is (= [:string {:min 1, :max 4}] (m/form schema)))))
-
-  (testing "int schemas"
-    (let [schema (m/schema [:int {:min 1, :max 4}])]
-
-      (is (true? (m/validate schema 1)))
-      (is (true? (m/validate schema 4)))
-      (is (false? (m/validate schema nil)))
-      (is (false? (m/validate schema "invalid")))
-      (is (false? (m/validate schema 5)))
-
-      (is (nil? (m/explain schema 1)))
-      (is (results= {:schema [:int {:min 1, :max 4}]
-                     :value false
-                     :errors [{:path [], :in [], :schema [:int {:min 1, :max 4}], :value false}]}
-                    (m/explain schema false)))
-      (is (results= {:schema [:int {:min 1, :max 4}]
-                     :value 5
-                     :errors [{:path [], :in [], :schema [:int {:min 1, :max 4}], :value 5}]}
-                    (m/explain schema 5)))
-
-      (is (= 1 (m/decode schema "1" mt/string-transformer)))
-      (is (= "1" (m/decode schema "1" mt/json-transformer)))
-
-      (is (= 3 (m/decode
-                 [:int {:decode/string {:enter inc, :leave inc}}]
-                 1 mt/string-transformer)))
-
-      (is (true? (m/validate (over-the-wire schema) 3)))
-
-      (is (= {:type :int, :properties {:min 1, :max 4}}
-             (mu/to-map-syntax schema)))
-
-      (is (= [:int {:min 1, :max 4}] (m/form schema)))))
-
   (testing "ref schemas"
 
     (testing "invalid refs fail"
@@ -1149,10 +1084,10 @@
   (let [registry (merge
                    (m/comparator-schemas)
                    (m/base-schemas)
-                   {:int (m/-predicate-schema :int int?)
-                    :string (m/-predicate-schema :string string?)})]
-    (is (true? (m/validate [:or :int :string] 123 {:registry registry})))
-    (is (false? (m/validate [:or :int :string] 'kikka {:registry registry})))))
+                   {"int" (m/-predicate-schema "int" int?)
+                    "string" (m/-predicate-schema "string" string?)})]
+    (is (true? (m/validate [:or "int" "string"] 123 {:registry registry})))
+    (is (false? (m/validate [:or "int" "string"] 'kikka {:registry registry})))))
 
 (deftest encode-decode-test
   (testing "works with custom registry"
@@ -1211,3 +1146,87 @@
 
     (testing "Optional qualified keyword is optional"
       (is (m/validate schema {::id 123 :name "Malli"})))))
+
+(deftest simple-schemas
+  (testing "simple schemas"
+    (doseq [[type {:keys [schema validate explain decode encode map-syntax form]}]
+            {:string {:schema [:string {:min 1, :max 4}]
+                      :validate {:success ["abba" "a"]
+                                 :failure [nil "invalid" "" 1]}
+                      :explain [["abba"]
+                                [false {:schema [:string {:min 1, :max 4}]
+                                        :value false
+                                        :errors [{:path []
+                                                  :in []
+                                                  :schema [:string {:min 1, :max 4}]
+                                                  :value false}]}]
+                                [5 {:schema [:string {:min 1, :max 4}]
+                                    :value 5
+                                    :errors [{:path []
+                                              :in []
+                                              :schema [:string {:min 1, :max 4}]
+                                              :value 5}]}]]
+                      :decode [["1" "1" mt/string-transformer]
+                               ["1" "1" mt/json-transformer]
+                               ["--" "<-->" mt/string-transformer [:string {:decode/string {:enter #(str "<" %), :leave #(str % ">")}}]]]
+                      :encode [["1" "1" mt/string-transformer]
+                               ["1" "1" mt/json-transformer]
+                               ["--" "<-->" mt/string-transformer [:string {:encode/string {:enter #(str "<" %), :leave #(str % ">")}}]]]
+                      :map-syntax {:type :string, :properties {:min 1, :max 4}}
+                      :form [:string {:min 1, :max 4}]}
+             :int {:schema [:int {:min 1, :max 4}]
+                   :validate {:success [1 4]
+                              :failure [nil "invalid" 5]}
+                   :explain [[1]
+                             [false {:schema [:int {:min 1, :max 4}]
+                                     :value false
+                                     :errors [{:path []
+                                               :in []
+                                               :schema [:int {:min 1, :max 4}]
+                                               :value false}]}]
+                             [5 {:schema [:int {:min 1, :max 4}]
+                                 :value 5
+                                 :errors [{:path []
+                                           :in []
+                                           :schema [:int {:min 1, :max 4}]
+                                           :value 5}]}]]
+                   :decode [["1" 1 mt/string-transformer]
+                            ["1" "1" mt/json-transformer]
+                            [1 3 mt/string-transformer [:int {:decode/string {:enter inc, :leave inc}}]]]
+                   :encode [[1 "1" mt/string-transformer]
+                            [1 1 mt/json-transformer]
+                            [1 3 mt/string-transformer [:int {:encode/string {:enter inc, :leave inc}}]]]
+                   :map-syntax {:type :int, :properties {:min 1, :max 4}}
+                   :form [:int {:min 1, :max 4}]}}]
+
+      (testing (str "simple-schema: " type)
+
+        (testing "successful validation"
+          (doseq [x (:success validate)]
+            (is (true? (m/validate schema x)))))
+
+        (testing "failing validation"
+          (doseq [x (:failure validate)]
+            (is (false? (m/validate schema x)))))
+
+        (testing "explain"
+          (doseq [[value expected] explain]
+            (is (results= expected (m/explain schema value)))))
+
+        (testing "decoding"
+          (doseq [[value expected transformer ?schema] decode]
+            (is (= expected (m/decode (or ?schema schema) value transformer)))))
+
+        (testing "encoding"
+          (doseq [[value expected transformer ?schema] encode]
+            (is (= expected (m/encode (or ?schema schema) value transformer)))))
+
+        (testing "over-the-wire"
+          (doseq [x (:success validate)]
+            (is (true? (m/validate (over-the-wire schema) x)))))
+
+        (testing "form"
+          (is (= form (m/form schema))))
+
+        (testing "map-syntax"
+          (is (= map-syntax (mu/to-map-syntax schema))))))))

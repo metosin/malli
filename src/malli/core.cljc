@@ -769,47 +769,6 @@
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value)))))))
 
-(defn -min-max-pred [f]
-  (fn [{:keys [min max]}]
-    (cond
-      (not (or min max)) nil
-      (and min max) (fn [x] (let [size (f x)] (<= min size max)))
-      min (fn [x] (<= min (f x)))
-      max (fn [x] (<= (f x) max)))))
-
-(defn -simple-schema [{:keys [type pred property-pred]}]
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties children options]
-      (-check-children! type properties children {:min 0, :max 0})
-      (let [pvalidator (if property-pred (property-pred properties))
-            validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
-            form (-create-form type properties children)]
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] type)
-          (-validator [_] validator)
-          (-explainer [this path]
-            (fn explain [x in acc]
-              (if-not (validator x) (conj acc (-error path in this x)) acc)))
-          (-transformer [this transformer method options]
-            (-value-transformer transformer this method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (vec children) options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          LensSchema
-          (-keep [_])
-          (-get [_ _ default] default)
-          (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
-
-(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
-(defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred identity)}))
-
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -892,6 +851,50 @@
             RefSchema
             (-ref [_] id)
             (-deref [_] child)))))))
+
+(defn -min-max-pred [f]
+  (fn [{:keys [min max]}]
+    (cond
+      (not (or min max)) nil
+      (and (and min max) f) (fn [x] (let [size (f x)] (<= min size max)))
+      (and min max) (fn [x] (<= min x max))
+      (and min f) (fn [x] (<= min (f x)))
+      min (fn [x] (<= min x))
+      (and max f) (fn [x] (<= (f x) max))
+      max (fn [x] (<= x max)))))
+
+(defn -simple-schema [{:keys [type pred property-pred]}]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (-check-children! type properties children {:min 0, :max 0})
+      (let [pvalidator (if property-pred (property-pred properties))
+            validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
+            form (-create-form type properties children)]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] type)
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (if-not (validator x) (conj acc (-error path in this x)) acc)))
+          (-transformer [this transformer method options]
+            (-value-transformer transformer this method options))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (vec children) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          LensSchema
+          (-keep [_])
+          (-get [_ _ default] default)
+          (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
+
+(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
+(defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)

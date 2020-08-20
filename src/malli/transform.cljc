@@ -286,6 +286,7 @@
      'nat-int? -any->string
      'zero? -any->string
 
+     :int -any->string
      :> -any->string
      :>= -any->string
      :< -any->string

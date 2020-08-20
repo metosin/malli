@@ -24,12 +24,15 @@
         (doseq [value (mg/sample ?schema {:seed 123})]
           (is (m/validate ?schema value))))))
 
-  (testing "string"
-    (let [schema [:string {:min 1, :max 4}]]
-      (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
-
-  (testing "int"
-    (let [schema [:int {:min 1, :max 4}]]
+  (testing "simple schemas"
+    (doseq [schema [[:string {:min 1, :max 4}]
+                    [:int {:min 1, :max 4}]
+                    [:double {:min 0.0, :max 1.0}]
+                    :boolean
+                    :keyword
+                    :symbol
+                    :qualified-keyword
+                    :qualified-symbol]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
   (testing "ref"

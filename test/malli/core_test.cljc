@@ -1197,7 +1197,59 @@
                             [1 1 mt/json-transformer]
                             [1 3 mt/string-transformer [:int {:encode/string {:enter inc, :leave inc}}]]]
                    :map-syntax {:type :int, :properties {:min 1, :max 4}}
-                   :form [:int {:min 1, :max 4}]}}]
+                   :form [:int {:min 1, :max 4}]}
+             :double {:schema [:double {:min 1.0, :max 4.0}]
+                      :validate {:success [1.0 2.2 4.0]
+                                 :failure [nil "invalid" 0.5]}
+                      :explain [[1.0]
+                                [false {:schema [:double {:min 1.0, :max 4.0}]
+                                        :value false
+                                        :errors [{:path []
+                                                  :in []
+                                                  :schema [:double {:min 1.0, :max 4.0}]
+                                                  :value false}]}]
+                                [5.0 {:schema [:double {:min 1.0, :max 4.0}]
+                                      :value 5.0
+                                      :errors [{:path []
+                                                :in []
+                                                :schema [:double {:min 1.0, :max 4.0}]
+                                                :value 5.0}]}]]
+                      :decode [["1.1" 1.1 mt/string-transformer]
+                               ["1.1" "1.1" mt/json-transformer]
+                               [1.1 3.1 mt/string-transformer [:double {:decode/string {:enter inc, :leave inc}}]]]
+                      :encode [[1.1 "1.1" mt/string-transformer]
+                               [1.1 1.1 mt/json-transformer]
+                               [1.1 3.1 mt/string-transformer [:double {:encode/string {:enter inc, :leave inc}}]]]
+                      :map-syntax {:type :double, :properties {:min 1.0, :max 4.0}}
+                      :form [:double {:min 1.0, :max 4.0}]}
+             :keyword {:schema :keyword
+                       :validate {:success [:abba :user/abba]
+                                  :failure [nil "invalid"]}
+                       :explain [[:abba]
+                                 [false {:schema :keyword
+                                         :value false
+                                         :errors [{:path []
+                                                   :in []
+                                                   :schema :keyword
+                                                   :value false}]}]
+                                 [5.0 {:schema :keyword
+                                       :value 5.0
+                                       :errors [{:path []
+                                                 :in []
+                                                 :schema :keyword
+                                                 :value 5.0}]}]]
+                       :decode [["abba" :abba mt/string-transformer]
+                                ["user/abba" :user/abba mt/string-transformer]
+                                ["abba" :abba mt/json-transformer]
+                                ["user/abba" :user/abba mt/json-transformer]
+                                ["abba" :user/abba mt/string-transformer [:keyword {:decode/string {:enter (partial str "user/"), :leave keyword}}]]]
+                       :encode [[:abba "abba" mt/string-transformer]
+                                [:user/abba "user/abba" mt/string-transformer]
+                                [:abba "abba" mt/json-transformer]
+                                [:user/abba "user/abba" mt/json-transformer]
+                                [:user/abba "abba" mt/string-transformer [:keyword {:encode/string {:enter name, :leave str}}]]]
+                       :map-syntax {:type :keyword}
+                       :form :keyword}}]
 
       (testing (str "simple-schema: " type)
 

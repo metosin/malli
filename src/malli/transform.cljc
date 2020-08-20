@@ -223,6 +223,12 @@
    'double? -number->double
    'inst? -string->date
 
+   :double -number->double
+   :keyword -string->keyword
+   :symbol -string->symbol
+   :qualified-keyword -string->keyword
+   :qualified-symbol -string->symbol
+
    :map-of (-transform-map-keys m/-keyword->string)
    :set -sequential->set
    :sequential -sequential->seq
@@ -239,6 +245,10 @@
 
    'uuid? -any->string
 
+   :keyword m/-keyword->string
+   :symbol -any->string
+   :qualified-keyword m/-keyword->string
+   :qualified-symbol -any->string
    ;:uri any->string
    ;:bigdec any->string
 
@@ -256,6 +266,8 @@
      'zero? -string->long
 
      :int -string->long
+     :double -string->double
+     :boolean -string->boolean
 
      :> -string->long
      :>= -string->long
@@ -287,6 +299,9 @@
      'zero? -any->string
 
      :int -any->string
+     :double -any->string
+     ;:boolean -any->string
+
      :> -any->string
      :>= -any->string
      :< -any->string

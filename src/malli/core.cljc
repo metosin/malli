@@ -1106,7 +1106,7 @@
                                           'm/children children
                                           'm/map-entries map-entries}})
                 #(-fail! :sci-not-available {:code %}))
-      -eval? (some-fn symbol? string? sequential? symbol?)]
+      -eval? (some-fn symbol? string? sequential?)]
   (defn eval [?code]
     (cond (vector? ?code) ?code
           (-eval? ?code) (-eval ?code)

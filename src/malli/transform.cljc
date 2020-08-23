@@ -228,6 +228,7 @@
    :symbol -string->symbol
    :qualified-keyword -string->keyword
    :qualified-symbol -string->symbol
+   :uuid -string->uuid
 
    :map-of (-transform-map-keys m/-keyword->string)
    :set -sequential->set
@@ -249,6 +250,7 @@
    :symbol -any->string
    :qualified-keyword m/-keyword->string
    :qualified-symbol -any->string
+   :uuid -any->string
    ;:uri any->string
    ;:bigdec any->string
 

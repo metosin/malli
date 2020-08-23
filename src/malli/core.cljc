@@ -901,6 +901,7 @@
 (defn -symbol-schema [] (-simple-schema {:type :symbol, :pred symbol?}))
 (defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?}))
 (defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
+(defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -1147,7 +1148,8 @@
    :keyword (-keyword-schema)
    :symbol (-symbol-schema)
    :qualified-keyword (-qualified-keyword-schema)
-   :qualified-symbol (-qualified-symbol-schema)})
+   :qualified-symbol (-qualified-symbol-schema)
+   :uuid (-uuid-schema)})
 
 (defn base-schemas []
   {:and (-and-schema)

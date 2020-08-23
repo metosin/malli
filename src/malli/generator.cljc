@@ -138,6 +138,7 @@
 (defmethod -schema-generator :symbol [_ _] gen/symbol)
 (defmethod -schema-generator :qualified-keyword [_ _] (gen/such-that qualified-keyword? gen/keyword-ns))
 (defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
+(defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :ref [schema options] (generator (m/-deref schema) options))
 (defmethod -schema-generator :schema [schema options] (generator (m/-deref schema) options))

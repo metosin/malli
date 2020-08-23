@@ -104,6 +104,7 @@
 (defmethod accept :qualified-keyword [_ _ _ _] {:type "string"})
 (defmethod accept :symbol [_ _ _ _] {:type "string"})
 (defmethod accept :qualified-symbol [_ _ _ _] {:type "string"})
+(defmethod accept :uuid [_ _ _ _] {:type "string" :format "uuid"})
 
 (defn- -json-schema-walker [schema _ children options]
   (let [p (m/properties schema)]

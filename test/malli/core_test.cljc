@@ -1291,7 +1291,29 @@
                                          ['user/abba "user/abba" mt/json-transformer]
                                          ['user/abba "abba" mt/string-transformer [:qualified-symbol {:encode/string {:enter name, :leave str}}]]]
                                 :map-syntax {:type :qualified-symbol}
-                                :form :qualified-symbol}}]
+                                :form :qualified-symbol}
+             :uuid {:schema :uuid
+                    :validate {:success [#uuid"72b9bf3d-398c-472f-9360-c1a997c22240"]
+                               :failure ["72b9bf3d-398c-472f-9360-c1a997c22240" nil 123]}
+                    :explain [[#uuid"72b9bf3d-398c-472f-9360-c1a997c22240"]
+                              [false {:schema :uuid
+                                      :value false
+                                      :errors [{:path []
+                                                :in []
+                                                :schema :uuid
+                                                :value false}]}]]
+                    :decode [["72b9bf3d-398c-472f-9360-c1a997c22240" #uuid"72b9bf3d-398c-472f-9360-c1a997c22240" mt/string-transformer]
+                             ["abba" "abba" mt/string-transformer]
+                             ["abba" "abba" mt/json-transformer]
+                             [123 123 mt/json-transformer]
+                             ["9360-c1a997c22240" #uuid"72b9bf3d-398c-472f-9360-c1a997c22240" mt/string-transformer [:uuid {:decode/string {:enter (partial str "72b9bf3d-398c-472f-"), :leave mt/-string->uuid}}]]]
+                    :encode [[#uuid"72b9bf3d-398c-472f-9360-c1a997c22240" "72b9bf3d-398c-472f-9360-c1a997c22240" mt/string-transformer]
+                             ["abba" "abba" mt/string-transformer]
+                             ["abba" "abba" mt/json-transformer]
+                             [123 "123" mt/json-transformer]
+                             [#uuid"72b9bf3d-398c-472f-9360-c1a997c22240" "72b9bf3d-398c-472f-9360-c1a997c22240" mt/string-transformer [:uuid {:decode/string {:enter (partial str "72b9bf3d-398c-472f-"), :leave mt/-string->uuid}}]]]
+                    :map-syntax {:type :uuid}
+                    :form :uuid}}]
 
       (testing (str "simple-schema: " type)
 

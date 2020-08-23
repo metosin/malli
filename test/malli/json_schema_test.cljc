@@ -61,6 +61,7 @@
    [:qualified-keyword {:type "string"}]
    [:symbol {:type "string"}]
    [:qualified-symbol {:type "string"}]
+   [:uuid {:type "string", :format "uuid"}]
    ;; protocols
    [(reify
       m/Schema

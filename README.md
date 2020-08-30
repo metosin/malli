@@ -8,7 +8,7 @@ Plain data Schemas for Clojure/Script.
 
 - Schemas as plain data
 - [Validation](#examples) and [Value Transformation](#value-transformation)
-- First class [Error Messages](#error-messages) witg [Spell Checking](#spell-checking)
+- First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Serializable function schemas](#serializable-functions)
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values

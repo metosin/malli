@@ -895,6 +895,13 @@
 
 (defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
 (defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
+(defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
+(defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))
+(defn -keyword-schema [] (-simple-schema {:type :keyword, :pred keyword?}))
+(defn -symbol-schema [] (-simple-schema {:type :symbol, :pred symbol?}))
+(defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?}))
+(defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
+(defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -1099,7 +1106,7 @@
                                           'm/children children
                                           'm/map-entries map-entries}})
                 #(-fail! :sci-not-available {:code %}))
-      -eval? (some-fn symbol? string? sequential? symbol?)]
+      -eval? (some-fn symbol? string? sequential?)]
   (defn eval [?code]
     (cond (vector? ?code) ?code
           (-eval? ?code) (-eval ?code)
@@ -1133,6 +1140,17 @@
        (map (fn [[k v]] [k (-partial-predicate-schema k v)]))
        (into {}) (reduce-kv assoc nil)))
 
+(defn type-schemas []
+  {:string (-string-schema)
+   :int (-int-schema)
+   :double (-double-schema)
+   :boolean (-boolean-schema)
+   :keyword (-keyword-schema)
+   :symbol (-symbol-schema)
+   :qualified-keyword (-qualified-keyword-schema)
+   :qualified-symbol (-qualified-symbol-schema)
+   :uuid (-uuid-schema)})
+
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
@@ -1148,14 +1166,12 @@
    :multi (-multi-schema)
    :re (-re-schema false)
    :fn (-fn-schema)
-   :string (-string-schema)
-   :int (-int-schema)
    :ref (-ref-schema)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []
-  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (base-schemas)))
+  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (base-schemas)))
 
 (def default-registry
   (mr/registry (cond (identical? mr/type "default") (default-schemas)

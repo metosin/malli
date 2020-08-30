@@ -93,6 +93,19 @@
 (defmethod accept :string [_ schema _ _]
   (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))
 
+(defmethod accept :int [_ schema _ _]
+  (merge {:type "integer"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
+
+(defmethod accept :double [_ schema _ _]
+  (merge {:type "number"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
+
+(defmethod accept :boolean [_ _ _ _] {:type "boolean"})
+(defmethod accept :keyword [_ _ _ _] {:type "string"})
+(defmethod accept :qualified-keyword [_ _ _ _] {:type "string"})
+(defmethod accept :symbol [_ _ _ _] {:type "string"})
+(defmethod accept :qualified-symbol [_ _ _ _] {:type "string"})
+(defmethod accept :uuid [_ _ _ _] {:type "string" :format "uuid"})
+
 (defn- -json-schema-walker [schema _ children options]
   (let [p (m/properties schema)]
     (or (unlift p :json-schema)

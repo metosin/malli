@@ -1550,51 +1550,6 @@ Visualized with [Graphviz](https://graphviz.org/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
 
-## Entities and Values
-
-Schemas as just data, so they can be either inlined (values) or referenced (entities) in other schemas. For validation, they work the same way, but for model documentation, they are kept as separate.
-
-### Value Schemas
-
-Schemas can be represented as abstract schema syntax and referenced as values:
-
-```clj
-(def Age
-  [:and int? [:> 18]])
-
-(def User
-  [:map
-   [:name string?]
-   [:age Age]])
-
-(m/validate 
-  User 
-  {:name "Mirjami", :age 62})
-; => true
-```
-
-**NOTE**: Schema format validation only occurs when a `m/schema` is called, so here `Age` and `User` could contain syntax errors. 
-
-### Entity Schemas
-
-Wrapping schemas into `m/schema` makes them first class entities. Here `User` is an entity, while `Age` is a (embedded) value.
-
-```clj
-(def Age
-  [:and int? [:> 18]])
-
-(def User
-  (m/schema
-    [:map
-     [:name string?]
-     [:age Age]]))
-
-(m/validate 
-  User 
-  {:name "Mirjami", :age 62})
-; => true
-```
-
 ## Motivation
 
 We are building dynamic multi-tenant systems where data-models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
@@ -1626,11 +1581,12 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Running tests
 
-We use Kaocha as a test runner. Before running the tests, you need to install NPM dependencies.
+We use [Kaocha](https://github.com/lambdaisland/kaocha) and [cljs-test-runner](https://github.com/Olical/cljs-test-runner) as a test runners. Before running the tests, you need to install NPM dependencies.
 
 ```bash
 npm install
-bin/kaocha
+./bin/kaocha
+./bin/node
 ```
 
 ## Installing locally

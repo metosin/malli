@@ -54,7 +54,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -schema-schema -registry)
+(declare schema schema? into-schema into-schema? eval default-registry -predicate-schema -schema-schema -registry)
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -125,6 +125,52 @@
         build (fn [phase] (-chain phase (apply vector (phase parent-transformer) (map phase child-transformers))))]
     {:enter (build :enter)
      :leave (build :leave)}))
+
+(defn- -properties-and-children [[x :as xs]]
+  (if ((some-fn map? nil?) x)
+    [x (rest xs)]
+    [nil xs]))
+
+(defn- -register-var [registry v]
+  (let [name (-> v meta :name)
+        schema (-predicate-schema name @v)]
+    (-> registry
+        (assoc name schema)
+        (assoc @v schema))))
+
+(defn -registry
+  ([] default-registry)
+  ([{:keys [registry]}] (or (mr/registry registry) default-registry)))
+
+(defn- -lookup [?schema options]
+  (let [registry (-registry options)]
+    (or (mr/-schema registry ?schema)
+        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+
+(defn- -schema [?schema options]
+  (or (and (or (schema? ?schema) (into-schema? ?schema)) ?schema)
+      (-lookup ?schema options)
+      (-fail! ::invalid-schema {:schema ?schema})))
+
+(defn -into-transformer [x]
+  (cond
+    (satisfies? Transformer x) x
+    (fn? x) (-into-transformer (x))
+    :else (-fail! ::invalid-transformer {:value x})))
+
+(defn- -property-registry [m options f]
+  (let [options (assoc options ::allow-invalid-refs true)]
+    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
+
+(defn -properties-and-options [properties options f]
+  (if-let [r (some-> properties :registry)]
+    (let [options (update options :registry #(mr/composite-registry r (or % (-registry options))))]
+      [(assoc properties :registry (-property-registry r options f)) options])
+    [properties options]))
+
+;;
+;; Schemas
+;;
 
 (defn -leaf-schema [type ->validator-and-children]
   ^{:type ::into-schema}
@@ -309,11 +355,6 @@
            (-deref [_] schema))))))
   ([schema properties]
    (-into-schema (-entry-schema) properties [schema] (-options schema))))
-
-(defn- -properties-and-children [[x :as xs]]
-  (if ((some-fn map? nil?) x)
-    [x (rest xs)]
-    [nil xs]))
 
 (defn -parse-entry-syntax [children naked-keys options]
   (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
@@ -931,43 +972,6 @@
 (defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?}))
 (defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
 (defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
-
-(defn- -register-var [registry v]
-  (let [name (-> v meta :name)
-        schema (-predicate-schema name @v)]
-    (-> registry
-        (assoc name schema)
-        (assoc @v schema))))
-
-(defn -registry
-  ([] default-registry)
-  ([{:keys [registry]}] (or (mr/registry registry) default-registry)))
-
-(defn- -lookup [?schema options]
-  (let [registry (-registry options)]
-    (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
-
-(defn- -schema [?schema options]
-  (or (and (or (schema? ?schema) (into-schema? ?schema)) ?schema)
-      (-lookup ?schema options)
-      (-fail! ::invalid-schema {:schema ?schema})))
-
-(defn -into-transformer [x]
-  (cond
-    (satisfies? Transformer x) x
-    (fn? x) (-into-transformer (x))
-    :else (-fail! ::invalid-transformer {:value x})))
-
-(defn- -property-registry [m options f]
-  (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
-
-(defn -properties-and-options [properties options f]
-  (if-let [r (some-> properties :registry)]
-    (let [options (update options :registry #(mr/composite-registry r (or % (-registry options))))]
-      [(assoc properties :registry (-property-registry r options f)) options])
-    [properties options]))
 
 ;;
 ;; public api

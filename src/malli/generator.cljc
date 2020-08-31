@@ -112,6 +112,8 @@
 (defmethod -schema-generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
 (defmethod -schema-generator := [schema options] (gen/return (first (m/children schema options))))
 (defmethod -schema-generator :not= [schema options] (gen/such-that (partial not= (-> schema (m/children options) first)) gen/any-printable 100))
+(defmethod -schema-generator 'pos? [_ _] (gen/one-of [(-double-gen {:min 0.00001}) gen/s-pos-int]))
+(defmethod -schema-generator 'neg? [_ _] (gen/one-of [(-double-gen {:max -0.0001}) gen/s-neg-int]))
 
 (defmethod -schema-generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))

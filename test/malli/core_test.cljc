@@ -1359,9 +1359,3 @@
 
         (testing "map-syntax"
           (is (= map-syntax (mu/to-map-syntax schema))))))))
-
-(m/entries
-  [:map
-   [:x boolean?]
-   [:y {:optional true} int?]
-   [:z {:optional false} string?]])

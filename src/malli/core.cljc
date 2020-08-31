@@ -24,7 +24,7 @@
   (-form [this] "returns original form of the schema"))
 
 (defprotocol MapSchema
-  (-entries [this] "returns sequence of key-EntrySchema tuples"))
+  (-entries [this] "returns sequence of `key -val-schema` MapEntries"))
 
 (defprotocol LensSchema
   (-keep [this] "returns truthy if schema contributes to value path")

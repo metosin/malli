@@ -24,6 +24,8 @@
    'pos-int? {:error/message {:en "should be a positive int"}}
    'neg-int? {:error/message {:en "should be a negative int"}}
    'nat-int? {:error/message {:en "should be a non-negative int"}}
+   'pos? {:error/message {:en "should be positive"}}
+   'neg? {:error/message {:en "should be negative"}}
    'float? {:error/message {:en "should be a float"}}
    'double? {:error/message {:en "should be a double"}}
    'boolean? {:error/message {:en "should be a boolean"}}

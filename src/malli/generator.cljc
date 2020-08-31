@@ -117,7 +117,7 @@
 
 (defmethod -schema-generator :and [schema options] (gen/such-that (m/validator schema options) (-> schema (m/children options) first (generator options)) 100))
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))
-(defmethod -schema-generator ::m/entry [schema options] (generator (first (m/children schema)) options))
+(defmethod -schema-generator ::m/val [schema options] (generator (first (m/children schema)) options))
 (defmethod -schema-generator :map [schema options] (-map-gen schema options))
 (defmethod -schema-generator :map-of [schema options] (-map-of-gen schema options))
 (defmethod -schema-generator :multi [schema options] (-multi-gen schema options))

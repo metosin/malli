@@ -34,8 +34,8 @@
   (is (= "jabba/abba" (m/-keyword->string :jabba/abba)))
   (is (= "abba" (m/-keyword->string "abba"))))
 
-(deftest parse-entry-syntax-test
-  (let [{:keys [children entries forms]} (m/-parse-entry-syntax
+(deftest parse-entries-test
+  (let [{:keys [children entries forms]} (m/-parse-entries
                                            [[:x int?]
                                             ::x
                                             [::y {:optional true}]
@@ -48,10 +48,10 @@
               [:y {:optional true, :title "boolean"} 'boolean?]]
              forms)))
     (testing "entries"
-      (is (schema= [[:x [::m/entry 'int?]]
-                    [::x [::m/entry ::x]]
-                    [::y [::m/entry {:optional true} ::y]]
-                    [:y [::m/entry {:optional true :title "boolean"} 'boolean?]]]
+      (is (schema= [[:x [::m/val 'int?]]
+                    [::x [::m/val ::x]]
+                    [::y [::m/val {:optional true} ::y]]
+                    [:y [::m/val {:optional true :title "boolean"} 'boolean?]]]
                    entries)))
     (testing "children"
       (is (= [[:x nil 'int?]
@@ -61,12 +61,12 @@
              (map #(update % 2 m/form) children)))))
   (testing "duplicate keys"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
-                 (m/-parse-entry-syntax
+                 (m/-parse-entries
                    [[:x int?]
                     [:x boolean?]] true nil))))
   (testing "naked keys fails when not supported"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
-                 (m/-parse-entry-syntax
+                 (m/-parse-entries
                    [::x] false nil)))))
 
 (deftest eval-test
@@ -79,12 +79,8 @@
   (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
   (is (= :maybe (m/eval "(m/type [:maybe int?])")))
   (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
-  (is (schema= [[:x [::m/entry 'int?]] [:y [::m/entry 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
+  (is (schema= [[:x [::m/val 'int?]] [:y [::m/val 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
   (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])")))) ;
-
-(m/eval "(m/entries [:map [:x int?] [:y string?]])")
-
-(m/eval "(m/entries [:map [:x int?] [:y string?]])")
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -542,6 +538,14 @@
                     [:y {:optional true} 'int?]
                     [:z {:optional false} 'string?]]
                    (m/children schema)))
+
+      (is (true? (every? map-entry? (m/entries schema))))
+      (is (= [:x :y :z] (map key (m/entries schema))))
+
+      (is (schema= [[:x [::m/val 'boolean?]]
+                    [:y [::m/val {:optional true} 'int?]]
+                    [:z [::m/val {:optional false} 'string?]]]
+                   (m/entries schema)))
 
       (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
@@ -1355,3 +1359,9 @@
 
         (testing "map-syntax"
           (is (= map-syntax (mu/to-map-syntax schema))))))))
+
+(m/entries
+  [:map
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z {:optional false} string?]])

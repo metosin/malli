@@ -3,7 +3,7 @@
   (:require [malli.sci :as ms]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang IDeref))))
+                   (clojure.lang IDeref MapEntry))))
 
 ;;
 ;; protocols and records
@@ -54,7 +54,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -predicate-schema -schema-schema -registry)
+(declare schema schema? into-schema into-schema? eval default-registry -predicate-schema -val-schema -schema-schema -registry)
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -99,7 +99,7 @@
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
 (defn -get-entries [schema key default]
-  (or (if (and (vector? key) (= ::entry (nth key 0)))
+  (or (if (and (vector? key) (= ::val (nth key 0)))
         (some (fn [[k s]] (if (= k (nth key 1)) s)) (-entries schema))
         (some (fn [[k _ s]] (if (= k key) s)) (-children schema)))
       default))
@@ -111,6 +111,24 @@
                          (not @found) (conj new-child)
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (into-schema (-type schema) (-properties schema) children)))
+
+(defn -parse-entries [children naked-keys options]
+  (let [-entry (fn [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
+        -parse (fn [e] (let [[[k ?p ?v] f] (cond
+                                             (qualified-keyword? e) (if naked-keys [[e nil e] e])
+                                             (and (= 2 (count e)) (qualified-keyword? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
+                                             :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))) (keep identity) (vec))])
+                             _ (when (nil? k) (-fail! ::naked-keys-not-supported))
+                             [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
+                             e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
+                         {:children [e]
+                          :entries [(-entry k (-val-schema (last e) p))]
+                          :forms [f]}))
+        es (reduce (partial merge-with into) (mapv -parse children))
+        keys (->> es :entries (map first))]
+    (when-not (= keys (distinct keys))
+      (-fail! ::non-distinct-entry-keys {:keys keys}))
+    es))
 
 (defn -guard [pred tf]
   (if tf (fn [x] (if (pred x) (tf x) x))))
@@ -167,6 +185,17 @@
     (let [options (update options :registry #(mr/composite-registry r (or % (-registry options))))]
       [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
+
+(defn -min-max-pred [f]
+  (fn [{:keys [min max]}]
+    (cond
+      (not (or min max)) nil
+      (and (and min max) f) (fn [x] (let [size (f x)] (<= min size max)))
+      (and min max) (fn [x] (<= min x max))
+      (and min f) (fn [x] (<= min (f x)))
+      min (fn [x] (<= min x))
+      (and max f) (fn [x] (<= (f x) max))
+      max (fn [x] (<= x max)))))
 
 ;;
 ;; Schemas
@@ -322,23 +351,25 @@
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
 
-(defn -entry-schema
+(defn -val-schema
+  ([schema properties]
+   (-into-schema (-val-schema) properties [schema] (-options schema)))
   ([]
    ^{:type ::into-schema}
    (reify IntoSchema
      (-into-schema [_ properties children options]
-       (-check-children! ::entry properties children {:min 1, :max 1})
+       (-check-children! ::val properties children {:min 1, :max 1})
        (let [[schema :as children] (map #(schema % options) children)
-             form (-create-form ::entry properties (map -form children))]
+             form (-create-form ::val properties (map -form children))]
          ^{:type ::schema}
          (reify Schema
-           (-type [_] ::entry)
+           (-type [_] ::val)
            (-validator [_] (-validator schema))
            (-explainer [_ path] (-explainer schema path))
            (-transformer [this transformer method options]
              (-parent-children-transformer this children transformer method options))
            (-walk [this walker path options]
-             (if (::walk-entries options)
+             (if (::walk-entry-vals options)
                (if (-accept walker this path options)
                  (-outer walker this path [(-inner walker schema path options)] options))
                (-walk schema walker path options)))
@@ -349,29 +380,10 @@
            LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))
-           (-set [_ key value] (if (= 0 key) (-entry-schema value properties)))
+           (-set [_ key value] (if (= 0 key) (-val-schema value properties)))
            RefSchema
            (-ref [_])
-           (-deref [_] schema))))))
-  ([schema properties]
-   (-into-schema (-entry-schema) properties [schema] (-options schema))))
-
-(defn -parse-entry-syntax [children naked-keys options]
-  (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
-                                             (qualified-keyword? e) (if naked-keys [[e nil e] e])
-                                             (and (= 2 (count e)) (qualified-keyword? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
-                                             :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))) (keep identity) (vec))])
-                             _ (when (nil? k) (-fail! ::naked-keys-not-supported))
-                             [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
-                             e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
-                         {:children [e]
-                          :entries [[k (-entry-schema (last e) p)]]
-                          :forms [f]}))
-        es (reduce (partial merge-with into) (mapv -parse children))
-        keys (->> es :entries (map first))]
-    (when-not (= keys (distinct keys))
-      (-fail! ::non-distinct-entry-keys {:keys keys}))
-    es))
+           (-deref [_] schema)))))))
 
 (defn -map-schema
   ([]
@@ -380,7 +392,7 @@
    ^{:type ::into-schema}
    (reify IntoSchema
      (-into-schema [_ {:keys [closed] :as properties} children options]
-       (let [{:keys [children entries forms]} (-parse-entry-syntax children naked-keys options)
+       (let [{:keys [children entries forms]} (-parse-entries children naked-keys options)
              form (-create-form :map properties forms)
              keyset (->> entries (map first) (set))]
          ^{:type ::schema}
@@ -785,7 +797,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (let [{:keys [children entries forms]} (-parse-entry-syntax children false options)
+      (let [{:keys [children entries forms]} (-parse-entries children false options)
             form (-create-form :multi properties forms)
             dispatch (eval (:dispatch properties))
             dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
@@ -922,17 +934,6 @@
             (-ref [_] id)
             (-deref [_] child)))))))
 
-(defn -min-max-pred [f]
-  (fn [{:keys [min max]}]
-    (cond
-      (not (or min max)) nil
-      (and (and min max) f) (fn [x] (let [size (f x)] (<= min size max)))
-      (and min max) (fn [x] (<= min x max))
-      (and min f) (fn [x] (<= min (f x)))
-      min (fn [x] (<= min x))
-      (and max f) (fn [x] (<= (f x) max))
-      max (fn [x] (<= x max)))))
-
 (defn -simple-schema [{:keys [type pred property-pred]}]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -976,7 +977,6 @@
 ;;
 ;; public api
 ;;
-
 
 (defn schema? [x]
   (satisfies? Schema x))

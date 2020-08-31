@@ -574,22 +574,22 @@
     (testing "walking entries"
       (is (= {:type :map,
               :properties {:registry {::size [:enum "S" "M" "L"]}}
-              :children [[:id nil {:type ::m/entry
+              :children [[:id nil {:type ::m/val
                                    :children [{:type 'string?}]}]
-                         [:tags {:title "tag"} {:type ::m/entry
+                         [:tags {:title "tag"} {:type ::m/val
                                                 :properties {:title "tag"}
                                                 :children [{:type :set
                                                             :children [{:type 'keyword?}]}]}]
-                         [:size nil {:type ::m/entry
+                         [:size nil {:type ::m/val
                                      :children [{:type ::m/schema
                                                  :children [::size]}]}]
-                         [:address nil {:type ::m/entry
+                         [:address nil {:type ::m/val
                                         :children [{:type :vector,
                                                     :children [{:type :map,
-                                                                :children [[:street nil {:type ::m/entry
+                                                                :children [[:street nil {:type ::m/val
                                                                                          :children [{:type 'string?}]}]
-                                                                           [:lonlat nil {:type ::m/entry
+                                                                           [:lonlat nil {:type ::m/val
                                                                                          :children [{:type :tuple
                                                                                                      :children [{:type 'double?}
                                                                                                                 {:type 'double?}]}]}]]}]}]}]]}
-             (mu/to-map-syntax schema {::m/walk-entries true}))))))
+             (mu/to-map-syntax schema {::m/walk-entry-vals true}))))))

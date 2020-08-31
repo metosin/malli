@@ -74,7 +74,7 @@
 (defmethod accept :and [_ _ children _] {:allOf children})
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
-(defmethod accept ::m/entry [_ _ children _] (first children))
+(defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
   (let [required (->> children (filter (comp not :optional second)) (mapv first))]
     {:type "object"
@@ -126,4 +126,4 @@
   ([?schema]
    (transform ?schema nil))
   ([?schema options]
-   (m/walk ?schema -json-schema-walker (assoc options ::m/walk-entries true))))
+   (m/walk ?schema -json-schema-walker (assoc options ::m/walk-entry-vals true))))

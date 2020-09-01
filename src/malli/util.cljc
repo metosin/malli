@@ -93,7 +93,7 @@
                                      (c/update :form conj e2)
                                      (c/update :keys conj k2))))
                              {:keys #{}, :form []}
-                             (mapcat m/map-entries schemas))))
+                             (mapcat m/children schemas))))
                    (m/schema options)))))))
 
 (defn union
@@ -188,9 +188,9 @@
 ;;
 
 (defn transform-entries
-  "Transforms map-entries with f."
+  "Transforms entries with f."
   [schema f options]
-  (m/into-schema (m/type schema) (m/properties schema) (f (m/map-entries schema options))))
+  (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema options))))
 
 (defn optional-keys
   "Makes map keys optional."

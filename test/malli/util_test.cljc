@@ -224,7 +224,7 @@
 
         [:schema int?] 0 int?
         [:schema int?] 1 nil)
-      
+
       (is (mu/equals (mu/get [:tuple int? pos-int?] 9 boolean?) boolean?))
       (is (mu/equals (mu/get [:map [:x int?]] :y boolean?) boolean?)))
 
@@ -544,7 +544,7 @@
 (deftest to-from-maps-test
   (let [schema [:map {:registry {::size [:enum "S" "M" "L"]}}
                 [:id string?]
-                [:tags [:set keyword?]]
+                [:tags {:title "tag"} [:set keyword?]]
                 [:size ::size]
                 [:address
                  [:vector
@@ -556,16 +556,40 @@
       (is (= {:type :map,
               :properties {:registry {::size [:enum "S" "M" "L"]}}
               :children [[:id nil {:type 'string?}]
-                         [:tags nil {:type :set
-                                     :children [{:type 'keyword?}]}]
+                         [:tags {:title "tag"} {:type :set
+                                                :children [{:type 'keyword?}]}]
                          [:size nil {:type ::m/schema
                                      :children [::size]}]
                          [:address nil {:type :vector,
                                         :children [{:type :map,
                                                     :children [[:street nil {:type 'string?}]
                                                                [:lonlat nil {:type :tuple
-                                                                             :children [{:type 'double?} {:type 'double?}]}]]}]}]]}
+                                                                             :children [{:type 'double?}
+                                                                                        {:type 'double?}]}]]}]}]]}
              (mu/to-map-syntax schema))))
 
     (testing "from-map-syntax"
-      (is (true? (mu/equals schema (-> schema (mu/to-map-syntax) (mu/from-map-syntax))))))))
+      (is (true? (mu/equals schema (-> schema (mu/to-map-syntax) (mu/from-map-syntax))))))
+
+    (testing "walking entries"
+      (is (= {:type :map,
+              :properties {:registry {::size [:enum "S" "M" "L"]}}
+              :children [[:id nil {:type ::m/val
+                                   :children [{:type 'string?}]}]
+                         [:tags {:title "tag"} {:type ::m/val
+                                                :properties {:title "tag"}
+                                                :children [{:type :set
+                                                            :children [{:type 'keyword?}]}]}]
+                         [:size nil {:type ::m/val
+                                     :children [{:type ::m/schema
+                                                 :children [::size]}]}]
+                         [:address nil {:type ::m/val
+                                        :children [{:type :vector,
+                                                    :children [{:type :map,
+                                                                :children [[:street nil {:type ::m/val
+                                                                                         :children [{:type 'string?}]}]
+                                                                           [:lonlat nil {:type ::m/val
+                                                                                         :children [{:type :tuple
+                                                                                                     :children [{:type 'double?}
+                                                                                                                {:type 'double?}]}]}]]}]}]}]]}
+             (mu/to-map-syntax schema {::m/walk-entry-vals true}))))))

@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## breaking changes in the pre-alpha era:
 
-* ????
+* 1.9.2020
   * `m/children` returns 3-tuple (key, properties, schma) for `MapSchema`s
   * `m/map-entries` is removed, `m/entries` returns a `MapEntry` of key & `m/-val-schema`  
 * 4.8.2020

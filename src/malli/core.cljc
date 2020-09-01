@@ -978,13 +978,16 @@
 ;; public api
 ;;
 
-(defn schema? [x]
-  (satisfies? Schema x))
+(defn schema?
+  "Checks if x is a Schema instance"
+  [x] (satisfies? Schema x))
 
-(defn into-schema? [x]
-  (satisfies? IntoSchema x))
+(defn into-schema?
+  "Checks if x is a IntoSchema instance"
+  [x] (satisfies? IntoSchema x))
 
 (defn into-schema
+  "Creates a Schema instance out of type, optional properties map and children"
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
@@ -992,6 +995,12 @@
      (-into-schema (-schema type options) (if (seq properties) properties) children options))))
 
 (defn schema
+  "Creates a Schema object from any of the following:
+
+   - Schema instance (just returns it)
+   - IntoSchema instance
+   - Schema vector syntax, e.g. [:string {:min 1}]
+   - Qualified Keyword or String, using a registry lookup"
   ([?schema]
    (schema ?schema nil))
   ([?schema options]
@@ -1005,24 +1014,29 @@
              (-> ?schema (-schema options) (schema options))))))
 
 (defn form
+  "Returns the Schema form"
   ([?schema]
    (form ?schema nil))
   ([?schema options]
    (-form (schema ?schema options))))
 
 (defn properties
+  "Returns the Schema properties"
   ([?schema]
    (properties ?schema nil))
   ([?schema options]
    (-properties (schema ?schema options))))
 
 (defn options
+  "Returns options used in creating the Schema"
   ([?schema]
    (options ?schema nil))
   ([?schema options]
    (-options (schema ?schema options))))
 
 (defn children
+  "Returns the Schema children with all Child Schemas resolved. For
+  `MapEntry` Schemas, returns a always tuple3 of `key ?properties child`"
   ([?schema]
    (children ?schema nil))
   ([?schema options]
@@ -1030,12 +1044,16 @@
      (-children schema))))
 
 (defn type
+  "Returns the Schema type."
   ([?schema]
    (type ?schema nil))
   ([?schema options]
    (-type (schema ?schema options))))
 
 (defn walk
+  "Postwalks recursively over the Schema and it's children.
+   The walker callback is a arity4 function with the following
+   arguments: schema, properties, (walked) children and optins."
   ([?schema f]
    (walk ?schema f nil))
   ([?schema f options]
@@ -1048,18 +1066,22 @@
      [] options)))
 
 (defn validator
+  "Returns an pure validation function of type `x -> boolean` for a given Schema"
   ([?schema]
    (validator ?schema nil))
   ([?schema options]
    (-validator (schema ?schema options))))
 
 (defn validate
+  "Validates a value againsta a given schema. Creates the `validator` for every call.
+   When performance matters, (re-)use `validator` instead."
   ([?schema value]
    (validate ?schema value nil))
   ([?schema value options]
    ((validator ?schema options) value)))
 
 (defn explainer
+  "Returns an pure explainer function of type `x -> explanation` for a given Schema"
   ([?schema]
    (explainer ?schema nil))
   ([?schema options]
@@ -1075,13 +1097,15 @@
            :errors errors}))))))
 
 (defn explain
+  "Explains a value againsta a given schema. Creates the `explainer` for every call.
+   When performance matters, (re-)use `explainer` instead."
   ([?schema value]
    (explain ?schema value nil))
   ([?schema value options]
    ((explainer ?schema options) value [] [])))
 
 (defn decoder
-  "Creates a value decoding transformer given a transformer and a schema."
+  "Creates a value decoding function given a transformer and a schema."
   ([?schema t]
    (decoder ?schema nil t))
   ([?schema options t]
@@ -1121,7 +1145,28 @@
      value)))
 
 (defn entries
-  "Returns a sequence of 2-element tuples of type `key EntrySchema`"
+  "Returns `MapSchema` children as a sequence of `clojure.lang/MapEntry`s
+   where the values child schemas wrapped in `:malli.core/val` Schemas,
+   with the entry properties as properties.
+
+   Using `entries` enable usage of entry properties in walking and value
+   transformation.
+
+      (def schema
+        [:map
+         [:x int?]
+         [:y {:optional true} int?]])
+
+      (m/children schema)
+      ; [[:x nil int?]
+      ;  [:y {:optional true} int?]]
+
+      (m/entries schema)
+      ; [[:x [:malli.core/val int?]]
+      ;  [:y [:malli.core/val {:optional true} int?]]]
+
+      (map key (m/entries schema))
+      ; (:x :y)"
   ([?schema]
    (entries ?schema nil))
   ([?schema options]

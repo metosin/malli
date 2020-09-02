@@ -92,11 +92,12 @@
     (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
 
 #?(:clj
-   ;; [com.gfredericks/test.chuck "0.2.10"+]
-   (when-let [string-from-regex @(dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
-     (defn -re-gen [schema options]
+   (defn -re-gen [schema options]
+     ;; [com.gfredericks/test.chuck "0.2.10"+]
+     (if-let [string-from-regex @(dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
        (let [re (or (first (m/children schema options)) (m/form schema options))]
-         (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1")))))))
+         (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
+       (m/-fail! :test-chuck-not-available))))
 
 ;;
 ;; generators

@@ -957,7 +957,7 @@ Schemas can be used to generate values:
 (mg/generate pos-int? {:seed 10, :size 100})
 ;; => 55740
 
-;; regexs work too
+;; regexs works too (only clj if [com.gfredericks/test.chuck "0.2.10"+] available)
 (mg/generate 
   [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] 
   {:seed 42, :size 10})

@@ -311,6 +311,12 @@
             #?(:clj Exception, :cljs js/Error)
             (m/schema [:ref int?]))))
 
+    (testing "lazy refs allow invalid refs"
+      (let [schema (m/schema [:ref {:lazy true} "invalid"])]
+        (is schema)
+        (testing "fail when used"
+          (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validate schema 1))))))
+
     (testing "recursion"
       (let [ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
                                 ::cons])]

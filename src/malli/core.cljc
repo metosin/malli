@@ -865,12 +865,13 @@
 (defn- -ref-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
+    (-into-schema [_ {:keys [lazy] :as properties} [ref :as children] {::keys [allow-invalid-refs] :as options}]
       (-check-children! :ref properties children {:min 1, :max 1})
       (when-not (-reference? ref)
         (-fail! ::invalid-ref {:ref ref}))
       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
-            -ref (or (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+            -ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
+                     (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
                      (when-not allow-invalid-refs
                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
             form (-create-form :ref properties children)]

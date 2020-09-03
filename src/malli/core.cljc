@@ -814,11 +814,7 @@
                   (validator x)
                   false))))
           (-explainer [this path]
-            (let [explainers (reduce
-                               (fn [acc [key schema]]
-                                 (let [explainer (-explainer schema (conj path key))]
-                                   (assoc acc key (fn [x in acc] (explainer x in acc)))))
-                               {} entries)]
+            (let [explainers (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries)]
               (fn [x in acc]
                 (if-let [explainer (explainers (dispatch x))]
                   (explainer x in acc)

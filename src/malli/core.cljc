@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [eval type -deref -lookup -key])
+  (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
@@ -1169,6 +1169,13 @@
    (if-let [schema (schema ?schema options)]
      (if (satisfies? MapSchema schema)
        (-entries schema)))))
+
+(defn deref
+  "Derefs a `RefSchema`."
+  ([?schema]
+   (deref ?schema nil))
+  ([?schema options]
+   (some-> (schema ?schema options) (-deref))))
 
 ;;
 ;; eval

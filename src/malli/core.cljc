@@ -55,7 +55,7 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -simple-schema -val-schema -schema-schema -registry)
+(declare schema schema? into-schema into-schema? eval default-registry -simple-schema -val-schema -ref-schema -schema-schema -registry)
 
 (defn -safe-pred [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
@@ -95,6 +95,9 @@
 (defn -reference? [?schema]
   (or (string? ?schema) (qualified-keyword? ?schema)))
 
+(defn -lazy [ref options]
+  (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
+
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
@@ -115,17 +118,18 @@
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (into-schema (-type schema) (-properties schema) children)))
 
-(defn -parse-entries [children naked-keys options]
+(defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
   (let [-entry (fn [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
         -parse (fn [e] (let [[[k ?p ?v] f] (cond
-                                             (qualified-keyword? e) (if naked-keys [[e nil e] e])
-                                             (and (= 2 (count e)) (qualified-keyword? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
+                                             (-reference? e) (if naked-keys [[e nil e] e])
+                                             (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
                                              :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))) (keep identity) (vec))])
                              _ (when (nil? k) (-fail! ::naked-keys-not-supported))
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
-                             e [k p (schema (or ?s (if (qualified-keyword? k) f)) options)]]
-                         {:children [e]
-                          :entries [(-entry k (-val-schema (last e) p))]
+                             s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
+                             c [k p (schema s options)]]
+                         {:children [c]
+                          :entries [(-entry k (-val-schema (last c) p))]
                           :forms [f]}))
         es (reduce (partial merge-with into) (mapv -parse children))
         keys (->> es :entries (map first))]
@@ -394,11 +398,11 @@
 (defn -map-schema
   ([]
    (-map-schema {:naked-keys true}))
-  ([{:keys [naked-keys]}]
+  ([opts] ;; :naked-keys
    ^{:type ::into-schema}
    (reify IntoSchema
      (-into-schema [_ {:keys [closed] :as properties} children options]
-       (let [{:keys [children entries forms]} (-parse-entries children naked-keys options)
+       (let [{:keys [children entries forms]} (-parse-entries children opts options)
              form (-create-form :map properties forms)
              keyset (->> entries (map first) (set))]
          ^{:type ::schema}
@@ -807,109 +811,116 @@
                                    (into-schema :maybe properties [value])
                                    (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
 
-(defn- -multi-schema []
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties children options]
-      (let [{:keys [children entries forms]} (-parse-entries children false options)
-            form (-create-form :multi properties forms)
-            dispatch (eval (:dispatch properties))
-            dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
-        (when-not dispatch
-          (-fail! ::missing-property {:key :dispatch}))
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] :multi)
-          (-type-properties [_])
-          (-validator [_]
-            (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
-              (fn [x]
-                (if-let [validator (validators (dispatch x))]
-                  (validator x)
-                  false))))
-          (-explainer [this path]
-            (let [explainers (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries)]
-              (fn [x in acc]
-                (if-let [explainer (explainers (dispatch x))]
-                  (explainer x in acc)
-                  (conj acc (-error path in this x ::invalid-dispatch-value))))))
-          (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (reduce-kv
-                                       (fn [acc k s] (assoc acc k (-transformer s transformer method options)))
-                                       {} dispatch-map)
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ->children (->> child-transformers
-                                                (keep (fn [[k v]] (if-let [t (phase v)] [k t])))
-                                                (into {}))
-                                ->child (if (seq ->children) (fn [x] (if-let [t (->children (dispatch x))] (t x) x)))]
-                            (-chain phase [->this ->child])))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-entries walker path entries options) options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          MapSchema
-          (-entries [_] entries)
-          LensSchema
-          (-keep [_])
-          (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this key value)))))))
+(defn -multi-schema
+  ([]
+   (-multi-schema {:naked-keys true}))
+  ([opts]
+   ^{:type ::into-schema}
+   (reify IntoSchema
+     (-into-schema [_ properties children options]
+       (let [type (or (:type opts) :multi)
+             {:keys [children entries forms]} (-parse-entries children opts options)
+             form (-create-form type properties forms)
+             dispatch (eval (or (:dispatch properties) (:dispatch opts)))
+             dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
+         (when-not dispatch
+           (-fail! ::missing-property {:key :dispatch}))
+         ^{:type ::schema}
+         (reify
+           Schema
+           (-type [_] type)
+           (-type-properties [_] (:type-properties opts))
+           (-validator [_]
+             (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
+               (fn [x]
+                 (if-let [validator (validators (dispatch x))]
+                   (validator x)
+                   false))))
+           (-explainer [this path]
+             (let [explainers (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries)]
+               (fn [x in acc]
+                 (if-let [explainer (explainers (dispatch x))]
+                   (explainer x in acc)
+                   (conj acc (-error path in this x ::invalid-dispatch-value))))))
+           (-transformer [this transformer method options]
+             (let [this-transformer (-value-transformer transformer this method options)
+                   child-transformers (reduce-kv
+                                        (fn [acc k s] (assoc acc k (-transformer s transformer method options)))
+                                        {} dispatch-map)
+                   build (fn [phase]
+                           (let [->this (phase this-transformer)
+                                 ->children (->> child-transformers
+                                                 (keep (fn [[k v]] (if-let [t (phase v)] [k t])))
+                                                 (into {}))
+                                 ->child (if (seq ->children) (fn [x] (if-let [t (->children (dispatch x))] (t x) x)))]
+                             (-chain phase [->this ->child])))]
+               {:enter (build :enter)
+                :leave (build :leave)}))
+           (-walk [this walker path options]
+             (if (-accept walker this path options)
+               (-outer walker this path (-inner-entries walker path entries options) options)))
+           (-properties [_] properties)
+           (-options [_] options)
+           (-children [_] children)
+           (-form [_] form)
+           MapSchema
+           (-entries [_] entries)
+           LensSchema
+           (-keep [_])
+           (-get [this key default] (-get-entries this key default))
+           (-set [this key value] (-set-entries this key value))))))))
 
-(defn- -ref-schema []
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ {:keys [lazy] :as properties} [ref :as children] {::keys [allow-invalid-refs] :as options}]
-      (-check-children! :ref properties children {:min 1, :max 1})
-      (when-not (-reference? ref)
-        (-fail! ::invalid-ref {:ref ref}))
-      (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
-            -ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
-                     (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
-                     (when-not allow-invalid-refs
-                       (-fail! ::invalid-ref {:type :ref, :ref ref})))
-            form (-create-form :ref properties children)]
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] :ref)
-          (-type-properties [_])
-          (-validator [_]
-            (let [validator (-memoize (fn [] (-validator (-ref))))]
-              (fn [x] ((validator) x))))
-          (-explainer [_ path]
-            (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
-              (fn [x in acc] ((explainer) x in acc))))
-          (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
-                  enter (-memoize (fn [] (:enter (-transformer (-ref) transformer method options))))
-                  leave (-memoize (fn [] (:leave (-transformer (-ref) transformer method options))))]
-              {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
-               :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
-          (-walk [this walker path options]
-            (let [accept (fn [] (-inner walker (-ref) path (update options ::ref-walked (fnil conj #{}) ref)))
-                  accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))
-                  options (assoc options ::ref-walk accept-ref)]
-              (if (-accept walker this path options)
-                (-outer walker this path (vec children) options))))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          LensSchema
-          (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
-          (-set [this key value] (if (= key 0)
-                                   (into-schema :ref properties [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
-          RefSchema
-          (-ref [_] ref)
-          (-deref [_] (-ref)))))))
+(defn -ref-schema
+  ([]
+   (-ref-schema nil))
+  ([{:keys [lazy type-properties]}]
+   ^{:type ::into-schema}
+   (reify IntoSchema
+     (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
+       (-check-children! :ref properties children {:min 1, :max 1})
+       (when-not (-reference? ref)
+         (-fail! ::invalid-ref {:ref ref}))
+       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
+             -ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
+                      (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+                      (when-not allow-invalid-refs
+                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
+             form (-create-form :ref properties children)]
+         ^{:type ::schema}
+         (reify
+           Schema
+           (-type [_] :ref)
+           (-type-properties [_] type-properties)
+           (-validator [_]
+             (let [validator (-memoize (fn [] (-validator (-ref))))]
+               (fn [x] ((validator) x))))
+           (-explainer [_ path]
+             (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
+               (fn [x in acc] ((explainer) x in acc))))
+           (-transformer [this transformer method options]
+             (let [this-transformer (-value-transformer transformer this method options)
+                   enter (-memoize (fn [] (:enter (-transformer (-ref) transformer method options))))
+                   leave (-memoize (fn [] (:leave (-transformer (-ref) transformer method options))))]
+               {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
+                :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
+           (-walk [this walker path options]
+             (let [accept (fn [] (-inner walker (-ref) path (update options ::ref-walked (fnil conj #{}) ref)))
+                   accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))
+                   options (assoc options ::ref-walk accept-ref)]
+               (if (-accept walker this path options)
+                 (-outer walker this path (vec children) options))))
+           (-properties [_] properties)
+           (-options [_] options)
+           (-children [_] children)
+           (-form [_] form)
+           LensSchema
+           (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
+           (-set [this key value] (if (= key 0)
+                                    (into-schema :ref properties [value])
+                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
+           RefSchema
+           (-ref [_] ref)
+           (-deref [_] (-ref))))))))
 
 (defn -schema-schema [{:keys [id raw]}]
   ^{:type ::into-schema}

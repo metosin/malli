@@ -673,8 +673,8 @@
 
       (is (results= {:schema schema,
                      :value {:type :worm}
-                     :errors [{:path []
-                               :in []
+                     :errors [{:path [:type]
+                               :in [:type]
                                :schema schema
                                :value {:type :worm}
                                :type :malli.core/invalid-dispatch-value}]}

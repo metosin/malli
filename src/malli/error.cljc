@@ -16,6 +16,8 @@
    ::m/extra-key {:error/message {:en "disallowed key"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
+   ::misspelled-value {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
+                                        (str "did you mean " (str/join " or " (map last likely-misspelling-of))))}}
    'any? {:error/message {:en "should be any"}}
    'some? {:error/message {:en "shoud be some"}}
    'number? {:error/message {:en "should be a number"}}
@@ -151,16 +153,16 @@
 
 ;; a tricky part is is that a keyword is not considered misspelled
 ;; if its substitute is already present in the original map
-(defn- -likely-misspelled [value known-keys]
+(defn- -likely-misspelled [keys known-keys]
   (fn [key]
     (when-not (known-keys key)
       (->> known-keys
            (filter #(-similar-key % key))
-           (remove (set (keys value)))
+           (remove keys)
            not-empty))))
 
-(defn- -most-similar-to [value key known-keys]
-  (->> ((-likely-misspelled value known-keys) key)
+(defn- -most-similar-to [keys key known-keys]
+  (->> ((-likely-misspelled keys known-keys) key)
        (map (juxt #(-levenshtein (str %) (str key)) identity))
        (filter first)
        (sort-by first)
@@ -215,20 +217,27 @@
    (with-spell-checking explanation nil))
   ([explanation {:keys [keep-likely-misspelled-of]}]
    (when explanation
-     (let [!likely-misspelling-of (atom #{})]
+     (let [!likely-misspelling-of (atom #{})
+           types {::m/extra-key (fn [_ path value] [::misspelled-key (last path) (-> value keys set (or #{}))])
+                  ::m/invalid-dispatch-value (fn [schema _ value]
+                                               (let [dispatch (:dispatch (m/properties schema))]
+                                                 (if (keyword? dispatch)
+                                                   (let [value (dispatch value)]
+                                                     [::misspelled-value value #{value}]))))}]
        (update
          explanation
          :errors
          (fn [errors]
            (as-> errors $
                  (mapv (fn [{:keys [schema path type] :as error}]
-                         (if (= type ::m/extra-key)
-                           (let [keys (->> schema (m/entries) (map first) (set))
+                         (if-let [get-keys (types type)]
+                           (let [known-keys (->> schema (m/entries) (map first) (set))
                                  value (get-in (:value explanation) (butlast path))
-                                 similar (-most-similar-to value (last path) keys)
+                                 [error-type key keys] (get-keys schema path value)
+                                 similar (-most-similar-to keys key known-keys)
                                  likely-misspelling-of (mapv (partial conj (vec (butlast path))) (vec similar))]
                              (swap! !likely-misspelling-of into likely-misspelling-of)
-                             (cond-> error similar (assoc :type ::misspelled-key
+                             (cond-> error similar (assoc :type error-type
                                                           ::likely-misspelling-of likely-misspelling-of)))
                            error)) $)
                  (if-not keep-likely-misspelled-of

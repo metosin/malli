@@ -821,7 +821,7 @@
        (let [type (or (:type opts) :multi)
              {:keys [children entries forms]} (-parse-entries children opts options)
              form (-create-form type properties forms)
-             dispatch (eval (or (:dispatch properties) (:dispatch opts)))
+             dispatch (eval (:dispatch properties))
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
          (when-not dispatch
            (-fail! ::missing-property {:key :dispatch}))
@@ -837,11 +837,12 @@
                    (validator x)
                    false))))
            (-explainer [this path]
-             (let [explainers (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries)]
+             (let [explainers (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries)
+                   ->path (if (keyword? dispatch) #(conj % dispatch) identity)]
                (fn [x in acc]
                  (if-let [explainer (explainers (dispatch x))]
                    (explainer x in acc)
-                   (conj acc (-error path in this x ::invalid-dispatch-value))))))
+                   (conj acc (-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    child-transformers (reduce-kv

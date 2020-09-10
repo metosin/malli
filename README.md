@@ -2,7 +2,7 @@
 
 Plain data Schemas for Clojure/Script.
 
-**STATUS**: *Pre-alpha*, in design and prototyping phase.
+**STATUS**: *Pre-alpha*, finalizing design.
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 

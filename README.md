@@ -1323,7 +1323,7 @@ Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:list`, `:sequential`, `:
 
 ### Custom registry
 
-Example to create a custom registry without the default core predicates and with `:bool` and `:int` Schemas:
+Example to create a custom registry without the default core predicates and with `:bool` and `:pos-int` Schemas:
 
 ```clj
 (def registry
@@ -1331,22 +1331,22 @@ Example to create a custom registry without the default core predicates and with
     (m/class-schemas)
     (m/comparator-schemas)
     (m/base-schemas)
-    {:int (m/fn-schema :int int?)
-     :bool (m/fn-schema :bool boolean?)}))
+    {:bool (m/-simple-schema {:type :bool, :pred boolean?})
+     :pos-int (m/-simple-schema {:type :pos-int, :pred pos-int?})}))
 
-(m/validate [:or :int :bool] 'kikka {:registry registry})
+(m/validate [:or :bool :pos-int] 'kikka {:registry registry})
 ; => false
 
-(m/validate [:or :int :bool] 123 {:registry registry})
+(m/validate [:or :bool :post-int] 123 {:registry registry})
 ; => true
 ```
 
 Predicate Schemas don't work anymore:
 
 ```clj
-(m/validate int? 123 {:registry registry})
+(m/validate pos-int? 123 {:registry registry})
 ; Syntax error (ExceptionInfo) compiling
-; :malli.core/invalid-schema
+; :malli.core/invalid-schema {:schema pos-int?}
 ```
 
 ### Local registry

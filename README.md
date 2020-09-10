@@ -1574,9 +1574,11 @@ So, we decided to spin out our own library, which would do all the things we fee
 - JSON Schema https://json-schema.org/understanding-json-schema/index.html
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
+- Minimallist https://github.com/green-coder/minimallist
 - Core.typed https://github.com/clojure/core.typed
 - TypeScript https://www.typescriptlang.org/
 - Struct https://funcool.github.io/struct/latest/
+- Seqexp https://github.com/cgrand/seqexp
 - JOI https://github.com/hapijs/joi
 
 ## Running tests

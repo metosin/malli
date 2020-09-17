@@ -1,7 +1,15 @@
 (ns malli.json-schema.parse
   (:require [malli.core :as m]
             [malli.util :as mu]
+            [clojure.set :as set]
             [clojure.string :as str]))
+
+(def annotations #{:title :description :default :examples})
+
+(defn annotations->properties [js-schema]
+  (-> js-schema
+      (select-keys annotations)
+      (set/rename-keys {:examples :json-schema/examples})))
 
 ;; Utility Functions
 (defn- map-values
@@ -17,41 +25,40 @@
 
 (defn schema->malli [js-schema]
   (let [-keys (set (keys js-schema))]
-    (cond
-      (-keys :type) (type->malli js-schema)
+    (mu/update-properties
+      (cond
+        (-keys :type) (type->malli js-schema)
 
-      (-keys :enum) (into [:enum]
-                          (:enum js-schema))
+        (-keys :enum) (into [:enum]
+                            (:enum js-schema))
 
-      (-keys :const) [:enum (:const js-schema)]
+        (-keys :const) [:enum (:const js-schema)]
 
-      ;; Aggregates
-      (-keys :oneOf)
-      (into
-        ;; TODO Figure out how to make it exclusively select o schema
-        [:or]
-        (map schema->malli)
-        (:oneOf js-schema))
+        ;; Aggregates
+        (-keys :oneOf) (into
+                         ;; TODO Figure out how to make it exclusively select o schema
+                         [:or]
+                         (map schema->malli)
+                         (:oneOf js-schema))
 
-      (-keys :anyOf)
-      (into
-        [:or]
-        (map schema->malli)
-        (:anyOf js-schema))
+        (-keys :anyOf) (into
+                         [:or]
+                         (map schema->malli)
+                         (:anyOf js-schema))
 
-      (-keys :allOf)
-      (into
-        [:and]
-        (map schema->malli)
-        (:allOf js-schema))
+        (-keys :allOf) (into
+                         [:and]
+                         (map schema->malli)
+                         (:allOf js-schema))
 
-      (-keys :not) [:not (schema->malli (:not js-schema))]
+        (-keys :not) [:not (schema->malli (:not js-schema))]
 
-      (-keys :$ref) ($ref (:$ref js-schema))
+        (-keys :$ref) ($ref (:$ref js-schema))
 
-      :else
-      (throw (ex-info "Not supported" {:json-schema js-schema
-                                       :reason ::schema-type})))))
+        :else (throw (ex-info "Not supported" {:json-schema js-schema
+                                               :reason ::schema-type})))
+      merge
+      (annotations->properties js-schema))))
 
 (defn properties->malli [{:keys [required]} [k v]]
   (cond-> [k]

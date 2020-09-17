@@ -78,7 +78,7 @@
     enum [:and
           :string
           (into [:enum] enum)]
-    [:string (cond-> {}
+    :else [:string (cond-> {}
                minLength (assoc :min minLength)
                maxLength (assoc :max maxLength))]))
 

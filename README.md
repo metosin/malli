@@ -1246,47 +1246,6 @@ Full override with `:swagger` property:
 ; {:type "file"}
 ```
 
-## Performance
-
-Validation:
-
-```clj
-(require '[clojure.spec.alpha :as s])
-(require '[criterium.core :as cc])
-
-;; 40ns
-(let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
-      valid? (partial s/valid? spec)]
-  (cc/quick-bench
-    (valid? spec 0)))
-
-;; 5ns
-(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-  (cc/quick-bench
-    (valid? 0)))
-```
-
-Coercion:
-
-```clj
-(require '[spec-tools.core :as st])
-
-(s/def ::id int?)
-(s/def ::name string?)
-
-;; 14µs
-(let [spec (s/keys :req-un [::id ::name])
-      transform #(st/coerce spec % st/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
-
-;; 140ns
-(let [schema [:map [:id int?] [:name string?]]
-      transform (m/decoder schema transform/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
-```
-
 ## Schema Registry
 
 Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
@@ -1549,6 +1508,47 @@ Transforming Schmas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph
 Visualized with [Graphviz](https://graphviz.org/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
+
+## Performance
+
+Validation:
+
+```clj
+(require '[clojure.spec.alpha :as s])
+(require '[criterium.core :as cc])
+
+;; 40ns
+(let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
+      valid? (partial s/valid? spec)]
+  (cc/quick-bench
+    (valid? spec 0)))
+
+;; 5ns
+(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
+  (cc/quick-bench
+    (valid? 0)))
+```
+
+Coercion:
+
+```clj
+(require '[spec-tools.core :as st])
+
+(s/def ::id int?)
+(s/def ::name string?)
+
+;; 14µs
+(let [spec (s/keys :req-un [::id ::name])
+      transform #(st/coerce spec % st/string-transformer)]
+  (cc/quick-bench
+    (transform {:id "1", :name "kikka"})))
+
+;; 140ns
+(let [schema [:map [:id int?] [:name string?]]
+      transform (m/decoder schema transform/string-transformer)]
+  (cc/quick-bench
+    (transform {:id "1", :name "kikka"})))
+```
 
 ## Motivation
 

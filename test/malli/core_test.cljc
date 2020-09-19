@@ -5,7 +5,8 @@
             [malli.transform :as mt]
             [malli.util :as mu]
             [malli.registry :as mr]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [clojure.test.check.generators :as gen]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -1359,3 +1360,30 @@
 
         (testing "map-syntax"
           (is (= map-syntax (mu/to-map-syntax schema))))))))
+
+(def generate-over6 (gen/large-integer* {:min 7}))
+
+(def Over6
+  (m/-simple-schema
+    {:type :user/over6
+     :pred #(and (int? %) (> % 6))
+     :type-properties {:error/message "should be over 6"
+                       :json-schema/type "integer"
+                       :json-schema/format "int64"
+                       :json-schema/minimum 6
+                       :gen/gen generate-over6}}))
+
+(deftest custom-simple-type-test
+  (let [schema (m/schema [Over6 {:json-schema/example 42}])]
+    (testing "validation"
+      (is (false? (m/validate schema 5)))
+      (is (true? (m/validate schema 7))))
+    (testing "properties"
+      (is (= {:error/message "should be over 6"
+              :json-schema/type "integer"
+              :json-schema/format "int64"
+              :json-schema/minimum 6
+              :gen/gen generate-over6}
+             (m/type-properties schema)))
+      (is (= {:json-schema/example 42}
+             (m/properties schema))))))

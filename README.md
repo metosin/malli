@@ -1246,6 +1246,65 @@ Full override with `:swagger` property:
 ; {:type "file"}
 ```
 
+## Custom Schema Types
+
+Schema Types are described using `m/IntoSchema` protocol, which has a factory method
+`(-into-schema [this properties children options])` to create the actual Schema instances. 
+See `malli.core` for example implementations.
+
+For simple cases, there is `m/-simple-schema`:
+
+```clj
+(require '[clojure.test.check.generators :as gen])
+
+(def Over6
+  (m/-simple-schema
+    {:type :user/over6
+     :pred #(and (int? %) (> % 6))
+     :type-properties {:error/message "should be over 6"
+                       :json-schema/type "integer"
+                       :json-schema/format "int64"
+                       :json-schema/minimum 6
+                       :gen/gen (gen/large-integer* {:min 7})}}))
+
+(m/into-schema? Over6)
+; => true
+```
+
+`m/IntoSchema` can be both used as Schema (creating a Schema instance with `nil` properties
+and children) and as Schema type to create new Schema instances without needing to
+register the types:
+
+```clj
+(m/form (m/schema Over6))
+; => true
+
+(m/schema? (m/schema [Over6 {:title "over 6"}]))
+; => true
+```
+
+`:pred` is used for validation:
+
+```clj
+(m/validate Over6 2)
+; => false
+
+(m/validate Over6 7)
+; => true
+```
+
+`:type-properties` are shared for all schema instances and are used just like Schema
+(instance) properties by many Schema applications, including [error messages](#custom-error-messages),
+[value generation](#value-generation) and [json-schema](#json-schema) transformations.
+
+```clj
+(json-schema/transform Over6)
+; => {:type "integer", :format "int64", :minimum 6}
+
+(json-schema/transform [Over6 {:json-schema/example 42}])
+; => {:type "integer", :format "int64", :minimum 6, :example 42}
+```
+
 ## Schema Registry
 
 Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).

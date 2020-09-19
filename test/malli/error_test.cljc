@@ -1,5 +1,6 @@
 (ns malli.error-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.core-test]
             [malli.error :as me]
             [malli.core :as m]
             [malli.util :as mu]))
@@ -32,7 +33,9 @@
              [[int?
                {:error/message msg, :error/fn fn2}]
               "kikka" "should be an int, was kikka"
-              {:errors {'int? {:error/message "fail1", :error/fn (constantly "fail2")}}}]]]
+              {:errors {'int? {:error/message "fail1", :error/fn (constantly "fail2")}}}]
+             ;; type-properties
+             [malli.core-test/Over6 5 "should be over 6"]]]
       (is (= message (-> (m/explain schema value) :errors first (me/error-message opts)))))))
 
 (deftest with-spell-checking-test

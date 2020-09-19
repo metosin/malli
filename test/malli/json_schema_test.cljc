@@ -1,5 +1,6 @@
 (ns malli.json-schema-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.core-test]
             [malli.json-schema :as json-schema]
             [malli.core :as m]))
 
@@ -68,10 +69,14 @@
       (-properties [_])
       (-type [_])
       (-form [_])
+      (-type-properties [_])
       (-validator [_] int?)
       (-walk [t w p o] (m/-outer w t p nil o))
       json-schema/JsonSchema
-      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])
+      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]
+   ;; type-properties
+   [malli.core-test/Over6 {:type "integer", :format "int64", :minimum 6}]
+   [[malli.core-test/Over6 {:json-schema/example 42}] {:type "integer", :format "int64", :minimum 6, :example 42}]])
 
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]

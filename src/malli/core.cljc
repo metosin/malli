@@ -14,6 +14,7 @@
 
 (defprotocol Schema
   (-type [this] "returns type of the schema")
+  (-type-properties [this] "returns schema type properties")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
   (-transformer [this transformer method options] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
@@ -211,6 +212,7 @@
         (reify
           Schema
           (-type [_] type)
+          (-type-properties [_])
           (-validator [_] validator)
           (-explainer [this path]
             (fn [value in acc]
@@ -255,6 +257,7 @@
         (reify
           Schema
           (-type [_] :and)
+          (-type-properties [_])
           (-validator [_]
             (let [validators (distinct (map -validator children))
                   f (if (seq (rest validators)) (partial apply every-pred) first)]
@@ -287,6 +290,7 @@
         (reify
           Schema
           (-type [_] :or)
+          (-type-properties [_])
           (-validator [_]
             (let [validators (distinct (map -validator children))
                   f (if (seq (rest validators)) (partial apply some-fn) first)]
@@ -364,6 +368,7 @@
          ^{:type ::schema}
          (reify Schema
            (-type [_] ::val)
+           (-type-properties [_])
            (-validator [_] (-validator schema))
            (-explainer [_ path] (-explainer schema path))
            (-transformer [this transformer method options]
@@ -399,6 +404,7 @@
          (reify
            Schema
            (-type [_] :map)
+           (-type-properties [_])
            (-validator [_]
              (let [validators (cond-> (mapv
                                         (fn [[key {:keys [optional]} value]]
@@ -493,6 +499,7 @@
         (reify
           Schema
           (-type [_] :map-of)
+          (-type-properties [_])
           (-validator [_]
             (let [key-valid? (-validator key-schema)
                   value-valid? (-validator value-schema)]
@@ -560,6 +567,7 @@
         (reify
           Schema
           (-type [_] type)
+          (-type-properties [_])
           (-validator [_]
             (let [validator (-validator schema)]
               (fn [x] (and (fpred x)
@@ -613,6 +621,7 @@
         (reify
           Schema
           (-type [_] :tuple)
+          (-type-properties [_])
           (-validator [_]
             (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
               (fn [x] (and (vector? x)
@@ -667,6 +676,7 @@
         (reify
           Schema
           (-type [_] :enum)
+          (-type-properties [_])
           (-validator [_]
             (fn [x] (contains? schema x)))
           (-explainer [this path]
@@ -699,6 +709,7 @@
         (reify
           Schema
           (-type [_] :re)
+          (-type-properties [_])
           (-validator [_]
             (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false))))
           (-explainer [this path]
@@ -735,6 +746,7 @@
         (reify
           Schema
           (-type [_] :fn)
+          (-type-properties [_])
           (-validator [_]
             (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false))))
           (-explainer [this path]
@@ -770,6 +782,7 @@
         (reify
           Schema
           (-type [_] :maybe)
+          (-type-properties [_])
           (-validator [_]
             (let [validator' (-validator schema)]
               (fn [x] (or (nil? x) (validator' x)))))
@@ -807,6 +820,7 @@
         (reify
           Schema
           (-type [_] :multi)
+          (-type-properties [_])
           (-validator [_]
             (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
               (fn [x]
@@ -863,6 +877,7 @@
         (reify
           Schema
           (-type [_] :ref)
+          (-type-properties [_])
           (-validator [_]
             (let [validator (-memoize (fn [] (-validator (-ref))))]
               (fn [x] ((validator) x))))
@@ -907,6 +922,7 @@
           (reify
             Schema
             (-type [_] type)
+            (-type-properties [_])
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
             (-transformer [this transformer method options]
@@ -930,7 +946,7 @@
             (-ref [_] id)
             (-deref [_] child)))))))
 
-(defn -simple-schema [{:keys [type pred property-pred]}]
+(defn -simple-schema [{:keys [type pred property-pred type-properties]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -942,6 +958,7 @@
         (reify
           Schema
           (-type [_] type)
+          (-type-properties [_] type-properties)
           (-validator [_] validator)
           (-explainer [this path]
             (fn explain [x in acc]
@@ -1022,6 +1039,13 @@
    (properties ?schema nil))
   ([?schema options]
    (-properties (schema ?schema options))))
+
+(defn type-properties
+  "Returns the Schema type properties"
+  ([?schema]
+   (type-properties ?schema nil))
+  ([?schema options]
+   (-type-properties (schema ?schema options))))
 
 (defn options
   "Returns options used in creating the Schema"

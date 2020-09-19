@@ -144,7 +144,7 @@
   (let [values #{1 2 3 5 8 13}
         schema (reify
                  m/Schema
-                 (-validator [_] int?)
+                 (-type-properties [_])
                  (-properties [_])
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]

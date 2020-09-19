@@ -110,7 +110,7 @@
 (defmethod accept :uuid [_ _ _ _] {:type "string" :format "uuid"})
 
 (defn- -json-schema-walker [schema _ children options]
-  (let [p (m/properties schema)]
+  (let [p (merge (m/type-properties schema) (m/properties schema))]
     (or (unlift p :json-schema)
         (merge (select p)
                (if (satisfies? JsonSchema schema)

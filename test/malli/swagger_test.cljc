@@ -69,10 +69,14 @@
    ;; protocols
    [(reify
       m/Schema
+      (-type-properties [_])
       (-properties [_])
       (-walk [t w p o] (m/-outer w t p nil o))
       swagger/SwaggerSchema
-      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]])
+      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]
+   ;; type-properties
+   [malli.core-test/Over6 {:type "integer", :format "int64", :minimum 6}]
+   [[malli.core-test/Over6 {:json-schema/example 42}] {:type "integer", :format "int64", :minimum 6, :example 42}]])
 
 (deftest swagger-test
   (doseq [[schema swagger-schema] expectations]

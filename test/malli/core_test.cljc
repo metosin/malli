@@ -1368,22 +1368,74 @@
     {:type :user/over6
      :pred #(and (int? %) (> % 6))
      :type-properties {:error/message "should be over 6"
+                       :decode/string mt/-string->long
                        :json-schema/type "integer"
                        :json-schema/format "int64"
                        :json-schema/minimum 6
                        :gen/gen generate-over6}}))
 
 (deftest custom-simple-type-test
-  (let [schema (m/schema [Over6 {:json-schema/example 42}])]
-    (testing "validation"
-      (is (false? (m/validate schema 5)))
-      (is (true? (m/validate schema 7))))
-    (testing "properties"
-      (is (= {:error/message "should be over 6"
-              :json-schema/type "integer"
-              :json-schema/format "int64"
-              :json-schema/minimum 6
-              :gen/gen generate-over6}
-             (m/type-properties schema)))
-      (is (= {:json-schema/example 42}
-             (m/properties schema))))))
+
+  (testing "with static type-properties"
+    (let [over6 (m/schema [Over6 {:json-schema/example 42}])]
+      (testing "form"
+        (is (= [:user/over6 {:json-schema/example 42}] (m/form over6))))
+      (testing "validation"
+        (is (false? (m/validate over6 6)))
+        (is (true? (m/validate over6 7))))
+      (testing "properties"
+        (is (= {:error/message "should be over 6"
+                :decode/string mt/-string->long
+                :json-schema/type "integer"
+                :json-schema/format "int64"
+                :json-schema/minimum 6
+                :gen/gen generate-over6}
+               (m/type-properties over6)))
+        (is (= {:json-schema/example 42}
+               (m/properties over6))))))
+
+  (testing "with instance-based type-properties"
+    (let [Over (m/-simple-schema
+                 (fn [{:keys [value]} _]
+                   (assert (int? value))
+                   {:type :user/over
+                    :pred #(and (int? %) (> % value))
+                    :type-properties {:error/message (str "should be over " value)
+                                      :decode/string mt/-string->long
+                                      :json-schema/type "integer"
+                                      :json-schema/format "int64"
+                                      :json-schema/minimum value}}))]
+
+      (testing "over6"
+        (let [schema [Over {:value 6}]]
+          (testing "form"
+            (is (= [:user/over {:value 6}] (m/form schema))))
+          (testing "validation"
+            (is (false? (m/validate schema 6)))
+            (is (true? (m/validate schema 7))))
+          (testing "properties"
+            (is (= {:error/message "should be over 6"
+                    :decode/string mt/-string->long
+                    :json-schema/type "integer"
+                    :json-schema/format "int64"
+                    :json-schema/minimum 6}
+                   (m/type-properties schema)))
+            (is (= {:value 6}
+                   (m/properties schema))))))
+
+      (testing "over42"
+        (let [schema [Over {:value 42}]]
+          (testing "form"
+            (is (= [:user/over {:value 42}] (m/form schema))))
+          (testing "validation"
+            (is (false? (m/validate schema 42)))
+            (is (true? (m/validate schema 43))))
+          (testing "properties"
+            (is (= {:error/message "should be over 42"
+                    :decode/string mt/-string->long
+                    :json-schema/type "integer"
+                    :json-schema/format "int64"
+                    :json-schema/minimum 42}
+                   (m/type-properties schema)))
+            (is (= {:value 42}
+                   (m/properties schema)))))))))

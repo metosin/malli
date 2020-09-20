@@ -217,7 +217,7 @@
 
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
-    (is (= {"1" :abba, "2" :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
+    (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
 
@@ -275,8 +275,8 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "transformer chain has 3 transformers"
-      (is (= 3 (count (m/-transformer-chain strict-json-transformer)))))
+    (testing "transformer chain has 4 transformers (json counts for 2)"
+      (is (= 4 (count (m/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))

@@ -275,8 +275,8 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "transformer chain has 4 transformers (json counts for 2)"
-      (is (= 4 (count (m/-transformer-chain strict-json-transformer)))))
+    (testing "transformer chain has 4 transformers"
+      (is (= 3 (count (m/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))

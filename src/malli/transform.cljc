@@ -230,7 +230,6 @@
    :qualified-symbol -string->symbol
    :uuid -string->uuid
 
-   :map-of (-transform-map-keys m/-keyword->string)
    :set -sequential->set
    :sequential -sequential->seq
    :list -sequential->seq})
@@ -288,6 +287,7 @@
      'false? -string->boolean
      'true? -string->boolean
 
+     :map-of (-transform-map-keys m/-keyword->string)
      :vector -sequential->vector}))
 
 (defn -string-encoders []
@@ -345,14 +345,16 @@
 (defn json-transformer
   ([]
    (json-transformer nil))
-  ([{::keys [json-vectors key-decoders] :or {key-decoders (-string-decoders)}}]
+  ([{::keys [json-vectors map-of-key-decoders] :or {map-of-key-decoders (-string-decoders)}}]
    (transformer
      {:name :json
-      :decoders (cond-> (-json-decoders) json-vectors (assoc :vector -sequential->vector))
-      :encoders (-json-encoders)}
-     {:decoders {:map-of {:compile (fn [schema _]
-                                     (some->> schema  (m/children) (first) (m/type) (get key-decoders)
-                                              (comp m/-keyword->string) (-transform-map-keys)))}}})))
+      :decoders (-> (-json-decoders)
+                    (assoc :map-of {:compile (fn [schema _]
+                                               (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
+                                                           (comp m/-keyword->string) (-transform-map-keys))
+                                                   (-transform-map-keys m/-keyword->string)))})
+                    (cond-> json-vectors (assoc :vector -sequential->vector)))
+      :encoders (-json-encoders)})))
 
 (defn string-transformer []
   (transformer

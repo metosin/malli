@@ -345,11 +345,14 @@
 (defn json-transformer
   ([]
    (json-transformer nil))
-  ([{::keys [json-vectors]}]
+  ([{::keys [json-vectors key-decoders] :or {key-decoders (-string-decoders)}}]
    (transformer
      {:name :json
       :decoders (cond-> (-json-decoders) json-vectors (assoc :vector -sequential->vector))
-      :encoders (-json-encoders)})))
+      :encoders (-json-encoders)}
+     {:decoders {:map-of {:compile (fn [schema _]
+                                     (some->> schema  (m/children) (first) (m/type) (get key-decoders)
+                                              (comp m/-keyword->string) (-transform-map-keys)))}}})))
 
 (defn string-transformer []
   (transformer

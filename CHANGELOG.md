@@ -14,6 +14,8 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 ## breaking changes in the pre-alpha era:
 
+* 20.9.2020
+  * removed `m/-predicate-schema`, `m/-partial-predicate-schema` and `m/-leaf-schema`
 * 19.9.2020
   * new mandatory Protocol method in `m/Schema`: `-type-properties`
 * 1.9.2020

@@ -1262,6 +1262,7 @@ For simple cases, there is `m/-simple-schema`:
     {:type :user/over6
      :pred #(and (int? %) (> % 6))
      :type-properties {:error/message "should be over 6"
+                       :decode/string mt/-string->long
                        :json-schema/type "integer"
                        :json-schema/format "int64"
                        :json-schema/minimum 6
@@ -1276,7 +1277,7 @@ and children) and as Schema type to create new Schema instances without needing 
 register the types:
 
 ```clj
-(m/form (m/schema Over6))
+(m/schema? (m/schema Over6))
 ; => true
 
 (m/schema? (m/schema [Over6 {:title "over 6"}]))

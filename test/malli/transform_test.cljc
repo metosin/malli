@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core :as m]
             [malli.transform :as mt]
+            [malli.core-test]
             [clojure.string :as str]))
 
 (deftest ->interceptor-test
@@ -627,3 +628,7 @@
     (is (= {:user/verified false} (m/decode [:map [:user/verified [:and {:default false} boolean?]]] {} mt/default-value-transformer)))
     (is (= {:user/verified false} (m/decode [:map [:user/verified {:default false} boolean?]] {} mt/default-value-transformer)))
     (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer)))))
+
+(deftest type-properties-based-transformations
+  (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))
+

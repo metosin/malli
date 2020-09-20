@@ -247,35 +247,6 @@
 (defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
 (defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
 
-(defn -leaf-schema [type ->validator-and-children]
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties children options]
-      (let [[validator children] (->validator-and-children properties children options)
-            form (-create-form type properties children)]
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] type)
-          (-type-properties [_])
-          (-validator [_] validator)
-          (-explainer [this path]
-            (fn [value in acc]
-              (if-not (validator value) (conj acc (-error path in this value)) acc)))
-          (-transformer [this transformer method options]
-            (-value-transformer transformer this method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path children options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          LensSchema
-          (-keep [_])
-          (-get [_ _ default] default)
-          (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
-
 (defn -and-schema []
   ^{:type ::into-schema}
   (reify IntoSchema

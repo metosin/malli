@@ -217,7 +217,7 @@
 
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
-    (is (= {"1" :abba, "2" :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
+    (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
 
@@ -275,7 +275,7 @@
                                   mt/json-transformer
                                   {:opts {:random :opts}})]
 
-    (testing "transformer chain has 3 transformers"
+    (testing "transformer chain has 4 transformers"
       (is (= 3 (count (m/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
@@ -632,3 +632,13 @@
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))
 
+(deftest map-of-json-keys-transform
+  (let [schema [:map-of int? uuid?]]
+    (doseq [data [{:0 "2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
+                   :1 "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}
+                  {"0" "2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
+                   "1" "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}]]
+
+      (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
+              1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}
+             (m/decode schema data mt/json-transformer))))))

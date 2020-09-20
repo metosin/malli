@@ -55,7 +55,9 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -predicate-schema -val-schema -schema-schema -registry)
+(declare schema schema? into-schema into-schema? eval default-registry -simple-schema -val-schema -schema-schema -registry)
+
+(defn -safe-pred [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -152,7 +154,7 @@
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
-        schema (-predicate-schema name @v)]
+        schema (-simple-schema {:type name, :pred @v})]
     (-> registry
         (assoc name schema)
         (assoc @v schema))))
@@ -202,6 +204,49 @@
 ;; Schemas
 ;;
 
+(defn -simple-schema [?props]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (let [{:keys [type pred property-pred type-properties min max]
+             :or {min 0, max 0}}  (if (fn? ?props) (?props properties children) ?props)]
+        (-check-children! type properties children {:min min, :max max})
+        (let [pvalidator (if property-pred (property-pred properties))
+              validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
+              form (-create-form type properties children)]
+          ^{:type ::schema}
+          (reify
+            Schema
+            (-type [_] type)
+            (-type-properties [_] type-properties)
+            (-validator [_] validator)
+            (-explainer [this path]
+              (fn explain [x in acc]
+                (if-not (validator x) (conj acc (-error path in this x)) acc)))
+            (-transformer [this transformer method options]
+              (-value-transformer transformer this method options))
+            (-walk [this walker path options]
+              (if (-accept walker this path options)
+                (-outer walker this path (vec children) options)))
+            (-properties [_] properties)
+            (-options [_] options)
+            (-children [_] children)
+            (-form [_] form)
+            LensSchema
+            (-keep [_])
+            (-get [_ _ default] default)
+            (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))))))))
+
+(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
+(defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
+(defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
+(defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))
+(defn -keyword-schema [] (-simple-schema {:type :keyword, :pred keyword?}))
+(defn -symbol-schema [] (-simple-schema {:type :symbol, :pred symbol?}))
+(defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?}))
+(defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
+(defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
+
 (defn -leaf-schema [type ->validator-and-children]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -230,21 +275,6 @@
           (-keep [_])
           (-get [_ _ default] default)
           (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))
-
-(defn -predicate-schema [type f]
-  (-leaf-schema
-    type
-    (fn [properties children _]
-      (when (seq children)
-        (-fail! ::child-error {:type type, :properties properties, :children children, :min 0, :max 0}))
-      [f children])))
-
-(defn -partial-predicate-schema [type f]
-  (-leaf-schema
-    type
-    (fn [properties [child :as children] _]
-      (-check-children! type properties children {:min 1, :max 1})
-      [#(try (f % child) (catch #?(:clj Exception, :cljs js/Error) _ false)) children])))
 
 (defn -and-schema []
   ^{:type ::into-schema}
@@ -711,7 +741,7 @@
           (-type [_] :re)
           (-type-properties [_])
           (-validator [_]
-            (fn [x] (try (boolean (re-find re x)) (catch #?(:clj Exception, :cljs js/Error) _ false))))
+            (-safe-pred #(boolean (re-find re %))))
           (-explainer [this path]
             (fn explain [x in acc]
               (try
@@ -945,48 +975,6 @@
             RefSchema
             (-ref [_] id)
             (-deref [_] child)))))))
-
-(defn -simple-schema [?props]
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties children options]
-      (let [{:keys [type pred property-pred type-properties]} (if (fn? ?props) (?props properties children) ?props)]
-        (-check-children! type properties children {:min 0, :max 0})
-        (let [pvalidator (if property-pred (property-pred properties))
-              validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
-              form (-create-form type properties children)]
-          ^{:type ::schema}
-          (reify
-            Schema
-            (-type [_] type)
-            (-type-properties [_] type-properties)
-            (-validator [_] validator)
-            (-explainer [this path]
-              (fn explain [x in acc]
-                (if-not (validator x) (conj acc (-error path in this x)) acc)))
-            (-transformer [this transformer method options]
-              (-value-transformer transformer this method options))
-            (-walk [this walker path options]
-              (if (-accept walker this path options)
-                (-outer walker this path (vec children) options)))
-            (-properties [_] properties)
-            (-options [_] options)
-            (-children [_] children)
-            (-form [_] form)
-            LensSchema
-            (-keep [_])
-            (-get [_ _ default] default)
-            (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))))))))
-
-(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
-(defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
-(defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
-(defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))
-(defn -keyword-schema [] (-simple-schema {:type :keyword, :pred keyword?}))
-(defn -symbol-schema [] (-simple-schema {:type :symbol, :pred symbol?}))
-(defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?}))
-(defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
-(defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
 
 ;;
 ;; public api
@@ -1243,7 +1231,7 @@
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
-       (map (fn [[k v]] [k (-partial-predicate-schema k v)]))
+       (map (fn [[k v]] [k (-simple-schema (fn [_ [child]] {:type k, :pred (-safe-pred #(v % child)), :min 1, :max 1}))]))
        (into {}) (reduce-kv assoc nil)))
 
 (defn type-schemas []

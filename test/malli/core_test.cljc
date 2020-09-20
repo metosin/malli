@@ -1098,8 +1098,8 @@
   (let [registry (merge
                    (m/comparator-schemas)
                    (m/base-schemas)
-                   {"int" (m/-predicate-schema "int" int?)
-                    "string" (m/-predicate-schema "string" string?)})]
+                   {"int" (m/-simple-schema {:type "int", :pred int?})
+                    "string" (m/-simple-schema {:type "string", :pred string?})})]
     (is (true? (m/validate [:or "int" "string"] 123 {:registry registry})))
     (is (false? (m/validate [:or "int" "string"] 'kikka {:registry registry})))))
 

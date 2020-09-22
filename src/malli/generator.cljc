@@ -1,6 +1,6 @@
 (ns malli.generator
   (:require [clojure.test.check.generators :as gen]
-            #?(:clj [borkdude.dynaload-clj :refer [dynaload]])
+            [borkdude.dynaload :as dynaload]
             [clojure.string :as str]
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
@@ -94,7 +94,7 @@
 #?(:clj
    (defn -re-gen [schema options]
      ;; [com.gfredericks/test.chuck "0.2.10"+]
-     (if-let [string-from-regex @(dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
+     (if-let [string-from-regex (dynaload/dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
        (let [re (or (first (m/children schema options)) (m/form schema options))]
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (m/-fail! :test-chuck-not-available))))

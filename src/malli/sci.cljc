@@ -1,11 +1,10 @@
 (ns malli.sci
-  (:require #?(:clj  [borkdude.dynaload-clj :refer [dynaload]]
-               :cljs [borkdude.dynaload-cljs :refer-macros [dynaload]])))
+  (:require [borkdude.dynaload :as dynaload]))
 
 (defn evaluator [options]
-  (let [eval-string* @(dynaload 'sci.core/eval-string* {:default nil})
-        init @(dynaload 'sci.core/init {:default nil})
-        fork @(dynaload 'sci.core/fork {:default nil})]
+  (let [eval-string* (dynaload/dynaload 'sci.core/eval-string* {:default nil})
+        init (dynaload/dynaload 'sci.core/init {:default nil})
+        fork (dynaload/dynaload 'sci.core/fork {:default nil})]
     (if (and eval-string* init fork)
       (let [ctx (init options)]
         (fn eval [s] (eval-string* (fork ctx) (str s)))))))

@@ -41,6 +41,6 @@
                              "-Xmx4096m"
                              "-Dclojure.compiler.direct-linking=true"]}}
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        borkdude/dynaload {:mvn/version "0.1.0"}
+        borkdude/dynaload {:mvn/version "0.2.2"}
         borkdude/edamame {:mvn/version "0.0.11-alpha.13"}
         org.clojure/test.check {:mvn/version "1.1.0"}}}

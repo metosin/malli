@@ -14,6 +14,7 @@
    ::m/missing-key {:error/message {:en "missing required key"}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
+   :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
    ::misspelled-value {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]

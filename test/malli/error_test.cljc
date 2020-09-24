@@ -351,3 +351,19 @@
            (-> [:enum "foo" "bar" "buzz" "biff"]
                (m/explain "baz")
                (me/humanize))))))
+
+(deftest multi-error-test
+  (let [schema [:multi {:dispatch :type}
+                ["plus" [:map [:value int?]]]
+                ["minus" [:map [:value int?]]]]]
+
+    (is (= {:type ["invalid dispatch value"]}
+           (-> schema
+               (m/explain {:type "minuz"})
+               (me/humanize))))
+
+    (is (= {:type ["did you mean minus"]}
+           (-> schema
+               (m/explain {:type "minuz"})
+               (me/with-spell-checking)
+               (me/humanize))))))

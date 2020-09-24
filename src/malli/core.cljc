@@ -209,7 +209,7 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (let [{:keys [type pred property-pred type-properties min max]
-             :or {min 0, max 0}}  (if (fn? ?props) (?props properties children) ?props)]
+             :or {min 0, max 0}} (if (fn? ?props) (?props properties children) ?props)]
         (-check-children! type properties children {:min min, :max max})
         (let [pvalidator (if property-pred (property-pred properties))
               validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
@@ -1165,16 +1165,16 @@
 ;; eval
 ;;
 
-(let [-eval (or (ms/evaluator {:preset :termination-safe
-                               :bindings {'m/properties properties
-                                          'm/type type
-                                          'm/children children
-                                          'm/entries entries}})
-                #(-fail! :sci-not-available {:code %}))
+(let [-evaluator (memoize (ms/evaluator {:preset :termination-safe
+                                         :bindings {'m/properties properties
+                                                    'm/type type
+                                                    'm/children children
+                                                    'm/entries entries}}
+                                        #(-fail! :sci-not-available {:code %})))
       -eval? (some-fn symbol? string? sequential?)]
   (defn eval [?code]
     (cond (vector? ?code) ?code
-          (-eval? ?code) (-eval ?code)
+          (-eval? ?code) ((-evaluator) ?code)
           :else ?code)))
 
 ;;

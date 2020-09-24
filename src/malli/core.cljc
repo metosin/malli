@@ -819,6 +819,7 @@
    (reify IntoSchema
      (-into-schema [_ properties children options]
        (let [type (or (:type opts) :multi)
+             opts (merge opts (select-keys properties [:lazy-refs]))
              {:keys [children entries forms]} (-parse-entries children opts options)
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties))

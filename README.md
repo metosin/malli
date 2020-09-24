@@ -14,7 +14,7 @@ Plain data Schemas for Clojure/Script.
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
-- Immutable, Mutable, Dynamic and Local [Schema Registries](#schema-registry)
+- Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Visualizing Schemas](#visualizing-schemas) with DOT
@@ -1014,7 +1014,6 @@ Sampling values:
 
 Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):
 
-
 ```clj
 (require '[malli.provider :as mp])
 
@@ -1477,6 +1476,52 @@ If you know what you are doing, you can also use [dynamic scope](https://stuarts
   (m/validate :non-empty-string "malli"))
 ; => true
 ```
+
+### Lazy Registries
+
+You can provide schemas at runtime using `mr/lazy-registry` - it takes a local registry
+and a provider function of `type registry -> schema` as arguments:
+
+```clj
+(def registry
+  (mr/lazy-registry
+    (m/default-schemas)
+    (fn [type registry]
+      ;; simulates pulling CloudFormation Schemas when needed
+      (let [lookup {"AWS::ApiGateway::UsagePlan" [:map {:closed true}
+                                                  [:Type [:= "AWS::ApiGateway::UsagePlan"]]
+                                                  [:Description {:optional true} string?]
+                                                  [:UsagePlanName {:optional true} string?]]
+                    "AWS::AppSync::ApiKey" [:map {:closed true}
+                                            [:Type [:= "AWS::AppSync::ApiKey"]]
+                                            [:ApiId string?]
+                                            [:Description {:optional true} string?]]}]
+        (println "... loaded" type)
+        (some-> type lookup (m/schema {:registry registry}))))))
+
+;; lazy multi, doesn't realize the schemas
+(def CloudFormation
+  (m/schema
+    [:multi {:dispatch :Type, :lazy-refs true}
+     "AWS::ApiGateway::UsagePlan"
+     "AWS::AppSync::ApiKey"]
+    {:registry registry}))
+
+(m/validate
+  CloudFormation
+  {:Type "AWS::ApiGateway::UsagePlan"
+   :Description "laiskanlinna"})
+; ... loaded AWS::ApiGateway::UsagePlan
+; => true
+
+(m/validate
+  CloudFormation
+  {:Type "AWS::ApiGateway::UsagePlan"
+   :Description "laiskanlinna"})
+; => true
+```
+
+Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/).
 
 ### Composite Registry
 

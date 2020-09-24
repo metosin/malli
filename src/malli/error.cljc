@@ -153,16 +153,15 @@
 
 ;; a tricky part is is that a keyword is not considered misspelled
 ;; if its substitute is already present in the original map
-(defn- -likely-misspelled [keys known-keys]
-  (fn [key]
-    (when-not (known-keys key)
-      (->> known-keys
-           (filter #(-similar-key % key))
-           (remove keys)
-           not-empty))))
+(defn- -likely-misspelled [keys known-keys key]
+  (when-not (known-keys key)
+    (->> known-keys
+         (filter #(-similar-key % key))
+         (remove keys)
+         not-empty)))
 
 (defn- -most-similar-to [keys key known-keys]
-  (->> ((-likely-misspelled keys known-keys) key)
+  (->> (-likely-misspelled keys known-keys key)
        (map (juxt #(-levenshtein (str %) (str key)) identity))
        (filter first)
        (sort-by first)
@@ -218,12 +217,14 @@
   ([explanation {:keys [keep-likely-misspelled-of]}]
    (when explanation
      (let [!likely-misspelling-of (atom #{})
+           handle-invalid-value (fn [schema _ value]
+                                  (let [dispatch (:dispatch (m/properties schema))]
+                                    (if (keyword? dispatch)
+                                      (let [value (dispatch value)]
+                                        [::misspelled-value value #{value}]))))
            types {::m/extra-key (fn [_ path value] [::misspelled-key (last path) (-> value keys set (or #{}))])
-                  ::m/invalid-dispatch-value (fn [schema _ value]
-                                               (let [dispatch (:dispatch (m/properties schema))]
-                                                 (if (keyword? dispatch)
-                                                   (let [value (dispatch value)]
-                                                     [::misspelled-value value #{value}]))))}]
+                  ::m/invalid-value handle-invalid-value
+                  ::m/invalid-dispatch-value handle-invalid-value}]
        (update
          explanation
          :errors

@@ -72,5 +72,12 @@
                   schema)))
           (-schemas [_] @cache*))))))
 
-(defn schema [registry type] (-schema registry type))
-(defn schemas [registry] (-schemas registry))
+(defn schema
+  "finds a schema from a registry"
+  [registry type]
+  (-schema registry type))
+
+(defn schemas
+  "finds all schemas from a registry"
+  [registry]
+  (-schemas registry))

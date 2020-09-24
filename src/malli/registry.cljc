@@ -11,7 +11,7 @@
 (defn simple-registry [schemas]
   (reify
     Registry
-    (-schema [_ name] (get schemas name))
+    (-schema [_ type] (get schemas type))
     (-schemas [_] schemas)))
 
 (defn registry [?registry]
@@ -55,3 +55,29 @@
     Registry
     (-schema [_ type] (get *registry* type))
     (-schemas [_] *registry*)))
+
+(defn lazy-registry [default-registry provider]
+  (let [cache* (atom {})
+        registry* (atom default-registry)]
+    (reset!
+      registry*
+      (composite-registry
+        default-registry
+        (reify
+          Registry
+          (-schema [_ name]
+            (or (@cache* name)
+                (when-let [schema (provider name @registry*)]
+                  (swap! cache* assoc name schema)
+                  schema)))
+          (-schemas [_] @cache*))))))
+
+(defn schema
+  "finds a schema from a registry"
+  [registry type]
+  (-schema registry type))
+
+(defn schemas
+  "finds all schemas from a registry"
+  [registry]
+  (-schemas registry))

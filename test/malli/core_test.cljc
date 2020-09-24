@@ -39,24 +39,29 @@
   (let [{:keys [children entries forms]} (m/-parse-entries
                                            [[:x int?]
                                             ::x
+                                            "x"
                                             [::y {:optional true}]
                                             [:y {:optional true, :title "boolean"} boolean?]]
-                                           true {:registry (merge (m/default-schemas) {::x int?, ::y int?})})]
+                                           {:naked-keys true}
+                                           {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
     (testing "forms"
       (is (= [[:x 'int?]
               ::x
+              "x"
               [::y {:optional true}]
               [:y {:optional true, :title "boolean"} 'boolean?]]
              forms)))
     (testing "entries"
       (is (schema= [[:x [::m/val 'int?]]
                     [::x [::m/val ::x]]
+                    ["x" [::m/val "x"]]
                     [::y [::m/val {:optional true} ::y]]
                     [:y [::m/val {:optional true :title "boolean"} 'boolean?]]]
                    entries)))
     (testing "children"
       (is (= [[:x nil 'int?]
               [::x nil ::x]
+              ["x" nil "x"]
               [::y {:optional true} ::y]
               [:y {:optional true, :title "boolean"} 'boolean?]]
              (map #(update % 2 m/form) children)))))
@@ -64,11 +69,11 @@
     (is (thrown? #?(:clj Exception, :cljs js/Error)
                  (m/-parse-entries
                    [[:x int?]
-                    [:x boolean?]] true nil))))
+                    [:x boolean?]] {:naked-keys true} nil))))
   (testing "naked keys fails when not supported"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
                  (m/-parse-entries
-                   [::x] false nil)))))
+                   [::x] nil nil)))))
 
 (deftest eval-test
   (is (= 2 ((m/eval inc) 1)))
@@ -312,8 +317,7 @@
             (m/schema [:ref int?]))))
 
     (testing "recursion"
-      (let [ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
-                                ::cons])]
+      (let [ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}} ::cons])]
 
         (is (true? (m/validate ConsCell [1 nil])))
         (is (true? (m/validate ConsCell [1 [2 nil]])))
@@ -669,8 +673,8 @@
 
       (is (results= {:schema schema,
                      :value {:type :worm}
-                     :errors [{:path []
-                               :in []
+                     :errors [{:path [:type]
+                               :in [:type]
                                :schema schema
                                :value {:type :worm}
                                :type :malli.core/invalid-dispatch-value}]}

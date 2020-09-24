@@ -151,8 +151,6 @@
         dist (-levenshtein (str ky) (str ky2))]
     (when (<= dist (-length->threshold min-len)) dist)))
 
-;; a tricky part is is that a keyword is not considered misspelled
-;; if its substitute is already present in the original map
 (defn- -likely-misspelled [keys known-keys key]
   (when-not (known-keys key)
     (->> known-keys

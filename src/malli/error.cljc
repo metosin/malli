@@ -219,7 +219,6 @@
                                       (let [value (dispatch value)]
                                         [::misspelled-value value #{value}]))))
            types {::m/extra-key (fn [_ path value] [::misspelled-key (last path) (-> value keys set (or #{}))])
-                  ::m/invalid-value handle-invalid-value
                   ::m/invalid-dispatch-value handle-invalid-value}]
        (update
          explanation

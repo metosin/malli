@@ -153,10 +153,7 @@
 
 (defn- -likely-misspelled [keys known-keys key]
   (when-not (known-keys key)
-    (->> known-keys
-         (filter #(-similar-key % key))
-         (remove keys)
-         not-empty)))
+    (->> known-keys (filter #(-similar-key % key)) (remove keys) (not-empty))))
 
 (defn- -most-similar-to [keys key known-keys]
   (->> (-likely-misspelled keys known-keys key)
@@ -164,7 +161,7 @@
        (filter first)
        (sort-by first)
        (map second)
-       not-empty))
+       (not-empty)))
 
 ;;
 ;; public api

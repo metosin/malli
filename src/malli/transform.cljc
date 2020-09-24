@@ -365,7 +365,7 @@
 (defn strip-extra-keys-transformer
   ([]
    (strip-extra-keys-transformer nil))
-  ([{:keys [accept] :or {accept (comp (some-fn nil? true?) :closed m/properties)}}]
+  ([{:keys [accept] :or {accept (comp #(or (nil? %) (true? %)) :closed m/properties)}}]
    (let [transform {:compile (fn [schema _]
                                (if (accept schema)
                                  (if-let [ks (some->> schema m/entries (map first) seq set)]

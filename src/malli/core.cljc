@@ -152,7 +152,7 @@
      :leave (build :leave)}))
 
 (defn- -properties-and-children [[x :as xs]]
-  (if ((some-fn map? nil?) x)
+  (if (or (nil? x) (map? x))
     [x (rest xs)]
     [nil xs]))
 
@@ -265,7 +265,7 @@
           (-type-properties [_])
           (-validator [_]
             (let [validators (distinct (map -validator children))
-                  f (if (seq (rest validators)) (partial apply every-pred) first)]
+                  f (if (second validators) (partial apply every-pred) first)]
               (f validators)))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
@@ -297,9 +297,8 @@
           (-type [_] :or)
           (-type-properties [_])
           (-validator [_]
-            (let [validators (distinct (map -validator children))
-                  f (if (seq (rest validators)) (partial apply some-fn) first)]
-              (f validators)))
+            (let [validators (distinct (map -validator children))]
+              (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
@@ -458,10 +457,9 @@
                      acc explainers)))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   transformers (some->>
-                                  entries
-                                  (keep (fn [[k s]] (if-let [t (-transformer s transformer method options)] [k t])))
-                                  (into {}))
+                   transformers (some->> entries
+                                         (keep (fn [[k s]] (if-let [t (-transformer s transformer method options)] [k t])))
+                                         (into {}))
                    build (fn [phase]
                            (let [->this (phase this-transformer)
                                  ->children (->> transformers
@@ -1185,7 +1183,7 @@
                                                     'm/children children
                                                     'm/entries entries}}
                                         #(-fail! :sci-not-available {:code %})))
-      -eval? (some-fn symbol? string? sequential?)]
+      -eval? #(or (symbol? %) (string? %) (sequential? %))]
   (defn eval [?code]
     (cond (vector? ?code) ?code
           (-eval? ?code) ((-evaluator) ?code)

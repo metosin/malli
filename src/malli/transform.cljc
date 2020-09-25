@@ -374,11 +374,12 @@
        {:decoders {:map transform}
         :encoders {:map transform}}))))
 
-(defn key-transformer [{:keys [decode encode]}]
+(defn key-transformer [{:keys [decode encode types] :or {types #{:map}}}]
   (let [transform (fn [f stage] (if f {stage (-transform-map-keys f)}))]
-    (transformer
-      {:decoders {:map (transform decode :enter)}
-       :encoders {:map (transform encode :leave)}})))
+    (transformer (cond (set? types) {:decoders (zipmap types (repeat (transform decode :enter)))
+                                     :encoders (zipmap types (repeat (transform encode :leave)))}
+                       (= :default types) {:default-decoder (transform decode :enter)
+                                           :default-encoder (transform encode :leave)}))))
 
 (defn default-value-transformer []
   (let [get-default (fn [schema] (some-> schema m/properties :default))

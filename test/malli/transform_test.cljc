@@ -339,6 +339,45 @@
                        {:x 18 :y "john" :a "doe"}
                        key-transformer)))))
 
+  (testing "more types"
+    (let [original {"id" "123", "github-followers" 10}
+          expected {:id "123", :github-followers 10}]
+
+      (testing "maps"
+        (is (= expected (m/decode
+                          [:map [:id :string] [:github-followers pos-int?]]
+                          original (mt/key-transformer {:decode keyword, :encode name}))))
+
+        (is (= expected (m/decode
+                          [:map [:id :string] [:github-followers pos-int?]]
+                          original (mt/key-transformer {:decode keyword, :encode name, :types :default}))))
+
+        (is (= original (m/decode
+                          [:map [:id :string] [:github-followers pos-int?]]
+                          original (mt/key-transformer {:decode keyword, :encode name, :types #{}})))))
+
+      (testing "multi"
+        (testing "does not transform by default"
+          (is (= original
+                 (m/decode
+                   [:multi {:dispatch :id}
+                    ["123" [:map [:id :string] [:github-followers pos-int?]]]]
+                   original (mt/key-transformer {:decode keyword, :encode name})))))
+
+        (testing "can be transformed"
+          (is (= expected (m/decode
+                            [:and :map [:multi {:dispatch :id}
+                                        ["123" [:map [:id :string] [:github-followers pos-int?]]]]]
+                            original (mt/key-transformer {:decode keyword, :encode name}))))
+          (is (= expected (m/decode
+                            [:multi {:dispatch :id}
+                             ["123" [:map [:id :string] [:github-followers pos-int?]]]]
+                            original (mt/key-transformer {:decode keyword, :encode name, :types #{:map :multi}}))))
+          (is (= expected (m/decode
+                            [:multi {:dispatch :id}
+                             ["123" [:map [:id :string] [:github-followers pos-int?]]]]
+                            original (mt/key-transformer {:decode keyword, :encode name, :types :default}))))))))
+
   (testing "from strings and back"
     (let [schema [:map
                   [:id :string]

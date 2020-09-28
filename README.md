@@ -29,6 +29,7 @@ Try the [online demo](https://malli.io). Libraries using malli:
 
 - [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
 - [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
+- [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
 
 ## Examples
 

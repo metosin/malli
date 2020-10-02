@@ -20,7 +20,7 @@
    ::misspelled-value {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                         (str "did you mean " (str/join " or " (map last likely-misspelling-of))))}}
    'any? {:error/message {:en "should be any"}}
-   'some? {:error/message {:en "shoud be some"}}
+   'some? {:error/message {:en "should be some"}}
    'number? {:error/message {:en "should be a number"}}
    'integer? {:error/message {:en "should be an integer"}}
    'int? {:error/message {:en "should be an int"}}

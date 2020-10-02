@@ -106,10 +106,13 @@
   (and (vector? x) (= 1 (count x)) (string? (first x))))
 
 (defn- -get [x k]
-  (if (set? x) (-> x vec (get k)) (get x k)))
+  (if (associative? x) (get x k) (-get (vec x) k)))
 
 (defn- -put [x k v]
-  (if (set? x) (conj x v) (update x k (fn [e] (if (-just-error? v) (into (vec e) v) v)))))
+  (cond
+    (set? x) (conj x v)
+    (associative? x) (update x k (fn [e] (if (-just-error? v) (into (vec e) v) v)))
+    :else (-put (vec x) k v))) ;; we coerce errors into vectors
 
 (defn- -assoc-in [acc value [p & ps] error]
   (cond

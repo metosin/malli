@@ -367,3 +367,12 @@
                (m/explain {:type "minuz"})
                (me/with-spell-checking)
                (me/humanize))))))
+
+(deftest explain-sequential
+  (is (= [{:x ["missing required key"]}
+          {:x ["missing required key"]}]
+         (-> (m/explain
+               [:sequential [:map [:x [:sequential [:map [:y number?]]]]]]
+               '({:a 10}
+                 {:b 10}))
+             (me/humanize)))))

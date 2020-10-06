@@ -1,8 +1,8 @@
 # malli [![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli) [![Slack](https://img.shields.io/badge/clojurians-malli-blue.svg?logo=slack)](https://clojurians.slack.com/messages/malli/)
 
-Plain data Schemas for Clojure/Script.
+Data-driven Schemas for Clojure/Script.
 
-**STATUS**: *Pre-alpha*, finalizing design.
+**STATUS**: [*alpha*](#alpha)
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
@@ -110,9 +110,7 @@ Maps keys are not limited to keywords:
 
 ## Qualified keys in a map
 
-Example to use a registered qualified keyword in your map. If you don't provide
-a schema to this key, it will look in the registry. You can also provide
-entry properties.
+You can also [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references.
 
 ```clj
 (m/validate
@@ -126,27 +124,7 @@ entry properties.
 ; => true
 ```
 
-## Records
-
-Records can be modelled as `:map`s:
-
-```clj
-(defrecord NameXY [name x y])
-
-(def NameXYSchema
-  [:map
-   [:name string?]
-   [:x number?]
-   [:y number?]])
-
-(m/validate
-  NameXYSchema
-  (map->NameXY
-    {:name "A nice point."
-     :x 3.0
-     :y 4.0}))
-;; => true
-```
+## Homogenous Maps
 
 Other times, we use a map as a homogenous index. In this case, all our key-value
 pairs have the same type. For this use case, we can use the `:map-of` schema.
@@ -160,7 +138,7 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 ## Sequence Schemas
 
-You can use `:sequential` for any homogenous Clojure sequence, and `:vector` for vectors specifically.
+You can use `:sequential` for any homogenous Clojure sequence, `:vector` for vectors and `:set` for sets.
 
 ```clj
 (m/validate [:sequential any?] (list "this" 'is :number 42))
@@ -173,7 +151,7 @@ You can use `:sequential` for any homogenous Clojure sequence, and `:vector` for
 ;; => false
 ```
 
-Support for Heterogenous/Regex sequences are [coming later](https://github.com/metosin/malli/issues/180).
+Support for Heterogenous/Regex sequences is [WIP](https://github.com/metosin/malli/issues/180).
 
 ## String schemas
 
@@ -1685,7 +1663,20 @@ So, we decided to spin out our own library, which would do all the things we fee
 - TypeScript https://www.typescriptlang.org/
 - Struct https://funcool.github.io/struct/latest/
 - Seqexp https://github.com/cgrand/seqexp
+- yup https://github.com/jquense/yup
 - JOI https://github.com/hapijs/joi
+
+## Alpha
+
+Public api of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try hard not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** effect public apis and **most likely** effect the library extenders, e.g. need to implement a new protocol method for custom schemas.
+
+All changes (breaking or not) will be documented in the [CHANGELOG](CHANGELOG.md) and there will be migration guide and path if needed.
+
+The api layers and stability:
+
+* **public api**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. Most stable part of the library, should not change (much) in alpha
+* **extender api**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
+* **private api**: private vars, all bets are off.
 
 ## Running tests
 

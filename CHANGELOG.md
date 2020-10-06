@@ -12,6 +12,8 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 [breakver]: https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md
 
+Malli is in [alpha](README.md#alpha).
+
 ## breaking changes in the pre-alpha era:
 
 * 20.9.2020

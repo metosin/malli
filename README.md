@@ -1314,6 +1314,10 @@ Class-based schemas, contains `java.util.regex.Pattern` & `js/RegExp`.
 
 Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
+#### `malli.core/type-schemas`
+
+Type-like schemas: `:string`, `:int`, `:double`, `:boolean`, `.keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
+
 #### `malli.core/base-schemas`
 
 Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.

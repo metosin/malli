@@ -765,11 +765,11 @@
   (testing "sequence schemas"
 
     (testing "empty schemas fail"
-      (doseq [element [:vector :list :sequential :set :tuple]]
+      (doseq [element [:vector :sequential :set :tuple]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
 
     (testing "more than 1 elements fail on collections"
-      (doseq [element [:vector :list :sequential :set]]
+      (doseq [element [:vector :sequential :set]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element int? int?])))))
 
     (testing "validation"
@@ -790,25 +790,6 @@
 
                                     [false [:vector int?] '(1 2 3)]
                                     [false [:vector int?] #{1 2 3}]]
-
-                          "list" [[true [:list int?] '(1 2 3)]
-                                  [false [:list int?] '(1 "2" 3)]
-                                  [false [:list int?] '(1 2 "3")]
-                                  [false [:list int?] nil]
-                                  [false [:list int?] '(nil)]
-                                  [false [:list int?] "invalid"]
-
-                                  [true [:list {:min 3} int?] '(1 2 3)]
-                                  [false [:list {:min 4} int?] '(1 2 3)]
-
-                                  [true [:list {:max 3} int?] '(1 2 3)]
-                                  [false [:list {:max 2} int?] '(1 2 3)]
-
-                                  [true [:list {:min 1, :max 3} int?] '(1 2 3)]
-                                  [false [:list {:min 4, :max 4} int?] '(1 2 3)]
-
-                                  [false [:list int?] [1 2 3]]
-                                  [false [:list int?] #{1 2 3}]]
 
                           "sequential" [[true [:sequential int?] '(1 2 3)]
                                         [true [:sequential int?] [1 2 3]]
@@ -931,30 +912,30 @@
                                         :value [1 2 "3"]
                                         :errors [{:path [0], :in [2], :schema int?, :value "3"}]}]])
 
-                          "list" (let [schema [:list {:min 2, :max 3} int?]]
+                          "sequential" (let [schema [:sequential {:min 2, :max 3} int?]]
 
-                                   [[schema '(1 2)
-                                     nil]
+                                         [[schema '(1 2)
+                                           nil]
 
-                                    [schema 1
-                                     {:schema schema
-                                      :value 1
-                                      :errors [{:path [], :in [], :type ::m/invalid-type, :schema schema, :value 1}]}]
+                                          [schema 1
+                                           {:schema schema
+                                            :value 1
+                                            :errors [{:path [], :in [], :type ::m/invalid-type, :schema schema, :value 1}]}]
 
-                                    [schema '(1)
-                                     {:schema schema
-                                      :value '(1)
-                                      :errors [{:path [], :in [], :type ::m/limits, :schema schema, :value '(1)}]}]
+                                          [schema '(1)
+                                           {:schema schema
+                                            :value '(1)
+                                            :errors [{:path [], :in [], :type ::m/limits, :schema schema, :value '(1)}]}]
 
-                                    [schema '(1 2 3 4)
-                                     {:schema schema
-                                      :value '(1 2 3 4)
-                                      :errors [{:path [], :in [], :type ::m/limits, :schema schema, :value '(1 2 3 4)}]}]
+                                          [schema '(1 2 3 4)
+                                           {:schema schema
+                                            :value '(1 2 3 4)
+                                            :errors [{:path [], :in [], :type ::m/limits, :schema schema, :value '(1 2 3 4)}]}]
 
-                                    [schema '(1 2 "3")
-                                     {:schema schema
-                                      :value '(1 2 "3")
-                                      :errors [{:path [0], :in [2], :schema int?, :value "3"}]}]])
+                                          [schema '(1 2 "3")
+                                           {:schema schema
+                                            :value '(1 2 "3")
+                                            :errors [{:path [0], :in [2], :schema int?, :value "3"}]}]])
 
                           "set" (let [schema [:set {:min 2, :max 3} int?]]
 
@@ -1031,7 +1012,7 @@
             (is (results= expected (m/explain schema value)))))))
 
     (testing "visit"
-      (doseq [name [:vector :list :sequential :set]]
+      (doseq [name [:vector :sequential :set]]
         (is (= {:type name, :children [{:type 'int?}]}
                (mu/to-map-syntax [name int?]))))
       (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
@@ -1115,7 +1096,7 @@
       (is (= "foo" encoded))
       (is (= :foo decoded)))))
 
-(def sequential (m/-collection-schema `sequential sequential? nil))
+(def sequential (m/-collection-schema {:type `sequential, :pred sequential?}))
 
 (deftest custom-into-schema-test
   (doseq [value [[1 2 3] '(1 2 3)]]

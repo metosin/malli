@@ -120,7 +120,7 @@
 
   (testing "invalid type"
     (is (= ["invalid type"]
-           (-> [:list int?]
+           (-> [:set int?]
                (m/explain [1])
                (me/humanize)))))
 

@@ -180,15 +180,7 @@
           [:sequential keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] sequential?
 
           [:sequential string?] ["1" 2 "3"] ["1" 2 "3"] sequential?
-          [:sequential string?] #{"1" 2 "3"} #{"1" 2 "3"} set?
-
-          [:list keyword?] nil nil nil?
-          [:list keyword?] ["1" 2 "3"] [:1 2 :3] sequential?
-          [:list keyword?] '("1" 2 "3") [:1 2 :3] sequential?
-          [:list keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] sequential?
-
-          [:list string?] ["1" 2 "3"] ["1" 2 "3"] sequential?
-          [:list string?] #{"1" 2 "3"} #{"1" 2 "3"} set?)))
+          [:sequential string?] #{"1" 2 "3"} #{"1" 2 "3"} set?)))
 
     (testing "json transformer"
       (testing "json vectors"
@@ -611,7 +603,6 @@
                       [[:vector PS keyword?] ["kikka"] [:KIKKA]]
                       [[:sequential PS keyword?] ["kikka"] [:KIKKA]]
                       [[:sequential PS keyword?] '("kikka") '(:KIKKA)]
-                      [[:list PS keyword?] '("kikka") '(:KIKKA)]
                       [[:set PS keyword?] #{"kikka"} #{:KIKKA}]]]
     (doseq [[schema value expected] expectations]
       (is (= expected (m/decode schema value mt/string-transformer))))))

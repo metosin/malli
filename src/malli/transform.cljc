@@ -231,8 +231,7 @@
    :uuid -string->uuid
 
    :set -sequential->set
-   :sequential -sequential->seq
-   :list -sequential->seq})
+   :sequential -sequential->seq})
 
 (defn -json-encoders []
   {'keyword? m/-keyword->string
@@ -410,7 +409,6 @@
 
 (defn collection-transformer []
   (let [coders {:vector -sequential-or-set->vector
-                :list -sequential-or-set->seq
                 :sequential -sequential-or-set->seq
                 :set -sequential->set}]
     (transformer

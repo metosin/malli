@@ -84,7 +84,6 @@
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
 (defmethod accept :vector [_ _ children _] {:type "array", :items (first children)})
-(defmethod accept :list [_ _ children _] {:type "array", :items (first children)})
 (defmethod accept :sequential [_ _ children _] {:type "array", :items (first children)})
 (defmethod accept :set [_ _ children _] {:type "array", :items (first children), :uniqueItems true})
 (defmethod accept :enum [_ _ children _] {:enum children})

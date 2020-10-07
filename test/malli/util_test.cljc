@@ -198,9 +198,6 @@
         [:vector int?] 0 int?
         [:vector int?] 1 int?
 
-        [:list int?] 0 int?
-        [:list int?] 1 int?
-
         [:set int?] 0 int?
         [:set int?] 1 int?
 
@@ -263,9 +260,6 @@
         [:vector string?] 0 int? [:vector 'int?]
         [:vector string?] 1 int? [:vector 'int?]
 
-        [:list string?] 0 int? [:list 'int?]
-        [:list string?] 1 int? [:list 'int?]
-
         [:set string?] 0 int? [:set 'int?]
         [:set string?] 1 int? [:set 'int?]
 
@@ -301,19 +295,17 @@
                  (mu/get-in
                    (m/schema [:map
                               [:x [:vector
-                                   [:list
-                                    [:set
-                                     [:sequential
-                                      [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]])
-                   [:x 0 0 0 0 1 :y 0])))
+                                   [:set
+                                    [:sequential
+                                     [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]])
+                   [:x 0 0 0 1 :y 0])))
   (is (mu/equals (mu/get-in
                    [:map
                     [:x [:vector
-                         [:list
-                          [:set
-                           [:sequential
-                            [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]]
-                   [:x 0 0 0 0 1 :y 9]
+                         [:set
+                          [:sequential
+                           [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]
+                   [:x 0 0 0 1 :y 9]
                    pos-int?)
                  pos-int?))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
@@ -536,7 +528,7 @@
                  [:map
                   [:a [:vector [:map [:b [:maybe int?]]]]]]
                  [:map
-                  [:a [:maybe [:list [:maybe [:map [:b [:and [:or int?]]]]]]]]]]
+                  [:a [:maybe [:sequential [:maybe [:map [:b [:and [:or int?]]]]]]]]]]
                 [:fn '(constantly true)]]
                (m/schema)
                (mu/in->paths [:a 0 :b]))))))

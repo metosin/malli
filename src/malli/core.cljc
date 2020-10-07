@@ -554,7 +554,7 @@
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :map-of properties (assoc children key value))))))))
 
-(defn -collection-schema [type fpred fempty]
+(defn -collection-schema [{type :type fpred :pred, fempty :empty}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
@@ -1233,10 +1233,9 @@
    :or (-or-schema)
    :map (-map-schema)
    :map-of (-map-of-schema)
-   :vector (-collection-schema :vector vector? [])
-   :list (-collection-schema :list list? nil)
-   :sequential (-collection-schema :sequential sequential? nil)
-   :set (-collection-schema :set set? #{})
+   :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
+   :sequential (-collection-schema {:type :sequential, :pred sequential?})
+   :set (-collection-schema {:type :set, :pred set?, :empty #{}})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

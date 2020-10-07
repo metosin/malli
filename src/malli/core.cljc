@@ -140,9 +140,11 @@
 (defn -guard [pred tf]
   (if tf (fn [x] (if (pred x) (tf x) x))))
 
+(defn -coder [{:keys [enter leave]}]
+  (if (and enter leave) #(leave (enter %)) (or enter leave identity)))
+
 (defn -chain [phase chain]
-  (when-let [fns (->> (case phase, :enter (rseq chain), :leave chain) (keep identity) (seq))]
-    (apply comp fns)))
+  (some->> (case phase, :enter (rseq chain), :leave chain) (keep identity) (seq) (apply comp)))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
@@ -1101,11 +1103,7 @@
   ([?schema t]
    (decoder ?schema nil t))
   ([?schema options t]
-   (let [{:keys [enter leave]} (-transformer (schema ?schema options) (-into-transformer t) :decode options)]
-     (cond
-       (and enter leave) (comp leave enter)
-       (or enter leave) (or enter leave)
-       :else identity))))
+   (-coder (-transformer (schema ?schema options) (-into-transformer t) :decode options))))
 
 (defn decode
   "Transforms a value with a given decoding transformer against a schema."
@@ -1121,11 +1119,7 @@
   ([?schema t]
    (encoder ?schema nil t))
   ([?schema options t]
-   (let [{:keys [enter leave]} (-transformer (schema ?schema options) (-into-transformer t) :encode options)]
-     (cond
-       (and enter leave) (comp leave enter)
-       (or enter leave) (or enter leave)
-       :else identity))))
+   (-coder (-transformer (schema ?schema options) (-into-transformer t) :encode options))))
 
 (defn encode
   "Transforms a value with a given encoding transformer against a schema."

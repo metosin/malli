@@ -217,7 +217,7 @@
          accept (if keys (set keys) (constantly true))
          required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
-     (transform-entries schema #(pmap mapper %) options))))
+     (transform-entries schema #(map mapper %) options))))
 
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."

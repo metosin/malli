@@ -1356,7 +1356,7 @@ Example to create a custom registry without the default core predicates and with
 (m/validate [:or :bool :pos-int] 'kikka {:registry registry})
 ; => false
 
-(m/validate [:or :bool :post-int] 123 {:registry registry})
+(m/validate [:or :bool :pos-int] 123 {:registry registry})
 ; => true
 ```
 

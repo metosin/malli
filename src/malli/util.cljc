@@ -179,7 +179,7 @@
     (find-first
       schema
       (fn [_ path _]
-        (when (and (in-equals (path->in schema path) in) (not (some (partial parent-exists path) @state)))
+        (when (and (in-equals (path->in schema path) in) (not (some #(parent-exists path %) @state)))
           (swap! state conj path) nil)))
     @state))
 
@@ -203,7 +203,7 @@
    (let [schema (m/schema ?schema options)
          accept (if keys (set keys) (constantly true))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 c/assoc :optional true) e))]
-     (transform-entries schema (partial map mapper) options))))
+     (transform-entries schema #(map mapper %) options))))
 
 (defn required-keys
   "Makes map keys required."
@@ -217,7 +217,7 @@
          accept (if keys (set keys) (constantly true))
          required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
-     (transform-entries schema (partial map mapper) options))))
+     (transform-entries schema #(pmap mapper %) options))))
 
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."
@@ -226,7 +226,7 @@
   ([?schema keys options]
    (let [schema (m/schema ?schema options)
          key-set (set keys)]
-     (transform-entries schema (partial filter (fn [[k]] (key-set k))) options))))
+     (transform-entries schema #(filter (fn [[k]] (key-set k)) %) options))))
 
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
@@ -234,7 +234,7 @@
    (dissoc ?schema key nil))
   ([?schema key options]
    (let [schema (m/schema ?schema options)]
-     (transform-entries schema (partial remove (fn [[k]] (= key k))) options))))
+     (transform-entries schema #(remove (fn [[k]] (= key k)) %) options))))
 
 ;;
 ;; LensSchemas

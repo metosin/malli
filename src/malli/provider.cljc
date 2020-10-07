@@ -10,7 +10,7 @@
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [options] (->> options (m/-registry) (mr/-schemas) (vals) (keep (partial -safe? m/schema))))
+(defn- registry-schemas [options] (->> options (m/-registry) (mr/-schemas) (vals) (keep #(-safe? m/schema %))))
 
 (defn- ->infer-schemas [options]
   (fn [x] (-> options (registry-schemas) (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1)))))
@@ -23,7 +23,7 @@
 
 (defn- ->infer [options]
   (let [infer-schemas (->infer-schemas options)
-        merge+ (fnil (partial merge-with +) {})]
+        merge+ (fnil #(merge-with + %1 %2) {})]
     (fn [acc x]
       (let [type (cond
                    (map? x) :map
@@ -51,7 +51,7 @@
     (->> schemas
          (filter #(= max (val %)))
          (map (fn [[k]] [k (preferences k -1)]))
-         (sort-by (comp second) >)
+         (sort-by second >)
          (ffirst))))
 
 ;;

@@ -151,7 +151,7 @@
                 sequence1)))
 
 (defn- -similar-key [ky ky2]
-  (let [min-len (apply min (map (comp count #(if (str/starts-with? % ":") (subs % 1) %) str) [ky ky2]))
+  (let [min-len (apply min (map (m/-comp count #(if (str/starts-with? % ":") (subs % 1) %) str) [ky ky2]))
         dist (-levenshtein (str ky) (str ky2))]
     (when (<= dist (-length->threshold min-len)) dist)))
 
@@ -208,7 +208,7 @@
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
    (when explanation
-     (update explanation :errors (partial map #(f (with-error-message % options)))))))
+     (update explanation :errors (fn [errors] (map #(f (with-error-message % options)) errors))))))
 
 (defn with-spell-checking
   ([explanation]
@@ -234,7 +234,7 @@
                                  value (get-in (:value explanation) (butlast path))
                                  [error-type key keys] (get-keys schema path value)
                                  similar (-most-similar-to keys key known-keys)
-                                 likely-misspelling-of (mapv (partial conj (vec (butlast path))) (vec similar))]
+                                 likely-misspelling-of (mapv #(conj (vec (butlast path)) %) (vec similar))]
                              (swap! !likely-misspelling-of into likely-misspelling-of)
                              (cond-> error similar (assoc :type error-type
                                                           ::likely-misspelling-of likely-misspelling-of)))

@@ -89,7 +89,7 @@
 
 (defn -map-of-gen [schema options]
   (let [[k-gen v-gen] (map #(generator % options) (m/children schema options))]
-    (gen/fmap (partial into {}) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
+    (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
 
 #?(:clj
    (defn -re-gen [schema options]
@@ -112,7 +112,7 @@
 (defmethod -schema-generator :< [schema options] (-double-gen {:max (-> schema (m/children options) first dec)}))
 (defmethod -schema-generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
 (defmethod -schema-generator := [schema options] (gen/return (first (m/children schema options))))
-(defmethod -schema-generator :not= [schema options] (gen/such-that (partial not= (-> schema (m/children options) first)) gen/any-printable 100))
+(defmethod -schema-generator :not= [schema options] (gen/such-that #(not= % (-> schema (m/children options) first)) gen/any-printable 100))
 (defmethod -schema-generator 'pos? [_ _] (gen/one-of [(-double-gen {:min 0.00001}) gen/s-pos-int]))
 (defmethod -schema-generator 'neg? [_ _] (gen/one-of [(-double-gen {:max -0.0001}) gen/s-neg-int]))
 

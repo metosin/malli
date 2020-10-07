@@ -76,7 +76,7 @@
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
-  (let [required (->> children (filter (comp not :optional second)) (mapv first))]
+  (let [required (->> children (filter (m/-comp not :optional second)) (mapv first))]
     {:type "object"
      :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))
      :required required}))

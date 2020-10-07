@@ -98,6 +98,17 @@
 (defn -lazy [ref options]
   (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 
+(defn -comp
+  ([] identity)
+  ([f] f)
+  ([f g] (fn [x] (f (g x))))
+  ([f g h] (fn [x] (f (g (h x)))))
+  ([f1 f2 f3 & fs]
+   (let [fs (reverse (list* f1 f2 f3 fs))]
+     #(loop [ret ((first fs) %), fs (next fs)] (if fs (recur ((first fs) ret) (next fs)) ret)))))
+
+(defn -update [m k f] (assoc m k (f (get m k))))
+
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
@@ -123,7 +134,7 @@
         -parse (fn [e] (let [[[k ?p ?v] f] (cond
                                              (-reference? e) (if naked-keys [[e nil e] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
-                                             :else [e (->> (update (vec e) (dec (count e)) (comp -form #(schema % options))) (keep identity) (vec))])
+                                             :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
                              _ (when (nil? k) (-fail! ::naked-keys-not-supported))
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
@@ -131,7 +142,7 @@
                          {:children [c]
                           :entries [(-entry k (-val-schema (last c) p))]
                           :forms [f]}))
-        es (reduce (partial merge-with into) (mapv -parse children))
+        es (reduce #(merge-with into %1 %2) {} (mapv -parse children))
         keys (->> es :entries (map first))]
     (when-not (= keys (distinct keys))
       (-fail! ::non-distinct-entry-keys {:keys keys}))
@@ -144,7 +155,7 @@
   (if (and enter leave) #(leave (enter %)) (or enter leave identity)))
 
 (defn -chain [phase chain]
-  (some->> (case phase, :enter (rseq chain), :leave chain) (keep identity) (seq) (apply comp)))
+  (some->> (case phase, :enter (rseq chain), :leave chain) (keep identity) (seq) (apply -comp)))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
@@ -191,7 +202,7 @@
 
 (defn -properties-and-options [properties options f]
   (if-let [r (some-> properties :registry)]
-    (let [options (update options :registry #(mr/composite-registry r (or % (-registry options))))]
+    (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
       [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
 
@@ -266,9 +277,8 @@
           (-type [_] :and)
           (-type-properties [_])
           (-validator [_]
-            (let [validators (distinct (map -validator children))
-                  f (if (second validators) (partial apply every-pred) first)]
-              (f validators)))
+            (let [validators (distinct (map -validator children))]
+              (if (second validators) (apply every-pred validators) (first validators))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -653,7 +663,7 @@
                                 ->children (->> child-transformers
                                                 (keep (fn [[k t]] (if-let [t (phase t)] [k t])))
                                                 (into {}))
-                                apply->children #(reduce-kv update % ->children)]
+                                apply->children #(reduce-kv -update % ->children)]
                             (-chain phase [->this (-guard vector? apply->children)])))]
               {:enter (build :enter)
                :leave (build :leave)}))
@@ -906,7 +916,7 @@
                {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
                 :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
            (-walk [this walker path options]
-             (let [accept (fn [] (-inner walker (-ref) path (update options ::ref-walked (fnil conj #{}) ref)))
+             (let [accept (fn [] (-inner walker (-ref) path (-update options ::ref-walked #(conj (or % #{}) ref))))
                    accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))
                    options (assoc options ::ref-walk accept-ref)]
                (if (-accept walker this path options)

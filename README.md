@@ -1715,6 +1715,22 @@ npx shadow-cljs run shadow.cljs.build-report app /tmp/report.html
 npx shadow-cljs release app --pseudo-names
 ```
 
+## Testing on GraalVM
+
+Without sci (11Mb)
+
+```bash
+./bin/native-image demo
+./demo '[:set :keyword]' '["kikka" "kukka"]'
+```
+
+With sci (18Mb):
+
+```clj
+./bin/native-image demosci
+./demo '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
+```
+
 ## License
 
 Copyright © 2019-2020 Metosin Oy and contributors.

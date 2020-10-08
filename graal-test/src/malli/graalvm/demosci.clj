@@ -1,4 +1,4 @@
-(ns malli.graalvm.demo
+(ns malli.graalvm.demosci
   (:gen-class)
   (:require [sci.core]
             [malli.core :as m]

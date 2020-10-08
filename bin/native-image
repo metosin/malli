@@ -3,7 +3,7 @@
 set -eo pipefail
 
 if [ -z "$1" ]; then
-    echo "Usage: native-image demo|demo-sci"
+    echo "Usage: native-image demo|demosci"
     exit 1
 fi
 

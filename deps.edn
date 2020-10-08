@@ -34,6 +34,10 @@
            :install {:extra-deps {deps-deploy/deps-deploy {:mvn/version "RELEASE"}}
                      :main-opts ["-m" "deps-deploy.deps-deploy" "install"
                                  "malli.jar"]}
+           :graalvm {:extra-paths ["graal-test/src"]
+                     :extra-deps {org.clojure/clojure {:mvn/version "1.10.2-alpha1"}
+                                  borkdude/sci {:git/url "https://github.com/borkdude/sci.git"
+                                                :sha "b310358cd41f761d7bbd50227a36d1160938ce71"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.5"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.1"}}

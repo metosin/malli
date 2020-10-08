@@ -3,11 +3,10 @@
   (:require #?@(:cljs [[goog.date.UtcDateTime]
                        [goog.date.Date]])
             [malli.core :as m])
-  #?(:clj
-     (:import (java.util Date UUID)
-              (java.time Instant ZoneId)
-              (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
-              (java.time.temporal ChronoField))))
+  #?(:clj (:import (java.util Date UUID)
+                   (java.time Instant ZoneId)
+                   (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
+                   (java.time.temporal ChronoField))))
 
 (def ^:dynamic *max-compile-depth* 10)
 
@@ -37,12 +36,8 @@
     (coll? ?interceptor)
     (reduce
       (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
-        (let [enter (if (and enter new-enter)
-                      (comp new-enter enter)
-                      (or enter new-enter))
-              leave (if (and leave new-leave)
-                      (comp new-leave leave)
-                      (or leave new-leave))]
+        (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
+              leave (if (and leave new-leave) #(new-leave (leave %)) (or leave new-leave))]
           {:enter enter :leave leave}))
       (keep #(-interceptor % schema options) ?interceptor))
 
@@ -61,10 +56,7 @@
   (if (string? x)
     (try
       #?(:clj  (Long/parseLong x)
-         :cljs (let [x' (if (re-find #"\D" (subs x 1))
-                          ##NaN
-                          (js/parseInt x 10))]
-                 (if (js/isNaN x') x x')))
+         :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))] (if (js/isNaN x') x x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
@@ -72,8 +64,7 @@
   (if (string? x)
     (try
       #?(:clj  (Double/parseDouble x)
-         :cljs (let [x' (js/parseFloat x)]
-                 (if (js/isNaN x') x x')))
+         :cljs (let [x' (js/parseFloat x)] (if (js/isNaN x') x x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
@@ -129,22 +120,17 @@
        x)))
 
 (defn -string->symbol [x]
-  (if (string? x)
-    (symbol x)
-    x))
+  (if (string? x) (symbol x) x))
 
 (defn -string->nil [x]
-  (if (= "" x)
-    nil
-    x))
+  (if (= "" x) nil x))
 
 ;;
 ;; misc
 ;;
 
 (defn -any->string [x]
-  (if-not (nil? x)
-    (str x)))
+  (if-not (nil? x) (str x)))
 
 (defn -any->any [x] x)
 
@@ -231,8 +217,7 @@
    :uuid -string->uuid
 
    :set -sequential->set
-   :sequential -sequential->seq
-   :list -sequential->seq})
+   :sequential -sequential->seq})
 
 (defn -json-encoders []
   {'keyword? m/-keyword->string
@@ -322,7 +307,7 @@
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v))) x x) (m/eval x)))
-        ->chain (comp m/-transformer-chain m/-into-transformer)
+        ->chain (m/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
@@ -351,7 +336,7 @@
       :decoders (-> (-json-decoders)
                     (assoc :map-of {:compile (fn [schema _]
                                                (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
-                                                           (comp m/-keyword->string) (-transform-map-keys))
+                                                           (m/-comp m/-keyword->string) (-transform-map-keys))
                                                    (-transform-map-keys m/-keyword->string)))})
                     (cond-> json-vectors (assoc :vector -sequential->vector)))
       :encoders (-json-encoders)})))
@@ -365,7 +350,7 @@
 (defn strip-extra-keys-transformer
   ([]
    (strip-extra-keys-transformer nil))
-  ([{:keys [accept] :or {accept (comp #(or (nil? %) (true? %)) :closed m/properties)}}]
+  ([{:keys [accept] :or {accept (m/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
    (let [transform {:compile (fn [schema _]
                                (if (accept schema)
                                  (if-let [ks (some->> schema m/entries (map first) seq set)]
@@ -410,7 +395,6 @@
 
 (defn collection-transformer []
   (let [coders {:vector -sequential-or-set->vector
-                :list -sequential-or-set->seq
                 :sequential -sequential-or-set->seq
                 :set -sequential->set}]
     (transformer

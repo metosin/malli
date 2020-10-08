@@ -12,8 +12,13 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 [breakver]: https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md
 
+Malli is in [alpha](README.md#alpha).
+
 ## breaking changes in the pre-alpha era:
 
+* UNRELEASED
+  * removed `:list` schema
+  * removed `malli.error/SchemaError` protocol in favor of using `m/type-properties` for custom errors
 * 20.9.2020
   * removed `m/-predicate-schema`, `m/-partial-predicate-schema` and `m/-leaf-schema`
 * 19.9.2020

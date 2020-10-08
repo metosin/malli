@@ -3,6 +3,9 @@
   (:require [malli.core :as m]
             [edamame.core :as edamame]))
 
+(defn -parse-string [x]
+  (edamame/parse-string x {:dispatch {\# {\" #(re-pattern %)}}}))
+
 (defn write-string
   ([?schema]
    (write-string ?schema nil))
@@ -13,4 +16,4 @@
   ([form]
    (read-string form nil))
   ([form options]
-   (m/schema (edamame/parse-string form {:dispatch {\# {\" #(re-pattern %)}}}) options)))
+   (m/schema (-parse-string form) options)))

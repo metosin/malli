@@ -22,7 +22,7 @@
                            :malli {:entries [malli.core]
                                    :depends-on #{:cljs}}
                            :app {:entries [malli.app2]
-                                 :depends-on #{:malli}}}}
+                                 :depends-on #{:malli :cljs}}}}
           :app2-sci {:target :browser
                      :closure-defines {malli.registry/type "custom"}
                      :devtools {:preloads [sci.core]}

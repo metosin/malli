@@ -8,3 +8,5 @@ out
 .dir-locals.el
 cljs-test-runner-out
 *.jar
+classes
+/demo

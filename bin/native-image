@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+if [ -z "$1" ]; then
+    echo "Usage: native-image demo|demosci"
+    exit 1
+fi
+
+mkdir -p classes
+clojure -J-Dborkdude.dynaload.aot=true -A:graalvm -e "(compile 'malli.graalvm.$1)"
+
+# java -cp "$(clojure -A:graalvm -Spath):classes" malli.graalvm.demo
+
+if [ -z "$GRAALVM_HOME" ]; then
+    echo "Please set $GRAALVM_HOME"
+    exit 1
+fi
+
+"$GRAALVM_HOME/bin/native-image" \
+    -cp "$(clojure -A:graalvm -Spath):classes" \
+    -H:Name=demo \
+    -J-Dborkdude.dynaload.aot=true \
+    -H:+ReportExceptionStackTraces \
+    --initialize-at-build-time  \
+    --report-unsupported-elements-at-runtime \
+    --verbose \
+    --no-fallback \
+    --no-server \
+    "-J-Xmx3g" \
+    malli.graalvm.$1

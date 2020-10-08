@@ -10,7 +10,7 @@
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [options] (->> options (m/-registry) (mr/-schemas) (vals) (keep (partial -safe? m/schema))))
+(defn- registry-schemas [options] (->> options (m/-registry) (mr/-schemas) (vals) (keep #(-safe? m/schema %))))
 
 (defn- ->infer-schemas [options]
   (fn [x] (-> options (registry-schemas) (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1)))))
@@ -23,13 +23,12 @@
 
 (defn- ->infer [options]
   (let [infer-schemas (->infer-schemas options)
-        merge+ (fnil (partial merge-with +) {})]
+        merge+ (fnil #(merge-with + %1 %2) {})]
     (fn [acc x]
       (let [type (cond
                    (map? x) :map
                    (set? x) :set
                    (vector? x) :vector
-                   (list? x) :list
                    (sequential? x) :sequential
                    :else :value)]
         (-> acc
@@ -38,7 +37,7 @@
             (cond-> (= :value type) (-> (update-in [:types type :values] merge+ {x 1})
                                         (update-in [:types type :schemas] merge+ (infer-schemas x)))
                     (= :map type) (update-in [:types type] (fnil -infer-map {}) x options)
-                    (#{:set :vector :list :sequential} type) (update-in [:types type :values] (fnil -infer-seq {}) x options)))))))
+                    (#{:set :vector :sequential} type) (update-in [:types type :values] (fnil -infer-seq {}) x options)))))))
 
 (defn- -map-schema [{:keys [count] :as stats} options]
   (->> (:keys stats)
@@ -52,7 +51,7 @@
     (->> schemas
          (filter #(= max (val %)))
          (map (fn [[k]] [k (preferences k -1)]))
-         (sort-by (comp second) >)
+         (sort-by second >)
          (ffirst))))
 
 ;;
@@ -74,7 +73,7 @@
      (let [type (-> types keys first)]
        (case type
          :value (-value-schema (type types))
-         (:set :vector :list :sequential) [type (-> types type :values (schema options))]
+         (:set :vector :sequential) [type (-> types type :values (schema options))]
          :map (-map-schema (type types) options)))
      (nil? types) (m/schema any?)
      :else (into [:or] (map (fn [[type]] (schema (update stats :types select-keys [type]) options)) types)))))

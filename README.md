@@ -29,10 +29,11 @@ Presentations:
 - ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
 - CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
 
-Try the [online demo](https://malli.io). Libraries using malli:
+Try the [online demo](https://malli.io). Libraries using or supporting malli:
 
 - [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
 - [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
+- [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
 - [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
 
 ## Examples
@@ -1676,7 +1677,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Alpha
 
-Public api of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try hard not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** effect public apis and **most likely** effect the library extenders, e.g. need to implement a new protocol method for custom schemas.
+Public api of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** effect public apis and **most likely** effect the library extenders, e.g. need to implement a new protocol method for custom schemas.
 
 All changes (breaking or not) will be documented in the [CHANGELOG](CHANGELOG.md) and there will be migration guide and path if needed.
 

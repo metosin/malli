@@ -15,15 +15,6 @@
              [[int? {:error/fn fn1}] "kikka" "should be an int, was kikka"]
              [[int? {:error/fn fn2}] "kikka" "should be an int, was kikka"]
              [[int? {:error/message msg, :error/fn fn2}] "kikka" "should be an int, was kikka"]
-             [(reify
-                m/Schema
-                (-type [_])
-                (-properties [_])
-                (-explainer [this path]
-                  (fn [value in acc]
-                    (if-not (int? value) (conj acc (m/-error path in this value)) acc)))
-                me/SchemaError
-                (-error [_] {:error/message "from schema"})) "kikka" "from schema"]
              ;; via defaults
              [[int?] "kikka" "should be an int" {:errors {'int? {:error/message msg}}}]
              [[int?] "kikka" "should be an int, was kikka" {:errors {'int? {:error/fn fn1}}}]

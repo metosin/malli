@@ -3,11 +3,10 @@
   (:require #?@(:cljs [[goog.date.UtcDateTime]
                        [goog.date.Date]])
             [malli.core :as m])
-  #?(:clj
-     (:import (java.util Date UUID)
-              (java.time Instant ZoneId)
-              (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
-              (java.time.temporal ChronoField))))
+  #?(:clj (:import (java.util Date UUID)
+                   (java.time Instant ZoneId)
+                   (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
+                   (java.time.temporal ChronoField))))
 
 (def ^:dynamic *max-compile-depth* 10)
 
@@ -57,10 +56,7 @@
   (if (string? x)
     (try
       #?(:clj  (Long/parseLong x)
-         :cljs (let [x' (if (re-find #"\D" (subs x 1))
-                          ##NaN
-                          (js/parseInt x 10))]
-                 (if (js/isNaN x') x x')))
+         :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))] (if (js/isNaN x') x x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
@@ -68,8 +64,7 @@
   (if (string? x)
     (try
       #?(:clj  (Double/parseDouble x)
-         :cljs (let [x' (js/parseFloat x)]
-                 (if (js/isNaN x') x x')))
+         :cljs (let [x' (js/parseFloat x)] (if (js/isNaN x') x x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
@@ -125,22 +120,17 @@
        x)))
 
 (defn -string->symbol [x]
-  (if (string? x)
-    (symbol x)
-    x))
+  (if (string? x) (symbol x) x))
 
 (defn -string->nil [x]
-  (if (= "" x)
-    nil
-    x))
+  (if (= "" x) nil x))
 
 ;;
 ;; misc
 ;;
 
 (defn -any->string [x]
-  (if-not (nil? x)
-    (str x)))
+  (if-not (nil? x) (str x)))
 
 (defn -any->any [x] x)
 

@@ -2,8 +2,13 @@
 
 set -eo pipefail
 
+if [ -z "$1" ]; then
+    echo "Usage: native-image demo|demo-sci"
+    exit 1
+fi
+
 mkdir -p classes
-clojure -J-Dborkdude.dynaload.aot=true -A:graalvm -e "(compile 'malli.graalvm.demo)"
+clojure -J-Dborkdude.dynaload.aot=true -A:graalvm -e "(compile 'malli.graalvm.$1)"
 
 # java -cp "$(clojure -A:graalvm -Spath):classes" malli.graalvm.demo
 
@@ -14,7 +19,7 @@ fi
 
 "$GRAALVM_HOME/bin/native-image" \
     -cp "$(clojure -A:graalvm -Spath):classes" \
-    -H:Name=malli-demo \
+    -H:Name=demo \
     -J-Dborkdude.dynaload.aot=true \
     -H:+ReportExceptionStackTraces \
     --initialize-at-build-time  \
@@ -23,4 +28,4 @@ fi
     --no-fallback \
     --no-server \
     "-J-Xmx3g" \
-    malli.graalvm.demo
+    malli.graalvm.$1

@@ -1,6 +1,7 @@
 (ns malli.graalvm.demo
   (:gen-class)
-  (:require [malli.core :as m]
+  (:require [sci.core]
+            [malli.core :as m]
             [malli.edn :as edn]
             [malli.error :as me]
             [malli.transform :as mt]))

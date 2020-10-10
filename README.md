@@ -10,7 +10,7 @@ Data-driven Schemas for Clojure/Script.
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
-- Schemas as plain data
+- Schema definitions as data
 - [Validation](#examples) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Serializable function schemas](#serializable-functions)
@@ -115,7 +115,7 @@ Maps keys are not limited to keywords:
 
 ## Qualified keys in a map
 
-You can also [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references.
+You can also use [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references.
 
 ```clj
 (m/validate
@@ -129,7 +129,7 @@ You can also [decomplected maps keys and values](https://clojure.org/about/spec#
 ; => true
 ```
 
-## Homogenous Maps
+## Homogeneous Maps
 
 Other times, we use a map as a homogenous index. In this case, all our key-value
 pairs have the same type. For this use case, we can use the `:map-of` schema.

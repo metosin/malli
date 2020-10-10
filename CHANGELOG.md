@@ -14,9 +14,13 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## breaking changes in the pre-alpha era:
+## 0.1.0 (2020-10-08)
 
-* UNRELEASED
+First stable release.
+
+## Breaking Changes in pre-alpha:
+
+* 8.10.2020
   * removed `:list` schema
   * removed `malli.error/SchemaError` protocol in favor of using `m/type-properties` for custom errors
 * 20.9.2020

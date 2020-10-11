@@ -76,17 +76,21 @@
                    [::x] nil nil)))))
 
 (deftest eval-test
-  (is (= 2 ((m/eval inc) 1)))
-  (is (= 2 ((m/eval 'inc) 1)))
-  (is (= 2 ((m/eval '#(inc %)) 1)))
-  (is (= 2 ((m/eval '#(inc %1)) 1)))
-  (is (= 2 ((m/eval '(fn [x] (inc x))) 1)))
-  (is (= 2 ((m/eval "(fn [x] (inc x))") 1)))
-  (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
-  (is (= :maybe (m/eval "(m/type [:maybe int?])")))
-  (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
-  (is (schema= [[:x [::m/val 'int?]] [:y [::m/val 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
-  (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])")))) ;
+  (testing "with defaults"
+    (is (= 2 ((m/eval inc) 1)))
+    (is (= 2 ((m/eval 'inc) 1)))
+    (is (= 2 ((m/eval '#(inc %)) 1)))
+    (is (= 2 ((m/eval '#(inc %1)) 1)))
+    (is (= 2 ((m/eval '(fn [x] (inc x))) 1)))
+    (is (= 2 ((m/eval "(fn [x] (inc x))") 1)))
+    (is (= {:district 9} (m/eval "(m/properties [int? {:district 9}])")))
+    (is (= :maybe (m/eval "(m/type [:maybe int?])")))
+    (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
+    (is (schema= [[:x [::m/val 'int?]] [:y [::m/val 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
+    (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])"))))
+  (testing "with options"
+    (is (= 2 ((m/eval inc {::m/enable-sci false}) 1)))
+    (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/enable-sci false}) 1)))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -131,6 +135,26 @@
              (m/decode
                [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
                "kerran" mt/string-transformer)))
+
+      (testing "sci not available"
+        (let [schema (m/schema
+                       [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+                       {::m/enable-sci false})]
+
+          (is (thrown-with-msg?
+                #?(:clj Exception, :cljs js/Error)
+                #":malli.core/sci-not-available"
+                (m/decoder schema mt/string-transformer)))
+
+          (is (thrown-with-msg?
+                #?(:clj Exception, :cljs js/Error)
+                #":malli.core/sci-not-available"
+                (m/decoder
+                  [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+                  {::m/enable-sci false} mt/string-transformer)))
+
+          (testing "direct options win"
+            (is (m/decoder schema {::m/enable-sci true} mt/string-transformer)))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 

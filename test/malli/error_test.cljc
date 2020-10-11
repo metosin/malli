@@ -186,6 +186,37 @@
                                 (assoc-in ['int? :error/message :fi] "NUMERO")
                                 (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))
 
+(-> (m/schema [:string {:error/fn '(constantly "FAIL")}] #_{::m/enable-sci false})
+    (m/explain ::invalid)
+    (me/with-error-messages))
+
+(deftest sci-not-available-test
+  (testing "sci not available"
+    (let [schema (m/schema [:string {:error/fn '(constantly "FAIL")}] {::m/enable-sci false})]
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/sci-not-available"
+            (-> schema (m/explain ::invalid) (me/with-error-messages))))
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/sci-not-available"
+            (-> schema (m/explain ::invalid) (me/humanize))))
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/sci-not-available"
+            (-> [:string {:error/fn '(constantly "FAIL")}]
+                (m/explain ::invalid)
+                (me/with-error-messages {::m/enable-sci false}))))
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/sci-not-available"
+            (-> [:string {:error/fn '(constantly "FAIL")}]
+                (m/explain ::invalid)
+                (me/humanize {::m/enable-sci false}))))
+      (testing "direct options win"
+        (is (-> schema (m/explain ::invalid) (me/with-error-messages {::m/enable-sci true})))
+        (is (-> schema (m/explain ::invalid) (me/humanize {::m/enable-sci true})))))))
+
 (deftest composing-with-and-test
 
   (testing "top-level map-schemas are written in :malli/error"

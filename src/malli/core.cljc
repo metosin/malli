@@ -755,7 +755,7 @@
     (-into-schema [_ properties children options]
       (-check-children! :fn properties children {:min 1, :max 1})
       (let [children (vec children)
-            f (eval (first children))
+            f (eval (first children) options)
             form (-create-form :fn properties children)]
         ^{:type ::schema}
         (reify
@@ -832,7 +832,7 @@
              opts (merge opts (select-keys properties [:lazy-refs]))
              {:keys [children entries forms]} (-parse-entries children opts options)
              form (-create-form type properties forms)
-             dispatch (eval (:dispatch properties))
+             dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
          (when-not dispatch
            (-fail! ::missing-property {:key :dispatch}))
@@ -1181,17 +1181,18 @@
 ;; eval
 ;;
 
-(let [-evaluator (memoize (ms/evaluator {:preset :termination-safe
+(let [-fail! #(-fail! ::sci-not-available {:code %})
+      -evaluator (memoize (ms/evaluator {:preset :termination-safe
                                          :bindings {'m/properties properties
                                                     'm/type type
                                                     'm/children children
-                                                    'm/entries entries}}
-                                        #(-fail! :sci-not-available {:code %})))
+                                                    'm/entries entries}} -fail!))
       -eval? #(or (symbol? %) (string? %) (sequential? %))]
-  (defn eval [?code]
-    (cond (vector? ?code) ?code
-          (-eval? ?code) ((-evaluator) ?code)
-          :else ?code)))
+  (defn eval
+    ([?code] (eval ?code nil))
+    ([?code options] (cond (vector? ?code) ?code
+                           (-eval? ?code) (if (::enable-sci options true) ((-evaluator) ?code) (-fail! ?code))
+                           :else ?code))))
 
 ;;
 ;; schema walker

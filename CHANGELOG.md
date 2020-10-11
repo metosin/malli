@@ -14,6 +14,12 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* New options
+  * `:malli.core/disable-sci` for explicitly disabling `sci`, fixes [#276](https://github.com/metosin/malli/issues/276)
+  * `:malli.core/sci-options` for configuring `sci`
+
 ## 0.1.0 (2020-10-08)
 
 First stable release.

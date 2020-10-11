@@ -28,7 +28,7 @@ First stable release.
 * 19.9.2020
   * new mandatory Protocol method in `m/Schema`: `-type-properties`
 * 1.9.2020
-  * `m/children` returns 3-tuple (key, properties, schma) for `MapSchema`s
+  * `m/children` returns 3-tuple (key, properties, schema) for `MapSchema`s
   * `m/map-entries` is removed, `m/entries` returns a `MapEntry` of key & `m/-val-schema`  
 * 4.8.2020
   * `:path` in explain is re-implemented: map keys by value, others by child index
@@ -56,7 +56,7 @@ First stable release.
 * 31.6.2020
   * new `-children` method in `Schema`, to return child schemas as instances (instead of just AST)
 * 17.6.2020
-  * change all `malli.core/*-registy` defs into `malli.core/*-schemas` defns to enable DCE for clojurescript
+  * change all `malli.core/*-registry` defs into `malli.core/*-schemas` defns to enable DCE for clojurescript
 * 9.6.2020 
   * `malli.core/name` & `malli.core/-name` renamed to `malli.core/type` & `malli.core/-type`
   * `malli.generator/-generator` is renamed to `malli.generator/-schema-generator`

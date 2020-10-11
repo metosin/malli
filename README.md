@@ -27,8 +27,8 @@ Data-driven Schemas for Clojure/Script.
 Presentations:
 
 - [Malli, Data-Driven Schemas for Clojure/Script](https://www.metosin.fi/blog/malli/)
-- ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
 - CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
+- ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
 
 Try the [online demo](https://malli.io). Libraries using or supporting malli:
 

@@ -39,7 +39,7 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 
 ## Examples
 
-Definining and validating Schemas:
+Defining and validating Schemas:
 
 ```clj
 (require '[malli.core :as m])
@@ -132,7 +132,7 @@ You can also use [decomplected maps keys and values](https://clojure.org/about/s
 
 ## Homogeneous Maps
 
-Other times, we use a map as a homogenous index. In this case, all our key-value
+Other times, we use a map as a homogeneous index. In this case, all our key-value
 pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 ```clj
@@ -144,7 +144,7 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 ## Sequence Schemas
 
-You can use `:sequential` for any homogenous Clojure sequence, `:vector` for vectors and `:set` for sets.
+You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for vectors and `:set` for sets.
 
 ```clj
 (m/validate [:sequential any?] (list "this" 'is :number 42))
@@ -157,7 +157,7 @@ You can use `:sequential` for any homogenous Clojure sequence, `:vector` for vec
 ;; => false
 ```
 
-Support for Heterogenous/Regex sequences is [WIP](https://github.com/metosin/malli/issues/180).
+Support for Heterogeneous/Regex sequences is [WIP](https://github.com/metosin/malli/issues/180).
 
 ## String schemas
 
@@ -179,7 +179,7 @@ Using `:string` Schema:
 
 ## Function schemas
 
-`:fn` allows any predicat function to be used:  
+`:fn` allows any predicate function to be used:
  
 ```clj
 (def my-schema
@@ -199,7 +199,7 @@ Using `:string` Schema:
 ## Serializable Functions
 
 Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
-it is not present, the malli function evaluater throws `:sci-not-available` exception.
+it is not present, the malli function evaluator throws `:sci-not-available` exception.
 
 For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
 
@@ -358,7 +358,7 @@ Top-level humanized map-errors are under `:malli/error`:
 ; {:malli/error ["passwords don't match"]}
 ```
 
-Errors can be targetted using `:error/path` property:
+Errors can be targeted using `:error/path` property:
 
 ```clj
 (-> [:and [:map
@@ -729,7 +729,7 @@ Finding first value (prewalk):
 ; => "turvassa"
 ```
 
-Finding all subschmas with paths, retaining order:
+Finding all subschemas with paths, retaining order:
 
 ```clj
 (def Schema
@@ -890,7 +890,7 @@ Any (serializable) function can be used for `:dispatch`:
 
 ## Recursive Schemas
 
-[Local Registy](#local-registry) allows an easy way to create recursive schemas:
+[Local Registry](#local-registry) allows an easy way to create recursive schemas:
 
 ```clj
 (m/validate
@@ -1389,7 +1389,7 @@ Malli allows the default registry to be replaced, with the following compiler/jv
    * cljs: `:closure-defines {malli.registry/type "custom"}`
    * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
 
-It changes the default registry to empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enableds DCE for all unsed schema implementations.
+It changes the default registry to empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enables DCE for all unused schema implementations.
 
 Malli supports multiple types of registries.
 
@@ -1551,7 +1551,7 @@ Registries can be composed:
 
 ## Visualizing Schemas
 
-Transforming Schmas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
+Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
 
 ```clj
 (require '[malli.dot :as md])

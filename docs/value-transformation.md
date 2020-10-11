@@ -12,4 +12,4 @@
 | interceptor             | a component that bundles transforming functions into *transforming phases*
 | transforming phase      | either `:enter` or `:leave`, timing when a transformation function is applied in the chain (before or after the fact)
 | interceptor chain       | a sequence of interceptors that is used to run the (optimized sequence of) transformation functions from interceptors in correct order
-| transformation chain    | transformers compose too: `(mt/transformer {:name :before} mt/json-transfomer {:name :after})`
+| transformation chain    | transformers compose too: `(mt/transformer {:name :before} mt/json-transformer {:name :after})`

@@ -89,8 +89,13 @@
     (is (schema= [[:x [::m/val 'int?]] [:y [::m/val 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
     (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])"))))
   (testing "with options"
-    (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
-    (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1)))))
+    (testing "disabling sci"
+      (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1))))
+    (testing "custom bindings"
+      (let [f '(fn [schema] (m/form schema))]
+        (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval f) :string)))
+        (is (= :string ((m/eval f {::m/sci-options {:bindings {'m/form m/form}}}) :string)))))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]

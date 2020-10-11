@@ -1181,18 +1181,24 @@
 ;; eval
 ;;
 
+(defn -default-sci-options []
+  {:preset :termination-safe
+   :bindings {'m/properties properties
+              'm/type type
+              'm/children children
+              'm/entries entries}})
+
 (let [-fail! #(-fail! ::sci-not-available {:code %})
-      -evaluator (memoize (ms/evaluator {:preset :termination-safe
-                                         :bindings {'m/properties properties
-                                                    'm/type type
-                                                    'm/children children
-                                                    'm/entries entries}} -fail!))
-      -eval? #(or (symbol? %) (string? %) (sequential? %))]
+      -eval? #(or (symbol? %) (string? %) (sequential? %))
+      -evaluator (memoize ms/evaluator)]
   (defn eval
     ([?code] (eval ?code nil))
-    ([?code options] (cond (vector? ?code) ?code
-                           (-eval? ?code) (if (::disable-sci options true) (-fail! ?code) ((-evaluator) ?code))
-                           :else ?code))))
+    ([?code options]
+     (cond (vector? ?code) ?code
+           (-eval? ?code) (if (::disable-sci options)
+                            (-fail! ?code)
+                            (((-evaluator (or (::sci-options options) (-default-sci-options)) -fail!)) ?code))
+           :else ?code))))
 
 ;;
 ;; schema walker

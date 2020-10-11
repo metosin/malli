@@ -89,8 +89,8 @@
     (is (schema= [[:x [::m/val 'int?]] [:y [::m/val 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
     (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])"))))
   (testing "with options"
-    (is (= 2 ((m/eval inc {::m/enable-sci false}) 1)))
-    (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/enable-sci false}) 1)))))
+    (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
+    (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1)))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -139,7 +139,7 @@
       (testing "sci not available"
         (let [schema (m/schema
                        [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-                       {::m/enable-sci false})]
+                       {::m/disable-sci true})]
 
           (is (thrown-with-msg?
                 #?(:clj Exception, :cljs js/Error)
@@ -151,10 +151,10 @@
                 #":malli.core/sci-not-available"
                 (m/decoder
                   [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-                  {::m/enable-sci false} mt/string-transformer)))
+                  {::m/disable-sci true} mt/string-transformer)))
 
           (testing "direct options win"
-            (is (m/decoder schema {::m/enable-sci true} mt/string-transformer)))))
+            (is (m/decoder schema {::m/disable-sci false} mt/string-transformer)))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 

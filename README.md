@@ -203,6 +203,8 @@ it is not present, the malli function evaluater throws `:sci-not-available` exce
 
 For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
 
+For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
+
 ```clj
 (def my-schema
   [:and

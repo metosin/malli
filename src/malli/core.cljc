@@ -1191,7 +1191,7 @@
   (defn eval
     ([?code] (eval ?code nil))
     ([?code options] (cond (vector? ?code) ?code
-                           (-eval? ?code) (if (::enable-sci options true) ((-evaluator) ?code) (-fail! ?code))
+                           (-eval? ?code) (if (::disable-sci options true) (-fail! ?code) ((-evaluator) ?code))
                            :else ?code))))
 
 ;;

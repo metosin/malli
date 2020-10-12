@@ -203,6 +203,8 @@ it is not present, the malli function evaluator throws `:sci-not-available` exce
 
 For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
 
+For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
+
 ```clj
 (def my-schema
   [:and
@@ -216,6 +218,15 @@ For ClojureScript, you also need to require `sci.core` manually, either directly
 
 (m/validate my-schema {:x 1, :y 2})
 ; => false
+```
+
+**NOTE**: Malli uses `:termination-safe` option with sci, but [it might not be a good idea](https://github.com/borkdude/sci/issues/348)
+to read `sci` functions from untrusted sources. You can explictely disable with option `::m/disable-sci` and set the default options with `::m/sci-options`.
+
+```clj
+(m/validate [:fn 'int?] 1 {::m/disable-sci true})
+; Execution error
+; :malli.core/sci-not-available {:code int?}
 ```
 
 ## Error Messages

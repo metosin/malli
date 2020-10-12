@@ -86,8 +86,9 @@
   (if (map? x) (get x locale) x))
 
 (defn- -message [error x locale options]
-  (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn) error options))
-            (-maybe-localized (:error/message x) locale))))
+  (let [options (or options (m/options (:schema error)))]
+    (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn options) error options))
+              (-maybe-localized (:error/message x) locale)))))
 
 (defn- -ensure [x k]
   (if (sequential? x)
@@ -199,7 +200,7 @@
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
    (when explanation
-     (update explanation :errors (fn [errors] (map #(f (with-error-message % options)) errors))))))
+     (update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors)))))))
 
 (defn with-spell-checking
   ([explanation]

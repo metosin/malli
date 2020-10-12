@@ -152,7 +152,7 @@
         gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))
         elements (when elements (gen/elements elements))]
     (cond
-      fmap (gen/fmap (m/eval fmap) (or elements gen (gen/return nil)))
+      fmap (gen/fmap (m/eval fmap (or options (m/options schema))) (or elements gen (gen/return nil)))
       elements elements
       gen gen
       :else (m/-fail! ::no-generator {:schema schema, :options options}))))

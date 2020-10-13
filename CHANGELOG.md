@@ -26,13 +26,13 @@ Malli is in [alpha](README.md#alpha).
   [:map
    [:user [:map
            [:name :string]
-           [:desciption {:ui/default "-"} :string]]]]
+           [:description {:ui/default "-"} :string]]]]
   nil
   (mt/default-value-transformer
     {:key :ui/default
      :defaults {:map (constantly {})
                 :string (constantly "")}}))
-; => {:user {:name "", :desciption "-"}}
+; => {:user {:name "", :description "-"}}
 ```
 
 ## 0.1.0 (2020-10-08)

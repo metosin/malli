@@ -556,13 +556,13 @@ With custom key and type defaults:
   [:map
    [:user [:map
            [:name :string]
-           [:desciption {:ui/default "-"} :string]]]]
+           [:description {:ui/default "-"} :string]]]]
   nil
   (mt/default-value-transformer
     {:key :ui/default
      :defaults {:map (constantly {})
                 :string (constantly "")}}))
-; => {:user {:name "", :desciption "-"}}
+; => {:user {:name "", :description "-"}}
 ```
 
 Single sweep of defaults & string encoding:

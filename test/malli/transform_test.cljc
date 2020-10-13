@@ -657,7 +657,18 @@
   (testing "default false"
     (is (= {:user/verified false} (m/decode [:map [:user/verified [:and {:default false} boolean?]]] {} mt/default-value-transformer)))
     (is (= {:user/verified false} (m/decode [:map [:user/verified {:default false} boolean?]] {} mt/default-value-transformer)))
-    (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer)))))
+    (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer))))
+
+  (testing "with custom options"
+    (is (= false (m/decode [:and {:? false} boolean?] nil (mt/default-value-transformer {:key :?}))))
+    (is (= {:user {:first-name "", :last-name ""}}
+           (m/decode [:map
+                      [:user [:map
+                              [:first-name :string]
+                              [:last-name :string]]]]
+                     nil
+                     (mt/default-value-transformer {:defaults {:map (constantly {})
+                                                               :string (constantly "")}}))))))
 
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))

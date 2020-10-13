@@ -549,6 +549,22 @@ Applying default values:
 ; => 42
 ```
 
+With custom key and type defaults:
+
+```clj
+(m/decode
+  [:map
+   [:user [:map
+           [:name :string]
+           [:desciption {:ui/default "-"} :string]]]]
+  nil
+  (mt/default-value-transformer
+    {:key :ui/default
+     :defaults {:map (constantly {})
+                :string (constantly "")}}))
+; => {:user {:name "", :desciption "-"}}
+```
+
 Single sweep of defaults & string encoding:
 
 ```clj

@@ -19,6 +19,21 @@ Malli is in [alpha](README.md#alpha).
 * New options
   * `:malli.core/disable-sci` for explicitly disabling `sci`, fixes [#276](https://github.com/metosin/malli/issues/276)
   * `:malli.core/sci-options` for configuring `sci`
+* `malli.transform/default-value-transformer` accepts options `:key` and `:defaults`:
+
+```clj
+(m/decode
+  [:map
+   [:user [:map
+           [:name :string]
+           [:desciption {:ui/default "-"} :string]]]]
+  nil
+  (mt/default-value-transformer
+    {:key :ui/default
+     :defaults {:map (constantly {})
+                :string (constantly "")}}))
+; => {:user {:name "", :desciption "-"}}
+```
 
 ## 0.1.0 (2020-10-08)
 

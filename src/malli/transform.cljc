@@ -367,32 +367,36 @@
                        (= :default types) {:default-decoder (transform decode :enter)
                                            :default-encoder (transform encode :leave)}))))
 
-(defn default-value-transformer []
-  (let [get-default (fn [schema] (some-> schema m/properties :default))
-        set-default {:compile (fn [schema _]
-                                (if-some [default (get-default schema)]
-                                  (fn [x] (if (nil? x) default x))))}
-        add-defaults {:compile (fn [schema _]
-                                 (let [defaults (->> (m/children schema)
-                                                     (keep (fn [[k {:keys [default]} v]]
-                                                             (if-some [default (if (some? default) default (get-default v))]
-                                                               [k default])))
-                                                     (into {}))]
-                                   (if (seq defaults)
-                                     (fn [x]
-                                       (if (map? x)
-                                         (reduce-kv
-                                           (fn [acc k v]
-                                             (if-not (contains? x k)
-                                               (assoc acc k v)
-                                               acc))
-                                           x defaults)
-                                         x)))))}]
-    (transformer
-      {:default-decoder set-default
-       :default-encoder set-default}
-      {:decoders {:map add-defaults}
-       :encoders {:map add-defaults}})))
+(defn default-value-transformer
+  ([]
+   (default-value-transformer nil))
+  ([{:keys [key defaults] :or {key :default}}]
+   (let [get-default (fn [schema] (let [default (some-> schema m/properties key)]
+                                    (if (some? default) default (some->> schema m/type (get defaults) (#(% schema))))))
+         set-default {:compile (fn [schema _]
+                                 (if-some [default (get-default schema)]
+                                   (fn [x] (if (nil? x) default x))))}
+         add-defaults {:compile (fn [schema _]
+                                  (let [defaults (->> (m/children schema)
+                                                      (keep (fn [[k {default key} v]]
+                                                              (if-some [default (if (some? default) default (get-default v))]
+                                                                [k default])))
+                                                      (into {}))]
+                                    (if (seq defaults)
+                                      (fn [x]
+                                        (if (map? x)
+                                          (reduce-kv
+                                            (fn [acc k v]
+                                              (if-not (contains? x k)
+                                                (assoc acc k v)
+                                                acc))
+                                            x defaults)
+                                          x)))))}]
+     (transformer
+       {:default-decoder set-default
+        :default-encoder set-default}
+       {:decoders {:map add-defaults}
+        :encoders {:map add-defaults}}))))
 
 (defn collection-transformer []
   (let [coders {:vector -sequential-or-set->vector

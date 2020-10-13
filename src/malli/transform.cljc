@@ -98,7 +98,16 @@
 #?(:clj
    (def ^DateTimeFormatter +string->date-format+
      (-> (DateTimeFormatterBuilder.)
-         (.appendPattern "yyyy-MM-dd['T'HH:mm:ss[.SSS][XXXX][XXXXX]]")
+         (.appendPattern "yyyy-MM-dd['T'HH:mm:ss]")
+         (.optionalStart)
+         (.appendFraction ChronoField/MICRO_OF_SECOND, 0, 9, true)
+         (.optionalEnd)
+         (.optionalStart)
+         (.appendOffset "+HHMMss", "Z")
+         (.optionalEnd)
+         (.optionalStart)
+         (.appendOffset "+HH:MM:ss", "Z")
+         (.optionalEnd)
          (.parseDefaulting ChronoField/HOUR_OF_DAY 0)
          (.parseDefaulting ChronoField/OFFSET_SECONDS 0)
          (.toFormatter))))

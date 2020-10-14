@@ -34,6 +34,7 @@ Malli is in [alpha](README.md#alpha).
                 :string (constantly "")}}))
 ; => {:user {:name "", :description "-"}}
 ```
+* Support microsecond precision when parsing datetime strings. [#280](https://github.com/metosin/malli/pull/280)
 
 ## 0.1.0 (2020-10-08)
 

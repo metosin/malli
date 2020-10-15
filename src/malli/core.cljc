@@ -1171,11 +1171,14 @@
        (-entries schema)))))
 
 (defn deref
-  "Derefs a `RefSchema`."
+  "Derefs top-level `RefSchema`s recursively or returns original Schema."
   ([?schema]
    (deref ?schema nil))
   ([?schema options]
-   (some-> (schema ?schema options) (-deref))))
+   (loop [schema (schema ?schema options)]
+     (if (satisfies? RefSchema schema)
+       (recur (-deref schema))
+       schema))))
 
 ;;
 ;; eval

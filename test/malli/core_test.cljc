@@ -449,7 +449,9 @@
                (mt/transformer {:name :custom}))))
 
       (testing "deref"
-        (is (mu/equals (m/schema int?) (m/deref [:schema int?]))))
+        (is (mu/equals (m/schema int?) (m/deref int?)))
+        (is (mu/equals (m/schema int?) (m/deref [:schema int?])))
+        (is (mu/equals (m/schema int?) (m/deref [:schema [:schema [:schema int?]]]))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 

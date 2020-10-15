@@ -65,8 +65,8 @@
   ([?schema1 ?schema2]
    (merge ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 options]
-   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/schema ?schema1 options))
-                                        (if ?schema2 (m/schema ?schema2 options))]
+   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/deref (m/schema ?schema1 options)))
+                                        (if ?schema2 (m/deref (m/schema ?schema2 options)))]
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options]

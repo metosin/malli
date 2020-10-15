@@ -61,7 +61,11 @@
        [:query-params {:title "query2", :description "first", :summary "second"}
         [:map [:x string?] [:y int?]]]
        [:body-params
-        [:map [:z int?]]]]]]))
+        [:map [:z int?]]]]]]
+
+    [:schema [:schema [:map [:x int?]]]]
+    [:schema [:schema [:schema [:map [:y int?]]]]]
+    [:map [:x int?] [:y int?]]))
 
 (deftest union-test
   (are [?s1 ?s2 expected]
@@ -106,7 +110,11 @@
        [:query-params {:title "query2", :description "first", :summary "second"}
         [:map [:x [:or int? string?]] [:y int?]]]
        [:body-params
-        [:map [:z int?]]]]]]))
+        [:map [:z int?]]]]]]
+
+    [:schema [:schema [:map [:x int?]]]]
+    [:schema [:schema [:schema [:map [:y int?]]]]]
+    [:map [:x int?] [:y int?]]))
 
 (deftest update-properties-test
   (let [schema [:and {:x 0} int?]]

@@ -98,6 +98,9 @@
 (defn -lazy [ref options]
   (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 
+(defn -boolean-fn [x]
+  (if (boolean? x) (constantly x) x))
+
 (defn -comp
   ([] identity)
   ([f] f)
@@ -919,7 +922,7 @@
            (-walk [this walker path options]
              (let [accept (fn [] (-inner walker (-ref) (into path [0 0]) (-update options ::walked-refs #(conj (or % #{}) ref))))]
                (if (-accept walker this path options)
-                 (if (or (not (::walk-refs options)) (contains? (::walked-refs options) ref))
+                 (if (or (not ((-boolean-fn (::walk-refs options false)) ref)) (contains? (::walked-refs options) ref))
                    (-outer walker this path [ref] options)
                    (-outer walker this path [(accept)] options)))))
            (-properties [_] properties)
@@ -955,7 +958,7 @@
               (-parent-children-transformer this children transformer method options))
             (-walk [this walker path options]
               (if (-accept walker this path options)
-                (if (or (not id) (::walk-schema-refs options))
+                (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
                   (-outer walker this path (-inner-indexed walker path children options) options)
                   (-outer walker this path [id] options))))
             (-properties [_] properties)

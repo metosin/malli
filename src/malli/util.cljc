@@ -152,7 +152,7 @@
   ([?schema]
    (subschemas ?schema nil))
   ([?schema options]
-   (let [options (clojure.core/assoc options ::m/walk-schema-refs true)
+   (let [options (clojure.core/update options ::m/walk-schema-refs  (fnil identity true))
          schema (m/schema ?schema options)
          state (atom [])]
      (find-first schema (fn [s p _] (swap! state conj {:path p, :in (path->in schema p), :schema s}) nil) options)

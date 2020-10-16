@@ -633,29 +633,101 @@
     (testing "walking references"
       (let [schema [:ref {:registry {"Address" [:map
                                                 [:street :string]
-                                                [:neighbor [:maybe "Neighbor"]]]
+                                                [:country "Country"]
+                                                [:neighbor [:ref "Neighbor"]]]
+                                     "Country" [:map [:name "CountryName"]]
+                                     "CountryName" [:= "finland"]
                                      "Neighbor" [:ref "Address"]}}
                     "Address"]]
 
-        (testing "both refs"
+        (testing "with defaults"
           (is (= {:type :ref,
-                  :properties {:registry {"Address" [:map [:street :string] [:neighbor [:maybe "Neighbor"]]],
+                  :properties {:registry {"Address" [:map
+                                                     [:street :string]
+                                                     [:country "Country"]
+                                                     [:neighbor [:ref "Neighbor"]]],
+                                          "Country" [:map [:name "CountryName"]],
+                                          "CountryName" [:= "finland"],
+                                          "Neighbor" [:ref "Address"]}},
+                  :children ["Address"]}
+                 (mu/to-map-syntax schema))))
+
+        (testing "walking over all refs"
+          (is (= {:type :ref,
+                  :properties {:registry {"Address" [:map
+                                                     [:street :string]
+                                                     [:country "Country"]
+                                                     [:neighbor [:ref "Neighbor"]]],
+                                          "Country" [:map [:name "CountryName"]],
+                                          "CountryName" [:= "finland"],
                                           "Neighbor" [:ref "Address"]}},
                   :children [{:type :map,
                               :children [[:street nil {:type :string}]
-                                         [:neighbor nil {:type :maybe
-                                                         :children [{:type :malli.core/schema
-                                                                     :children ["Neighbor"]}]}]]}]}
+                                         [:country nil {:type :malli.core/schema
+                                                        :children ["Country"]}]
+                                         [:neighbor nil {:type :ref
+                                                         :children [{:type :ref
+                                                                     :children ["Address"]}]}]]}]}
                  (mu/to-map-syntax schema {::m/walk-refs true}))))
 
-        (testing "both refs and schema-refs"
+        (testing "walking over some refs"
           (is (= {:type :ref,
-                  :properties {:registry {"Address" [:map [:street :string] [:neighbor [:maybe "Neighbor"]]],
+                  :properties {:registry {"Address" [:map
+                                                     [:street :string]
+                                                     [:country "Country"]
+                                                     [:neighbor [:ref "Neighbor"]]],
+                                          "Country" [:map [:name "CountryName"]],
+                                          "CountryName" [:= "finland"],
                                           "Neighbor" [:ref "Address"]}},
                   :children [{:type :map,
                               :children [[:street nil {:type :string}]
-                                         [:neighbor nil {:type :maybe,
-                                                         :children [{:type :malli.core/schema
-                                                                     :children [{:type :ref
-                                                                                 :children ["Address"]}]}]}]]}]}
-                 (mu/to-map-syntax schema {::m/walk-refs true, ::m/walk-schema-refs true}))))))))
+                                         [:country nil {:type :malli.core/schema
+                                                        :children ["Country"]}]
+                                         [:neighbor nil {:type :ref
+                                                         :children ["Neighbor"]}]]}]}
+
+                 (mu/to-map-syntax schema {::m/walk-refs #{"Address"}}))))
+
+        (testing "walking over some refs and schemas"
+          (is (= {:type :ref,
+                  :properties {:registry {"Address" [:map
+                                                     [:street :string]
+                                                     [:country "Country"]
+                                                     [:neighbor [:ref "Neighbor"]]],
+                                          "Country" [:map [:name "CountryName"]],
+                                          "CountryName" [:= "finland"],
+                                          "Neighbor" [:ref "Address"]}},
+                  :children [{:type :map,
+                              :children [[:street nil {:type :string}]
+                                         [:country nil {:type :malli.core/schema,
+                                                        :children [{:type :map,
+                                                                    :children [[:name nil {:type :malli.core/schema, :children ["CountryName"]}]]}]}]
+                                         [:neighbor nil {:type :ref
+                                                         :children ["Neighbor"]}]]}]}
+
+                 (mu/to-map-syntax schema {::m/walk-refs #{"Address"}
+                                           ::m/walk-schema-refs #{"Country"}}))))
+
+        (testing "walking over all refs and schemas"
+          (is (= {:type :ref,
+                  :properties {:registry {"Address" [:map
+                                                     [:street :string]
+                                                     [:country "Country"]
+                                                     [:neighbor [:ref "Neighbor"]]],
+                                          "Country" [:map [:name "CountryName"]],
+                                          "CountryName" [:= "finland"],
+                                          "Neighbor" [:ref "Address"]}},
+                  :children [{:type :map,
+                              :children [[:street nil {:type :string}]
+                                         [:country nil {:type :malli.core/schema,
+                                                        :children [{:type :map,
+                                                                    :children [[:name nil {:type :malli.core/schema,
+                                                                                           :children [{:type :=
+                                                                                                       :children ["finland"]}]}]]}]}]
+                                         [:neighbor nil {:type :ref
+                                                         :children [{:type :ref
+                                                                     :children ["Address"]}]}]]}]}
+
+
+                 (mu/to-map-syntax schema {::m/walk-refs true
+                                           ::m/walk-schema-refs true}))))))))

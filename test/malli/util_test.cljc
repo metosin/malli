@@ -628,4 +628,34 @@
                                                                                          :children [{:type :tuple
                                                                                                      :children [{:type 'double?}
                                                                                                                 {:type 'double?}]}]}]]}]}]}]]}
-             (mu/to-map-syntax schema {::m/walk-entry-vals true}))))))
+             (mu/to-map-syntax schema {::m/walk-entry-vals true}))))
+
+    (testing "walking references"
+      (let [schema [:ref {:registry {"Address" [:map
+                                                [:street :string]
+                                                [:neighbor [:maybe "Neighbor"]]]
+                                     "Neighbor" [:ref "Address"]}}
+                    "Address"]]
+
+        (testing "both refs"
+          (is (= {:type :ref,
+                  :properties {:registry {"Address" [:map [:street :string] [:neighbor [:maybe "Neighbor"]]],
+                                          "Neighbor" [:ref "Address"]}},
+                  :children [{:type :map,
+                              :children [[:street nil {:type :string}]
+                                         [:neighbor nil {:type :maybe
+                                                         :children [{:type :malli.core/schema
+                                                                     :children ["Neighbor"]}]}]]}]}
+                 (mu/to-map-syntax schema {::m/walk-refs true}))))
+
+        (testing "both refs and schema-refs"
+          (is (= {:type :ref,
+                  :properties {:registry {"Address" [:map [:street :string] [:neighbor [:maybe "Neighbor"]]],
+                                          "Neighbor" [:ref "Address"]}},
+                  :children [{:type :map,
+                              :children [[:street nil {:type :string}]
+                                         [:neighbor nil {:type :maybe,
+                                                         :children [{:type :malli.core/schema
+                                                                     :children [{:type :ref
+                                                                                 :children ["Address"]}]}]}]]}]}
+                 (mu/to-map-syntax schema {::m/walk-refs true, ::m/walk-schema-refs true}))))))))

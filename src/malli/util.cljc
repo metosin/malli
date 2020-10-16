@@ -148,12 +148,16 @@
      options)))
 
 (defn subschemas
-  "Returns all subschemas for unique paths as a vector of maps with :schema, :path and :in keys"
+  "Returns all subschemas for unique paths as a vector of maps with :schema, :path and :in keys.
+   Walks over :schema references and top-level :refs. See [[malli.core/-walk]] for all options."
   ([?schema]
    (subschemas ?schema nil))
   ([?schema options]
-   (let [options (clojure.core/update options ::m/walk-schema-refs  (fnil identity true))
-         schema (m/schema ?schema options)
+   (let [schema (m/schema ?schema options)
+         options (let [ref (and (= :ref (m/type schema)) (m/-ref schema))]
+                   (-> options
+                       (clojure.core/update ::m/walk-schema-refs (fnil identity true))
+                       (clojure.core/update ::m/walk-refs (fn [f] #(or (= ref %) ((m/-boolean-fn f) %))))))
          state (atom [])]
      (find-first schema (fn [s p _] (swap! state conj {:path p, :in (path->in schema p), :schema s}) nil) options)
      @state)))

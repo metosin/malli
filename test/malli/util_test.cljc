@@ -530,24 +530,45 @@
                       (with-forms)))))))
 
     (testing "refs"
-      (let [Address [:ref {:registry {"Address" [:map
-                                                 [:street string?]
-                                                 [:neighbor [:maybe "Neighbor"]]]
+      (let [with-forms (partial map #(update % :schema m/form))
+            Address [:ref {:registry {"Address" [:map
+                                                 [:country "Country"]
+                                                 [:address [:ref "Address"]]
+                                                 [:neighbor [:ref "Neighbor"]]]
+                                      "Country" [:map [:name "CountryName"]]
+                                      "CountryName" [:= "finland"]
                                       "Neighbor" [:ref "Address"]}}
                      "Address"]]
 
-        (testing "are not walked over by default"
-          (is (= (->> [{:path [], :in [], :schema Address}]
+        (->> (mu/subschemas Address)
+             (with-forms))
+
+        (testing "top-level refs are walked by default"
+          (is (= (->> [{:path [],
+                        :in [],
+                        :schema Address}
+                       {:path [0 0], :in [], :schema (mu/get-in Address [0 0])}
+                       {:path [0 0 :country], :in [:country], :schema (mu/get-in Address [0 0 :country])}
+                       {:path [0 0 :country 0], :in [:country], :schema (mu/get-in Address [0 0 :country 0])}
+                       {:path [0 0 :country 0 :name], :in [:country :name], :schema (mu/get-in Address [0 0 :country 0 :name])}
+                       {:path [0 0 :country 0 :name 0], :in [:country :name], :schema (mu/get-in Address [0 0 :country 0 :name 0])}
+                       {:path [0 0 :address], :in [:address], :schema (mu/get-in Address [0 0 :address])}
+                       {:path [0 0 :neighbor], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor])}]
                       (with-forms))
                  (->> (mu/subschemas Address)
                       (with-forms)))))
 
-        (testing "can be walked over safely"
-          (is (= (->> [{:path [], :in [], :schema Address}
+        (testing "all refs can be walked"
+          (is (= (->> [{:path [],
+                        :in [],
+                        :schema Address}
                        {:path [0 0], :in [], :schema (mu/get-in Address [0 0])}
-                       {:path [0 0 :street], :in [:street], :schema (mu/get-in Address [0 0 :street])}
+                       {:path [0 0 :country], :in [:country], :schema (mu/get-in Address [0 0 :country])}
+                       {:path [0 0 :country 0], :in [:country], :schema (mu/get-in Address [0 0 :country 0])}
+                       {:path [0 0 :country 0 :name], :in [:country :name], :schema (mu/get-in Address [0 0 :country 0 :name])}
+                       {:path [0 0 :country 0 :name 0], :in [:country :name], :schema (mu/get-in Address [0 0 :country 0 :name 0])}
+                       {:path [0 0 :address], :in [:address], :schema (mu/get-in Address [0 0 :address])}
                        {:path [0 0 :neighbor], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor])}
-                       {:path [0 0 :neighbor 0], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor 0])}
                        {:path [0 0 :neighbor 0 0], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor 0 0])}]
                       (with-forms))
                  (->> (mu/subschemas Address {::m/walk-refs true})

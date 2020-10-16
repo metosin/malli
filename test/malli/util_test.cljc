@@ -515,7 +515,43 @@
                   (m/schema)
                   (mu/subschemas)
                   (mu/distinct-by :in)
-                  (with-forms)))))))
+                  (with-forms)))))
+
+    (testing "schemas"
+      (let [Schema [:schema [:and [:map [:x [:schema int?]]]]]]
+        (testing "are walked over by default"
+          (is (= (->> [{:path [], :in [], :schema Schema}
+                       {:path [0], :in [], :schema [:and [:map [:x [:schema int?]]]]}
+                       {:path [0 0], :in [], :schema [:map [:x [:schema int?]]]}
+                       {:path [0 0 :x], :in [:x], :schema [:schema int?]}
+                       {:in [:x], :path [0 0 :x 0], :schema int?}]
+                      (with-forms))
+                 (->> (mu/subschemas Schema)
+                      (with-forms)))))))
+
+    (testing "refs"
+      (let [Address [:ref {:registry {"Address" [:map
+                                                 [:street string?]
+                                                 [:neighbor [:maybe "Neighbor"]]]
+                                      "Neighbor" [:ref "Address"]}}
+                     "Address"]]
+
+        (testing "are not walked over by default"
+          (is (= (->> [{:path [], :in [], :schema Address}]
+                      (with-forms))
+                 (->> (mu/subschemas Address)
+                      (with-forms)))))
+
+        (testing "can be walked over safely"
+          (is (= (->> [{:path [], :in [], :schema Address}
+                       {:path [0 0], :in [], :schema (mu/get-in Address [0 0])}
+                       {:path [0 0 :street], :in [:street], :schema (mu/get-in Address [0 0 :street])}
+                       {:path [0 0 :neighbor], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor])}
+                       {:path [0 0 :neighbor 0], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor 0])}
+                       {:path [0 0 :neighbor 0 0], :in [:neighbor], :schema (mu/get-in Address [0 0 :neighbor 0 0])}]
+                      (with-forms))
+                 (->> (mu/subschemas Address {::m/walk-refs true})
+                      (with-forms)))))))))
 
 (deftest in-path-conversions
   (testing "symmetry of things"

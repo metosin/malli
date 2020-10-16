@@ -152,9 +152,10 @@
   ([?schema]
    (subschemas ?schema nil))
   ([?schema options]
-   (let [schema (m/schema ?schema options)
+   (let [options (clojure.core/assoc options ::m/walk-schema-refs true)
+         schema (m/schema ?schema options)
          state (atom [])]
-     (find-first schema (fn [s path _] (swap! state conj {:path path, :in (path->in schema path), :schema s}) nil))
+     (find-first schema (fn [s p _] (swap! state conj {:path p, :in (path->in schema p), :schema s}) nil) options)
      @state)))
 
 (defn distinct-by

@@ -18,7 +18,7 @@
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
   (-transformer [this transformer method options] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
-  (-walk [this walker path options] "walks the schema and it's children")
+  (-walk [this walker path options] "walks the schema and it's children, ::m/walk-entry-vals, ::m/walk-refs, ::m/walk-schema-refs options effect how walking is done.")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
   (-children [this] "returns schema children")
@@ -897,6 +897,7 @@
                       (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
                       (when-not allow-invalid-refs
                         (-fail! ::invalid-ref {:type :ref, :ref ref})))
+             children (vec children)
              form (-create-form :ref properties children)]
          ^{:type ::schema}
          (reify
@@ -916,20 +917,20 @@
                {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
                 :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
            (-walk [this walker path options]
-             (let [accept (fn [] (-inner walker (-ref) path (-update options ::ref-walked #(conj (or % #{}) ref))))
-                   accept-ref ^{:type ::ref} (reify IDeref (#?(:cljs cljs.core/-deref, :clj deref) [_] (accept)))
-                   options (assoc options ::ref-walk accept-ref)]
+             (let [accept (fn [] (-inner walker (-ref) (into path [0 0]) (-update options ::walked-refs #(conj (or % #{}) ref))))]
                (if (-accept walker this path options)
-                 (-outer walker this path (vec children) options))))
+                 (if (or (not (::walk-refs options)) (contains? (::walked-refs options) ref))
+                   (-outer walker this path [ref] options)
+                   (-outer walker this path [(accept)] options)))))
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] children)
            (-form [_] form)
            LensSchema
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
-           (-set [this key value] (if (= key 0)
-                                    (into-schema :ref properties [value])
-                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
+           (-keep [_])
+           (-set [this key value] (if (= key 0) (into-schema :ref properties [value])
+                                                (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))))))))
@@ -954,9 +955,9 @@
               (-parent-children-transformer this children transformer method options))
             (-walk [this walker path options]
               (if (-accept walker this path options)
-                (if id
-                  (-outer walker this path [id] options)
-                  (-outer walker this path [(-inner walker child path options)] options))))
+                (if (or (not id) (::walk-schema-refs options))
+                  (-outer walker this path (-inner-indexed walker path children options) options)
+                  (-outer walker this path [id] options))))
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)
@@ -964,9 +965,8 @@
             LensSchema
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
-            (-set [this key value] (if (= key 0)
-                                     (into-schema type properties [value])
-                                     (-fail! ::index-out-of-bounds {:schema this, :key key})))
+            (-set [this key value] (if (= key 0) (into-schema type properties [value])
+                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)))))))

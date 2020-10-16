@@ -38,7 +38,9 @@ After:
 ; => int?
 ```
 
-* the following utilities in `malli.util` do automatic top-level deref: `merge`, `union`
+* the following utilities in `malli.util` do automatic top-level deref: `merge`, `union`.
+
+* `mu/subschemas` walks over top-level `:ref` and all `:schema`s.
 
 * `m/walk` can walk over `:ref` and `:schema` reference schemas. Walking can be enabled using options `:malli.core/walk-refs` and `:malli.core/walk-schema-refs`.
 

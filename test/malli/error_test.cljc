@@ -394,3 +394,20 @@
                '({:a 10}
                  {:b 10}))
              (me/humanize)))))
+
+(deftest util-schemas-test
+  (let [registry (merge (m/default-schemas) (mu/schemas))]
+    (doseq [[schema errors] [[[:merge {:title "merge"}
+                               [:map [:x int?] [:y int?]]
+                               [:map [:z int?]]]
+                              {:y ["missing required key"]
+                               :z ["missing required key"]}]
+                             [[:union {:title "union"}
+                               [:map [:x int?] [:y int?]]
+                               [:map [:x string?]]]
+                              {:y ["missing required key"]}]
+                             [[:select-keys {:title "select-keys"}
+                               [:map [:x int?] [:y int?]]
+                               [:x]]]]
+            :let [schema (m/schema schema {:registry registry})]]
+      (is (= errors (-> schema (m/explain {:x 1}) (me/humanize)))))))

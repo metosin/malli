@@ -335,12 +335,13 @@
      (clojure.core/update children 0 #(m/form % options))
      (apply f (conj children options))]))
 
-(defn -util-schema [{:keys [min max type type-properties f]}]
+(defn -util-schema [{:keys [type min max childs type-properties fn]}]
   ^{:type ::m/into-schema}
   (reify m/IntoSchema
     (-into-schema [_ properties children options]
       (m/-check-children! type properties children {:min min, :max max})
-      (let [[children forms schema] (f properties (vec children) options)
+      (let [[children forms schema] (fn properties (vec children) options)
+            walkable-childs (if childs (subvec children 0 childs) children)
             form (m/-create-form type properties forms)]
         ^{:type ::m/schema}
         (reify
@@ -353,7 +354,7 @@
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]
             (if (m/-accept walker this path options)
-              (m/-outer walker this path (m/-inner-indexed walker path children options) options)))
+              (m/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -366,9 +367,9 @@
           (-ref [_])
           (-deref [_] schema))))))
 
-(defn -merge [] (-util-schema {:type :merge, :f (-reducing merge)}))
-(defn -union [] (-util-schema {:type :union, :f (-reducing union)}))
-(defn -select-keys [] (-util-schema {:type :select-keys, :min 2, :max 2, :f (-applying select-keys)}))
+(defn -merge [] (-util-schema {:type :merge, :fn (-reducing merge)}))
+(defn -union [] (-util-schema {:type :union, :fn (-reducing union)}))
+(defn -select-keys [] (-util-schema {:type :select-keys, :childs 1, :min 2, :max 2, :fn (-applying select-keys)}))
 
 (defn schemas [] {:merge (-merge)
                   :union (-union)

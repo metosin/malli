@@ -2,6 +2,8 @@
   (:require [malli.core :as m]
             [clojure.set :as set]))
 
+(declare transform)
+
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
@@ -116,6 +118,10 @@
                  (-accept schema children options)
                  (accept (m/type schema) schema children options))
                (unlift-keys p :json-schema)))))
+
+(defmethod accept :merge [_ schema _ options] (transform (m/deref schema) options))
+(defmethod accept :union [_ schema _ options] (transform (m/deref schema) options))
+(defmethod accept :select-keys [_ schema _ options] (transform (m/deref schema) options))
 
 ;;
 ;; public api

@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core-test]
             [malli.json-schema :as json-schema]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.util :as mu]))
 
 (def expectations
   [;; predicates
@@ -124,3 +125,42 @@
                     :default 42
                     :json-schema/default 422
                     :json-schema/example 422} int?])))))
+
+(deftest util-schemas-test
+  (let [registry (merge (m/default-schemas) (mu/schemas))]
+
+    (testing "merge"
+      (is (= {:title "merge",
+              :type "object",
+              :properties {:x {:type "integer", :format "int64", :example 42},
+                           :y {:type "integer", :format "int64"},
+                           :z {:type "integer", :format "int64"}},
+              :required [:x :y :z]}
+             (json-schema/transform
+               [:merge {:title "merge"}
+                [:map [:x {:json-schema/example 42} int?] [:y int?]]
+                [:map [:z int?]]]
+               {:registry registry}))))
+
+    (testing "union"
+      (is (= {:title "union",
+              :type "object",
+              :properties {:x {:anyOf [{:type "integer", :format "int64"} {:type "string"}]}
+                           :y {:type "integer", :format "int64"}},
+              :required [:x :y]}
+             (json-schema/transform
+               [:union {:title "union"}
+                [:map [:x int?] [:y int?]]
+                [:map [:x string?]]]
+               {:registry registry}))))
+
+    (testing "select-keys"
+      (is (= {:title "select-keys"
+              :type "object"
+              :properties {:x {:type "integer", :format "int64"}}
+              :required [:x]}
+             (json-schema/transform
+               [:select-keys {:title "select-keys"}
+                [:map [:x int?] [:y int?]]
+                [:x]]
+               {:registry registry}))))))

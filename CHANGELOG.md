@@ -38,7 +38,7 @@ After:
 ; => int?
 ```
 
-* **BREAKING**: the following utilities in `malli.util` do automatic top-level deref: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys` and `select-keys`.
+* **BREAKING**: the following utilities in `malli.util` do automatic top-level deref: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
 
 * `mu/subschemas` walks over top-level `:ref` and all `:schema`s.
 

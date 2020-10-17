@@ -65,8 +65,8 @@
   ([?schema1 ?schema2]
    (merge ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 options]
-   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/schema ?schema1 options))
-                                        (if ?schema2 (m/schema ?schema2 options))]
+   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/deref (m/schema ?schema1 options)))
+                                        (if ?schema2 (m/deref (m/schema ?schema2 options)))]
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options]
@@ -148,13 +148,18 @@
      options)))
 
 (defn subschemas
-  "Returns all subschemas for unique paths as a vector of maps with :schema, :path and :in keys"
+  "Returns all subschemas for unique paths as a vector of maps with :schema, :path and :in keys.
+   Walks over :schema references and top-level :refs. See [[malli.core/-walk]] for all options."
   ([?schema]
    (subschemas ?schema nil))
   ([?schema options]
    (let [schema (m/schema ?schema options)
+         options (let [ref (and (= :ref (m/type schema)) (m/-ref schema))]
+                   (-> options
+                       (clojure.core/update ::m/walk-schema-refs (fnil identity true))
+                       (clojure.core/update ::m/walk-refs (fn [f] #(or (= ref %) ((m/-boolean-fn f) %))))))
          state (atom [])]
-     (find-first schema (fn [s path _] (swap! state conj {:path path, :in (path->in schema path), :schema s}) nil))
+     (find-first schema (fn [s p _] (swap! state conj {:path p, :in (path->in schema p), :schema s}) nil) options)
      @state)))
 
 (defn distinct-by

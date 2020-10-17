@@ -342,6 +342,10 @@
     (is (mu/equals (mu/dissoc schema :b)
                    [:map {:title "map"}
                     [:a int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/dissoc [:schema schema] :b)
+                   [:map {:title "map"}
+                    [:a int?]
                     [:c string?]]))))
 
 (deftest update-test
@@ -416,6 +420,8 @@
     (is (mu/equals (mu/optional-keys schema)
                    [:map [:x {:optional true} int?] [:y {:optional true} int?]]))
     (is (mu/equals (mu/optional-keys schema [:x :extra nil])
+                   [:map [:x {:optional true} int?] [:y int?]]))
+    (is (mu/equals (mu/optional-keys [:schema schema] [:x :extra nil])
                    [:map [:x {:optional true} int?] [:y int?]]))))
 
 (deftest required-keys-test
@@ -423,6 +429,8 @@
     (is (mu/equals (mu/required-keys schema)
                    [:map [:x int?] [:y int?]]))
     (is (mu/equals (mu/required-keys schema [:x :extra nil])
+                   [:map [:x int?] [:y {:optional false} int?]]))
+    (is (mu/equals (mu/required-keys [:schema schema] [:x :extra nil])
                    [:map [:x int?] [:y {:optional false} int?]]))))
 
 (deftest find-first-test

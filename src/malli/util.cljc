@@ -194,8 +194,9 @@
 
 (defn transform-entries
   "Transforms entries with f."
-  [schema f options]
-  (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema options))))
+  [?schema f options]
+  (let [schema (m/deref (m/schema ?schema options))]
+    (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema)))))
 
 (defn optional-keys
   "Makes map keys optional."
@@ -205,10 +206,9 @@
    (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
      (optional-keys ?schema keys options)))
   ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         accept (if keys (set keys) (constantly true))
+   (let [accept (if keys (set keys) (constantly true))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 c/assoc :optional true) e))]
-     (transform-entries schema #(map mapper %) options))))
+     (transform-entries ?schema #(map mapper %) options))))
 
 (defn required-keys
   "Makes map keys required."
@@ -218,28 +218,25 @@
    (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
      (required-keys ?schema keys options)))
   ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         accept (if keys (set keys) (constantly true))
+   (let [accept (if keys (set keys) (constantly true))
          required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
-     (transform-entries schema #(map mapper %) options))))
+     (transform-entries ?schema #(map mapper %) options))))
 
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."
   ([?schema keys]
    (select-keys ?schema keys nil))
   ([?schema keys options]
-   (let [schema (m/deref (m/schema ?schema options))
-         key-set (set keys)]
-     (transform-entries schema #(filter (fn [[k]] (key-set k)) %) options))))
+   (let [key-set (set keys)]
+     (transform-entries ?schema #(filter (fn [[k]] (key-set k)) %) options))))
 
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
-   (let [schema (m/schema ?schema options)]
-     (transform-entries schema #(remove (fn [[k]] (= key k)) %) options))))
+   (transform-entries ?schema #(remove (fn [[k]] (= key k)) %) options)))
 
 ;;
 ;; LensSchemas

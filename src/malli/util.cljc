@@ -229,7 +229,7 @@
   ([?schema keys]
    (select-keys ?schema keys nil))
   ([?schema keys options]
-   (let [schema (m/schema ?schema options)
+   (let [schema (m/deref (m/schema ?schema options))
          key-set (set keys)]
      (transform-entries schema #(filter (fn [[k]] (key-set k)) %) options))))
 
@@ -322,3 +322,57 @@
            [properties options] (m/-properties-and-options properties options m/-form)]
        (m/into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
      m)))
+
+;;
+;; Schemas
+;;
+
+(defn -reducing [f]
+  (fn [_ [first & rest :as children] options]
+    (let [children (mapv #(m/schema % options) children)]
+      [children (mapv m/form children) (reduce #(f %1 %2 options) first rest)])))
+
+(defn -applying [f]
+  (fn [_ children options]
+    [(clojure.core/update children 0 #(m/schema % options))
+     (clojure.core/update children 0 #(m/form % options))
+     (apply f (conj children options))]))
+
+(defn -util-schema [{:keys [min max type type-properties f]}]
+  ^{:type ::m/into-schema}
+  (reify m/IntoSchema
+    (-into-schema [_ properties children options]
+      (m/-check-children! type properties children {:min min, :max max})
+      (let [[children forms schema] (f properties (vec children) options)
+            form (m/-create-form type properties forms)]
+        ^{:type ::m/schema}
+        (reify
+          m/Schema
+          (-type [_] type)
+          (-type-properties [_] type-properties)
+          (-validator [_] (m/-validator schema))
+          (-explainer [_ path] (m/-explainer schema path))
+          (-transformer [this transformer method options]
+            (m/-parent-children-transformer this [schema] transformer method options))
+          (-walk [this walker path options]
+            (if (m/-accept walker this path options)
+              (m/-outer walker this path (m/-inner-indexed walker path children options) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          m/LensSchema
+          (-keep [_])
+          (-get [_ key default] (clojure.core/get children key default))
+          (-set [_ key value] (m/into-schema type properties (clojure.core/assoc children key value)))
+          m/RefSchema
+          (-ref [_])
+          (-deref [_] schema))))))
+
+(defn -merge [] (-util-schema {:type :merge, :f (-reducing merge)}))
+(defn -union [] (-util-schema {:type :union, :f (-reducing union)}))
+(defn -select-keys [] (-util-schema {:type :select-keys, :min 2, :max 2, :f (-applying select-keys)}))
+
+(defn schemas [] {:merge (-merge)
+                  :union (-union)
+                  :select-keys (-select-keys)})

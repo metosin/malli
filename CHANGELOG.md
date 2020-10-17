@@ -38,11 +38,13 @@ After:
 ; => int?
 ```
 
-* the following utilities in `malli.util` do automatic top-level deref: `merge`, `union`.
+* the following utilities in `malli.util` do automatic top-level deref: `merge`, `union` and `select-keys`.
 
 * `mu/subschemas` walks over top-level `:ref` and all `:schema`s.
 
 * `m/walk` can walk over `:ref` and `:schema` reference schemas. Walking can be enabled using options `:malli.core/walk-refs` and `:malli.core/walk-schema-refs`.
+
+* Welcome [declarative schema transformations](README.md#declarative-schema-transformation)!
 
 * New options for SCI:
   * `:malli.core/disable-sci` for explicitly disabling `sci`, fixes [#276](https://github.com/metosin/malli/issues/276)

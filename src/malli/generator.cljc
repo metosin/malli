@@ -147,6 +147,10 @@
 (defmethod -schema-generator :schema [schema options] (generator (m/-deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/-deref schema) options))
 
+(defmethod -schema-generator :merge [schema options] (generator (m/-deref schema) options))
+(defmethod -schema-generator :union [schema options] (generator (m/-deref schema) options))
+(defmethod -schema-generator :select-keys [schema options] (generator (m/-deref schema) options))
+
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (merge (m/type-properties schema) (m/properties schema))
         gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))

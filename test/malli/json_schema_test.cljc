@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core-test]
             [malli.json-schema :as json-schema]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.util :as mu]))
 
 (def expectations
   [;; predicates
@@ -124,3 +125,98 @@
                     :default 42
                     :json-schema/default 422
                     :json-schema/example 422} int?])))))
+
+(deftest util-schemas-test
+  (let [registry (merge (m/default-schemas) (mu/schemas))]
+
+    (testing "merge"
+      (is (= {:title "merge",
+              :type "object",
+              :properties {:x {:type "integer", :format "int64", :example 42},
+                           :y {:type "integer", :format "int64"},
+                           :z {:type "integer", :format "int64"}},
+              :required [:x :y :z]}
+             (json-schema/transform
+               [:merge {:title "merge"}
+                [:map [:x {:json-schema/example 42} int?] [:y int?]]
+                [:map [:z int?]]]
+               {:registry registry}))))
+
+    (testing "union"
+      (is (= {:title "union",
+              :type "object",
+              :properties {:x {:anyOf [{:type "integer", :format "int64"} {:type "string"}]}
+                           :y {:type "integer", :format "int64"}},
+              :required [:x :y]}
+             (json-schema/transform
+               [:union {:title "union"}
+                [:map [:x int?] [:y int?]]
+                [:map [:x string?]]]
+               {:registry registry}))))
+
+    (testing "select-keys"
+      (is (= {:title "select-keys"
+              :type "object"
+              :properties {:x {:type "integer", :format "int64"}}
+              :required [:x]}
+             (json-schema/transform
+               [:select-keys {:title "select-keys"}
+                [:map [:x int?] [:y int?]]
+                [:x]]
+               {:registry registry}))))))
+
+(deftest references-test
+  (is (= {:$ref "#/definitions/Order",
+          :definitions {"Country" {:type "object",
+                                   :properties {:name {:enum [:FI :PO]},
+                                                :neighbors {:type "array"
+                                                            :items {:$ref "#/definitions/Country"}}},
+                                   :required [:name :neighbors]},
+                        "Burger" {:type "object",
+                                  :properties {:name {:type "string"},
+                                               :description {:type "string"},
+                                               :origin {:oneOf [{:$ref "#/definitions/Country"} {:type "null"}]},
+                                               :price {:type "integer"
+                                                       :format "int64"
+                                                       :minimum 1}},
+                                  :required [:name :origin :price]},
+                        "OrderLine" {:type "object",
+                                     :properties {:burger {:$ref "#/definitions/Burger"},
+                                                  :amount {:type "integer"
+                                                           :format "int64"}},
+                                     :required [:burger :amount]},
+                        "Order" {:type "object",
+                                 :properties {:lines {:type "array"
+                                                      :items {:$ref "#/definitions/OrderLine"}},
+                                              :delivery {:type "object",
+                                                         :properties {:delivered {:type "boolean"},
+                                                                      :address {:type "object",
+                                                                                :properties {:street {:type "string"},
+                                                                                             :zip {:type "integer",
+                                                                                                   :format "int64"},
+                                                                                             :country {:$ref "#/definitions/Country"}},
+                                                                                :required [:street :zip :country]}},
+                                                         :required [:delivered :address]}},
+                                 :required [:lines :delivery]}}}
+         (json-schema/transform
+           [:schema
+            {:registry {"Country" [:map
+                                   [:name [:enum :FI :PO]]
+                                   [:neighbors [:vector [:ref "Country"]]]]
+                        "Burger" [:map
+                                  [:name string?]
+                                  [:description {:optional true} string?]
+                                  [:origin [:maybe "Country"]]
+                                  [:price pos-int?]]
+                        "OrderLine" [:map
+                                     [:burger "Burger"]
+                                     [:amount int?]]
+                        "Order" [:map
+                                 [:lines [:vector "OrderLine"]]
+                                 [:delivery [:map
+                                             [:delivered boolean?]
+                                             [:address [:map
+                                                        [:street string?]
+                                                        [:zip int?]
+                                                        [:country "Country"]]]]]]}}
+            "Order"]))))

@@ -6,7 +6,7 @@
 
 (defn -lift [?schema]
   (let [schema (m/schema ?schema)]
-    (if (and (satisfies? m/RefSchema schema) (-> schema m/-deref m/type (= ::m/schema)))
+    (if (and (satisfies? m/RefSchema schema) (-> schema m/deref m/type (= ::m/schema)))
       ?schema [:schema {:registry {::schema ?schema}} ?schema])))
 
 (defn -collect [schema]
@@ -61,7 +61,7 @@
          sorted #(sort-by (m/-comp str first) %)
          wrap #(str "\"" % "\"")
          label (fn [k v] (str "\"{" k "|"
-                              (or (some->> (m/entries v) (map (fn [[k s]] (str k " " (esc (m/form (m/-deref s)))))) (str/join "\\l"))
+                              (or (some->> (m/entries v) (map (fn [[k s]] (str k " " (esc (m/form (m/deref s)))))) (str/join "\\l"))
                                   (esc (m/form v)))
                               "\\l}\""))
          > #(apply println %&)

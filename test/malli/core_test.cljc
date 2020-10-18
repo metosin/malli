@@ -451,7 +451,12 @@
       (testing "deref"
         (is (mu/equals (m/schema int?) (m/deref int?)))
         (is (mu/equals (m/schema int?) (m/deref [:schema int?])))
-        (is (mu/equals (m/schema int?) (m/deref [:schema [:schema [:schema int?]]]))))
+        (is (mu/equals (m/schema [:schema [:schema int?]]) (m/deref [:schema [:schema [:schema int?]]]))))
+
+      (testing "deref-all"
+        (is (mu/equals (m/schema int?) (m/deref-all int?)))
+        (is (mu/equals (m/schema int?) (m/deref-all [:schema int?])))
+        (is (mu/equals (m/schema int?) (m/deref-all [:schema [:schema [:schema int?]]]))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 

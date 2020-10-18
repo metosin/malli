@@ -65,8 +65,8 @@
   ([?schema1 ?schema2]
    (merge ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 options]
-   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/deref (m/schema ?schema1 options)))
-                                        (if ?schema2 (m/deref (m/schema ?schema2 options)))]
+   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/deref-all (m/schema ?schema1 options)))
+                                        (if ?schema2 (m/deref-all (m/schema ?schema2 options)))]
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options]
@@ -194,8 +194,9 @@
 
 (defn transform-entries
   "Transforms entries with f."
-  [schema f options]
-  (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema options))))
+  [?schema f options]
+  (let [schema (m/deref-all (m/schema ?schema options))]
+    (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema)))))
 
 (defn optional-keys
   "Makes map keys optional."
@@ -205,10 +206,9 @@
    (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
      (optional-keys ?schema keys options)))
   ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         accept (if keys (set keys) (constantly true))
+   (let [accept (if keys (set keys) (constantly true))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 c/assoc :optional true) e))]
-     (transform-entries schema #(map mapper %) options))))
+     (transform-entries ?schema #(map mapper %) options))))
 
 (defn required-keys
   "Makes map keys required."
@@ -218,28 +218,25 @@
    (let [[keys options] (if (map? ?keys) [nil ?keys] [?keys nil])]
      (required-keys ?schema keys options)))
   ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         accept (if keys (set keys) (constantly true))
+   (let [accept (if keys (set keys) (constantly true))
          required (fn [p] (let [p' (c/dissoc p :optional)] (if (seq p') p')))
          mapper (fn [[k :as e]] (if (accept k) (c/update e 1 required) e))]
-     (transform-entries schema #(map mapper %) options))))
+     (transform-entries ?schema #(map mapper %) options))))
 
 (defn select-keys
   "Like [[clojure.core/select-keys]], but for MapSchemas."
   ([?schema keys]
    (select-keys ?schema keys nil))
   ([?schema keys options]
-   (let [schema (m/schema ?schema options)
-         key-set (set keys)]
-     (transform-entries schema #(filter (fn [[k]] (key-set k)) %) options))))
+   (let [key-set (set keys)]
+     (transform-entries ?schema #(filter (fn [[k]] (key-set k)) %) options))))
 
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
-   (let [schema (m/schema ?schema options)]
-     (transform-entries schema #(remove (fn [[k]] (= key k)) %) options))))
+   (transform-entries ?schema #(remove (fn [[k]] (= key k)) %) options)))
 
 ;;
 ;; LensSchemas
@@ -322,3 +319,58 @@
            [properties options] (m/-properties-and-options properties options m/-form)]
        (m/into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
      m)))
+
+;;
+;; Schemas
+;;
+
+(defn -reducing [f]
+  (fn [_ [first & rest :as children] options]
+    (let [children (mapv #(m/schema % options) children)]
+      [children (mapv m/form children) (reduce #(f %1 %2 options) first rest)])))
+
+(defn -applying [f]
+  (fn [_ children options]
+    [(clojure.core/update children 0 #(m/schema % options))
+     (clojure.core/update children 0 #(m/form % options))
+     (apply f (conj children options))]))
+
+(defn -util-schema [{:keys [type min max childs type-properties fn]}]
+  ^{:type ::m/into-schema}
+  (reify m/IntoSchema
+    (-into-schema [_ properties children options]
+      (m/-check-children! type properties children {:min min, :max max})
+      (let [[children forms schema] (fn properties (vec children) options)
+            walkable-childs (if childs (subvec children 0 childs) children)
+            form (m/-create-form type properties forms)]
+        ^{:type ::m/schema}
+        (reify
+          m/Schema
+          (-type [_] type)
+          (-type-properties [_] type-properties)
+          (-validator [_] (m/-validator schema))
+          (-explainer [_ path] (m/-explainer schema path))
+          (-transformer [this transformer method options]
+            (m/-parent-children-transformer this [schema] transformer method options))
+          (-walk [this walker path options]
+            (if (m/-accept walker this path options)
+              (m/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          m/LensSchema
+          (-keep [_])
+          (-get [_ key default] (clojure.core/get children key default))
+          (-set [_ key value] (m/into-schema type properties (clojure.core/assoc children key value)))
+          m/RefSchema
+          (-ref [_])
+          (-deref [_] schema))))))
+
+(defn -merge [] (-util-schema {:type :merge, :fn (-reducing merge)}))
+(defn -union [] (-util-schema {:type :union, :fn (-reducing union)}))
+(defn -select-keys [] (-util-schema {:type :select-keys, :childs 1, :min 2, :max 2, :fn (-applying select-keys)}))
+
+(defn schemas [] {:merge (-merge)
+                  :union (-union)
+                  :select-keys (-select-keys)})

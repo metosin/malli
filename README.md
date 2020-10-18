@@ -848,6 +848,34 @@ and back, returning all paths:
 ; => [[0 :address 0 :lonlat]]
 ```
 
+## Declarative Schema Transformation
+
+There are also declarative versions of schema transforming utilities in `malli.util/schemas`. These include `:merge`, `:union` and `:select-keys`:
+
+```clj
+(def registry (merge (m/default-schemas) (mu/schemas)))
+
+(def Merged
+  (m/schema
+    [:merge
+     [:map [:x :string]]
+     [:map [:y :int]]]
+    {:registry registry}))
+
+Merged
+;[:merge
+; [:map [:x :string]]
+; [:map [:y :int]]]
+
+(m/deref Merged)
+;[:map 
+; [:x :string] 
+; [:y :int]]
+
+(m/validate Merged {:x "kikka", :y 6})
+; => true
+```
+
 ## Persisting Schemas 
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.

@@ -3,7 +3,8 @@
             [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
             [malli.generator :as mg]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.util :as mu]))
 
 (deftest generator-test
   (doseq [[?schema] json-schema-test/expectations
@@ -162,3 +163,17 @@
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]
     (is (every? values (mg/sample schema {:size 1000})))))
+
+(deftest util-schemas-test
+  (let [registry (merge (m/default-schemas) (mu/schemas))]
+    (doseq [schema [[:merge {:title "merge"}
+                     [:map [:x int?] [:y int?]]
+                     [:map [:z int?]]]
+                    [:union {:title "union"}
+                     [:map [:x int?] [:y int?]]
+                     [:map [:x string?]]]
+                    [:select-keys {:title "select-keys"}
+                     [:map [:x int?] [:y int?]]
+                     [:x]]]
+            :let [schema (m/schema schema {:registry registry})]]
+      (is (every? (partial m/validate schema) (mg/sample schema {:size 1000}))))))

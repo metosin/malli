@@ -162,7 +162,14 @@
     (is (mu/equals (mu/select-keys schema [:a :b :extra])
                    [:map {:title "map"}
                     [:a int?]
-                    [:b {:optional true} int?]]))))
+                    [:b {:optional true} int?]]))
+
+    (testing "derefs automatically"
+      (is (mu/equals (mu/select-keys
+                       [:schema
+                        [:map [:a int?] [:b int?]]]
+                       [:a])
+                     [:map [:a int?]])))))
 
 ;;
 ;; LensSchemas
@@ -335,6 +342,10 @@
     (is (mu/equals (mu/dissoc schema :b)
                    [:map {:title "map"}
                     [:a int?]
+                    [:c string?]]))
+    (is (mu/equals (mu/dissoc [:schema schema] :b)
+                   [:map {:title "map"}
+                    [:a int?]
                     [:c string?]]))))
 
 (deftest update-test
@@ -409,6 +420,8 @@
     (is (mu/equals (mu/optional-keys schema)
                    [:map [:x {:optional true} int?] [:y {:optional true} int?]]))
     (is (mu/equals (mu/optional-keys schema [:x :extra nil])
+                   [:map [:x {:optional true} int?] [:y int?]]))
+    (is (mu/equals (mu/optional-keys [:schema schema] [:x :extra nil])
                    [:map [:x {:optional true} int?] [:y int?]]))))
 
 (deftest required-keys-test
@@ -416,6 +429,8 @@
     (is (mu/equals (mu/required-keys schema)
                    [:map [:x int?] [:y int?]]))
     (is (mu/equals (mu/required-keys schema [:x :extra nil])
+                   [:map [:x int?] [:y {:optional false} int?]]))
+    (is (mu/equals (mu/required-keys [:schema schema] [:x :extra nil])
                    [:map [:x int?] [:y {:optional false} int?]]))))
 
 (deftest find-first-test
@@ -752,3 +767,55 @@
 
                  (mu/to-map-syntax schema {::m/walk-refs true
                                            ::m/walk-schema-refs true}))))))))
+
+(deftest declarative-schemas
+  (let [->> #(m/schema % {:registry (merge (mu/schemas) (m/default-schemas))})]
+
+    (testing "merge"
+      (let [s (->> [:merge
+                    [:map [:x :string]]
+                    [:map [:y :int]]
+                    [:schema [:map [:z {:optional true} :boolean]]]])]
+        (is (= [:merge
+                [:map [:x :string]]
+                [:map [:y :int]]
+                [:schema [:map [:z {:optional true} :boolean]]]]
+               (m/form s)))
+        (is (= [:map [:x :string] [:y :int] [:z {:optional true} :boolean]] (m/form (m/deref s))))
+        (is (= true (m/validate s {:x "x", :y 1, :z true})))
+        (is (= false (m/validate s {:x "x", :y "y"})))))
+
+    (testing "union"
+      (let [s (->> [:union
+                    [:map [:x :string]]
+                    [:schema [:map [:x :int]]]])]
+        (is (= [:union
+                [:map [:x :string]]
+                [:schema [:map [:x :int]]]]
+               (m/form s)))
+        (is (= [:map [:x [:or :string :int]]] (m/form (m/deref s))))
+        (is (= true (m/validate s {:x "x"}) (m/validate s {:x 1})))
+        (is (= false (m/validate s {:x true})))))
+
+    (testing "select-keys"
+      (let [s (->> [:select-keys
+                    [:schema
+                     [:map {:closed true}
+                      [:x :string]
+                      [:y :string]
+                      [:z :string]]]
+                    [:x :z]])]
+        (is (= [:select-keys
+                [:schema
+                 [:map {:closed true}
+                  [:x :string]
+                  [:y :string]
+                  [:z :string]]]
+                [:x :z]]
+               (m/form s)))
+        (is (= [:map {:closed true}
+                [:x :string]
+                [:z :string]]
+               (m/form (m/deref s))))
+        (is (= true (m/validate s {:x "x", :z "z"})))
+        (is (= false (m/validate s {:x "x", :y "y" :z "z"})))))))

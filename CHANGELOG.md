@@ -16,7 +16,8 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* `m/deref` returns original schema, does not throw, fixes [#284](https://github.com/metosin/malli/issues/284).
+* **CHANGE**: `m/deref` returns original schema, does not throw, fixes [#284](https://github.com/metosin/malli/issues/284).
+* **CHANGE**: the following utilities in `malli.util` deref top-level refs rwcursively: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
 * `m/deref-all` derefs all top-level references recursively, e.g.
 
 ```clj
@@ -24,12 +25,9 @@ Malli is in [alpha](README.md#alpha).
 ; => int?
 ```
 
-* the following utilities in `malli.util` deref top-level refs rwcursively: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
-
+* `:ref`, `:schema`, `::m/schema` have now generators, JSON Schema and Swagger support
 * `mu/subschemas` walks over top-level `:ref` and all `:schema`s.
-
 * `m/walk` can walk over `:ref` and `:schema` reference schemas. Walking can be enabled using options `:malli.core/walk-refs` and `:malli.core/walk-schema-refs`.
-
 * Welcome [declarative schema transformations](README.md#declarative-schema-transformation)!
 
 * New options for SCI:

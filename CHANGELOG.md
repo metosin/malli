@@ -16,29 +16,15 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* **BREAKING**: `m/deref` is recursive and does not throw: 
-
-Before:
-
-```clj
-(m/deref [:schema [:schema int?]])
-; => [:schema int?]
-
-(m/deref int?)
-; => Execution error
-```
-
-After:
+* `m/deref` returns original schema, does not throw, fixes [#284](https://github.com/metosin/malli/issues/284).
+* `m/deref-all` derefs all top-level references recursively, e.g.
 
 ```clj
-(m/deref [:schema [:schema int?]])
-; => int?
-
-(m/deref int?])
+(m/deref-all [:schema [:schema int?]])
 ; => int?
 ```
 
-* **BREAKING**: the following utilities in `malli.util` do automatic top-level deref: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
+* the following utilities in `malli.util` deref top-level refs rwcursively: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
 
 * `mu/subschemas` walks over top-level `:ref` and all `:schema`s.
 

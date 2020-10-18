@@ -10,7 +10,7 @@
 (defn -ref [x] {:$ref (str "#/definitions/" x)})
 
 (defn -schema [schema options]
-  (let [result (-transform (m/-deref schema) options)]
+  (let [result (-transform (m/deref schema) options)]
     (if-let [ref (m/-ref schema)]
       (do (swap! (::definitions options) assoc ref result) (-ref ref))
       result)))

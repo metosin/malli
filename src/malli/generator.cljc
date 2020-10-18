@@ -143,13 +143,13 @@
 (defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
-(defmethod -schema-generator :ref [schema options] (generator (m/-deref schema) options))
-(defmethod -schema-generator :schema [schema options] (generator (m/-deref schema) options))
-(defmethod -schema-generator ::m/schema [schema options] (generator (m/-deref schema) options))
+(defmethod -schema-generator :ref [schema options] (generator (m/deref schema) options))
+(defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
+(defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
 
-(defmethod -schema-generator :merge [schema options] (generator (m/-deref schema) options))
-(defmethod -schema-generator :union [schema options] (generator (m/-deref schema) options))
-(defmethod -schema-generator :select-keys [schema options] (generator (m/-deref schema) options))
+(defmethod -schema-generator :merge [schema options] (generator (m/deref schema) options))
+(defmethod -schema-generator :union [schema options] (generator (m/deref schema) options))
+(defmethod -schema-generator :select-keys [schema options] (generator (m/deref schema) options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (merge (m/type-properties schema) (m/properties schema))

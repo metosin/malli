@@ -2,19 +2,25 @@
   (:require [malli.core :as m]
             [clojure.set :as set]))
 
-(declare transform)
+(declare -transform)
 
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
+(defn -ref [x] {:$ref (str "#/definitions/" x)})
+
+(defn -schema [schema options]
+  (let [result (-transform (m/-deref schema) options)]
+    (if-let [ref (m/-ref schema)]
+      (do (swap! (::definitions options) assoc ref result) (-ref ref))
+      result)))
+
 (defn unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn unlift [m prefix]
-  (get m prefix))
+(defn unlift [m prefix] (get m prefix))
 
-(defn select [m]
-  (select-keys m [:title :description :default]))
+(defn select [m] (select-keys m [:title :description :default]))
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
@@ -110,6 +116,14 @@
 (defmethod accept :qualified-symbol [_ _ _ _] {:type "string"})
 (defmethod accept :uuid [_ _ _ _] {:type "string" :format "uuid"})
 
+(defmethod accept :ref [_ schema _ _] (-ref (m/-ref schema)))
+(defmethod accept :schema [_ schema _ options] (-schema schema options))
+(defmethod accept ::m/schema [_ schema _ options] (-schema schema options))
+
+(defmethod accept :merge [_ schema _ options] (-transform (m/deref schema) options))
+(defmethod accept :union [_ schema _ options] (-transform (m/deref schema) options))
+(defmethod accept :select-keys [_ schema _ options] (-transform (m/deref schema) options))
+
 (defn- -json-schema-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
     (or (unlift p :json-schema)
@@ -119,9 +133,7 @@
                  (accept (m/type schema) schema children options))
                (unlift-keys p :json-schema)))))
 
-(defmethod accept :merge [_ schema _ options] (transform (m/deref schema) options))
-(defmethod accept :union [_ schema _ options] (transform (m/deref schema) options))
-(defmethod accept :select-keys [_ schema _ options] (transform (m/deref schema) options))
+(defn -transform [?schema options] (m/walk ?schema -json-schema-walker options))
 
 ;;
 ;; public api
@@ -131,4 +143,6 @@
   ([?schema]
    (transform ?schema nil))
   ([?schema options]
-   (m/walk ?schema -json-schema-walker (assoc options ::m/walk-entry-vals true))))
+   (let [definitions (atom {})
+         result (-transform ?schema (assoc options ::m/walk-entry-vals true, ::definitions definitions))]
+     (cond-> result (seq @definitions) (assoc :definitions @definitions)))))

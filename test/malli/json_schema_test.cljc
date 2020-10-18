@@ -164,3 +164,59 @@
                 [:map [:x int?] [:y int?]]
                 [:x]]
                {:registry registry}))))))
+
+(deftest references-test
+  (is (= {:$ref "#/definitions/Order",
+          :definitions {"Country" {:type "object",
+                                   :properties {:name {:enum [:FI :PO]},
+                                                :neighbors {:type "array"
+                                                            :items {:$ref "#/definitions/Country"}}},
+                                   :required [:name :neighbors]},
+                        "Burger" {:type "object",
+                                  :properties {:name {:type "string"},
+                                               :description {:type "string"},
+                                               :origin {:oneOf [{:$ref "#/definitions/Country"} {:type "null"}]},
+                                               :price {:type "integer"
+                                                       :format "int64"
+                                                       :minimum 1}},
+                                  :required [:name :origin :price]},
+                        "OrderLine" {:type "object",
+                                     :properties {:burger {:$ref "#/definitions/Burger"},
+                                                  :amount {:type "integer"
+                                                           :format "int64"}},
+                                     :required [:burger :amount]},
+                        "Order" {:type "object",
+                                 :properties {:lines {:type "array"
+                                                      :items {:$ref "#/definitions/OrderLine"}},
+                                              :delivery {:type "object",
+                                                         :properties {:delivered {:type "boolean"},
+                                                                      :address {:type "object",
+                                                                                :properties {:street {:type "string"},
+                                                                                             :zip {:type "integer",
+                                                                                                   :format "int64"},
+                                                                                             :country {:$ref "#/definitions/Country"}},
+                                                                                :required [:street :zip :country]}},
+                                                         :required [:delivered :address]}},
+                                 :required [:lines :delivery]}}}
+         (json-schema/transform
+           [:schema
+            {:registry {"Country" [:map
+                                   [:name [:enum :FI :PO]]
+                                   [:neighbors [:vector [:ref "Country"]]]]
+                        "Burger" [:map
+                                  [:name string?]
+                                  [:description {:optional true} string?]
+                                  [:origin [:maybe "Country"]]
+                                  [:price pos-int?]]
+                        "OrderLine" [:map
+                                     [:burger "Burger"]
+                                     [:amount int?]]
+                        "Order" [:map
+                                 [:lines [:vector "OrderLine"]]
+                                 [:delivery [:map
+                                             [:delivered boolean?]
+                                             [:address [:map
+                                                        [:street string?]
+                                                        [:zip int?]
+                                                        [:country "Country"]]]]]]}}
+            "Order"]))))

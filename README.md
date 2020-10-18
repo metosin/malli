@@ -850,7 +850,7 @@ and back, returning all paths:
 
 ## Declarative Schema Transformation
 
-There are also declarative versions of schema transforming utilitis. These include: `:merge`, `:union` and `:select-keys`. They are not in default registry:
+There are also declarative versions of schema transforming utilities in `malli.util/schemas`. These include `:merge`, `:union` and `:select-keys`:
 
 ```clj
 (def registry (merge (m/default-schemas) (mu/schemas)))

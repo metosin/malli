@@ -16,8 +16,8 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* **CHANGE**: `m/deref` returns original schema, does not throw, fixes [#284](https://github.com/metosin/malli/issues/284).
-* **CHANGE**: the following utilities in `malli.util` deref top-level refs rwcursively: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
+* **BREAKING (MINOR)**: `m/deref` returns original schema, does not throw, fixes [#284](https://github.com/metosin/malli/issues/284).
+* **BREAKING (MINOR)**: the following utilities in `malli.util` deref top-level refs recursively: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
 * `m/deref-all` derefs all top-level references recursively, e.g.
 
 ```clj
@@ -28,7 +28,33 @@ Malli is in [alpha](README.md#alpha).
 * `:ref`, `:schema`, `::m/schema` have now generators, JSON Schema and Swagger support
 * `mu/subschemas` walks over top-level `:ref` and all `:schema`s.
 * `m/walk` can walk over `:ref` and `:schema` reference schemas. Walking can be enabled using options `:malli.core/walk-refs` and `:malli.core/walk-schema-refs`.
-* Welcome [declarative schema transformations](README.md#declarative-schema-transformation)!
+* Welcome declarative schema transformations!
+
+There are also declarative versions of schema transforming utilities in `malli.util/schemas`. These include `:merge`, `:union` and `:select-keys`:
+
+```clj
+(def registry (merge (m/default-schemas) (mu/schemas)))
+
+(def Merged
+  (m/schema
+    [:merge
+     [:map [:x :string]]
+     [:map [:y :int]]]
+    {:registry registry}))
+
+Merged
+;[:merge
+; [:map [:x :string]]
+; [:map [:y :int]]]
+
+(m/deref Merged)
+;[:map 
+; [:x :string] 
+; [:y :int]]
+
+(m/validate Merged {:x "kikka", :y 6})
+; => true
+```
 
 * New options for SCI:
   * `:malli.core/disable-sci` for explicitly disabling `sci`, fixes [#276](https://github.com/metosin/malli/issues/276)

@@ -2,17 +2,15 @@
   (:require [malli.core :as m]
             [clojure.set :as set]))
 
-(declare -transform)
-
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
 (defn -ref [x] {:$ref (str "#/definitions/" x)})
 
-(defn -schema [schema options]
-  (let [result (-transform (m/deref schema) options)]
+(defn -schema [schema {::keys [transform definitions] :as options}]
+  (let [result (transform (m/deref schema) options)]
     (if-let [ref (m/-ref schema)]
-      (do (swap! (::definitions options) assoc ref result) (-ref ref))
+      (do (swap! definitions assoc ref result) (-ref ref))
       result)))
 
 (defn unlift-keys [m prefix]
@@ -120,9 +118,9 @@
 (defmethod accept :schema [_ schema _ options] (-schema schema options))
 (defmethod accept ::m/schema [_ schema _ options] (-schema schema options))
 
-(defmethod accept :merge [_ schema _ options] (-transform (m/deref schema) options))
-(defmethod accept :union [_ schema _ options] (-transform (m/deref schema) options))
-(defmethod accept :select-keys [_ schema _ options] (-transform (m/deref schema) options))
+(defmethod accept :merge [_ schema _ {::keys [transform] :as options}] (transform (m/deref schema) options))
+(defmethod accept :union [_ schema _ {::keys [transform] :as options}] (transform (m/deref schema) options))
+(defmethod accept :select-keys [_ schema _ {::keys [transform] :as options}] (transform (m/deref schema) options))
 
 (defn- -json-schema-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
@@ -144,5 +142,5 @@
    (transform ?schema nil))
   ([?schema options]
    (let [definitions (atom {})
-         result (-transform ?schema (assoc options ::m/walk-entry-vals true, ::definitions definitions))]
-     (cond-> result (seq @definitions) (assoc :definitions @definitions)))))
+         options (merge options {::m/walk-entry-vals true, ::definitions definitions, ::transform -transform})]
+     (cond-> (-transform ?schema options) (seq @definitions) (assoc :definitions @definitions)))))

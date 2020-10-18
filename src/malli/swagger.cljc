@@ -33,6 +33,8 @@
                (json-schema/unlift-keys p :json-schema)
                (json-schema/unlift-keys p :swagger)))))
 
+(defn -transform [?schema options] (m/walk ?schema -swagger-walker options))
+
 ;;
 ;; public api
 ;;
@@ -41,4 +43,8 @@
   ([?schema]
    (transform ?schema nil))
   ([?schema options]
-   (m/walk ?schema -swagger-walker (assoc options ::m/walk-entry-vals true))))
+   (let [definitions (atom {})
+         options (merge options {::m/walk-entry-vals true
+                                 ::json-schema/definitions definitions
+                                 ::json-schema/transform -transform})]
+     (cond-> (-transform ?schema options) (seq @definitions) (assoc :definitions @definitions)))))

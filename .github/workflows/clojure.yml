@@ -13,6 +13,8 @@ jobs:
         # Supported Java versions: LTS releases 8 and 11 and the latest release
         jdk: [8, 11, 15]
 
+    name: Clojure (Java ${{ matrix.jdk }})
+
     runs-on: ubuntu-latest
 
     steps:
@@ -25,6 +27,8 @@ jobs:
       run: bin/kaocha
 
   build-cljs:
+    name: ClojureScript
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

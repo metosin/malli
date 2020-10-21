@@ -10,3 +10,4 @@ cljs-test-runner-out
 *.jar
 classes
 /demo
+/target

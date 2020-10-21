@@ -1,6 +1,6 @@
 # malli 
 
-[![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://circleci.com/gh/metosin/malli) 
+[![Build Status](https://img.shields.io/circleci/project/github/metosin/malli.svg)](https://github.com/metosin/malli/actions)
 [![Clojars Project](https://img.shields.io/clojars/v/metosin/malli.svg)](https://clojars.org/metosin/malli)
 [![Slack](https://img.shields.io/badge/clojurians-malli-blue.svg?logo=slack)](https://clojurians.slack.com/messages/malli/)
 
@@ -1742,6 +1742,10 @@ The api layers and stability:
 * **public api**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. Most stable part of the library, should not change (much) in alpha
 * **extender api**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
 * **private api**: private vars, all bets are off.
+
+## Supported Java versions
+
+Malli aims to support the LTS releases Java 8 and 11 and the latest Java release, Java 15.
 
 ## Running tests
 

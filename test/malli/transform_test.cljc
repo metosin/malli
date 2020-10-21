@@ -178,6 +178,7 @@
           [:set string?] #{"1" 2 "3"} #{"1" 2 "3"} set?
 
           [:vector keyword?] nil nil nil?
+          [:vector keyword?] [] [] vector?
           [:vector keyword?] ["1" 2 "3"] [:1 2 :3] vector?
           [:vector keyword?] '("1" 2 "3") [:1 2 :3] vector?
           [:vector keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] vector?
@@ -186,6 +187,7 @@
           [:vector string?] #{"1" 2 "3"} #{"1" 2 "3"} set?
 
           [:sequential keyword?] nil nil nil?
+          [:sequential keyword?] [] [] sequential?
           [:sequential keyword?] ["1" 2 "3"] [:1 2 :3] sequential?
           [:sequential keyword?] '("1" 2 "3") [:1 2 :3] sequential?
           [:sequential keyword?] (lazy-seq '("1" 2 "3")) [:1 2 :3] sequential?

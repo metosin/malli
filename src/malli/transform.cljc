@@ -175,11 +175,6 @@
     (sequential? x) (vec x)
     :else x))
 
-(defn -sequential->seq [x]
-  (cond
-    (vector? x) (seq x)
-    :else x))
-
 ;;
 ;; sequential or set
 ;;
@@ -225,8 +220,7 @@
    :qualified-symbol -string->symbol
    :uuid -string->uuid
 
-   :set -sequential->set
-   :sequential -sequential->seq})
+   :set -sequential->set})
 
 (defn -json-encoders []
   {'keyword? m/-keyword->string

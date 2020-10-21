@@ -14,6 +14,11 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## 0.2.1 (2020-10-22)
+
+* fix `:sequential` decoding with empty sequence under `mt/json-transformer`, fixes [#288](https://github.com/metosin/malli/issues/288)
+  * removed broken `mt/-sequential->seq`
+
 ## 0.2.0 (2020-10-18)
 
 * **BREAKING (MINOR)**: `m/deref` returns original schema, does not throw, fixes [#284](https://github.com/metosin/malli/issues/284).

@@ -1,0 +1,36 @@
+name: Run tests
+
+on:
+  push:
+    branches: [ master, use-github-actions ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-clj:
+    strategy:
+      matrix:
+        # Supported Java versions: LTS releases 8 and 11 and the latest release
+        jdk: [8, 11, 15]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Java ${{ matrix.jdk }}
+      uses: actions/setup-java@v1.4.3
+      with:
+        java-version: ${{ matrix.jdk }}
+    - name: Run tests
+      run: bin/kaocha
+
+  build-cljs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2.1.2
+        with:
+          node-version: 12
+      - run: npm ci
+      - run: bin/node

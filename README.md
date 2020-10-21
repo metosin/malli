@@ -1760,8 +1760,8 @@ npm install
 ## Installing locally
 
 ```bash
-clj -Ajar
-clj -Ainstall
+clj -Mjar
+clj -Minstall
 ```
 
 ## Bundle size for cljs

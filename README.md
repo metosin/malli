@@ -1167,7 +1167,7 @@ Transforming schemas into maps:
 ```clj
 (m/walk
   Address
-  (fn [schema children _ _]
+  (fn [schema _ children _]
     (-> (m/properties schema)
         (assoc :malli/type (m/type schema))
         (cond-> (seq children) (assoc :malli/children children)))))

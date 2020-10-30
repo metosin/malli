@@ -137,7 +137,7 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 ```clj
 (m/validate [:map-of :string [:map [:lat number?] [:long number?]]]
-            {"oslo" {:lat 10 :long 10}
+            {"oslo" {:lat 60 :long 11}
              "helsinki" {:lat 60 :long 24}})
 ;; => true
 ```

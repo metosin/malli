@@ -1050,6 +1050,14 @@ Sampling values:
 ; => (25 39 51 13 53 43 57 15 26 27)
 ```
 
+Integration with test.check:
+
+```clj
+(require '[clojure.test.check.generators :as gen])
+(gen/sample (mg/generator pos-int?))
+; => (2 1 2 2 2 2 8 1 55 83)
+```
+
 ## Inferring Schemas
 
 Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):

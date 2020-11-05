@@ -12,16 +12,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous helpers
 
-(defn assoc-when
-  "Like assoc but only assocs when value is truthy.  Copied from plumbing.core so that
-   schema need not depend on plumbing."
-  [m & kvs]
-  (assert (even? (count kvs)))
-  (into (or m {})
-        (for [[k v] (partition 2 kvs)
-              :when v]
-          [k v])))
-
 (defn type-of [x]
   #?(:clj (class x), :cljs (js* "typeof ~{}" x)))
 
@@ -34,14 +24,6 @@
   (apply #?(:clj format, :cljs gstring/format) fmt args))
 
 (def max-value-length (atom 19))
-
-(defn value-name
-  "Provide a descriptive short name for a value."
-  [value]
-  (let [t (type-of value)]
-    (if (<= (count (str value)) @max-value-length)
-      value
-      (symbol (str "a-" #?(:clj (.getName ^Class t), :cljs t))))))
 
 (defmacro char-map []
   clojure.lang.Compiler/CHAR_MAP)
@@ -67,67 +49,6 @@
                          (str (subs s 0 slash) "/" (subs s (inc slash)))
                          s))]
              (string/replace raw #"^clojure.core/" ""))))
-
-(defn record? [x]
-  #?(:clj (instance? clojure.lang.IRecord x), :cljs (satisfies? IRecord x)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Error descriptions
-
-;; A leaf schema validation error, describing the schema and value and why it failed to
-;; match the schema.  In Clojure, prints like a form describing the failure that would
-;; return true.
-
-(declare validation-error-explain)
-
-(deftype ValidationError [schema value expectation-delay fail-explanation]
-  #?(:cljs IPrintWithWriter)
-  #?(:cljs (-pr-writer [this writer opts]
-                       (-pr-writer (validation-error-explain this) writer opts))))
-
-(defn validation-error-explain [^ValidationError err]
-  (list (or (.-fail-explanation err) 'not) @(.-expectation-delay err)))
-
-#?(:clj
-   ;; Validation errors print like forms that would return false
-   (defmethod print-method ValidationError [err writer]
-     (print-method (validation-error-explain err) writer)))
-
-(defn make-ValidationError
-  "for cljs sake (easier than normalizing imports in macros.clj)"
-  [schema value expectation-delay fail-explanation]
-  (ValidationError. schema value expectation-delay fail-explanation))
-
-;; Attach a name to an error from a named schema.
-(declare named-error-explain)
-
-(deftype NamedError [name error]
-  #?(:cljs IPrintWithWriter)
-  #?(:cljs (-pr-writer [this writer opts]
-                       (-pr-writer (named-error-explain this) writer opts))))
-
-(defn named-error-explain [^NamedError err]
-  (list 'named (.-error err) (.-name err)))
-
-#?(:clj
-   ;; Validation errors print like forms that would return false
-   (defmethod print-method NamedError [err writer]
-     (print-method (named-error-explain err) writer)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Monoidish error containers, which wrap errors (to distinguish from success values).
-
-(defrecord ErrorContainer [error])
-
-(defn error
-  "Distinguish a value (must be non-nil) as an error."
-  [x] (assert x) (->ErrorContainer x))
-
-(defn error? [x]
-  (instance? ErrorContainer x))
-
-(defn error-val [x]
-  (when (error? x) (.-error ^ErrorContainer x)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Registry for attaching schemas to classes, used for defn and defrecord

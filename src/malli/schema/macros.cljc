@@ -19,15 +19,6 @@
         (throw (ex-info ~s ~m))
         (throw (clojure.lang.ExceptionInfo. ~(with-meta s `{:tag java.lang.String}) ~m))))))
 
-(defmacro safe-get
-  "Like get but throw an exception if not found.  A macro just to work around cljx function
-   placement restrictions. "
-  [m k]
-  `(let [m# ~m k# ~k]
-     (if-let [pair# (find m# k#)]
-       (val pair#)
-       (error! (msu/format* "Key %s not found in %s" k# m#)))))
-
 (defmacro assert!
   "Like assert, but throws a RuntimeException (in Clojure) and takes args to format."
   [form & format-args]
@@ -54,14 +45,10 @@
     (assert! (not (or s s?)) "^{:s schema} style schemas are no longer supported.")
     (assert! (< (count (remove nil? [schema explicit-schema])) 2)
              "Expected single schema, got meta %s, explicit %s" (meta imeta) explicit-schema)
-    (let [schema (or explicit-schema schema tag `any?)]
-      (with-meta imeta
-                 (-> (or (meta imeta) {})
-                     (dissoc :tag)
-                     (msu/assoc-when :schema schema
-                                     :tag (let [t (or tag schema)]
-                                            (when (valid-tag? env t)
-                                              t))))))))
+    (let [schema (or explicit-schema schema tag `any?)
+          tag (let [t (or tag schema)] (if (valid-tag? env t) t))]
+      (with-meta
+        imeta (-> (or (meta imeta) {}) (dissoc :tag) (cond-> schema (assoc :schema schema) tag (assoc :tag tag)))))))
 
 (defn extract-schema-form
   "Pull out the schema stored on a thing.  Public only because of its use in a public macro."
@@ -134,9 +121,7 @@
 
 (defn input-schema-form [regular-args rest-arg]
   (let [base (simple-arglist-schema-form false regular-args)]
-    (if rest-arg
-      (vec (concat base (rest-arg-schema-form rest-arg)))
-      base)))
+    (if rest-arg (vec (concat base (rest-arg-schema-form rest-arg))) base)))
 
 (defn apply-prepost-conditions
   "Replicate pre/postcondition logic from clojure.core/fn."

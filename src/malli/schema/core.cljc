@@ -1,13 +1,13 @@
 (ns malli.schema.core
+  (:refer-clojure :exclude [defn])
   (:require [schema.core]
             [malli.schema.macros :as msm]
             [malli.schema.utils :as msu]))
 
-(defmacro defn+ [& defn-args]
+(defmacro defn [& defn-args]
   (let [[name & more-defn-args] (msm/normalized-defn-args &env defn-args)
         {:keys [doc tag] :as standard-meta} (meta name)
         {:keys [outer-bindings schema-form fn-body arglists raw-arglists]} (msm/process-fn- &env name more-defn-args)]
-    (def AAA (msm/process-fn- &env name more-defn-args))
     `(let ~outer-bindings
        (let [ret# (clojure.core/defn ~(with-meta name {})
                     ~(assoc (apply dissoc standard-meta (when (msm/primitive-sym? tag) [:tag]))
@@ -25,10 +25,10 @@
          (msu/declare-class-schema! (msu/fn-schema-bearer ~name) ~schema-form)
          ret#))))
 
-(macroexpand
-  `(defn+ ^:always-validate kikka [a :- String, b :- Long] [a b]))
+(defn ^:always-validate kikka :- [:tuple string? int?]
+  [a :- string?, b :- int?]
+  [a b])
 
-(defn+ ^:always-validate kikka [a :- String, b :- Long] [a b])
+(kikka "kikka" "1")
 
-(prn (kikka "kikka" 1))
-
+(meta #'kikka)

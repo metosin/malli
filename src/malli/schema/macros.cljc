@@ -1,44 +1,11 @@
 (ns malli.schema.macros
   "Macros and macro helpers used in schema.core."
   (:require
-    [clojure.string :as str]
-    [malli.schema.utils :as msu]))
+    [malli.schema.utils :as msu]
+    [malli.core :as m]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Helpers used in schema.core.
-
-(defn cljs-env?
-  "Take the &env from a macro, and tell whether we are expanding into cljs."
-  [env]
-  (boolean (:ns env)))
-
-(defmacro if-cljs
-  "Return then if we are generating cljs code and else for Clojure code.
-   https://groups.google.com/d/msg/clojurescript/iBY5HaQda4A/w1lAQi9_AwsJ"
-  [then else]
-  (if (cljs-env? &env) then else))
-
-(defmacro try-catchall
-  "A cross-platform variant of try-catch that catches all* exceptions.
-   Does not (yet) support finally, and does not need or want an exception class.
-
-   *On the JVM certain fatal exceptions are not caught."
-  [& body]
-  (let [try-body (butlast body)
-        [catch sym & catch-body :as catch-form] (last body)]
-    (assert (= catch 'catch))
-    (assert (symbol? sym))
-    `(if-cljs
-       (try ~@try-body (~'catch js/Object ~sym ~@catch-body))
-       (try
-         ~@try-body
-         ;; this whitelist is shamelessly copied from scala
-         ;; https://github.com/scala/scala/blob/2.13.x/src/library/scala/util/control/NonFatal.scala#L42
-         (~'catch VirtualMachineError  e# (throw e#))
-         (~'catch ThreadDeath          e# (throw e#))
-         (~'catch InterruptedException e# (throw e#))
-         (~'catch LinkageError         e# (throw e#))
-         (~'catch Throwable ~sym ~@catch-body)))))
+(defn cljs-env? [env] (boolean (:ns env)))
+(defmacro if-cljs [then else] (if (cljs-env? &env) then else))
 
 (defmacro error!
   "Generate a cross-platform exception appropriate to the macroexpansion context"
@@ -67,13 +34,6 @@
   `(when-not ~form
      (error! (msu/format* ~@format-args))))
 
-(defmacro validation-error [schema value expectation & [fail-explanation]]
-  `(schema.utils/error
-     (msu/make-ValidationError ~schema ~value (delay ~expectation) ~fail-explanation)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Helpers for processing and normalizing element/argument schemas in s/defrecord and s/(de)fn
-
 (defn maybe-split-first [pred s]
   (if (pred (first s))
     [(first s) (next s)]
@@ -94,14 +54,14 @@
     (assert! (not (or s s?)) "^{:s schema} style schemas are no longer supported.")
     (assert! (< (count (remove nil? [schema explicit-schema])) 2)
              "Expected single schema, got meta %s, explicit %s" (meta imeta) explicit-schema)
-    (let [schema (or explicit-schema schema tag `schema.core/Any)]
+    (let [schema (or explicit-schema schema tag `any?)]
       (with-meta imeta
                  (-> (or (meta imeta) {})
                      (dissoc :tag)
                      (msu/assoc-when :schema schema
                                      :tag (let [t (or tag schema)]
-                                              (when (valid-tag? env t)
-                                                t))))))))
+                                            (when (valid-tag? env t)
+                                              t))))))))
 
 (defn extract-schema-form
   "Pull out the schema stored on a thing.  Public only because of its use in a public macro."
@@ -150,14 +110,18 @@
       [bind nil])))
 
 (defn single-arg-schema-form [rest? [index arg]]
-  `(~(if rest? `schema.core/optional `schema.core/one)
-     ~(extract-schema-form arg)
-     ~(if (symbol? arg)
-        `'~arg
-        `'~(symbol (str (if rest? "rest" "arg") index)))))
+  #_`(~(if rest? `schema.core/optional `schema.core/one)
+       ~(extract-schema-form arg)
+       ~(if (symbol? arg)
+          `'~arg
+          `'~(symbol (str (if rest? "rest" "arg") index))))
+  `[~(extract-schema-form arg) {:name ~(if (symbol? arg)
+                                         `'~arg
+                                         `'~(symbol (str (if rest? "rest" "arg") index)))}])
+
 
 (defn simple-arglist-schema-form [rest? regular-args]
-  (mapv (partial single-arg-schema-form rest?) (map-indexed vector regular-args)))
+  (into [:tuple] (mapv (partial single-arg-schema-form rest?) (map-indexed vector regular-args))))
 
 (defn rest-arg-schema-form [arg]
   (let [s (extract-schema-form arg)]
@@ -216,19 +180,24 @@
         bind (with-meta (process-arrow-schematized-args env bind) bind-meta)
         [regular-args rest-arg] (split-rest-arg env bind)
         input-schema-sym (gensym "input-schema")
-        input-checker-sym (gensym "input-checker")
-        output-checker-sym (gensym "output-checker")
+        input-explainer-sym (gensym "input-explainer")
+        output-explainer-sym (gensym "output-explainer")
         compile-validation (compile-fn-validation? env fn-name)]
     {:schema-binding [input-schema-sym (input-schema-form regular-args rest-arg)]
      :more-bindings (when compile-validation
-                      [input-checker-sym `(delay (schema.core/checker ~input-schema-sym))
-                       output-checker-sym `(delay (schema.core/checker ~output-schema-sym))])
+                      [input-explainer-sym `(delay (m/explainer ~input-schema-sym))
+                       output-explainer-sym `(delay (m/explainer ~output-schema-sym))])
      :arglist bind
      :raw-arglist original-arglist
      :arity-form (if compile-validation
                    (let [bind-syms (vec (repeatedly (count regular-args) gensym))
                          rest-sym (when rest-arg (gensym "rest"))
                          metad-bind-syms (with-meta (mapv #(with-meta %1 (meta %2)) bind-syms bind) bind-meta)]
+
+                     ;; sequence schemas not supported
+                     (when rest-arg
+                       (m/-fail! ::varags-not-supported {:args bind}))
+
                      (list
                        (if rest-arg
                          (into metad-bind-syms ['& rest-sym])
@@ -237,16 +206,14 @@
                                            `true
                                            `(if-cljs (deref ~'ufv__) (.get ~'ufv__)))]
                           (when validate#
-                            (let [args# ~(if rest-arg
-                                           `(list* ~@bind-syms ~rest-sym)
-                                           bind-syms)]
+                            (let [args# ~(if rest-arg `(list* ~@bind-syms ~rest-sym) bind-syms)]
                               (if schema.core/fn-validator
                                 (schema.core/fn-validator :input
                                                           '~fn-name
                                                           ~input-schema-sym
-                                                          @~input-checker-sym
+                                                          @~input-explainer-sym
                                                           args#)
-                                (when-let [error# (@~input-checker-sym args#)]
+                                (when-let [error# (@~input-explainer-sym args#)]
                                   (error! (msu/format* "Input to %s does not match schema: \n\n\t \033[0;33m  %s \033[0m \n\n"
                                                        '~fn-name (pr-str error#))
                                           {:schema ~input-schema-sym :value args# :error error#})))))
@@ -258,9 +225,9 @@
                                 (schema.core/fn-validator :output
                                                           '~fn-name
                                                           ~output-schema-sym
-                                                          @~output-checker-sym
+                                                          @~output-explainer-sym
                                                           o#)
-                                (when-let [error# (@~output-checker-sym o#)]
+                                (when-let [error# (@~output-explainer-sym o#)]
                                   (error! (msu/format* "Output of %s does not match schema: \n\n\t \033[0;33m  %s \033[0m \n\n"
                                                        '~fn-name (pr-str error#))
                                           {:schema ~output-schema-sym :value o# :error error#}))))
@@ -296,71 +263,6 @@
                     `(schema.core/->FnSchema ~output-schema-sym ~[(ffirst schema-bindings)])
                     `(schema.core/make-fn-schema ~output-schema-sym ~(mapv first schema-bindings)))
      :fn-body fn-forms}))
-
-(defn parse-arity-spec
-  "Helper for schema.core/=>*."
-  [spec]
-  (assert! (vector? spec) "An arity spec must be a vector")
-  (let [[init more] ((juxt take-while drop-while) #(not= '& %) spec)
-        fixed (mapv (fn [i s] `(schema.core/one ~s '~(symbol (str "arg" i)))) (range) init)]
-    (if (empty? more)
-      fixed
-      (do (assert! (and (= (count more) 2) (vector? (second more)))
-                   "An arity with & must be followed by a single sequence schema")
-          (into fixed (second more))))))
-
-(defn emit-defrecord
-  [defrecord-constructor-sym env name field-schema & more-args]
-  (let [[extra-key-schema? more-args] (maybe-split-first map? more-args)
-        [extra-validator-fn? more-args] (maybe-split-first (complement symbol?) more-args)
-        field-schema (process-arrow-schematized-args env field-schema)]
-    `(do
-       (let [bad-keys# (seq (filter #(schema.core/required-key? %)
-                                    (keys ~extra-key-schema?)))]
-         (assert! (not bad-keys#) "extra-key-schema? can not contain required keys: %s"
-                  (vec bad-keys#)))
-       ~(when extra-validator-fn?
-          `(assert! (fn? ~extra-validator-fn?) "Extra-validator-fn? not a fn: %s"
-                    (type ~extra-validator-fn?)))
-       (~defrecord-constructor-sym ~name ~field-schema ~@more-args)
-       (msu/declare-class-schema!
-         ~name
-         (msu/assoc-when
-           (schema.core/record
-             ~name
-             (merge ~(into {}
-                           (for [k field-schema]
-                             [(keyword (clojure.core/name k))
-                              (do (assert! (symbol? k)
-                                           "Non-symbol in record binding form: %s" k)
-                                  (extract-schema-form k))]))
-                    ~extra-key-schema?)
-             ~(symbol (str 'map-> name)))
-           :extra-validator-fn ~extra-validator-fn?))
-       ~(let [map-sym (gensym "m")]
-          `(if-cljs
-             nil
-             (defn ~(symbol (str 'map-> name))
-               ~(str "Factory function for class " name ", taking a map of keywords to field values, but not much\n"
-                     " slower than ->x like the clojure.core version.\n"
-                     " (performance is fixed in Clojure 1.7, so this should eventually be removed.)")
-               [~map-sym]
-               (let [base# (new ~(symbol (str name))
-                                ~@(map (fn [s] `(get ~map-sym ~(keyword s))) field-schema))
-                     remaining# (dissoc ~map-sym ~@(map keyword field-schema))]
-                 (if (seq remaining#)
-                   (merge base# remaining#)
-                   base#)))))
-       ~(let [map-sym (gensym "m")]
-          `(defn ~(symbol (str 'strict-map-> name))
-             ~(str "Factory function for class " name ", taking a map of keywords to field values.  All"
-                   " keys are required, and no extra keys are allowed.  Even faster than map->")
-             [~map-sym & [drop-extra-keys?#]]
-             (when-not (or drop-extra-keys?# (= (count ~map-sym) ~(count field-schema)))
-               (error! (msu/format* "Wrong number of keys: expected %s, got %s"
-                                    (sort ~(mapv keyword field-schema)) (sort (keys ~map-sym)))))
-             (new ~(symbol (str name))
-                  ~@(map (fn [s] `(safe-get ~map-sym ~(keyword s))) field-schema)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public: helpers for schematized functions

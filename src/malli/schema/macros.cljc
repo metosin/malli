@@ -2,6 +2,7 @@
   "Macros and macro helpers used in schema.core."
   (:require
     [malli.schema.utils :as msu]
+    [malli.error :as me]
     [malli.core :as m]))
 
 (defn cljs-env? [env] (boolean (:ns env)))
@@ -199,9 +200,10 @@
                                                           @~input-explainer-sym
                                                           args#)
                                 (when-let [error# (@~input-explainer-sym args#)]
-                                  (error! (msu/format* "Input to %s does not match schema: \n\n\t \033[0;33m  %s \033[0m \n\n"
-                                                       '~fn-name (pr-str error#))
-                                          {:schema ~input-schema-sym :value args# :error error#})))))
+                                  (let [humanized# (malli.error/humanize error#)]
+                                    (error! (msu/format* "Input to %s does not match schema: \n\n\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n\t\u001B[0;37m  error: \u001B[0;33m%s\u001B[0m\n\n"
+                                                         '~fn-name (m/form ~input-schema-sym) (pr-str args#) (pr-str humanized#))
+                                            {:schema ~input-schema-sym :value args# :error error#}))))))
                           (let [o# (loop ~(into (vec (interleave (map #(with-meta % {}) bind) bind-syms))
                                                 (when rest-arg [rest-arg rest-sym]))
                                      ~@(apply-prepost-conditions body))]

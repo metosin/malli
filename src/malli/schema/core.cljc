@@ -25,10 +25,13 @@
          (msu/declare-class-schema! (msu/fn-schema-bearer ~name) ~schema-form)
          ret#))))
 
-(defn ^:always-validate kikka :- [:tuple string? int?]
-  [a :- string?, b :- int?]
-  [a b])
+(ns user)
 
-(kikka "kikka" "1")
+(require '[malli.schema.core :as m])
 
-(meta #'kikka)
+(m/defn ^:always-validate fun :- [:tuple int? pos-int?]
+  "returns a tuple of a number and "
+  [x :- int?, y :- int?]
+  [x (* x x)])
+
+(fun 2 "2")

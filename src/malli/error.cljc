@@ -100,7 +100,7 @@
   (and (vector? x) (= 1 (count x)) (string? (first x))))
 
 (defn- -get [x k]
-  (if (associative? x) (get x k) (-get (vec x) k)))
+  (if (or (set? x) (associative? x)) (get x k) (-get (vec x) k)))
 
 (defn- -put [x k v]
   (cond

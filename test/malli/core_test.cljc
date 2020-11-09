@@ -996,7 +996,7 @@
                                    [schema #{1 2 "3"}
                                     {:schema schema
                                      :value #{1 2 "3"}
-                                     :errors [{:path [0], :in [0], :schema int?, :value "3"}]}]])
+                                     :errors [{:path [0], :in ["3"], :schema int?, :value "3"}]}]])
 
                           "tuple" (let [schema [:tuple int? string?]]
 

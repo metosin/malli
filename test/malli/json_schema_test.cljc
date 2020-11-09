@@ -14,6 +14,7 @@
    [[:>= 6] {:type "number", :format "double", :minimum 6}]
    [[:< 6] {:type "number", :format "double", :exclusiveMaximum 6}]
    [[:<= 6] {:type "number", :format "double", :maximum 6}]
+   [[:= "x"] {:const "x"}]
    ;; base
    [[:and int? pos-int?] {:allOf [{:type "integer", :format "int64"}
                                   {:type "integer", :format "int64" :minimum 1}]}]

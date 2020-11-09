@@ -565,7 +565,7 @@
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema :map-of properties (assoc children key value))))))))
 
-(defn -collection-schema [{type :type fpred :pred, fempty :empty}]
+(defn -collection-schema [{type :type fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
@@ -596,7 +596,7 @@
                   :else (let [size (count x)]
                           (loop [acc acc, i 0, [x & xs] x]
                             (if (< i size)
-                              (cond-> (or (explainer x (conj in i) acc) acc) xs (recur (inc i) xs))
+                              (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
           (-transformer [this transformer method options]
             (let [collection? #(or (sequential? %) (set? %))
@@ -1254,7 +1254,7 @@
    :map-of (-map-of-schema)
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
    :sequential (-collection-schema {:type :sequential, :pred sequential?})
-   :set (-collection-schema {:type :set, :pred set?, :empty #{}})
+   :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

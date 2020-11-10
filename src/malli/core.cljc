@@ -994,6 +994,36 @@
             (-ref [_] id)
             (-deref [_] child)))))))
 
+(defn -memoized-schema [s]
+  (let [validator-fn (memoize (partial -validator s))
+        explainer-fn (memoize (partial -explainer s))
+        transformer-fn (memoize (partial -transformer s))]
+    (reify Schema
+
+      ;; Passthrough
+      (-type [this]
+        (-type s))
+      (-type-properties [this]
+        (-type-properties s))
+      (-walk [this walker path options]
+        (-walk s walker path options))
+      (-properties [this]
+        (-properties s))
+      (-options [this]
+        (-options s))
+      (-children [this]
+        (-children s))
+      (-form [this]
+        (-form s))
+
+      ;; Actual memoization/caching
+      (-validator [this]
+        (validator-fn))
+      (-explainer [this path]
+        (explainer-fn path))
+      (-transformer [this transformer method options]
+        (transformer-fn transformer method options)))))
+
 ;;
 ;; public api
 ;;
@@ -1032,6 +1062,9 @@
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))
+
+(defn memoized-schema [s]
+  (-memoized-schema (-schema s)))
 
 (defn form
   "Returns the Schema form"

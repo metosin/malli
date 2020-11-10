@@ -1,6 +1,7 @@
 (ns malli.perf-test
   (:require [clojure.spec.alpha :as s]
             [criterium.core :as cc]
+            [clj-async-profiler.core :as prof]
             [malli.core :as m]
             [spec-tools.core :as st]
             [malli.transform :as transform]))
@@ -290,6 +291,65 @@
     (cc/quick-bench (quick-select-keys {:a 1, :b 2}))
     (cc/quick-bench (quick-select-keys {:a 1, :b 2, :c 3, :d 4}))))
 
+(defn schema-flames []
+
+  ;; "Elapsed time: 10472.153783 msecs"
+  ;; "Elapsed time: 524.153783 msecs"
+  (time
+    (prof/profile
+      (dotimes [_ 50000]
+        (m/validate [:map [:street :string]] {:street "hämeenkatu"}))))
+
+  ;; "Elapsed time: 231.093848 msecs"
+  (let [schema (m/schema [:map [:street :string]])]
+    (time
+      (prof/profile
+        (dotimes [_ 500000]
+          (m/validate schema {:street "hämeenkatu"})))))
+
+  ;; "Elapsed time: 59.743646 msecs"
+  (let [validate (m/validator [:map [:street :string]])]
+    (time
+      (prof/profile
+        (dotimes [_ 500000]
+          (validate {:street "hämeenkatu"}))))))
+
+(defn address-flame []
+  (time
+    (prof/profile
+      (dotimes [_ 1000]
+        (m/schema
+          [:schema
+           {:registry {"Country" [:map
+                                  {:closed true}
+                                  [:name [:enum :FI :PO]]
+                                  [:neighbors
+                                   {:optional true}
+                                   [:vector [:ref "Country"]]]],
+                       "Burger" [:map
+                                 [:name string?]
+                                 [:description {:optional true} string?]
+                                 [:origin [:maybe "Country"]]
+                                 [:price pos-int?]],
+                       "OrderLine" [:map
+                                    {:closed true}
+                                    [:burger "Burger"]
+                                    [:amount int?]],
+                       "Order" [:map
+                                {:closed true}
+                                [:lines [:vector "OrderLine"]]
+                                [:delivery
+                                 [:map
+                                  {:closed true}
+                                  [:delivered boolean?]
+                                  [:address
+                                   [:map
+                                    [:street string?]
+                                    [:zip int?]
+                                    [:country "Country"]]]]]]}}
+           "Order"])))))
+
+
 (comment
   (map-perf)
   (composite-perf)
@@ -300,4 +360,10 @@
   (transform-test2)
   (map-transform-test)
   (select-keys-perf-test)
-  (fn-test))
+  (fn-test)
+
+  (prof/serve-files 8080)
+  (prof/clear-results)
+
+  (address-flame)
+  (schema-flames))

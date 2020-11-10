@@ -9,6 +9,10 @@
 ;; protocols and records
 ;;
 
+(defprotocol Schemas
+  (-schema? [this])
+  (-into-schema? [this]))
+
 (defprotocol IntoSchema
   (-into-schema [this properties children options] "creates a new schema instance"))
 
@@ -215,6 +219,26 @@
       min (fn [x] (<= min x))
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
+
+;;
+;; Protocol Cache
+;;
+
+(let [extend (fn [protocol this]
+               ;; cljs: class clojure.lang.PersistentList cannot be cast to class clojure.lang.Named
+               #?(:clj (let [s? (satisfies? Schema this)
+                             is? (satisfies? IntoSchema this)]
+                         (extend-protocol Schemas (class this)
+                           (-schema? [_] s?)
+                           (-into-schema? [_] is?))))
+               (satisfies? protocol this))]
+  (extend-protocol Schemas
+    nil
+    (-schema? [_] false)
+    (-into-schema? [_] false)
+    #?(:clj Object, :cljs default)
+    (-schema? [this] #?(:clj (extend Schema this)) (satisfies? Schema this))
+    (-into-schema? [this] #?(:clj (extend IntoSchema this)) (satisfies? IntoSchema this))))
 
 ;;
 ;; Schemas
@@ -976,11 +1000,11 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (satisfies? Schema x))
+  [x] (-schema? x))
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (satisfies? IntoSchema x))
+  [x] (-into-schema? x))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"

@@ -74,7 +74,7 @@
 (defmethod accept :>= [_ _ [value] _] {:type "number" :format "double" :minimum value})
 (defmethod accept :< [_ _ [value] _] {:type "number" :format "double" :exclusiveMaximum value})
 (defmethod accept :<= [_ _ [value] _] {:type "number" :format "double" :maximum value})
-(defmethod accept := [_ _ _ _] {})
+(defmethod accept := [_ _ [value] _] {:const value})
 (defmethod accept :not= [_ _ _ _] {})
 
 (defmethod accept :and [_ _ children _] {:allOf children})

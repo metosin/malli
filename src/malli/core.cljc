@@ -224,19 +224,21 @@
 ;; Protocol Cache
 ;;
 
-(let [extend (fn [this]
+(let [extend (fn [protocol this]
+               ;; cljs: class clojure.lang.PersistentList cannot be cast to class clojure.lang.Named
                #?(:clj (let [s? (satisfies? Schema this)
                              is? (satisfies? IntoSchema this)]
                          (extend-protocol Schemas (class this)
                            (-schema? [_] s?)
-                           (-into-schema? [_] is?)))))]
+                           (-into-schema? [_] is?))))
+               (satisfies? protocol this))]
   (extend-protocol Schemas
     nil
     (-schema? [_] false)
     (-into-schema? [_] false)
-    #?(:clj Object, :cljs object)
-    (-schema? [this] #?(:clj (extend this), :cljs (satisfies? Schema this)))
-    (-into-schema? [this] #?(:clj (extend this), :cljs (satisfies? IntoSchema this)))))
+    #?(:clj Object, :cljs default)
+    (-schema? [this] #?(:clj (extend Schema this)) (satisfies? Schema this))
+    (-into-schema? [this] #?(:clj (extend IntoSchema this)) (satisfies? IntoSchema this))))
 
 ;;
 ;; Schemas

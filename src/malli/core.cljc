@@ -1064,7 +1064,7 @@
              (-> ?schema (-schema options) (schema options))))))
 
 (defn memoized-schema [s]
-  (-memoized-schema (-schema s)))
+  (-memoized-schema s))
 
 (defn form
   "Returns the Schema form"

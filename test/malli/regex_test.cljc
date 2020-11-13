@@ -325,3 +325,15 @@
 
 (s/explain-data (s/cat :a (s/map-of int? (s/cat :first int?))) [{1 ["1"]}])
 (get-in [{1 ["1"]}] [0 1])
+
+;; validator <- impl without doing (much) garbage, parser without realizing results?
+;; parser <- realized results
+;; explain
+;;   <- only top-level error, "sequence doesn't match"?
+;;   <- all possible errors with lenghts
+;; transform <- first match that transforms
+
+;; backtracking -> bomb
+;; memoize -> muistin varaus
+;; vector -> hack?
+;; NFA ->

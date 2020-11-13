@@ -1433,7 +1433,7 @@
                                            [1 "a" :b 3]]
                                           [[1 "a" :b "3"]]]]
                          [[:cat int? [:cat int? int?]] [[[1 2 3]] [[1 [2 3]]]]]
-                         #_[[:cat int? [:schema [:cat int? int?]]] [[[1 [2 3]]] [[1 2 3]]]]]]
+                         [[:cat int? [:schema [:cat int? int?]]] [[[1 [2 3]]] [[1 2 3]]]]]]
   (println)
   (println (form s))
   (doseq [v pass]
@@ -1457,16 +1457,16 @@
   [1 [["sika" "pakkasella"] :tosi] 12])
 
 (validate
-  [:schema {:registry {"hiccup" [:alt*
-                                 [:node [:cat*
-                                         [:name keyword?]
-                                         [:props [:? [:map-of keyword? any?]]]
-                                         [:children [:* [:ref "hiccup"]]]]]
-                                 [:primitive [:alt*
-                                              [:nil nil?]
-                                              [:boolean boolean?]
-                                              [:number number?]
-                                              [:text string?]]]]}}
+  [:schema {:registry {"hiccup" [:or
+                                 [:cat*
+                                  [:name keyword?]
+                                  [:props [:? [:map-of keyword? any?]]]
+                                  [:children [:* [:ref "hiccup"]]]]
+                                 [:or
+                                  nil?
+                                  boolean?
+                                  number?
+                                  string?]]}}
    "hiccup"]
   [:div {:class [:foo :bar]}
    [:p "Hello, world of data"]])

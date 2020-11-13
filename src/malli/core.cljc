@@ -1,9 +1,13 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
-            [malli.registry :as mr])
+            [malli.regex :as re]
+            [malli.registry :as mr]
+            [clojure.string :as str])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang IDeref MapEntry))))
+
+(declare ->regex)
 
 ;;
 ;; protocols and records
@@ -39,6 +43,9 @@
 (defprotocol RefSchema
   (-ref [this] "returns the reference name")
   (-deref [this] "returns the referenced schema"))
+
+(defprotocol RegexSchema
+  (-regex [this] "returns the regex"))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -111,6 +118,9 @@
      #(loop [ret ((first fs) %), fs (next fs)] (if fs (recur ((first fs) ret) (next fs)) ret)))))
 
 (defn -update [m k f] (assoc m k (f (get m k))))
+
+(defn -lazy [ref options]
+  (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
@@ -219,6 +229,17 @@
       min (fn [x] (<= min x))
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
+
+(defn -into-regex [x]
+  (println "-into-regex" x)
+  (cond
+    (satisfies? RegexSchema x) (-regex x)
+    (= :ref (-type x)) (re/lazy (fn []
+                                  (prn "lazy!" (-form x))
+                                  (if (false? (:inlined (-properties x)))
+                                    (re/fn (-validator x))
+                                    (-into-regex (-deref x)))))
+    :else (re/fn (-validator x))))
 
 ;;
 ;; Protocol Cache
@@ -994,6 +1015,72 @@
             (-ref [_] id)
             (-deref [_] child)))))))
 
+(defn -sequence-schema [{:keys [type re]}]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      ;(-check-children! type properties children {:min 1, :max 1})
+      (let [[child :as children] (map #(schema % options) children)
+            form (-create-form type properties (mapv -form children))]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] type)
+          (-validator [this]
+            (re/validator (-regex this)))
+          (-explainer [_ path] (-explainer child path))
+          (-transformer [this transformer method options]
+            (-parent-children-transformer this children transformer method options))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path [(-inner walker child path options)] options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (if (= key 0) child default))
+          (-set [this key value] (if (= key 0)
+                                   (into-schema type properties [value])
+                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+          RegexSchema
+          (-regex [_]
+            (re properties (map -into-regex children))))))))
+
+(defn -sequence-entry-schema [{:keys [type re]}]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      ;(-check-children! type properties children {:min 1, :max 1})
+      (let [[child :as children] (mapv (fn [[k c]] [k (schema c options)]) children)
+            form (-create-form type properties (mapv (fn [[k s]] [k (-form s)]) children))]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] type)
+          (-validator [this]
+            (re/validator (-regex this)))
+          (-explainer [_ path] (-explainer child path))
+          (-transformer [this transformer method options]
+            (-parent-children-transformer this children transformer method options))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path [(-inner walker child path options)] options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-form [_] form)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (if (= key 0) child default))
+          (-set [this key value] (if (= key 0)
+                                   (into-schema type properties [value])
+                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+          RegexSchema
+          (-regex [_]
+            (re properties (map (fn [[k s]] [k (-into-regex s)]) children))))))))
+
 ;;
 ;; public api
 ;;
@@ -1271,6 +1358,17 @@
    :qualified-symbol (-qualified-symbol-schema)
    :uuid (-uuid-schema)})
 
+(defn sequence-schemas []
+  {:+ (-sequence-schema {:type :+, :re (fn [_ [child]] (re/+ child))})
+   :* (-sequence-schema {:type :*, :re (fn [_ [child]] (re/* child))})
+   :? (-sequence-schema {:type :?, :re (fn [_ [child]] (re/? child))})
+   :repeat (-sequence-schema {:type :repeat, :re (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
+                                                   (re/repeat min max child))})
+   :alt (-sequence-schema {:type :alt, :re (fn [_ children] (apply re/alt children))})
+   :cat (-sequence-schema {:type :cat, :re (fn [_ children] (apply re/cat children))})
+   :cat* (-sequence-entry-schema {:type :cat*, :re (fn [_ children] (apply re/cat children))})
+   :alt* (-sequence-entry-schema {:type :alt*, :re (fn [_ children] (apply re/alt children))})})
+
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
@@ -1290,9 +1388,118 @@
    ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []
-  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (base-schemas)))
+  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
                      (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (-fail! ::invalid-registry.type {:type mr/type}))))
+
+(defn << [success & ss]
+  (str (if success "\u001B[32m" "\u001B[31m") (str/join " " ss) "\u001B[0m"))
+
+(doseq [[s [pass fail]] [[[:+ int?] [[[1] [1 2 3]] [[] ["1"]]]]
+                         [[:* int?] [[[1] [1 2 3] []] [["1"]]]]
+                         [[:repeat int?] [[[1] [1 2 3] []] [["1"]]]]
+                         [[:repeat {:min 0} int?] [[[1] [1 2 3] []] [["1"]]]]
+                         [[:repeat {:min 1} int?] [[[1] [1 2 3]] [[] ["1"]]]]
+                         [[:repeat {:min 1, :max 2} int?] [[[1] [1 2]] [[1 2 3] [] ["1"]]]]
+                         [[:cat int? boolean?] [[[1 true]] [[1] ["1" true]]]]
+                         [[:cat* [:int int?] [:bool boolean?]] [[[1 true]] [[1] ["1" true]]]]
+                         [[:alt int? boolean?] [[[1] [true]] [[] ["1"] [1 "2"]]]]
+                         [[:alt* [:int int?] [:int boolean?]] [[[1] [true]] [[] ["1"] [1 "2"]]]]
+                         [[:cat
+                           int?
+                           [:alt
+                            string?
+                            keyword?
+                            [:cat
+                             string?
+                             keyword?]]
+                           int?] [[[1 "a" 3]
+                                   [1 :b 3]
+                                   [1 "a" :b 3]]
+                                  [[1 "a" :b "3"]]]]
+                         [[:cat*
+                           [:head int?]
+                           [:body [:alt*
+                                   [:option1 string?]
+                                   [:option2 keyword?]
+                                   [:option3 [:cat*
+                                              [:s string?]
+                                              [:k keyword?]]]]]
+                           [:tail int?]] [[[1 "a" 3]
+                                           [1 :b 3]
+                                           [1 "a" :b 3]]
+                                          [[1 "a" :b "3"]]]]
+                         [[:cat int? [:cat int? int?]] [[[1 2 3]] [[1 [2 3]]]]]
+                         #_[[:cat int? [:schema [:cat int? int?]]] [[[1 [2 3]]] [[1 2 3]]]]]]
+  (println)
+  (println (form s))
+  (doseq [v pass]
+    (let [ok (validate s v)]
+      (println (<< ok "+" (if ok "+" "-") v))))
+  (doseq [v fail]
+    (let [ok (not (validate s v))]
+      (println (<< ok "-" (if ok "-" "+") v)))))
+
+(validate
+  [:cat*
+   [:head int?]
+   [:body [:alt*
+           [:option1 string?]
+           [:option2 keyword?]
+           [:option3 [:schema
+                      [:cat*
+                       [:s [:tuple string? string?]]
+                       [:k keyword?]]]]]]
+   [:tail int?]]
+  [1 [["sika" "pakkasella"] :tosi] 12])
+
+(validate
+  [:schema {:registry {"hiccup" [:alt*
+                                 [:node [:cat*
+                                         [:name keyword?]
+                                         [:props [:? [:map-of keyword? any?]]]
+                                         [:children [:* [:ref "hiccup"]]]]]
+                                 [:primitive [:alt*
+                                              [:nil nil?]
+                                              [:boolean boolean?]
+                                              [:number number?]
+                                              [:text string?]]]]}}
+   "hiccup"]
+  [:div {:class [:foo :bar]}
+   [:p "Hello, world of data"]])
+
+
+(validate
+  [:schema
+   [:alt*
+    [:node [:cat*
+            [:name keyword?]
+            [:props [:? [:map-of keyword? any?]]]
+            [:children [:* string? #_[:ref "hiccup"]]]]]]]
+  [:p {:a 1} "Hello, world of data"])
+
+(validate
+  [:alt
+   [:cat*
+    [:name keyword?]
+    [:props [:? [:map-of keyword? any?]]]
+    [:children [:* any?]]]]
+  [:div {:class "warning"} 123])
+
+
+(validate
+  [:alt*
+   [:node [:alt*
+           [:name keyword?]
+           [:props [:? [:map-of keyword? any?]]]
+           [:children [:* any? #_[:ref "hiccup"]]]]]
+   [:primitive [:alt*
+                [:nil nil?]
+                [:boolean boolean?]
+                [:number number?]
+                [:text string?]]]]
+  [:div {:class [:foo :bar]}
+   nil #_[:p "Hello, world of data"]])

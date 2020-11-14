@@ -1397,6 +1397,9 @@
 
 (deftest custom-simple-type-test
 
+  (testing "can be walked"
+    (is (m/walk Over6 (m/schema-walker identity))))
+
   (testing "with static type-properties"
     (let [over6 (m/schema [Over6 {:json-schema/example 42}])]
       (testing "form"

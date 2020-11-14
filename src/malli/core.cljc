@@ -26,6 +26,7 @@
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
   (-children [this] "returns schema children")
+  (-parent [this] "returns the IntoSchema instance")
   (-form [this] "returns original form of the schema"))
 
 (defprotocol MapSchema
@@ -118,6 +119,12 @@
 (defn -inner-entries [walker path entries options]
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
+(defn -set-children [schema children]
+  (-into-schema (-parent schema) (-properties schema) children (-options schema)))
+
+(defn -set-assoc-children [schema key value]
+  (-set-children schema (assoc (-children schema) key value)))
+
 (defn -get-entries [schema key default]
   (or (if (and (vector? key) (= ::val (nth key 0)))
         (some (fn [[k s]] (if (= k (nth key 1)) s)) (-entries schema))
@@ -130,7 +137,7 @@
         children (cond-> (mapv (fn [[k :as child]] (if (= key k) (do (reset! found true) new-child) child)) (-children schema))
                          (not @found) (conj new-child)
                          :always (->> (filter (fn [e] (-> e last some?)))))]
-    (into-schema (-type schema) (-properties schema) children)))
+    (-set-children schema children)))
 
 (defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
   (let [-entry (fn [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
@@ -271,6 +278,7 @@
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)
+            (-parent [_] (-simple-schema ?props))
             (-form [_] form)
             LensSchema
             (-keep [_])
@@ -313,11 +321,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-and-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :and properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -or-schema []
   ^{:type ::into-schema}
@@ -388,11 +397,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-or-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :or properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -val-schema
   ([schema properties]
@@ -420,6 +430,7 @@
            (-properties [_] properties)
            (-options [_] (-options schema))
            (-children [_] children)
+           (-parent [_] (-val-schema))
            (-form [_] form)
            LensSchema
            (-keep [_])
@@ -518,6 +529,7 @@
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] children)
+           (-parent [_] (-map-schema opts))
            (-form [_] form)
            MapSchema
            (-entries [_] entries)
@@ -583,13 +595,14 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-map-of-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :map-of properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn -collection-schema [{type :type fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}}]
+(defn -collection-schema [{type :type fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)} :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ {:keys [min max] :as properties} children options]
@@ -641,11 +654,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-collection-schema opts))
           (-form [_] form)
           LensSchema
           (-keep [_] true)
           (-get [_ _ _] schema)
-          (-set [_ _ value] (into-schema type properties [value])))))))
+          (-set [this _ value] (-set-children this [value])))))))
 
 (defn -tuple-schema []
   ^{:type ::into-schema}
@@ -696,11 +710,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-tuple-schema))
           (-form [_] form)
           LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :tuple properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}
@@ -729,11 +744,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-enum-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :enum properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -re-schema [class?]
   ^{:type ::into-schema}
@@ -766,11 +782,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-re-schema class?))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :re properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -fn-schema []
   ^{:type ::into-schema}
@@ -803,11 +820,12 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-fn-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [_ key value] (into-schema :fn properties (assoc children key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -maybe-schema []
   ^{:type ::into-schema}
@@ -836,12 +854,13 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-maybe-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [this key value] (if (= 0 key)
-                                   (into-schema :maybe properties [value])
+                                   (-set-children this [value])
                                    (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
 
 (defn -multi-schema
@@ -852,8 +871,8 @@
    (reify IntoSchema
      (-into-schema [_ properties children options]
        (let [type (or (:type opts) :multi)
-             opts (merge opts (select-keys properties [:lazy-refs]))
-             {:keys [children entries forms]} (-parse-entries children opts options)
+             opts' (merge opts (select-keys properties [:lazy-refs]))
+             {:keys [children entries forms]} (-parse-entries children opts' options)
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
@@ -863,7 +882,7 @@
          (reify
            Schema
            (-type [_] type)
-           (-type-properties [_] (:type-properties opts))
+           (-type-properties [_] (:type-properties opts'))
            (-validator [_]
              (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
                (fn [x]
@@ -897,6 +916,7 @@
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] children)
+           (-parent [_] (-multi-schema opts))
            (-form [_] form)
            MapSchema
            (-entries [_] entries)
@@ -908,7 +928,7 @@
 (defn -ref-schema
   ([]
    (-ref-schema nil))
-  ([{:keys [lazy type-properties]}]
+  ([{:keys [lazy type-properties] :as opts}]
    ^{:type ::into-schema}
    (reify IntoSchema
      (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
@@ -948,17 +968,18 @@
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] children)
+           (-parent [_] (-ref-schema opts))
            (-form [_] form)
            LensSchema
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
            (-keep [_])
-           (-set [this key value] (if (= key 0) (into-schema :ref properties [value])
+           (-set [this key value] (if (= key 0) (-set-children this [value])
                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))))))))
 
-(defn -schema-schema [{:keys [id raw]}]
+(defn -schema-schema [{:keys [id raw] :as opts}]
   ^{:type ::into-schema}
   (let [type (if (or id raw) ::schema :schema)]
     (reify IntoSchema
@@ -984,11 +1005,12 @@
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)
+            (-parent [_] (-schema-schema opts))
             (-form [_] form)
             LensSchema
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
-            (-set [this key value] (if (= key 0) (into-schema type properties [value])
+            (-set [this key value] (if (= key 0) (-set-children this [value])
                                                  (-fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
@@ -1238,7 +1260,7 @@
 
 (defn schema-walker [f]
   (fn [schema _ children _]
-    (f (into-schema (-type schema) (-properties schema) children (-options schema)))))
+    (f (-set-children schema children))))
 
 ;;
 ;; registry

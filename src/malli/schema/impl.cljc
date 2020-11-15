@@ -243,7 +243,7 @@
    tag? is a prospective tag for the fn symbol based on the output schema.
    schema-bindings are bindings to lift eval outwards, so we don't build the schema
    every time we do the validation."
-  [env fn-name top-output-schema bind-meta [bind & body]]
+  [env ns fn-name top-output-schema bind-meta [bind & body]]
   (assert! (vector? bind) "Got non-vector binding form %s" bind)
   (when-let [bad-meta (seq (filter (or (meta bind) {}) [:tag :s? :s :schema]))]
     (throw (RuntimeException. (str "Meta not supported on bindings, put on fn name" (vec bad-meta)))))
@@ -282,12 +282,12 @@
                        `(let [validate# ~(if (:always-validate (meta fn-name)) `true `(if-cljs (deref ~'ufv__) (.get ~'ufv__)))]
                           (when validate#
                             (let [args# ~(if rest-arg `(list* ~@bind-syms ~rest-sym) bind-syms)]
-                              (malli.schema/fn-validator :input '~fn-name ~input-schema-sym @~input-explainer-sym args#)))
+                              (malli.schema/fn-validator :input ~ns '~fn-name ~input-schema-sym @~input-explainer-sym args#)))
                           (let [o# (loop ~(into (vec (interleave (map #(with-meta % {}) bind) bind-syms))
                                                 (when rest-arg [rest-arg rest-sym]))
                                      ~@(apply-prepost-conditions body))]
                             (when validate#
-                              (malli.schema/fn-validator :output '~fn-name ~output-schema-sym @~output-explainer-sym o#))
+                              (malli.schema/fn-validator :output ~ns '~fn-name ~output-schema-sym @~output-explainer-sym o#))
                             o#))))
                    (cons (into regular-args (when rest-arg ['& rest-arg]))
                          body))}))
@@ -321,7 +321,7 @@
                         (when (primitive-sym? t)
                           {:tag t}))
                       {})
-        processed-arities (map (partial process-fn-arity env name output-schema bind-meta)
+        processed-arities (map (partial process-fn-arity env *ns* name output-schema bind-meta)
                                (if (vector? (first fn-body))
                                  [fn-body]
                                  fn-body))

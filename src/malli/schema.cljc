@@ -11,7 +11,7 @@
   bound to a function, normal argument and return value checks will
   be substituted with a call to this function with five arguments:
 
-    direction   - :input or :output
+    phase       - :input or :output
     fn-name     - a symbol, the function's name
     schema      - the schema for the arglist or the return value
     checker     - a precompiled checker to check a value against
@@ -19,7 +19,7 @@
     value       - the actual arglist or return value
 
   The function's return value will be ignored."
-  [direction fn-name schema explainer value]
+  [phase ns fn-name schema explainer value]
   (when-let [error (explainer value)]
     (let [humanized (me/humanize error)]
       (m/-fail! ::fn-error
@@ -29,9 +29,9 @@
                        "\t\u001B[0;37m  phase: \u001B[0;33m%s \033[0m\n"
                        "\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n"
                        "\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n"
-                       "\t\u001B[0;37m  error: \u001B[0;33m%s\u001B[0m\n\n")
-                  fn-name direction (m/form schema) (pr-str value) (pr-str humanized))
-                {:direction direction, :schema schema :value value :error error, :humanized humanized}))))
+                       "\t\u001B[0;37m errors: \u001B[0;33m%s\u001B[0m\n\n")
+                  (symbol (str ns) (str fn-name)) phase (m/form schema) (pr-str value) (pr-str humanized))
+                {:phase phase, :schema schema :value value :error error, :humanized humanized}))))
 
 (defmacro defn [& defn-args]
   (let [[name & more-defn-args] (msi/normalized-defn-args &env defn-args)
@@ -54,16 +54,23 @@
 
 (require '[malli.schema :as ms])
 
+(def Int [:int {:min 2}])
+
 (ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
   "returns a tuple of a number and it's value squared"
-  ([x :- int?] :- any? ;; arity-level override
+  ([x :- [:int {:min 2}]] :- any?
    (fun x x))
-  ([x :- int?, y :- int?] ;; uses the default return
+  ([x :- int?, y :- int?]
    [x (* x x)]))
 
-(ms/defn square :- pos-int?
-  [x :- int?]
+(fun 1)
+
+(ms/defn ^:always-validate square :- [:int {:min 0}]
+  [x :- [:int {:min -10}]]
   (* x x))
+
+(square -11)
+
 
 (meta #'square)
 ;{:schema [:or [:-> [:tuple int?] pos-int?]],

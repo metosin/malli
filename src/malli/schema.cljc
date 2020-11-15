@@ -24,33 +24,28 @@
     (let [humanized (me/humanize error)]
       (m/-fail! ::fn-error
                 (msi/format*
-                  (str
-                    (str/capitalize (name direction)) " to %s does not match schema: \n\n"
-                    "\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n"
-                    "\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n"
-                    "\t\u001B[0;37m  error: \u001B[0;33m%s\u001B[0m\n\n")
-                  fn-name (m/form schema) (pr-str value) (pr-str humanized))
+                  (str "\n\n"
+                       "\t\u001B[0;37m   name: \u001B[0;33m%s \033[0m\n"
+                       "\t\u001B[0;37m  phase: \u001B[0;33m%s \033[0m\n"
+                       "\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n"
+                       "\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n"
+                       "\t\u001B[0;37m  error: \u001B[0;33m%s\u001B[0m\n\n")
+                  fn-name direction (m/form schema) (pr-str value) (pr-str humanized))
                 {:direction direction, :schema schema :value value :error error, :humanized humanized}))))
 
 (defmacro defn [& defn-args]
   (let [[name & more-defn-args] (msi/normalized-defn-args &env defn-args)
         {:keys [doc tag] :as standard-meta} (meta name)
-        {:keys [outer-bindings schema-form fn-body arglists raw-arglists]} (msi/process-fn- &env name more-defn-args)]
+        {:keys [outer-bindings schema-form schemas fn-body arglists raw-arglists]} (msi/process-fn- &env name more-defn-args)]
     `(let ~outer-bindings
        (let [ret# (clojure.core/defn ~(with-meta name {})
                     ~(assoc (apply dissoc standard-meta (when (msi/primitive-sym? tag) [:tag]))
-                       :doc (str
-                              (str "Inputs: " (if (= 1 (count raw-arglists))
-                                                (first raw-arglists)
-                                                (apply list raw-arglists)))
-                              (when-let [ret (when (= (second defn-args) :-) (nth defn-args 2))]
-                                (str "\n  Returns: " ret))
-                              (when doc (str "\n\n  " doc)))
+                       :doc (str "\n  " (str/join "\n  " schemas) (when doc (str "\n\n  " doc)))
                        :raw-arglists (list 'quote raw-arglists)
-                       :arglists (list 'quote arglists)
-                       :schema schema-form)
+                       :schema (list 'quote schemas)
+                       :arglists (list 'quote arglists))
                     ~@fn-body)]
-         (msi/declare-class-schema! (msi/fn-schema-bearer ~name) ~schema-form)
+         (msi/declare-class-schema! (msi/fn-schema-bearer ~name) ~schemas)
          ret#))))
 
 (clojure.core/defn => [_var _data])
@@ -61,17 +56,17 @@
 
 (ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
   "returns a tuple of a number and it's value squared"
-  ([x :- int?]
+  ([x :- int?] :- any?
    (fun x x))
   ([x :- int?, y :- int?]
    [x (* x x)]))
 
-(ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
-  "returns a tuple of a number and it's value squared"
-  ([x :- int?]
-   (fun x x))
-  ([x :- int?, y :- int?]
-   [x (* x x)]))
+(meta #'fun)
+
+(clojure.repl/doc fun)
+
+(fun 2)
+
 
 [:=>
  [:tuple int? pos-int?]
@@ -94,7 +89,6 @@
  [:tuple int?]
  [:tuple int? int?]]
 
-(fun 2 "2")
 
 (require '[schema.core])
 

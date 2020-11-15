@@ -125,7 +125,7 @@
     (assert! (not (or s s?)) "^{:s schema} style schemas are no longer supported.")
     (assert! (< (count (remove nil? [schema explicit-schema])) 2)
              "Expected single schema, got meta %s, explicit %s" (meta imeta) explicit-schema)
-    (let [schema (or explicit-schema schema tag `any?)
+    (let [schema (or explicit-schema schema tag 'any?)
           tag (let [t (or tag schema)] (if (valid-tag? env t) t))]
       (with-meta
         imeta (-> (or (meta imeta) {}) (dissoc :tag) (cond-> schema (assoc :schema schema) tag (assoc :tag tag)))))))
@@ -184,7 +184,8 @@
           `'~(symbol (str (if rest? "rest" "arg") index))))
   `[~(extract-schema-form arg) {:name ~(if (symbol? arg)
                                          `'~arg
-                                         `'~(symbol (str (if rest? "rest" "arg") index)))}])
+                                         `'~(symbol (str (if rest? "rest" "arg") index)))}]
+  (extract-schema-form arg))
 
 
 (defn simple-arglist-schema-form [rest? regular-args]
@@ -230,6 +231,11 @@
       (or (:always-validate fn-meta)
           *assert*))))
 
+(defn process-body-return [body]
+  (if (= :- (first body))
+    [(second body) (drop 2 body)]
+    [nil body]))
+
 (defn process-fn-arity
   "Process a single (bind & body) form, producing an output tag, schema-form,
    and arity-form which has asserts for validation purposes added that are
@@ -237,23 +243,29 @@
    tag? is a prospective tag for the fn symbol based on the output schema.
    schema-bindings are bindings to lift eval outwards, so we don't build the schema
    every time we do the validation."
-  [env fn-name output-schema-sym bind-meta [bind & body]]
+  [env fn-name top-output-schema bind-meta [bind & body]]
   (assert! (vector? bind) "Got non-vector binding form %s" bind)
   (when-let [bad-meta (seq (filter (or (meta bind) {}) [:tag :s? :s :schema]))]
     (throw (RuntimeException. (str "Meta not supported on bindings, put on fn name" (vec bad-meta)))))
   (let [original-arglist bind
+        [output-schema body] (process-body-return body)
         bind (with-meta (process-arrow-schematized-args env bind) bind-meta)
         [regular-args rest-arg] (split-rest-arg env bind)
         input-schema-sym (gensym "input-schema")
         input-explainer-sym (gensym "input-explainer")
+        output-schema-sym (gensym "output-schema")
         output-explainer-sym (gensym "output-explainer")
-        compile-validation (compile-fn-validation? env fn-name)]
-    {:schema-binding [input-schema-sym (input-schema-form regular-args rest-arg)]
+        compile-validation (compile-fn-validation? env fn-name)
+        input-schema (input-schema-form regular-args rest-arg)
+        output-schema (or output-schema top-output-schema)]
+    {:schema-binding [input-schema-sym input-schema
+                      output-schema-sym output-schema]
      :more-bindings (when compile-validation
                       [input-explainer-sym `(delay (m/explainer ~input-schema-sym))
                        output-explainer-sym `(delay (m/explainer ~output-schema-sym))])
      :arglist bind
      :raw-arglist original-arglist
+     :schema [:-> input-schema output-schema]
      :arity-form (if compile-validation
                    (let [bind-syms (vec (repeatedly (count regular-args) gensym))
                          rest-sym (when rest-arg (gensym "rest"))
@@ -311,7 +323,7 @@
                         (when (primitive-sym? t)
                           {:tag t}))
                       {})
-        processed-arities (map (partial process-fn-arity env name output-schema-sym bind-meta)
+        processed-arities (map (partial process-fn-arity env name output-schema bind-meta)
                                (if (vector? (first fn-body))
                                  [fn-body]
                                  fn-body))
@@ -324,6 +336,7 @@
                             (apply concat schema-bindings)
                             (mapcat :more-bindings processed-arities)))
      :arglists (map :arglist processed-arities)
+     :schemas (mapv :schema processed-arities)
      :raw-arglists (map :raw-arglist processed-arities)
      :schema-form (if (= 1 (count processed-arities))
                     `(->FnSchema (m/schema ~output-schema-sym) (mapv m/schema ~[(ffirst schema-bindings)]))

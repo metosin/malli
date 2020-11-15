@@ -1,4 +1,4 @@
-(ns malli.schema.macros
+(ns malli.schema.impl
   "Macros and macro helpers used in schema.core."
   (:require
     [malli.core :as m]
@@ -6,7 +6,7 @@
     #?@(:cljs [goog.string.format
                [goog.object :as gobject]
                [goog.string :as gstring]]))
-  #?(:cljs (:require-macros [malli.schema.macros :refer [char-map]])))
+  #?(:cljs (:require-macros [malli.schema.impl :refer [char-map]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous helpers

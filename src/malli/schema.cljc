@@ -60,18 +60,18 @@
 (require '[malli.schema :as ms])
 
 (ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
-         "returns a tuple of a number and it's value squared"
-         ([x :- int?]
-          (fun x x))
-         ([x :- int?, y :- int?]
-          [x (* x x)]))
+  "returns a tuple of a number and it's value squared"
+  ([x :- int?]
+   (fun x x))
+  ([x :- int?, y :- int?]
+   [x (* x x)]))
 
 (ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
-         "returns a tuple of a number and it's value squared"
-         ([x :- int?]
-          (fun x x))
-         ([x :- int?, y :- int?]
-          [x (* x x)]))
+  "returns a tuple of a number and it's value squared"
+  ([x :- int?]
+   (fun x x))
+  ([x :- int?, y :- int?]
+   [x (* x x)]))
 
 [:=>
  [:tuple int? pos-int?]

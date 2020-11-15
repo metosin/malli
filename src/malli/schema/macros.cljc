@@ -1,9 +1,88 @@
 (ns malli.schema.macros
   "Macros and macro helpers used in schema.core."
   (:require
-    [malli.schema.utils :as msu]
-    [malli.error :as me]
-    [malli.core :as m]))
+    [malli.core :as m]
+    [clojure.string :as string]
+    #?@(:cljs [goog.string.format
+               [goog.object :as gobject]
+               [goog.string :as gstring]]))
+  #?(:cljs (:require-macros [malli.schema.macros :refer [char-map]])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Miscellaneous helpers
+
+(defn type-of [x]
+  #?(:clj (class x), :cljs (js* "typeof ~{}" x)))
+
+(defn fn-schema-bearer
+  "What class can we associate the fn schema with? In Clojure use the class of the fn; in
+   cljs just use the fn itself."
+  [f] #?(:clj (class f), :cljs f))
+
+(defn format* [fmt & args]
+  (apply #?(:clj format, :cljs gstring/format) fmt args))
+
+(def max-value-length (atom 19))
+
+(defmacro char-map []
+  clojure.lang.Compiler/CHAR_MAP)
+
+(defn unmunge
+  "TODO: eventually use built in demunge in latest cljs."
+  [s]
+  (->> (char-map)
+       (sort-by #(- (count (second %))))
+       (reduce (fn [^String s [to from]] (string/replace s from (str to))) s)))
+
+(defn fn-name
+  "A meaningful name for a function that looks like its symbol, if applicable."
+  [f]
+  #?(:cljs (let [[_ s] (re-matches #"#object\[(.*)\]" (pr-str f))]
+             (if (= "Function" s)
+               "function"
+               (->> s demunge (re-find #"[^/]+(?:$|(?=/+$))"))))
+     :clj  (let [s (.getName (class f))
+                 slash (.lastIndexOf s "$")
+                 raw (unmunge
+                       (if (>= slash 0)
+                         (str (subs s 0 slash) "/" (subs s (inc slash)))
+                         s))]
+             (string/replace raw #"^clojure.core/" ""))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Registry for attaching schemas to classes, used for defn and defrecord
+
+#?(:clj  (let [^java.util.Map +class-schemata+ (java.util.Collections/synchronizedMap (java.util.WeakHashMap.))]
+           (defn declare-class-schema! [klass schema]
+             "Globally set the schema for a class (above and beyond a simple instance? check).
+            Use with care, i.e., only on classes that you control.  Also note that this
+            schema only applies to instances of the concrete type passed, i.e.,
+            (= (class x) klass), not (instance? klass x)."
+             (assert (class? klass)
+                     (format* "Cannot declare class schema for non-class %s" (class klass)))
+             (.put +class-schemata+ klass schema))
+
+           (defn class-schema [klass]
+             "The last schema for a class set by declare-class-schema!, or nil."
+             (.get +class-schemata+ klass)))
+
+   :cljs (do (defn declare-class-schema! [klass schema]
+               (gobject/set klass "schema$utils$schema" schema))
+
+             (defn class-schema [klass]
+               (gobject/get klass "schema$utils$schema"))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utilities for fast-as-possible reference to use to turn fn schema validation on/off
+
+(def use-fn-validation
+  "Turn on run-time function validation for functions compiled when
+   s/compile-fn-validation was true -- has no effect for functions compiled
+   when it is false."
+  ;; specialize in Clojure for performance
+  #?(:clj  (java.util.concurrent.atomic.AtomicReference. false)
+     :cljs (atom false)))
 
 (defn cljs-env? [env] (boolean (:ns env)))
 (defmacro if-cljs [then else] (if (cljs-env? &env) then else))
@@ -24,7 +103,7 @@
   "Like assert, but throws a RuntimeException (in Clojure) and takes args to format."
   [form & format-args]
   `(when-not ~form
-     (error! (msu/format* ~@format-args))))
+     (error! (format* ~@format-args))))
 
 (defn maybe-split-first [pred s]
   (if (pred (first s))
@@ -188,36 +267,15 @@
                        (if rest-arg
                          (into metad-bind-syms ['& rest-sym])
                          metad-bind-syms)
-                       `(let [validate# ~(if (:always-validate (meta fn-name))
-                                           `true
-                                           `(if-cljs (deref ~'ufv__) (.get ~'ufv__)))]
+                       `(let [validate# ~(if (:always-validate (meta fn-name)) `true `(if-cljs (deref ~'ufv__) (.get ~'ufv__)))]
                           (when validate#
                             (let [args# ~(if rest-arg `(list* ~@bind-syms ~rest-sym) bind-syms)]
-                              (if schema.core/fn-validator
-                                (schema.core/fn-validator :input
-                                                          '~fn-name
-                                                          ~input-schema-sym
-                                                          @~input-explainer-sym
-                                                          args#)
-                                (when-let [error# (@~input-explainer-sym args#)]
-                                  (let [humanized# (malli.error/humanize error#)]
-                                    (error! (msu/format* "Input to %s does not match schema: \n\n\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n\t\u001B[0;37m  error: \u001B[0;33m%s\u001B[0m\n\n"
-                                                         '~fn-name (m/form ~input-schema-sym) (pr-str args#) (pr-str humanized#))
-                                            {:schema ~input-schema-sym :value args# :error error#}))))))
+                              (malli.schema/fn-validator :input '~fn-name ~input-schema-sym @~input-explainer-sym args#)))
                           (let [o# (loop ~(into (vec (interleave (map #(with-meta % {}) bind) bind-syms))
                                                 (when rest-arg [rest-arg rest-sym]))
                                      ~@(apply-prepost-conditions body))]
                             (when validate#
-                              (if schema.core/fn-validator
-                                (schema.core/fn-validator :output
-                                                          '~fn-name
-                                                          ~output-schema-sym
-                                                          @~output-explainer-sym
-                                                          o#)
-                                (when-let [error# (@~output-explainer-sym o#)]
-                                  (error! (msu/format* "Output of %s does not match schema: \n\n\t \033[0;33m  %s \033[0m \n\n"
-                                                       '~fn-name (pr-str error#))
-                                          {:schema ~output-schema-sym :value o# :error error#}))))
+                              (malli.schema/fn-validator :output '~fn-name ~output-schema-sym @~output-explainer-sym o#))
                             o#))))
                    (cons (into regular-args (when rest-arg ['& rest-arg]))
                          body))}))
@@ -261,7 +319,7 @@
         fn-forms (map :arity-form processed-arities)]
     {:outer-bindings (vec (concat
                             (when compile-validation
-                              `[~(with-meta 'ufv__ {:tag 'java.util.concurrent.atomic.AtomicReference}) schema.utils/use-fn-validation])
+                              `[~(with-meta 'ufv__ {:tag 'java.util.concurrent.atomic.AtomicReference}) use-fn-validation])
                             [output-schema-sym output-schema]
                             (apply concat schema-bindings)
                             (mapcat :more-bindings processed-arities)))

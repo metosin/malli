@@ -292,8 +292,6 @@
                    (cons (into regular-args (when rest-arg ['& rest-arg]))
                          body))}))
 
-(defrecord FnSchema [output-schema input-schemas])
-
 (defn- arity [input-schema]
   (count (m/children input-schema))
   #_(if (seq input-schema)
@@ -336,11 +334,8 @@
                             (apply concat schema-bindings)
                             (mapcat :more-bindings processed-arities)))
      :arglists (map :arglist processed-arities)
-     :schemas (mapv :schema processed-arities)
+     :schemas (into [:or] (mapv :schema processed-arities))
      :raw-arglists (map :raw-arglist processed-arities)
-     :schema-form (if (= 1 (count processed-arities))
-                    `(->FnSchema (m/schema ~output-schema-sym) (mapv m/schema ~[(ffirst schema-bindings)]))
-                    `(make-fn-schema (m/schema ~output-schema-sym) (mapv m/schema ~(mapv first schema-bindings))))
      :fn-body fn-forms}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

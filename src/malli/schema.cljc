@@ -36,11 +36,11 @@
 (defmacro defn [& defn-args]
   (let [[name & more-defn-args] (msi/normalized-defn-args &env defn-args)
         {:keys [doc tag] :as standard-meta} (meta name)
-        {:keys [outer-bindings schema-form schemas fn-body arglists raw-arglists]} (msi/process-fn- &env name more-defn-args)]
+        {:keys [outer-bindings schemas fn-body arglists raw-arglists]} (msi/process-fn- &env name more-defn-args)]
     `(let ~outer-bindings
        (let [ret# (clojure.core/defn ~(with-meta name {})
                     ~(assoc (apply dissoc standard-meta (when (msi/primitive-sym? tag) [:tag]))
-                       :doc (str "\n  " (str/join "\n  " schemas) (when doc (str "\n\n  " doc)))
+                       :doc (str "\n  [:or\n   " (str/join "\n   " (rest schemas)) "]" (when doc (str "\n\n  " doc)))
                        :raw-arglists (list 'quote raw-arglists)
                        :schema (list 'quote schemas)
                        :arglists (list 'quote arglists))
@@ -56,14 +56,39 @@
 
 (ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
   "returns a tuple of a number and it's value squared"
-  ([x :- int?] :- any?
+  ([x :- int?] :- any? ;; arity-level override
    (fun x x))
-  ([x :- int?, y :- int?]
+  ([x :- int?, y :- int?] ;; uses the default return
    [x (* x x)]))
 
-(meta #'fun)
+(ms/defn square :- pos-int?
+  [x :- int?]
+  (* x x))
+
+(meta #'square)
+;{:schema [:or [:-> [:tuple int?] pos-int?]],
+; :ns #object[clojure.lang.Namespace 0x3c5f3ba8 "demo"],
+; :name square,
+; :file "/Users/tommi/projects/metosin/malli/src/malli/schema.cljc",
+; :column 1,
+; :raw-arglists ([x :- int?]),
+; :line 64,
+; :arglists ([x]),
+; :doc "\n[:or\n [:-> [:tuple int?] pos-int?]]"}
+
+(clojure.repl/doc square)
 
 (clojure.repl/doc fun)
+; -------------------------
+; demo/fun
+; ([x] [x y])
+;
+;   [:-> [:tuple int?] any?]
+;   [:-> [:tuple int? int?] [:tuple int? pos-int?]]
+;
+;   returns a tuple of a number and it's value squared
+
+(meta #'fun)
 
 (fun 2)
 

@@ -40,6 +40,7 @@
     `(let ~outer-bindings
        (let [ret# (clojure.core/defn ~(with-meta name {})
                     ~(assoc (apply dissoc standard-meta (when (msi/primitive-sym? tag) [:tag]))
+                       :malli/fn true
                        :doc (str "\n  [:or\n   " (str/join "\n   " (rest schemas)) "]" (when doc (str "\n\n  " doc)))
                        :raw-arglists (list 'quote raw-arglists)
                        :schema (list 'quote schemas)
@@ -52,24 +53,52 @@
 
 (ns demo)
 
-(require '[malli.schema :as ms])
+(do
 
-(def Int [:int {:min 2}])
+  (require '[malli.schema :as ms])
 
-(ms/defn ^:always-validate fun :- [:tuple int? pos-int?]
-  "returns a tuple of a number and it's value squared"
-  ([x :- [:int {:min 2}]] :- any?
-   (fun x x))
-  ([x :- int?, y :- int?]
-   [x (* x x)]))
+  (ms/defn fun :- [:tuple int? pos-int?]
+    "returns a tuple of a number and it's value squared"
+    ([x :- [:int {:min 2}]] :- any?
+     (fun x x))
+    ([x :- int?, y :- int?]
+     [x (* x x)]))
 
-(fun 1)
+  (ms/defn square :- [:int {:min 0}]
+    [x :- [:int {:min -10}]]
+    (* x x))
 
-(ms/defn ^:always-validate square :- [:int {:min 0}]
-  [x :- [:int {:min -10}]]
-  (* x x))
+  (ms/defn square :- :int
+    [x :- :int]
+    (* x x))
 
+  (require '[malli.clj-kondo :as mc])
+
+  (-> *ns* (mc/from-ns) (mc/linter-config) (mc/emit-config))
+  ;{:linters
+  ; {:type-mismatch
+  ;  {:namespaces
+  ;   {demo
+  ;    {fun {:arities {1 {:args [:int]
+  ;                       :ret :any}
+  ;                    2 {:args [:int :int]
+  ;                       :ret [:int :pos-int]}}}
+  ;     square {:arities {1 {:args [:int]
+  ;                          :ret :int}}}}}}}}
+
+
+  )
+
+(meta #'fun)
 (square -11)
+; Execution error (ExceptionInfo) at malli.core/-fail! (core.cljc:80).
+; :malli.schema/fn-error
+;
+;	   name: demo/square
+;	  phase: :input
+;	 schema: [:tuple [:int {:min -10}]]
+;	  value: [-11]
+;	 errors: [["should be at least -10"]]
 
 
 (meta #'square)
@@ -121,67 +150,67 @@
  [:tuple int?]
  [:tuple int? int?]]
 
+(comment
+  (require '[schema.core])
 
-(require '[schema.core])
+  (schema.core/defn ^:always-validate fun2
+    "returns a tuple of a number and it's value squared"
+    ([x :- Long, y :- Long]
+     [x (* x x)]))
 
-(schema.core/defn ^:always-validate fun
-  "returns a tuple of a number and it's value squared"
-  ([x :- Long, y :- Long]
-   [x (* x x)]))
+  (schema.core/defn ^:always-validate fun2
+    "returns a tuple of a number and it's value squared"
+    ([x :- Long] :- Long
+     (fun x x))
+    ([x :- Long, y :- Long]
+     [x (* x x)]))
 
-(schema.core/defn ^:always-validate fun
-  "returns a tuple of a number and it's value squared"
-  ([x :- Long] :- Long
-   (fun x x))
-  ([x :- Long, y :- Long]
-   [x (* x x)]))
+  (meta #'fun)
 
-(meta #'fun)
+  ; (=>* Any (java.lang.Long) (java.lang.Long java.lang.Long))
 
-; (=>* Any (java.lang.Long) (java.lang.Long java.lang.Long))
+  (defn => [var data])
 
-(defn => [var data])
+  (defn fun2
+    "returns a tuple of a number and it's value squared"
+    ([x]
+     (fun x x))
+    ([x y]
+     [x (* x x)]))
 
-(defn fun
-  "returns a tuple of a number and it's value squared"
-  ([x]
-   (fun x x))
-  ([x y]
-   [x (* x x)]))
-
-(ms/=> fun {:output [:tuple int? pos-int?]
-            :input [[:tuple int?]
-                    [:tuple int? int?]]})
-
-
-
-(ms/=> fun {:arities {1 {:output int?
-                         :input [:tuple int?]}
-                      2 {:output [:tuple int? pos-int?]
-                         :input [:tuple int? int?]}}})
+  (ms/=> fun {:output [:tuple int? pos-int?]
+              :input [[:tuple int?]
+                      [:tuple int? int?]]})
 
 
-(defn fun1 [x] (* x x))
 
-;; short
-(ms/=> fun1 [:=> int? [:tuple pos-int?]])
-
-;; long
-(ms/=> fun1 {:arities {1 {:input int?
-                          :output [:tuple pos-int?]}}})
+  (ms/=> fun {:arities {1 {:output int?
+                           :input [:tuple int?]}
+                        2 {:output [:tuple int? pos-int?]
+                           :input [:tuple int? int?]}}})
 
 
-(defn fun
-  ([x] (fun x x))
-  ([x y] [x (* x x)]))
+  (defn fun1 [x] (* x x))
 
-;; short
-(ms/=> fun [:or
-            [:=> int? [:tuple int?]]
-            [:=> [:tuple int? pos-int?] [:tuple int?]]])
+  ;; short
+  (ms/=> fun1 [:=> int? [:tuple pos-int?]])
 
-;; long
-(ms/=> fun {:arities {1 {:output int?
-                         :input [:tuple int?]}
-                      2 {:output [:tuple int? pos-int?]
-                         :input [:tuple int? int?]}}})
+  ;; long
+  (ms/=> fun1 {:arities {1 {:input int?
+                            :output [:tuple pos-int?]}}})
+
+
+  (defn fun
+    ([x] (fun x x))
+    ([x y] [x (* x x)]))
+
+  ;; short
+  (ms/=> fun [:or
+              [:=> int? [:tuple int?]]
+              [:=> [:tuple int? pos-int?] [:tuple int?]]])
+
+  ;; long
+  (ms/=> fun {:arities {1 {:output int?
+                           :input [:tuple int?]}
+                        2 {:output [:tuple int? pos-int?]
+                           :input [:tuple int? int?]}}}))

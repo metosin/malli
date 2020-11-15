@@ -222,6 +222,27 @@
                    (cons (into regular-args (when rest-arg ['& rest-arg]))
                          body))}))
 
+(defrecord FnSchema [output-schema input-schemas])
+
+(defn- arity [input-schema]
+  (count (m/children input-schema))
+  #_(if (seq input-schema)
+      (if (instance? One (last input-schema))
+        (count input-schema)
+        Long/MAX_VALUE)
+      0))
+
+(defn make-fn-schema
+  "A function outputting a value in output schema, whose argument vector must match one of
+   input-schemas, each of which should be a sequence schema.
+   Currently function schemas are purely descriptive; they validate against any function,
+   regardless of actual input and output types."
+  [output-schema input-schemas]
+  (assert! (seq input-schemas) "Function must have at least one input schema")
+  #_(assert! (every? vector? input-schemas) "Each arity must be a vector.")
+  (assert! (apply distinct? (map arity input-schemas)) "Arities must be distinct")
+  (FnSchema. output-schema (sort-by arity input-schemas)))
+
 (defn process-fn-
   "Process the fn args into a final tag proposal, schema form, schema bindings, and fn form"
   [env name fn-body]
@@ -247,8 +268,8 @@
      :arglists (map :arglist processed-arities)
      :raw-arglists (map :raw-arglist processed-arities)
      :schema-form (if (= 1 (count processed-arities))
-                    `(schema.core/->FnSchema ~output-schema-sym ~[(ffirst schema-bindings)])
-                    `(schema.core/make-fn-schema ~output-schema-sym ~(mapv first schema-bindings)))
+                    `(->FnSchema (m/schema ~output-schema-sym) (mapv m/schema ~[(ffirst schema-bindings)]))
+                    `(make-fn-schema (m/schema ~output-schema-sym) (mapv m/schema ~(mapv first schema-bindings))))
      :fn-body fn-forms}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

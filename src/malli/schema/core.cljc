@@ -25,13 +25,25 @@
          (msu/declare-class-schema! (msu/fn-schema-bearer ~name) ~schema-form)
          ret#))))
 
-(ns user)
+(ns demo)
 
 (require '[malli.schema.core :as m])
 
 (m/defn ^:always-validate fun :- [:tuple int? pos-int?]
-  "returns a tuple of a number and "
-  [x :- int?, y :- int?]
-  [x (* x x)])
+  "returns a tuple of a number and it's value squared"
+  ([x :- int?]
+   (fun x x))
+  ([x :- int?, y :- int?]
+   [x (* x x)]))
 
 (fun 2 "2")
+
+(meta #'fun)
+
+(macroexpand-1
+  `(schema.core/defn ^:always-validate fun
+     "returns a tuple of a number and it's value squared"
+     ([x :- Long]
+      (fun x x))
+     ([x :- Long, y :- Long]
+      [x (* x x)])))

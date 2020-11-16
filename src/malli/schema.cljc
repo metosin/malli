@@ -48,5 +48,3 @@
                     ~@fn-body)]
          (msi/declare-class-schema! (msi/fn-schema-bearer ~name) ~schemas)
          ret#))))
-
-(clojure.core/defn => [_var _data])

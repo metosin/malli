@@ -1523,13 +1523,13 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (-check-children! :-> properties children {:min 0})
+      (-check-children! :=> properties children {:min 0})
       (let [children (map #(schema % options) children)
-            form (-create-form :-> properties (map -form children))]
+            form (-create-form :=> properties (map -form children))]
         ^{:type ::schema}
         (reify
           Schema
-          (-type [_] :->)
+          (-type [_] :=>)
           (-type-properties [_])
           (-validator [_] (-fail! ::not-implemented))
           (-explainer [_ path] (-fail! ::not-implemented))

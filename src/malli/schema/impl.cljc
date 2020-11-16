@@ -265,7 +265,7 @@
                        output-explainer-sym `(delay (m/explainer ~output-schema-sym))])
      :arglist bind
      :raw-arglist original-arglist
-     :schema [:-> input-schema output-schema]
+     :schema [:=> input-schema output-schema]
      :arity-form (if compile-validation
                    (let [bind-syms (vec (repeatedly (count regular-args) gensym))
                          rest-sym (when rest-arg (gensym "rest"))

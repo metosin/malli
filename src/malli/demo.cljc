@@ -11,7 +11,7 @@
     [x :- int?]
     [x (* x x)])
 
-  ;; annotating normal clojure functions
+  ;; annotating existing clojure functions
   (defn times [x y] (* x y))
   (m/=> times [:=> [:tuple int? int?] int?])
 

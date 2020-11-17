@@ -40,11 +40,10 @@
     `(let ~outer-bindings
        (let [ret# (clojure.core/defn ~(with-meta name {})
                     ~(assoc (apply dissoc standard-meta (when (msi/primitive-sym? tag) [:tag]))
-                       :malli/fn true
                        :doc (str "\n  [:or\n   " (str/join "\n   " (rest schemas)) "]" (when doc (str "\n\n  " doc)))
                        :raw-arglists (list 'quote raw-arglists)
                        :schema (list 'quote schemas)
                        :arglists (list 'quote arglists))
                     ~@fn-body)]
-         (msi/declare-class-schema! (msi/fn-schema-bearer ~name) ~schemas)
+         (m/=> ~name ~schemas)
          ret#))))

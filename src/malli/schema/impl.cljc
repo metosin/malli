@@ -50,30 +50,6 @@
              (string/replace raw #"^clojure.core/" ""))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Registry for attaching schemas to classes, used for defn and defrecord
-
-#?(:clj  (let [^java.util.Map +class-schemata+ (java.util.Collections/synchronizedMap (java.util.WeakHashMap.))]
-           (defn declare-class-schema! [klass schema]
-             "Globally set the schema for a class (above and beyond a simple instance? check).
-            Use with care, i.e., only on classes that you control.  Also note that this
-            schema only applies to instances of the concrete type passed, i.e.,
-            (= (class x) klass), not (instance? klass x)."
-             (assert (class? klass)
-                     (format* "Cannot declare class schema for non-class %s" (class klass)))
-             (.put +class-schemata+ klass schema))
-
-           (defn class-schema [klass]
-             "The last schema for a class set by declare-class-schema!, or nil."
-             (.get +class-schemata+ klass)))
-
-   :cljs (do (defn declare-class-schema! [klass schema]
-               (gobject/set klass "schema$utils$schema" schema))
-
-             (defn class-schema [klass]
-               (gobject/get klass "schema$utils$schema"))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities for fast-as-possible reference to use to turn fn schema validation on/off
 
 (def use-fn-validation

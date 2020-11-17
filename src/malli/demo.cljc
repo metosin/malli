@@ -15,16 +15,15 @@
   (defn times [x y] (* x y))
   (m/=> times [:=> [:tuple int? int?] int?])
 
+
   ;; static analysis via clj-kondo
   (comment
     (fun "1")
-    (times "1" 2))
-
+    (times "1" 1))
 
   ;; emit clj-kondo type-linting info
   (require '[malli.clj-kondo :as mc])
-  (-> *ns*
-      (mc/from-ns)
+  (-> (mc/collect)
       (mc/linter-config)
       (mc/save!))
 
@@ -104,7 +103,7 @@
     (schema.core/defn ^:always-validate fun3
       "returns a tuple of a number and it's value squared"
       ([x :- Long] :- Long
-       (fun x x))
+       (fun3 x x))
       ([x :- Long, y :- Long]
        [x (* x x)]))
 
@@ -115,7 +114,7 @@
     (defn fun4
       "returns a tuple of a number and it's value squared"
       ([x]
-       (fun x x))
+       (fun4 x x))
       ([x y]
        [x (* x x)]))
 
@@ -142,7 +141,7 @@
 
 
     (defn fun5
-      ([x] (fun x x))
+      ([x] (fun5 x x))
       ([x y] [x (* x x)]))
 
     ;; short

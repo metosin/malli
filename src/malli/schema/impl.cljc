@@ -2,52 +2,12 @@
   "Macros and macro helpers used in schema.core."
   (:require
     [malli.core :as m]
-    [clojure.string :as string]
     #?@(:cljs [goog.string.format
                [goog.object :as gobject]
-               [goog.string :as gstring]]))
-  #?(:cljs (:require-macros [malli.schema.impl :refer [char-map]])))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Miscellaneous helpers
-
-(defn type-of [x]
-  #?(:clj (class x), :cljs (js* "typeof ~{}" x)))
-
-(defn fn-schema-bearer
-  "What class can we associate the fn schema with? In Clojure use the class of the fn; in
-   cljs just use the fn itself."
-  [f] #?(:clj (class f), :cljs f))
+               [goog.string :as gstring]])))
 
 (defn format* [fmt & args]
   (apply #?(:clj format, :cljs gstring/format) fmt args))
-
-(def max-value-length (atom 19))
-
-(defmacro char-map []
-  clojure.lang.Compiler/CHAR_MAP)
-
-(defn unmunge
-  "TODO: eventually use built in demunge in latest cljs."
-  [s]
-  (->> (char-map)
-       (sort-by #(- (count (second %))))
-       (reduce (fn [^String s [to from]] (string/replace s from (str to))) s)))
-
-(defn fn-name
-  "A meaningful name for a function that looks like its symbol, if applicable."
-  [f]
-  #?(:cljs (let [[_ s] (re-matches #"#object\[(.*)\]" (pr-str f))]
-             (if (= "Function" s)
-               "function"
-               (->> s demunge (re-find #"[^/]+(?:$|(?=/+$))"))))
-     :clj  (let [s (.getName (class f))
-                 slash (.lastIndexOf s "$")
-                 raw (unmunge
-                       (if (>= slash 0)
-                         (str (subs s 0 slash) "/" (subs s (inc slash)))
-                         s))]
-             (string/replace raw #"^clojure.core/" ""))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities for fast-as-possible reference to use to turn fn schema validation on/off
@@ -197,7 +157,7 @@
    *   function has :never-validate metadata
    *   *compile-fn-validation* is false
    *   *assert* is false AND function is not :always-validate"
-  [env fn-name]
+  [_env fn-name]
   (let [fn-meta (meta fn-name)]
     (and
       @*compile-fn-validation*

@@ -5,6 +5,41 @@
             [malli.error :as me]
             [malli.core :as m]))
 
+(defmacro set-compile-fn-validation!
+  [on?] (msi/set-compile-fn-validation! on?) nil)
+
+(clojure.core/defn fn-validation?
+  "Get the current global schema validation setting."
+  [] @msi/use-fn-validation)
+
+(clojure.core/defn set-fn-validation!
+  "Globally turn on (or off) schema validation for all s/fn and s/defn instances."
+  [on?] (reset! msi/use-fn-validation on?))
+
+(defmacro with-fn-validation
+  "Execute body with input and output schema validation turned on for
+   all s/defn and s/fn instances globally (across all threads). After
+   all forms have been executed, resets function validation to its
+   previously set value. Not concurrency-safe."
+  [& body]
+  `(let [body# (fn [] ~@body)]
+     (if (fn-validation?)
+       (body#)
+       (do (set-fn-validation! true)
+           (try (body#) (finally (set-fn-validation! false)))))))
+
+(defmacro without-fn-validation
+  "Execute body with input and output schema validation turned off for
+   all s/defn and s/fn instances globally (across all threads). After
+   all forms have been executed, resets function validation to its
+   previously set value. Not concurrency-safe."
+  [& body]
+  `(let [body# (fn [] ~@body)]
+     (if (fn-validation?)
+       (do (set-fn-validation! false)
+           (try (body#) (finally (set-fn-validation! true))))
+       (body#))))
+
 (clojure.core/defn fn-validator
   "A var that can be rebound to a function to customize the behavior
   of fn validation. When fn validation is on and `fn-validator` is

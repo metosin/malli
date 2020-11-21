@@ -56,9 +56,7 @@
   "Turn on run-time function validation for functions compiled when
    s/compile-fn-validation was true -- has no effect for functions compiled
    when it is false."
-  ;; specialize in Clojure for performance
-  #?(:clj  (java.util.concurrent.atomic.AtomicReference. false)
-     :cljs (atom false)))
+  (atom false))
 
 (defn cljs-env? [env] (boolean (:ns env)))
 (defmacro if-cljs [then else] (if (cljs-env? &env) then else))
@@ -255,7 +253,7 @@
                        (if rest-arg
                          (into metad-bind-syms ['& rest-sym])
                          metad-bind-syms)
-                       `(let [validate# ~(if (:always-validate (meta fn-name)) `true `(if-cljs (deref ~'ufv__) (.get ~'ufv__)))]
+                       `(let [validate# ~(if (:always-validate (meta fn-name)) `true `(deref ~'ufv__))]
                           (when validate#
                             (let [args# ~(if rest-arg `(list* ~@bind-syms ~rest-sym) bind-syms)]
                               (malli.schema/fn-validator :input ~ns '~fn-name ~input-schema-sym @~input-explainer-sym args#)))
@@ -286,7 +284,7 @@
         fn-forms (map :arity-form processed-arities)]
     {:outer-bindings (vec (concat
                             (when compile-validation
-                              `[~(with-meta 'ufv__ {:tag 'java.util.concurrent.atomic.AtomicReference}) use-fn-validation])
+                              `[~(with-meta 'ufv__ {}) use-fn-validation])
                             [output-schema-sym output-schema]
                             (apply concat schema-bindings)
                             (mapcat :more-bindings processed-arities)))

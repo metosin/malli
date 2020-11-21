@@ -162,5 +162,4 @@
         (select-keys data [:args :ret :min-arity])))
     {} xs))
 
-#?(:clj
-   (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+#?(:clj (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

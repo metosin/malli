@@ -668,7 +668,7 @@
       (let [children (mapv #(schema % options) children)
             size (count children)
             form (-create-form :tuple properties (map -form children))]
-        (-check-children! :tuple properties children {:min 1})
+        (-check-children! :tuple properties children {:min 0})
         ^{:type ::schema}
         (reify
           Schema

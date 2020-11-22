@@ -801,8 +801,12 @@
   (testing "sequence schemas"
 
     (testing "empty schemas fail"
-      (doseq [element [:vector :sequential :set :tuple]]
+      (doseq [element [:vector :sequential :set]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
+
+    (testing "empty tuples are ok"
+      (is (m/validate :tuple []))
+      (is (not (m/validate :tuple nil))))
 
     (testing "more than 1 elements fail on collections"
       (doseq [element [:vector :sequential :set]]

@@ -2,12 +2,14 @@
   (:require [clojure.test.check.generators :as gen]
             [borkdude.dynaload :as dynaload]
             [clojure.string :as str]
+            [clojure.test.check :as check]
             [clojure.test.check.random :as random]
+            [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
             [malli.core :as m]))
 
-(declare generator -create)
+(declare generator generate -create)
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
@@ -99,6 +101,18 @@
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (m/-fail! :test-chuck-not-available))))
 
+(defn -=>gen [schema options]
+  (let [input-schema (m/-input-schema schema)
+        validate-input (m/validator input-schema)
+        output-schema (m/-output-schema schema)
+        output-generator (generator output-schema options)]
+    (gen/return
+      (fn [& args]
+        (let [args (vec args)]
+          (when-not (validate-input args)
+            (m/-fail! ::invalid-input {:schema input-schema, :args args}))
+          (generate output-generator options))))))
+
 ;;
 ;; generators
 ;;
@@ -143,6 +157,7 @@
 (defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
+(defmethod -schema-generator :=> [schema options] (-=>gen schema options))
 (defmethod -schema-generator :ref [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
@@ -187,3 +202,18 @@
           (map #(rose/root (gen/call-gen gen %1 %2))
                (gen/lazy-random-states (-random seed)))
           (take size)))))
+
+;;
+;; functions
+;;
+
+(defn =>validator [schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
+  (let [input-schema (m/-input-schema schema)
+        output-schema (m/-output-schema schema)
+        input-generator (generator input-schema options)
+        input-validator (m/validator input-schema)
+        output-validator (m/validator output-schema options)
+        validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
+    (fn [f] (not (some->> (prop/for-all* [input-generator] #(validate f %))
+                          (check/quick-check =>iterations) :shrunk :smallest first)))))
+

@@ -11,3 +11,4 @@ cljs-test-runner-out
 classes
 /demo
 /target
+.clj-kondo

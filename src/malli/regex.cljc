@@ -441,3 +441,13 @@
   (exec-automaton* automaton coll [(TreeStackFrame. {} 0)]))
 
 (defn exec-tree [re coll] (exec-tree-automaton (compile re) coll))
+
+;;;; Malli APIs
+
+(defn validator [re]
+  (let [automaton (compile re)]
+    (fn [x]
+      (boolean (and (sequential? x)
+                    (some-> (exec-automaton automaton x) :rest empty?))))))
+
+(defn validate [re data] ((validator re) data))

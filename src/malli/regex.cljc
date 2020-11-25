@@ -1,6 +1,7 @@
 (ns malli.regex
   (:refer-clojure :exclude #_[fn cat repeat ? * +] [+ * repeat cat compile])
-  #?(:clj (:import [java.util Arrays])))
+  #?(:clj (:import [clojure.lang MapEntry]
+                   [java.util Arrays])))
 
 #_(
    (defprotocol RegexSchema
@@ -227,45 +228,127 @@
 
 ;;;; Combinators
 
-(defn is [pred] (asm pred pred))
+(def ^:private anonymous (object-array 0))
 
-(defn cat [& rs] (mapcat identity rs))
+(defn -tagged [k v]
+  #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
+
+(defprotocol ^:private MatchFrame
+  (-add-match [self k v])
+  (-children [self end]))
+
+(declare ->Match)
+
+(deftype ^:private StartFrame [child, ^long start]
+  MatchFrame
+  (-add-match [_ _ v] (StartFrame. v start))
+  (-children [_ _] child))
+
+(defn- start-frame [^long start] (StartFrame. anonymous start))
+
+;; OPTIMIZE: PredFrames should be unnecessary:
+(deftype ^:private PredFrame [^long start]
+  MatchFrame
+  (-add-match [_ _ _] (throw (ex-info "unreachable" {})))
+  (-children [_ end] (->Match start end)))
+
+(def ^:private pred-frame ->PredFrame)
+
+(defn is [pred]
+  (asm
+    save0 pred-frame
+    pred pred
+    save1 anonymous))
+
+(deftype ^:private CatFrame [children, ^long start]
+  MatchFrame
+  (-add-match [_ k v] (CatFrame. (assoc children k v) start))
+  (-children [_ _] children))
+
+(defn- cat-frame [^long start] (CatFrame. {} start))
+
+(defn cat [& rs]
+  (asm
+    save0 cat-frame
+    include (mapcat (fn [?kr]
+                      (if (vector? ?kr)
+                        (asm
+                          save0 start-frame
+                          include (second ?kr)
+                          save1 (first ?kr))
+                        ?kr))
+                    rs)
+    save1 anonymous))
+
+(deftype ^:private AltFrame [children, ^long start]
+  MatchFrame
+  (-add-match [_ k v] (AltFrame. (-tagged k v) start))
+  (-children [_ _] children))
+
+(defn- alt-frame [^long start] (AltFrame. nil start))
 
 (defn alt
-  ([r] r)
-  ([r & rs]
+  ([] (asm pred (fn [_] false)))
+  ([?kr]
+   (if (vector? ?kr)
+     (asm
+       save0 alt-frame
+       include (second ?kr)
+       save1 (first ?kr))
+     ?kr))
+  ([?kr & ?krs]
    (asm
      fork> l1
-     include r
+     include (alt ?kr)
      jump l2
      label l1
-     include (apply alt rs)
+     include (apply alt ?krs)
      label l2)))
+
+(deftype ^:private OptFrame [?child, ^long start]
+  MatchFrame
+  (-add-match [_ _ v] (OptFrame. v start))
+  (-children [_ _] ?child))
+
+(defn- opt-frame [start] (OptFrame. nil start))
 
 (defn ? [r]
   (asm
+    save0 opt-frame
     fork> end
     include r
-    label end))
+    label end
+    save1 anonymous))
+
+(deftype ^:private ManyFrame [children, ^long start]
+  MatchFrame
+  (-add-match [_ _ v] (ManyFrame. (conj children v) start))
+  (-children [_ _] children))
+
+(defn- many-frame [start] (ManyFrame. [] start))
 
 (defn * [r]
   (asm
+    save0 many-frame
     label start
     fork> end
     include r
     jump start
-    label end))
+    label end
+    save1 anonymous))
 
 (defn + [r]
   (asm
+    save0 many-frame
     label start
     include r
-    fork< start))
+    fork< start
+    save1 anonymous))
 
 (defn repeat [min max r]
   (cond
     (pos? min) (cat (apply cat (clojure.core/repeat min r)) (repeat 0 (- max min) r))
-    (pos? max) (? r (repeat 0 (dec max) r))
+    (pos? max) (? (cat r (repeat 0 (dec max) r)))
     :else (asm)))
 
 ;;;; Pike VM
@@ -304,6 +387,14 @@
   (save1 [bank id v])
   (fetch [bank coll0 coll]))
 
+(deftype ^:private SinkBank []
+  RegisterBank
+  (save0 [self _ _] self)
+  (save1 [self _ _] self)
+  (fetch [_ _ _] true))
+
+(def ^:private sink-bank (SinkBank.))
+
 (defprotocol ^:private IMatch
   (decode-match [self coll]))
 
@@ -324,37 +415,17 @@
                    m)
         persistent!)))
 
-(defrecord ^:private TreeStackFrame [children, ^long start])
-
-(defrecord ^:private MatchNode [children, ^long start, ^long end]
-  IMatch
-  (decode-match [_ coll] (take (- end start) (drop start coll))))
-
 (extend-protocol RegisterBank
   clojure.lang.APersistentVector
-  (save0 [stack _ start] (conj stack (TreeStackFrame. {} start)))
-  (save1 [stack id end]
+  (save0 [stack ->frame start] (conj stack (->frame start)))
+  (save1 [stack k end]
     ;; 'return' `node`:
-    (let [^TreeStackFrame callee-frame (peek stack)
-          node (MatchNode. (.-children callee-frame) (.-start callee-frame) end)
+    (let [callee-frame (peek stack)
+          node (-children callee-frame end)
           stack (pop stack)]
       ;; Update 'caller' state:
-      (update stack (dec (count stack))
-              (fn [^TreeStackFrame caller-frame]
-                (TreeStackFrame. (update (.-children caller-frame) id (fnil conj []) node)
-                                 (.-start caller-frame))))))
-  (fetch [stack coll0 coll]
-    (letfn [(fetch-node [^MatchNode node]
-              (fetch-children {:match (decode-match node coll0)}
-                              (.-children node)))
-            (fetch-children [acc children]
-              (-> (reduce-kv (fn [m id children]
-                               (assoc! m (if (vector? id) (peek id) id) (mapv fetch-node children)))
-                             (transient acc)
-                             children)
-                  persistent!))]
-      (fetch-children {:rest coll}
-                      (.-children ^TreeStackFrame (peek stack))))))
+      (update stack (dec (count stack)) -add-match k node)))
+  (fetch [stack coll0 coll] (-children (peek stack) (- (count coll0) (count coll))))) ; OPTIMIZE
 
 (defprotocol ^:private IVMState
   (thread-count [state])
@@ -433,21 +504,25 @@
           (when longest
             (fetch longest coll0 (or coll ()))))))))
 
-(defn exec-automaton [automaton coll] (exec-automaton* automaton coll {}))
+(defn- exec-recognizer [automaton coll] (exec-automaton* automaton coll sink-bank))
 
-(defn exec [re coll] (exec-automaton (compile re) coll))
+(defn- recognize [re coll] (exec-recognizer (compile re) coll))
 
-(defn exec-tree-automaton [automaton coll]
-  (exec-automaton* automaton coll [(TreeStackFrame. {} 0)]))
+(defn- exec-automaton [automaton coll] (exec-automaton* automaton coll {}))
 
-(defn exec-tree [re coll] (exec-tree-automaton (compile re) coll))
+(defn- exec [re coll] (exec-automaton (compile re) coll))
+
+(defn- exec-tree-automaton [automaton coll]
+  (exec-automaton* automaton coll [(start-frame 0)]))
+
+(defn- exec-tree [re coll] (exec-tree-automaton (compile re) coll))
 
 ;;;; Malli APIs
 
 (defn validator [re]
   (let [automaton (compile re)]
     (fn [x]
-      (boolean (and (sequential? x)
-                    (some-> (exec-automaton automaton x) :rest empty?))))))
+      (and (sequential? x)
+           (boolean (exec-recognizer automaton x))))))
 
 (defn validate [re data] ((validator re) data))

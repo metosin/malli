@@ -3,6 +3,8 @@
   #?(:clj (:import [clojure.lang MapEntry]
                    [java.util Arrays])))
 
+;;; TODO: clojure.spec.alpha/spec equivalent
+
 #_(
    (defprotocol RegexSchema
      (-matcher [_]))
@@ -385,13 +387,14 @@
   (save1 [bank id buf end])
   (fetch [bank buf coll]))
 
-(deftype ^:private SinkBank []
+(deftype ^:private SinkBank [res]
   RegisterBank
   (save0 [self _ _] self)
   (save1 [self _ _ _] self)
-  (fetch [_ _ _] true))
+  (fetch [_ _ _] res))
 
-(def ^:private sink-bank (SinkBank.))
+(def ^:private sink-bank-succ (SinkBank. true))
+(def ^:private sink-bank-fail (SinkBank. nil))
 
 (extend-protocol RegisterBank
   clojure.lang.APersistentVector
@@ -425,7 +428,8 @@
 (definterface ^:private VM
   (clear_visited [])
   (match_item [^long pos, coll, buf, ^malli.regex.VMState state, ^malli.regex.VMState state*])
-  (add_thread [^long pos, buf, ^malli.regex.VMState state, ^long pc, matches]))
+  (add_thread [^long pos, buf, ^malli.regex.VMState state, ^long pc, matches])
+  (final_errors []))
 
 (defn- add-thread! [^VM vm pos buf state pc matches]
   (.clear_visited vm)
@@ -434,6 +438,29 @@
 (deftype ^:private PikeVM [^bytes opcodes, ^"[Ljava.lang.Object;" args, visited]
   VM
   (clear_visited [_] (clear-bitset! visited))
+
+  (add_thread [self pos buf state pc matches]
+    (cond
+      (< pc (alength opcodes))
+      (when-not (bitset-contains? visited pc)
+        (bitset-set! visited pc)
+        (opcode-case (aget opcodes pc)
+          jump (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
+          fork> (do
+                  (.add_thread self pos buf state (inc pc) matches)
+                  (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches))
+          fork< (do
+                  (.add_thread self pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
+                  (recur pos buf state (inc pc) matches))
+
+          save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
+          save1 (recur pos buf state (inc pc) (save1 matches (aget args pc) buf pos))
+
+          pred (fork! state pc matches)))
+
+      (= pc (alength opcodes)) (fork! state pc matches)
+
+      :else nil))
 
   (match_item [self pos coll buf state state*]
     (loop [i 0]
@@ -444,43 +471,55 @@
             (let [opcode (aget opcodes pc)
                   arg (aget args pc)]
               (opcode-case opcode
-                           pred (when (and coll (arg (first coll)))
-                                  (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
-                           #_"add-thread! makes other opcodes impossible at this point")
-              (recur (inc i)))
+                pred (do
+                       (when (and coll (arg (first coll)))
+                         (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
+                       (recur (inc i)))
+                #_"add-thread! makes other opcodes impossible at this point"))
             matches)))))
 
-  (add_thread [self pos buf state pc matches]
-    (cond
-      (< pc (alength opcodes))
-      (when-not (bitset-contains? visited pc)
-        (bitset-set! visited pc)
-        (opcode-case (aget opcodes pc)
-                     jump (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
-                     fork> (do
-                             (.add_thread self pos buf state (inc pc) matches)
-                             (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches))
-                     fork< (do
-                             (.add_thread self pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
-                             (recur pos buf state (inc pc) matches))
+  (final_errors [_] nil))
 
-                     save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
-                     save1 (recur pos buf state (inc pc) (save1 matches (aget args pc) buf pos))
+(deftype ^:private ExplanatoryVM [^PikeVM super, ^:unsynchronized-mutable errors]
+  VM
+  (clear_visited [_] (.clear_visited super))
 
-                     pred (fork! state pc matches)))
+  (add_thread [_ pos buf state pc matches] (.add_thread super pos buf state pc matches))
 
-      (= pc (alength opcodes)) (fork! state pc matches)
+  (match_item [self pos coll buf state state*]
+    (loop [i 0, errors* []]
+      (if (< i (thread-count state))
+        (let [^bytes opcodes (.-opcodes super)
+              pc (aget ^longs (.-pcs state) i)
+              matches (aget ^"[Ljava.lang.Object;" (.-matchess state) i)]
+          (if (< pc (alength opcodes))
+            (let [opcode (aget opcodes pc)
+                  arg (aget ^"[Ljava.lang.Object;" (.-args super) pc)]
+              (opcode-case opcode
+                pred (if coll
+                       (let [errors** (arg (first coll) [#_FIXME/path :VM] errors*)]
+                         (when (identical? errors** errors*)
+                           (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
+                         (recur (inc i) errors**))
+                       (recur (inc i)
+                              (conj errors* (malli.core/-error [#_FIXME/path :VM] [#_FIXME/path :VM]
+                                                               arg nil ::end-of-input))))
+                #_"add-thread! makes other opcodes impossible at this point"))
+            matches))
+        (do (set! errors errors*) nil))))
 
-      :else nil)))
+  (final_errors [_] errors))
 
 (defn- ->vm ^PikeVM [^CompiledPattern automaton]
   (let [^bytes opcodes (.-opcodes automaton)]
     (PikeVM. opcodes (.-args automaton) (make-bitset (alength opcodes)))))
 
-(defn- exec-automaton* [^CompiledPattern automaton coll0 registers]
+(defn- ->explanatory-vm ^ExplanatoryVM [automaton]
+  (ExplanatoryVM. (->vm automaton) []))
+
+(defn- exec-automaton* [^CompiledPattern automaton, ^VM vm, coll0, registers]
   (let [^bytes opcodes (.-opcodes automaton)
         inst-count (alength opcodes)
-        vm (->vm automaton)
         state (VMState. 0 (long-array inst-count) (object-array inst-count))
         state* (VMState. 0 (long-array inst-count) (object-array inst-count))]
     (add-thread! vm 0 () state 0 registers)
@@ -490,13 +529,18 @@
           (do
             (truncate! state)
             (recur (inc pos) (next coll) (conj buf (first coll)) state* state longest))
-          (when longest
-            (fetch longest buf (or coll ()))))))))
+          (if longest
+            (fetch longest buf (or coll ()))
+            (.final_errors vm)))))))
 
-(defn- exec-recognizer [automaton coll] (exec-automaton* automaton coll sink-bank))
+(defn- exec-recognizer [automaton coll]
+  (exec-automaton* automaton (->vm automaton) coll sink-bank-succ))
+
+(defn- exec-explainer [automaton coll]
+  (exec-automaton* automaton (->explanatory-vm automaton) coll sink-bank-fail))
 
 (defn- exec-tree-automaton [automaton coll]
-  (exec-automaton* automaton coll [(start-frame 0)]))
+  (exec-automaton* automaton (->vm automaton) coll [(start-frame 0)]))
 
 ;;;; Malli APIs
 
@@ -509,6 +553,18 @@
            (boolean (exec-recognizer automaton x))))))
 
 (defn validate [re data] ((validator re) data))
+
+;; NOTE: ATM `re` `is` parts should contain `malli.core/-explainer` results for this:
+(defn explainer [re path]
+  (let [automaton (compile re)]
+    (fn [x in acc]
+      (if (sequential? x)
+        (if-some [errors (exec-explainer automaton x)]
+          (into acc errors)
+          acc)
+        (conj acc (malli.core/-error path in re x ::invalid-type))))))
+
+(defn explain [re path x in] ((explainer re path) x in []))
 
 (defn parser [re]
   (let [automaton (compile re)]

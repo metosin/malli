@@ -255,6 +255,7 @@
 (defn -into-regex [x]
   (cond
     (satisfies? RegexSchema x) (-regex x)
+    #_#_
     (= :ref (-type x)) (re/lazy (fn []
                                   (prn "lazy!" (-form x))
                                   (if (false? (:inlined (-properties x)))
@@ -1453,109 +1454,112 @@
 
 (defn << [success & ss]
   (str (if success "\u001B[32m" "\u001B[31m") (str/join " " ss) "\u001B[0m"))
+#_(
+   (defn << [success & ss]
+     (str (if success "\u001B[32m" "\u001B[31m") (str/join " " ss) "\u001B[0m"))
 
-(doseq [[s [pass fail]] [[[:+ int?] [[[1] [1 2 3]] [[] ["1"]]]]
-                         [[:* int?] [[[1] [1 2 3] []] [["1"]]]]
-                         [[:repeat int?] [[[1] [1 2 3] []] [["1"]]]]
-                         [[:repeat {:min 0} int?] [[[1] [1 2 3] []] [["1"]]]]
-                         [[:repeat {:min 1} int?] [[[1] [1 2 3]] [[] ["1"]]]]
-                         [[:repeat {:min 1, :max 2} int?] [[[1] [1 2]] [[1 2 3] [] ["1"]]]]
-                         [[:cat int? boolean?] [[[1 true]] [[1] ["1" true]]]]
-                         [[:cat* [:int int?] [:bool boolean?]] [[[1 true]] [[1] ["1" true]]]]
-                         [[:alt int? boolean?] [[[1] [true]] [[] ["1"] [1 "2"]]]]
-                         [[:alt* [:int int?] [:int boolean?]] [[[1] [true]] [[] ["1"] [1 "2"]]]]
-                         [[:cat
-                           int?
-                           [:alt
-                            string?
-                            keyword?
-                            [:cat
-                             string?
-                             keyword?]]
-                           int?] [[[1 "a" 3]
-                                   [1 :b 3]
-                                   [1 "a" :b 3]]
-                                  [[1 "a" :b "3"]]]]
-                         [[:cat*
-                           [:head int?]
-                           [:body [:alt*
-                                   [:option1 string?]
-                                   [:option2 keyword?]
-                                   [:option3 [:cat*
-                                              [:s string?]
-                                              [:k keyword?]]]]]
-                           [:tail int?]] [[[1 "a" 3]
-                                           [1 :b 3]
-                                           [1 "a" :b 3]]
-                                          [[1 "a" :b "3"]]]]
-                         [[:cat int? [:cat int? int?]] [[[1 2 3]] [[1 [2 3]]]]]
-                         [[:cat int? [:schema [:cat int? int?]]] [[[1 [2 3]]] [[1 2 3]]]]]]
-  (println)
-  (println (form s))
-  (doseq [v pass]
-    (let [ok (validate s v)]
-      (println (<< ok "+" (if ok "+" "-") v))))
-  (doseq [v fail]
-    (let [ok (not (validate s v))]
-      (println (<< ok "-" (if ok "-" "+") v)))))
+   (doseq [[s [pass fail]] [[[:+ int?] [[[1] [1 2 3]] [[] ["1"]]]]
+                            [[:* int?] [[[1] [1 2 3] []] [["1"]]]]
+                            [[:repeat int?] [[[1] [1 2 3] []] [["1"]]]]
+                            [[:repeat {:min 0} int?] [[[1] [1 2 3] []] [["1"]]]]
+                            [[:repeat {:min 1} int?] [[[1] [1 2 3]] [[] ["1"]]]]
+                            [[:repeat {:min 1, :max 2} int?] [[[1] [1 2]] [[1 2 3] [] ["1"]]]]
+                            [[:cat int? boolean?] [[[1 true]] [[1] ["1" true]]]]
+                            [[:cat* [:int int?] [:bool boolean?]] [[[1 true]] [[1] ["1" true]]]]
+                            [[:alt int? boolean?] [[[1] [true]] [[] ["1"] [1 "2"]]]]
+                            [[:alt* [:int int?] [:int boolean?]] [[[1] [true]] [[] ["1"] [1 "2"]]]]
+                            [[:cat
+                              int?
+                              [:alt
+                               string?
+                               keyword?
+                               [:cat
+                                string?
+                                keyword?]]
+                              int?] [[[1 "a" 3]
+                                      [1 :b 3]
+                                      [1 "a" :b 3]]
+                                     [[1 "a" :b "3"]]]]
+                            [[:cat*
+                              [:head int?]
+                              [:body [:alt*
+                                      [:option1 string?]
+                                      [:option2 keyword?]
+                                      [:option3 [:cat*
+                                                 [:s string?]
+                                                 [:k keyword?]]]]]
+                              [:tail int?]] [[[1 "a" 3]
+                                              [1 :b 3]
+                                              [1 "a" :b 3]]
+                                             [[1 "a" :b "3"]]]]
+                            [[:cat int? [:cat int? int?]] [[[1 2 3]] [[1 [2 3]]]]]
+                            [[:cat int? [:schema [:cat int? int?]]] [[[1 [2 3]]] [[1 2 3]]]]]]
+     (println)
+     (println (form s))
+     (doseq [v pass]
+       (let [ok (validate s v)]
+         (println (<< ok "+" (if ok "+" "-") v))))
+     (doseq [v fail]
+       (let [ok (not (validate s v))]
+         (println (<< ok "-" (if ok "-" "+") v)))))
 
-(validate
-  [:cat*
-   [:head int?]
-   [:body [:alt*
-           [:option1 string?]
-           [:option2 keyword?]
-           [:option3 [:schema
-                      [:cat*
-                       [:s [:tuple string? string?]]
-                       [:k keyword?]]]]]]
-   [:tail int?]]
-  [1 [["sika" "pakkasella"] :tosi] 12])
+   (validate
+     [:cat*
+      [:head int?]
+      [:body [:alt*
+              [:option1 string?]
+              [:option2 keyword?]
+              [:option3 [:schema
+                         [:cat*
+                          [:s [:tuple string? string?]]
+                          [:k keyword?]]]]]]
+      [:tail int?]]
+     [1 [["sika" "pakkasella"] :tosi] 12])
 
-(validate
-  [:schema {:registry {"hiccup" [:or
-                                 [:cat*
-                                  [:name keyword?]
-                                  [:props [:? [:map-of keyword? any?]]]
-                                  [:children [:* [:ref "hiccup"]]]]
-                                 [:or
-                                  nil?
-                                  boolean?
-                                  number?
-                                  string?]]}}
-   "hiccup"]
-  [:div {:class [:foo :bar]}
-   [:p "Hello, world of data"]])
-
-
-(validate
-  [:schema
-   [:alt*
-    [:node [:cat*
-            [:name keyword?]
-            [:props [:? [:map-of keyword? any?]]]
-            [:children [:* string? #_[:ref "hiccup"]]]]]]]
-  [:p {:a 1} "Hello, world of data"])
-
-(validate
-  [:alt
-   [:cat*
-    [:name keyword?]
-    [:props [:? [:map-of keyword? any?]]]
-    [:children [:* any?]]]]
-  [:div {:class "warning"} 123])
+   (validate
+     [:schema {:registry {"hiccup" [:or
+                                    [:cat*
+                                     [:name keyword?]
+                                     [:props [:? [:map-of keyword? any?]]]
+                                     [:children [:* [:ref "hiccup"]]]]
+                                    [:or
+                                     nil?
+                                     boolean?
+                                     number?
+                                     string?]]}}
+      "hiccup"]
+     [:div {:class [:foo :bar]}
+      [:p "Hello, world of data"]])
 
 
-(validate
-  [:alt*
-   [:node [:alt*
-           [:name keyword?]
-           [:props [:? [:map-of keyword? any?]]]
-           [:children [:* any? #_[:ref "hiccup"]]]]]
-   [:primitive [:alt*
-                [:nil nil?]
-                [:boolean boolean?]
-                [:number number?]
-                [:text string?]]]]
-  [:div {:class [:foo :bar]}
-   nil #_[:p "Hello, world of data"]])
+   (validate
+     [:schema
+      [:alt*
+       [:node [:cat*
+               [:name keyword?]
+               [:props [:? [:map-of keyword? any?]]]
+               [:children [:* string? #_[:ref "hiccup"]]]]]]]
+     [:p {:a 1} "Hello, world of data"])
+
+   (validate
+     [:alt
+      [:cat*
+       [:name keyword?]
+       [:props [:? [:map-of keyword? any?]]]
+       [:children [:* any?]]]]
+     [:div {:class "warning"} 123])
+
+
+   (validate
+     [:alt*
+      [:node [:alt*
+              [:name keyword?]
+              [:props [:? [:map-of keyword? any?]]]
+              [:children [:* any? #_[:ref "hiccup"]]]]]
+      [:primitive [:alt*
+                   [:nil nil?]
+                   [:boolean boolean?]
+                   [:number number?]
+                   [:text string?]]]]
+     [:div {:class [:foo :bar]}
+      nil #_[:p "Hello, world of data"]]))

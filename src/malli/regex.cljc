@@ -235,14 +235,12 @@
 
 (defprotocol ^:private MatchFrame
   (-add-match [self k v])
-  (-children [self end]))
-
-(declare ->Match)
+  (-children [self k buf]))
 
 (deftype ^:private StartFrame [child, ^long start]
   MatchFrame
   (-add-match [_ _ v] (StartFrame. v start))
-  (-children [_ _] child))
+  (-children [_ _ _] child))
 
 (defn- start-frame [^long start] (StartFrame. anonymous start))
 
@@ -250,7 +248,7 @@
 (deftype ^:private PredFrame [^long start]
   MatchFrame
   (-add-match [_ _ _] (throw (ex-info "unreachable" {})))
-  (-children [_ end] (->Match start end)))
+  (-children [_ _ buf] (peek buf)))
 
 (def ^:private pred-frame ->PredFrame)
 
@@ -263,7 +261,7 @@
 (deftype ^:private CatFrame [children, ^long start]
   MatchFrame
   (-add-match [_ k v] (CatFrame. (assoc children k v) start))
-  (-children [_ _] children))
+  (-children [_ _ _] children))
 
 (defn- cat-frame [^long start] (CatFrame. {} start))
 
@@ -280,10 +278,10 @@
                     rs)
     save1 anonymous))
 
-(deftype ^:private AltFrame [children, ^long start]
+(deftype ^:private AltFrame [val, ^long start]
   MatchFrame
-  (-add-match [_ k v] (AltFrame. (-tagged k v) start))
-  (-children [_ _] children))
+  (-add-match [_ _ v] (AltFrame. v start))
+  (-children [_ k _] (-tagged k val)))
 
 (defn- alt-frame [^long start] (AltFrame. nil start))
 
@@ -308,7 +306,7 @@
 (deftype ^:private OptFrame [?child, ^long start]
   MatchFrame
   (-add-match [_ _ v] (OptFrame. v start))
-  (-children [_ _] ?child))
+  (-children [_ _ _] ?child))
 
 (defn- opt-frame [start] (OptFrame. nil start))
 
@@ -323,7 +321,7 @@
 (deftype ^:private ManyFrame [children, ^long start]
   MatchFrame
   (-add-match [_ _ v] (ManyFrame. (conj children v) start))
-  (-children [_ _] children))
+  (-children [_ _ _] children))
 
 (defn- many-frame [start] (ManyFrame. [] start))
 
@@ -383,49 +381,29 @@
        1)))
 
 (defprotocol RegisterBank
-  (save0 [bank id v])
-  (save1 [bank id v])
-  (fetch [bank coll0 coll]))
+  (save0 [bank id start])
+  (save1 [bank id buf end])
+  (fetch [bank buf coll]))
 
 (deftype ^:private SinkBank []
   RegisterBank
   (save0 [self _ _] self)
-  (save1 [self _ _] self)
+  (save1 [self _ _ _] self)
   (fetch [_ _ _] true))
 
 (def ^:private sink-bank (SinkBank.))
 
-(defprotocol ^:private IMatch
-  (decode-match [self coll]))
-
-(deftype ^:private Match [^long start, ^long end]
-  #?(:clj Object :cljs default)
-  (toString [_] (prn-str [start end]))
-
-  IMatch
-  (decode-match [_ coll] (take (- end start) (drop start coll))))
-
-(extend-protocol RegisterBank
-  clojure.lang.APersistentMap
-  (save0 [m id start] (assoc m id (Match. start start)))
-  (save1 [m id end] (update m id (fn [^Match match] (Match. (.-start match) end))))
-  (fetch [m coll0 coll]
-    (-> (reduce-kv (fn [acc k match] (assoc! acc k (decode-match match coll0)))
-                   (transient {:rest coll})
-                   m)
-        persistent!)))
-
 (extend-protocol RegisterBank
   clojure.lang.APersistentVector
   (save0 [stack ->frame start] (conj stack (->frame start)))
-  (save1 [stack k end]
+  (save1 [stack k buf _]
     ;; 'return' `node`:
     (let [callee-frame (peek stack)
-          node (-children callee-frame end)
+          node (-children callee-frame k buf)
           stack (pop stack)]
       ;; Update 'caller' state:
       (update stack (dec (count stack)) -add-match k node)))
-  (fetch [stack coll0 coll] (-children (peek stack) (- (count coll0) (count coll))))) ; OPTIMIZE
+  (fetch [stack buf _] (-children (peek stack) nil buf)))
 
 (defprotocol ^:private IVMState
   (thread-count [state])
@@ -444,80 +422,85 @@
 
   (truncate! [_] (set! nthreads 0)))
 
+(definterface ^:private VM
+  (clear_visited [])
+  (match_item [^long pos, coll, buf, ^malli.regex.VMState state, ^malli.regex.VMState state*])
+  (add_thread [^long pos, buf, ^malli.regex.VMState state, ^long pc, matches]))
+
+(defn- add-thread! [^VM vm pos buf state pc matches]
+  (.clear_visited vm)
+  (.add_thread vm pos buf state pc matches))
+
+(deftype ^:private PikeVM [^bytes opcodes, ^"[Ljava.lang.Object;" args, visited]
+  VM
+  (clear_visited [_] (clear-bitset! visited))
+
+  (match_item [self pos coll buf state state*]
+    (loop [i 0]
+      (when (< i (thread-count state))
+        (let [pc (aget ^longs (.-pcs state) i)
+              matches (aget ^"[Ljava.lang.Object;" (.-matchess state) i)]
+          (if (< pc (alength opcodes))
+            (let [opcode (aget opcodes pc)
+                  arg (aget args pc)]
+              (opcode-case opcode
+                           pred (when (and coll (arg (first coll)))
+                                  (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
+                           #_"add-thread! makes other opcodes impossible at this point")
+              (recur (inc i)))
+            matches)))))
+
+  (add_thread [self pos buf state pc matches]
+    (cond
+      (< pc (alength opcodes))
+      (when-not (bitset-contains? visited pc)
+        (bitset-set! visited pc)
+        (opcode-case (aget opcodes pc)
+                     jump (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
+                     fork> (do
+                             (.add_thread self pos buf state (inc pc) matches)
+                             (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches))
+                     fork< (do
+                             (.add_thread self pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
+                             (recur pos buf state (inc pc) matches))
+
+                     save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
+                     save1 (recur pos buf state (inc pc) (save1 matches (aget args pc) buf pos))
+
+                     pred (fork! state pc matches)))
+
+      (= pc (alength opcodes)) (fork! state pc matches)
+
+      :else nil)))
+
+(defn- ->vm ^PikeVM [^CompiledPattern automaton]
+  (let [^bytes opcodes (.-opcodes automaton)]
+    (PikeVM. opcodes (.-args automaton) (make-bitset (alength opcodes)))))
+
 (defn- exec-automaton* [^CompiledPattern automaton coll0 registers]
   (let [^bytes opcodes (.-opcodes automaton)
-        ^"[Ljava.lang.Object;" args (.-args automaton)
         inst-count (alength opcodes)
-        visited (make-bitset inst-count)
+        vm (->vm automaton)
         state (VMState. 0 (long-array inst-count) (object-array inst-count))
-        state* (VMState. 0 (long-array inst-count) (object-array inst-count))
-
-        add-thread! (fn [^long pos, ^VMState state, ^long pc, matches]
-                      (clear-bitset! visited)
-                      ;; Micro-optimization: lambda-lift `add!` by hand:
-                      (letfn [(add! [^long pos, ^VMState state, ^long pc, matches]
-                                (cond
-                                  (< pc (alength opcodes))
-                                  (when-not (bitset-contains? visited pc)
-                                    (bitset-set! visited pc)
-                                    (opcode-case (aget opcodes pc)
-                                                 jump (recur pos state (clojure.core/+ pc (long (aget args pc))) matches)
-                                                 fork> (do
-                                                         (add! pos state (inc pc) matches)
-                                                         (recur pos state (clojure.core/+ pc (long (aget args pc))) matches))
-                                                 fork< (do
-                                                         (add! pos state (clojure.core/+ pc (long (aget args pc))) matches)
-                                                         (recur pos state (inc pc) matches))
-
-                                                 save0 (recur pos state (inc pc) (save0 matches (aget args pc) pos))
-                                                 save1 (recur pos state (inc pc) (save1 matches (aget args pc) pos))
-
-                                                 pred (fork! state pc matches)))
-
-                                  (= pc (alength opcodes)) (fork! state pc matches)
-
-                                  :else nil))]
-                        (add! pos state pc matches)))
-
-        match-item (fn [^long pos, coll, ^VMState state, ^VMState state*]
-                     (loop [i 0]
-                       (when (< i (thread-count state))
-                         (let [pc (aget ^longs (.-pcs state) i)
-                               matches (aget ^"[Ljava.lang.Object;" (.-matchess state) i)]
-                           (if (< pc inst-count)
-                             (let [opcode (aget opcodes pc)
-                                   arg (aget args pc)]
-                               (opcode-case opcode
-                                            pred (when (and coll (arg (first coll)))
-                                                   (add-thread! (inc pos) state* (inc pc) matches))
-                                            #_"add-thread! makes other opcodes impossible at this point")
-                               (recur (inc i)))
-                             matches)))))]
-
-    (add-thread! 0 state 0 registers)
-    (loop [pos 0, coll (seq coll0), state state, state* state*, longest nil]
-      (let [longest (or (match-item pos coll state state*) longest)]
+        state* (VMState. 0 (long-array inst-count) (object-array inst-count))]
+    (add-thread! vm 0 () state 0 registers)
+    (loop [pos 0, coll (seq coll0), buf (), state state, state* state*, longest nil]
+      (let [longest (or (.match_item vm pos coll buf state state*) longest)]
         (if (and (> (thread-count state*) 0) coll)
           (do
             (truncate! state)
-            (recur (inc pos) (next coll) state* state longest))
+            (recur (inc pos) (next coll) (conj buf (first coll)) state* state longest))
           (when longest
-            (fetch longest coll0 (or coll ()))))))))
+            (fetch longest buf (or coll ()))))))))
 
 (defn- exec-recognizer [automaton coll] (exec-automaton* automaton coll sink-bank))
-
-(defn- recognize [re coll] (exec-recognizer (compile re) coll))
-
-(defn- exec-automaton [automaton coll] (exec-automaton* automaton coll {}))
-
-(defn- exec [re coll] (exec-automaton (compile re) coll))
 
 (defn- exec-tree-automaton [automaton coll]
   (exec-automaton* automaton coll [(start-frame 0)]))
 
-(defn- exec-tree [re coll] (exec-tree-automaton (compile re) coll))
-
 ;;;; Malli APIs
+
+;;; FIXME: Check that entire seq is consumed:
 
 (defn validator [re]
   (let [automaton (compile re)]
@@ -526,3 +509,11 @@
            (boolean (exec-recognizer automaton x))))))
 
 (defn validate [re data] ((validator re) data))
+
+(defn parser [re]
+  (let [automaton (compile re)]
+    (fn [x]
+      (and (sequential? x)
+           (exec-tree-automaton automaton x)))))
+
+(defn parse [re coll] ((parser re) coll))

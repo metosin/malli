@@ -253,15 +253,14 @@
       max (fn [x] (<= x max)))))
 
 (defn -into-regex [x]
-  (println "-into-regex" x)
   (cond
     (satisfies? RegexSchema x) (-regex x)
     (= :ref (-type x)) (re/lazy (fn []
                                   (prn "lazy!" (-form x))
                                   (if (false? (:inlined (-properties x)))
-                                    (re/fn (-validator x))
+                                    (re/is (-validator x))
                                     (-into-regex (-deref x)))))
-    :else (re/fn (-validator x))))
+    :else (re/is (-validator x))))
 
 ;;
 ;; Protocol Cache

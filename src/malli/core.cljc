@@ -53,7 +53,8 @@
   (-deref [this] "returns the referenced schema"))
 
 (defprotocol RegexSchema
-  (-regex [this] "returns the regex"))
+  (-regex [this] "returns the regex")
+  (-explainer-regex [this path]))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -262,6 +263,9 @@
                                     (re/is (-validator x))
                                     (-into-regex (-deref x)))))
     :else (re/is (-validator x))))
+
+(defn -into-explainer-regex [x path]
+  (if (satisfies? RegexSchema x) (-explainer-regex x path) (re/is (-explainer x path))))
 
 ;;
 ;; Protocol Cache
@@ -1053,8 +1057,16 @@
           Schema
           (-type [_] type)
           (-validator [this]
-            (re/validator (-regex this)))
-          (-explainer [_ path] (-explainer child path))
+            (let [automaton (re/compile (-regex this))]
+              (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
+          (-explainer [this path]
+            (let [automaton (re/compile (-explainer-regex this path))]
+              (fn [x in acc]
+                (if (sequential? x)
+                  (if-some [errors (re/exec-explainer automaton path x in -error)]
+                    (into acc errors)
+                    acc)
+                  (conj acc (-error path in this x ::invalid-type))))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1071,8 +1083,10 @@
                                    (into-schema type properties [value])
                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
           RegexSchema
-          (-regex [_]
-            (re properties (map -into-regex children))))))))
+          (-regex [_] (re properties (map -into-regex children)))
+          (-explainer-regex [_ path]
+            (re properties (map-indexed (fn [i s] (-into-explainer-regex s (conj path i)))
+                                        children))))))))
 
 (defn -sequence-entry-schema [{:keys [type re]}]
   ^{:type ::into-schema}
@@ -1086,8 +1100,16 @@
           Schema
           (-type [_] type)
           (-validator [this]
-            (re/validator (-regex this)))
-          (-explainer [_ path] (-explainer child path))
+            (let [automaton (re/compile (-regex this))]
+              (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
+          (-explainer [this path]
+            (let [automaton (re/compile (-explainer-regex this path))]
+              (fn [x in acc]
+                (if (sequential? x)
+                  (if-some [errors (re/exec-explainer automaton path x in -error)]
+                    (into acc errors)
+                    acc)
+                  (conj acc (-error path in this x ::invalid-type))))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1105,7 +1127,10 @@
                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
           RegexSchema
           (-regex [_]
-            (re properties (map (fn [[k s]] [k (-into-regex s)]) children))))))))
+            (re properties (map (fn [[k s]] [k (-into-regex s)]) children)))
+          (-explainer-regex [_ path]
+            (re properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
+                                children))))))))
 
 ;;
 ;; public api

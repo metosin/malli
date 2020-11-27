@@ -480,7 +480,7 @@
 
   (final_errors [_] nil))
 
-(deftype ^:private ExplanatoryVM [^PikeVM super, ^:unsynchronized-mutable errors]
+(deftype ^:private ExplanatoryVM [^PikeVM super, path, in, ^:unsynchronized-mutable errors]
   VM
   (clear_visited [_] (.clear_visited super))
 
@@ -494,16 +494,16 @@
               matches (aget ^"[Ljava.lang.Object;" (.-matchess state) i)]
           (if (< pc (alength opcodes))
             (let [opcode (aget opcodes pc)
-                  arg (aget ^"[Ljava.lang.Object;" (.-args super) pc)]
+                  arg (aget ^"[Ljava.lang.Object;" (.-args super) pc)
+                  in (conj in pos)]
               (opcode-case opcode
                 pred (if coll
-                       (let [errors** (arg (first coll) [#_FIXME/path :VM] errors*)]
+                       (let [errors** (arg (first coll) in errors*)]
                          (when (identical? errors** errors*)
                            (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
                          (recur (inc i) errors**))
                        (recur (inc i)
-                              (conj errors* (malli.core/-error [#_FIXME/path :VM] [#_FIXME/path :VM]
-                                                               arg nil ::end-of-input))))
+                              (conj errors* (malli.core/-error path in arg nil ::end-of-input))))
                 #_"add-thread! makes other opcodes impossible at this point"))
             matches))
         (do (set! errors errors*) nil))))
@@ -514,8 +514,8 @@
   (let [^bytes opcodes (.-opcodes automaton)]
     (PikeVM. opcodes (.-args automaton) (make-bitset (alength opcodes)))))
 
-(defn- ->explanatory-vm ^ExplanatoryVM [automaton]
-  (ExplanatoryVM. (->vm automaton) []))
+(defn- ->explanatory-vm ^ExplanatoryVM [automaton path in]
+  (ExplanatoryVM. (->vm automaton) path in []))
 
 (defn- exec-automaton* [^CompiledPattern automaton, ^VM vm, coll0, registers]
   (let [^bytes opcodes (.-opcodes automaton)
@@ -536,8 +536,8 @@
 (defn- exec-recognizer [automaton coll]
   (exec-automaton* automaton (->vm automaton) coll sink-bank-succ))
 
-(defn- exec-explainer [automaton coll]
-  (exec-automaton* automaton (->explanatory-vm automaton) coll sink-bank-fail))
+(defn- exec-explainer [automaton path coll in]
+  (exec-automaton* automaton (->explanatory-vm automaton path in) coll sink-bank-fail))
 
 (defn- exec-tree-automaton [automaton coll]
   (exec-automaton* automaton (->vm automaton) coll [(start-frame 0)]))
@@ -559,7 +559,7 @@
   (let [automaton (compile re)]
     (fn [x in acc]
       (if (sequential? x)
-        (if-some [errors (exec-explainer automaton x)]
+        (if-some [errors (exec-explainer automaton path x in)]
           (into acc errors)
           acc)
         (conj acc (malli.core/-error path in re x ::invalid-type))))))

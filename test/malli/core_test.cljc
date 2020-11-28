@@ -6,6 +6,7 @@
             [malli.util :as mu]
             [malli.registry :as mr]
             [clojure.walk :as walk]
+            [malli.generator :as mg]
             [clojure.test.check.generators :as gen]))
 
 (defn with-schema-forms [result]
@@ -1467,3 +1468,35 @@
                    (m/type-properties schema)))
             (is (= {:value 42}
                    (m/properties schema)))))))))
+
+(deftest function-schema-test
+  (let [f-fail (fn [x] x)
+        f-ok (fn [x y] (+ x y))
+        => [:=> [:tuple int? int?] int?]]
+
+    (testing "by default, all ifn? are valid"
+      (is (true? (m/validate => identity)))
+      (is (true? (m/validate => #{}))))
+
+    (testing "using generative testing"
+      (is (false? (m/validate => identity {::m/=>validator mg/=>validator})))
+      (is (false? (m/validate => #{} {::m/=>validator mg/=>validator})))
+      (is (true? (m/validate => f-ok {::m/=>validator mg/=>validator})))
+      (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator})))
+      (is (false? (m/validate => (fn [x] x) {::m/=>validator mg/=>validator}))))
+
+    (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/=>validator mg/=>validator})))
+    (is (results= {:schema [:=> [:tuple int? int?] int?]
+                   :value f-fail
+                   :errors [{:path []
+                             :in []
+                             :schema [:=> [:tuple int? int?] int?]
+                             :value f-fail}]}
+                  (m/explain => f-fail {::m/=>validator mg/=>validator})))
+
+    (is (= f-fail (m/decode => f-fail mt/string-transformer)))
+
+    (is (true? (m/validate (over-the-wire =>) f-ok)))
+
+    (is (= {:type :=>, :children [{:type :tuple, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
+           (mu/to-map-syntax =>)))))

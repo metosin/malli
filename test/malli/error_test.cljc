@@ -3,7 +3,8 @@
             [malli.core-test]
             [malli.error :as me]
             [malli.core :as m]
-            [malli.util :as mu]))
+            [malli.util :as mu]
+            [malli.generator :as mg]))
 
 (deftest error-message-test
   (let [msg "should be an int"
@@ -369,6 +370,16 @@
            (-> [:enum "foo" "bar" "buzz" "biff"]
                (m/explain "baz")
                (me/humanize))))))
+
+(deftest function-test
+  (is (= ["invalid function"]
+         (-> [:=> [:tuple int? int?] int?]
+             (m/explain (fn [x] x) {::m/=>validator mg/=>validator})
+             (me/humanize))))
+  (is (= ["invalid function"]
+         (-> [:=> [:tuple int? int?] int?]
+             (m/explain 123)
+             (me/humanize)))))
 
 (deftest multi-error-test
   (let [schema [:multi {:dispatch :type}

@@ -1040,11 +1040,14 @@
           (-validator [this]
             (if-let [validator (if =>validator (=>validator this options))]
               (fn [x] (and (ifn? x) (validator x))) ifn?))
-          (-explainer [_ _] (-fail! ::not-implemented))
-          (-transformer [this transformer method options]
-            (-fail! ::not-implemented))
+          (-explainer [this path]
+            (let [validator (-validator this)]
+              (fn explain [x in acc]
+                (if-not (validator x) (conj acc (-error path in this x)) acc))))
+          (-transformer [_ _ _ _])
           (-walk [this walker path options]
-            (-fail! ::not-implemented))
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)

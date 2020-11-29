@@ -221,3 +221,6 @@
                                                         [:zip int?]
                                                         [:country "Country"]]]]]]}}
             "Order"]))))
+
+(deftest function-schema-test
+  (is (= {} (json-schema/transform [:=> [:tuple int? int?] int?]))))

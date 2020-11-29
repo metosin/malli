@@ -21,6 +21,7 @@ Data-driven Schemas for Clojure/Script.
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
+- [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
 - [Visualizing Schemas](#visualizing-schemas) with DOT
 - [Fast](#performance)
 
@@ -177,7 +178,7 @@ Using `:string` Schema:
 ; => false
 ```
 
-## Function schemas
+## Fn schemas
 
 `:fn` allows any predicate function to be used:
  
@@ -1611,6 +1612,150 @@ Registries can be composed:
     {:maybe "sheep"}))
 ; => true
 ```
+
+## Function Schemas
+
+**alpha, subject to change**
+
+Functions can be described with `:=>`, which takes function arguments (as `:tuple`) and output schemas as children.
+
+```clj
+(defn plus [x y] (+ x y))
+
+(def =>plus [:=> [:tuple int? int?] int?])
+
+(m/validate =>plus plus)
+; => true
+```
+
+By default, validation just checks if a valu ia `ifn?`:
+
+```clj
+(m/validate =>plus str)
+; => true :(
+```
+
+We can use value generation for more comprehensive testing:
+
+```clj
+(m/validate =>plus plus {::m/=>validator mg/=>validator})
+; => true
+
+(m/validate =>plus str {::m/=>validator mg/=>validator})
+; => false
+``` 
+
+A generated function implementation:
+
+```clj
+(def plus-gen (mg/generate =>plus))
+
+(plus-gen 1 2)
+; => -1
+
+(plus-gen 1 "2")
+; =throws=> :malli.generator/invalid-input {:schema [:tuple int? int?], :args [1 "2"]}
+```
+
+Multiple arities are WIP, currently defined using `:or`:
+
+```clj
+(m/validate
+  [:or
+   [:=> [:tuple pos-int?] pos-int?]
+   [:=> [:tuple int? int?] int?]]
+  (fn math
+    ([x] (+ x x))
+    ([x y] (+ x y)))
+  {::m/=>validator mg/=>validator})
+; => true
+
+(def f (mg/generate
+         [:or
+          [:=> [:tuple int?] pos-int?]
+          [:=> [:tuple int? int?] int?]]))
+
+;; fixes the arity, which is not correct
+(-> f meta :arity)
+; => 1
+
+(f 42)
+; => 2
+
+(f 42 42)
+; =thrown=> :malli.generator/invalid-input {:schema [:tuple int?], :args [42 42]}
+```
+
+Varargs are WIP too (waiting for #180).
+
+## Function Schema Registry
+
+Vars can be annotated with function schemas using `m/=>` macro, backed by a global registry:
+
+```clj
+(defn square [x] (* x x))
+
+(m/=> square [:=> [:tuple int?] pos-int?])
+```
+
+Listing registered function Var schemas:
+
+```clj
+(m/=>schemas)
+;{user
+; {square
+;  {:schema [:=> [:tuple int?] pos-int?]
+;   :meta nil
+;   :ns malli.generator-test
+;   :name square}}}
+```
+
+## Clj-kondo
+
+[Clj-kondo](https://github.com/borkdude/clj-kondo) is a linter for Clojure code that sparks joy.
+
+Given functions and function Schemas:
+
+```clj
+(defn square [x] (* x x))
+(m/=> square [:=> [:tuple int?] nat-int?])
+
+(defn plus
+  ([x] x)
+  ([x y] (+ x y)))
+
+(m/=> plus [:or
+            [:=> [:tuple int?] int?]
+            [:=> [:tuple int? int?] int?]])
+```
+
+Generating `clj-kondo` configuration from current namespace:
+
+```clj
+(require '[malli.clj-kondo :as mc])
+
+(-> (mc/collect *ns*) (mc/linter-config))
+;{:lint-as #:malli.schema{defn schema.core/defn},
+; :linters
+; {:type-mismatch
+;  {:namespaces
+;   {user {square {:arities {1 {:args [:int]
+;                               :ret :pos-int}}}
+;          plus {:arities {1 {:args [:int]
+;                             :ret :int},
+;                          2 {:args [:int :int]
+;                             :ret :int}}}}}}}}
+```
+
+Emitting confing into `./.clj-kondo/configs/malli/config.edn`:
+
+```clj
+(mc/emit!)
+```
+
+In action:
+
+![malli](docs/img/clj-kondo.png)
 
 ## Visualizing Schemas
 

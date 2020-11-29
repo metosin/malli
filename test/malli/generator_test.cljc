@@ -177,3 +177,18 @@
                      [:x]]]
             :let [schema (m/schema schema {:registry registry})]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000}))))))
+
+#?(:clj
+   (deftest function-schema-test
+     (testing "generates valid functions"
+
+       (let [=> (m/schema [:=> [:tuple int? int?] int?])
+             input (m/-input-schema =>)
+             output (m/-output-schema =>)]
+         (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000})))))
+
+     (testing "arity meta"
+       (let [=> [:or
+                 [:=> [:tuple int?] int?]
+                 [:=> [:tuple int? int? int?] int?]]]
+         (is (every? (comp #{1 3} :arity meta) (mg/sample => {:size 1000})))))))

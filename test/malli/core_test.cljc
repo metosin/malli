@@ -6,6 +6,7 @@
             [malli.util :as mu]
             [malli.registry :as mr]
             [clojure.walk :as walk]
+            [malli.generator :as mg]
             [clojure.test.check.generators :as gen]))
 
 (defn with-schema-forms [result]
@@ -801,8 +802,12 @@
   (testing "sequence schemas"
 
     (testing "empty schemas fail"
-      (doseq [element [:vector :sequential :set :tuple]]
+      (doseq [element [:vector :sequential :set]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
+
+    (testing "empty tuples are ok"
+      (is (m/validate :tuple []))
+      (is (not (m/validate :tuple nil))))
 
     (testing "more than 1 elements fail on collections"
       (doseq [element [:vector :sequential :set]]
@@ -1463,3 +1468,39 @@
                    (m/type-properties schema)))
             (is (= {:value 42}
                    (m/properties schema)))))))))
+
+(defn single-arity
+  ([x] x)
+  ([_ _] (m/-fail! ::arity-error)))
+
+(deftest function-schema-test
+  (let [f-ok (fn [x y] (+ x y))
+        => [:=> [:tuple int? int?] int?]]
+
+    (testing "by default, all ifn? are valid"
+      (is (true? (m/validate => identity)))
+      (is (true? (m/validate => #{}))))
+
+    (testing "using generative testing"
+      (is (false? (m/validate => single-arity {::m/=>validator mg/=>validator})))
+      ;; js allows invalid arity
+      #?(:clj (is (false? (m/validate => (fn [x] x) {::m/=>validator mg/=>validator}))))
+      #?(:clj (is (false? (m/validate => #{} {::m/=>validator mg/=>validator}))))
+      (is (true? (m/validate => f-ok {::m/=>validator mg/=>validator})))
+      (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator}))))
+
+    (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/=>validator mg/=>validator})))
+    (is (results= {:schema [:=> [:tuple int? int?] int?]
+                   :value single-arity
+                   :errors [{:path []
+                             :in []
+                             :schema [:=> [:tuple int? int?] int?]
+                             :value single-arity}]}
+                  (m/explain => single-arity {::m/=>validator mg/=>validator})))
+
+    (is (= single-arity (m/decode => single-arity mt/string-transformer)))
+
+    (is (true? (m/validate (over-the-wire =>) f-ok)))
+
+    (is (= {:type :=>, :children [{:type :tuple, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
+           (mu/to-map-syntax =>)))))

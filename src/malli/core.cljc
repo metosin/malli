@@ -32,6 +32,11 @@
 (defprotocol MapSchema
   (-entries [this] "returns sequence of `key -val-schema` MapEntries"))
 
+(defprotocol FunctionSchema
+  (-arity [this])
+  (-input-schema [this])
+  (-output-schema [this]))
+
 (defprotocol LensSchema
   (-keep [this] "returns truthy if schema contributes to value path")
   (-get [this key default] "returns schema at key")
@@ -81,7 +86,9 @@
   ([type]
    (-fail! type nil))
   ([type data]
-   (throw (ex-info (str type " " (pr-str data)) {:type type, :data data}))))
+   (-fail! type nil data))
+  ([type message data]
+   (throw (ex-info (str type " " (pr-str data) message) {:type type, :data data}))))
 
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
@@ -668,7 +675,7 @@
       (let [children (mapv #(schema % options) children)
             size (count children)
             form (-create-form :tuple properties (map -form children))]
-        (-check-children! :tuple properties children {:min 1})
+        (-check-children! :tuple properties children {:min 0})
         ^{:type ::schema}
         (reify
           Schema
@@ -1016,6 +1023,45 @@
             (-ref [_] id)
             (-deref [_] child)))))))
 
+(defn -function-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children {::keys [=>validator] :as options}]
+      (-check-children! :=> properties children {:min 2, :max 2})
+      (let [[input output :as children] (map #(schema % options) children)
+            form (-create-form :=> properties (map -form children))]
+        (when-not (= :tuple (-type input))
+          (-fail! ::invalid-input-schema {:input input}))
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] :=>)
+          (-type-properties [_])
+          (-validator [this]
+            (if-let [validator (if =>validator (=>validator this options))]
+              (fn [x] (and (ifn? x) (validator x))) ifn?))
+          (-explainer [this path]
+            (let [validator (-validator this)]
+              (fn explain [x in acc]
+                (if-not (validator x) (conj acc (-error path in this x)) acc))))
+          (-transformer [_ _ _ _])
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] (-function-schema))
+          (-form [_] form)
+          FunctionSchema
+          (-arity [_] (count (-children input)))
+          (-input-schema [_] input)
+          (-output-schema [_] output)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (get children key default))
+          (-set [this key value] (-set-assoc-children this key value)))))))
+
 ;;
 ;; public api
 ;;
@@ -1308,6 +1354,7 @@
    :re (-re-schema false)
    :fn (-fn-schema)
    :ref (-ref-schema)
+   :=> (-function-schema)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
 
@@ -1318,3 +1365,31 @@
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
                      (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (-fail! ::invalid-registry.type {:type mr/type}))))
+
+;;
+;; function schemas (alpha, subject to change)
+;;
+
+(def ^:private -=>schemas* (atom {}))
+(defn =>schemas [] @-=>schemas*)
+
+(defn =>schema
+  ([?schema]
+   (=>schema ?schema nil))
+  ([?schema options]
+   (let [s (schema ?schema options)]
+     (condp = (type s)
+       :=> s
+       :or (let [arity->=> (group-by -arity (children s))]
+             (when-not (= (count (children s)) (count arity->=>))
+               (-fail! ::overlapping-arities {:arities arity->=>})) s)
+       (-fail! :invalid-=>schema {:type (type s), :schema s})))))
+
+(defmacro => [name value]
+  (let [name' `'~(symbol (str name))]
+    `(let [ns# (symbol (str *ns*))]
+       (swap! @#'-=>schemas* assoc-in [ns# ~name']
+              {:schema (=>schema ~value)
+               :meta ~(meta name)
+               :ns ns#
+               :name ~name'}))))

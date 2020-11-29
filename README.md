@@ -1615,6 +1615,8 @@ Registries can be composed:
 
 ## Function Schemas
 
+**alpha, subject to change**
+
 Functions can be described with `:=>`, which takes function arguments (as `:tuple`) and output schemas as children.
 
 ```clj

@@ -1367,7 +1367,7 @@
                      :else (-fail! ::invalid-registry.type {:type mr/type}))))
 
 ;;
-;; function schemas
+;; function schemas (alpha, subject to change)
 ;;
 
 (def ^:private -=>schemas* (atom {}))

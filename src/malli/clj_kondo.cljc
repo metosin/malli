@@ -124,8 +124,7 @@
 
 (defn from [{:keys [schema ns name]}]
   (let [ns-name (-> ns str symbol)
-        schema (m/schema schema)]
-    (assert (= :or (m/type schema)))
+        schema (if (= :or (m/type schema)) schema (m/into-schema :or nil [schema] (m/options schema)))]
     (reduce
       (fn [acc schema]
         (let [[input return] (m/children schema)

@@ -107,11 +107,13 @@
         output-schema (m/-output-schema schema)
         output-generator (generator output-schema options)]
     (gen/return
-      (fn [& args]
-        (let [args (vec args)]
-          (when-not (validate-input args)
-            (m/-fail! ::invalid-input {:schema input-schema, :args args}))
-          (generate output-generator options))))))
+      (with-meta
+        (fn [& args]
+          (let [args (vec args)]
+            (when-not (validate-input args)
+              (m/-fail! ::invalid-input {:schema input-schema, :args args}))
+            (generate output-generator options)))
+        {:arity (-> schema m/-input-schema m/children count)}))))
 
 ;;
 ;; generators

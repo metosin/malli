@@ -56,7 +56,6 @@
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
-   [[:=> [:tuple int? int?] int?]] {}
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
    [[:double {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
@@ -222,3 +221,6 @@
                                                         [:zip int?]
                                                         [:country "Country"]]]]]]}}
             "Order"]))))
+
+(deftest function-schema-test
+  (is (= {} (json-schema/transform [:=> [:tuple int? int?] int?]))))

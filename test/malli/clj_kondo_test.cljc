@@ -31,7 +31,3 @@
                 :nested {:op :keys, :req {:id :string, :price :double}},
                 :z :vector}}
          (clj-kondo/transform Schema))))
-
-(deftest clj-kondo-linter-config-test
-  )
-

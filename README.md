@@ -1615,27 +1615,25 @@ Registries can be composed:
 
 ## Function Schemas
 
-Functions can be described with `:=>`, taking function arguments as first child (defined as `:tuple`) and output schemas as second.
+Functions can be described with `:=>`, which takes function arguments (as `:tuple`) and output schemas as children.
 
 ```clj
-;; plain clojure
 (defn plus [x y] (+ x y))
 
-;; function schema for plus
 (def =>plus [:=> [:tuple int? int?] int?])
+
+(m/validate =>plus plus)
+; => true
 ```
 
 By default, validation just checks if a valu ia `ifn?`:
 
 ```clj
-(m/validate =>plus plus)
-; => true
-
 (m/validate =>plus str)
-; => true (despite invalid)
+; => true :(
 ```
 
-We can use `malli.generator` for factual validation:
+We can use value generation for more comprehensive testing:
 
 ```clj
 (m/validate =>plus plus {::m/=>validator mg/=>validator})
@@ -1645,7 +1643,7 @@ We can use `malli.generator` for factual validation:
 ; => false
 ``` 
 
-A generated implementation:
+A generated function implementation:
 
 ```clj
 (def plus-gen (mg/generate =>plus))
@@ -1657,7 +1655,7 @@ A generated implementation:
 ; =throws=> :malli.generator/invalid-input {:schema [:tuple int? int?], :args [1 "2"]}
 ```
 
-Multipla arities are WIP, currently defined using `:or`:
+Multiple arities are WIP, currently defined using `:or`:
 
 ```clj
 (m/validate
@@ -1669,16 +1667,13 @@ Multipla arities are WIP, currently defined using `:or`:
     ([x y] (+ x y)))
   {::m/=>validator mg/=>validator})
 ; => true
-```
 
-Problem with `:or` - the generates fn from just one (random) branch:
-
-```cl
 (def f (mg/generate
          [:or
           [:=> [:tuple int?] pos-int?]
           [:=> [:tuple int? int?] int?]]))
 
+;; fixes the arity, which is not correct
 (-> f meta :arity)
 ; => 1
 
@@ -1688,6 +1683,8 @@ Problem with `:or` - the generates fn from just one (random) branch:
 (f 42 42)
 ; =thrown=> :malli.generator/invalid-input {:schema [:tuple int?], :args [42 42]}
 ```
+
+Varargs are WIP too (waiting for #180).
 
 ## Function Schema Registry
 

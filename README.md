@@ -178,7 +178,7 @@ Using `:string` Schema:
 ; => false
 ```
 
-## Function schemas
+## Fn schemas
 
 `:fn` allows any predicate function to be used:
  

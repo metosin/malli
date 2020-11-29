@@ -1469,9 +1469,12 @@
             (is (= {:value 42}
                    (m/properties schema)))))))))
 
+(defn single-arity
+  ([x] x)
+  ([_ _] (m/-fail! ::arity-error)))
+
 (deftest function-schema-test
-  (let [f-fail (fn [x] x)
-        f-ok (fn [x y] (+ x y))
+  (let [f-ok (fn [x y] (+ x y))
         => [:=> [:tuple int? int?] int?]]
 
     (testing "by default, all ifn? are valid"
@@ -1479,22 +1482,23 @@
       (is (true? (m/validate => #{}))))
 
     (testing "using generative testing"
-      (is (false? (m/validate => identity {::m/=>validator mg/=>validator})))
-      (is (false? (m/validate => #{} {::m/=>validator mg/=>validator})))
+      (is (false? (m/validate => single-arity {::m/=>validator mg/=>validator})))
+      ;; js allows invalid arity
+      #?(:clj (is (false? (m/validate => (fn [x] x) {::m/=>validator mg/=>validator}))))
+      #?(:clj (is (false? (m/validate => #{} {::m/=>validator mg/=>validator}))))
       (is (true? (m/validate => f-ok {::m/=>validator mg/=>validator})))
-      (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator})))
-      (is (false? (m/validate => (fn [x] x) {::m/=>validator mg/=>validator}))))
+      (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator}))))
 
     (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/=>validator mg/=>validator})))
     (is (results= {:schema [:=> [:tuple int? int?] int?]
-                   :value f-fail
+                   :value single-arity
                    :errors [{:path []
                              :in []
                              :schema [:=> [:tuple int? int?] int?]
-                             :value f-fail}]}
-                  (m/explain => f-fail {::m/=>validator mg/=>validator})))
+                             :value single-arity}]}
+                  (m/explain => single-arity {::m/=>validator mg/=>validator})))
 
-    (is (= f-fail (m/decode => f-fail mt/string-transformer)))
+    (is (= single-arity (m/decode => single-arity mt/string-transformer)))
 
     (is (true? (m/validate (over-the-wire =>) f-ok)))
 

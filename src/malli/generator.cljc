@@ -113,7 +113,7 @@
             (when-not (validate-input args)
               (m/-fail! ::invalid-input {:schema input-schema, :args args}))
             (generate output-generator options)))
-        {:arity (-> schema m/-input-schema m/children count)}))))
+        {:arity (-> schema m/-arity)}))))
 
 ;;
 ;; generators

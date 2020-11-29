@@ -374,7 +374,7 @@
 (deftest function-test
   (is (= ["invalid function"]
          (-> [:=> [:tuple int? int?] int?]
-             (m/explain (fn [x] x) {::m/=>validator mg/=>validator})
+             (m/explain malli.core-test/single-arity {::m/=>validator mg/=>validator})
              (me/humanize))))
   (is (= ["invalid function"]
          (-> [:=> [:tuple int? int?] int?]

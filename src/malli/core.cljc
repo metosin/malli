@@ -1047,6 +1047,23 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
+(defn- regex-validator [schema]
+  (let [automaton (re/compile (re/asm
+                                include (-regex schema)
+                                end schema))]
+    (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
+
+(defn- regex-explainer [schema path]
+  (let [automaton (re/compile (re/asm
+                                include (-explainer-regex schema path)
+                                end schema))]
+    (fn [x in acc]
+      (if (sequential? x)
+        (if-some [errors (re/exec-explainer automaton path x in -error)]
+          (into acc errors)
+          acc)
+        (conj acc (-error path in schema x ::invalid-type))))))
+
 (defn -sequence-schema [{:keys [type re]}]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -1058,21 +1075,8 @@
         (reify
           Schema
           (-type [_] type)
-          (-validator [this]
-            (let [automaton (re/compile (re/asm
-                                          include (-regex this)
-                                          end this))]
-              (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
-          (-explainer [this path]
-            (let [automaton (re/compile (re/asm
-                                          include (-explainer-regex this path)
-                                          end this))]
-              (fn [x in acc]
-                (if (sequential? x)
-                  (if-some [errors (re/exec-explainer automaton path x in -error)]
-                    (into acc errors)
-                    acc)
-                  (conj acc (-error path in this x ::invalid-type))))))
+          (-validator [this] (regex-validator this))
+          (-explainer [this path] (regex-explainer this path))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1105,21 +1109,8 @@
         (reify
           Schema
           (-type [_] type)
-          (-validator [this]
-            (let [automaton (re/compile (re/asm
-                                          include (-regex this)
-                                          end this))]
-              (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
-          (-explainer [this path]
-            (let [automaton (re/compile (re/asm
-                                          include (-explainer-regex this path)
-                                          end this))]
-              (fn [x in acc]
-                (if (sequential? x)
-                  (if-some [errors (re/exec-explainer automaton path x in -error)]
-                    (into acc errors)
-                    acc)
-                  (conj acc (-error path in this x ::invalid-type))))))
+          (-validator [this] (regex-validator this))
+          (-explainer [this path] (regex-explainer this path))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1136,8 +1127,7 @@
                                    (into-schema type properties [value])
                                    (-fail! ::index-out-of-bounds {:schema this, :key key})))
           RegexSchema
-          (-regex [_]
-            (re properties (map (fn [[k s]] [k (-into-regex s)]) children)))
+          (-regex [_] (re properties (map (fn [[k s]] [k (-into-regex s)]) children)))
           (-explainer-regex [_ path]
             (re properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
                                 children))))))))

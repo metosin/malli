@@ -1059,10 +1059,14 @@
           Schema
           (-type [_] type)
           (-validator [this]
-            (let [automaton (re/compile (-regex this))]
+            (let [automaton (re/compile (re/asm
+                                          include (-regex this)
+                                          end nil))]
               (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
           (-explainer [this path]
-            (let [automaton (re/compile (-explainer-regex this path))]
+            (let [automaton (re/compile (re/asm
+                                          include (-explainer-regex this path)
+                                          end nil))]
               (fn [x in acc]
                 (if (sequential? x)
                   (if-some [errors (re/exec-explainer automaton path x in -error)]

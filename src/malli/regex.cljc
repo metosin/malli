@@ -174,9 +174,9 @@
   #{:label :jump :fork> :fork<})
 
 (def ^:private op->opcode
-  (zipmap (conj label-ops :pred :explain :save0 :save1) (range)))
+  (zipmap (conj label-ops :pred :explain :end :save0 :save1) (range)))
 
-(defmacro ^:private asm [& exprs]
+(defmacro asm [& exprs]
   (let [gen (gensym 'gen)
         exprs (partition 2 exprs)]
     `(let [~gen (memoize gensym)]
@@ -459,7 +459,7 @@
           save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
           save1 (recur pos buf state (inc pc) (save1 matches (aget args pc) buf pos))
 
-          (pred explain) (fork! state pc matches)))
+          (pred explain end) (fork! state pc matches)))
 
       (= pc (alength opcodes)) (fork! state pc matches)
 
@@ -506,6 +506,10 @@
                             (recur (inc i) errors**))
                           (recur (inc i)
                                  (conj errors* (-error path in #_FIXME/arg arg nil ::end-of-input))))
+                end (if coll
+                      (recur (inc i)
+                             (conj errors* (-error path in #_FIXME/arg arg (first coll) ::input-remaining)))
+                      matches)
                 #_"add-thread! makes other opcodes impossible at this point"))
             matches))
         (do (set! errors errors*) nil))))

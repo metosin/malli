@@ -543,7 +543,7 @@
             (.final_errors vm)))))))
 
 (defn exec-recognizer [automaton coll]
-  (exec-automaton* automaton (->vm automaton) coll sink-bank-succ))
+  (boolean (exec-automaton* automaton (->vm automaton) coll sink-bank-succ)))
 
 (defn exec-explainer [automaton path coll in -error]
   (exec-automaton* automaton (->explanatory-vm automaton path in -error) coll sink-bank-fail))

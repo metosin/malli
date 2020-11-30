@@ -1051,7 +1051,7 @@
   (let [automaton (re/compile (re/asm
                                 include (-regex schema)
                                 end schema))]
-    (fn [x] (and (sequential? x) (boolean (re/exec-recognizer automaton x))))))
+    (fn [x] (and (sequential? x) (re/exec-recognizer automaton x)))))
 
 (defn- regex-explainer [schema path]
   (let [automaton (re/compile (re/asm

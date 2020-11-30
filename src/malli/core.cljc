@@ -1069,7 +1069,7 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       ;(-check-children! type properties children {:min 1, :max 1})
-      (let [[child :as children] (map #(schema % options) children)
+      (let [[child :as children] (mapv #(schema % options) children)
             form (-create-form type properties (mapv -form children))]
         ^{:type ::schema}
         (reify
@@ -1086,12 +1086,12 @@
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
+
           LensSchema
-          (-keep [_])
-          (-get [_ key default] (if (= key 0) child default))
-          (-set [this key value] (if (= key 0)
-                                   (into-schema type properties [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+          (-keep [_] true)
+          (-get [_ key default] (get children key default))
+          (-set [this key value] (-set-assoc-children this key value))
+
           RegexSchema
           (-regex [_] (re properties (map -into-regex children)))
           (-explainer-regex [_ path]
@@ -1120,12 +1120,14 @@
           (-options [_] options)
           (-children [_] children)
           (-form [_] form)
+
           LensSchema
-          (-keep [_])
-          (-get [_ key default] (if (= key 0) child default))
-          (-set [this key value] (if (= key 0)
-                                   (into-schema type properties [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+          (-keep [_] true)
+          (-get [_ key default]
+            (or (some (fn [[k c]] (when (= k key) c)) children)
+                default))
+          (-set [this key value] (-set-entries this key value))
+
           RegexSchema
           (-regex [_] (re properties (map (fn [[k s]] [k (-into-regex s)]) children)))
           (-explainer-regex [_ path]

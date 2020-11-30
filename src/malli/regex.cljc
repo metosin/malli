@@ -480,6 +480,9 @@
                        (when (and coll (arg (first coll)))
                          (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
                        (recur (inc i)))
+                end (if coll
+                      (recur (inc i))
+                      matches)
                 #_"add-thread! makes other opcodes impossible at this point"))
             matches)))))
 

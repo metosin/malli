@@ -174,7 +174,7 @@
   #{:label :jump :fork> :fork<})
 
 (def ^:private op->opcode
-  (zipmap (conj label-ops :pred :save0 :save1) (range)))
+  (zipmap (conj label-ops :pred :explain :save0 :save1) (range)))
 
 (defmacro ^:private asm [& exprs]
   (let [gen (gensym 'gen)
@@ -260,6 +260,8 @@
     save0 pred-frame
     pred pred
     save1 anonymous))
+
+(defn explain-item [explainer] (asm explain explainer))
 
 (deftype ^:private CatFrame [children, ^long start]
   MatchFrame
@@ -457,7 +459,7 @@
           save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
           save1 (recur pos buf state (inc pc) (save1 matches (aget args pc) buf pos))
 
-          pred (fork! state pc matches)))
+          (pred explain) (fork! state pc matches)))
 
       (= pc (alength opcodes)) (fork! state pc matches)
 
@@ -484,7 +486,6 @@
 (deftype ^:private ExplanatoryVM [^PikeVM super, path, in, -error, ^:unsynchronized-mutable errors]
   VM
   (clear_visited [_] (.clear_visited super))
-
   (add_thread [_ pos buf state pc matches] (.add_thread super pos buf state pc matches))
 
   (match_item [self pos coll buf state state*]
@@ -498,13 +499,13 @@
                   arg (aget ^"[Ljava.lang.Object;" (.-args super) pc)
                   in (conj in pos)]
               (opcode-case opcode
-                pred (if coll
-                       (let [errors** (arg (first coll) in errors*)]
-                         (when (identical? errors** errors*)
-                           (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
-                         (recur (inc i) errors**))
-                       (recur (inc i)
-                              (conj errors* (-error path in #_FIXME/arg arg nil ::end-of-input))))
+                explain (if coll
+                          (let [errors** (arg (first coll) in errors*)]
+                            (when (identical? errors** errors*)
+                              (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
+                            (recur (inc i) errors**))
+                          (recur (inc i)
+                                 (conj errors* (-error path in #_FIXME/arg arg nil ::end-of-input))))
                 #_"add-thread! makes other opcodes impossible at this point"))
             matches))
         (do (set! errors errors*) nil))))
@@ -550,5 +551,7 @@
     (fn [x]
       (and (sequential? x)
            (exec-tree-automaton automaton x)))))
+
+;;; TODO: Non-regex and nested destructuring
 
 (defn parse [re coll] ((parser re) coll))

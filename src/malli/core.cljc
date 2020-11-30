@@ -265,7 +265,9 @@
     :else (re/is (-validator x))))
 
 (defn -into-explainer-regex [x path]
-  (if (satisfies? RegexSchema x) (-explainer-regex x path) (re/is (-explainer x path))))
+  (if (satisfies? RegexSchema x)
+    (-explainer-regex x path)
+    (re/explain-item (-explainer x path))))
 
 ;;
 ;; Protocol Cache

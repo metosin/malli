@@ -261,7 +261,9 @@
     pred pred
     save1 anonymous))
 
-(defn explain-item [explainer] (asm explain explainer))
+(deftype ^:private Eczema [explain schema])
+
+(defn explain-item [schema explainer] (asm explain (Eczema. explainer schema)))
 
 (deftype ^:private CatFrame [children, ^long start]
   MatchFrame
@@ -500,15 +502,13 @@
                   in (conj in pos)]
               (opcode-case opcode
                 explain (if coll
-                          (let [errors** (arg (first coll) in errors*)]
+                          (let [errors** ((.-explain ^Eczema arg) (first coll) in errors*)]
                             (when (identical? errors** errors*)
                               (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
                             (recur (inc i) errors**))
-                          (recur (inc i)
-                                 (conj errors* (-error path in #_FIXME/arg arg nil ::end-of-input))))
+                          (recur (inc i) (conj errors* (-error path in (.-schema ^Eczema arg) nil ::end-of-input))))
                 end (if coll
-                      (recur (inc i)
-                             (conj errors* (-error path in #_FIXME/arg arg (first coll) ::input-remaining)))
+                      (recur (inc i) (conj errors* (-error path in arg coll ::input-remaining)))
                       matches)
                 #_"add-thread! makes other opcodes impossible at this point"))
             matches))

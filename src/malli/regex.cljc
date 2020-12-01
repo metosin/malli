@@ -1,5 +1,6 @@
 (ns malli.regex
   (:refer-clojure :exclude #_[fn cat repeat ? * +] [+ * repeat cat compile])
+  (:require [malli.regex.macros :refer [op->opcode label-ops asm opcode-case]])
   #?(:clj (:import [clojure.lang MapEntry]
                    [java.util Arrays])))
 
@@ -169,29 +170,6 @@
 
 ;;;; Compiler
 
-(def ^:private label-ops
-  #{:label :jump :fork> :fork<})
-
-(def ^:private op->opcode
-  (zipmap (conj label-ops :pred :explain :end :save0 :save1) (range)))
-
-(defmacro asm [& exprs]
-  (let [gen (gensym 'gen)
-        exprs (partition 2 exprs)]
-    `(let [~gen (memoize gensym)]
-       (concat
-         ~@(map
-             (fn [[op arg]]
-               (let [op (keyword op)]
-                 (if (contains? op->opcode op)
-                   [op (if (contains? label-ops op)
-                         `(~gen ~(keyword arg))
-                         arg)]
-                   (do
-                     (assert (= op :include))
-                     arg))))
-             exprs)))))
-
 (defn- patch
   "Resolve labels to offsets.
   (idempotent)"
@@ -356,16 +334,6 @@
     :else (asm)))
 
 ;;;; Pike VM
-
-(defmacro ^:private opcode-case [op & body]
-  (letfn [(convert-pat [pat]
-            (if (symbol? pat)
-              (doto (get op->opcode (keyword pat)) assert)
-              (map convert-pat pat)))]
-    `(case ~op
-       ~@(->> body
-              (partition 2)
-              (mapcat (fn [[pat expr]] [(convert-pat pat) expr]))))))
 
 (defn- make-bitset ^bytes [max-val]
   (byte-array (quot (dec (clojure.core/+ max-val 8)) 8)))

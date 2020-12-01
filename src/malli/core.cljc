@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
             [malli.regex :as re]
+            [malli.regex.macros :as rem]
             [malli.registry :as mr]
             [clojure.string :as str])
   #?(:clj (:import (java.util.regex Pattern)
@@ -1048,13 +1049,13 @@
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn- regex-validator [schema]
-  (let [automaton (re/compile (re/asm
+  (let [automaton (re/compile (rem/asm
                                 include (-regex schema)
                                 end schema))]
     (fn [x] (and (sequential? x) (re/exec-recognizer automaton x)))))
 
 (defn- regex-explainer [schema path]
-  (let [automaton (re/compile (re/asm
+  (let [automaton (re/compile (rem/asm
                                 include (-explainer-regex schema path)
                                 end schema))]
     (fn [x in acc]

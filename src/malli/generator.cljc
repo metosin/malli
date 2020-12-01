@@ -213,6 +213,8 @@
 (defmethod -schema-generator :alt [schema options] (-alt-gen schema options))
 (defmethod -schema-generator :alt* [schema options] (-alt-gen schema options))
 
+(defmethod -schema-generator :nested [schema options] (generator (first (m/children schema options)) options))
+
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (merge (m/type-properties schema) (m/properties schema))
         gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))

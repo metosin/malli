@@ -1135,6 +1135,43 @@
             (re properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
                                 children))))))))
 
+(defn -nested-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (-check-children! :nested properties children {:min 1, :max 1})
+      (let [[schema :as children] (map #(schema % options) children)
+            form (-create-form :nested properties (map -form children))]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] :nested)
+          (-type-properties [_])
+          (-validator [_]
+            (let [validator' (regex-validator schema)]
+              (fn [x] (or (nil? x) (validator' x)))))
+          (-explainer [_ path]
+            (let [explainer' (regex-explainer schema (conj path 0))]
+              (fn explain [x in acc]
+                (if (nil? x) acc (explainer' x in acc)))))
+          (-transformer [this transformer method options]
+            (-parent-children-transformer this children transformer method options))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] (-nested-schema))
+          (-form [_] form)
+
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (if (= 0 key) schema default))
+          (-set [this key value] (if (= 0 key)
+                                   (-set-children this [value])
+                                   (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
+
 ;;
 ;; public api
 ;;
@@ -1424,7 +1461,8 @@
    :alt (-sequence-schema {:type :alt, :re (fn [_ children] (apply re/alt children))})
    :cat (-sequence-schema {:type :cat, :re (fn [_ children] (apply re/cat children))})
    :cat* (-sequence-entry-schema {:type :cat*, :re (fn [_ children] (apply re/cat children))})
-   :alt* (-sequence-entry-schema {:type :alt*, :re (fn [_ children] (apply re/alt children))})})
+   :alt* (-sequence-entry-schema {:type :alt*, :re (fn [_ children] (apply re/alt children))})
+   :nested (-nested-schema)})
 
 (defn base-schemas []
   {:and (-and-schema)

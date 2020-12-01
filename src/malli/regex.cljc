@@ -7,8 +7,6 @@
                    [clojure.lang MapEntry APersistentVector]
                    [java.util Arrays])))
 
-;;; TODO: clojure.spec.alpha/spec equivalent
-
 #_(
    (defprotocol RegexSchema
      (-matcher [_]))

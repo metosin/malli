@@ -31,7 +31,7 @@
 
 (defn- codegen [instructions]
   (let [inst-count (quot (count instructions) 2)
-        bytecodes (byte-array inst-count)
+        bytecodes (#?(:clj byte-array, :cljs make-array) inst-count)
         args (object-array inst-count)]
     (loop [pc 0, [op arg & rinsts] instructions]
       (if (< pc inst-count)

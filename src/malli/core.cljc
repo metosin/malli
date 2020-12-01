@@ -1,11 +1,11 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
+  #?(:cljs (:require-macros [malli.regex.macros :as rem]))
   (:require [malli.sci :as ms]
             [malli.regex :as re]
             [malli.regex.compiler :as rec]
-            [malli.regex.macros :as rem]
-            [malli.registry :as mr]
-            [clojure.string :as str])
+            #?(:clj [malli.regex.macros :as rem])
+            [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang IDeref MapEntry))))
 
@@ -131,9 +131,6 @@
      #(loop [ret ((first fs) %), fs (next fs)] (if fs (recur ((first fs) ret) (next fs)) ret)))))
 
 (defn -update [m k f] (assoc m k (f (get m k))))
-
-(defn -lazy [ref options]
-  (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))

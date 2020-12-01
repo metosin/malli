@@ -1,9 +1,10 @@
 (ns malli.regex
   (:refer-clojure :exclude #_[fn cat repeat ? * +] [+ * repeat cat compile])
+  #?(:cljs (:require-macros [malli.regex.macros :refer [asm opcode-case]]))
   (:require [malli.regex.compiler :refer [compile]]
-            [malli.regex.macros :refer [asm opcode-case]])
+            #?(:clj [malli.regex.macros :refer [asm opcode-case]]))
   #?(:clj (:import [malli.regex.compiler CompiledPattern]
-                   [clojure.lang MapEntry]
+                   [clojure.lang MapEntry APersistentVector]
                    [java.util Arrays])))
 
 ;;; TODO: clojure.spec.alpha/spec equivalent
@@ -174,8 +175,7 @@
 
 (def ^:private anonymous (object-array 0))
 
-(defn -tagged [k v]
-  #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
+(defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
 
 (defprotocol ^:private MatchFrame
   (-add-match [self k v])
@@ -299,22 +299,26 @@
 
 ;;;; Pike VM
 
-(defn- make-bitset ^bytes [max-val]
-  (byte-array (quot (dec (clojure.core/+ max-val 8)) 8)))
+(def ^:private +int-bitwidth+ 32)
 
-(defn- clear-bitset! [^bytes set] (Arrays/fill set (byte 0)))
+(defn- make-bitset ^ints [max-val]
+  (int-array (quot (dec (clojure.core/+ max-val +int-bitwidth+)) +int-bitwidth+)))
 
-(defn- bitset-set! [^bytes set, ^long v]
-  (let [byte-index (quot v 8)
-        bit-index (rem v 8)]
-    (aset set byte-index (unchecked-byte (bit-or (aget set byte-index)
-                                                 (bit-shift-left 1 bit-index))))
+(defn- clear-bitset! [^ints set]
+  #?(:clj  (Arrays/fill set (byte 0))
+     :cljs (.fill set 0)))
+
+(defn- bitset-set! [^ints set, ^long v]
+  (let [coarse-index (quot v +int-bitwidth+)
+        bit-index (rem v +int-bitwidth+)]
+    (aset set coarse-index (unchecked-int (bit-or (aget set coarse-index)
+                                                  (bit-shift-left 1 bit-index))))
     nil))
 
-(defn- bitset-contains? [^bytes set, ^long v]
-  (let [byte-index (quot v 8)
-        bit-index (rem v 8)]
-    (= (bit-and (bit-shift-right (aget set byte-index) bit-index)
+(defn- bitset-contains? [^ints set, ^long v]
+  (let [coarse-index (quot v +int-bitwidth+)
+        bit-index (rem v +int-bitwidth+)]
+    (= (bit-and (bit-shift-right (aget set coarse-index) bit-index)
                 1)
        1)))
 
@@ -333,7 +337,7 @@
 (def ^:private sink-bank-fail (SinkBank. nil))
 
 (extend-protocol RegisterBank
-  clojure.lang.APersistentVector
+  APersistentVector
   (save0 [stack ->frame start] (conj stack (->frame start)))
   (save1 [stack k buf _]
     ;; 'return' `node`:
@@ -349,7 +353,8 @@
   (fork! [state pc matches])
   (truncate! [state]))
 
-(deftype ^:private VMState [^:unsynchronized-mutable ^long nthreads pcs matchess]
+(deftype ^:private VMState [#?(:clj ^:unsynchronized-mutable ^long nthreads, :cljs ^:mutable nthreads)
+                            pcs matchess]
   IVMState
   (thread-count [_] nthreads)
 
@@ -361,11 +366,11 @@
 
   (truncate! [_] (set! nthreads 0)))
 
-(definterface ^:private VM
-  (clear_visited [])
-  (match_item [^long pos, coll, buf, ^malli.regex.VMState state, ^malli.regex.VMState state*])
-  (add_thread [^long pos, buf, ^malli.regex.VMState state, ^long pc, matches])
-  (final_errors []))
+(#?(:clj definterface, :cljs defprotocol) ^:private VM
+  (clear_visited [#?@(:cljs [vm])])
+  (match_item [#?@(:cljs [vm]) ^long pos, coll, buf, ^malli.regex.VMState state, ^malli.regex.VMState state*])
+  (add_thread [#?@(:cljs [vm]) ^long pos, buf, ^malli.regex.VMState state, ^long pc, matches])
+  (final_errors [#?@(:cljs [vm])]))
 
 (defn- add-thread! [^VM vm pos buf state pc matches]
   (.clear_visited vm)
@@ -419,7 +424,8 @@
 
   (final_errors [_] nil))
 
-(deftype ^:private ExplanatoryVM [^PikeVM super, path, in, -error, ^:unsynchronized-mutable errors]
+(deftype ^:private ExplanatoryVM [^PikeVM super, path, in, -error
+                                  #?(:clj ^:unsynchronized-mutable errors, :cljs ^:mutable errors)]
   VM
   (clear_visited [_] (.clear_visited super))
   (add_thread [_ pos buf state pc matches] (.add_thread super pos buf state pc matches))

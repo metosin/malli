@@ -3,7 +3,6 @@
   #?(:clj (:import [clojure.lang MapEntry]
                    [java.util Arrays])))
 
-;;; FIXME: Check that entire seq is consumed
 ;;; TODO: clojure.spec.alpha/spec equivalent
 
 #_(

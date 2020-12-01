@@ -1,10 +1,5 @@
-(ns malli.regex.macros)
-
-(def label-ops
-  #{:label :jump :fork> :fork<})
-
-(def op->opcode
-  (zipmap (conj label-ops :pred :explain :end :save0 :save1) (range)))
+(ns malli.regex.macros
+  (:require [malli.regex.compiler :refer [op->opcode label-ops]]))
 
 (defmacro asm [& exprs]
   (let [gen (gensym 'gen)

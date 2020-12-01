@@ -1075,6 +1075,7 @@
         (reify
           Schema
           (-type [_] type)
+          (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
           (-transformer [this transformer method options]
@@ -1109,6 +1110,7 @@
         (reify
           Schema
           (-type [_] type)
+          (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
           (-transformer [this transformer method options]
@@ -1417,6 +1419,7 @@
   {:+ (-sequence-schema {:type :+, :re (fn [_ [child]] (re/+ child))})
    :* (-sequence-schema {:type :*, :re (fn [_ [child]] (re/* child))})
    :? (-sequence-schema {:type :?, :re (fn [_ [child]] (re/? child))})
+   ;; FIXME: ##Inf blows up:
    :repeat (-sequence-schema {:type :repeat, :re (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                                    (re/repeat min max child))})
    :alt (-sequence-schema {:type :alt, :re (fn [_ children] (apply re/alt children))})

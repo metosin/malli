@@ -114,6 +114,42 @@
             (generate output-generator options)))
         {:arity (-> schema m/-arity)}))))
 
+;;; FIXME: recursion limits in seqexp schemas:
+
+(defn -regex-generator [schema options]
+  (if (satisfies? m/RegexSchema schema)
+    (generator schema options)
+    (gen/fmap vector (generator schema options))))
+
+(defn -?-gen [schema options]
+  (let [child (m/-get schema 0 nil)]
+    (if (satisfies? m/RegexSchema child)
+      (gen/one-of [(gen/return ()) (generator child options)])
+      (gen/vector (generator child options) 0 1))))
+
+(defn -*-gen [schema options]
+  (let [child (m/-get schema 0 nil)]
+    (if (satisfies? m/RegexSchema child)
+      (gen/fmap #(mapcat identity %) (gen/vector (generator child options)))
+      (gen/vector (generator child options)))))
+
+(defn -repeat-gen [schema options]
+  (let [child (m/-get schema 0 nil)]
+    (if (satisfies? m/RegexSchema child)
+      (gen/fmap #(mapcat identity %) (-coll-gen schema identity options))
+      (-coll-gen schema identity options))))
+
+(defn -cat-gen [schema options]
+  (->> (m/children schema options)
+       (mapv (fn [c] (-regex-generator (if (vector? c) (second c) c) options)))
+       (apply gen/tuple)
+       (gen/fmap #(mapcat identity %))))
+
+(defn -alt-gen [schema options]
+  (gen/one-of (sequence (comp (map (fn [c] (if (vector? c) (second c) c)))
+                              (keep #(some->> (-maybe-recur % options) (-regex-generator %))))
+                        (m/children schema options))))
+
 ;;
 ;; generators
 ;;
@@ -166,6 +202,16 @@
 (defmethod -schema-generator :merge [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :union [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :select-keys [schema options] (generator (m/deref schema) options))
+
+(defmethod -schema-generator :? [schema options] (-?-gen schema options))
+(defmethod -schema-generator :* [schema options] (-*-gen schema options))
+(defmethod -schema-generator :+ [schema options] (gen/not-empty (-*-gen schema options)))
+(defmethod -schema-generator :repeat [schema options] (-repeat-gen schema options))
+
+(defmethod -schema-generator :cat [schema options] (-cat-gen schema options))
+(defmethod -schema-generator :cat* [schema options] (-cat-gen schema options))
+(defmethod -schema-generator :alt [schema options] (-alt-gen schema options))
+(defmethod -schema-generator :alt* [schema options] (-alt-gen schema options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (merge (m/type-properties schema) (m/properties schema))

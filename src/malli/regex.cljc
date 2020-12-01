@@ -373,8 +373,8 @@
   (final_errors [#?@(:cljs [vm])]))
 
 (defn- add-thread! [^VM vm pos buf state pc matches]
-  (.clear_visited vm)
-  (.add_thread vm pos buf state pc matches))
+  (#?(:clj .clear_visited, :cljs clear_visited) vm)
+  (#?(:clj .add_thread, :cljs add_thread) vm pos buf state pc matches))
 
 (deftype ^:private PikeVM [^bytes opcodes, ^"[Ljava.lang.Object;" args, visited]
   VM
@@ -388,10 +388,10 @@
         (opcode-case (aget opcodes pc)
           jump (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
           fork> (do
-                  (.add_thread self pos buf state (inc pc) matches)
+                  (#?(:clj .add_thread, :cljs add_thread) self pos buf state (inc pc) matches)
                   (recur pos buf state (clojure.core/+ pc (long (aget args pc))) matches))
           fork< (do
-                  (.add_thread self pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
+                  (#?(:clj .add_thread, :cljs add_thread) self pos buf state (clojure.core/+ pc (long (aget args pc))) matches)
                   (recur pos buf state (inc pc) matches))
 
           save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
@@ -427,8 +427,9 @@
 (deftype ^:private ExplanatoryVM [^PikeVM super, path, in, -error
                                   #?(:clj ^:unsynchronized-mutable errors, :cljs ^:mutable errors)]
   VM
-  (clear_visited [_] (.clear_visited super))
-  (add_thread [_ pos buf state pc matches] (.add_thread super pos buf state pc matches))
+  (clear_visited [_] (#?(:clj .clear_visited, :cljs clear_visited) super))
+  (add_thread [_ pos buf state pc matches]
+    (#?(:clj .add_thread, :cljs add_thread) super pos buf state pc matches))
 
   (match_item [self pos coll buf state state*]
     (loop [i 0, errors* []]
@@ -470,14 +471,14 @@
         state* (VMState. 0 (long-array inst-count) (object-array inst-count))]
     (add-thread! vm 0 () state 0 registers)
     (loop [pos 0, coll (seq coll0), buf (), state state, state* state*, longest nil]
-      (let [longest (or (.match_item vm pos coll buf state state*) longest)]
+      (let [longest (or (#?(:clj .match_item, :cljs match_item) vm pos coll buf state state*) longest)]
         (if (and (> (thread-count state*) 0) coll)
           (do
             (truncate! state)
             (recur (inc pos) (next coll) (conj buf (first coll)) state* state longest))
           (if longest
             (fetch longest buf (or coll ()))
-            (.final_errors vm)))))))
+            (#?(:clj .final_errors, :cljs final_errors) vm)))))))
 
 (defn exec-recognizer [automaton coll]
   (boolean (exec-automaton* automaton (->vm automaton) coll sink-bank-succ)))

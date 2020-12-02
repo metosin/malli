@@ -4,7 +4,7 @@
   (:require [malli.regex.compiler :refer [compile]]
             #?(:clj [malli.regex.macros :refer [asm opcode-case]]))
   #?(:clj (:import [malli.regex.compiler CompiledPattern]
-                   [clojure.lang MapEntry APersistentVector]
+                   [clojure.lang MapEntry PersistentList]
                    [java.util Arrays])))
 
 #_(
@@ -335,7 +335,7 @@
 (def ^:private sink-bank-fail (SinkBank. nil))
 
 (extend-protocol RegisterBank
-  APersistentVector
+  #?(:clj PersistentList, :cljs List)
   (save0 [stack ->frame start] (conj stack (->frame start)))
   (save1 [stack k buf _]
     ;; 'return' `node`:
@@ -343,7 +343,7 @@
           node (-children callee-frame k buf)
           stack (pop stack)]
       ;; Update 'caller' state:
-      (update stack (dec (count stack)) -add-match k node)))
+      (conj (pop stack) (-add-match (peek stack) k node))))
   (fetch [stack buf _] (-children (peek stack) nil buf)))
 
 (defprotocol ^:private IVMState
@@ -485,7 +485,7 @@
   (exec-automaton* automaton (->explanatory-vm automaton path in -error) coll sink-bank-fail))
 
 (defn exec-tree-automaton [automaton coll]
-  (exec-automaton* automaton (->vm automaton) coll [(start-frame 0)]))
+  (exec-automaton* automaton (->vm automaton) coll (list (start-frame 0))))
 
 ;;;; Malli APIs
 

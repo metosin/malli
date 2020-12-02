@@ -1077,6 +1077,7 @@
           (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
+          ;; FIXME:
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1112,6 +1113,7 @@
           (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
+          ;; FIXME:
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1462,6 +1464,7 @@
    :cat (-sequence-schema {:type :cat, :re (fn [_ children] (apply re/cat children))})
    :cat* (-sequence-entry-schema {:type :cat*, :re (fn [_ children] (apply re/cat children))})
    :alt* (-sequence-entry-schema {:type :alt*, :re (fn [_ children] (apply re/alt children))})
+
    :nested (-nested-schema)})
 
 (defn base-schemas []

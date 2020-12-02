@@ -908,15 +908,19 @@
                    child-transformers (reduce-kv
                                         (fn [acc k s] (assoc acc k (-transformer s transformer method options)))
                                         {} dispatch-map)
-                   build (fn [phase]
+                   build (fn [phase ->dispatch]
                            (let [->this (phase this-transformer)
                                  ->children (->> child-transformers
                                                  (keep (fn [[k v]] (if-let [t (phase v)] [k t])))
                                                  (into {}))
-                                 ->child (if (seq ->children) (fn [x] (if-let [t (->children (dispatch x))] (t x) x)))]
-                             (-chain phase [->this ->child])))]
-               {:enter (build :enter)
-                :leave (build :leave)}))
+                                 ->child (if (seq ->children)
+                                           (fn [[x k]]
+                                             (if-let [t (->children k)]
+                                               [(t x) k]
+                                               [x k])))]
+                             (-chain phase [->this ->dispatch ->child])))]
+               {:enter (build :enter (juxt identity dispatch))
+                :leave (build :leave first)}))
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))

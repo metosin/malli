@@ -731,6 +731,15 @@
                 [:math [:map [:type keyword?] [:x [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]]]
                {:type :math, :x 1} mt/string-transformer)))
 
+      (is (= {:type "s", :encoded true}
+             (m/encode
+              [:multi
+               {:dispatch :type}
+               [:sized [:map {:encode/string {:leave #(assoc % :encoded true)}}
+                        [:type [:keyword {:encode/string (constantly "s")}]]]]]
+              {:type :sized}
+              mt/string-transformer)))
+
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
       (is (= {:type :multi

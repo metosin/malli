@@ -192,3 +192,11 @@
                  [:=> [:tuple int?] int?]
                  [:=> [:tuple int? int? int?] int?]]]
          (is (every? (comp #{1 3} :arity meta) (mg/sample => {:size 1000})))))))
+
+(deftest recursive-schema-generation-test-307
+  (let [sample (mg/generate [:schema {:registry {::A
+                                                 [:tuple
+                                                  [:= ::a]
+                                                  [:vector {:gen/min 2, :gen/max 2} [:ref ::A]]]}}
+                             ::A] {:size 1, :seed 1})]
+    (is (-> sample flatten count (> 1)))))

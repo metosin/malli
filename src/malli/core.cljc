@@ -56,7 +56,9 @@
 
 (defprotocol RegexSchema
   (-regex [this] "returns the regex")
-  (-explainer-regex [this path]))
+  (-explainer-regex [this path])
+  (-encoder-regex [this transformer method options])
+  (-decoder-regex [this transformer method options]))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -267,6 +269,16 @@
   (if (satisfies? RegexSchema x)
     (-explainer-regex x path)
     (re/explain-item x (-explainer x path))))
+
+(defn -into-encoder-regex [x transformer method options]
+  (if (satisfies? RegexSchema x)
+    (-encoder-regex x transformer method options)
+    (re/item-transformer (-validator x) (-transformer x transformer method options))))
+
+(defn -into-decoder-regex [x transformer method options]
+  (if (satisfies? RegexSchema x)
+    (-decoder-regex x transformer method options)
+    (re/decoded-item (-transformer x transformer method options) (-validator x))))
 
 ;;
 ;; Protocol Cache
@@ -1063,6 +1075,39 @@
           acc)
         (conj acc (-error path in schema x ::invalid-type))))))
 
+(defn- regex-transformer [schema transformer method options]
+  (let [this-transformer (-value-transformer transformer schema method options)]
+    (if (= method :encode)
+      (let [automaton (rec/compile (rem/asm
+                                     include (-encoder-regex schema transformer method options)
+                                     end schema))]
+        {:enter (fn [coll]
+                  (let [coll (if-some [enter (:enter this-transformer)] (enter coll) coll)
+                        ts (re/exec-transformer-assignment automaton coll)]
+                    (if ts
+                      [(map (fn [{:keys [enter]} v] (if enter (enter v) v)) ts coll) ts]
+                      [coll])))
+         :leave (fn [[coll ts]]
+                  (if ts
+                    (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
+                    coll))})
+      (let [automaton (rec/compile (rem/asm
+                                     include (-decoder-regex schema transformer method options)
+                                     end schema))]
+        {:enter (fn [coll]
+                  (let [vts (re/exec-transformer-assignment automaton coll)]
+                    (if vts
+                      ;; OPTIMIZE:
+                      (let [[vs ts] (reduce (fn [[vs ts] [v t]] [(conj! vs v) (conj! ts t)])
+                                            [(transient []) (transient [])] vts)]
+                        [(persistent! vs) (persistent! ts)])
+                      [coll])))
+         :leave (fn [[coll ts]]
+                  (let [coll (if ts
+                               (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
+                               coll)]
+                    (if-some [leave (:leave this-transformer)] (leave coll) coll)))}))))
+
 (defn -sequence-schema [{:keys [type re]}]
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -1077,9 +1122,7 @@
           (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
-          ;; FIXME:
-          (-transformer [this transformer method options]
-            (-parent-children-transformer this children transformer method options))
+          (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path [(-inner walker child path options)] options)))
@@ -1097,7 +1140,11 @@
           (-regex [_] (re properties (map -into-regex children)))
           (-explainer-regex [_ path]
             (re properties (map-indexed (fn [i s] (-into-explainer-regex s (conj path i)))
-                                        children))))))))
+                                        children)))
+          (-encoder-regex [_ transformer method options]
+            (re properties (map #(-into-encoder-regex % transformer method options) children)))
+          (-decoder-regex [_ transformer method options]
+            (re properties (map #(-into-decoder-regex % transformer method options) children))))))))
 
 (defn -sequence-entry-schema [{:keys [type re]}]
   ^{:type ::into-schema}
@@ -1113,9 +1160,7 @@
           (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
-          ;; FIXME:
-          (-transformer [this transformer method options]
-            (-parent-children-transformer this children transformer method options))
+          (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path [(-inner walker child path options)] options)))
@@ -1135,6 +1180,12 @@
           (-regex [_] (re properties (map (fn [[k s]] [k (-into-regex s)]) children)))
           (-explainer-regex [_ path]
             (re properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
+                                children)))
+          (-encoder-regex [_ transformer method options]
+            (re properties (map (fn [[k s]] [k (-into-encoder-regex s transformer method options)])
+                                children)))
+          (-decoder-regex [_ transformer method options]
+            (re properties (map (fn [[k s]] [k (-into-decoder-regex s transformer method options)])
                                 children))))))))
 
 (defn -nested-schema []

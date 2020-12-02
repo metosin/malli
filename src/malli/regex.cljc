@@ -4,7 +4,7 @@
   (:require [malli.regex.compiler :refer [compile]]
             #?(:clj [malli.regex.macros :refer [asm opcode-case]]))
   #?(:clj (:import [malli.regex.compiler CompiledPattern]
-                   [clojure.lang MapEntry PersistentList]
+                   [clojure.lang MapEntry PersistentList APersistentVector]
                    [java.util Arrays])))
 
 #_(
@@ -204,6 +204,14 @@
 
 (defn explain-item [schema explainer] (asm explain (Eczema. explainer schema)))
 
+(deftype ^:private GuardedTransformer [validate transformer])
+
+(defn item-transformer [validator transformer]
+  (asm encoder (GuardedTransformer. validator transformer)))
+
+(defn decoded-item [transformer validator]
+  (asm decode (GuardedTransformer. validator transformer)))
+
 (deftype ^:private CatFrame [children, ^long start]
   MatchFrame
   (-add-match [_ k v] (CatFrame. (assoc children k v) start))
@@ -344,7 +352,12 @@
           stack (pop stack)]
       ;; Update 'caller' state:
       (conj (pop stack) (-add-match (peek stack) k node))))
-  (fetch [stack buf _] (-children (peek stack) nil buf)))
+  (fetch [stack buf _] (-children (peek stack) nil buf))
+
+  APersistentVector
+  (save0 [self _ _] self)
+  (save1 [self _ _ _] self)
+  (fetch [self _ _] self))
 
 (defprotocol ^:private IVMState
   (thread-count [state])
@@ -395,7 +408,7 @@
           save0 (recur pos buf state (inc pc) (save0 matches (aget args pc) pos))
           save1 (recur pos buf state (inc pc) (save1 matches (aget args pc) buf pos))
 
-          (pred explain end) (fork! state pc matches)))
+          (pred explain encoder decode end) (fork! state pc matches)))
 
       (= pc (alength opcodes)) (fork! state pc matches)
 
@@ -414,6 +427,20 @@
                        (when (and coll (arg (first coll)))
                          (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc) matches))
                        (recur (inc i)))
+                encoder (let [^GuardedTransformer arg arg]
+                          (when (and coll ((.-validate arg) (first coll)))
+                            (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc)
+                                         (conj matches (.-transformer arg))))
+                          (recur (inc i)))
+                decode (let [^GuardedTransformer arg arg]
+                         (when coll
+                           (let [v (if-some [enter (:enter (.-transformer arg))]
+                                     (enter (first coll))
+                                     (first coll))]
+                             (when ((.-validate arg) v)
+                               (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc)
+                                            (conj matches [v (.-transformer arg)]))))) ; OPTIMIZE
+                         (recur (inc i)))
                 end (if coll
                       (recur (inc i))
                       matches)
@@ -483,6 +510,9 @@
 
 (defn exec-explainer [automaton path coll in -error]
   (exec-automaton* automaton (->explanatory-vm automaton path in -error) coll sink-bank-fail))
+
+(defn exec-transformer-assignment [automaton coll]
+  (exec-automaton* automaton (->vm automaton) coll []))
 
 (defn exec-tree-automaton [automaton coll]
   (exec-automaton* automaton (->vm automaton) coll (list (start-frame 0))))

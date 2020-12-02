@@ -5,7 +5,7 @@
   #{:label :jump :fork> :fork<})
 
 (def op->opcode
-  (zipmap (conj label-ops :pred :explain :end :save0 :save1) (range)))
+  (zipmap (conj label-ops :pred :explain :encoder :decode :end :save0 :save1) (range)))
 
 (defn- patch
   "Resolve labels to offsets.

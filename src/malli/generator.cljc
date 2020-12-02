@@ -16,10 +16,10 @@
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
-(defn -recur [schema {::keys [recursion-limit] :or {recursion-limit 4} :as options}]
+(defn -recur [schema {::keys [recursion recursion-limit] :or {recursion-limit 4} :as options}]
   (let [form (m/form schema)
-        i (get-in options [::recursion form] 0)]
-    [(<= i recursion-limit) (assoc-in options [::recursion form] (inc i))]))
+        i (get recursion form 0)]
+    [(<= i recursion-limit) (update options ::recursion assoc form (inc i))]))
 
 (defn -maybe-recur [schema options]
   (let [[recur options] (-recur schema options)]
@@ -49,8 +49,7 @@
   (let [{:keys [min max]} (-min-max schema options)
         [continue options] (-recur schema options)
         child (-> schema m/children first)
-        gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
-              (generator child options))]
+        gen (if continue (generator child options))]
     (gen/fmap f (cond
                   (not gen) (gen/vector gen/any 0 0)
                   (and min (= min max)) (gen/vector gen min)

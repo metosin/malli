@@ -305,7 +305,7 @@
 
 ;;;; Pike VM
 
-(def ^:private +int-bitwidth+ 32)
+(def ^:private ^:const +int-bitwidth+ 32)
 
 (defn- make-bitset ^ints [max-val]
   (int-array (quot (dec (clojure.core/+ max-val +int-bitwidth+)) +int-bitwidth+)))

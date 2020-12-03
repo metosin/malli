@@ -1076,26 +1076,29 @@
         (conj acc (-error path in schema x ::invalid-type))))))
 
 (defn- regex-transformer [schema transformer method options]
-  (let [this-transformer (-value-transformer transformer schema method options)]
+  (let [this-transformer (-value-transformer transformer schema method options)
+        enter-this (or (:enter this-transformer) identity)
+        leave-this (or (:leave this-transformer) identity)]
     (if (= method :encode)
       (let [automaton (rec/compile (rem/asm
                                      include (-encoder-regex schema transformer method options)
                                      end schema))]
         {:enter (fn [coll]
-                  (let [coll (if-some [enter (:enter this-transformer)] (enter coll) coll)
+                  (let [coll (enter-this coll)
                         ts (re/exec-transformer-assignment automaton coll)]
                     (if ts
                       [(map (fn [{:keys [enter]} v] (if enter (enter v) v)) ts coll) ts]
                       [coll])))
          :leave (fn [[coll ts]]
-                  (if ts
-                    (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
-                    coll))})
+                  (leave-this (if ts
+                                (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
+                                coll)))})
       (let [automaton (rec/compile (rem/asm
                                      include (-decoder-regex schema transformer method options)
                                      end schema))]
         {:enter (fn [coll]
-                  (let [vts (re/exec-transformer-assignment automaton coll)]
+                  (let [coll (enter-this coll)
+                        vts (re/exec-transformer-assignment automaton coll)]
                     (if vts
                       ;; OPTIMIZE:
                       (let [[vs ts] (reduce (fn [[vs ts] [v t]] [(conj! vs v) (conj! ts t)])
@@ -1103,10 +1106,9 @@
                         [(persistent! vs) (persistent! ts)])
                       [coll])))
          :leave (fn [[coll ts]]
-                  (let [coll (if ts
-                               (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
-                               coll)]
-                    (if-some [leave (:leave this-transformer)] (leave coll) coll)))}))))
+                  (leave-this (if ts
+                                (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
+                                coll)))}))))
 
 (defn -sequence-schema [{:keys [type re]}]
   ^{:type ::into-schema}

@@ -9,8 +9,6 @@
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang IDeref MapEntry))))
 
-(declare ->regex)
-
 ;;
 ;; protocols and records
 ;;
@@ -57,8 +55,7 @@
 (defprotocol RegexSchema
   (-regex [this] "returns the regex")
   (-explainer-regex [this path])
-  (-encoder-regex [this transformer method options])
-  (-decoder-regex [this transformer method options]))
+  (-transformer-regex [this transformer method options]))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -270,15 +267,12 @@
     (-explainer-regex x path)
     (re/explain-item x (-explainer x path))))
 
-(defn -into-encoder-regex [x transformer method options]
+(defn -into-transformer-regex [x transformer method options]
   (if (satisfies? RegexSchema x)
-    (-encoder-regex x transformer method options)
-    (re/item-transformer (-validator x) (-transformer x transformer method options))))
-
-(defn -into-decoder-regex [x transformer method options]
-  (if (satisfies? RegexSchema x)
-    (-decoder-regex x transformer method options)
-    (re/decoded-item (-transformer x transformer method options) (-validator x))))
+    (-transformer-regex x transformer method options)
+    (case method
+      :encode (re/item-transformer (-validator x) (-transformer x transformer method options))
+      :decode (re/decoded-item (-transformer x transformer method options) (-validator x)))))
 
 ;;
 ;; Protocol Cache
@@ -1078,37 +1072,34 @@
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)
         enter-this (or (:enter this-transformer) identity)
-        leave-this (or (:leave this-transformer) identity)]
+        leave-this (or (:leave this-transformer) identity)
+        automaton (rec/compile (rem/asm
+                                 include (-transformer-regex schema transformer method options)
+                                 end schema))]
     (if (= method :encode)
-      (let [automaton (rec/compile (rem/asm
-                                     include (-encoder-regex schema transformer method options)
-                                     end schema))]
-        {:enter (fn [coll]
-                  (let [coll (enter-this coll)
-                        ts (re/exec-transformer-assignment automaton coll)]
-                    (if ts
-                      [(map (fn [{:keys [enter]} v] (if enter (enter v) v)) ts coll) ts]
-                      [coll])))
-         :leave (fn [[coll ts]]
-                  (leave-this (if ts
-                                (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
-                                coll)))})
-      (let [automaton (rec/compile (rem/asm
-                                     include (-decoder-regex schema transformer method options)
-                                     end schema))]
-        {:enter (fn [coll]
-                  (let [coll (enter-this coll)
-                        vts (re/exec-transformer-assignment automaton coll)]
-                    (if vts
-                      ;; OPTIMIZE:
-                      (let [[vs ts] (reduce (fn [[vs ts] [v t]] [(conj! vs v) (conj! ts t)])
-                                            [(transient []) (transient [])] vts)]
-                        [(persistent! vs) (persistent! ts)])
-                      [coll])))
-         :leave (fn [[coll ts]]
-                  (leave-this (if ts
-                                (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
-                                coll)))}))))
+      {:enter (fn [coll]
+                (let [coll (enter-this coll)
+                      ts (re/exec-transformer-assignment automaton coll)]
+                  (if ts
+                    [(map (fn [{:keys [enter]} v] (if enter (enter v) v)) ts coll) ts]
+                    [coll])))
+       :leave (fn [[coll ts]]
+                (leave-this (if ts
+                              (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
+                              coll)))}
+      {:enter (fn [coll]
+                (let [coll (enter-this coll)
+                      vts (re/exec-transformer-assignment automaton coll)]
+                  (if vts
+                    ;; OPTIMIZE:
+                    (let [[vs ts] (reduce (fn [[vs ts] [v t]] [(conj! vs v) (conj! ts t)])
+                                          [(transient []) (transient [])] vts)]
+                      [(persistent! vs) (persistent! ts)])
+                    [coll])))
+       :leave (fn [[coll ts]]
+                (leave-this (if ts
+                              (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
+                              coll)))})))
 
 (defn -sequence-schema [{:keys [type re]}]
   ^{:type ::into-schema}
@@ -1143,10 +1134,8 @@
           (-explainer-regex [_ path]
             (re properties (map-indexed (fn [i s] (-into-explainer-regex s (conj path i)))
                                         children)))
-          (-encoder-regex [_ transformer method options]
-            (re properties (map #(-into-encoder-regex % transformer method options) children)))
-          (-decoder-regex [_ transformer method options]
-            (re properties (map #(-into-decoder-regex % transformer method options) children))))))))
+          (-transformer-regex [_ transformer method options]
+            (re properties (map #(-into-transformer-regex % transformer method options) children))))))))
 
 (defn -sequence-entry-schema [{:keys [type re]}]
   ^{:type ::into-schema}
@@ -1183,11 +1172,8 @@
           (-explainer-regex [_ path]
             (re properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
                                 children)))
-          (-encoder-regex [_ transformer method options]
-            (re properties (map (fn [[k s]] [k (-into-encoder-regex s transformer method options)])
-                                children)))
-          (-decoder-regex [_ transformer method options]
-            (re properties (map (fn [[k s]] [k (-into-decoder-regex s transformer method options)])
+          (-transformer-regex [_ transformer method options]
+            (re properties (map (fn [[k s]] [k (-into-transformer-regex s transformer method options)])
                                 children))))))))
 
 (defn -nested-schema []

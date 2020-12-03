@@ -357,6 +357,11 @@
   APersistentVector
   (save0 [self _ _] self)
   (save1 [self _ _ _] self)
+  (fetch [self _ _] self)
+
+  MapEntry
+  (save0 [self _ _] self)
+  (save1 [self _ _ _] self)
   (fetch [self _ _] self))
 
 (defprotocol ^:private IVMState
@@ -439,7 +444,8 @@
                                      (first coll))]
                              (when ((.-validate arg) v)
                                (add-thread! self (inc pos) (conj buf (first coll)) state* (inc pc)
-                                            (conj matches [v (.-transformer arg)]))))) ; OPTIMIZE
+                                            (-tagged (conj (key matches) v)
+                                                     (conj (val matches) (.-transformer arg)))))))
                          (recur (inc i)))
                 end (if coll
                       (recur (inc i))
@@ -511,8 +517,11 @@
 (defn exec-explainer [automaton path coll in -error]
   (exec-automaton* automaton (->explanatory-vm automaton path in -error) coll sink-bank-fail))
 
-(defn exec-transformer-assignment [automaton coll]
+(defn exec-encoder-assignment [automaton coll]
   (exec-automaton* automaton (->vm automaton) coll []))
+
+(defn exec-decoder-assignment [automaton coll]
+  (exec-automaton* automaton (->vm automaton) coll (-tagged [] [])))
 
 (defn exec-tree-automaton [automaton coll]
   (exec-automaton* automaton (->vm automaton) coll (list (start-frame 0))))

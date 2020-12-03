@@ -1079,7 +1079,7 @@
     (if (= method :encode)
       {:enter (fn [coll]
                 (let [coll (enter-this coll)
-                      ts (re/exec-transformer-assignment automaton coll)]
+                      ts (re/exec-encoder-assignment automaton coll)]
                   (if ts
                     [(map (fn [{:keys [enter]} v] (if enter (enter v) v)) ts coll) ts]
                     [coll])))
@@ -1088,14 +1088,8 @@
                               (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)
                               coll)))}
       {:enter (fn [coll]
-                (let [coll (enter-this coll)
-                      vts (re/exec-transformer-assignment automaton coll)]
-                  (if vts
-                    ;; OPTIMIZE:
-                    (let [[vs ts] (reduce (fn [[vs ts] [v t]] [(conj! vs v) (conj! ts t)])
-                                          [(transient []) (transient [])] vts)]
-                      [(persistent! vs) (persistent! ts)])
-                    [coll])))
+                (let [coll (enter-this coll)]
+                  (or (re/exec-decoder-assignment automaton coll) [coll])))
        :leave (fn [[coll ts]]
                 (leave-this (if ts
                               (map (fn [{:keys [leave]} v] (if leave (leave v) v)) ts coll)

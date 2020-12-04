@@ -21,7 +21,9 @@
   (-type-properties [this] "returns schema type properties")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  (-transformer [this transformer method options] "returns an interceptor map with :enter and :leave functions to transform the value for the given schema and method")
+  (-transformer [this transformer method options]
+    "returns a function to transform the value for the given schema and method.
+    Can also return nil instead of `identity` so that more no-op transforms can be elided.")
   (-walk [this walker path options] "walks the schema and it's children, ::m/walk-entry-vals, ::m/walk-refs, ::m/walk-schema-refs options effect how walking is done.")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
@@ -166,20 +168,26 @@
     es))
 
 (defn -guard [pred tf]
-  (if tf (fn [x] (if (pred x) (tf x) x))))
+  (when tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn -coder [{:keys [enter leave]}]
-  (if (and enter leave) #(leave (enter %)) (or enter leave identity)))
+  (if (and enter leave) #(leave (enter %)) (or enter leave)))
 
-(defn -chain [phase chain]
-  (some->> (case phase, :enter (rseq chain), :leave chain) (keep identity) (seq) (apply -comp)))
+(defn -intercepting [{:keys [enter leave] :as interceptor} f]
+  (if f
+    (cond
+      (and enter leave) #(leave (f (enter %)))
+      enter #(f (enter %))
+      leave #(leave (f %))
+      :else f)
+    (-coder interceptor)))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
-        child-transformers (map #(-transformer % transformer method options) children)
-        build (fn [phase] (-chain phase (apply vector (phase parent-transformer) (map phase child-transformers))))]
-    {:enter (build :enter)
-     :leave (build :leave)}))
+        child-transformers (into [] (keep #(-transformer % transformer method options)) children)]
+    (if (seq child-transformers)
+      (-intercepting parent-transformer (apply -comp (rseq child-transformers)))
+      (-coder parent-transformer))))
 
 (defn- -properties-and-children [[x :as xs]]
   (if (or (nil? x) (map? x))
@@ -278,7 +286,7 @@
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (-error path in this x)) acc)))
             (-transformer [this transformer method options]
-              (-value-transformer transformer this method options))
+              (-coder (-value-transformer transformer this method options)))
             (-walk [this walker path options]
               (if (-accept walker this path options)
                 (-outer walker this path (vec children) options)))
@@ -359,45 +367,23 @@
                       (if (identical? acc' acc'') (reduced acc) acc'')))
                   acc explainers))))
           (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (map #(-transformer % transformer method options) children)
-                  decode? (= :decode method)
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ?->this (or ->this identity)
-                                ->children (mapv #(or (phase %) identity) child-transformers)
-                                validators (mapv -validator children)]
-                            (cond
-                              (not (seq ->children)) ->this
-
-                              ;; decode, on the way in, we transforma all values into vector + the original
-                              (and decode? (= :enter phase)) (let [->children (conj ->children identity)]
-                                                               (fn [x] (let [x (?->this x)] (mapv #(% x) ->children))))
-
-                              ;; decode, on the way out, we take the first transformed value that is valid
-                              decode? (fn [xs]
-                                        (?->this
-                                          (reduce-kv
-                                            (fn [acc i x]
-                                              (let [x' ((nth ->children i) x)]
-                                                (if ((nth validators i) x') (reduced x') acc)))
-                                            (peek xs) (pop xs))))
-
-                              ;; encode, on the way in, we take the first valid valud and it's index
-                              (= :enter phase) (fn [x]
-                                                 (let [x (?->this x)]
-                                                   (reduce-kv
-                                                     (fn [acc i v]
-                                                       (if (v x)
-                                                         (reduced [((nth ->children i) x) i]) acc))
-                                                     [x] validators)))
-
-                              ;; encode, on the way out, we transform the value using the index
-                              :else (fn [[x i]]
-                                      (?->this (if i ((nth ->children i) x) x))))))]
-
-              {:enter (build :enter)
-               :leave (build :leave)}))
+            (let [this-transformer (-value-transformer transformer this method options)]
+              (if (seq children)
+                (let [transformers (mapv #(or (-transformer % transformer method options) identity) children)
+                      validators (mapv -validator children)]
+                  (-intercepting this-transformer
+                                 (if (= :decode method)
+                                   (fn [x]
+                                     (reduce-kv
+                                       (fn [x i transformer]
+                                         (let [x* (transformer x)]
+                                           (if ((nth validators i) x*) (reduced x*) x)))
+                                       x transformers))
+                                   (fn [x]
+                                     (reduce-kv
+                                       (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                                       x validators)))))
+                (-coder this-transformer))))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
@@ -510,26 +496,19 @@
                      acc explainers)))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   transformers (some->> entries
-                                         (keep (fn [[k s]] (if-let [t (-transformer s transformer method options)] [k t])))
-                                         (into {}))
-                   build (fn [phase]
-                           (let [->this (phase this-transformer)
-                                 ->children (->> transformers
-                                                 (keep (fn extract-value-transformer-phase [[k t]]
-                                                         (if-let [phase-t (phase t)]
-                                                           [k phase-t])))
-                                                 (into {}))
-                                 apply->children (if (seq ->children)
-                                                   #(reduce-kv
-                                                      (fn reduce-child-transformers [m k t]
-                                                        (if-let [entry (find m k)]
-                                                          (assoc m k (t (val entry)))
-                                                          m))
-                                                      % ->children))]
-                             (-chain phase [->this (-guard map? apply->children)])))]
-               {:enter (build :enter)
-                :leave (build :leave)}))
+                   ->children (some->> entries
+                                       (keep (fn [[k s]]
+                                               (when-some [t (-transformer s transformer method options)] [k t])))
+                                       (into {}))
+                   apply->children (when (seq ->children)
+                                     #(reduce-kv
+                                        (fn reduce-child-transformers [m k t]
+                                          (if-let [entry (find m k)]
+                                            (assoc m k (t (val entry)))
+                                            m))
+                                        % ->children))
+                   apply->children (-guard map? apply->children)]
+               (-intercepting this-transformer apply->children)))
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
@@ -581,21 +560,15 @@
                     acc m)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  key-transformer (-transformer key-schema transformer method options)
-                  child-transformer (-transformer value-schema transformer method options)
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ->key (if-let [t (phase key-transformer)]
-                                        (fn [x] (t x)))
-                                ->child (phase child-transformer)
-                                ->key-child (cond
-                                              (and ->key ->child) #(assoc %1 (->key %2) (->child %3))
-                                              ->key #(assoc %1 (->key %2) %3)
-                                              ->child #(assoc %1 %2 (->child %3)))
-                                apply->key-child (if ->key-child #(reduce-kv ->key-child (empty %) %))]
-                            (-chain phase [->this (-guard map? apply->key-child)])))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
+                  ->key (-transformer key-schema transformer method options)
+                  ->child (-transformer value-schema transformer method options)
+                  ->key-child (cond
+                                (and ->key ->child) #(assoc %1 (->key %2) (->child %3))
+                                ->key #(assoc %1 (->key %2) %3)
+                                ->child #(assoc %1 %2 (->child %3)))
+                  apply->key-child (when ->key-child #(reduce-kv ->key-child (empty %) %))
+                  apply->key-child (-guard map? apply->key-child)]
+              (-intercepting this-transformer apply->key-child)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
@@ -646,15 +619,12 @@
             (let [collection? #(or (sequential? %) (set? %))
                   this-transformer (-value-transformer transformer this method options)
                   child-transformer (-transformer schema transformer method options)
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ->child (if-let [ct (phase child-transformer)]
-                                          (if fempty
-                                            #(into (if % fempty) (map ct) %)
-                                            #(map ct %)))]
-                            (-chain phase [->this (-guard collection? ->child)])))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
+                  ->child (when child-transformer
+                            (if fempty
+                              #(into (if % fempty) (map child-transformer) %)
+                              #(map child-transformer %)))
+                  ->child (-guard collection? ->child)]
+              (-intercepting this-transformer ->child)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
@@ -698,19 +668,14 @@
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
-                  child-transformers (->> children
-                                          (mapv #(-transformer % transformer method options))
-                                          (map-indexed vector)
-                                          (into {}))
-                  build (fn [phase]
-                          (let [->this (phase this-transformer)
-                                ->children (->> child-transformers
-                                                (keep (fn [[k t]] (if-let [t (phase t)] [k t])))
-                                                (into {}))
-                                apply->children #(reduce-kv -update % ->children)]
-                            (-chain phase [->this (-guard vector? apply->children)])))]
-              {:enter (build :enter)
-               :leave (build :leave)}))
+                  ->children (into {} (comp (map-indexed vector)
+                                            (keep (fn [[k c]]
+                                                    (when-some [t (-transformer c transformer method options)]
+                                                      [k t]))))
+                                   children)
+                  apply->children (when (seq ->children) #(reduce-kv -update % ->children))
+                  apply->children (-guard vector? apply->children)]
+              (-intercepting this-transformer apply->children)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
@@ -744,7 +709,7 @@
               (if-not (contains? schema x) (conj acc (-error (conj path 0) in this x)) acc)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
-            (-value-transformer transformer this method options))
+            (-coder (-value-transformer transformer this method options)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -782,7 +747,7 @@
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
-            (-value-transformer transformer this method options))
+            (-coder (-value-transformer transformer this method options)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -820,7 +785,7 @@
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
-            (-value-transformer transformer this method options))
+            (-coder (-value-transformer transformer this method options)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -905,18 +870,13 @@
                    (conj acc (-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   child-transformers (reduce-kv
-                                        (fn [acc k s] (assoc acc k (-transformer s transformer method options)))
-                                        {} dispatch-map)
-                   build (fn [phase]
-                           (let [->this (phase this-transformer)
-                                 ->children (->> child-transformers
-                                                 (keep (fn [[k v]] (if-let [t (phase v)] [k t])))
-                                                 (into {}))
-                                 ->child (if (seq ->children) (fn [x] (if-let [t (->children (dispatch x))] (t x) x)))]
-                             (-chain phase [->this ->child])))]
-               {:enter (build :enter)
-                :leave (build :leave)}))
+                   ->children (reduce-kv (fn [acc k s]
+                                           (when-some [t (-transformer s transformer method options)]
+                                             (assoc acc k t)))
+                                         {} dispatch-map)]
+               (if (seq ->children)
+                 (-intercepting this-transformer (fn [x] (if-some [t (->children (dispatch x))] (t x) x)))
+                 (-coder this-transformer))))
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
@@ -962,10 +922,8 @@
                (fn [x in acc] ((explainer) x in acc))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   enter (-memoize (fn [] (:enter (-transformer (-ref) transformer method options))))
-                   leave (-memoize (fn [] (:leave (-transformer (-ref) transformer method options))))]
-               {:enter (-chain :enter [(:enter this-transformer) (fn [x] ((enter) x))])
-                :leave (-chain :leave [(:leave this-transformer) (fn [x] ((leave) x))])}))
+                   deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
+               (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
            (-walk [this walker path options]
              (let [accept (fn [] (-inner walker (-ref) (into path [0 0]) (-update options ::walked-refs #(conj (or % #{}) ref))))]
                (if (-accept walker this path options)
@@ -1204,7 +1162,8 @@
   ([?schema t]
    (decoder ?schema nil t))
   ([?schema options t]
-   (-coder (-transformer (schema ?schema options) (-into-transformer t) :decode options))))
+   (or (-transformer (schema ?schema options) (-into-transformer t) :decode options)
+       identity)))
 
 (defn decode
   "Transforms a value with a given decoding transformer against a schema."
@@ -1220,7 +1179,8 @@
   ([?schema t]
    (encoder ?schema nil t))
   ([?schema options t]
-   (-coder (-transformer (schema ?schema options) (-into-transformer t) :encode options))))
+   (or (-transformer (schema ?schema options) (-into-transformer t) :encode options)
+       identity)))
 
 (defn encode
   "Transforms a value with a given encoding transformer against a schema."

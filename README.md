@@ -1753,6 +1753,13 @@ Emitting confing into `./.clj-kondo/configs/malli/config.edn`:
 (mc/emit!)
 ```
 
+To enable the integration, you need to have the following config:
+
+```bash
+✗ cat .clj-kondo/config.edn
+{:config-paths ["configs/malli"]}
+```
+
 In action:
 
 ![malli](docs/img/clj-kondo.png)

@@ -1052,11 +1052,7 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn- regex-validator [schema]
-  (let [automaton (rec/compile (rem/asm
-                                 include (-regex schema)
-                                 end schema))]
-    (fn [x] (and (sequential? x) (re/exec-recognizer automaton x)))))
+(defn- regex-validator [schema] (re/validator (-regex schema)))
 
 (defn- regex-explainer [schema path]
   (let [automaton (rec/compile (rem/asm
@@ -1182,13 +1178,8 @@
           Schema
           (-type [_] :nested)
           (-type-properties [_])
-          (-validator [_]
-            (let [validator' (regex-validator schema)]
-              (fn [x] (or (nil? x) (validator' x)))))
-          (-explainer [_ path]
-            (let [explainer' (regex-explainer schema (conj path 0))]
-              (fn explain [x in acc]
-                (if (nil? x) acc (explainer' x in acc)))))
+          (-validator [_] (regex-validator schema))
+          (-explainer [_ path] (regex-explainer schema (conj path 0)))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1555,8 +1546,6 @@
                :ns ns#
                :name ~name'}))))
 
-(defn << [success & ss]
-  (str (if success "\u001B[32m" "\u001B[31m") (str/join " " ss) "\u001B[0m"))
 #_(
    (defn << [success & ss]
      (str (if success "\u001B[32m" "\u001B[31m") (str/join " " ss) "\u001B[0m"))

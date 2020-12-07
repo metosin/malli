@@ -537,3 +537,120 @@
 ;;; TODO: Non-regex and nested destructuring
 
 (defn parse [re coll] ((parser re) coll))
+
+;;;; Backtracker
+
+(definterface ^:private IInput
+  (popFront [])
+  (isEmpty [])
+  (tell [])
+  (seek [^long memento]))
+
+(deftype ^:private Input [^:unsynchronized-mutable ^long index, ^java.util.ArrayList buf, ^:unsynchronized-mutable coll]
+  IInput
+  (popFront [_]
+    (if (< index (.size buf))
+      (let [v (.get buf index)]
+        (set! index (inc index))
+        v)
+      (when coll
+        (let [v (first coll)]
+          (set! index (inc index))
+          (.add buf v)
+          (set! coll (next coll))
+          v))))
+
+  (isEmpty [_] (and (>= index (.size buf)) (nil? coll)))
+
+  (tell [_] index)
+  (seek [_ memento] (set! index memento)))
+
+(defn- ->input [coll] (Input. 0 (java.util.ArrayList.) (seq coll)))
+
+(defn- pop-front! [^malli.regex.Input input] (.popFront input))
+
+(defn- input-empty? [^malli.regex.IInput input] (.isEmpty input))
+
+(defn- tell [^malli.regex.IInput input] (.tell input))
+(defn- seek! [^malli.regex.IInput input ^long memento] (.seek input memento))
+
+(defprotocol ^:private RegexParser
+  (-validate! [self input]))
+
+(defn is [pred]
+  (reify RegexParser
+    (-validate! [_ input] (and (not (input-empty? input)) (pred (pop-front! input))))))
+
+(def end
+  (reify RegexParser
+    (-validate! [_ input] (input-empty? input))))
+
+(def epsilon
+  (reify RegexParser
+    (-validate! [_ _] true)))
+
+(defn cat
+  ([] epsilon)
+  ([?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+  ([r & rs]
+   (let [rs (object-array (map (fn [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+                               (cons r rs)))]
+     (reify RegexParser
+       (-validate! [_ input]
+         (loop [i 0]
+           (if (< i (alength rs))
+             (and (-validate! (aget rs i) input) (recur (inc i)))
+             true)))))))
+
+(def fail
+  (reify RegexParser
+    (-validate! [_ _] false)))
+
+(defn alt
+  ([] fail)
+  ([?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+  ([r & rs]
+   (let [rs (object-array (map (fn [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+                               (cons r rs)))]
+     (reify RegexParser
+       (-validate! [_ input]
+         (loop [i 0]
+           (if (< i (alength rs))
+             (let [memento (tell input)]
+               (or (-validate! (aget rs i) input)
+                   (do (seek! input memento) (recur (inc i)))))
+             false)))))))
+
+(defn ? [p] (alt p epsilon))
+
+(defn repeat [min max p]
+  (reify RegexParser
+    (-validate! [_ input]
+      (and (loop [n 0]
+             (if (< n min)
+               (and (-validate! p input) (recur (inc n)))
+               true))
+           (loop [n min]
+             (if (< n max)
+               (let [memento (tell input)]
+                 (if (-validate! p input)
+                   (recur (inc n))
+                   (do (seek! input memento) true)))
+               true))))))
+
+(defn * [p]
+  (reify RegexParser
+    (-validate! [_ input]
+      (loop []
+        (let [memento (tell input)]
+          (if (-validate! p input)
+            (recur)
+            (do (seek! input memento) true)))))))
+
+(defn + [p] (cat p (* p)))
+
+;;;;
+
+(defn validator [r]
+  (let [r (cat r end)]
+    (fn [x] (and (sequential? x) (-validate! r (->input x))))))

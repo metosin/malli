@@ -702,3 +702,5 @@
             (do (seek! input memento) errors)))))))
 
 (defn + [p] (cat p (* p)))
+
+;;; FIXME: [:cat [:* any?] [:= 0]] on (0) etc.

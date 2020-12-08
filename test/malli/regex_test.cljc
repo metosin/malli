@@ -19,7 +19,8 @@
     [:cat pos? [:= 4]] [3] false
     [:cat pos? [:= 4]] [3 3] false
     [:cat pos? [:= 4]] [3 4] true
-    [:cat pos? [:= 4]] [-3 3] false))
+    [:cat pos? [:= 4]] [-3 3] false
+    [:cat [:* pos?] [:= 4]] [4 4] true))                    ; back off from full greed
 
 (deftest choice
   (are [re s r]

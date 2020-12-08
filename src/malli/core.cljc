@@ -257,10 +257,12 @@
     (let [valid? (-validator x)
           explain (-explainer x path)]
       (reify re/RegexParser
-        (-validate! [_ input] (and (not (re/input-empty? input)) (valid? (re/pop-front! input))))
+        (-validate! [_ _ coll k]
+          (when (and (seq coll) (valid? (first coll)))
+            (k (rest coll))))
 
         (-explain! [_ input errors]
-          (let [in (re/value-path input)]
+          #_(let [in (re/value-path input)]
             (if (re/input-empty? input)
               (conj errors (-error path in x nil ::re/end-of-input))
               (explain (re/pop-front! input) in errors))))))))
@@ -1053,14 +1055,12 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn- regex-validator [schema path]
-  (let [r (re/cat (-regex schema path) (re/end -error schema path))]
-    (fn [x] (and (sequential? x) (re/-validate! r (re/->input x []))))))
+(defn- regex-validator [schema path] (re/validator (-regex schema path)))
 
 (defn- regex-explainer [schema path]
   (let [r (re/cat (-explainer-regex schema path) (re/end -error schema path))]
     (fn [x in acc]
-      (if (sequential? x)
+      #_(if (sequential? x)
         (re/-explain! r (re/->input x in) acc)
         (conj acc (-error path in schema x ::invalid-type))))))
 

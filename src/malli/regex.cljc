@@ -540,167 +540,264 @@
 
 ;;;; Backtracker
 
-(definterface ^:private IInput
-  (peekFront [])
-  (popFront [])
-  (isEmpty [])
-  (tell [])
-  (seek [^long memento])
-  (valuePath []))
+#_(
+   (definterface ^:private IInput
+     (peekFront [])
+     (popFront [])
+     (isEmpty [])
+     (tell [])
+     (seek [^long memento])
+     (valuePath []))
 
-(deftype ^:private Input
-  [in, ^:unsynchronized-mutable ^long index, ^java.util.ArrayList buf, ^:unsynchronized-mutable tail]
-  IInput
-  (peekFront [_]
-    (if (< index (.size buf))
-      (.get buf index)
-      (when tail
-        (let [v (first tail)]
-          (.add buf v)
-          (set! tail (next tail))
-          v))))
-  (popFront [_]
-    (if (< index (.size buf))
-      (let [v (.get buf index)]
-        (set! index (inc index))
-        v)
-      (when tail
-        (let [v (first tail)]
-          (set! index (inc index))
-          (.add buf v)
-          (set! tail (next tail))
-          v))))
+   (deftype ^:private Input
+     [in, ^:unsynchronized-mutable ^long index, ^java.util.ArrayList buf, ^:unsynchronized-mutable tail]
+     IInput
+     (peekFront [_]
+       (if (< index (.size buf))
+         (.get buf index)
+         (when tail
+           (let [v (first tail)]
+             (.add buf v)
+             (set! tail (next tail))
+             v))))
+     (popFront [_]
+       (if (< index (.size buf))
+         (let [v (.get buf index)]
+           (set! index (inc index))
+           v)
+         (when tail
+           (let [v (first tail)]
+             (set! index (inc index))
+             (.add buf v)
+             (set! tail (next tail))
+             v))))
 
-  (isEmpty [_] (and (>= index (.size buf)) (nil? tail)))
+     (isEmpty [_] (and (>= index (.size buf)) (nil? tail)))
 
-  (tell [_] index)
-  (seek [_ memento] (set! index memento))
-  (valuePath [_] (conj in index)))
+     (tell [_] index)
+     (seek [_ memento] (set! index memento))
+     (valuePath [_] (conj in index)))
 
-(defn ->input [coll in] (Input. in 0 (java.util.ArrayList.) (seq coll)))
+   (defn ->input [coll in] (Input. in 0 (java.util.ArrayList.) (seq coll)))
 
-(defn- peek-front! [^malli.regex.IInput input] (.peekFront input))
-(defn pop-front! [^malli.regex.Input input] (.popFront input))
+   (defn- peek-front! [^malli.regex.IInput input] (.peekFront input))
+   (defn pop-front! [^malli.regex.Input input] (.popFront input))
 
-(defn input-empty? [^malli.regex.IInput input] (.isEmpty input))
+   (defn input-empty? [^malli.regex.IInput input] (.isEmpty input))
 
-(defn- tell [^malli.regex.IInput input] (.tell input))
-(defn- seek! [^malli.regex.IInput input ^long memento] (.seek input memento))
-(defn value-path [^malli.regex.IInput input] (.valuePath input))
+   (defn- tell [^malli.regex.IInput input] (.tell input))
+   (defn- seek! [^malli.regex.IInput input ^long memento] (.seek input memento))
+   (defn value-path [^malli.regex.IInput input] (.valuePath input))
 
-(defprotocol ^:private RegexParser
-  (-validate! [self input])
+   (defprotocol ^:private RegexParser
+     (-validate! [self input])
+     (-explain! [self input errors]))
+
+   (defn end [-error schema path]
+     (reify RegexParser
+       (-validate! [_ input] (input-empty? input))
+
+       (-explain! [_ input errors]
+         (if (input-empty? input)
+           errors
+           (conj errors (-error path (value-path input) schema (peek-front! input) ::input-remaining))))))
+
+   (def epsilon
+     (reify RegexParser
+       (-validate! [_ _] true)
+       (-explain! [_ _ errors] errors)))
+
+   (defn cat
+     ([] epsilon)
+     ([?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+     ([r & rs]
+      (let [rs (object-array (map (fn [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+                                  (cons r rs)))]
+        (reify RegexParser
+          (-validate! [_ input]
+            (loop [i 0]
+              (if (< i (alength rs))
+                (and (-validate! (aget rs i) input) (recur (inc i)))
+                true)))
+
+          (-explain! [_ input errors]
+            (loop [i 0]
+              (if (< i (alength rs))
+                (let [errors* (-explain! (aget rs i) input errors)]
+                  (if (identical? errors* errors)
+                    (recur (inc i))
+                    errors*))
+                errors)))))))
+
+   (defn alt
+     ([?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+     ([r & rs]
+      (let [rs (object-array (map (fn [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
+                                  (cons r rs)))]
+        (reify RegexParser
+          (-validate! [_ input]
+            (loop [i 0]
+              (if (< i (alength rs))
+                (let [memento (tell input)]
+                  (or (-validate! (aget rs i) input)
+                      (do (seek! input memento) (recur (inc i)))))
+                false)))
+
+          (-explain! [_ input errors]
+            (loop [i 0, errors* errors]
+              (if (< i (alength rs))
+                (let [memento (tell input)]
+                  (let [errors* (-explain! (aget rs i) input errors)]
+                    (if (identical? errors* errors)
+                      errors*
+                      (do (seek! input memento) (recur (inc i) errors*)))))
+                errors*)))))))                              ; TODO: Choose a better error than just the latest one.
+
+   (defn ? [p] (alt p epsilon))
+
+   (defn repeat [min max p]
+     (reify RegexParser
+       (-validate! [_ input]
+         (loop [n 0]
+           (if (< n min)
+             (and (-validate! p input) (recur (inc n)))
+             (loop [n min]
+               (if (< n max)
+                 (let [memento (tell input)]
+                   (if (-validate! p input)
+                     (recur (inc n))
+                     (do (seek! input memento) true)))
+                 true)))))
+
+       (-explain! [_ input errors]
+         (loop [n 0]
+           (if (< n min)
+             (let [errors* (-explain! p input errors)]
+               (if (identical? errors* errors)
+                 (recur (inc n))
+                 errors*))
+             (loop [n min]
+               (if (< n max)
+                 (let [memento (tell input)
+                       errors* (-explain! p input errors)]
+                   (if (identical? errors* errors)
+                     (recur (inc n))
+                     (do (seek! input memento) errors)))
+                 errors)))))))
+
+   (defn * [p]
+     (reify RegexParser
+       (-validate! [_ input]
+         (loop []
+           (let [memento (tell input)]
+             (if (-validate! p input)
+               (recur)
+               (do (seek! input memento) true)))))
+
+       (-explain! [_ input errors]
+         (loop []
+           (let [memento (tell input)
+                 errors* (-explain! p input errors)]
+             (if (identical? errors* errors)
+               (recur)
+               (do (seek! input memento) errors)))))))
+
+   (defn + [p] (cat p (* p))))
+
+(defprotocol ^:private IValidationDriver
+  (succeed! [self])
+  (succeeded? [self])
+  (park-validation! [self thunk])
+  (pop-validation! [self]))
+
+(defprotocol RegexParser
+  (-validate! [self driver coll k])
   (-explain! [self input errors]))
 
-(defn end [-error schema path]
+(defn is [pred]
   (reify RegexParser
-    (-validate! [_ input] (input-empty? input))
+    (-validate! [_ _ coll k]
+      (when (and (seq coll) (pred (first coll)))
+        (k (rest coll))))))
 
-    (-explain! [_ input errors]
-      (if (input-empty? input)
-        errors
-        (conj errors (-error path (value-path input) schema (peek-front! input) ::input-remaining))))))
+(def end
+  (reify RegexParser
+    (-validate! [_ _ coll k]
+      (when (empty? coll)
+        (k coll)))))
 
 (def epsilon
   (reify RegexParser
-    (-validate! [_ _] true)
-    (-explain! [_ _ errors] errors)))
+    (-validate! [_ _ coll k] (k coll))))
+
+(defn- entry->regex [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
 
 (defn cat
   ([] epsilon)
-  ([?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
-  ([r & rs]
-   (let [rs (object-array (map (fn [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
-                               (cons r rs)))]
+  ([?kr] (entry->regex ?kr))
+  ([?kr ?kr*]
+   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (reify RegexParser
-       (-validate! [_ input]
-         (loop [i 0]
-           (if (< i (alength rs))
-             (and (-validate! (aget rs i) input) (recur (inc i)))
-             true)))
-
-       (-explain! [_ input errors]
-         (loop [i 0]
-           (if (< i (alength rs))
-             (let [errors* (-explain! (aget rs i) input errors)]
-               (if (identical? errors* errors)
-                 (recur (inc i))
-                 errors*))
-             errors)))))))
+       (-validate! [_ driver coll k]
+         (-validate! r driver coll
+                     (fn [coll] (-validate! r* driver coll k)))))))
+  ([?kr ?kr* & ?krs] (reduce cat (cat ?kr ?kr*) ?krs)))
 
 (defn alt
-  ([?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
-  ([r & rs]
-   (let [rs (object-array (map (fn [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
-                               (cons r rs)))]
+  ([?kr] (entry->regex ?kr))
+  ([?kr ?kr*]
+   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (reify RegexParser
-       (-validate! [_ input]
-         (loop [i 0]
-           (if (< i (alength rs))
-             (let [memento (tell input)]
-               (or (-validate! (aget rs i) input)
-                   (do (seek! input memento) (recur (inc i)))))
-             false)))
-
-       (-explain! [_ input errors]
-         (loop [i 0, errors* errors]
-           (if (< i (alength rs))
-             (let [memento (tell input)]
-               (let [errors* (-explain! (aget rs i) input errors)]
-                 (if (identical? errors* errors)
-                   errors*
-                   (do (seek! input memento) (recur (inc i) errors*)))))
-             errors*)))))))                                 ; TODO: Choose a better error than just the latest one.
+       (-validate! [_ driver coll k]
+         (park-validation! driver #(-validate! r* driver coll k)) ; remember fallback
+         (-validate! r driver coll k)))))
+  ([?kr ?kr* & ?krs] (reduce alt (alt ?kr ?kr*) ?krs)))
 
 (defn ? [p] (alt p epsilon))
 
 (defn repeat [min max p]
   (reify RegexParser
-    (-validate! [_ input]
-      (loop [n 0]
-        (if (< n min)
-          (and (-validate! p input) (recur (inc n)))
-          (loop [n min]
-            (if (< n max)
-              (let [memento (tell input)]
-                (if (-validate! p input)
-                  (recur (inc n))
-                  (do (seek! input memento) true)))
-              true)))))
-
-    (-explain! [_ input errors]
-      (loop [n 0]
-        (if (< n min)
-          (let [errors* (-explain! p input errors)]
-            (if (identical? errors* errors)
-              (recur (inc n))
-              errors*))
-          (loop [n min]
-            (if (< n max)
-              (let [memento (tell input)
-                    errors* (-explain! p input errors)]
-                (if (identical? errors* errors)
-                  (recur (inc n))
-                  (do (seek! input memento) errors)))
-              errors)))))))
+    (-validate! [_ driver coll k]
+      (letfn [(compulsories [coll n]
+                (if (< n min)
+                  (-validate! p driver coll
+                              (fn [coll] (park-validation! driver #(compulsories coll (inc n))))) ; TCO
+                  (optionals coll n)))
+              (optionals [coll n]
+                (if (< n max)
+                  (do
+                    (park-validation! driver #(k coll))     ; remember fallback
+                    (-validate! p driver coll
+                                (fn [coll] (park-validation! driver #(optionals coll (inc n)))))) ; TCO
+                  (k coll)))]
+        (compulsories coll 0)))))
 
 (defn * [p]
   (reify RegexParser
-    (-validate! [_ input]
-      (loop []
-        (let [memento (tell input)]
-          (if (-validate! p input)
-            (recur)
-            (do (seek! input memento) true)))))
-
-    (-explain! [_ input errors]
-      (loop []
-        (let [memento (tell input)
-              errors* (-explain! p input errors)]
-          (if (identical? errors* errors)
-            (recur)
-            (do (seek! input memento) errors)))))))
+    (-validate! [self driver coll k]
+      (park-validation! driver #(k coll))                   ; remember fallback
+      (-validate! p driver coll
+                  (fn [coll] (park-validation! driver #(-validate! self driver coll k))))))) ; TCO
 
 (defn + [p] (cat p (* p)))
 
-;;; FIXME: [:cat [:* any?] [:= 0]] on (0) etc.
+(deftype ^:private ValidationDriver [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack]
+  IValidationDriver
+  (succeed! [_] (set! success (boolean true)))
+  (succeeded? [_] success)
+  (park-validation! [_ thunk] (.push stack thunk))
+  (pop-validation! [_] (when-not (.isEmpty stack) (.pop stack))))
+
+(defn validator [p]
+  (let [p (cat p end)]
+    (fn [coll]
+      (and (sequential? coll)
+           (let [driver (ValidationDriver. false (java.util.ArrayDeque.))]
+             (-validate! p driver coll (fn [_] (succeed! driver)))
+             (or (succeeded? driver)
+                 (loop []
+                   (if-some [thunk (pop-validation! driver)]
+                     (do
+                       (thunk)
+                       (or (succeeded? driver) (recur)))
+                     false))))))))

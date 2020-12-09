@@ -60,6 +60,7 @@
                  (cond
                    (js/isNaN x') x
                    (> x' js/Number.MAX_SAFE_INTEGER) x
+                   (< x' js/Number.MIN_SAFE_INTEGER) x
                    :else x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))

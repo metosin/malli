@@ -551,9 +551,27 @@
   (fail! [self pos errors*])
   (latest-errors [self]))
 
+(defprotocol ^:private IParseDriver
+  (succeed-with! [self v])
+  (success-result [self]))
+
 (defprotocol RegexParser
   (-validate! [self driver coll k])
   (-explain! [self driver pos coll k]))
+
+(defn encode-item [valid? encode]
+  (fn [_ coll* coll k]
+    (when (seq coll)
+      (let [v (first coll)]
+        (when (valid? v)
+          (k (conj coll* (encode v)) (rest coll)))))))
+
+(defn decode-item [decode valid?]
+  (fn [_ coll* coll k]
+    (when (seq coll)
+      (let [v (decode (first coll))]
+        (when (valid? v)
+          (k (conj coll* v) (rest coll)))))))
 
 (defn end [-error schema path]
   (reify RegexParser
@@ -564,10 +582,14 @@
         (fail! driver pos (list (-error path (value-path driver pos) schema (first coll) ::input-remaining)))
         (k pos coll)))))
 
+(defn transformer-end [_ coll* coll k] (when (empty? coll) (k coll* coll)))
+
 (def epsilon
   (reify RegexParser
     (-validate! [_ _ coll k] (k coll))
     (-explain! [_ _ pos coll k] (k pos coll))))
+
+(defn transformer-epsilon [_ coll* coll k] (k coll* coll))
 
 (defn- entry->regex [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
 
@@ -586,6 +608,16 @@
                     (fn [pos coll] (-explain! r* driver pos coll k)))))))
   ([?kr ?kr* & ?krs] (reduce cat (cat ?kr ?kr*) ?krs)))
 
+(defn transformer-cat
+  ([] transformer-epsilon)
+  ([?kr] (entry->regex ?kr))
+  ([?kr ?kr*]
+   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
+     (fn [driver coll* coll k]
+       (r driver coll* coll
+          (fn [coll* coll] (r* driver coll* coll k))))))
+  ([?kr ?kr* & ?krs] (reduce transformer-cat (transformer-cat ?kr ?kr*) ?krs)))
+
 (defn alt
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
@@ -600,7 +632,18 @@
          (-explain! r driver pos coll k)))))
   ([?kr ?kr* & ?krs] (reduce alt (alt ?kr ?kr*) ?krs)))
 
+(defn transformer-alt
+  ([?kr] (entry->regex ?kr))
+  ([?kr ?kr*]
+   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
+     (fn [driver coll* coll k]
+       (park! driver #(r* driver coll* coll k))             ; remember fallback
+       (r driver coll* coll k))))
+  ([?kr ?kr* & ?krs] (reduce transformer-alt (transformer-alt ?kr ?kr*) ?krs)))
+
 (defn ? [p] (alt p epsilon))
+
+(defn transformer-? [p] (transformer-alt p transformer-epsilon))
 
 (defn repeat [min max p]
   (reify RegexParser
@@ -634,6 +677,22 @@
                   (k coll)))]
         (compulsories pos coll 0)))))
 
+(defn transformer-repeat [min max p]
+  (fn [driver coll* coll k]
+    (letfn [(compulsories [coll* coll n]
+              (if (< n min)
+                (p driver coll* coll
+                   (fn [coll] (park! driver #(compulsories coll* coll (inc n))))) ; TCO
+                (optionals coll* coll n)))
+            (optionals [coll* coll n]
+              (if (< n max)
+                (do
+                  (park! driver #(k coll* coll))            ; remember fallback
+                  (p driver coll
+                     (fn [coll* coll] (park! driver #(optionals coll* coll (inc n)))))) ; TCO
+                (k coll* coll)))]
+      (compulsories coll* coll 0))))
+
 (defn * [p]
   (reify RegexParser
     (-validate! [self driver coll k]
@@ -646,7 +705,15 @@
       (-explain! p driver pos coll
                  (fn [pos coll] (park! driver #(-explain! self driver pos coll k))))))) ; TCO
 
+(defn transformer-* [p]
+  (fn *p [driver coll* coll k]
+    (park! driver #(k coll* coll))                          ; remember fallback
+    (p driver coll* coll
+       (fn [coll* coll] (park! driver #(*p driver coll* coll k)))))) ; TCO
+
 (defn + [p] (cat p (* p)))
+
+(defn transformer-+ [p] (transformer-cat p (transformer-* p)))
 
 (deftype ^:private ValidationDriver [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack]
   Driver
@@ -702,8 +769,36 @@
               (if-some [thunk (pop-thunk! driver)]
                 (do
                   (thunk)
-                  (if (succeeded? driver)
-                    errors
-                    (recur)))
+                  (if (succeeded? driver) errors (recur)))
                 (into errors (latest-errors driver))))))
         (conj errors (-error path in schema coll :malli.core/invalid-type))))))
+
+(deftype ^:private ParseDriver
+  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack
+   ^:unsynchronized-mutable result]
+
+  Driver
+  (succeed! [_] (set! success (boolean true)))
+  (succeeded? [_] success)
+  (park! [_ thunk] (.push stack thunk))
+  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
+
+  IParseDriver
+  (succeed-with! [self v] (succeed! self) (set! result v))
+  (success-result [_] result))
+
+(defn transformer [p]
+  (let [p (transformer-cat p transformer-end)]
+    (fn [coll]
+      (if (sequential? coll)
+        (let [driver (ParseDriver. false (java.util.ArrayDeque.) nil)]
+          (p driver [] coll (fn [coll* _] (succeed-with! driver coll*)))
+          (if (succeeded? driver)
+            (success-result driver)
+            (loop []
+              (if-some [thunk (pop-thunk! driver)]
+                (do
+                  (thunk)
+                  (if (succeeded? driver) (success-result driver) (recur)))
+                coll))))
+        coll))))

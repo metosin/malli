@@ -261,11 +261,14 @@
           (when (and (seq coll) (valid? (first coll)))
             (k (rest coll))))
 
-        (-explain! [_ input errors]
-          #_(let [in (re/value-path input)]
-            (if (re/input-empty? input)
-              (conj errors (-error path in x nil ::re/end-of-input))
-              (explain (re/pop-front! input) in errors))))))))
+        (-explain! [_ driver pos coll k]
+          (let [in (re/value-path driver pos)]
+            (if (seq coll)
+              (let [errors (explain (first coll) in [])]
+                (if (seq errors)
+                  (re/fail! driver pos errors)
+                  (k (inc pos) (rest coll))))
+              (re/fail! driver pos [(-error path in x nil ::re/end-of-input)]))))))))
 
 ;; HACK:
 (def -into-explainer-regex -into-regex)
@@ -1055,14 +1058,9 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn- regex-validator [schema path] (re/validator (-regex schema path)))
+(defn- regex-validator [schema path] (re/validator -error schema path (-regex schema path)))
 
-(defn- regex-explainer [schema path]
-  (let [r (re/cat (-explainer-regex schema path) (re/end -error schema path))]
-    (fn [x in acc]
-      #_(if (sequential? x)
-        (re/-explain! r (re/->input x in) acc)
-        (conj acc (-error path in schema x ::invalid-type))))))
+(defn- regex-explainer [schema path] (re/explainer -error schema path (-explainer-regex schema path)))
 
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)

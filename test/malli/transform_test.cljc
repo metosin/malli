@@ -27,6 +27,10 @@
 (deftest string->long
   (is (= 1 (mt/-string->long "1")))
   (is (= 1 (mt/-string->long 1)))
+  (is (= 9007199254740991 (mt/-string->long "9007199254740991")))
+  ;; Unfortunately, the number in the CLJ branch here isn't representable in JS 'integers'.
+  (is (= #?(:clj 9007199254740993 :cljs "9007199254740993")
+         (mt/-string->long "9007199254740993")))
   (is (= "abba" (mt/-string->long "abba"))))
 
 (deftest string->double

@@ -56,7 +56,11 @@
   (if (string? x)
     (try
       #?(:clj  (Long/parseLong x)
-         :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))] (if (js/isNaN x') x x')))
+         :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))]
+                 (cond
+                   (js/isNaN x') x
+                   (> x' js/Number.MAX_SAFE_INTEGER) x
+                   :else x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 

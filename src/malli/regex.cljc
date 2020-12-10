@@ -617,7 +617,8 @@
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver pos coll k]
        (r driver pos coll (fn [pos coll] (r* driver pos coll k))))))
-  ([?kr ?kr* & ?krs] (reduce cat-validator (cat-validator ?kr ?kr*) ?krs)))
+  ([?kr ?kr* & ?krs]
+   (cat-validator ?kr (reduce (fn [acc ?kr] (cat-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 (defn cat-explainer
   ([] (fn [_ pos coll k] (k pos coll)))
@@ -626,7 +627,8 @@
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver pos coll k]
        (r driver pos coll (fn [pos coll] (r* driver pos coll k))))))
-  ([?kr ?kr* & ?krs] (reduce cat-explainer (cat-explainer ?kr ?kr*) ?krs)))
+  ([?kr ?kr* & ?krs]
+   (cat-explainer ?kr (reduce (fn [acc ?kr] (cat-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 (defn cat-transformer
   ([] (fn [_ coll* pos coll k] (k coll* pos coll)))
@@ -635,7 +637,8 @@
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver coll* pos coll k]
        (r driver coll* pos coll (fn [coll* pos coll] (r* driver coll* pos coll k))))))
-  ([?kr ?kr* & ?krs] (reduce cat-transformer (cat-transformer ?kr ?kr*) ?krs)))
+  ([?kr ?kr* & ?krs]
+   (cat-transformer ?kr (reduce (fn [acc ?kr] (cat-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 ;;;; ## Alternation
 
@@ -646,7 +649,8 @@
      (fn [driver pos coll k]
        (park-validator! driver r* pos coll k)               ; remember fallback
        (park-validator! driver r pos coll k))))
-  ([?kr ?kr* & ?krs] (reduce alt-validator (alt-validator ?kr ?kr*) ?krs)))
+  ([?kr ?kr* & ?krs]
+   (alt-validator ?kr (reduce (fn [acc ?kr] (alt-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 (defn alt-explainer
   ([?kr] (entry->regex ?kr))
@@ -655,7 +659,8 @@
      (fn [driver pos coll k]
        (park-explainer! driver r* pos coll k)               ; remember fallback
        (park-explainer! driver r pos coll k))))
-  ([?kr ?kr* & ?krs] (reduce alt-explainer (alt-explainer ?kr ?kr*) ?krs)))
+  ([?kr ?kr* & ?krs]
+   (alt-explainer ?kr (reduce (fn [acc ?kr] (alt-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 (defn alt-transformer
   ([?kr] (entry->regex ?kr))
@@ -664,7 +669,8 @@
      (fn [driver coll* pos coll k]
        (park-transformer! driver r* coll* pos coll k)       ; remember fallback
        (park-transformer! driver r coll* pos coll k))))
-  ([?kr ?kr* & ?krs] (reduce alt-transformer (alt-transformer ?kr ?kr*) ?krs)))
+  ([?kr ?kr* & ?krs]
+   (alt-transformer ?kr (reduce (fn [acc ?kr] (alt-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 ;;;; ## Option
 

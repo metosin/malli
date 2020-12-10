@@ -731,19 +731,19 @@
   (let [*p-epsilon (cat-validator)]
     (fn *p [driver pos coll k]
       (park-validator! driver *p-epsilon pos coll k)        ; remember fallback
-      (park-validator! driver p pos coll (fn [pos coll] (*p driver pos coll k)))))) ; TCO
+      (p driver pos coll (fn [pos coll] (park-validator! driver *p pos coll k)))))) ; TCO
 
 (defn *-explainer [p]
   (let [*p-epsilon (cat-explainer)]
     (fn *p [driver pos coll k]
       (park-explainer! driver *p-epsilon pos coll k)        ; remember fallback
-      (park-explainer! driver p pos coll (fn [pos coll] (*p driver pos coll k)))))) ; TCO
+      (p driver pos coll (fn [pos coll] (park-explainer! driver *p pos coll k)))))) ; TCO
 
 (defn *-transformer [p]
   (let [*p-epsilon (cat-transformer)]
     (fn *p [driver coll* pos coll k]
       (park-transformer! driver *p-epsilon coll* pos coll k) ; remember fallback
-      (park-transformer! driver p coll* pos coll (fn [coll* pos coll] (*p driver coll* pos coll k)))))) ; TCO
+      (p driver coll* pos coll (fn [coll* pos coll] (park-transformer! driver *p coll* pos coll k)))))) ; TCO
 
 ;;;; ## Non-Kleene Plus
 

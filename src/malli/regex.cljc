@@ -543,15 +543,19 @@
 (defprotocol ^:private Driver
   (succeed! [self])
   (succeeded? [self])
-  (park! [self thunk])
   (pop-thunk! [self]))
 
+(defprotocol ^:private IValidationDriver
+  (park-validator! [driver validator pos coll k]))
+
 (defprotocol ^:private IExplanationDriver
+  (park-explainer! [driver explainer pos coll k])
   (value-path [self pos])
   (fail! [self pos errors*])
   (latest-errors [self]))
 
-(defprotocol ^:private IParseDriver
+(defprotocol ^:private ITransformDriver
+  (park-transformer! [driver transformer coll* pos coll k])
   (succeed-with! [self v])
   (success-result [self]))
 
@@ -560,9 +564,9 @@
 ;;;; ## Seq Item
 
 (defn item-validator [valid?]
-  (fn [_ coll k]
+  (fn [_ pos coll k]
     (when (and (seq coll) (valid? (first coll)))
-      (k (rest coll)))))
+      (k (inc pos) (rest coll)))))
 
 (defn item-explainer [-error path schema schema-explainer]
   (fn [driver pos coll k]
@@ -575,22 +579,22 @@
         (fail! driver pos [(-error path in schema nil ::end-of-input)])))))
 
 (defn item-encoder [valid? encode]
-  (fn [_ coll* coll k]
+  (fn [_ coll* pos coll k]
     (when (seq coll)
       (let [v (first coll)]
         (when (valid? v)
-          (k (conj coll* (encode v)) (rest coll)))))))
+          (k (conj coll* (encode v)) (inc pos) (rest coll)))))))
 
 (defn item-decoder [decode valid?]
-  (fn [_ coll* coll k]
+  (fn [_ coll* pos coll k]
     (when (seq coll)
       (let [v (decode (first coll))]
         (when (valid? v)
-          (k (conj coll* v) (rest coll)))))))
+          (k (conj coll* v) (inc pos) (rest coll)))))))
 
 ;;;; ## End of Seq
 
-(defn end-validator [] (fn [_ coll k] (when (empty? coll) (k coll))))
+(defn end-validator [] (fn [_ pos coll k] (when (empty? coll) (k pos coll))))
 
 (defn end-explainer [-error schema path]
   (fn [driver pos coll k]
@@ -598,7 +602,7 @@
       (k pos coll)
       (fail! driver pos (list (-error path (value-path driver pos) schema (first coll) ::input-remaining))))))
 
-(defn end-transformer [] (fn [_ coll* coll k] (when (empty? coll) (k coll* coll))))
+(defn end-transformer [] (fn [_ coll* pos coll k] (when (empty? coll) (k coll* pos coll))))
 
 ;;;; # Combinators
 
@@ -607,12 +611,12 @@
 (defn- entry->regex [?kr] (if (vector? ?kr) (get ?kr 1) ?kr))
 
 (defn cat-validator
-  ([] (fn [_ coll k] (k coll)))
+  ([] (fn [_ pos coll k] (k pos coll)))
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver coll k]
-       (r driver coll (fn [coll] (r* driver coll k))))))
+     (fn [driver pos coll k]
+       (r driver pos coll (fn [pos coll] (r* driver pos coll k))))))
   ([?kr ?kr* & ?krs] (reduce cat-validator (cat-validator ?kr ?kr*) ?krs)))
 
 (defn cat-explainer
@@ -620,17 +624,17 @@
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver coll k]
-       (r driver coll (fn [coll] (r* driver coll k))))))
+     (fn [driver pos coll k]
+       (r driver pos coll (fn [pos coll] (r* driver pos coll k))))))
   ([?kr ?kr* & ?krs] (reduce cat-explainer (cat-explainer ?kr ?kr*) ?krs)))
 
 (defn cat-transformer
-  ([] (fn [_ coll* coll k] (k coll* coll)))
+  ([] (fn [_ coll* pos coll k] (k coll* pos coll)))
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver coll* coll k]
-       (r driver coll* coll (fn [coll* coll] (r* driver coll* coll k))))))
+     (fn [driver coll* pos coll k]
+       (r driver coll* pos coll (fn [coll* pos coll] (r* driver coll* pos coll k))))))
   ([?kr ?kr* & ?krs] (reduce cat-transformer (cat-transformer ?kr ?kr*) ?krs)))
 
 ;;;; ## Alternation
@@ -639,27 +643,27 @@
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver coll k]
-       (park! driver #(r* driver coll k))                   ; remember fallback
-       (r driver coll k))))
+     (fn [driver pos coll k]
+       (park-validator! driver r* pos coll k)               ; remember fallback
+       (park-validator! driver r pos coll k))))
   ([?kr ?kr* & ?krs] (reduce alt-validator (alt-validator ?kr ?kr*) ?krs)))
 
 (defn alt-explainer
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [_ driver pos coll k]
-       (park! driver #(r* driver pos coll k))               ; remember fallback
-       (r driver pos coll k))))
+     (fn [driver pos coll k]
+       (park-explainer! driver r* pos coll k)               ; remember fallback
+       (park-explainer! driver r pos coll k))))
   ([?kr ?kr* & ?krs] (reduce alt-explainer (alt-explainer ?kr ?kr*) ?krs)))
 
 (defn alt-transformer
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver coll* coll k]
-       (park! driver #(r* driver coll* coll k))             ; remember fallback
-       (r driver coll* coll k))))
+     (fn [driver coll* pos coll k]
+       (park-transformer! driver r* coll* pos coll k)       ; remember fallback
+       (park-transformer! driver r coll* pos coll k))))
   ([?kr ?kr* & ?krs] (reduce alt-transformer (alt-transformer ?kr ?kr*) ?krs)))
 
 ;;;; ## Option
@@ -670,67 +674,70 @@
 
 ;;;; ## Repeat
 
-(defn repeat-validator [min max p]
-  (fn [driver coll k]
-    (letfn [(compulsories [coll n]
-              (if (< n min)
-                (p driver coll (fn [coll] (park! driver #(compulsories coll (inc n))))) ; TCO
-                (optionals coll n)))
-            (optionals [coll n]
-              (if (< n max)
-                (do
-                  (park! driver #(k coll))                  ; remember fallback
-                  (p driver coll (fn [coll] (park! driver #(optionals coll (inc n)))))) ; TCO
-                (k coll)))]
-      (compulsories coll 0))))
+#_(
+   (defn repeat-validator [min max p]
+     (fn [driver pos coll k]
+       (letfn [(compulsories [pos coll n]
+                 (if (< n min)
+                   (p driver pos coll (fn [pos coll] (park! driver #(compulsories pos coll (inc n))))) ; TCO
+                   (optionals pos coll n)))
+               (optionals [pos coll n]
+                 (if (< n max)
+                   (do
+                     (park! driver #(k pos coll))           ; remember fallback
+                     (p driver coll (fn [coll] (park! driver #(optionals pos coll (inc n)))))) ; TCO
+                   (k pos coll)))]
+         (compulsories pos coll 0))))
 
-(defn repeat-explainer [min max p]
-  (fn [_ driver pos coll k]
-    (letfn [(compulsories [pos coll n]
-              (if (< n min)
-                (p driver pos coll (fn [pos coll] (park! driver #(compulsories pos coll (inc n))))) ; TCO
-                (optionals coll n)))
-            (optionals [pos coll n]
-              (if (< n max)
-                (do
-                  (park! driver #(k coll))                  ; remember fallback
-                  (p driver pos coll (fn [pos coll] (park! driver #(optionals pos coll (inc n)))))) ; TCO
-                (k coll)))]
-      (compulsories pos coll 0))))
+   (defn repeat-explainer [min max p]
+     (fn [_ driver pos coll k]
+       (letfn [(compulsories [pos coll n]
+                 (if (< n min)
+                   (p driver pos coll (fn [pos coll] (park! driver #(compulsories pos coll (inc n))))) ; TCO
+                   (optionals coll n)))
+               (optionals [pos coll n]
+                 (if (< n max)
+                   (do
+                     (park! driver #(k coll))               ; remember fallback
+                     (p driver pos coll (fn [pos coll] (park! driver #(optionals pos coll (inc n)))))) ; TCO
+                   (k coll)))]
+         (compulsories pos coll 0))))
 
-(defn repeat-transformer [min max p]
-  (fn [driver coll* coll k]
-    (letfn [(compulsories [coll* coll n]
-              (if (< n min)
-                (p driver coll* coll
-                   (fn [coll] (park! driver #(compulsories coll* coll (inc n))))) ; TCO
-                (optionals coll* coll n)))
-            (optionals [coll* coll n]
-              (if (< n max)
-                (do
-                  (park! driver #(k coll* coll))            ; remember fallback
-                  (p driver coll
-                     (fn [coll* coll] (park! driver #(optionals coll* coll (inc n)))))) ; TCO
-                (k coll* coll)))]
-      (compulsories coll* coll 0))))
+   (defn repeat-transformer [min max p]
+     (fn [driver coll* coll k]
+       (letfn [(compulsories [coll* coll n]
+                 (if (< n min)
+                   (p driver coll* coll
+                      (fn [coll] (park! driver #(compulsories coll* coll (inc n))))) ; TCO
+                   (optionals coll* coll n)))
+               (optionals [coll* coll n]
+                 (if (< n max)
+                   (do
+                     (park! driver #(k coll* coll))         ; remember fallback
+                     (p driver coll
+                        (fn [coll* coll] (park! driver #(optionals coll* coll (inc n)))))) ; TCO
+                   (k coll* coll)))]
+         (compulsories coll* coll 0)))))
 
 ;;;; ## Kleene Star
 
 (defn *-validator [p]
-  (fn *p [driver coll k]
-    (park! driver #(k coll))                                ; remember fallback
-    (p driver coll (fn [coll] (park! driver #(*p driver coll k)))))) ; TCO
+  (let [*p-epsilon (cat-validator)]
+    (fn *p [driver pos coll k]
+      (park-validator! driver *p-epsilon pos coll k)        ; remember fallback
+      (park-validator! driver p pos coll (fn [pos coll] (*p driver pos coll k)))))) ; TCO
 
 (defn *-explainer [p]
-  (fn *p [driver pos coll k]
-    (park! driver #(k pos coll))                            ; remember fallback
-    (p driver pos coll (fn [pos coll] (park! driver #(*p driver pos coll k)))))) ; TCO
+  (let [*p-epsilon (cat-explainer)]
+    (fn *p [driver pos coll k]
+      (park-explainer! driver *p-epsilon pos coll k)        ; remember fallback
+      (park-explainer! driver p pos coll (fn [pos coll] (*p driver pos coll k)))))) ; TCO
 
 (defn *-transformer [p]
-  (fn *p [driver coll* coll k]
-    (park! driver #(k coll* coll))                          ; remember fallback
-    (p driver coll* coll
-       (fn [coll* coll] (park! driver #(*p driver coll* coll k)))))) ; TCO
+  (let [*p-epsilon (cat-transformer)]
+    (fn *p [driver coll* pos coll k]
+      (park-transformer! driver *p-epsilon coll* pos coll k) ; remember fallback
+      (park-transformer! driver p coll* pos coll (fn [coll* pos coll] (*p driver coll* pos coll k)))))) ; TCO
 
 ;;;; ## Non-Kleene Plus
 
@@ -740,19 +747,31 @@
 
 ;;;; # Validator
 
-(deftype ^:private ValidationDriver [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack]
+(deftype ^:private ValidationDriver
+  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache]
+
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (park! [_ thunk] (.push stack thunk))
-  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack))))
+  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
+
+  IValidationDriver
+  (park-validator! [driver validator pos coll k]
+    (if-some [^java.util.HashSet pos-cache (.get cache validator)]
+      (when-not (.contains pos-cache pos)
+        (.add pos-cache pos)
+        (.push stack #(validator driver pos coll k)))
+      (let [pos-cache (java.util.HashSet.)]
+        (.put cache validator pos-cache)
+        (.add pos-cache pos)
+        (.push stack #(validator driver pos coll k))))))
 
 (defn validator [p]
   (let [p (cat-validator p (end-validator))]
     (fn [coll]
       (and (sequential? coll)
-           (let [driver (ValidationDriver. false (java.util.ArrayDeque.))]
-             (p driver coll (fn [_] (succeed! driver)))
+           (let [driver (ValidationDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.))]
+             (p driver 0 coll (fn [_ _] (succeed! driver)))
              (or (succeeded? driver)
                  (loop []
                    (if-some [thunk (pop-thunk! driver)]
@@ -764,16 +783,24 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack
+  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache
    in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (park! [_ thunk] (.push stack thunk))
   (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
 
   IExplanationDriver
+  (park-explainer! [driver explainer pos coll k]
+    (if-some [^java.util.HashSet pos-cache (.get cache explainer)]
+      (when-not (.contains pos-cache pos)
+        (.add pos-cache pos)
+        (.push stack #(explainer driver pos coll k)))
+      (let [pos-cache (java.util.HashSet.)]
+        (.put cache explainer pos-cache)
+        (.add pos-cache pos)
+        (.push stack #(explainer driver pos coll k)))))
   (value-path [_ pos] (conj in pos))
   (fail! [_ pos errors*]
     (cond
@@ -788,7 +815,7 @@
     (fn [coll in errors]
       (if (sequential? coll)
         (let [pos 0
-              driver (ExplanationDriver. false (java.util.ArrayDeque.) in pos [])]
+              driver (ExplanationDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) in pos [])]
           (p driver pos coll (fn [_ _] (succeed! driver)))
           (if (succeeded? driver)
             errors
@@ -803,16 +830,24 @@
 ;;;; # Transformer
 
 (deftype ^:private ParseDriver
-  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack
+  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache
    ^:unsynchronized-mutable result]
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (park! [_ thunk] (.push stack thunk))
   (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
 
-  IParseDriver
+  ITransformDriver
+  (park-transformer! [driver transformer coll* pos coll k]
+    (if-some [^java.util.HashSet pos-cache (.get cache transformer)]
+      (when-not (.contains pos-cache pos)
+        (.add pos-cache pos)
+        (.push stack #(transformer driver coll* pos coll k)))
+      (let [pos-cache (java.util.HashSet.)]
+        (.put cache transformer pos-cache)
+        (.add pos-cache pos)
+        (.push stack #(transformer driver coll* pos coll k)))))
   (succeed-with! [self v] (succeed! self) (set! result v))
   (success-result [_] result))
 
@@ -820,8 +855,8 @@
   (let [p (cat-transformer p (end-transformer))]
     (fn [coll]
       (if (sequential? coll)
-        (let [driver (ParseDriver. false (java.util.ArrayDeque.) nil)]
-          (p driver [] coll (fn [coll* _] (succeed-with! driver coll*)))
+        (let [driver (ParseDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) nil)]
+          (p driver [] 0 coll (fn [coll* _ _] (succeed-with! driver coll*)))
           (if (succeeded? driver)
             (success-result driver)
             (loop []

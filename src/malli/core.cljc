@@ -50,9 +50,9 @@
   (-deref [this] "returns the referenced schema"))
 
 (defprotocol RegexSchema
-  (-regex [this path] "returns the regex")
-  (-explainer-regex [this path])
-  (-transformer-regex [this transformer method options]))
+  (-regex-validator [this] "returns the regex")
+  (-regex-explainer [this path])
+  (-regex-transformer [this transformer method options]))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -248,35 +248,23 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
-(defn -into-regex [x path]
+(defn -into-regex [x]
   (if (satisfies? RegexSchema x)
-    (-regex x path)
-    (let [valid? (-validator x)
-          explain (-explainer x path)]
-      (reify re/RegexParser
-        (-validate! [_ _ coll k]
-          (when (and (seq coll) (valid? (first coll)))
-            (k (rest coll))))
+    (-regex-validator x)
+    (re/item-validator (-validator x))))
 
-        (-explain! [_ driver pos coll k]
-          (let [in (re/value-path driver pos)]
-            (if (seq coll)
-              (let [errors (explain (first coll) in [])]
-                (if (seq errors)
-                  (re/fail! driver pos errors)
-                  (k (inc pos) (rest coll))))
-              (re/fail! driver pos [(-error path in x nil ::re/end-of-input)]))))))))
-
-;; HACK:
-(def -into-explainer-regex -into-regex)
+(defn -into-explainer-regex [x path]
+  (if (satisfies? RegexSchema x)
+    (-regex-explainer x path)
+    (re/item-explainer -error path x (-explainer x path))))
 
 (defn -into-transformer-regex [x transformer method options]
   (if (satisfies? RegexSchema x)
-    (-transformer-regex x transformer method options)
+    (-regex-transformer x transformer method options)
     (let [t (or (-transformer x transformer method options) identity)]
       (case method
-        :encode (re/encode-item (-validator x) t)
-        :decode (re/decode-item t (-validator x))))))
+        :encode (re/item-encoder (-validator x) t)
+        :decode (re/item-decoder t (-validator x))))))
 
 ;;
 ;; Protocol Cache
@@ -1056,16 +1044,16 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn- regex-validator [schema path] (re/validator -error schema path (-regex schema path)))
+(defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 
-(defn- regex-explainer [schema path] (re/explainer -error schema path (-explainer-regex schema path)))
+(defn- regex-explainer [schema path] (re/explainer -error schema path (-regex-explainer schema path)))
 
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)
-        ->children (re/transformer (-transformer-regex schema transformer method options))]
+        ->children (re/transformer (-regex-transformer schema transformer method options))]
     (-intercepting this-transformer ->children)))
 
-(defn -sequence-schema [{:keys [type re tx]}]
+(defn -sequence-schema [{:keys [type re-validator re-explainer re-transformer]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -1077,7 +1065,7 @@
           Schema
           (-type [_] type)
           (-type-properties [_])
-          (-validator [this] (regex-validator this []))
+          (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
@@ -1094,15 +1082,14 @@
           (-set [this key value] (-set-assoc-children this key value))
 
           RegexSchema
-          (-regex [_ path] (re properties (map-indexed (fn [i s] (-into-regex s (conj path i)))
-                                                       children)))
-          (-explainer-regex [_ path]
-            (re properties (map-indexed (fn [i s] (-into-explainer-regex s (conj path i)))
-                                        children)))
-          (-transformer-regex [_ transformer method options]
-            (tx properties (map #(-into-transformer-regex % transformer method options) children))))))))
+          (-regex-validator [_] (re-validator properties (map -into-regex children)))
+          (-regex-explainer [_ path]
+            (re-explainer properties (map-indexed (fn [i s] (-into-explainer-regex s (conj path i)))
+                                                  children)))
+          (-regex-transformer [_ transformer method options]
+            (re-transformer properties (map #(-into-transformer-regex % transformer method options) children))))))))
 
-(defn -sequence-entry-schema [{:keys [type re tx]}]
+(defn -sequence-entry-schema [{:keys [type re-validator re-explainer re-transformer]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -1114,7 +1101,7 @@
           Schema
           (-type [_] type)
           (-type-properties [_])
-          (-validator [this] (regex-validator this []))
+          (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
@@ -1133,14 +1120,13 @@
           (-set [this key value] (-set-entries this key value))
 
           RegexSchema
-          (-regex [_ path] (re properties (map (fn [[k s]] [k (-into-regex s (conj path k))])
-                                               children)))
-          (-explainer-regex [_ path]
-            (re properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
-                                children)))
-          (-transformer-regex [_ transformer method options]
-            (tx properties (map (fn [[k s]] [k (-into-transformer-regex s transformer method options)])
-                                children))))))))
+          (-regex-validator [_] (re-validator properties (map (fn [[k s]] [k (-into-regex s)]) children)))
+          (-regex-explainer [_ path]
+            (re-explainer properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
+                                          children)))
+          (-regex-transformer [_ transformer method options]
+            (re-transformer properties (map (fn [[k s]] [k (-into-transformer-regex s transformer method options)])
+                                            children))))))))
 
 (defn -nested-schema []
   ^{:type ::into-schema}
@@ -1454,22 +1440,35 @@
    :uuid (-uuid-schema)})
 
 (defn sequence-schemas []
-  {:+ (-sequence-schema {:type :+, :re (fn [_ [child]] (re/+ child)) :tx (fn [_ [child]] (re/transformer-+ child))})
-   :* (-sequence-schema {:type :*, :re (fn [_ [child]] (re/* child)) :tx (fn [_ [child]] (re/transformer-* child))})
-   :? (-sequence-schema {:type :?, :re (fn [_ [child]] (re/? child)) :tx (fn [_ [child]] (re/transformer-? child))})
-   :repeat (-sequence-schema {:type :repeat, :re (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
-                                                   (re/repeat min max child))
-                              :tx (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
-                                    (re/transformer-repeat min max child))})
+  {:+ (-sequence-schema {:type :+, :re-validator (fn [_ [child]] (re/+-validator child))
+                         :re-explainer (fn [_ [child]] (re/+-explainer child))
+                         :re-transformer (fn [_ [child]] (re/+-transformer child))})
+   :* (-sequence-schema {:type :*, :re-validator (fn [_ [child]] (re/*-validator child))
+                         :re-explainer (fn [_ [child]] (re/*-explainer child))
+                         :re-transformer (fn [_ [child]] (re/*-transformer child))})
+   :? (-sequence-schema {:type :?, :re-validator (fn [_ [child]] (re/?-validator child))
+                         :re-explainer (fn [_ [child]] (re/?-explainer child))
+                         :re-transformer (fn [_ [child]] (re/?-transformer child))})
+   :repeat (-sequence-schema {:type :repeat
+                              :re-validator (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
+                                              (re/repeat-validator min max child))
+                              :re-explainer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
+                                    (re/repeat-explainer min max child))
+                              :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
+                                                (re/repeat-transformer min max child))})
 
-   :alt (-sequence-schema {:type :alt, :re (fn [_ children] (apply re/alt children))
-                           :tx (fn [_ children] (apply re/transformer-alt children))})
-   :cat (-sequence-schema {:type :cat, :re (fn [_ children] (apply re/cat children))
-                           :tx (fn [_ children] (apply re/transformer-cat children))})
-   :cat* (-sequence-entry-schema {:type :cat*, :re (fn [_ children] (apply re/cat children))
-                                  :tx (fn [_ children] (apply re/transformer-cat children))})
-   :alt* (-sequence-entry-schema {:type :alt*, :re (fn [_ children] (apply re/alt children))
-                                  :tx (fn [_ children] (apply re/transformer-alt children))})
+   :alt (-sequence-schema {:type :alt, :re-validator (fn [_ children] (apply re/alt-validator children))
+                           :re-explainer (fn [_ children] (apply re/alt-explainer children))
+                           :re-transformer (fn [_ children] (apply re/alt-transformer children))})
+   :cat (-sequence-schema {:type :cat, :re-validator (fn [_ children] (apply re/cat-validator children))
+                           :re-explainer (fn [_ children] (apply re/cat-explainer children))
+                           :re-transformer (fn [_ children] (apply re/cat-transformer children))})
+   :cat* (-sequence-entry-schema {:type :cat*, :re-validator (fn [_ children] (apply re/cat-validator children))
+                                  :re-explainer (fn [_ children] (apply re/cat-explainer children))
+                                  :re-transformer (fn [_ children] (apply re/cat-transformer children))})
+   :alt* (-sequence-entry-schema {:type :alt*, :re-validator (fn [_ children] (apply re/alt-validator children))
+                                  :re-explainer (fn [_ children] (apply re/alt-explainer children))
+                                  :re-transformer (fn [_ children] (apply re/alt-transformer children))})
 
    :nested (-nested-schema)})
 

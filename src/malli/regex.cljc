@@ -561,7 +561,7 @@
               (if (< n max)
                 (do
                   (park-validator! driver rep-epsilon pos coll k) ; remember fallback
-                  (p driver coll
+                  (p driver pos coll
                      (fn [pos coll]
                        (-park-validator! driver
                                          (fn [driver pos coll k] (optionals driver (inc n) pos coll k))
@@ -583,7 +583,7 @@
               (if (< n max)
                 (do
                   (park-explainer! driver rep-epsilon pos coll k) ; remember fallback
-                  (p driver coll
+                  (p driver pos coll
                      (fn [pos coll]
                        (-park-explainer! driver
                                          (fn [driver pos coll k] (optionals driver (inc n) pos coll k))
@@ -605,7 +605,7 @@
               (if (< n max)
                 (do
                   (park-transformer! driver rep-epsilon coll* pos coll k) ; remember fallback
-                  (p driver coll
+                  (p driver pos coll
                      (fn [coll* pos coll]
                        (-park-transformer! driver
                                            (fn [driver pos coll k] (optionals driver (inc n) coll* pos coll k))

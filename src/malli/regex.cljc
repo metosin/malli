@@ -613,9 +613,9 @@
                 (k coll* pos coll)))]
       (fn [driver coll* pos coll k] (compulsories driver 0 coll* pos coll k)))))
 
-;;;; # Validator
+;;;; # Shared Drivers
 
-(deftype ^:private ValidationDriver
+(deftype ^:private CheckDriver
   [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache]
 
   Driver
@@ -624,22 +624,24 @@
   (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
 
   IValidationDriver
-  (-park-validator! [driver validator pos coll k] (.push stack #(validator driver pos coll k)))
-  (park-validator! [driver validator pos coll k]
+  (-park-validator! [self validator pos coll k] (.push stack #(validator self pos coll k)))
+  (park-validator! [self validator pos coll k]
     (if-some [^java.util.HashSet pos-cache (.get cache validator)]
       (when-not (.contains pos-cache pos)
         (.add pos-cache pos)
-        (-park-validator! driver validator pos coll k))
+        (-park-validator! self validator pos coll k))
       (let [pos-cache (java.util.HashSet.)]
         (.put cache validator pos-cache)
         (.add pos-cache pos)
-        (-park-validator! driver validator pos coll k)))))
+        (-park-validator! self validator pos coll k)))))
+
+;;;; # Validator
 
 (defn validator [p]
   (let [p (cat-validator p (end-validator))]
     (fn [coll]
       (and (sequential? coll)
-           (let [driver (ValidationDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.))]
+           (let [driver (CheckDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.))]
              (p driver 0 coll (fn [_ _] (succeed! driver)))
              (or (succeeded? driver)
                  (loop []
@@ -652,25 +654,16 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache
-   in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+  [check-driver, in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
 
   Driver
-  (succeed! [_] (set! success (boolean true)))
-  (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
+  (succeed! [_] (succeed! check-driver))
+  (succeeded? [_] (succeeded? check-driver))
+  (pop-thunk! [_] (pop-thunk! check-driver))
 
   IExplanationDriver
-  (-park-explainer! [driver explainer pos coll k] (.push stack #(explainer driver pos coll k)))
-  (park-explainer! [driver explainer pos coll k]
-    (if-some [^java.util.HashSet pos-cache (.get cache explainer)]
-      (when-not (.contains pos-cache pos)
-        (.add pos-cache pos)
-        (-park-explainer! driver explainer pos coll k))
-      (let [pos-cache (java.util.HashSet.)]
-        (.put cache explainer pos-cache)
-        (.add pos-cache pos)
-        (-park-explainer! driver explainer pos coll k))))
+  (-park-explainer! [_ explainer pos coll k] (-park-validator! check-driver explainer pos coll k))
+  (park-explainer! [_ explainer pos coll k] (park-validator! check-driver explainer pos coll k))
   (value-path [_ pos] (conj in pos))
   (fail! [_ pos errors*]
     (cond
@@ -685,7 +678,8 @@
     (fn [coll in errors]
       (if (sequential? coll)
         (let [pos 0
-              driver (ExplanationDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) in pos [])]
+              driver (ExplanationDriver. (CheckDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.))
+                                         in pos [])]
           (p driver pos coll (fn [_ _] (succeed! driver)))
           (if (succeeded? driver)
             errors

@@ -279,6 +279,7 @@
 
 (require '[malli.regex :as mt])
 
+#_
 (mt/describe (mt/cat [(mt/+ (mt/fn int?))
                       (mt/+ (mt/fn string?))
                       (mt/+ (mt/fn int?))
@@ -298,22 +299,23 @@
                    [2 (h/+ (h/fn string?))]
                    [3 (h/+ (h/fn int?))]
                    [4 (h/+ (h/fn string?))])
-        mtre (mt/cat [(mt/+ (mt/fn int?))
-                      (mt/+ (mt/fn string?))
-                      (mt/+ (mt/fn int?))
-                      (mt/+ (mt/fn string?))])
-        describer (mt/describer mtre)
-        validator (mt/validator mtre)
+        mtre [:cat
+              [:+ int?]
+              [:+ string?]
+              [:+ int?]
+              [:+ string?]]
+        #_#_describer (mt/describer mtre)
+        validator (m/validator mtre)
         sre (s/cat :1 (s/+ int?)
                    :2 (s/+ string?)
                    :3 (s/+ int?)
                    :4 (s/+ string?))]
 
     (println "\nMalli:")
-    (prn (describer data))
+    #_(prn (describer data))
     (prn (validator data))
     ;; 8.272667 µs
-    (cc/quick-bench (describer data))
+    #_(cc/quick-bench (describer data))
     ;; 6.777152 µs
     (cc/quick-bench (validator data))
     #_(time
@@ -353,12 +355,14 @@
                  [2 (h/repeat 2 3 (h/fn int?))]
                  [3 (h/repeat 2 3 (h/fn int?))]
                  [4 (h/repeat 2 3 (h/fn int?))])
+      #_#_
       mtre (mt/cat [(mt/repeat 2 3 (mt/fn int?))
                     (mt/repeat 2 3 (mt/fn int?))
                     (mt/repeat 2 3 (mt/fn int?))
                     (mt/repeat 2 3 (mt/fn int?))])
       sre (s/cat :ints (s/+ int?))]
 
+  #_
   (let [describe (mt/describer mtre)]
     (println "\nMalli")
     (prn (describe data))
@@ -534,12 +538,14 @@
                  [2 (h/repeat 2 3 (h/fn int?))]
                  [3 (h/repeat 2 3 (h/fn int?))]
                  [4 (h/repeat 2 3 (h/fn int?))])
+      #_#_
       mtre (mt/cat [(mt/repeat 2 3 (mt/fn int?))
                     (mt/repeat 2 3 (mt/fn int?))
                     (mt/repeat 2 3 (mt/fn int?))
                     (mt/repeat 2 3 (mt/fn int?))])
       sre (s/cat :ints (s/+ int?))]
 
+  #_
   (let [describe (mt/describer mtre)]
     (println "\nMalli")
     (prn (describe data))

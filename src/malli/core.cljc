@@ -1449,11 +1449,11 @@
    :? (-sequence-schema {:type :?, :re-validator (fn [_ [child]] (re/?-validator child))
                          :re-explainer (fn [_ [child]] (re/?-explainer child))
                          :re-transformer (fn [_ [child]] (re/?-transformer child))})
-   #_#_:repeat (-sequence-schema {:type :repeat
+   :repeat (-sequence-schema {:type :repeat
                               :re-validator (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                               (re/repeat-validator min max child))
                               :re-explainer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
-                                    (re/repeat-explainer min max child))
+                                              (re/repeat-explainer min max child))
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                                 (re/repeat-transformer min max child))})
 

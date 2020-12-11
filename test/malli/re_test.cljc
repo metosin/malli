@@ -117,57 +117,7 @@
 
 (require '[malli.core :as m])
 
-;; malli
-[:cat]
-[:alt]
-[:?]
-[:*]
-[:+]
-[:repeat]
-
-(defn -repeat-schema [{:keys [type min max]}]
-  ^{:type ::into-schema}
-  (reify m/IntoSchema
-    (-into-schema [_ properties children options]
-      (m/-check-children! type properties children {:min 1, :max 1})
-      (let [[child :as children] (map #(m/schema % options) children)
-            min (or min (:min properties))
-            max (or max (:max properties))
-            form (m/-create-form type properties (map m/-form children))]
-        ^{:type ::schema}
-        (reify
-          m/Schema
-          (-type [_] type)
-          (-validator [_]
-            (let [child-validator (m/-validator child)
-                  this-validator (cond
-                                   (= 0 min) (fn [x] (or (nil? x) (and (sequential? x) (let [c (count x)] (<= c max)))))
-                                   :else (fn [x] (and (sequential? x) (let [c (count x)] (<= min c max)))))]
-              (prn min max)
-              (fn [x]
-                (prn (this-validator x))
-                (and (this-validator x) (child-validator x)))))
-          (-explainer [_ path]
-            (let [explainer' (m/-explainer child (conj path 0))]
-              (fn explain [x in acc]
-                (if (nil? x) acc (explainer' x in acc)))))
-          (-transformer [this transformer method options]
-            (m/-parent-children-transformer this children transformer method options))
-          (-walk [this walker path options]
-            (if (m/-accept walker this path options)
-              (m/-outer walker this path (m/-inner-indexed walker path children options) options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-form [_] form)
-          m/LensSchema
-          (-keep [_])
-          (-get [_ key default] (if (= 0 key) child default))
-          (-set [this key value] (if (= 0 key)
-                                   (m/into-schema type properties [value])
-                                   (m/-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
-
-(def registry (assoc (m/default-schemas) :* (-repeat-schema {:type :*, :min 0, :max ##Inf})))
+(def registry m/default-schemas)
 
 (m/validate [:* int?] [1 2 3] {:registry registry})
 
@@ -213,50 +163,7 @@
 ;; impl
 ;;
 
-(defn -repeat [min max child] {:type :repeat, :min min, :max max, :child child})
-(def -* (partial -repeat 0 ##Inf))
-(def -+ (partial -repeat 1 ##Inf))
-(defn -cat [children] {:type :cat, :children children})
-
-(defn -result [start min max]
-  (let [min' (+ min start)]
-    (loop [max' (+ max start), acc []]
-      (if (>= max' min')
-        (recur (dec max') (conj acc [min' max']))
-        acc))))
-
-(defn -repeat-impl [data size start {:keys [min max child]}]
-  (prn "-repeat-impl" start)
-  (loop [i 0]
-    (cond
-      (>= i max) (-result start min i)
-      (>= i size) (if (>= i min) (-result start min i))
-      (= i max) (-result start min i)
-      (child (nth data (+ i start))) (recur (inc i))
-      (>= i min) (-result start min i))))
-
-(declare -impl)
-
-(defn -cat-impl [data size start {:keys [children]}]
-  #_(-> (reduce
-          (fn [[start parts] child]
-            (if-let [res (-impl child data size start)]
-              [end (conj parts res)]
-              (reduced nil)))
-          [start []]
-          children)
-        (second)))
-
-(defn -impl [re data size start]
-  (let [res (case (:type re)
-              :repeat (-repeat-impl data size start re)
-              :cat (-cat-impl data size start re))]
-    (if-not (= ::invalid res)
-      res)))
-
-(defn impl [re data]
-  (-impl re (vec data) (count data) 0))
-
+#_
 (impl
   #_(-repeat 2 4 string?)
   (-cat [(-repeat 2 2 string?)

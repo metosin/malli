@@ -248,17 +248,17 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
-(defn -into-regex [x]
+(defn -into-regex-validator [x]
   (if (satisfies? RegexSchema x)
     (-regex-validator x)
     (re/item-validator (-validator x))))
 
-(defn -into-explainer-regex [x path]
+(defn -into-regex-explainer [x path]
   (if (satisfies? RegexSchema x)
     (-regex-explainer x path)
     (re/item-explainer -error path x (-explainer x path))))
 
-(defn -into-transformer-regex [x transformer method options]
+(defn -into-regex-transformer [x transformer method options]
   (if (satisfies? RegexSchema x)
     (-regex-transformer x transformer method options)
     (let [t (or (-transformer x transformer method options) identity)]
@@ -1082,14 +1082,14 @@
           (-set [this key value] (-set-assoc-children this key value))
 
           RegexSchema
-          (-regex-validator [_] (re-validator properties (map -into-regex children)))
+          (-regex-validator [_] (re-validator properties (map -into-regex-validator children)))
           (-regex-explainer [_ path]
-            (re-explainer properties (map-indexed (fn [i s] (-into-explainer-regex s (conj path i)))
+            (re-explainer properties (map-indexed (fn [i s] (-into-regex-explainer s (conj path i)))
                                                   children)))
           (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map #(-into-transformer-regex % transformer method options) children))))))))
+            (re-transformer properties (map #(-into-regex-transformer % transformer method options) children))))))))
 
-(defn -sequence-entry-schema [{:keys [type re-validator re-explainer re-transformer]}]
+(defn -sequence-entry-schema [{:keys [type re-validator re-explainer re-conformer re-transformer]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -1120,12 +1120,12 @@
           (-set [this key value] (-set-entries this key value))
 
           RegexSchema
-          (-regex-validator [_] (re-validator properties (map (fn [[k s]] [k (-into-regex s)]) children)))
+          (-regex-validator [_] (re-validator properties (map (fn [[k s]] [k (-into-regex-validator s)]) children)))
           (-regex-explainer [_ path]
-            (re-explainer properties (map (fn [[k s]] [k (-into-explainer-regex s (conj path k))])
+            (re-explainer properties (map (fn [[k s]] [k (-into-regex-explainer s (conj path k))])
                                           children)))
           (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map (fn [[k s]] [k (-into-transformer-regex s transformer method options)])
+            (re-transformer properties (map (fn [[k s]] [k (-into-regex-transformer s transformer method options)])
                                             children))))))))
 
 (defn -nested-schema []
@@ -1140,7 +1140,7 @@
           Schema
           (-type [_] :nested)
           (-type-properties [_])
-          (-validator [_] (regex-validator schema []))
+          (-validator [_] (regex-validator schema))
           (-explainer [_ path] (regex-explainer schema (conj path 0)))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))

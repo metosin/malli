@@ -480,20 +480,23 @@
   ([?kr ?kr* & ?krs]
    (cat-explainer ?kr (reduce (fn [acc ?kr] (cat-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
-(defn- keyed-entry [i ?kr] (if (vector? ?kr) ?kr [i ?kr]))
+(defn cat-parser [& rs]
+  (let [acc (reduce (fn [acc r]
+                      (fn [driver coll* pos coll k]
+                        (r driver pos coll
+                           (fn [v pos coll] (acc driver (conj coll* v) pos coll k)))))
+                    (fn [_ coll* pos coll k] (k coll* pos coll))
+                    (reverse rs))]
+    (fn [driver pos coll k] (acc driver [] pos coll k))))
 
-(defn cat-parser
-  ([] (fn [_ pos coll k] (k {} pos coll)))
-  ([& ?krs]
-   (transduce (map-indexed vector)
-              (completing
-                (fn [r [i ?kr]]
-                  (let [[tag* r*] (keyed-entry i ?kr)]
-                    (fn [driver pos coll k]
-                      (r driver pos coll
-                         (fn [m pos coll] (r* driver pos coll
-                                              (fn [v* pos coll] (k (assoc m tag* v*) pos coll)))))))))
-              (cat-parser) ?krs)))
+(defn cat*-parser [& krs]
+  (let [acc (reduce (fn [acc [tag r]]
+                      (fn [driver m pos coll k]
+                        (r driver pos coll
+                           (fn [v pos coll] (acc driver (assoc m tag v) pos coll k)))))
+                    (fn [_ m pos coll k] (k m pos coll))
+                    (reverse krs))]
+    (fn [driver pos coll k] (acc driver {} pos coll k))))
 
 (defn cat-transformer
   ([] (fn [_ coll* pos coll k] (k coll* pos coll)))
@@ -528,20 +531,25 @@
    (alt-explainer ?kr (reduce (fn [acc ?kr] (alt-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
 
 (defn alt-parser
-  ([?kr]
-   (let [[tag r] (keyed-entry 0 ?kr)]
-     (fn [driver pos coll k]
-       (r driver pos coll (fn [v pos coll] (k (-tagged tag v) pos coll))))))
-  ([?kr & ?krs]
-   (transduce (map-indexed vector)
-              (completing
-                (fn [r [i ?kr]]
-                  (let [[tag* r*] (keyed-entry i ?kr)]
-                    (fn [driver pos coll k]
-                      (park-validator! driver r* pos coll   ; remember fallback
-                                       (fn [v* pos coll] (k (-tagged tag* v*) pos coll)))
-                      (park-validator! driver r pos coll k)))))
-              (alt-parser ?kr) ?krs)))
+  ([r] r)
+  ([r & rs]
+   (reduce (fn [acc r]
+             (fn [driver pos coll k]
+               (park-validator! driver acc pos coll k)      ; remember fallback
+               (park-validator! driver r pos coll k)))
+           (reverse (cons r rs)))))
+
+(defn alt*-parser
+  ([[tag r]] (fn [driver pos coll k] (r driver pos coll (fn [v pos coll] (k (-tagged tag v) pos coll)))))
+  ([kr & krs]
+   (let [krs (reverse (cons kr krs))]
+     (reduce (fn [acc [tag r]]
+               (fn [driver pos coll k]
+                 (park-validator! driver acc pos coll k)    ; remember fallback
+                 (park-validator! driver r pos coll
+                                  (fn [v pos coll] (k (-tagged tag v) pos coll)))))
+             (alt*-parser (first krs))
+             (rest krs)))))
 
 (defn alt-transformer
   ([?kr] (entry->regex ?kr))
@@ -580,7 +588,7 @@
       ([driver pos coll k] (*p driver [] pos coll k))
       ([driver coll* pos coll k]
        (park-transformer! driver *p-epsilon coll* pos coll k) ; remember fallback
-       (p driver pos coll (fn [v pos coll] (park-transformer! driver (conj coll* v) *p pos coll k)))))))
+       (p driver pos coll (fn [v pos coll] (park-transformer! driver *p (conj coll* v) pos coll k)))))))
 
 (defn *-transformer [p]
   (let [*p-epsilon (cat-transformer)]
@@ -763,16 +771,25 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-  [check-driver, in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache
+   in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
 
   Driver
-  (succeed! [_] (succeed! check-driver))
-  (succeeded? [_] (succeeded? check-driver))
-  (pop-thunk! [_] (pop-thunk! check-driver))
+  (succeed! [_] (set! success (boolean true)))
+  (succeeded? [_] success)
+  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
 
   IExplanationDriver
-  (-park-explainer! [_ explainer pos coll k] (-park-validator! check-driver explainer pos coll k))
-  (park-explainer! [_ explainer pos coll k] (park-validator! check-driver explainer pos coll k))
+  (-park-explainer! [self validator pos coll k] (.push stack #(validator self pos coll k)))
+  (park-explainer! [self validator pos coll k]
+    (if-some [^java.util.HashSet pos-cache (.get cache validator)]
+      (when-not (.contains pos-cache pos)
+        (.add pos-cache pos)
+        (-park-explainer! self validator pos coll k))
+      (let [pos-cache (java.util.HashSet.)]
+        (.put cache validator pos-cache)
+        (.add pos-cache pos)
+        (-park-explainer! self validator pos coll k))))
   (value-path [_ pos] (conj in pos))
   (fail! [_ pos errors*]
     (cond
@@ -787,8 +804,7 @@
     (fn [coll in errors]
       (if (sequential? coll)
         (let [pos 0
-              driver (ExplanationDriver. (CheckDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.))
-                                         in pos [])]
+              driver (ExplanationDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) in pos [])]
           (p driver pos coll (fn [_ _] (succeed! driver)))
           (if (succeeded? driver)
             errors
@@ -802,21 +818,21 @@
 
 ;;;; # Parser
 
-(defn parser [-error path schema p]
+(defn parser [-fail! p]
   (let [p (cat-parser p (end-parser))]
-    (fn [coll in]
+    (fn [coll]
       (if (sequential? coll)
         (let [driver (ParseDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) nil)]
           (p driver 0 coll (fn [v _ _] (succeed-with! driver v)))
           (if (succeeded? driver)
-            (success-result driver)
+            (first (success-result driver))
             (loop []
               (if-some [thunk (pop-thunk! driver)]
                 (do
                   (thunk)
-                  (if (succeeded? driver) (success-result driver) (recur)))
-                (-error path in schema coll)))))
-        (-error path in schema coll)))))
+                  (if (succeeded? driver) (first (success-result driver)) (recur)))
+                (-fail! :malli.core/nonconforming)))))
+        (-fail! :malli.core/nonconforming)))))
 
 ;;;; # Transformer
 

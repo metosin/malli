@@ -1601,12 +1601,12 @@
    :cat* (-sequence-entry-schema {:type :cat*, :child-bounds {}
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
-                                  :re-conformer (fn [_ children] (apply re/cat-parser children))
+                                  :re-conformer (fn [_ children] (apply re/cat*-parser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))})
    :alt* (-sequence-entry-schema {:type :alt*, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
-                                  :re-conformer (fn [_ children] (apply re/alt-parser children))
+                                  :re-conformer (fn [_ children] (apply re/alt*-parser children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))})})
 
 (defn base-schemas []

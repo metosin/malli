@@ -1,6 +1,7 @@
 (ns malli.regex
   (:refer-clojure :exclude [+ * repeat cat])
-  #?(:clj (:import [clojure.lang MapEntry])))
+  #?(:clj (:import [clojure.lang MapEntry]
+                   [java.util ArrayDeque IdentityHashMap HashSet])))
 
 ;;;; # Utils (TODO: move them out of here)
 
@@ -327,58 +328,61 @@
 
 ;;;; # Shared Drivers
 
+(defn- make-stack [] #?(:clj (ArrayDeque.), :cljs #js []))
+
+(defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljs (zero? (alength stack))))
+
+(defn- make-cache [] #?(:clj (IdentityHashMap.), :cljs (volatile! (transient {}))))
+
+(defn- ensure-cached! [^IdentityHashMap cache f pos]
+  #?(:clj  (if-some [^HashSet pos-cache (.get cache f)]
+             (or (.contains pos-cache pos)
+                 (do (.add pos-cache pos) false))
+             (let [pos-cache (HashSet.)]
+               (.put cache f pos-cache)
+               (.add pos-cache pos)
+               false)),
+     :cljs (if-some [pos-cache (get @cache f)]
+             (or (contains? pos-cache pos)
+                 (do (vswap! cache assoc! f (conj! pos-cache pos)) false))
+             (do (vswap! cache assoc! f (transient #{pos})) false))))
+
 (deftype ^:private CheckDriver
-  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache]
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^IdentityHashMap cache]
+     :cljs [^:mutable success, stack, cache])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
+  (pop-thunk! [_] (when-not (empty-stack? stack) (.pop stack)))
 
   IValidationDriver
   (-park-validator! [self validator pos coll k] (.push stack #(validator self pos coll k)))
   (park-validator! [self validator pos coll k]
-    (if-some [^java.util.HashSet pos-cache (.get cache validator)]
-      (when-not (.contains pos-cache pos)
-        (.add pos-cache pos)
-        (-park-validator! self validator pos coll k))
-      (let [pos-cache (java.util.HashSet.)]
-        (.put cache validator pos-cache)
-        (.add pos-cache pos)
-        (-park-validator! self validator pos coll k)))))
+    (when-not (ensure-cached! cache validator pos)
+      (-park-validator! self validator pos coll k))))
 
 (deftype ^:private ParseDriver
-  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache
-   ^:unsynchronized-mutable result]
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^IdentityHashMap cache
+            ^:unsynchronized-mutable result]
+     :cljs [^:mutable success, stack, cache, ^:mutable result])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
+  (pop-thunk! [_] (when-not (empty-stack? stack) (.pop stack)))
 
   IValidationDriver
   (-park-validator! [self validator pos coll k] (.push stack #(validator self pos coll k)))
   (park-validator! [self validator pos coll k]
-    (if-some [^java.util.HashSet pos-cache (.get cache validator)]
-      (when-not (.contains pos-cache pos)
-        (.add pos-cache pos)
-        (-park-validator! self validator pos coll k))
-      (let [pos-cache (java.util.HashSet.)]
-        (.put cache validator pos-cache)
-        (.add pos-cache pos)
-        (-park-validator! self validator pos coll k))))
+    (when-not (ensure-cached! cache validator pos)
+      (-park-validator! self validator pos coll k)))
 
   IParseDriver
   (-park-transformer! [driver transformer coll* pos coll k] (.push stack #(transformer driver coll* pos coll k)))
   (park-transformer! [driver transformer coll* pos coll k]
-    (if-some [^java.util.HashSet pos-cache (.get cache transformer)]
-      (when-not (.contains pos-cache pos)
-        (.add pos-cache pos)
-        (-park-transformer! driver transformer coll* pos coll k))
-      (let [pos-cache (java.util.HashSet.)]
-        (.put cache transformer pos-cache)
-        (.add pos-cache pos)
-        (-park-transformer! driver transformer coll* pos coll k))))
+    (when-not (ensure-cached! cache transformer pos)
+      (-park-transformer! driver transformer coll* pos coll k)))
   (succeed-with! [self v] (succeed! self) (set! result v))
   (success-result [_] result))
 
@@ -388,7 +392,7 @@
   (let [p (cat-validator p (end-validator))]
     (fn [coll]
       (and (sequential? coll)
-           (let [driver (CheckDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.))]
+           (let [driver (CheckDriver. false (make-stack) (make-cache))]
              (p driver 0 coll (fn [_ _] (succeed! driver)))
              (or (succeeded? driver)
                  (loop []
@@ -401,25 +405,20 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-  [^:unsynchronized-mutable ^boolean success, ^java.util.ArrayDeque stack, ^java.util.IdentityHashMap cache
-   in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^IdentityHashMap cache
+            in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+     :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (.isEmpty stack) (.pop stack)))
+  (pop-thunk! [_] (when-not (empty-stack? stack) (.pop stack)))
 
   IExplanationDriver
   (-park-explainer! [self validator pos coll k] (.push stack #(validator self pos coll k)))
   (park-explainer! [self validator pos coll k]
-    (if-some [^java.util.HashSet pos-cache (.get cache validator)]
-      (when-not (.contains pos-cache pos)
-        (.add pos-cache pos)
-        (-park-explainer! self validator pos coll k))
-      (let [pos-cache (java.util.HashSet.)]
-        (.put cache validator pos-cache)
-        (.add pos-cache pos)
-        (-park-explainer! self validator pos coll k))))
+    (when-not (ensure-cached! cache validator pos)
+      (-park-explainer! self validator pos coll k)))
   (value-path [_ pos] (conj in pos))
   (fail! [_ pos errors*]
     (cond
@@ -434,7 +433,7 @@
     (fn [coll in errors]
       (if (sequential? coll)
         (let [pos 0
-              driver (ExplanationDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) in pos [])]
+              driver (ExplanationDriver. false (make-stack) (make-cache) in pos [])]
           (p driver pos coll (fn [_ _] (succeed! driver)))
           (if (succeeded? driver)
             errors
@@ -452,7 +451,7 @@
   (let [p (cat-parser p (end-parser))]
     (fn [coll]
       (if (sequential? coll)
-        (let [driver (ParseDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) nil)]
+        (let [driver (ParseDriver. false (make-stack) (make-cache) nil)]
           (p driver 0 coll (fn [v _ _] (succeed-with! driver v)))
           (if (succeeded? driver)
             (first (success-result driver))
@@ -470,7 +469,7 @@
   (let [p (cat-transformer p (end-transformer))]
     (fn [coll]
       (if (sequential? coll)
-        (let [driver (ParseDriver. false (java.util.ArrayDeque.) (java.util.IdentityHashMap.) nil)]
+        (let [driver (ParseDriver. false (make-stack) (make-cache) nil)]
           (p driver [] 0 coll (fn [coll* _ _] (succeed-with! driver coll*)))
           (if (succeeded? driver)
             (success-result driver)

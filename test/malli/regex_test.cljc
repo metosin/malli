@@ -1,5 +1,5 @@
 (ns malli.regex-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is are]]
             [clojure.spec.alpha :as s]
             [malli.core :as m]))
 

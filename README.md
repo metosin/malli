@@ -931,7 +931,7 @@ Any (serializable) function can be used for `:dispatch`:
 (m/decode
   [:multi {:dispatch :type
            :decode/string '#(update % :type keyword)}
-   [:sized [:map [:type [:= :sized] [:size int?]]]
+   [:sized [:map [:type [:= :sized]] [:size int?]]]
    [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
   {:type "human"
    :name "Tiina"

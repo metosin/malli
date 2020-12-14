@@ -24,6 +24,9 @@
   (-type-properties [this] "returns schema type properties")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
+  (-conformer [this]                                        ; OPTIMIZE: nilable as in `-transformer`
+    "return a function of `x -> parsed-x` to explain how schema is valid.
+    If the value is not valid for the schema, the function throws.")
   (-transformer [this transformer method options]
     "returns a function to transform the value for the given schema and method.
     Can also return nil instead of `identity` so that more no-op transforms can be elided.")
@@ -55,6 +58,7 @@
   (-regex-op? [this] "is this a regex operator (e.g. :cat, :*...)")
   (-regex-validator [this] "returns the raw internal regex validator implementation")
   (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
+  (-regex-conformer [this])
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
 
 (extend-type #?(:clj Object, :cljs default)
@@ -259,6 +263,29 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
+(defn -into-regex-validator [x]
+  (if (satisfies? RegexSchema x)
+    (-regex-validator x)
+    (re/item-validator (-validator x))))
+
+(defn -into-regex-explainer [x path]
+  (if (satisfies? RegexSchema x)
+    (-regex-explainer x path)
+    (re/item-explainer path x (-explainer x path))))
+
+(defn -into-regex-conformer [x]
+  (if (satisfies? RegexSchema x)
+    (-regex-conformer x)
+    (re/item-parser (-validator x))))
+
+(defn -into-regex-transformer [x transformer method options]
+  (if (satisfies? RegexSchema x)
+    (-regex-transformer x transformer method options)
+    (let [t (or (-transformer x transformer method options) identity)]
+      (case method
+        :encode (re/item-encoder (-validator x) t)
+        :decode (re/item-decoder t (-validator x))))))
+
 ;;
 ;; Protocol Cache
 ;;
@@ -302,6 +329,7 @@
             (-explainer [this path]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (-error path in this x)) acc)))
+            (-conformer [_] (fn [x] (if (validator x) x (-fail! ::nonconforming))))
             (-transformer [this transformer method options]
               (-coder (-value-transformer transformer this method options)))
             (-walk [this walker path options]
@@ -345,6 +373,9 @@
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
+          (-conformer [_]
+            (let [conformers (mapv -conformer children)]
+              (fn [x] (reduce (fn [x conformer] (conformer x)) x conformers))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -360,6 +391,7 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
+;; TODO: [:or* [:b boolean?] [:s string?]]
 (defn -or-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -383,6 +415,17 @@
                     (let [acc'' (explainer x in acc')]
                       (if (identical? acc' acc'') (reduced acc) acc'')))
                   acc explainers))))
+          (-conformer [_]
+            (let [conformers (mapv -conformer children)]
+              (fn [x]
+                (let [res (reduce (fn [acc conformer]
+                                    (try                    ; yes this can be a bit slow but that's backtracking for you
+                                      (reduced (conformer x))
+                                      (catch #?(:clj Exception, :cljs js/Error) _ acc)))
+                                  ::nonconforming conformers)]
+                  (if (identical? res ::nonconforming)      ; all alternatives failed
+                    (-fail! res)
+                    res)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)]
               (if (seq children)
@@ -430,6 +473,7 @@
            (-type-properties [_])
            (-validator [_] (-validator schema))
            (-explainer [_ path] (-explainer schema path))
+           (-conformer [_] (-conformer schema))
            (-transformer [this transformer method options]
              (-parent-children-transformer this children transformer method options))
            (-walk [this walker path options]
@@ -511,6 +555,23 @@
                      (fn [acc explainer]
                        (explainer x in acc))
                      acc explainers)))))
+           (-conformer [_]
+             (let [conformers (cond-> (mapv
+                                        (fn [[key {:keys [optional]} schema]]
+                                          (let [conformer (-conformer schema)]
+                                            (fn [m]
+                                              (if-let [e (find m key)]
+                                                (assoc m key (conformer (val e)))
+                                                (if optional m (-fail! ::missing-key))))))
+                                        children)
+                                closed (into [(fn [m]
+                                                (reduce
+                                                  (fn [m k] (if (contains? keyset k) m (-fail! ::extra-key)))
+                                                  m (keys m)))]))]
+               (fn [x]
+                 (if (map? x)
+                   (reduce (fn [m conformer] (conformer m)) x conformers)
+                   (-fail! ::invalid-type)))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (some->> entries
@@ -575,6 +636,14 @@
                              (key-explainer key in)
                              (value-explainer value in))))
                     acc m)))))
+          (-conformer [_]
+            (let [key-conformer (-conformer key-schema)
+                  value-conformer (-conformer value-schema)]
+              (fn [m]
+                (if (map? m)
+                  (persistent! (reduce-kv (fn [acc k v] (assoc! acc (key-conformer k) (value-conformer v)))
+                                          (transient {}) m))
+                  (-fail! ::invalid-type)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   ->key (-transformer key-schema transformer method options)
@@ -632,6 +701,16 @@
                             (if (< i size)
                               (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
+          (-conformer [_]
+            (let [child-conformer (-conformer schema)
+                  unchecked-conformer (if fempty
+                                        #(into (if % fempty) (map child-conformer) %)
+                                        #(map child-conformer %))]
+              (fn [x]
+                (cond
+                  (not (fpred x)) (-fail! ::invalid-type)
+                  (not (validate-limits x)) (-fail! ::limits)
+                  :else (unchecked-conformer x)))))
           (-transformer [this transformer method options]
             (let [collection? #(or (sequential? %) (set? %))
                   this-transformer (-value-transformer transformer this method options)
@@ -683,6 +762,18 @@
                   (not= (count x) size) (conj acc (-error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
+          (-conformer [_]
+            (let [conformers (into {} (comp (map-indexed vector)
+                                            (keep (fn [[k s]]
+                                                    (when-some [c (-conformer s)]
+                                                      [k c]))))
+                                   children)
+                  unchecked-conformer (if (seq conformers) #(reduce-kv -update % conformers) identity)]
+              (fn [x]
+                (cond
+                  (not (vector? x)) (-fail! ::invalid-type)
+                  (not= (count x) size) (-fail! ::tuple-size)
+                  :else (unchecked-conformer x)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   ->children (into {} (comp (map-indexed vector)
@@ -724,6 +815,7 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (contains? schema x) (conj acc (-error (conj path 0) in this x)) acc)))
+          (-conformer [_] (fn [x] (if (contains? schema x) x (-fail! ::enum-member))))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
             (-coder (-value-transformer transformer this method options)))
@@ -765,6 +857,9 @@
                   (conj acc (-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-coder (-value-transformer transformer this method options)))
+          (-conformer [_]
+            (let [find (-safe-pred #(re-find re %))]
+              (fn [x] (if (find x) x (-fail! ::re-find)))))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -791,8 +886,7 @@
           Schema
           (-type [_] :fn)
           (-type-properties [_])
-          (-validator [_]
-            (fn [x] (try (f x) (catch #?(:clj Exception, :cljs js/Error) _ false))))
+          (-validator [_] (-safe-pred f))
           (-explainer [this path]
             (fn explain [x in acc]
               (try
@@ -801,6 +895,9 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (-error path in this x (:type (ex-data e))))))))
+          (-conformer [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x (-fail! ::predicate)))))
           (-transformer [this transformer method options]
             (-coder (-value-transformer transformer this method options)))
           (-walk [this walker path options]
@@ -835,6 +932,9 @@
             (let [explainer' (-explainer schema (conj path 0))]
               (fn explain [x in acc]
                 (if (nil? x) acc (explainer' x in acc)))))
+          (-conformer [_]
+            (let [conformer* (-conformer schema)]
+              (fn [x] (if (nil? x) x (conformer* x)))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -885,6 +985,12 @@
                  (if-let [explainer (explainers (dispatch x))]
                    (explainer x in acc)
                    (conj acc (-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
+           (-conformer [_]
+             (let [conformers (reduce-kv (fn [acc k s] (assoc acc k (-conformer s))) {} dispatch-map)]
+               (fn [x]
+                 (if-some [conformer (conformers (dispatch x))]
+                   (conformer x)
+                   (-fail! ::invalid-dispatch-value)))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s]
@@ -936,6 +1042,9 @@
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
                (fn [x in acc] ((explainer) x in acc))))
+           (-conformer [_]
+             (let [conformer (-memoize (fn [] (-conformer (-ref))))]
+               (fn [x] ((conformer) x))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
@@ -984,6 +1093,7 @@
             (-type-properties [_])
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
+            (-conformer [_] (-conformer child))
             (-transformer [this transformer method options]
               (-parent-children-transformer this children transformer method options))
             (-walk [this walker path options]
@@ -1042,6 +1152,9 @@
             (let [validator (-validator this)]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (-error path in this x)) acc))))
+          (-conformer [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x (-fail! ::non-function)))))
           (-transformer [_ _ _ _])
           (-walk [this walker path options]
             (if (-accept walker this path options)
@@ -1064,12 +1177,14 @@
 
 (defn- regex-explainer [schema path] (re/explainer schema path (-regex-explainer schema path)))
 
+(defn- regex-conformer [schema] (re/parser -fail! (-regex-conformer schema)))
+
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)
         ->children (re/transformer (-regex-transformer schema transformer method options))]
     (-intercepting this-transformer ->children)))
 
-(defn -sequence-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
+(defn -sequence-schema [{:keys [type child-bounds re-validator re-explainer re-conformer re-transformer] :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -1083,6 +1198,7 @@
           (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
+          (-conformer [this] (regex-conformer this))
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
@@ -1104,6 +1220,7 @@
             (re-validator properties (map -regex-validator children)))
           (-regex-explainer [_ path]
             (re-explainer properties (map-indexed (fn [i child] (-regex-explainer child (conj path i))) children)))
+          (-regex-conformer [_] (re-conformer properties (map -into-regex-conformer children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map #(-regex-transformer % transformer method options) children))))))))
 
@@ -1121,6 +1238,7 @@
           (-type-properties [_])
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
+          (-conformer [this] (regex-conformer this))
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
@@ -1142,6 +1260,7 @@
             (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
           (-regex-explainer [_ path]
             (re-explainer properties (map (fn [[k _ s]] [k (-regex-explainer s (conj path k))]) children)))
+          (-regex-conformer [_] (re-conformer properties (map (fn [[k s]] [k (-into-regex-conformer s)]) children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map (fn [[k _ s]] [k (-regex-transformer s transformer method options)])
                                             children))))))))
@@ -1276,12 +1395,30 @@
            :errors errors}))))))
 
 (defn explain
-  "Explains a value againsta a given schema. Creates the `explainer` for every call.
+  "Explains a value against a given schema. Creates the `explainer` for every call.
    When performance matters, (re-)use `explainer` instead."
   ([?schema value]
    (explain ?schema value nil))
   ([?schema value options]
    ((explainer ?schema options) value [] [])))
+
+(defn conformer
+  "Returns an pure conformer function of type `x -> either parsed-x ::nonconforming` for a given Schema"
+  ([?schema]
+   (conformer ?schema nil))
+  ([?schema options]
+   (let [conform! (-conformer (schema ?schema options))]
+     (fn conformer [value]
+       (try (conform! value)
+            (catch #?(:clj Exception, :cljs js/Error) _ ::nonconforming))))))
+
+(defn conform
+  "Conforms a value against a given schema. Creates the `comformer` for every call.
+   When performance matters, (re-)use `conformer` instead."
+  ([?schema value]
+   (conform ?schema value nil))
+  ([?schema value options]
+   ((conformer ?schema options) value)))
 
 (defn decoder
   "Creates a value decoding function given a transformer and a schema."
@@ -1429,38 +1566,47 @@
   {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}
                          :re-validator (fn [_ [child]] (re/+-validator child))
                          :re-explainer (fn [_ [child]] (re/+-explainer child))
+                         :re-conformer (fn [_ [child]] (re/+-parser child))
                          :re-transformer (fn [_ [child]] (re/+-transformer child))})
    :* (-sequence-schema {:type :*, :child-bounds {:min 1, :max 1}
                          :re-validator (fn [_ [child]] (re/*-validator child))
                          :re-explainer (fn [_ [child]] (re/*-explainer child))
+                         :re-conformer (fn [_ [child]] (re/*-parser child))
                          :re-transformer (fn [_ [child]] (re/*-transformer child))})
    :? (-sequence-schema {:type :?, :child-bounds {:min 1, :max 1}
                          :re-validator (fn [_ [child]] (re/?-validator child))
                          :re-explainer (fn [_ [child]] (re/?-explainer child))
+                         :re-conformer (fn [_ [child]] (re/?-parser child))
                          :re-transformer (fn [_ [child]] (re/?-transformer child))})
    :repeat (-sequence-schema {:type :repeat, :child-bounds {:min 1, :max 1}
                               :re-validator (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                               (re/repeat-validator min max child))
                               :re-explainer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                               (re/repeat-explainer min max child))
+                              :re-conformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
+                                              (re/repeat-parser min max child))
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                                 (re/repeat-transformer min max child))})
 
    :cat (-sequence-schema {:type :cat, :child-bounds {}
                            :re-validator (fn [_ children] (apply re/cat-validator children))
                            :re-explainer (fn [_ children] (apply re/cat-explainer children))
+                           :re-conformer (fn [_ children] (apply re/cat-parser children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))})
    :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}
                            :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
+                           :re-conformer (fn [_ children] (apply re/alt-parser children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))})
    :cat* (-sequence-entry-schema {:type :cat*, :child-bounds {}
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
+                                  :re-conformer (fn [_ children] (apply re/cat-parser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))})
    :alt* (-sequence-entry-schema {:type :alt*, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
+                                  :re-conformer (fn [_ children] (apply re/alt-parser children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))})})
 
 (defn base-schemas []

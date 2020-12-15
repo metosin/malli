@@ -184,7 +184,7 @@
           (se/as :4 (se/repeat 2 3 int?)))
   (range 10))
 
-(require '[malli.regex :as mt])
+(require '[malli.impl.regex :as mt])
 
 #_
 (mt/describe (mt/cat [(mt/+ (mt/fn int?))
@@ -464,7 +464,7 @@
 ;;
 ;;
 
-(require '[malli.regex :as re])
+(require '[malli.impl.regex :as re])
 
 (comment
   (let [data ["-server" "foo" "-verbose" true "-user" "joe"]]

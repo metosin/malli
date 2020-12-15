@@ -370,7 +370,7 @@
 
   (do
 
-    (require '[malli.regex :as re])
+    (require '[malli.impl.regex :as re])
 
     #_(re/parse
         [:* [:cat

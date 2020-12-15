@@ -1,4 +1,4 @@
-(ns malli.regex
+(ns malli.impl.regex
   (:refer-clojure :exclude [+ * repeat cat])
   #?(:clj (:import [clojure.lang MapEntry]
                    [java.util ArrayDeque IdentityHashMap HashSet])))

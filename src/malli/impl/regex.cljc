@@ -319,7 +319,7 @@
               (if (< n max)
                 (do
                   (park-transformer! driver rep-epsilon coll* pos coll k) ; remember fallback
-                  (p driver pos coll
+                  (p driver coll* pos coll
                      (fn [coll* pos coll]
                        (-park-transformer! driver
                                            (fn [driver coll* pos coll k] (optionals driver (inc n) coll* pos coll k))

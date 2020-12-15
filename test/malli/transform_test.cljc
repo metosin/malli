@@ -248,7 +248,86 @@
       (is (= ["kikka" "1"] (m/encode [:tuple keyword? int?] [:kikka 1] mt/string-transformer)))
       (is (= 1.0 (m/encode [:tuple keyword? int?] 1.0 mt/string-transformer)))
       (is (= nil (m/encode [:tuple keyword? int?] nil mt/string-transformer)))
-      (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer))))))
+      (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer)))))
+
+  (testing "seqex"
+    (testing "decode"
+      (are [s v v*]
+        (= (m/decode s v mt/string-transformer) v*)
+
+        [:cat] [] []
+        [:cat] "1" "1"
+        [:cat] nil nil
+        [:cat int?] ["1"] [1]
+        [:cat int? keyword?] ["1" "kikka"] [1 :kikka]
+        [:cat int? keyword?] ["kikka" "kukka"] ["kikka" "kukka"]
+
+        [:alt int?] ["1"] [1]
+        [:alt int? keyword?] ["1"] [1]
+        [:alt keyword? int?] ["1"] [:1]
+        [:alt int? keyword?] ["kikka"] [:kikka]
+
+        [:? int?] [] []
+        [:? int?] "1" "1"
+        [:? int?] nil nil
+        [:? int?] ["1"] [1]
+        [:? int?] ["1" "2"] ["1" "2"]
+
+        [:* int?] [] []
+        [:* int?] ["1"] [1]
+        [:* int?] ["1" "2"] [1 2]
+        [:* int?] ["1" "kikka"] ["1" "kikka"]
+
+        [:+ int?] [] []
+        [:+ int?] ["1"] [1]
+        [:+ int?] ["1" "2"] [1 2]
+        [:+ int?] ["1" "kikka"] ["1" "kikka"]
+
+        [:repeat {:min 2, :max 4} int?] [] []
+        [:repeat {:min 2, :max 4} int?] nil nil
+        [:repeat {:min 2, :max 4} int?] ["1"] ["1"]
+        [:repeat {:min 2, :max 4} int?] ["1" "2"] [1 2]
+        [:repeat {:min 2, :max 4} int?] ["1" "kikka"] ["1" "kikka"]
+        [:repeat {:min 2, :max 4} int?] ["1" "2" "3" "4" "5"] ["1" "2" "3" "4" "5"]))
+
+    (testing "encode"
+      (are [s v v*]
+        (= (m/encode s v mt/string-transformer) v*)
+
+        [:cat] [] []
+        [:cat] 1 1
+        [:cat] nil nil
+        [:cat int?] [1] ["1"]
+        [:cat int? keyword?] [1 :kikka] ["1" "kikka"]
+        [:cat int? keyword?] [:kikka :kukka] [:kikka :kukka]
+
+        [:alt int?] [1] ["1"]
+        [:alt int? keyword?] [1] ["1"]
+        [:alt keyword? int?] [:1] ["1"]
+        [:alt int? keyword?] [:kikka] ["kikka"]
+
+        [:? int?] [] []
+        [:? int?] 1 1
+        [:? int?] nil nil
+        [:? int?] [1] ["1"]
+        [:? int?] [1 2] [1 2]
+
+        [:* int?] [] []
+        [:* int?] [1] ["1"]
+        [:* int?] [1 2] ["1" "2"]
+        [:* int?] [1 :kikka] [1 :kikka]
+
+        [:+ int?] [] []
+        [:+ int?] [1] ["1"]
+        [:+ int?] [1 2] ["1" "2"]
+        [:+ int?] [1 :kikka] [1 :kikka]
+
+        [:repeat {:min 2, :max 4} int?] [] []
+        [:repeat {:min 2, :max 4} int?] nil nil
+        [:repeat {:min 2, :max 4} int?] [1] [1]
+        [:repeat {:min 2, :max 4} int?] [1 2] ["1" "2"]
+        [:repeat {:min 2, :max 4} int?] [1 :kikka] [1 :kikka]
+        [:repeat {:min 2, :max 4} int?] [1 2 3 4 5] [1 2 3 4 5]))))
 
 (deftest collection-transform-test
   (testing "decode"

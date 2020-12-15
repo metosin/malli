@@ -1058,7 +1058,202 @@
         (is (= {:type name, :children [{:type 'int?}]}
                (mu/to-map-syntax [name int?]))))
       (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
-             (mu/to-map-syntax [:tuple int? int?]))))))
+             (mu/to-map-syntax [:tuple int? int?])))))
+
+  (testing "seqex schemas"
+    (testing "validate"
+      (doseq [typ [:cat :cat*]]
+        (testing typ
+          (testing "empty"
+            (are [v valid]
+              (= (m/validate [typ] v) valid)
+
+              0 false
+              "foo" false
+              nil false
+              [] true
+              [0] false))
+
+          (testing "single"
+            (are [v valid]
+              (= (m/validate [typ (case typ :cat string? [:s string?])] v) valid)
+
+              0 false
+              "foo" false
+              nil false
+              [] false
+              ["foo"] true
+              [0] false
+              ["foo" "bar"] false))
+
+          (testing "pair"
+            (are [v valid]
+              (= (m/validate [typ
+                              (case typ :cat string? [:s string?])
+                              (case typ :cat int? [:n int?])]
+                             v)
+                 valid)
+
+              0 false
+              "foo" false
+              nil false
+              [] false
+              ["foo"] false
+              ["foo" 0] true
+              ["foo" "bar"] false
+              [1 2] false
+              ["foo" 0 1] false))
+
+          (testing "triplet"
+            (are [v valid]
+              (= (m/validate [typ
+                              (case typ :cat string? [:s string?])
+                              (case typ :cat int? [:n int?])
+                              (case typ :cat keyword? [:k keyword?])]
+                             v)
+                 valid)
+
+              0 false
+              "foo" false
+              nil false
+              [] false
+              ["foo"] false
+              ["foo" 0] false
+              ["foo" 0 :bar] true
+              ["foo" 0 "bar"] false
+              ["foo" 0 :bar 0] false))))
+
+      (doseq [typ [:alt :alt*]]
+        (testing typ
+          (testing "empty"
+            (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [typ]))))
+
+          (testing "single"
+            (are [v valid]
+              (= (m/validate [typ (case typ :alt string? [:s string?])] v) valid)
+
+              0 false
+              "foo" false
+              nil false
+              ["foo"] true
+              [0] false
+              ["foo" 0] false))
+
+          (testing "pair"
+            (are [v valid]
+              (= (m/validate [typ
+                              (case typ :alt string? [:s string?])
+                              (case typ :alt int? [:n int?])]
+                             v)
+                 valid)
+
+              0 false
+              "foo" false
+              nil false
+              ["foo"] true
+              [0] true
+              ["foo" 0] false
+              [0 "foo"] false))
+
+          (testing "triplet"
+            (are [v valid]
+              (= (m/validate [typ
+                              (case typ :alt string? [:s string?])
+                              (case typ :alt int? [:n int?])
+                              (case typ :alt keyword? [:n keyword?])]
+                             v)
+                 valid)
+
+              0 false
+              "foo" false
+              nil false
+              ["foo"] true
+              [0] true
+              [:foo] true
+              ["foo" 0] false
+              [0 "foo"] false
+              [:foo 0] false))))
+
+      (testing "?"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:?])))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:? string? int?])))
+
+        (are [v valid]
+          (= (m/validate [:? string?] v) valid)
+
+          0 false
+          "foo" false
+          nil false
+          [] true
+          ["foo"] true
+          [0] false
+          ["foo" 0] false))
+
+      (testing "*"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:* string? int?])))
+
+        (are [v valid]
+          (= (m/validate [:* string?] v) valid)
+
+          0 false
+          "foo" false
+          nil false
+          [] true
+          ["foo"] true
+          [0] false
+          ["foo" 0] false
+          ["foo" "bar"] true))
+
+      (testing "+"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
+
+        (are [v valid]
+          (= (m/validate [:+ string?] v) valid)
+
+          0 false
+          "foo" false
+          nil false
+          [] false
+          ["foo"] true
+          [0] false
+          ["foo" 0] false
+          ["foo" "bar"] true))
+
+      (testing "repeat"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3}])))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3} string? int?])))
+
+        (are [v valid]
+          (= (m/validate [:repeat {:min 1, :max 3} string?] v) valid)
+
+          0 false
+          "foo" false
+          nil false
+          [] false
+          ["foo"] true
+          [0] false
+          ["foo" 0] false
+          ["foo" "bar"] true
+          ["foo" "bar" 0] false
+          ["foo" "bar" "baz"] true
+          ["foo" "bar" "baz" "quux"] false))
+
+      (testing "nested"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:nested])))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:nested [:* string?] [:* int?]])))
+
+        (are [v valid]
+          (= (m/validate [:* [:nested [:* string?]]] v) valid)
+
+          0 false
+          "foo" false
+          [] true
+          ["foo"] false
+          [[]] true
+          [["foo"]] true
+          [[0]] false)))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

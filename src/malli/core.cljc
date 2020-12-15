@@ -1043,11 +1043,12 @@
         ->children (re/transformer (-regex-transformer schema transformer method options))]
     (-intercepting this-transformer ->children)))
 
-(defn -sequence-schema [{:keys [type re-validator re-explainer re-transformer]}]
+(defn -sequence-schema [{:keys [type variadic re-validator re-explainer re-transformer]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      ;(-check-children! type properties children {:min 1, :max 1})
+      (when-not variadic
+        (-check-children! type properties children {:min 1, :max 1}))
       (let [[child :as children] (mapv #(schema % options) children)
             form (-create-form type properties (mapv -form children))]
         ^{:type ::schema}
@@ -1079,11 +1080,12 @@
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map #(-into-regex-transformer % transformer method options) children))))))))
 
-(defn -sequence-entry-schema [{:keys [type re-validator re-explainer re-transformer]}]
+(defn -sequence-entry-schema [{:keys [type variadic re-validator re-explainer re-transformer]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      ;(-check-children! type properties children {:min 1, :max 1})
+      (when-not variadic
+        (-check-children! type properties children {:min 1, :max 1}))
       (let [[child :as children] (mapv (fn [[k c]] [k (schema c options)]) children)
             form (-create-form type properties (mapv (fn [[k s]] [k (-form s)]) children))]
         ^{:type ::schema}
@@ -1430,16 +1432,20 @@
    :uuid (-uuid-schema)})
 
 (defn sequence-schemas []
-  {:+ (-sequence-schema {:type :+, :re-validator (fn [_ [child]] (re/+-validator child))
+  {:+ (-sequence-schema {:type :+, :variadic false
+                         :re-validator (fn [_ [child]] (re/+-validator child))
                          :re-explainer (fn [_ [child]] (re/+-explainer child))
                          :re-transformer (fn [_ [child]] (re/+-transformer child))})
-   :* (-sequence-schema {:type :*, :re-validator (fn [_ [child]] (re/*-validator child))
+   :* (-sequence-schema {:type :*, :variadic false
+                         :re-validator (fn [_ [child]] (re/*-validator child))
                          :re-explainer (fn [_ [child]] (re/*-explainer child))
                          :re-transformer (fn [_ [child]] (re/*-transformer child))})
-   :? (-sequence-schema {:type :?, :re-validator (fn [_ [child]] (re/?-validator child))
+   :? (-sequence-schema {:type :?, :variadic false
+                         :re-validator (fn [_ [child]] (re/?-validator child))
                          :re-explainer (fn [_ [child]] (re/?-explainer child))
                          :re-transformer (fn [_ [child]] (re/?-transformer child))})
-   :repeat (-sequence-schema {:type :repeat
+   :repeat (-sequence-schema {:type :variadic false
+                              :repeat
                               :re-validator (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                               (re/repeat-validator min max child))
                               :re-explainer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
@@ -1447,16 +1453,20 @@
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                                 (re/repeat-transformer min max child))})
 
-   :alt (-sequence-schema {:type :alt, :re-validator (fn [_ children] (apply re/alt-validator children))
+   :alt (-sequence-schema {:type :alt, :variadic true
+                           :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))})
-   :cat (-sequence-schema {:type :cat, :re-validator (fn [_ children] (apply re/cat-validator children))
+   :cat (-sequence-schema {:type :cat, :variadic true
+                           :re-validator (fn [_ children] (apply re/cat-validator children))
                            :re-explainer (fn [_ children] (apply re/cat-explainer children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))})
-   :cat* (-sequence-entry-schema {:type :cat*, :re-validator (fn [_ children] (apply re/cat-validator children))
+   :cat* (-sequence-entry-schema {:type :cat*, :variadic true
+                                  :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))})
-   :alt* (-sequence-entry-schema {:type :alt*, :re-validator (fn [_ children] (apply re/alt-validator children))
+   :alt* (-sequence-entry-schema {:type :alt*, :variadic true
+                                  :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))})
 

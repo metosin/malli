@@ -1125,7 +1125,10 @@
                 ["foo" 0] [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
                 ["foo" 0 :bar] nil
                 ["foo" 0 "bar"] [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value "bar"}]
-                ["foo" 0 :bar 0] [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))))
+                ["foo" 0 :bar 0] [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))
+
+          (testing "* backtracks"
+            (is (m/validate [:cat [:* pos?] [:= 4]] [4 4 4 4])))))
 
       (doseq [typ [:alt :alt*]]
         (testing typ
@@ -1196,7 +1199,13 @@
             ["foo"] nil
             [0] [{:path [0], :in [0], :schema string?, :value 0}
                  {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))
+            ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]))
+
+        (testing "pathological case (terminates)"
+          (let [n 50]
+            (is (m/validate (into [:cat] (concat (repeat n [:? [:= :a]])
+                                                 (repeat n [:= :a])))
+                            (repeat n :a))))))
 
       (testing "*"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))

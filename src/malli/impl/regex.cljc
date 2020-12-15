@@ -49,7 +49,7 @@
           (if (seq errors)
             (fail! driver pos errors)
             (k (inc pos) (rest coll))))
-        (fail! driver pos [(-error path in schema nil ::end-of-input)])))))
+        (fail! driver pos [(-error path in schema nil :malli.core/end-of-input)])))))
 
 (defn item-parser [valid?]
   (fn [_ pos coll k]
@@ -80,7 +80,7 @@
   (fn [driver pos coll k]
     (if (empty? coll)
       (k pos coll)
-      (fail! driver pos (list (-error path (value-path driver pos) schema (first coll) ::input-remaining))))))
+      (fail! driver pos (list (-error path (value-path driver pos) schema (first coll) :malli.core/input-remaining))))))
 
 (defn end-parser [] (fn [_ pos coll k] (when (empty? coll) (k nil pos coll))))
 
@@ -220,7 +220,7 @@
       ([driver pos coll k] (*p driver [] pos coll k))
       ([driver coll* pos coll k]
        (park-transformer! driver *p-epsilon coll* pos coll k) ; remember fallback
-       (p driver pos coll (fn [v pos coll] (park-transformer! driver *p (conj coll* v) pos coll k)))))))
+       (p driver pos coll (fn [v pos coll] (park-transformer! driver *p (conj coll* v) pos coll k))))))) ; TCO
 
 (defn *-transformer [p]
   (let [*p-epsilon (cat-transformer)]

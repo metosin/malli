@@ -1061,67 +1061,71 @@
              (mu/to-map-syntax [:tuple int? int?])))))
 
   (testing "seqex schemas"
-    (testing "validate"
+    (testing "validate & explain"
       (doseq [typ [:cat :cat*]]
         (testing typ
           (testing "empty"
-            (are [v valid]
-              (= (m/validate [typ] v) valid)
+            (let [s [typ]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              [] true
-              [0] false))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                [] nil
+                [0] [{:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}])))
 
           (testing "single"
-            (are [v valid]
-              (= (m/validate [typ (case typ :cat string? [:s string?])] v) valid)
+            (let [s [typ (case typ :cat string? [:s string?])]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              [] false
-              ["foo"] true
-              [0] false
-              ["foo" "bar"] false))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                [] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+                ["foo"] nil
+                [0] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 0}]
+                ["foo" "bar"] [{:path [], :in [1], :schema s, :value "bar", :type ::m/input-remaining}])))
 
           (testing "pair"
-            (are [v valid]
-              (= (m/validate [typ
-                              (case typ :cat string? [:s string?])
-                              (case typ :cat int? [:n int?])]
-                             v)
-                 valid)
+            (let [s [typ (case typ :cat string? [:s string?]) (case typ :cat int? [:n int?])]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              [] false
-              ["foo"] false
-              ["foo" 0] true
-              ["foo" "bar"] false
-              [1 2] false
-              ["foo" 0 1] false))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                [] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+                ["foo"] [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
+                ["foo" 0] nil
+                ["foo" "bar"] [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value "bar"}]
+                [1 2] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 1}]
+                ["foo" 0 1] [{:path [], :in [2], :schema s, :value 1, :type ::m/input-remaining}])))
 
           (testing "triplet"
-            (are [v valid]
-              (= (m/validate [typ
-                              (case typ :cat string? [:s string?])
-                              (case typ :cat int? [:n int?])
-                              (case typ :cat keyword? [:k keyword?])]
-                             v)
-                 valid)
+            (let [s [typ (case typ :cat string? [:s string?]) (case typ :cat int? [:n int?])
+                     (case typ :cat keyword? [:k keyword?])]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              [] false
-              ["foo"] false
-              ["foo" 0] false
-              ["foo" 0 :bar] true
-              ["foo" 0 "bar"] false
-              ["foo" 0 :bar 0] false))))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                [] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+                ["foo"] [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
+                ["foo" 0] [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
+                ["foo" 0 :bar] nil
+                ["foo" 0 "bar"] [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value "bar"}]
+                ["foo" 0 :bar 0] [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))))
 
       (doseq [typ [:alt :alt*]]
         (testing typ
@@ -1129,131 +1133,156 @@
             (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [typ]))))
 
           (testing "single"
-            (are [v valid]
-              (= (m/validate [typ (case typ :alt string? [:s string?])] v) valid)
+            (let [s [typ (case typ :alt string? [:s string?])]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              ["foo"] true
-              [0] false
-              ["foo" 0] false))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                ["foo"] nil
+                [0] [{:path [(case typ :alt* :s 0)], :in [0], :schema string?, :value 0}]
+                ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))
 
           (testing "pair"
-            (are [v valid]
-              (= (m/validate [typ
-                              (case typ :alt string? [:s string?])
-                              (case typ :alt int? [:n int?])]
-                             v)
-                 valid)
+            (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              ["foo"] true
-              [0] true
-              ["foo" 0] false
-              [0 "foo"] false))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                ["foo"] nil
+                [0] nil
+                ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+                [0 "foo"] [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}])))
 
           (testing "triplet"
-            (are [v valid]
-              (= (m/validate [typ
-                              (case typ :alt string? [:s string?])
-                              (case typ :alt int? [:n int?])
-                              (case typ :alt keyword? [:n keyword?])]
-                             v)
-                 valid)
+            (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])
+                     (case typ :alt keyword? [:n keyword?])]]
+              (are [v errs]
+                (let [es errs]
+                  (and (= (m/validate s v) (nil? es))
+                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-              0 false
-              "foo" false
-              nil false
-              ["foo"] true
-              [0] true
-              [:foo] true
-              ["foo" 0] false
-              [0 "foo"] false
-              [:foo 0] false))))
+                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+                ["foo"] nil
+                [0] nil
+                [:foo] nil
+                ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+                [0 "foo"] [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}]
+                [:foo 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))))
 
       (testing "?"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:?])))
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:? string? int?])))
 
-        (are [v valid]
-          (= (m/validate [:? string?] v) valid)
+        (let [s [:? string?]]
+          (are [v errs]
+            (let [es errs]
+              (and (= (m/validate s v) (nil? es))
+                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-          0 false
-          "foo" false
-          nil false
-          [] true
-          ["foo"] true
-          [0] false
-          ["foo" 0] false))
+            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+            [] nil
+            ["foo"] nil
+            [0] [{:path [0], :in [0], :schema string?, :value 0}
+                 {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
+            ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))
 
       (testing "*"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:* string? int?])))
 
-        (are [v valid]
-          (= (m/validate [:* string?] v) valid)
+        (let [s [:* string?]]
+          (are [v errs]
+            (let [es errs]
+              (and (= (m/validate s v) (nil? es))
+                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-          0 false
-          "foo" false
-          nil false
-          [] true
-          ["foo"] true
-          [0] false
-          ["foo" 0] false
-          ["foo" "bar"] true))
+            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+            [] nil
+            ["foo"] nil
+            [0] [{:path [0], :in [0], :schema string?, :value 0}
+                 {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
+            ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
+                       {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+            ["foo" "bar"] nil)))
 
       (testing "+"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
 
-        (are [v valid]
-          (= (m/validate [:+ string?] v) valid)
+        (let [s [:+ string?]]
+          (are [v errs]
+            (let [es errs]
+              (and (= (m/validate s v) (nil? es))
+                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-          0 false
-          "foo" false
-          nil false
-          [] false
-          ["foo"] true
-          [0] false
-          ["foo" 0] false
-          ["foo" "bar"] true))
+            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+            [] [{:path [0], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+            ["foo"] nil
+            [0] [{:path [0], :in [0], :schema string?, :value 0}]
+            ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
+                       {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+            ["foo" "bar"] nil)))
 
       (testing "repeat"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3}])))
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3} string? int?])))
 
-        (are [v valid]
-          (= (m/validate [:repeat {:min 1, :max 3} string?] v) valid)
+        (let [s [:repeat {:min 1, :max 3} string?]]
+          (are [v errs]
+            (let [es errs]
+              (and (= (m/validate s v) (nil? es))
+                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-          0 false
-          "foo" false
-          nil false
-          [] false
-          ["foo"] true
-          [0] false
-          ["foo" 0] false
-          ["foo" "bar"] true
-          ["foo" "bar" 0] false
-          ["foo" "bar" "baz"] true
-          ["foo" "bar" "baz" "quux"] false))
+            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+            [] [{:path [0], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+            ["foo"] nil
+            [0] [{:path [0], :in [0], :schema string?, :value 0}]
+            ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
+                       {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+            ["foo" "bar"] nil
+            ["foo" "bar" 0] [{:path [0], :in [2], :schema string?, :value 0}
+                             {:path [], :in [2], :schema s, :value 0, :type ::m/input-remaining}]
+            ["foo" "bar" "baz"] nil
+            ["foo" "bar" "baz" "quux"] [{:path [], :in [3], :schema s, :value "quux", :type ::m/input-remaining}])))
 
       (testing "nested"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:nested])))
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:nested [:* string?] [:* int?]])))
 
-        (are [v valid]
-          (= (m/validate [:* [:nested [:* string?]]] v) valid)
+        (let [s [:* [:nested [:* string?]]]]
+          (are [v errs]
+            (let [es errs]
+              (and (= (m/validate s v) (nil? es))
+                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
 
-          0 false
-          "foo" false
-          [] true
-          ["foo"] false
-          [[]] true
-          [["foo"]] true
-          [[0]] false)))))
+            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+            [] nil
+            ["foo"] [{:path [0 0], :in [0], :schema [:* string?], :value "foo", :type ::m/invalid-type}
+                     {:path [], :in [0], :schema s, :value "foo", :type ::m/input-remaining}]
+            [[]] nil
+            [["foo"]] nil
+            [[0]] [{:path [0 0 0], :in [0 0], :schema string?, :value 0}
+                   {:path [0 0], :in [0 0], :schema [:* string?], :value 0, :type ::m/input-remaining}
+                   {:path [], :in [0], :schema s, :value [0], :type ::m/input-remaining}]))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

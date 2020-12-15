@@ -1,4 +1,29 @@
 (ns malli.impl.regex
+  "Regular expressions of sequences implementation namespace.
+
+  The implementation is very similar to Packrat or GLL parser combinators.
+  The parsing functions need to be written in CPS to support backtracking
+  inside :*, :+ and :repeat. They also need to be trampolined because the
+  (manually) CPS-converted code (for :*, :+ and :repeat) has to use tail
+  calls instead of loops and Clojure does not have TCO.
+
+  Because backtracking is used we need to memoize (parsing function, seq
+  position) pairs to avoid exponential behaviour. Discarding the memoization
+  tables after traversing an input seq also requires trampolining. Because
+  regular expressions don't use (nontail) recursion by definition, finding
+  a memoization entry just means the parser already went 'here' and ultimately
+  failed; much simpler than the graph-structured stacks of GLL.
+
+  https://epsil.github.io/gll/ is a nice explanation of GLL parser combinators
+  and has links to papers etc. It also inspired Instaparse, which Engelberg
+  had a presentation about at Clojure/West 2014.
+
+  Despite the CPS and memoization, this implementation looks more like normal
+  Clojure code than the 'Pike VM' in Seqexp. Hopefully JITs also see it that
+  way and compile decent machine code for it. It is also much easier to extend
+  for actual parsing (e.g. encode, decode [and conform?]) instead of just
+  recognition for `validate`."
+
   (:refer-clojure :exclude [+ * repeat cat])
   (:require [malli.impl.error :refer [-fail! -error]])
   #?(:clj (:import [clojure.lang MapEntry]

@@ -1,5 +1,6 @@
 (ns malli.impl.regex
   (:refer-clojure :exclude [+ * repeat cat])
+  (:require [malli.impl.error :refer [-fail! -error]])
   #?(:clj (:import [clojure.lang MapEntry]
                    [java.util ArrayDeque IdentityHashMap HashSet])))
 
@@ -40,7 +41,7 @@
     (when (and (seq coll) (valid? (first coll)))
       (k (inc pos) (rest coll)))))
 
-(defn item-explainer [-error path schema schema-explainer]
+(defn item-explainer [path schema schema-explainer]
   (fn [driver pos coll k]
     (let [in (value-path driver pos)]
       (if (seq coll)
@@ -75,7 +76,7 @@
 
 (defn end-validator [] (fn [_ pos coll k] (when (empty? coll) (k pos coll))))
 
-(defn end-explainer [-error schema path]
+(defn end-explainer [schema path]
   (fn [driver pos coll k]
     (if (empty? coll)
       (k pos coll)
@@ -428,8 +429,8 @@
       (= pos errors-max-pos) (set! errors (into errors errors*))))
   (latest-errors [_] errors))
 
-(defn explainer [-error schema path p]
-  (let [p (cat-explainer p (end-explainer -error schema path))]
+(defn explainer [schema path p]
+  (let [p (cat-explainer p (end-explainer schema path))]
     (fn [coll in errors]
       (if (sequential? coll)
         (let [pos 0
@@ -447,7 +448,7 @@
 
 ;;;; # Parser
 
-(defn parser [-fail! p]
+(defn parser [p]
   (let [p (cat-parser p (end-parser))]
     (fn [coll]
       (if (sequential? coll)

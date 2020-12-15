@@ -1,10 +1,12 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
+            [malli.impl.error :as ie]
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang IDeref MapEntry))))
+                   (clojure.lang IDeref MapEntry)
+                   [malli.impl.error SchemaError])))
 
 ;;
 ;; protocols and records
@@ -63,8 +65,6 @@
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
-(defrecord SchemaError [path in schema value type message])
-
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:class " v "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form v)))))
@@ -84,19 +84,9 @@
       (name x))
     x))
 
-(defn -error
-  ([path in schema value]
-   (->SchemaError path in schema value nil nil))
-  ([path in schema value type]
-   (->SchemaError path in schema value type nil)))
+(def -fail! ie/-fail!)
 
-(defn -fail!
-  ([type]
-   (-fail! type nil))
-  ([type data]
-   (-fail! type nil data))
-  ([type message data]
-   (throw (ex-info (str type " " (pr-str data) message) {:type type, :data data}))))
+(def -error ie/-error)
 
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
@@ -256,7 +246,7 @@
 (defn -into-regex-explainer [x path]
   (if (satisfies? RegexSchema x)
     (-regex-explainer x path)
-    (re/item-explainer -error path x (-explainer x path))))
+    (re/item-explainer path x (-explainer x path))))
 
 (defn -into-regex-transformer [x transformer method options]
   (if (satisfies? RegexSchema x)
@@ -1046,7 +1036,7 @@
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 
-(defn- regex-explainer [schema path] (re/explainer -error schema path (-regex-explainer schema path)))
+(defn- regex-explainer [schema path] (re/explainer schema path (-regex-explainer schema path)))
 
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)
@@ -1089,7 +1079,7 @@
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map #(-into-regex-transformer % transformer method options) children))))))))
 
-(defn -sequence-entry-schema [{:keys [type re-validator re-explainer re-conformer re-transformer]}]
+(defn -sequence-entry-schema [{:keys [type re-validator re-explainer re-transformer]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]

@@ -125,28 +125,29 @@
     (let [schema (into [type] children)]
       (gen/tuple (gen/return schema) (mg/generator schema)))))
 
+(def ^:private seqex-child
+  (let [s (gen/elements [string? int? keyword?])]
+    (gen/one-of [s (gen/fmap #(vector :* %) s)])))
+
 (defspec cat-test 100
-  (for-all [[s coll] (schema+coll-gen :cat (gen/vector (gen/elements [string? int? keyword?])))]
+  (for-all [[s coll] (schema+coll-gen :cat (gen/vector seqex-child))]
     (m/validate s coll)))
 
 (defspec cat*-test 100
-  (for-all [[s coll] (schema+coll-gen :cat* (gen/vector (gen/tuple gen/keyword
-                                                                   (gen/elements [string? int? keyword?]))))]
+  (for-all [[s coll] (schema+coll-gen :cat* (gen/vector (gen/tuple gen/keyword seqex-child)))]
     (m/validate s coll)))
 
 (defspec alt-test 100
-  (for-all [[s coll] (schema+coll-gen :alt (gen/not-empty (gen/vector (gen/elements [string? int? keyword?]))))]
+  (for-all [[s coll] (schema+coll-gen :alt (gen/not-empty (gen/vector seqex-child)))]
     (m/validate s coll)))
 
 (defspec alt*-test 100
-  (for-all [[s coll] (schema+coll-gen :alt*
-                                      (gen/not-empty (gen/vector (gen/tuple gen/keyword
-                                                                            (gen/elements [string? int? keyword?])))))]
+  (for-all [[s coll] (schema+coll-gen :alt* (gen/not-empty (gen/vector (gen/tuple gen/keyword seqex-child))))]
     (m/validate s coll)))
 
-(defspec ?*+-test 300
+(defspec ?*+-test 100
   (for-all [[s coll] (gen/let [type (gen/elements [:? :* :+])
-                               child (gen/elements [string? int? keyword?])]
+                               child seqex-child]
                        (let [schema [type child]]
                          (gen/tuple (gen/return schema) (mg/generator schema))))]
     (m/validate s coll)))
@@ -156,7 +157,7 @@
                                                 (gen/let [min gen/nat
                                                           len gen/nat]
                                                   {:min min, :max (+ min len)})
-                                                (gen/elements [string? int? keyword?])))]
+                                                seqex-child))]
     (m/validate s coll)))
 
 (deftest min-max-test

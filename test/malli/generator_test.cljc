@@ -1,5 +1,7 @@
 (ns malli.generator-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [clojure.test.check.properties :refer [for-all]]
+            [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
             [malli.generator :as mg]
@@ -117,6 +119,45 @@
   (testing "gen/gen"
     (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
+
+(defn- schema+coll-gen [type children-gen]
+  (gen/let [children children-gen]
+    (let [schema (into [type] children)]
+      (gen/tuple (gen/return schema) (mg/generator schema)))))
+
+(defspec cat-test 100
+  (for-all [[s coll] (schema+coll-gen :cat (gen/vector (gen/elements [string? int? keyword?])))]
+    (m/validate s coll)))
+
+(defspec cat*-test 100
+  (for-all [[s coll] (schema+coll-gen :cat* (gen/vector (gen/tuple gen/keyword
+                                                                   (gen/elements [string? int? keyword?]))))]
+    (m/validate s coll)))
+
+(defspec alt-test 100
+  (for-all [[s coll] (schema+coll-gen :alt (gen/not-empty (gen/vector (gen/elements [string? int? keyword?]))))]
+    (m/validate s coll)))
+
+(defspec alt*-test 100
+  (for-all [[s coll] (schema+coll-gen :alt*
+                                      (gen/not-empty (gen/vector (gen/tuple gen/keyword
+                                                                            (gen/elements [string? int? keyword?])))))]
+    (m/validate s coll)))
+
+(defspec ?*+-test 300
+  (for-all [[s coll] (gen/let [type (gen/elements [:? :* :+])
+                               child (gen/elements [string? int? keyword?])]
+                       (let [schema [type child]]
+                         (gen/tuple (gen/return schema) (mg/generator schema))))]
+    (m/validate s coll)))
+
+(defspec repeat-test 100
+  (for-all [[s coll] (schema+coll-gen :repeat (gen/tuple
+                                                (gen/let [min gen/nat
+                                                          len gen/nat]
+                                                  {:min min, :max (+ min len)})
+                                                (gen/elements [string? int? keyword?])))]
+    (m/validate s coll)))
 
 (deftest min-max-test
 

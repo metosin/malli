@@ -135,10 +135,10 @@
   (-set-children schema (assoc (-children schema) key value)))
 
 (defn -get-entries [schema key default]
-  (or (if (and (vector? key) (= ::val (nth key 0)))
-        (some (fn [[k s]] (if (= k (nth key 1)) s)) (-entries schema))
-        (some (fn [[k _ s]] (if (= k key) s)) (-children schema)))
-      default))
+  (or (some (if (and (vector? key) (= ::find (nth key 0)))
+              (fn [[k :as e]] (when (= k (nth key 1)) e))
+              (fn [[k _ s]] (when (= k key) s)))
+            (-children schema)) default))
 
 (defn -set-entries [schema key value]
   (let [found (atom nil)

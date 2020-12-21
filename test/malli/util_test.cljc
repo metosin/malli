@@ -819,3 +819,24 @@
                (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :z "z"})))
         (is (= false (m/validate s {:x "x", :y "y" :z "z"})))))))
+
+(def Int (m/schema int?))
+
+(deftest find-test
+
+  (is (= [:b {:optional true} Int]
+         (mu/get [:map [:b {:optional true} Int]]
+                 [::m/find :b])))
+
+  (is (= [:b {:optional true} Int]
+         (mu/find [:map [:b {:optional true} Int]]
+                  :b)))
+
+  (is (= [:b {:optional true} Int]
+         (-> [:map [:a [:map [:b {:optional true} Int]]]]
+             (mu/get :a)
+             (mu/find :b))))
+
+  (is (= [:b {:optional true} Int]
+         (-> [:map [:a [:map [:b {:optional true} Int]]]]
+             (mu/get-in [:a [::m/find :b]])))))

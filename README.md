@@ -172,10 +172,35 @@ Using `:string` Schema:
 
 ```clj
 (m/validate :string "kikka")
-; => true
+;; => true
 
 (m/validate [:string {:min 1, :max 4}] "")
-; => false
+;; => false
+```
+
+Using regular expressions:
+
+```clj
+
+(m/validate #"a+b+c+" "abbccc")
+;; => true
+
+;; :re with string
+(m/validate [:re ".{3,5}"] "abc")
+;; => true
+
+;; :re with regex
+(m/validate [:re #".{3,5}"] "abc")
+;; => true
+
+;; NB: re-find semantics
+(m/validate [:re #"\d{4}"] "1234567")
+;; => true
+
+;; anchor with ^...$ if you want to strictly match the whole string
+(m/validate [:re #"^\d{4}$"] "1234567")
+;; => false
+
 ```
 
 ## Fn schemas

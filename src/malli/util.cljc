@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys get get-in dissoc assoc update assoc-in update-in])
+  (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in])
   (:require [clojure.core :as c]
             [malli.core :as m]))
 
@@ -237,6 +237,14 @@
    (dissoc ?schema key nil))
   ([?schema key options]
    (transform-entries ?schema #(remove (fn [[k]] (= key k)) %) options)))
+
+(defn find
+  "Like [[clojure.core/find]], but for MapSchemas."
+  ([?schema k]
+   (find ?schema k nil))
+  ([?schema k options]
+   (let [schema (m/schema (or ?schema :map) options)]
+     (if schema (m/-get schema [::m/find k] nil)))))
 
 ;;
 ;; LensSchemas

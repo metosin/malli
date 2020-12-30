@@ -556,6 +556,14 @@
                 "10"
                 transformer))))
 
+  (testing "namespaced transformer names"
+    (let [transformer (mt/transformer {:name ::kikka}
+	                              mt/string-transformer)
+          schema [keyword? {:encode {::kikka {:leave 'str/upper-case}}
+                            :decode {::kikka {:enter 'str/lower-case}}}]]
+      (is (= :kukka (m/decode schema "KUKKA" transformer)))
+      (is (= "KUKKA" (m/encode schema :kukka transformer)))))
+
   (testing "and"
     (testing "decode"
       (are [x expected]

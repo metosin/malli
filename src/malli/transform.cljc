@@ -313,11 +313,14 @@
 (defn transformer [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
-                                          :key (if name (keyword (str key "/" name)))})
+                                          :key (if name
+                                                 (if (qualified-keyword? name)
+                                                   [(keyword key) name]
+                                                   [(keyword key (clojure.core/name name))]))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
         ->chain (m/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
-        chain' (->> chain (mapv #(let [name (some-> % :name name)]
+        chain' (->> chain (mapv #(let [name (:name %)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
     (if (seq chain)
@@ -328,8 +331,9 @@
           (reduce
             (fn [acc {{:keys [key default transformers]} method}]
               (let [options (or options (m/options schema))]
-                (if-let [?interceptor (or (some-> (get (m/properties schema) key) (->eval options))
-                                          (some-> (get (m/type-properties schema) key) (->eval options))
+                (if-let [?interceptor (or (if key
+                                            (or (some-> (get-in (m/properties schema) key) (->eval options))
+                                                (some-> (get-in (m/type-properties schema) key) (->eval options))))
                                           (get transformers (m/type schema))
                                           default)]
                   (let [interceptor (-interceptor ?interceptor schema options)]

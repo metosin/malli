@@ -69,17 +69,33 @@
 (defn- min-properties [-min] (prop-size (partial <= -min)))
 (defn- max-properties [-max] (prop-size (partial >= -max)))
 
+(defn with-min-max-poperties-size [malli v]
+  (let [predicates [(some->> v
+                             (:minProperties)
+                             (min-properties)
+                             (conj [:fn]))
+                    (some->> v
+                             (:maxProperties)
+                             (max-properties)
+                             (conj [:fn]))]]
+    (cond->> malli
+      (some some? predicates)
+      (conj (into [:and]
+                  (filter some?)
+                  predicates)))))
+
 (defn object->malli [v]
   (let [required (into #{}
                        ;; TODO Should use the same fn as $ref
                        (map keyword)
                        (:required v))
         closed? (false? (:additionalProperties v))]
-    (m/schema (cond-> [:map]
-                closed? (conj {:closed :true})
-                true (into
-                       (map (partial properties->malli required))
-                       (:properties v))))))
+    (m/schema (-> [:map]
+                  (cond-> closed? (conj {:closed :true}))
+                  (into
+                    (map (partial properties->malli required))
+                    (:properties v))
+                  (with-min-max-poperties-size v)))))
 
 (defmethod type->malli "string" [{:keys [pattern minLength maxLength enum]}]
   ;; `format` metadata is deliberately not considered.

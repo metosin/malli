@@ -60,10 +60,14 @@
       merge
       (annotations->properties js-schema))))
 
-(defn properties->malli [{:keys [required]} [k v]]
+(defn properties->malli [required [k v]]
   (cond-> [k]
     (nil? (required k)) (conj {:optional true})
     true (conj (schema->malli v))))
+
+(defn- prop-size [pred?] (fn [-map] (pred? (count (keys -map)))))
+(defn- min-properties [-min] (prop-size (partial <= -min)))
+(defn- max-properties [-max] (prop-size (partial >= -max)))
 
 (defn object->malli [v]
   (let [required (into #{}
@@ -74,7 +78,7 @@
     (m/schema (cond-> [:map]
                 closed? (conj {:closed :true})
                 true (into
-                       (map (partial properties->malli {:required required}))
+                       (map (partial properties->malli required))
                        (:properties v))))))
 
 (defmethod type->malli "string" [{:keys [pattern minLength maxLength enum]}]

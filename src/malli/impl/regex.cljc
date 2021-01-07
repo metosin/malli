@@ -367,14 +367,51 @@
 
 (defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljs (zero? (alength stack))))
 
-(defn- make-cache [] #?(:clj (HashSet.), :cljs (volatile! (transient #{}))))
+(defprotocol ^:private ICache
+  (ensure-cached! [cache f pos regs]))
 
-(defn- ensure-cached! [^HashSet cache f pos regs]
-  (let [entry [pos f regs]]
-    #?(:clj  (or (.contains cache entry)
-                 (do (.add cache entry) false))
-       :cljs (or (contains? @cache entry)
-                 (do (vswap! cache conj! entry) false)))))
+(deftype ^:private CacheEntry [^long hash f ^long pos regs])
+
+(deftype ^:private Cache
+  #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
+     :cljs [^:mutable values, ^:mutable size])
+  ICache
+  (ensure-cached! [_ f pos regs]
+    (when (> (inc size) (bit-shift-right (alength values) 1)) ; new load factor > 0.5
+      ;; rehash:
+      (let [capacity (alength values)
+            capacity* (bit-shift-left capacity 1)
+            values* (object-array capacity*)]
+        (loop [i 0, size* 0]
+          (if (< i (alength values))
+            (if-some [^CacheEntry v (aget values i)]
+              (let [h (.-hash v)]
+                (loop [collisions 0]
+                  (let [i* (bit-and (clojure.core/+ h collisions) (dec capacity*))] ; (hash + collisions) % capacity*
+                    (if (aget values* i*)
+                      (recur (inc collisions))
+                      (aset values* i* v))))
+                (recur (inc i) (inc size)))
+              (recur (inc i) size*))
+            (do
+              (set! values values*)
+              (set! size size*))))))
+
+    (let [capacity (alength values)
+          h #?(:clj (-> (.hashCode f) (hash-combine pos) (hash-combine regs))
+               :cljs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs))))]
+      (loop [collisions 0]
+        (let [i (bit-and (clojure.core/+ h collisions) (dec capacity))] ; (hash + collisions) % capacity
+          (if-some [^CacheEntry entry (aget values i)]
+            (or (and (identical? (.-f entry) f)
+                     (= (.-pos entry) pos)
+                     (= (.-regs entry) regs))
+                (recur (inc collisions)))
+            (do (aset values i (CacheEntry. h f pos regs))
+                (set! size (inc size))
+                false)))))))
+
+(defn- make-cache [] (Cache. (object-array 2) 0))
 
 (deftype ^:private CheckDriver
   #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^HashSet cache]

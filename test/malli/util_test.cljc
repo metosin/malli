@@ -350,6 +350,7 @@
 
 (deftest update-test
   (is (mu/equals (mu/update (m/schema [:vector int?]) 0 (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update [:vector int?] 0 (constantly string?)) [:vector string?]))
   (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 1 (constantly string?)) [:tuple int? string?]))
   (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 2 (constantly string?)) [:tuple int? int? string?]))
   (is (mu/equals (mu/update (m/schema [:or int? int?]) 1 (constantly string?)) [:or int? string?]))

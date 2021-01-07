@@ -367,35 +367,35 @@
 
 (defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljs (zero? (alength stack))))
 
-(defn- make-cache [] #?(:clj (IdentityHashMap.), :cljs (volatile! (transient {}))))
+(defn- make-cache [] #?(:clj (HashMap.), :cljs (volatile! (transient {}))))
 
-(defn- ensure-cached! [^IdentityHashMap cache f pos regs]
-  #?(:clj  (if-some [^HashMap pos-cache (.get cache f)]
-             (if-some [^HashSet regs-cache (.get pos-cache pos)]
+(defn- ensure-cached! [^HashMap cache f pos regs]
+  #?(:clj  (if-some [^IdentityHashMap f-cache (.get cache pos)]
+             (if-some [^HashSet regs-cache (.get f-cache f)]
                (or (.contains regs-cache regs)
                    (do (.add regs-cache regs) false))
                (let [regs-cache (HashSet.)]
-                 (.put pos-cache pos regs-cache)
+                 (.put f-cache f regs-cache)
                  (.add regs-cache regs)
                  false))
-             (let [pos-cache (HashMap.)
+             (let [f-cache (IdentityHashMap.)
                    regs-cache (HashSet.)]
-               (.put cache f pos-cache)
-               (.put pos-cache pos regs-cache)
+               (.put cache pos f-cache)
+               (.put f-cache f regs-cache)
                (.add regs-cache regs)
                false))
-     :cljs (if-some [pos-cache (get @cache f)]
-             (if-some [regs-cache (get pos-cache pos)]
+     :cljs (if-some [f-cache (get @cache pos)]
+             (if-some [regs-cache (get f-cache f)]
                (or (contains? regs-cache regs)
                    (do
-                     (vswap! cache #(assoc! % f (assoc! pos-cache pos (conj! regs-cache regs))))
+                     (vswap! cache #(assoc! % pos (assoc! f-cache f (conj! regs-cache regs))))
                      false)))
              (do
-               (vswap! cache #(assoc! % f (transient {pos (transient #{regs})})))
+               (vswap! cache #(assoc! % pos (transient {f (transient #{regs})})))
                false))))
 
 (deftype ^:private CheckDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^IdentityHashMap cache]
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^HashMap cache]
      :cljs [^:mutable success, stack, cache])
 
   Driver
@@ -410,7 +410,7 @@
       (-park-validator! self validator regs pos coll k))))
 
 (deftype ^:private ParseDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^IdentityHashMap cache
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^HashMap cache
             ^:unsynchronized-mutable result]
      :cljs [^:mutable success, stack, cache, ^:mutable result])
 
@@ -453,7 +453,7 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^IdentityHashMap cache
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^HashMap cache
             in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
      :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
 

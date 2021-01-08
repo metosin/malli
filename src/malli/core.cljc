@@ -1043,7 +1043,7 @@
         ->children (re/transformer (-regex-transformer schema transformer method options))]
     (-intercepting this-transformer ->children)))
 
-(defn -sequence-schema [{:keys [type child-bounds re-validator re-explainer re-transformer]}]
+(defn -sequence-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -1064,6 +1064,7 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-sequence-schema opts))
           (-form [_] form)
 
           LensSchema
@@ -1079,7 +1080,7 @@
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map #(-into-regex-transformer % transformer method options) children))))))))
 
-(defn -sequence-entry-schema [{:keys [type child-bounds re-validator re-explainer re-transformer]}]
+(defn -sequence-entry-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
@@ -1100,6 +1101,7 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-sequence-entry-schema opts))
           (-form [_] form)
 
           LensSchema

@@ -114,8 +114,6 @@
             (generate output-generator options)))
         {:arity (-> schema m/-arity)}))))
 
-;;; FIXME: recursion limits in seqexp schemas:
-
 (defn -regex-generator [schema options]
   (if (satisfies? m/RegexSchema schema)
     (generator schema options)

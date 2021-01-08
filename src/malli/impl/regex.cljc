@@ -28,7 +28,7 @@
   (:refer-clojure :exclude [+ * repeat cat])
   (:require [malli.impl.error :refer [-fail! -error]])
   #?(:clj (:import [clojure.lang MapEntry]
-                   [java.util ArrayDeque HashSet])))
+                   [java.util ArrayDeque])))
 
 ;;;; # Utils (TODO: move them out of here)
 
@@ -372,49 +372,49 @@
 
 (deftype ^:private CacheEntry [^long hash f ^long pos regs])
 
+;; Custom hash set so that Cljs Malli users can have decent perf without having to to set up Closure ES6 Set polyfill.
+;; Uses quadratic probing with power-of-two sizes and triangular numbers, what a nice trick!
 (deftype ^:private Cache
   #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
      :cljs [^:mutable values, ^:mutable size])
   ICache
   (ensure-cached! [_ f pos regs]
-    (when (> (inc size) (bit-shift-right (alength values) 1)) ; new load factor > 0.5
-      ;; rehash:
-      (let [capacity (alength values)
-            capacity* (bit-shift-left capacity 1)
+    (when (> (inc size) (bit-shift-right (alength values) 1)) ; potential new load factor > 0.5
+      ;; Rehash:
+      (let [capacity* (bit-shift-left (alength values) 1)
             values* (object-array capacity*)]
-        (loop [i 0, size* 0]
-          (if (< i (alength values))
-            (if-some [^CacheEntry v (aget values i)]
-              (let [h (.-hash v)]
-                (loop [collisions 0]
-                  (let [i* (bit-and (clojure.core/+ h collisions) (dec capacity*))] ; (hash + collisions) % capacity*
-                    (if (aget values* i*)
-                      (recur (inc collisions))
-                      (aset values* i* v))))
-                (recur (inc i) (inc size)))
-              (recur (inc i) size*))
-            (do
-              (set! values values*)
-              (set! size size*))))))
+        (areduce values i _ nil
+                 (when-some [^CacheEntry v (aget values i)]
+                   (let [h (.-hash v)]
+                     (loop [collisions 0]
+                       ;; i* = (h + collisions) % capacity*:
+                       (let [i* (bit-and (unchecked-add h collisions) (unchecked-dec capacity*))]
+                         (if (aget values* i*)
+                           (recur (inc collisions))
+                           (aset values* i* v)))))))
+        (set! values values*)))
 
     (let [capacity (alength values)
-          h #?(:clj (-> (.hashCode f) (hash-combine pos) (hash-combine regs))
+          ;; Unfortunately `hash-combine` hashes its second argument on clj and neither argument on cljs:
+          h #?(:clj (-> (hash f) (hash-combine pos) (hash-combine regs))
                :cljs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs))))]
       (loop [collisions 0]
-        (let [i (bit-and (clojure.core/+ h collisions) (dec capacity))] ; (hash + collisions) % capacity
+        (let [i (bit-and (unchecked-add h collisions) (unchecked-dec capacity))] ; (h + collisions) % capacity
           (if-some [^CacheEntry entry (aget values i)]
-            (or (and (identical? (.-f entry) f)
+            (or (and (= (.-hash entry) h)
+                     (= (.-f entry) f)
                      (= (.-pos entry) pos)
                      (= (.-regs entry) regs))
                 (recur (inc collisions)))
-            (do (aset values i (CacheEntry. h f pos regs))
-                (set! size (inc size))
-                false)))))))
+            (do
+              (aset values i (CacheEntry. h f pos regs))
+              (set! size (inc size))
+              false)))))))
 
 (defn- make-cache [] (Cache. (object-array 2) 0))
 
 (deftype ^:private CheckDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, ^HashSet cache]
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
      :cljs [^:mutable success, stack, cache])
 
   Driver

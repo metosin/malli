@@ -1,12 +1,12 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
-            [malli.impl.error :as ie]
+            [malli.impl.util :as u]
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang IDeref MapEntry)
-                   [malli.impl.error SchemaError])))
+                   (clojure.lang IDeref)
+                   [malli.impl.util SchemaError])))
 
 ;;
 ;; protocols and records
@@ -84,9 +84,9 @@
       (name x))
     x))
 
-(def -fail! ie/-fail!)
+(def -fail! u/-fail!)
 
-(def -error ie/-error)
+(def -error u/-error)
 
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
@@ -145,8 +145,7 @@
     (-set-children schema children)))
 
 (defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
-  (let [-entry (fn [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
-        -parse (fn [e] (let [[[k ?p ?v] f] (cond
+  (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
                                              (-reference? e) (if naked-keys [[e nil e] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
                                              :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
@@ -155,7 +154,7 @@
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
                              c [k p (schema s options)]]
                          {:children [c]
-                          :entries [(-entry k (-val-schema (last c) p))]
+                          :entries [(u/-tagged k (-val-schema (last c) p))]
                           :forms [f]}))
         es (reduce #(merge-with into %1 %2) {} (mapv -parse children))
         keys (->> es :entries (map first))]

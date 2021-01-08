@@ -1,4 +1,7 @@
-(ns malli.impl.error)
+(ns malli.impl.util
+  #?(:clj (:import [clojure.lang MapEntry])))
+
+(defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
 
 (defn -fail!
   ([type]

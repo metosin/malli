@@ -5,7 +5,7 @@
             [malli.transform :as mt]
             [malli.util :as mu]
             [malli.registry :as mr]
-            [malli.impl.error :as ie]
+            [malli.impl.util :as u]
             [clojure.walk :as walk]
             [malli.generator :as mg]
             [clojure.test.check.generators :as gen]))
@@ -18,7 +18,7 @@
                                              (update :schema m/form)
                                              (update :type (fnil identity nil))
                                              (update :message (fnil identity nil))
-                                             (ie/map->SchemaError)))))))
+                                             (u/map->SchemaError)))))))
 
 (defn results= [& results]
   (apply = (map with-schema-forms results)))

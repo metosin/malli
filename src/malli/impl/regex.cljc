@@ -26,13 +26,8 @@
   recognition for `validate`."
 
   (:refer-clojure :exclude [+ * repeat cat])
-  (:require [malli.impl.error :refer [-fail! -error]])
-  #?(:clj (:import [clojure.lang MapEntry]
-                   [java.util ArrayDeque])))
-
-;;;; # Utils (TODO: move them out of here)
-
-(defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
+  (:require [malli.impl.util :refer [-tagged -fail! -error]])
+  #?(:clj (:import [java.util ArrayDeque])))
 
 ;;;; # Driver Protocols
 

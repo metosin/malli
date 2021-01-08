@@ -121,7 +121,7 @@
     (generator schema options)
     (gen/tuple (generator schema options))))
 
-(defn- entry->schema [e] (if (vector? e) (get e 1) e))
+(defn- entry->schema [e] (if (vector? e) (get e 2) e))
 
 (defn -cat-gen [schema options]
   (->> (m/children schema options)

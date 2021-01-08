@@ -52,9 +52,9 @@
   (-deref [this] "returns the referenced schema"))
 
 (defprotocol RegexSchema
-  (-regex-validator [this] "returns the regex")
-  (-regex-explainer [this path])
-  (-regex-transformer [this transformer method options]))
+  (-regex-validator [this] "returns the raw internal regex validator implementation")
+  (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
+  (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -1048,7 +1048,7 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! type properties children child-bounds)
-      (let [[child :as children] (mapv #(schema % options) children)
+      (let [children (mapv #(schema % options) children)
             form (-create-form type properties (mapv -form children))]
         ^{:type ::schema}
         (reify
@@ -1060,7 +1060,7 @@
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this path [(-inner walker child path options)] options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1085,8 +1085,8 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! type properties children child-bounds)
-      (let [[child :as children] (mapv (fn [[k c]] [k (schema c options)]) children)
-            form (-create-form type properties (mapv (fn [[k s]] [k (-form s)]) children))]
+      (let [{:keys [children entries forms]} (-parse-entries children opts options)
+            form (-create-form :map properties forms)]
         ^{:type ::schema}
         (reify
           Schema
@@ -1097,7 +1097,7 @@
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this path [(-inner walker child path options)] options)))
+              (-outer walker this path (-inner-entries walker path entries options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1106,18 +1106,16 @@
 
           LensSchema
           (-keep [_] true)
-          (-get [_ key default]
-            (or (some (fn [[k c]] (when (= k key) c)) children)
-                default))
+          (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value))
 
           RegexSchema
-          (-regex-validator [_] (re-validator properties (map (fn [[k s]] [k (-into-regex-validator s)]) children)))
+          (-regex-validator [_] (re-validator properties (map (fn [[k _ s]] [k (-into-regex-validator s)]) children)))
           (-regex-explainer [_ path]
-            (re-explainer properties (map (fn [[k s]] [k (-into-regex-explainer s (conj path k))])
+            (re-explainer properties (map (fn [[k _ s]] [k (-into-regex-explainer s (conj path k))])
                                           children)))
           (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map (fn [[k s]] [k (-into-regex-transformer s transformer method options)])
+            (re-transformer properties (map (fn [[k _ s]] [k (-into-regex-transformer s transformer method options)])
                                             children))))))))
 
 (defn -nested-schema []

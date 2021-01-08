@@ -134,7 +134,9 @@
     (m/validate s coll)))
 
 (defspec cat*-test 100
-  (for-all [[s coll] (schema+coll-gen :cat* (gen/vector (gen/tuple gen/keyword seqex-child)))]
+  (for-all [[s coll] (->> (gen/vector (gen/tuple gen/keyword seqex-child))
+                          (gen/such-that (fn [coll] (or (empty? coll) (apply distinct? (map first coll)))))
+                          (schema+coll-gen :cat*))]
     (m/validate s coll)))
 
 (defspec alt-test 100
@@ -142,7 +144,9 @@
     (m/validate s coll)))
 
 (defspec alt*-test 100
-  (for-all [[s coll] (schema+coll-gen :alt* (gen/not-empty (gen/vector (gen/tuple gen/keyword seqex-child))))]
+  (for-all [[s coll] (->> (gen/not-empty (gen/vector (gen/tuple gen/keyword seqex-child)))
+                          (gen/such-that (fn [coll] (or (empty? coll) (apply distinct? (map first coll)))))
+                          (schema+coll-gen :alt*))]
     (m/validate s coll)))
 
 (defspec ?*+-test 100

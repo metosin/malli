@@ -1166,7 +1166,7 @@
 
           (testing "triplet"
             (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])
-                     (case typ :alt keyword? [:n keyword?])]]
+                     (case typ :alt keyword? [:k keyword?])]]
               (are [v errs]
                 (let [es errs]
                   (and (= (m/validate s v) (nil? es))

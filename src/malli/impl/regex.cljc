@@ -9,7 +9,7 @@
 
   Because backtracking is used we need to memoize (parsing function, seq
   position, register stack) triples to avoid exponential behaviour. Discarding
-  the memoization tables after traversing an input seq also requires trampolining.
+  the memoization cache after traversing an input seq also requires trampolining.
   Because regular expressions don't use (nontail) recursion by definition, finding
   a memoization entry just means the parser already went 'here' and ultimately
   failed; much simpler than the graph-structured stacks of GLL. And the register
@@ -509,6 +509,7 @@
 
 ;;;; # Parser
 
+;; Unused ATM but should soon be used to implement Spec `conform` equivalent:
 (defn parser [p]
   (let [p (cat-parser p (end-parser))]
     (fn [coll]

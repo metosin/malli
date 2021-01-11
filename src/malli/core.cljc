@@ -1085,7 +1085,7 @@
     (-into-schema [_ properties children options]
       (-check-children! type properties children child-bounds)
       (let [{:keys [children entries forms]} (-parse-entries children opts options)
-            form (-create-form :map properties forms)]
+            form (-create-form type properties forms)]
         ^{:type ::schema}
         (reify
           Schema

@@ -1117,38 +1117,6 @@
             (re-transformer properties (map (fn [[k _ s]] [k (-into-regex-transformer s transformer method options)])
                                             children))))))))
 
-(defn -nested-schema []
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties children options]
-      (-check-children! :nested properties children {:min 1, :max 1})
-      (let [[schema :as children] (map #(schema % options) children)
-            form (-create-form :nested properties (map -form children))]
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] :nested)
-          (-type-properties [_])
-          (-validator [_] (regex-validator schema))
-          (-explainer [_ path] (regex-explainer schema (conj path 0)))
-          (-transformer [this transformer method options]
-            (-parent-children-transformer this children transformer method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-parent [_] (-nested-schema))
-          (-form [_] form)
-
-          LensSchema
-          (-keep [_])
-          (-get [_ key default] (if (= 0 key) schema default))
-          (-set [this key value] (if (= 0 key)
-                                   (-set-children this [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
-
 ;;
 ;; public api
 ;;
@@ -1464,9 +1432,7 @@
    :alt* (-sequence-entry-schema {:type :alt*, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
-                                  :re-transformer (fn [_ children] (apply re/alt-transformer children))})
-
-   :nested (-nested-schema)})
+                                  :re-transformer (fn [_ children] (apply re/alt-transformer children))})})
 
 (defn base-schemas []
   {:and (-and-schema)

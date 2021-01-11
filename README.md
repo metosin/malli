@@ -219,11 +219,11 @@ while `:cat` and `:alt` just use numeric indices for paths:
 
 As all these examples show, the "seqex" operators take any non-seqex child schema to
 mean a sequence of one element that matches that schema. To force that behaviour for
-a seqex child `:nested` can be used:
+a seqex child `:schema` can be used:
 
 ```clj
-(m/validate [:cat [:= :names] [:nested [:* string?]]
-                  [:= :nums] [:nested [:* number?]]]
+(m/validate [:cat [:= :names] [:schema [:* string?]]
+                  [:= :nums] [:schema [:* number?]]]
             [:names ["a" "b"] :nums [1 2 3]]) ; => true
 
 ;; whereas

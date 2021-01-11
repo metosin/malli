@@ -1272,11 +1272,11 @@
             ["foo" "bar" "baz"] nil
             ["foo" "bar" "baz" "quux"] [{:path [], :in [3], :schema s, :value "quux", :type ::m/input-remaining}])))
 
-      (testing "nested"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:nested])))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:nested [:* string?] [:* int?]])))
+      (testing ":schema wrap"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:schema])))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:schema [:* string?] [:* int?]])))
 
-        (let [s [:* [:nested [:* string?]]]]
+        (let [s [:* [:schema [:* string?]]]]
           (are [v errs]
             (let [es errs]
               (and (= (m/validate s v) (nil? es))
@@ -1285,12 +1285,12 @@
             0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
             "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
             [] nil
-            ["foo"] [{:path [0 0], :in [0], :schema [:* string?], :value "foo", :type ::m/invalid-type}
+            ["foo"] [{:path [0], :in [0], :schema [:* string?], :value "foo", :type ::m/invalid-type}
                      {:path [], :in [0], :schema s, :value "foo", :type ::m/input-remaining}]
             [[]] nil
             [["foo"]] nil
-            [[0]] [{:path [0 0 0], :in [0 0], :schema string?, :value 0}
-                   {:path [0 0], :in [0 0], :schema [:* string?], :value 0, :type ::m/input-remaining}
+            [[0]] [{:path [0 0], :in [0 0], :schema string?, :value 0}
+                   {:path [0], :in [0 0], :schema [:* string?], :value 0, :type ::m/input-remaining}
                    {:path [], :in [0], :schema s, :value [0], :type ::m/input-remaining}]))))))
 
 (deftest path-with-properties-test

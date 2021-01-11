@@ -374,37 +374,39 @@
      :cljs [^:mutable values, ^:mutable size])
   ICache
   (ensure-cached! [_ f pos regs]
-    (when (> (inc size) (bit-shift-right (alength values) 1)) ; potential new load factor > 0.5
+    (when (> (unchecked-inc size) (bit-shift-right (alength values) 1)) ; potential new load factor > 0.5
       ;; Rehash:
       (let [capacity* (bit-shift-left (alength values) 1)
-            values* (object-array capacity*)]
+            values* (object-array capacity*)
+            max-index (unchecked-dec capacity*)]
         (areduce values i _ nil
                  (when-some [^CacheEntry v (aget values i)]
-                   (let [h (.-hash v)]
-                     (loop [collisions 0]
-                       ;; i* = (h + collisions) % capacity*:
-                       (let [i* (bit-and (unchecked-add h collisions) (unchecked-dec capacity*))]
-                         (if (aget values* i*)
-                           (recur (inc collisions))
-                           (aset values* i* v)))))))
+                   (loop [i* (bit-and (.-hash v) max-index), collisions 0]
+                     (if (aget values* i*)
+                       (let [collisions (unchecked-inc collisions)]
+                         (recur (bit-and (unchecked-add i* collisions) max-index) ; i* = (i* + collisions) % capacity*
+                                collisions))
+                       (aset values* i* v)))))
         (set! values values*)))
 
     (let [capacity (alength values)
+          max-index (unchecked-dec capacity)
           ;; Unfortunately `hash-combine` hashes its second argument on clj and neither argument on cljs:
           h #?(:clj (-> (hash f) (hash-combine pos) (hash-combine regs))
                :cljs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs))))]
-      (loop [collisions 0]
-        (let [i (bit-and (unchecked-add h collisions) (unchecked-dec capacity))] ; (h + collisions) % capacity
-          (if-some [^CacheEntry entry (aget values i)]
-            (or (and (= (.-hash entry) h)
-                     (= (.-f entry) f)
-                     (= (.-pos entry) pos)
-                     (= (.-regs entry) regs))
-                (recur (inc collisions)))
-            (do
-              (aset values i (CacheEntry. h f pos regs))
-              (set! size (inc size))
-              false)))))))
+      (loop [i (bit-and h max-index), collisions 0]
+        (if-some [^CacheEntry entry (aget values i)]
+          (or (and (= (.-hash entry) h)
+                   (= (.-f entry) f)
+                   (= (.-pos entry) pos)
+                   (= (.-regs entry) regs))
+              (let [collisions (unchecked-inc collisions)]
+                (recur (bit-and (unchecked-add i collisions) max-index) ; i = (i + collisions) % capacity
+                       collisions)))
+          (do
+            (aset values i (CacheEntry. h f pos regs))
+            (set! size (unchecked-inc size))
+            false))))))
 
 (defn- make-cache [] (Cache. (object-array 2) 0))
 

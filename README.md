@@ -238,18 +238,18 @@ Although a lot of effort has gone into making the seqex implementation fast
 (require '[criterium.core :as cc])
 
 (let [valid? (m/validator [:* int?] (range 1000))]
-  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 219,432304 µs
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 189,953863 µs
 (let [valid? (partial s/valid? (s/* int?))]
-  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,790835 ms
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,576905 ms
 (let [valid? (partial s/valid? (s/coll-of int?))]
-  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 161,288000 µs
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 136,599310 µs
 ```
 
 it is always better to use less general tools whenever possible:
 
 ```clj
 (let [valid? (m/validator [:sequential int?])]
-  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,910579 µs
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,863314 µs
 ```
 
 ## String schemas

@@ -1224,7 +1224,7 @@
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map #(-regex-transformer % transformer method options) children))))))))
 
-(defn -sequence-entry-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
+(defn -sequence-entry-schema [{:keys [type child-bounds re-validator re-explainer re-conformer re-transformer] :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]

@@ -81,7 +81,27 @@
                                  (and min (= min max)) (str "should be " min " characters")
                                  (and min max) (str "should be between " min " and " max " characters")
                                  min (str "should be at least " min " characters")
-                                 max (str "should be at most " max " characters"))))}}})
+                                 max (str "should be at most " max " characters"))))}}
+   :> {:error/fn {:en (fn [{:keys [schema value]} _]
+                        (if (number? value)
+                          (str "should be larger than " (first (m/children schema)))
+                          "should be a number"))}}
+   :>= {:error/fn {:en (fn [{:keys [schema value]} _]
+                         (if (number? value)
+                           (str "should be at least " (first (m/children schema)))
+                           "should be a number"))}}
+   :< {:error/fn {:en (fn [{:keys [schema value]} _]
+                        (if (number? value)
+                          (str "should be smaller than " (first (m/children schema)))
+                          "should be a number"))}}
+   :<= {:error/fn {:en (fn [{:keys [schema value]} _]
+                         (if (number? value)
+                           (str "should be at most " (first (m/children schema)))
+                           "should be a number"))}}
+   := {:error/fn {:en (fn [{:keys [schema]} _]
+                        (str "should be " (first (m/children schema))))}}
+   :not= {:error/fn {:en (fn [{:keys [schema]} _]
+                           (str "should not be " (first (m/children schema))))}}})
 
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))

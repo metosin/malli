@@ -1260,7 +1260,7 @@
             (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
           (-regex-explainer [_ path]
             (re-explainer properties (map (fn [[k _ s]] [k (-regex-explainer s (conj path k))]) children)))
-          (-regex-conformer [_] (re-conformer properties (map (fn [[k s]] [k (-into-regex-conformer s)]) children)))
+          (-regex-conformer [_] (re-conformer properties (map (fn [[k _ s]] [k (-into-regex-conformer s)]) children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map (fn [[k _ s]] [k (-regex-transformer s transformer method options)])
                                             children))))))))

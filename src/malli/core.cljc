@@ -391,7 +391,6 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-;; TODO: [:or* [:b boolean?] [:s string?]]
 (defn -or-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
@@ -456,6 +455,76 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
+
+(defn -or*-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (-check-children! :or* properties children {:min 1})
+      (let [{:keys [children entries forms]} (-parse-entries children {:naked-keys true} options)
+            form (-create-form :or* properties forms)]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] :or*)
+          (-type-properties [_])
+          (-validator [_]
+            (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) children))]
+              (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators))))
+          (-explainer [_ path]
+            (let [explainers (mapv (fn [[k _ c]] (-explainer c (conj path k))) children)]
+              (fn explain [x in acc]
+                (reduce
+                  (fn [acc' explainer]
+                    (let [acc'' (explainer x in acc')]
+                      (if (identical? acc' acc'') (reduced acc) acc'')))
+                  acc explainers))))
+          (-conformer [_]
+            (let [conformers (mapv (fn [[k _ c]]
+                                     (let [c (-conformer c)]
+                                       (fn [x] (u/-tagged k (c x)))))
+                                   children)]
+              (fn [x]
+                (let [res (reduce (fn [acc conformer]
+                                    (try                    ; yes this can be a bit slow but that's backtracking for you
+                                      (reduced (conformer x))
+                                      (catch #?(:clj Exception, :cljs js/Error) _ acc)))
+                                  ::nonconforming conformers)]
+                  (if (identical? res ::nonconforming)      ; all alternatives failed
+                    (-fail! res)
+                    res)))))
+          (-transformer [this transformer method options]
+            (let [this-transformer (-value-transformer transformer this method options)]
+              (if (seq children)
+                (let [transformers (mapv (fn [[_ _ c]] (or (-transformer c transformer method options) identity))
+                                         children)
+                      validators (mapv (fn [[_ _ c]] (-validator c)) children)]
+                  (-intercepting this-transformer
+                                 (if (= :decode method)
+                                   (fn [x]
+                                     (reduce-kv
+                                       (fn [x i transformer]
+                                         (let [x* (transformer x)]
+                                           (if ((nth validators i) x*) (reduced x*) x)))
+                                       x transformers))
+                                   (fn [x]
+                                     (reduce-kv
+                                       (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                                       x validators)))))
+                (-coder this-transformer))))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-entries walker path entries options) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] (-or*-schema))
+          (-form [_] form)
+
+          LensSchema
+          (-keep [_] true)
+          (-get [this key default] (-get-entries this key default))
+          (-set [this key value] (-set-entries this key value)))))))
 
 (defn -val-schema
   ([schema properties]
@@ -1612,6 +1681,7 @@
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
+   :or* (-or*-schema)
    :map (-map-schema)
    :map-of (-map-of-schema)
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})

@@ -171,16 +171,19 @@
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
-    (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])]
+    (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])
+          schema* (m/schema [:and int? [:or* [:pos pos-int?] [:neg neg-int?]]])]
 
-      (is (true? (m/validate schema 1)))
-      (is (true? (m/validate schema -1)))
-      (is (false? (m/validate schema 0)))
-      (is (false? (m/validate schema "1")))
-      (is (false? (m/validate schema [1])))
+      (doseq [schema [schema schema*]]
+        (is (true? (m/validate schema 1)))
+        (is (true? (m/validate schema -1)))
+        (is (false? (m/validate schema 0)))
+        (is (false? (m/validate schema "1")))
+        (is (false? (m/validate schema [1]))))
 
       (is (= pos-int? (m/validator [:and pos-int? pos-int? pos-int?])))
       (is (= pos-int? (m/validator [:or pos-int? pos-int? pos-int?])))
+      (is (= pos-int? (m/validator [:or* [:a pos-int?] [:b pos-int?] [:c pos-int?]])))
 
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema,
@@ -189,15 +192,24 @@
                               {:path [1 1], :in [], :schema neg-int?, :value 0}]}
                     (m/explain schema 0)))
 
-      (is (= 1 (m/decode schema "1" mt/string-transformer)))
-      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+      (is (nil? (m/explain schema* 1)))
+      (is (results= {:schema schema*,
+                     :value 0,
+                     :errors [{:path [1 :pos], :in [], :schema pos-int?, :value 0}
+                              {:path [1 :neg], :in [], :schema neg-int?, :value 0}]}
+                    (m/explain schema* 0)))
+
+      (doseq [schema [schema schema*]]
+        (is (= 1 (m/decode schema "1" mt/string-transformer)))
+        (is (= "1" (m/decode schema "1" mt/json-transformer))))
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
                [:and {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}} string?]
                "kerran" mt/string-transformer)))
 
-      (is (true? (m/validate (over-the-wire schema) 1)))
+      (doseq [schema [schema schema*]]
+        (is (true? (m/validate (over-the-wire schema) 1))))
 
       (is (= {:type :and
               :children [{:type 'int?}
@@ -205,51 +217,66 @@
                           :children [{:type 'pos-int?}
                                      {:type 'neg-int?}]}]}
              (mu/to-map-syntax schema)))
+      (is (= {:type :and
+              :children [{:type 'int?}
+                         {:type :or*
+                          :children [[:pos nil {:type 'pos-int?}]
+                                     [:neg nil {:type 'neg-int?}]]}]}
+             (mu/to-map-syntax schema*)))
 
-      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
+      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))
+      (is (= [:and 'int? [:or* [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
 
     (testing "transforming :or"
       (testing "first valid transformed branch is used"
-        (are [input result]
-          (is (= (m/decode
-                   [:or
-                    [:map [:x keyword?]]
-                    int?
-                    [:map [:y keyword?]]
-                    keyword?]
-                   input
-                   mt/string-transformer)
-                 result))
+        (doseq [schema [[:or
+                         [:map [:x keyword?]]
+                         int?
+                         [:map [:y keyword?]]
+                         keyword?]
+                        [:or*
+                         [:äxy [:map [:x keyword?]]]
+                         [:n int?]
+                         [:yxy [:map [:y keyword?]]]
+                         [:kw keyword?]]]]
+          (are [input result]
+            (is (= (m/decode schema input mt/string-transformer)
+                   result))
 
-          {:x "true", :y "true"} {:x :true, :y "true"}
-          {:x false, :y "true"} {:x false, :y :true}
-          {:x false, :y false} {:x false, :y false}
-          1 1
-          "kikka" :kikka))
+            {:x "true", :y "true"} {:x :true, :y "true"}
+            {:x false, :y "true"} {:x false, :y :true}
+            {:x false, :y false} {:x false, :y false}
+            1 1
+            "kikka" :kikka)))
 
       (testing "top-level transformations are retained"
-        (are [input result]
-          (is (= (m/decode
-                   (mu/closed-schema
-                     [:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
-                                           :leave (fn [m] (update m :leave #(or % true)))}}
-                      [:map
-                       [:x keyword?]
-                       [:enter boolean?]]
-                      [:map
-                       [:y keyword?]
-                       [:enter boolean?]]])
-                   input
-                   mt/string-transformer)
-                 result))
+        (doseq [schema [[:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
+                                              :leave (fn [m] (update m :leave #(or % true)))}}
+                         [:map
+                          [:x keyword?]
+                          [:enter boolean?]]
+                         [:map
+                          [:y keyword?]
+                          [:enter boolean?]]]
+                        [:or* {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
+                                               :leave (fn [m] (update m :leave #(or % true)))}}
+                         [:äxy [:map
+                                [:x keyword?]
+                                [:enter boolean?]]]
+                         [:yxy [:map
+                                [:y keyword?]
+                                [:enter boolean?]]]]]]
+          (are [input result]
+            (is (= (m/decode (mu/closed-schema schema) input mt/string-transformer)
+                   result))
 
-          {:x "true"} {:x :true, :enter true, :leave true}
-          {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
+            {:x "true"} {:x :true, :enter true, :leave true}
+            {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
 
-          {:y "true"} {:y :true, :enter true, :leave true}
-          {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
+            {:y "true"} {:y :true, :enter true, :leave true}
+            {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
 
-          {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true})))
+            {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true}))))
 
     (testing "explain with branches"
       (let [schema [:and pos-int? neg-int?]]

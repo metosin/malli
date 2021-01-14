@@ -52,9 +52,10 @@
   (-deref [this] "returns the referenced schema"))
 
 (defprotocol RegexSchema
-  (-regex-validator [this] "returns the raw internal regex validator implementation")
-  (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
-  (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
+  (-regex-validator [this colours] "returns the raw internal regex validator implementation and colours*")
+  (-regex-explainer [this path colours] "returns the raw internal regex explainer implementation and colours*")
+  (-regex-transformer [this transformer method options colours]
+    "returns the raw internal regex transformer implementation and colours*"))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -237,23 +238,49 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
-(defn -into-regex-validator [x]
-  (if (satisfies? RegexSchema x)
-    (-regex-validator x)
-    (re/item-validator (-validator x))))
+(defn- with-colouring [x colours f]
+  (case (get colours x)
+    :grey (-fail! ::recursive-seqex x)
+    :black (f colours)
+    (let [[v colours] (f (assoc colours x :grey))]
+      [v (assoc colours x :black)])))
 
-(defn -into-regex-explainer [x path]
-  (if (satisfies? RegexSchema x)
-    (-regex-explainer x path)
-    (re/item-explainer path x (-explainer x path))))
+(defn -into-regex-validator [x colours]
+  (with-colouring x colours
+                  (fn [colours]
+                    (cond
+                      (satisfies? RegexSchema x) (-regex-validator x colours)
 
-(defn -into-regex-transformer [x transformer method options]
-  (if (satisfies? RegexSchema x)
-    (-regex-transformer x transformer method options)
-    (let [t (or (-transformer x transformer method options) identity)]
-      (case method
-        :encode (re/item-encoder (-validator x) t)
-        :decode (re/item-decoder t (-validator x))))))
+                      (and (satisfies? RefSchema x) (not= (-type x) :schema))
+                      (-into-regex-validator (-deref x) colours)
+
+                      :else [(re/item-validator (-validator x)) colours]))))
+
+(defn -into-regex-explainer [x path colours]
+  (with-colouring x colours
+                  (fn [colours]
+                    (cond
+                      (satisfies? RegexSchema x) (-regex-explainer x path colours)
+
+                      (and (satisfies? RefSchema x) (not= (-type x) :schema))
+                      (-into-regex-explainer (-deref x) path colours)
+
+                      :else [(re/item-explainer path x (-explainer x path)) colours]))))
+
+(defn -into-regex-transformer [x transformer method options colours]
+  (with-colouring x colours
+                  (fn [colours]
+                    (cond
+                      (satisfies? RegexSchema x) (-regex-transformer x transformer method options colours)
+
+                      (and (satisfies? RefSchema x) (not= (-type x) :schema))
+                      (-into-regex-transformer (-deref x) transformer method options colours)
+
+                      :else [(let [t (or (-transformer x transformer method options) identity)]
+                               (case method
+                                 :encode (re/item-encoder (-validator x) t)
+                                 :decode (re/item-decoder t (-validator x))))
+                             colours]))))
 
 ;;
 ;; Protocol Cache
@@ -905,57 +932,65 @@
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))))))))
 
-(defn -ref-schema
-  ([]
-   (-ref-schema nil))
-  ([{:keys [lazy type-properties] :as opts}]
-   ^{:type ::into-schema}
-   (reify IntoSchema
-     (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
-       (-check-children! :ref properties children {:min 1, :max 1})
-       (when-not (-reference? ref)
-         (-fail! ::invalid-ref {:ref ref}))
-       (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
-             -ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
-                      (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
-                      (when-not allow-invalid-refs
-                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
-             children (vec children)
-             form (-create-form :ref properties children)]
-         ^{:type ::schema}
-         (reify
-           Schema
-           (-type [_] :ref)
-           (-type-properties [_] type-properties)
-           (-validator [_]
-             (let [validator (-memoize (fn [] (-validator (-ref))))]
-               (fn [x] ((validator) x))))
-           (-explainer [_ path]
-             (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
-               (fn [x in acc] ((explainer) x in acc))))
-           (-transformer [this transformer method options]
-             (let [this-transformer (-value-transformer transformer this method options)
-                   deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
-               (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
-           (-walk [this walker path options]
-             (let [accept (fn [] (-inner walker (-ref) (into path [0 0]) (-update options ::walked-refs #(conj (or % #{}) ref))))]
-               (if (-accept walker this path options)
-                 (if (or (not ((-boolean-fn (::walk-refs options false)) ref)) (contains? (::walked-refs options) ref))
-                   (-outer walker this path [ref] options)
-                   (-outer walker this path [(accept)] options)))))
-           (-properties [_] properties)
-           (-options [_] options)
-           (-children [_] children)
-           (-parent [_] (-ref-schema opts))
-           (-form [_] form)
-           LensSchema
-           (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
-           (-keep [_])
-           (-set [this key value] (if (= key 0) (-set-children this [value])
-                                                (-fail! ::index-out-of-bounds {:schema this, :key key})))
-           RefSchema
-           (-ref [_] ref)
-           (-deref [_] (-ref))))))))
+(def -ref-schema
+  (let [into-ref-schema
+        (memoize
+          (fn [{:keys [lazy type-properties] :as opts}
+               properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
+            (let [-memoize (fn [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
+                  -ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
+                           (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+                           (when-not allow-invalid-refs
+                             (-fail! ::invalid-ref {:type :ref, :ref ref})))
+                  children (vec children)
+                  form (-create-form :ref properties children)]
+              ^{:type ::schema}
+              (reify
+                Schema
+                (-type [_] :ref)
+                (-type-properties [_] type-properties)
+                (-validator [_]
+                  (let [validator (-memoize (fn [] (-validator (-ref))))]
+                    (fn [x] ((validator) x))))
+                (-explainer [_ path]
+                  (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
+                    (fn [x in acc] ((explainer) x in acc))))
+                (-transformer [this transformer method options]
+                  (let [this-transformer (-value-transformer transformer this method options)
+                        deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
+                    (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
+                (-walk [this walker path options]
+                  (let [accept (fn [] (-inner walker (-ref) (into path [0 0])
+                                              (-update options ::walked-refs #(conj (or % #{}) ref))))]
+                    (if (-accept walker this path options)
+                      (if (or (not ((-boolean-fn (::walk-refs options false)) ref))
+                              (contains? (::walked-refs options) ref))
+                        (-outer walker this path [ref] options)
+                        (-outer walker this path [(accept)] options)))))
+                (-properties [_] properties)
+                (-options [_] options)
+                (-children [_] children)
+                (-parent [_] (-ref-schema opts))
+                (-form [_] form)
+                LensSchema
+                (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
+                (-keep [_])
+                (-set [this key value] (if (= key 0) (-set-children this [value])
+                                                     (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                RefSchema
+                (-ref [_] ref)
+                (-deref [_] (-ref))))))]
+    (fn
+      ([]
+       (-ref-schema nil))
+      ([opts]
+       ^{:type ::into-schema}
+       (reify IntoSchema
+         (-into-schema [_ properties [ref :as children] options]
+           (-check-children! :ref properties children {:min 1, :max 1})
+           (when-not (-reference? ref)
+             (-fail! ::invalid-ref {:ref ref}))
+           (into-ref-schema opts properties children options)))))))
 
 (defn -schema-schema [{:keys [id raw] :as opts}]
   ^{:type ::into-schema}
@@ -1033,13 +1068,13 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn- regex-validator [schema] (re/validator (-regex-validator schema)))
+(defn- regex-validator [schema] (re/validator (first (-regex-validator schema {}))))
 
-(defn- regex-explainer [schema path] (re/explainer schema path (-regex-explainer schema path)))
+(defn- regex-explainer [schema path] (re/explainer schema path (first (-regex-explainer schema path {}))))
 
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)
-        ->children (re/transformer (-regex-transformer schema transformer method options))]
+        ->children (re/transformer (first (-regex-transformer schema transformer method options {})))]
     (-intercepting this-transformer ->children)))
 
 (defn -sequence-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
@@ -1072,12 +1107,17 @@
           (-set [this key value] (-set-assoc-children this key value))
 
           RegexSchema
-          (-regex-validator [_] (re-validator properties (map -into-regex-validator children)))
-          (-regex-explainer [_ path]
-            (re-explainer properties (map-indexed (fn [i s] (-into-regex-explainer s (conj path i)))
-                                                  children)))
-          (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map #(-into-regex-transformer % transformer method options) children))))))))
+          (-regex-validator [_ colours]
+            (-> (u/stateful-mapv -into-regex-validator children colours)
+                (update 0 #(re-validator properties %))))
+          (-regex-explainer [_ path colours]
+            (-> (u/stateful-mapv (fn [[i child] colours] (-into-regex-explainer child (conj path i) colours))
+                                 (map-indexed vector children) colours)
+                (update 0 #(re-explainer properties %))))
+          (-regex-transformer [_ transformer method options colours]
+            (-> (u/stateful-mapv #(-into-regex-transformer %1 transformer method options %2)
+                                 children colours)
+                (update 0 #(re-transformer properties %)))))))))
 
 (defn -sequence-entry-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
   ^{:type ::into-schema}
@@ -1109,13 +1149,25 @@
           (-set [this key value] (-set-entries this key value))
 
           RegexSchema
-          (-regex-validator [_] (re-validator properties (map (fn [[k _ s]] [k (-into-regex-validator s)]) children)))
-          (-regex-explainer [_ path]
-            (re-explainer properties (map (fn [[k _ s]] [k (-into-regex-explainer s (conj path k))])
-                                          children)))
-          (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map (fn [[k _ s]] [k (-into-regex-transformer s transformer method options)])
-                                            children))))))))
+          (-regex-validator [_ colours]
+            (-> (u/stateful-mapv (fn [[k _ s] colours]
+                                   (let [[v colours] (-into-regex-validator s colours)]
+                                     [[k v] colours]))
+                                 children colours)
+                (update 0 #(re-validator properties %))))
+          (-regex-explainer [_ path colours]
+            (-> (u/stateful-mapv
+                  (fn [[k _ s] colours]
+                    (let [[e colours] (-into-regex-explainer s (conj path k) colours)]
+                      [[k e] colours]))
+                  children colours)
+                (update 0 #(re-explainer properties %))))
+          (-regex-transformer [_ transformer method options colours]
+            (-> (u/stateful-mapv (fn [[k _ s] colours]
+                                   (let [[t colours] (-into-regex-transformer s transformer method options colours)]
+                                     [[k t] colours]))
+                                 children colours)
+                (update 0 #(re-transformer properties %)))))))))
 
 ;;
 ;; public api

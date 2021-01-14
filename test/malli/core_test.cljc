@@ -1291,7 +1291,22 @@
             [["foo"]] nil
             [[0]] [{:path [0 0], :in [0 0], :schema string?, :value 0}
                    {:path [0], :in [0 0], :schema [:* string?], :value 0, :type ::m/input-remaining}
-                   {:path [], :in [0], :schema s, :value [0], :type ::m/input-remaining}]))))))
+                   {:path [], :in [0], :schema s, :value [0], :type ::m/input-remaining}])))
+
+      (testing "RefSchemas"
+        (is (m/validate
+              [:schema {:registry {"ints" [:+ int?]
+                                   "bools" [:+ boolean?]}}
+               [:* [:cat "ints" "bools"]]]
+              [1 true 2 2 false]))
+        (is (m/validate
+              [:schema {:registry {::boll [:cat boolean?]}}
+               [:* [:ref ::boll]]]
+              [true false]))
+        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/recursive-seqex"
+                              (m/validator
+                                [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
+                                 ::ints])))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

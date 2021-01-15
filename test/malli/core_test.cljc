@@ -1299,14 +1299,15 @@
                                    "bools" [:+ boolean?]}}
                [:* [:cat "ints" "bools"]]]
               [1 true 2 2 false]))
-        (is (m/validate
-              [:schema {:registry {::boll [:cat boolean?]}}
-               [:* [:ref ::boll]]]
-              [true false]))
-        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/recursive-seqex"
+        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                               (m/validator
                                 [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                 ::ints])))))))
+                                 ::ints])))
+        ;; A bit undesirable, but intentional:
+        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
+                              (m/validator
+                                [:schema {:registry {::boll [:cat boolean?]}}
+                                 [:* [:ref ::boll]]])))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

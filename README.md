@@ -20,7 +20,7 @@ Data-driven Schemas for Clojure/Script.
 - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
-- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
+- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Sequence Schemas](#sequence-schemas)
 - [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
 - [Visualizing Schemas](#visualizing-schemas) with DOT
 - [Fast](#performance)
@@ -237,17 +237,19 @@ Although a lot of effort has gone into making the seqex implementation fast
 (require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
-(let [valid? (m/validator [:* int?] (range 1000))]
-  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 189,953863 µs
 (let [valid? (partial s/valid? (s/* int?))]
   (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,576905 ms
-(let [valid? (partial s/valid? (s/coll-of int?))]
-  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 136,599310 µs
+
+(let [valid? (m/validator [:* int?] (range 1000))]
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 189,953863 µs
 ```
 
 it is always better to use less general tools whenever possible:
 
 ```clj
+(let [valid? (partial s/valid? (s/coll-of int?))]
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 136,599310 µs
+
 (let [valid? (m/validator [:sequential int?])]
   (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,863314 µs
 ```

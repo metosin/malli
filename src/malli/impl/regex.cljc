@@ -26,7 +26,7 @@
   recognition for `validate`."
 
   (:refer-clojure :exclude [+ * repeat cat])
-  (:require [malli.impl.util :refer [-tagged -fail! -error]])
+  (:require [malli.impl.util :as miu])
   #?(:clj (:import [java.util ArrayDeque])))
 
 ;;;; # Driver Protocols
@@ -70,7 +70,7 @@
           (if (seq errors)
             (fail! driver pos errors)
             (k (inc pos) (rest coll))))
-        (fail! driver pos [(-error path in schema nil :malli.core/end-of-input)])))))
+        (fail! driver pos [(miu/-error path in schema nil :malli.core/end-of-input)])))))
 
 (defn item-parser [valid?]
   (fn [_ _ pos coll k]
@@ -106,7 +106,7 @@
   (fn [driver _ pos coll k]
     (if (empty? coll)
       (k pos coll)
-      (fail! driver pos (list (-error path (value-path driver pos) schema (first coll) :malli.core/input-remaining))))))
+      (fail! driver pos (list (miu/-error path (value-path driver pos) schema (first coll) :malli.core/input-remaining))))))
 
 (defn end-parser [] (fn [_ _ pos coll k] (when (empty? coll) (k nil pos coll))))
 
@@ -173,7 +173,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs pos coll k]
-       (park-validator! driver r* regs pos coll k)          ; remember fallback
+       (park-validator! driver r* regs pos coll k) ; remember fallback
        (park-validator! driver r regs pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-validator ?kr (reduce (fn [acc ?kr] (alt-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -183,7 +183,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs pos coll k]
-       (park-explainer! driver r* regs pos coll k)          ; remember fallback
+       (park-explainer! driver r* regs pos coll k) ; remember fallback
        (park-explainer! driver r regs pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-explainer ?kr (reduce (fn [acc ?kr] (alt-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -198,13 +198,13 @@
            (reverse (cons r rs)))))
 
 (defn alt*-parser
-  ([[tag r]] (fn [driver pos coll k] (r driver pos coll (fn [v pos coll] (k (-tagged tag v) pos coll)))))
+  ([[tag r]] (fn [driver pos coll k] (r driver pos coll (fn [v pos coll] (k (miu/-tagged tag v) pos coll)))))
   ([kr & krs]
    (let [krs (reverse (cons kr krs))]
      (reduce (fn [acc [tag r]]
                (fn [driver regs pos coll k]
                  (park-validator! driver acc regs pos coll k) ; remember fallback
-                 (park-validator! driver r regs pos coll (fn [v pos coll] (k (-tagged tag v) pos coll)))))
+                 (park-validator! driver r regs pos coll (fn [v pos coll] (k (miu/-tagged tag v) pos coll)))))
              (alt*-parser (first krs))
              (rest krs)))))
 
@@ -213,7 +213,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs coll* pos coll k]
-       (park-transformer! driver r* regs coll* pos coll k)  ; remember fallback
+       (park-transformer! driver r* regs coll* pos coll k) ; remember fallback
        (park-transformer! driver r regs coll* pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-transformer ?kr (reduce (fn [acc ?kr] (alt-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -230,13 +230,13 @@
 (defn *-validator [p]
   (let [*p-epsilon (cat-validator)]
     (fn *p [driver regs pos coll k]
-      (park-validator! driver *p-epsilon regs pos coll k)   ; remember fallback
+      (park-validator! driver *p-epsilon regs pos coll k) ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-validator! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-explainer [p]
   (let [*p-epsilon (cat-explainer)]
     (fn *p [driver regs pos coll k]
-      (park-explainer! driver *p-epsilon regs pos coll k)   ; remember fallback
+      (park-explainer! driver *p-epsilon regs pos coll k) ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-explainer! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-parser [p]
@@ -273,7 +273,7 @@
                      (-park-validator! driver
                                        (fn [driver stack pos coll k]
                                          (compulsories driver (conj (pop stack) (inc (peek stack))) pos coll k))
-                                       regs pos coll k)))   ; TCO
+                                       regs pos coll k))) ; TCO
                 (optionals driver regs pos coll k)))
             (optionals [driver regs pos coll k]
               (if (< (peek regs) max)
@@ -297,7 +297,7 @@
                      (-park-explainer! driver
                                        (fn [driver regs pos coll k]
                                          (compulsories driver (conj (pop regs) (inc (peek regs))) pos coll k))
-                                       regs pos coll k)))   ; TCO
+                                       regs pos coll k))) ; TCO
                 (optionals driver regs pos coll k)))
             (optionals [driver regs pos coll k]
               (if (< (peek regs) max)
@@ -333,7 +333,7 @@
                          driver
                          (fn [driver regs coll* pos coll k]
                            (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
-                         regs coll* pos coll k))))          ; TCO
+                         regs coll* pos coll k)))) ; TCO
                 (k pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
 
@@ -512,7 +512,7 @@
                   (thunk)
                   (if (succeeded? driver) errors (recur)))
                 (into errors (latest-errors driver))))))
-        (conj errors (-error path in schema coll :malli.core/invalid-type))))))
+        (conj errors (miu/-error path in schema coll :malli.core/invalid-type))))))
 
 ;;;; # Parser
 
@@ -530,8 +530,8 @@
                 (do
                   (thunk)
                   (if (succeeded? driver) (first (success-result driver)) (recur)))
-                (-fail! :malli.core/nonconforming)))))
-        (-fail! :malli.core/nonconforming)))))
+                (miu/-fail! :malli.core/nonconforming)))))
+        (miu/-fail! :malli.core/nonconforming)))))
 
 ;;;; # Transformer
 

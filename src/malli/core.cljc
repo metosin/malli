@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
-            [malli.impl.util :as u]
+            [malli.impl.util :as miu]
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
@@ -104,9 +104,9 @@
       (name x))
     x))
 
-(def -fail! u/-fail!)
+(def -fail! miu/-fail!)
 
-(def -error u/-error)
+(def -error miu/-error)
 
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
@@ -176,7 +176,7 @@
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
                              c [k p (schema s options)]]
                          {:children [c]
-                          :entries [(u/-tagged k (-val-schema (last c) p))]
+                          :entries [(miu/-tagged k (-val-schema (last c) p))]
                           :forms [f]}))
         es (reduce #(merge-with into %1 %2) {} (mapv -parse children))
         keys (->> es :entries (map first))]

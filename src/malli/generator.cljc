@@ -114,6 +114,43 @@
             (generate output-generator options)))
         {:arity (-> schema m/-arity)}))))
 
+(defn -regex-generator [schema options]
+  (if (m/-regex-op? schema)
+    (generator schema options)
+    (gen/tuple (generator schema options))))
+
+(defn- entry->schema [e] (if (vector? e) (get e 2) e))
+
+(defn -cat-gen [schema options]
+  (->> (m/children schema options)
+       (map #(-regex-generator (entry->schema %) options))
+       (apply gen/tuple)
+       (gen/fmap #(apply concat %))))
+
+(defn -alt-gen [schema options]
+  (gen/one-of (keep (fn [e]
+                      (let [child (entry->schema e)]
+                        (some->> (-maybe-recur child options) (-regex-generator child))))
+                    (m/children schema options))))
+
+(defn -?-gen [schema options]
+  (let [child (m/-get schema 0 nil)]
+    (if (m/-regex-op? child)
+      (gen/one-of [(generator child options) (gen/return ())])
+      (gen/vector (generator child options) 0 1))))
+
+(defn -*-gen [schema options]
+  (let [child (m/-get schema 0 nil)]
+    (if (m/-regex-op? child)
+      (gen/fmap #(apply concat %) (gen/vector (generator child options)))
+      (gen/vector (generator child options)))))
+
+(defn -repeat-gen [schema options]
+  (let [child (m/-get schema 0 nil)]
+    (if (m/-regex-op? child)
+      (gen/fmap #(apply concat %) (-coll-gen schema identity options))
+      (-coll-gen schema identity options))))
+
 ;;
 ;; generators
 ;;
@@ -166,6 +203,16 @@
 (defmethod -schema-generator :merge [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :union [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :select-keys [schema options] (generator (m/deref schema) options))
+
+(defmethod -schema-generator :cat [schema options] (-cat-gen schema options))
+(defmethod -schema-generator :cat* [schema options] (-cat-gen schema options))
+(defmethod -schema-generator :alt [schema options] (-alt-gen schema options))
+(defmethod -schema-generator :alt* [schema options] (-alt-gen schema options))
+
+(defmethod -schema-generator :? [schema options] (-?-gen schema options))
+(defmethod -schema-generator :* [schema options] (-*-gen schema options))
+(defmethod -schema-generator :+ [schema options] (gen/not-empty (-*-gen schema options)))
+(defmethod -schema-generator :repeat [schema options] (-repeat-gen schema options))
 
 (defn- -create [schema options]
   (let [{:gen/keys [gen fmap elements]} (merge (m/type-properties schema) (m/properties schema))

@@ -158,7 +158,99 @@ You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for ve
 ;; => false
 ```
 
-Support for Heterogeneous/Regex sequences is [WIP](https://github.com/metosin/malli/issues/180).
+Malli also supports sequence regexes like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
+The supported operators are `:cat` & `:cat*` for concatenation / sequencing
+
+```clj
+(m/validate [:cat string? int?] ["foo" 0]) ; => true
+
+(m/validate [:cat* [:s string?] [:n int?]] ["foo" 0]) ; => true
+```
+
+`:alt` & `:alt*` for alternatives
+
+```clj
+(m/validate [:alt keyword? string?] ["foo"]) ; => true
+
+(m/validate [:alt* [:kw keyword?] [:s string?]] ["foo"]) ; => true
+```
+
+and `:?`, `:*`, `:+` & `:repeat` for repetition:
+
+```clj
+(m/validate [:? int?] []) ; => true
+(m/validate [:? int?] [1]) ; => true
+(m/validate [:? int?] [1 2]) ; => false
+
+(m/validate [:* int?] []) ; => true
+(m/validate [:* int?] [1 2 3]) ; => true
+
+(m/validate [:+ int?] []) ; => false
+(m/validate [:+ int?] [1]) ; => true
+(m/validate [:+ int?] [1 2 3]) ; => true
+
+(m/validate [:repeat {:min 2, :max 4} int?] [1]) ; => false
+(m/validate [:repeat {:min 2, :max 4} int?] [1 2]) ; => true
+(m/validate [:repeat {:min 2, :max 4} int?] [1 2 3 4]) ; => true (:max is inclusive, as elsewhere in Malli)
+(m/validate [:repeat {:min 2, :max 4} int?] [1 2 3 4 5]) ; => false
+```
+
+`:cat*` and `:alt*` allow naming the subsequences / alternatives
+
+```clj
+(m/explain [:* [:cat* [:prop string?] [:val [:alt* [:s string?] [:b boolean?]]]]]
+    ["-server" "foo" "-verbose" 11 "-user" "joe"])
+;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
+;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
+;;     :errors (#Error{:path [0 :val :s], :in [3], :schema string?, :value 11}
+;;              #Error{:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
+```
+
+while `:cat` and `:alt` just use numeric indices for paths:
+
+```clj
+(m/explain [:* [:cat string? [:alt string? boolean?]]]
+           ["-server" "foo" "-verbose" 11 "-user" "joe"])
+;; => {:schema [:* [:cat string? [:alt string? boolean?]]],
+;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
+;;     :errors (#Error{:path [0 1 0], :in [3], :schema string?, :value 11}
+;;              #Error{:path [0 1 1], :in [3], :schema boolean?, :value 11})}
+```
+
+As all these examples show, the "seqex" operators take any non-seqex child schema to
+mean a sequence of one element that matches that schema. To force that behaviour for
+a seqex child `:schema` can be used:
+
+```clj
+(m/validate [:cat [:= :names] [:schema [:* string?]]
+                  [:= :nums] [:schema [:* number?]]]
+            [:names ["a" "b"] :nums [1 2 3]]) ; => true
+
+;; whereas
+(m/validate [:cat [:= :names] [:* string?] [:= :nums] [:* number?]]
+            [:names "a" "b" :nums 1 2 3]) ; => true
+```
+
+Although a lot of effort has gone into making the seqex implementation fast
+
+```clj
+(require '[clojure.spec.alpha :as s])
+(require '[criterium.core :as cc])
+
+(let [valid? (m/validator [:* int?] (range 1000))]
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 189,953863 µs
+(let [valid? (partial s/valid? (s/* int?))]
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,576905 ms
+(let [valid? (partial s/valid? (s/coll-of int?))]
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 136,599310 µs
+```
+
+it is always better to use less general tools whenever possible:
+
+```clj
+(let [valid? (m/validator [:sequential int?])]
+  (cc/quick-bench (valid? (range 1000)))) ; Execution time mean : 2,863314 µs
+```
 
 ## String schemas
 

@@ -1303,6 +1303,10 @@
                               (m/validator
                                 [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
                                  ::ints])))
+        (is (m/validate
+              [:schema {:registry {::ints [:* [:or int? [:ref ::ints]]]}}
+               ::ints]
+              [[1 2 3]]))
         ;; A bit undesirable, but intentional:
         (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                               (m/validator

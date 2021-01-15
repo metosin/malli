@@ -115,7 +115,7 @@
         {:arity (-> schema m/-arity)}))))
 
 (defn -regex-generator [schema options]
-  (if (satisfies? m/RegexSchema schema)
+  (if (m/-regex-op? schema)
     (generator schema options)
     (gen/tuple (generator schema options))))
 
@@ -135,19 +135,19 @@
 
 (defn -?-gen [schema options]
   (let [child (m/-get schema 0 nil)]
-    (if (satisfies? m/RegexSchema child)
+    (if (m/-regex-op? child)
       (gen/one-of [(generator child options) (gen/return ())])
       (gen/vector (generator child options) 0 1))))
 
 (defn -*-gen [schema options]
   (let [child (m/-get schema 0 nil)]
-    (if (satisfies? m/RegexSchema child)
+    (if (m/-regex-op? child)
       (gen/fmap #(apply concat %) (gen/vector (generator child options)))
       (gen/vector (generator child options)))))
 
 (defn -repeat-gen [schema options]
   (let [child (m/-get schema 0 nil)]
-    (if (satisfies? m/RegexSchema child)
+    (if (m/-regex-op? child)
       (gen/fmap #(apply concat %) (-coll-gen schema identity options))
       (-coll-gen schema identity options))))
 

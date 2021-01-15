@@ -52,12 +52,15 @@
   (-deref [this] "returns the referenced schema"))
 
 (defprotocol RegexSchema
+  (-regex-op? [this] "is this a regex operator (e.g. :cat, :*...)")
   (-regex-validator [this] "returns the raw internal regex validator implementation")
   (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
 
 (extend-type #?(:clj Object, :cljs default)
   RegexSchema
+  (-regex-op? [_] false)
+
   (-regex-validator [this]
     (if (satisfies? RefSchema this)
       (-regex-validator (-deref this))
@@ -959,6 +962,7 @@
            (-ref [_] ref)
            (-deref [_] (-ref))
            RegexSchema
+           (-regex-op? [_] false)
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-explainer [this _] (-fail! ::potentially-recursive-seqex this))
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))))))))
@@ -1002,6 +1006,7 @@
             (-deref [_] child)
 
             RegexSchema
+            (-regex-op? [_] false)
             (-regex-validator [_]
               (if internal?
                 (-regex-validator child)
@@ -1094,6 +1099,7 @@
           (-set [this key value] (-set-assoc-children this key value))
 
           RegexSchema
+          (-regex-op? [_] true)
           (-regex-validator [_]
             (re-validator properties (map -regex-validator children)))
           (-regex-explainer [_ path]
@@ -1131,6 +1137,7 @@
           (-set [this key value] (-set-entries this key value))
 
           RegexSchema
+          (-regex-op? [_] true)
           (-regex-validator [_]
             (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
           (-regex-explainer [_ path]

@@ -93,6 +93,11 @@
         (when (valid? v)
           (k (conj coll* v) (inc pos) (rest coll)))))))
 
+(defn item-transformer [method validator t]
+  (case method
+    :encode (item-encoder validator t)
+    :decode (item-decoder t validator)))
+
 ;;;; ## End of Seq
 
 (defn end-validator [] (fn [_ _ pos coll k] (when (empty? coll) (k pos coll))))

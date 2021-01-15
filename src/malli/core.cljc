@@ -49,13 +49,29 @@
 
 (defprotocol RefSchema
   (-ref [this] "returns the reference name")
-  (-deref [this] "returns the referenced schema")
-  (-recursible? [this] "does this reference support recursion?"))
+  (-deref [this] "returns the referenced schema"))
 
 (defprotocol RegexSchema
   (-regex-validator [this] "returns the raw internal regex validator implementation")
   (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
+
+(extend-type #?(:clj Object, :cljs default)
+  RegexSchema
+  (-regex-validator [this]
+    (if (satisfies? RefSchema this)
+      (-regex-validator (-deref this))
+      (re/item-validator (-validator this))))
+
+  (-regex-explainer [this path]
+    (if (satisfies? RefSchema this)
+      (-regex-explainer (-deref this) path)
+      (re/item-explainer path this (-explainer this path))))
+
+  (-regex-transformer [this transformer method options]
+    (if (satisfies? RefSchema this)
+      (-regex-transformer (-deref this) transformer method options)
+      (re/item-transformer method (-validator this) (or (-transformer this transformer method options) identity)))))
 
 (defprotocol Walker
   (-accept [this schema path options])
@@ -239,42 +255,6 @@
       min (fn [x] (<= min x))
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
-
-(defn -into-regex-validator [x]
-  (cond
-    (satisfies? RegexSchema x) (-regex-validator x)
-
-    (and (satisfies? RefSchema x) (not= (-type x) :schema))
-    (if (-recursible? x)
-      (-fail! ::potentially-recursive-seqex x)
-      (recur (-deref x)))
-
-    :else (re/item-validator (-validator x))))
-
-(defn -into-regex-explainer [x path]
-  (cond
-    (satisfies? RegexSchema x) (-regex-explainer x path)
-
-    (and (satisfies? RefSchema x) (not= (-type x) :schema))
-    (if (-recursible? x)
-      (-fail! ::potentially-recursive-seqex x)
-      (recur (-deref x) path))
-
-    :else (re/item-explainer path x (-explainer x path))))
-
-(defn -into-regex-transformer [x transformer method options]
-  (cond
-    (satisfies? RegexSchema x) (-regex-transformer x transformer method options)
-
-    (and (satisfies? RefSchema x) (not= (-type x) :schema))
-    (if (-recursible? x)
-      (-fail! ::potentially-recursive-seqex x)
-      (recur (-deref x) transformer method options))
-
-    :else (let [t (or (-transformer x transformer method options) identity)]
-            (case method
-              :encode (re/item-encoder (-validator x) t)
-              :decode (re/item-decoder t (-validator x))))))
 
 ;;
 ;; Protocol Cache
@@ -465,8 +445,7 @@
            (-set [_ key value] (if (= 0 key) (-val-schema value properties)))
            RefSchema
            (-ref [_])
-           (-deref [_] schema)
-           (-recursible? [_] false)))))))
+           (-deref [_] schema)))))))
 
 (defn -map-schema
   ([]
@@ -979,11 +958,15 @@
            RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))
-           (-recursible? [_] true)))))))
+           RegexSchema
+           (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
+           (-regex-explainer [this _] (-fail! ::potentially-recursive-seqex this))
+           (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))))))))
 
 (defn -schema-schema [{:keys [id raw] :as opts}]
   ^{:type ::into-schema}
-  (let [type (if (or id raw) ::schema :schema)]
+  (let [internal? (or id raw)
+        type (if internal? ::schema :schema)]
     (reify IntoSchema
       (-into-schema [_ properties children options]
         (-check-children! type properties children {:min 1, :max 1})
@@ -1017,7 +1000,21 @@
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
-            (-recursible? [_] false)))))))
+
+            RegexSchema
+            (-regex-validator [_]
+              (if internal?
+                (-regex-validator child)
+                (re/item-validator (-validator child))))
+            (-regex-explainer [_ path]
+              (if internal?
+                (-regex-explainer child path)
+                (re/item-explainer path child (-explainer child path))))
+            (-regex-transformer [_ transformer method options]
+              (if internal?
+                (-regex-transformer child transformer method options)
+                (re/item-transformer method (-validator child)
+                                     (or (-transformer child transformer method options) identity))))))))))
 
 (defn -function-schema []
   ^{:type ::into-schema}
@@ -1098,11 +1095,11 @@
 
           RegexSchema
           (-regex-validator [_]
-            (re-validator properties (map -into-regex-validator children)))
+            (re-validator properties (map -regex-validator children)))
           (-regex-explainer [_ path]
-            (re-explainer properties (map-indexed (fn [i child] (-into-regex-explainer child (conj path i))) children)))
+            (re-explainer properties (map-indexed (fn [i child] (-regex-explainer child (conj path i))) children)))
           (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map #(-into-regex-transformer %1 transformer method options) children))))))))
+            (re-transformer properties (map #(-regex-transformer % transformer method options) children))))))))
 
 (defn -sequence-entry-schema [{:keys [type child-bounds re-validator re-explainer re-transformer] :as opts}]
   ^{:type ::into-schema}
@@ -1135,13 +1132,12 @@
 
           RegexSchema
           (-regex-validator [_]
-            (re-validator properties (map (fn [[k _ s]] [k (-into-regex-validator s)]) children)))
+            (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
           (-regex-explainer [_ path]
-            (re-explainer properties (map (fn [[k _ s]] [k (-into-regex-explainer s (conj path k))]) children)))
+            (re-explainer properties (map (fn [[k _ s]] [k (-regex-explainer s (conj path k))]) children)))
           (-regex-transformer [_ transformer method options]
-            (re-transformer properties
-                            (map (fn [[k _ s]] [k (-into-regex-transformer s transformer method options)])
-                                 children))))))))
+            (re-transformer properties (map (fn [[k _ s]] [k (-regex-transformer s transformer method options)])
+                                            children))))))))
 
 ;;
 ;; public api

@@ -171,6 +171,25 @@
                        [:a])
                      [:map [:a int?]])))))
 
+(deftest rename-keys-test
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/rename-keys schema {}) schema))
+    (is (mu/equals (mu/rename-keys schema nil) schema))
+    (is (mu/equals (mu/rename-keys schema {:a :a}) schema))
+    (is (mu/equals (mu/rename-keys schema {:extra :k}) schema))
+    (is (mu/equals (mu/rename-keys schema {:a :b}) [:map {:title "map"}
+                                                    [:b int?]
+                                                    [:c string?]]))
+    (is (mu/equals (mu/rename-keys schema {:a :b
+                                           :b :c
+                                           :c :a}) [:map {:title "map"}
+                                                    [:b int?]
+                                                    [:c {:optional true} int?]
+                                                    [:a string?]]))))
+
 ;;
 ;; LensSchemas
 ;;

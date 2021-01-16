@@ -1232,7 +1232,7 @@
 (defn walk
   "Postwalks recursively over the Schema and it's children.
    The walker callback is a arity4 function with the following
-   arguments: schema, properties, (walked) children and optins."
+   arguments: schema, path, (walked) children and options."
   ([?schema f]
    (walk ?schema f nil))
   ([?schema f options]

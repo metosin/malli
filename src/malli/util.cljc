@@ -196,7 +196,7 @@
   "Transforms entries with f."
   [?schema f options]
   (let [schema (m/deref-all (m/schema ?schema options))]
-    (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema)))))
+    (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema)) options)))
 
 (defn optional-keys
   "Makes map keys optional."

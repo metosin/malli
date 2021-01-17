@@ -231,6 +231,21 @@
    (let [key-set (set keys)]
      (transform-entries ?schema #(filter (fn [[k]] (key-set k)) %) options))))
 
+(defn rename-keys
+  "Like [[clojure.set/rename-keys]], but for MapSchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
+  ([?schema kmap]
+   (rename-keys ?schema kmap nil))
+  ([?schema kmap options]
+   (transform-entries
+     ?schema
+     (fn [entries]
+       (let [source-keys      (set (keys kmap))
+             target-keys      (set (vals kmap))
+             remove-conflicts (fn [[k]] (or (source-keys k) (not (target-keys k))))
+             alter-keys       (fn [[k m v]] [(c/get kmap k k) m v])]
+         (->> entries (filter remove-conflicts) (map alter-keys))))
+     options)))
+
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for MapSchemas."
   ([?schema key]

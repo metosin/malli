@@ -417,14 +417,25 @@
   (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?])))
 
 (deftest transform-entries-test
-  (let [registry (mr/composite-registry {:a/x int?} (m/default-schemas))
-        schema   [:map [:a/x {:m true} int?]]]
+  (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))
+        options            {:registry registry}
+        key->key-transform #(map (fn [[k m _]] [k m k]) %)
 
-    (testing "options are preserved in output type from the transform"
+        schema              [:map [:a/x {:m true} int?]]
+        schema-with-options (m/schema schema options)
+        result-schema       (m/schema [:map [:a/x {:m true} :a/x]] options)]
+
+    (testing "manual options are preserved in output type from the transform"
       (is (mu/equals
-            (mu/transform-entries schema #(map (fn [[k m _]] [k m k]) %) {:registry registry})
-            (m/schema [:map [:a/x {:m true} :a/x]] {:registry registry})
-            {:registry registry})))))
+            (mu/transform-entries schema key->key-transform options)
+            result-schema
+            options)))
+
+    (testing "schema-attached-options are preserved in output type from the transform"
+      (is (mu/equals
+            (mu/transform-entries schema-with-options key->key-transform nil)
+            result-schema
+            options)))))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]

@@ -24,6 +24,7 @@
   (-type-properties [this] "returns schema type properties")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
+  ;; OPTIMIZE(impls): share as much as possible instead of deep copy:
   (-conformer [this]                                        ; OPTIMIZE: nilable as in `-transformer`
     "return a function of `x -> parsed-x` to explain how schema is valid.
     If the value is not valid for the schema, the function throws.")
@@ -58,7 +59,7 @@
   (-regex-op? [this] "is this a regex operator (e.g. :cat, :*...)")
   (-regex-validator [this] "returns the raw internal regex validator implementation")
   (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
-  (-regex-conformer [this])
+  (-regex-conformer [this] "returns the raw internal regex conformer implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
 
 (extend-type #?(:clj Object, :cljs default)
@@ -74,6 +75,11 @@
     (if (satisfies? RefSchema this)
       (-regex-explainer (-deref this) path)
       (re/item-explainer path this (-explainer this path))))
+
+  (-regex-conformer [this]
+    (if (satisfies? RefSchema this)
+      (-regex-conformer (-deref this))
+      (re/item-parser (-validator this))))
 
   (-regex-transformer [this transformer method options]
     (if (satisfies? RefSchema this)
@@ -262,29 +268,6 @@
       min (fn [x] (<= min x))
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
-
-(defn -into-regex-validator [x]
-  (if (satisfies? RegexSchema x)
-    (-regex-validator x)
-    (re/item-validator (-validator x))))
-
-(defn -into-regex-explainer [x path]
-  (if (satisfies? RegexSchema x)
-    (-regex-explainer x path)
-    (re/item-explainer path x (-explainer x path))))
-
-(defn -into-regex-conformer [x]
-  (if (satisfies? RegexSchema x)
-    (-regex-conformer x)
-    (re/item-parser (-validator x))))
-
-(defn -into-regex-transformer [x transformer method options]
-  (if (satisfies? RegexSchema x)
-    (-regex-transformer x transformer method options)
-    (let [t (or (-transformer x transformer method options) identity)]
-      (case method
-        :encode (re/item-encoder (-validator x) t)
-        :decode (re/item-decoder t (-validator x))))))
 
 ;;
 ;; Protocol Cache
@@ -482,7 +465,7 @@
           (-conformer [_]
             (let [conformers (mapv (fn [[k _ c]]
                                      (let [c (-conformer c)]
-                                       (fn [x] (u/-tagged k (c x)))))
+                                       (fn [x] (miu/-tagged k (c x)))))
                                    children)]
               (fn [x]
                 (let [res (reduce (fn [acc conformer]
@@ -1285,11 +1268,10 @@
 
           RegexSchema
           (-regex-op? [_] true)
-          (-regex-validator [_]
-            (re-validator properties (map -regex-validator children)))
+          (-regex-validator [_] (re-validator properties (map -regex-validator children)))
           (-regex-explainer [_ path]
             (re-explainer properties (map-indexed (fn [i child] (-regex-explainer child (conj path i))) children)))
-          (-regex-conformer [_] (re-conformer properties (map -into-regex-conformer children)))
+          (-regex-conformer [_] (re-conformer properties (map -regex-conformer children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map #(-regex-transformer % transformer method options) children))))))))
 
@@ -1325,11 +1307,10 @@
 
           RegexSchema
           (-regex-op? [_] true)
-          (-regex-validator [_]
-            (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
+          (-regex-validator [_] (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
           (-regex-explainer [_ path]
             (re-explainer properties (map (fn [[k _ s]] [k (-regex-explainer s (conj path k))]) children)))
-          (-regex-conformer [_] (re-conformer properties (map (fn [[k _ s]] [k (-into-regex-conformer s)]) children)))
+          (-regex-conformer [_] (re-conformer properties (map (fn [[k _ s]] [k (-regex-conformer s)]) children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (map (fn [[k _ s]] [k (-regex-transformer s transformer method options)])
                                             children))))))))

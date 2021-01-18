@@ -1126,6 +1126,7 @@
            (-regex-op? [_] false)
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-explainer [this _] (-fail! ::potentially-recursive-seqex this))
+           (-regex-conformer [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))))))))
 
 (defn -schema-schema [{:keys [id raw] :as opts}]
@@ -1177,6 +1178,10 @@
               (if internal?
                 (-regex-explainer child path)
                 (re/item-explainer path child (-explainer child path))))
+            (-regex-conformer [_]
+              (if internal?
+                (-regex-conformer child)
+                (re/item-parser (-validator child))))
             (-regex-transformer [_ transformer method options]
               (if internal?
                 (-regex-transformer child transformer method options)
@@ -1229,7 +1234,7 @@
 
 (defn- regex-explainer [schema path] (re/explainer schema path (-regex-explainer schema path)))
 
-(defn- regex-conformer [schema] (re/parser -fail! (-regex-conformer schema)))
+(defn- regex-conformer [schema] (re/parser (-regex-conformer schema)))
 
 (defn- regex-transformer [schema transformer method options]
   (let [this-transformer (-value-transformer transformer schema method options)
@@ -1463,7 +1468,7 @@
             (catch #?(:clj Exception, :cljs js/Error) _ ::nonconforming))))))
 
 (defn conform
-  "Conforms a value against a given schema. Creates the `comformer` for every call.
+  "Conforms a value against a given schema. Creates the `conformer` for every call.
    When performance matters, (re-)use `conformer` instead."
   ([?schema value]
    (conform ?schema value nil))

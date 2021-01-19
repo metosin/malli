@@ -62,6 +62,8 @@
   (-regex-conformer [this] "returns the raw internal regex conformer implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
 
+(declare conformer)
+
 (extend-type #?(:clj Object, :cljs default)
   RegexSchema
   (-regex-op? [_] false)
@@ -79,7 +81,7 @@
   (-regex-conformer [this]
     (if (satisfies? RefSchema this)
       (-regex-conformer (-deref this))
-      (re/item-parser (-validator this))))
+      (re/item-parser (conformer this))))
 
   (-regex-transformer [this transformer method options]
     (if (satisfies? RefSchema this)
@@ -1181,7 +1183,7 @@
             (-regex-conformer [_]
               (if internal?
                 (-regex-conformer child)
-                (re/item-parser (-validator child))))
+                (re/item-parser (conformer child))))
             (-regex-transformer [_ transformer method options]
               (if internal?
                 (-regex-transformer child transformer method options)

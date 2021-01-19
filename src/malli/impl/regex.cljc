@@ -77,11 +77,11 @@
             (k (inc pos) (rest coll))))
         (fail! driver pos [(miu/-error path in schema nil :malli.core/end-of-input)])))))
 
-(defn item-parser [valid?]
+(defn item-parser [conform]
   (fn [_ _ pos coll k]
     (when (seq coll)
-      (let [v (first coll)]
-        (when (valid? v)
+      (let [v (conform (first coll))]
+        (when-not (= v :malli.core/nonconforming)
           (k v (inc pos) (rest coll)))))))
 
 (defn item-encoder [valid? encode]

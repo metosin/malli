@@ -24,8 +24,7 @@
   (-type-properties [this] "returns schema type properties")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  ;; OPTIMIZE(impls): share as much as possible instead of deep copy:
-  (-conformer [this]                                        ; OPTIMIZE: nilable as in `-transformer`
+  (-conformer [this]
     "return a function of `x -> parsed-x` to explain how schema is valid.
     If the value is not valid for the schema, the function throws.")
   (-transformer [this transformer method options]
@@ -615,7 +614,9 @@
                                           (let [conformer (-conformer schema)]
                                             (fn [m]
                                               (if-let [e (find m key)]
-                                                (assoc m key (conformer (val e)))
+                                                (let [v (val e)
+                                                      v* (conformer v)]
+                                                  (if (identical? v* v) m (assoc m key v*)))
                                                 (if optional m (-fail! ::missing-key))))))
                                         children)
                                 closed (into [(fn [m]
@@ -695,8 +696,13 @@
                   value-conformer (-conformer value-schema)]
               (fn [m]
                 (if (map? m)
-                  (persistent! (reduce-kv (fn [acc k v] (assoc! acc (key-conformer k) (value-conformer v)))
-                                          (transient {}) m))
+                  (reduce-kv (fn [acc k v]
+                               (let [k* (key-conformer k)
+                                     v* (value-conformer v)]
+                                 (if (and (identical? k* k) (identical? v* v))
+                                   acc
+                                   (assoc acc k* v*))))
+                             m m)
                   (-fail! ::invalid-type)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
@@ -817,12 +823,12 @@
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-conformer [_]
-            (let [conformers (into {} (comp (map-indexed vector)
-                                            (keep (fn [[k s]]
-                                                    (when-some [c (-conformer s)]
-                                                      [k c]))))
-                                   children)
-                  unchecked-conformer (if (seq conformers) #(reduce-kv -update % conformers) identity)]
+            (let [conformers (into {} (comp (map -conformer) (map-indexed vector)) children)
+                  unchecked-conformer (fn [x] (reduce-kv (fn [x i cf]
+                                                           (let [v (get x i)
+                                                                 v* (cf v)]
+                                                             (if (identical? v* v) x (assoc x i v))))
+                                                         x conformers))]
               (fn [x]
                 (cond
                   (not (vector? x)) (-fail! ::invalid-type)

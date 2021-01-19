@@ -1258,7 +1258,7 @@
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
               ["foo"] ["foo" (miu/-tagged :s "foo")] nil
-              [0] [0 (miu/-tagged :s 0)] nil
+              [0] [0 (miu/-tagged :n 0)] nil
               ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
               [0 "foo"] nil [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}])))
 
@@ -1296,8 +1296,8 @@
           0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
           "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
           nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-          [] [] nil
-          ["foo"] ["foo"] nil
+          [] nil nil
+          ["foo"] "foo" nil
           [0] nil [{:path [0], :in [0], :schema string?, :value 0}
                    {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
           ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]))
@@ -1308,7 +1308,7 @@
                                      (repeat n [:= :a])))
               v (repeat n :a)]
           (is (m/validate s v))
-          (is (= (concat (repeat n []) v) (m/conform s v))))))
+          (is (= (concat (repeat n nil) v) (m/conform s v))))))
 
     (testing "*"
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))

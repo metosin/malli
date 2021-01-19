@@ -259,6 +259,12 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
+(defn -qualified-keyword-pred
+  [{namespace_ :namespace :as params}]
+   (if namespace_
+     (fn [x]
+       (= (namespace x) (name namespace_)))))
+
 ;;
 ;; Protocol Cache
 ;;
@@ -323,7 +329,7 @@
 (defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))
 (defn -keyword-schema [] (-simple-schema {:type :keyword, :pred keyword?}))
 (defn -symbol-schema [] (-simple-schema {:type :symbol, :pred symbol?}))
-(defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?}))
+(defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?, :property-pred -qualified-keyword-pred}))
 (defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
 (defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
 

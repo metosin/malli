@@ -1513,11 +1513,14 @@
                (-fail! ::overlapping-arities {:arities arity->=>})) s)
        (-fail! :invalid-=>schema {:type (type s), :schema s})))))
 
+(defn =>register-schema! [ns name value]
+  (swap! -=>schemas* assoc-in [ns name]
+         {:schema (=>schema value)
+          :meta   (meta name)
+          :ns     ns
+          :name   name}))
+
 (defmacro => [name value]
   (let [name' `'~(symbol (str name))]
     `(let [ns# (symbol (str *ns*))]
-       (swap! @#'-=>schemas* assoc-in [ns# ~name']
-              {:schema (=>schema ~value)
-               :meta ~(meta name)
-               :ns ns#
-               :name ~name'}))))
+       (=>register-schema! ns# ~name' ~value))))

@@ -259,11 +259,9 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
-(defn -qualified-keyword-pred
-  [{namespace_ :namespace :as params}]
-   (if namespace_
-     (fn [x]
-       (= (namespace x) (name namespace_)))))
+(defn -qualified-keyword-pred [properties]
+  (when-let [ns-name (some-> properties :namespace name)]
+    (fn [x] (= (namespace x) ns-name))))
 
 ;;
 ;; Protocol Cache

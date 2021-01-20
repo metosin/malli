@@ -54,6 +54,9 @@ Defining and validating Schemas:
 (m/validate [:and int? [:> 6]] 7)
 ; => true
 
+(m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
+; => true
+
 (def valid?
   (m/validator
     [:map

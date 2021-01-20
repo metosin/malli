@@ -1520,15 +1520,15 @@
                                 [:user/abba "abba" mt/string-transformer [:keyword {:encode/string {:enter name, :leave str}}]]]
                        :map-syntax {:type :keyword}
                        :form :keyword}
-             :qualified-keyword {:schema :qualified-keyword
+             :qualified-keyword {:schema [:qualified-keyword {:namespace :user}]
                                  :validate {:success [:user/abba]
-                                            :failure [:abba nil "invalid"]}
+                                            :failure [:abba :zzz/abba nil "invalid"]}
                                  :explain [[:user/abba]
-                                           [false {:schema :qualified-keyword
+                                           [false {:schema [:qualified-keyword {:namespace :user}]
                                                    :value false
                                                    :errors [{:path []
                                                              :in []
-                                                             :schema :qualified-keyword
+                                                             :schema [:qualified-keyword {:namespace :user}]
                                                              :value false}]}]]
                                  :decode [["abba" :abba mt/string-transformer]
                                           ["user/abba" :user/abba mt/string-transformer]
@@ -1540,8 +1540,8 @@
                                           [:abba "abba" mt/json-transformer]
                                           [:user/abba "user/abba" mt/json-transformer]
                                           [:user/abba "abba" mt/string-transformer [:qualified-keyword {:encode/string {:enter name, :leave str}}]]]
-                                 :map-syntax {:type :qualified-keyword}
-                                 :form :qualified-keyword}
+                                 :map-syntax {:type :qualified-keyword, :properties {:namespace :user}}
+                                 :form [:qualified-keyword {:namespace :user}]}
              :symbol {:schema :symbol
                       :validate {:success ['abba 'user/abba]
                                  :failure [nil "invalid"]}

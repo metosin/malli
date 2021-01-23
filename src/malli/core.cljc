@@ -8,6 +8,8 @@
                    (clojure.lang IDeref)
                    [malli.impl.util SchemaError])))
 
+(declare schema schema? into-schema into-schema? eval default-registry -simple-schema -val-schema -ref-schema -schema-schema -registry parser)
+
 ;;
 ;; protocols and records
 ;;
@@ -61,8 +63,6 @@
   (-regex-parser [this] "returns the raw internal regex parser implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation"))
 
-(declare parser)
-
 (extend-type #?(:clj Object, :cljs default)
   RegexSchema
   (-regex-op? [_] false)
@@ -104,7 +104,6 @@
 ;; impl
 ;;
 
-(declare schema schema? into-schema into-schema? eval default-registry -simple-schema -val-schema -ref-schema -schema-schema -registry)
 
 (defn -safe-pred [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 

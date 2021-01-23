@@ -2071,11 +2071,11 @@ With sci (18Mb):
 
 ```clj
 ./bin/native-image demosci
-./demo '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
+./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
 ```
 
 ## License
 
-Copyright © 2019-2020 Metosin Oy and contributors.
+Copyright © 2019-2021 Metosin Oy and contributors.
 
 Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

@@ -10,5 +10,6 @@ cljs-test-runner-out
 *.jar
 classes
 /demo
+/demosci
 /target
 .clj-kondo

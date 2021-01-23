@@ -119,6 +119,8 @@
 
 (def -error miu/-error)
 
+(defn -nonconforming? [x] #?(:clj (identical? x ::nonconforming), :cljs (keyword-identical? x ::nonconforming)))
+
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
     (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
@@ -317,7 +319,7 @@
             (-explainer [this path]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (-error path in this x)) acc)))
-            (-conformer [_] (fn [x] (if (validator x) x (-fail! ::nonconforming))))
+            (-conformer [_] (fn [x] (if (validator x) x ::nonconforming)))
             (-transformer [this transformer method options]
               (-coder (-value-transformer transformer this method options)))
             (-walk [this walker path options]
@@ -404,15 +406,10 @@
                   acc explainers))))
           (-conformer [_]
             (let [conformers (mapv -conformer children)]
-              (fn [x]
-                (let [res (reduce (fn [acc conformer]
-                                    (try                    ; yes this can be a bit slow but that's backtracking for you
-                                      (reduced (conformer x))
-                                      (catch #?(:clj Exception, :cljs js/Error) _ acc)))
-                                  ::nonconforming conformers)]
-                  (if (identical? res ::nonconforming)      ; all alternatives failed
-                    (-fail! res)
-                    res)))))
+              (fn [x] (reduce (fn [_ conformer]
+                                (let [result (conformer x)]
+                                  (if (-nonconforming? result) result (reduced result))))
+                              ::nonconforming conformers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)]
               (if (seq children)
@@ -470,17 +467,9 @@
           (-conformer [_]
             (let [conformers (mapv (fn [[k _ c]]
                                      (let [c (-conformer c)]
-                                       (fn [x] (miu/-tagged k (c x)))))
-                                   children)]
-              (fn [x]
-                (let [res (reduce (fn [acc conformer]
-                                    (try                    ; yes this can be a bit slow but that's backtracking for you
-                                      (reduced (conformer x))
-                                      (catch #?(:clj Exception, :cljs js/Error) _ acc)))
-                                  ::nonconforming conformers)]
-                  (if (identical? res ::nonconforming)      ; all alternatives failed
-                    (-fail! res)
-                    res)))))
+                                       (fn [x] (let [r (c x)]
+                                                 (if (-nonconforming? r) r (reduced (miu/-tagged k r))))))) children)]
+              (fn [x] (reduce (fn [_ conformer] (conformer x)) x conformers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)]
               (if (seq children)
@@ -620,17 +609,16 @@
                                               (if-let [e (find m key)]
                                                 (let [v (val e)
                                                       v* (conformer v)]
-                                                  (if (identical? v* v) m (assoc m key v*)))
-                                                (if optional m (-fail! ::missing-key))))))
+                                                  (cond (-nonconforming? v*) (reduced v*)
+                                                        (identical? v* v) m
+                                                        :else (assoc m key v*)))
+                                                (if optional m (reduced ::nonconforming))))))
                                         children)
-                                closed (into [(fn [m]
-                                                (reduce
-                                                  (fn [m k] (if (contains? keyset k) m (-fail! ::extra-key)))
-                                                  m (keys m)))]))]
-               (fn [x]
-                 (if (map? x)
-                   (reduce (fn [m conformer] (conformer m)) x conformers)
-                   (-fail! ::invalid-type)))))
+                                      closed (into [(fn [m]
+                                                      (reduce
+                                                        (fn [m k] (if (contains? keyset k) m (reduced (reduced ::nonconforming))))
+                                                        m (keys m)))]))]
+               (fn [x] (if (map? x) (reduce (fn [m conformer] (conformer m)) x conformers) ::nonconforming))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (some->> entries
@@ -703,11 +691,11 @@
                   (reduce-kv (fn [acc k v]
                                (let [k* (key-conformer k)
                                      v* (value-conformer v)]
-                                 (if (and (identical? k* k) (identical? v* v))
-                                   acc
+                                 (if (or (-nonconforming? k*) (-nonconforming? v*))
+                                   (reduced ::nonconforming)
                                    (assoc acc k* v*))))
-                             m m)
-                  (-fail! ::invalid-type)))))
+                             (empty m) m)
+                  ::nonconforming))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   ->key (-transformer key-schema transformer method options)
@@ -766,15 +754,20 @@
                               (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
           (-conformer [_]
-            (let [child-conformer (-conformer schema)
-                  unchecked-conformer (if fempty
-                                        #(into (if % fempty) (map child-conformer) %)
-                                        #(map child-conformer %))]
+            (let [child-conformer (-conformer schema)]
               (fn [x]
                 (cond
-                  (not (fpred x)) (-fail! ::invalid-type)
-                  (not (validate-limits x)) (-fail! ::limits)
-                  :else (unchecked-conformer x)))))
+                  (not (fpred x)) ::nonconforming
+                  (not (validate-limits x)) ::nonconforming
+                  :else (let [x' (reduce
+                                   (fn [acc v]
+                                     (let [v' (child-conformer v)]
+                                       (if (-nonconforming? v') (reduced ::nonconforming) (conj acc v'))))
+                                   [] x)]
+                          (cond
+                            (-nonconforming? x') x'
+                            fempty (into fempty x')
+                            :else x'))))))
           (-transformer [this transformer method options]
             (let [collection? #(or (sequential? %) (set? %))
                   this-transformer (-value-transformer transformer this method options)
@@ -827,17 +820,19 @@
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-conformer [_]
-            (let [conformers (into {} (comp (map -conformer) (map-indexed vector)) children)
-                  unchecked-conformer (fn [x] (reduce-kv (fn [x i cf]
-                                                           (let [v (get x i)
-                                                                 v* (cf v)]
-                                                             (if (identical? v* v) x (assoc x i v))))
-                                                         x conformers))]
+            (let [conformers (into {} (comp (map -conformer) (map-indexed vector)) children)]
               (fn [x]
                 (cond
-                  (not (vector? x)) (-fail! ::invalid-type)
-                  (not= (count x) size) (-fail! ::tuple-size)
-                  :else (unchecked-conformer x)))))
+                  (not (vector? x)) ::nonconforming
+                  (not= (count x) size) ::nonconforming
+                  :else (reduce-kv (fn [x i c]
+                                     (let [v (get x i)
+                                           v* (c v)]
+                                       (cond
+                                         (-nonconforming? v*) (reduced v*)
+                                         (identical? v* v) x
+                                         :else (assoc x i v))))
+                                   x conformers)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   ->children (into {} (comp (map-indexed vector)
@@ -879,7 +874,7 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (contains? schema x) (conj acc (-error (conj path 0) in this x)) acc)))
-          (-conformer [_] (fn [x] (if (contains? schema x) x (-fail! ::enum-member))))
+          (-conformer [_] (fn [x] (if (contains? schema x) x ::nonconforming)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
             (-coder (-value-transformer transformer this method options)))
@@ -923,7 +918,7 @@
             (-coder (-value-transformer transformer this method options)))
           (-conformer [_]
             (let [find (-safe-pred #(re-find re %))]
-              (fn [x] (if (find x) x (-fail! ::re-find)))))
+              (fn [x] (if (find x) x ::nonconforming))))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -961,7 +956,7 @@
                   (conj acc (-error path in this x (:type (ex-data e))))))))
           (-conformer [this]
             (let [validator (-validator this)]
-              (fn [x] (if (validator x) x (-fail! ::predicate)))))
+              (fn [x] (if (validator x) x ::nonconforming))))
           (-transformer [this transformer method options]
             (-coder (-value-transformer transformer this method options)))
           (-walk [this walker path options]
@@ -1054,7 +1049,7 @@
                (fn [x]
                  (if-some [conformer (conformers (dispatch x))]
                    (conformer x)
-                   (-fail! ::invalid-dispatch-value)))))
+                   ::nonconforming))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s]
@@ -1223,7 +1218,7 @@
                 (if-not (validator x) (conj acc (-error path in this x)) acc))))
           (-conformer [this]
             (let [validator (-validator this)]
-              (fn [x] (if (validator x) x (-fail! ::non-function)))))
+              (fn [x] (if (validator x) x ::nonconforming))))
           (-transformer [_ _ _ _])
           (-walk [this walker path options]
             (if (-accept walker this path options)
@@ -1474,10 +1469,7 @@
   ([?schema]
    (conformer ?schema nil))
   ([?schema options]
-   (let [conform! (-conformer (schema ?schema options))]
-     (fn conformer [value]
-       (try (conform! value)
-            (catch #?(:clj Exception, :cljs js/Error) _ ::nonconforming))))))
+   (-conformer (schema ?schema options))))
 
 (defn conform
   "Conforms a value against a given schema. Creates the `conformer` for every call.

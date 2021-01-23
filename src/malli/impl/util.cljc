@@ -3,12 +3,6 @@
 
 (defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
 
-(defn stateful-mapv [f coll s]
-  (let [s (volatile! s)]
-    [(mapv (fn [v] (let [[v* s*] (f v @s)] (vreset! s s*) v*))
-           coll)
-     @s]))
-
 (defn -fail!
   ([type]
    (-fail! type nil))

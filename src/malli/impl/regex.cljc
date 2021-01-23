@@ -15,6 +15,11 @@
   failed; much simpler than the graph-structured stacks of GLL. And the register
   stack is only there for and used by :repeat.
 
+  NOTE: For the memoization to work correctly, every node in the schema tree
+  must get its own validation/explanation/... function instance. So even every
+  `(malli.impl.regex/cat)` call must return a new fn instance although it does not
+  close over anything.
+
   https://epsil.github.io/gll/ is a nice explanation of GLL parser combinators
   and has links to papers etc. It also inspired Instaparse, which Engelberg
   had a presentation about at Clojure/West 2014.
@@ -72,11 +77,11 @@
             (k (inc pos) (rest coll))))
         (fail! driver pos [(miu/-error path in schema nil :malli.core/end-of-input)])))))
 
-(defn item-parser [valid?]
+(defn item-parser [conform]
   (fn [_ _ pos coll k]
     (when (seq coll)
-      (let [v (first coll)]
-        (when (valid? v)
+      (let [v (conform (first coll))]
+        (when-not (= v :malli.core/nonconforming)
           (k v (inc pos) (rest coll)))))))
 
 (defn item-encoder [valid? encode]
@@ -112,7 +117,17 @@
 
 (defn end-transformer [] (fn [_ _ coll* pos coll k] (when (empty? coll) (k coll* pos coll))))
 
+;;;; ## Unit
+
+(defn pure-parser [v] (fn [_ _ pos coll k] (k v pos coll)))
+
 ;;;; # Combinators
+
+;;;; ## Functor
+
+(defn fmap [f p]
+  (fn [driver regs pos coll k]
+    (p driver regs pos coll (fn [v pos coll] (k (f v) pos coll)))))
 
 ;;;; ## Catenation
 
@@ -198,13 +213,14 @@
            (reverse (cons r rs)))))
 
 (defn alt*-parser
-  ([[tag r]] (fn [driver pos coll k] (r driver pos coll (fn [v pos coll] (k (miu/-tagged tag v) pos coll)))))
+  ([[tag r]] (fmap (fn [v] (miu/-tagged tag v)) r))
   ([kr & krs]
    (let [krs (reverse (cons kr krs))]
      (reduce (fn [acc [tag r]]
-               (fn [driver regs pos coll k]
-                 (park-validator! driver acc regs pos coll k) ; remember fallback
-                 (park-validator! driver r regs pos coll (fn [v pos coll] (k (miu/-tagged tag v) pos coll)))))
+               (let [r (fmap (fn [v] (miu/-tagged tag v)) r)]
+                 (fn [driver regs pos coll k]
+                   (park-validator! driver acc regs pos coll k) ; remember fallback
+                   (park-validator! driver r regs pos coll k))))
              (alt*-parser (first krs))
              (rest krs)))))
 
@@ -222,7 +238,7 @@
 
 (defn ?-validator [p] (alt-validator p (cat-validator)))
 (defn ?-explainer [p] (alt-explainer p (cat-explainer)))
-(defn ?-parser [p] (alt-parser p (cat-parser)))
+(defn ?-parser [p] (alt-parser p (pure-parser nil)))
 (defn ?-transformer [p] (alt-transformer p (cat-transformer)))
 
 ;;;; ## Kleene Star
@@ -259,7 +275,7 @@
 
 (defn +-validator [p] (cat-validator p (*-validator p)))
 (defn +-explainer [p] (cat-explainer p (*-explainer p)))
-(defn +-parser [p] (cat-parser p (*-parser p)))
+(defn +-parser [p] (fmap (fn [[v vs]] (cons v vs)) (cat-parser p (*-parser p))))
 (defn +-transformer [p] (cat-transformer p (*-transformer p)))
 
 ;;;; ## Repeat
@@ -313,7 +329,7 @@
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) pos coll k)))))
 
 (defn repeat-parser [min max p]
-  (let [rep-epsilon (cat-parser)]
+  (let [rep-epsilon (fn [_ _ coll* pos coll k] (k coll* pos coll))]
     (letfn [(compulsories [driver regs coll* pos coll k]
               (if (< (peek regs) min)
                 (p driver regs pos coll
@@ -334,7 +350,7 @@
                          (fn [driver regs coll* pos coll k]
                            (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
                          regs coll* pos coll k)))) ; TCO
-                (k pos coll)))]
+                (k coll* pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
 
 (defn repeat-transformer [min max p]

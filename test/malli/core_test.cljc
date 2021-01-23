@@ -135,6 +135,9 @@
                      :errors [(m/-error [] [] schema "1")]}
                     (m/explain schema "1")))
 
+      (is (= 1 (m/conform schema 1)))
+      (is (= ::m/nonconforming (m/conform schema "1")))
+
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
 
@@ -171,16 +174,19 @@
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
-    (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])]
+    (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])
+          schema* (m/schema [:and int? [:or* [:pos pos-int?] [:neg neg-int?]]])]
 
-      (is (true? (m/validate schema 1)))
-      (is (true? (m/validate schema -1)))
-      (is (false? (m/validate schema 0)))
-      (is (false? (m/validate schema "1")))
-      (is (false? (m/validate schema [1])))
+      (doseq [schema [schema schema*]]
+        (is (true? (m/validate schema 1)))
+        (is (true? (m/validate schema -1)))
+        (is (false? (m/validate schema 0)))
+        (is (false? (m/validate schema "1")))
+        (is (false? (m/validate schema [1]))))
 
       (is (= pos-int? (m/validator [:and pos-int? pos-int? pos-int?])))
       (is (= pos-int? (m/validator [:or pos-int? pos-int? pos-int?])))
+      (is (= pos-int? (m/validator [:or* [:a pos-int?] [:b pos-int?] [:c pos-int?]])))
 
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema,
@@ -189,15 +195,30 @@
                               {:path [1 1], :in [], :schema neg-int?, :value 0}]}
                     (m/explain schema 0)))
 
-      (is (= 1 (m/decode schema "1" mt/string-transformer)))
-      (is (= "1" (m/decode schema "1" mt/json-transformer)))
+      (is (nil? (m/explain schema* 1)))
+      (is (results= {:schema schema*,
+                     :value 0,
+                     :errors [{:path [1 :pos], :in [], :schema pos-int?, :value 0}
+                              {:path [1 :neg], :in [], :schema neg-int?, :value 0}]}
+                    (m/explain schema* 0)))
+
+      (is (= 1 (m/conform schema 1)))
+      (is (= ::m/nonconforming (m/conform schema 0)))
+
+      (is (= (miu/-tagged :pos 1) (m/conform schema* 1)))
+      (is (= ::m/nonconforming (m/conform schema* 0)))
+
+      (doseq [schema [schema schema*]]
+        (is (= 1 (m/decode schema "1" mt/string-transformer)))
+        (is (= "1" (m/decode schema "1" mt/json-transformer))))
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
                [:and {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}} string?]
                "kerran" mt/string-transformer)))
 
-      (is (true? (m/validate (over-the-wire schema) 1)))
+      (doseq [schema [schema schema*]]
+        (is (true? (m/validate (over-the-wire schema) 1))))
 
       (is (= {:type :and
               :children [{:type 'int?}
@@ -205,51 +226,66 @@
                           :children [{:type 'pos-int?}
                                      {:type 'neg-int?}]}]}
              (mu/to-map-syntax schema)))
+      (is (= {:type :and
+              :children [{:type 'int?}
+                         {:type :or*
+                          :children [[:pos nil {:type 'pos-int?}]
+                                     [:neg nil {:type 'neg-int?}]]}]}
+             (mu/to-map-syntax schema*)))
 
-      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema))))
+      (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))
+      (is (= [:and 'int? [:or* [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
 
     (testing "transforming :or"
       (testing "first valid transformed branch is used"
-        (are [input result]
-          (is (= (m/decode
-                   [:or
-                    [:map [:x keyword?]]
-                    int?
-                    [:map [:y keyword?]]
-                    keyword?]
-                   input
-                   mt/string-transformer)
-                 result))
+        (doseq [schema [[:or
+                         [:map [:x keyword?]]
+                         int?
+                         [:map [:y keyword?]]
+                         keyword?]
+                        [:or*
+                         [:äxy [:map [:x keyword?]]]
+                         [:n int?]
+                         [:yxy [:map [:y keyword?]]]
+                         [:kw keyword?]]]]
+          (are [input result]
+            (is (= (m/decode schema input mt/string-transformer)
+                   result))
 
-          {:x "true", :y "true"} {:x :true, :y "true"}
-          {:x false, :y "true"} {:x false, :y :true}
-          {:x false, :y false} {:x false, :y false}
-          1 1
-          "kikka" :kikka))
+            {:x "true", :y "true"} {:x :true, :y "true"}
+            {:x false, :y "true"} {:x false, :y :true}
+            {:x false, :y false} {:x false, :y false}
+            1 1
+            "kikka" :kikka)))
 
       (testing "top-level transformations are retained"
-        (are [input result]
-          (is (= (m/decode
-                   (mu/closed-schema
-                     [:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
-                                           :leave (fn [m] (update m :leave #(or % true)))}}
-                      [:map
-                       [:x keyword?]
-                       [:enter boolean?]]
-                      [:map
-                       [:y keyword?]
-                       [:enter boolean?]]])
-                   input
-                   mt/string-transformer)
-                 result))
+        (doseq [schema [[:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
+                                              :leave (fn [m] (update m :leave #(or % true)))}}
+                         [:map
+                          [:x keyword?]
+                          [:enter boolean?]]
+                         [:map
+                          [:y keyword?]
+                          [:enter boolean?]]]
+                        [:or* {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
+                                               :leave (fn [m] (update m :leave #(or % true)))}}
+                         [:äxy [:map
+                                [:x keyword?]
+                                [:enter boolean?]]]
+                         [:yxy [:map
+                                [:y keyword?]
+                                [:enter boolean?]]]]]]
+          (are [input result]
+            (is (= (m/decode (mu/closed-schema schema) input mt/string-transformer)
+                   result))
 
-          {:x "true"} {:x :true, :enter true, :leave true}
-          {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
+            {:x "true"} {:x :true, :enter true, :leave true}
+            {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
 
-          {:y "true"} {:y :true, :enter true, :leave true}
-          {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
+            {:y "true"} {:y :true, :enter true, :leave true}
+            {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
 
-          {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true})))
+            {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true}))))
 
     (testing "explain with branches"
       (let [schema [:and pos-int? neg-int?]]
@@ -273,6 +309,9 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema [:> 0], :value 0, :errors [{:path [], :in [], :schema [:> 0], :value 0}]}
                     (m/explain schema 0)))
+
+      (is (= 1 (m/conform schema 1)))
+      (is (= ::m/nonconforming (m/conform schema 0)))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -298,6 +337,9 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema [:enum 1 2], :value 0, :errors [{:path [0], :in [], :schema [:enum 1 2], :value 0}]}
                     (m/explain [:enum 1 2] 0)))
+
+      (is (= 1 (m/conform schema 1)))
+      (is (= ::m/nonconforming (m/conform schema 0)))
 
       ;; TODO: infer type from :enum
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -325,6 +367,10 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema [:maybe int?], :value "abba", :errors [{:path [0], :in [], :schema int?, :value "abba"}]}
                     (m/explain [:maybe int?] "abba")))
+
+      (is (= 1 (m/conform schema 1)))
+      (is (nil? (m/conform schema nil)))
+      (is (= ::m/nonconforming (m/conform schema "abba")))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -363,6 +409,10 @@
                                  :type :malli.core/tuple-size
                                  :value [2]}]}
                       (m/explain ConsCell [1 [2]])))
+
+        (is (= [1 nil] (m/conform ConsCell [1 nil])))
+        (is (= [1 [2 nil]] (m/conform ConsCell [1 [2 nil]])))
+        (is (= ::m/nonconforming (m/conform ConsCell [1 [2]])))
 
         (is (= [1 ["two" [3 nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/string-transformer)))
         (is (= ["1" ["two" ["3" nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/json-transformer)))
@@ -442,6 +492,9 @@
 
                     (m/explain schema -1)))
 
+      (is (= 1 (m/conform schema 1)))
+      (is (= ::m/nonconforming (m/conform schema -1)))
+
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
 
@@ -498,6 +551,11 @@
         (is (results= {:schema schema, :value "abba", :errors [{:path [], :in [], :schema schema, :value "abba"}]}
                       (m/explain schema "abba")))
 
+        (is (= "a.b" (m/conform schema "a.b")))
+        (is (= ::m/nonconforming (m/conform schema "abba")))
+        (is (= ::m/nonconforming (m/conform schema ".b")))
+        (is (= ::m/nonconforming (m/conform schema false)))
+
         (is (= 4 (m/decode
                    [:re {:decode/string '{:enter inc, :leave (partial * 2)}} ".*"]
                    1 mt/string-transformer)))
@@ -522,6 +580,11 @@
         (is (nil? (m/explain schema 12)))
         (is (results= {:schema schema, :value "abba", :errors [{:path [], :in [], :schema schema, :value "abba"}]}
                       (m/explain schema "abba")))
+
+        (is (= 12 (m/conform schema 12)))
+        (is (= ::m/nonconforming (m/conform schema 1)))
+        (is (= ::m/nonconforming (m/conform schema 20)))
+        (is (= ::m/nonconforming (m/conform schema "invalid")))
 
         (is (= 4 (m/decode
                    [:fn {:decode/string '{:enter inc, :leave (partial * 2)}} 'int?]
@@ -621,6 +684,15 @@
                                :message nil}]}
                     (m/explain closed-schema valid-with-extras)))
 
+      (is (= valid (m/conform schema valid)))
+      (is (= valid-with-extras (m/conform schema valid-with-extras)))
+      (is (= valid2 (m/conform schema valid2)))
+      (is (= ::m/nonconforming (m/conform schema invalid)))
+      (is (= ::m/nonconforming (m/conform schema "not-a-map")))
+
+      (is (= valid (m/conform closed-schema valid)))
+      (is (= ::m/nonconforming (m/conform closed-schema valid-with-extras)))
+
       (is (= {:x true} (m/decode schema {:x "true"} mt/string-transformer)))
       (is (= {:x true, :y 1} (m/decode schema {:x "true", :y "1"} mt/string-transformer)))
       (is (= {:x "true", :y "1"} (m/decode schema {:x "true", :y "1"} mt/json-transformer)))
@@ -718,6 +790,13 @@
                                :type :malli.core/invalid-dispatch-value}]}
                     (m/explain schema invalid3)))
 
+      (is (= valid1 (m/conform schema valid1)))
+      (is (= valid2 (m/conform schema valid2)))
+      (is (= ::m/nonconforming (m/conform schema invalid1)))
+      (is (= ::m/nonconforming (m/conform schema invalid2)))
+      (is (= ::m/nonconforming (m/conform schema invalid3)))
+      (is (= ::m/nonconforming (m/conform schema "not-a-map")))
+
       (is (= {:type :sized, :size 10}
              (m/decode schema {:type "sized", :size "10"} mt/string-transformer)))
       (is (= {:type :human, :name "liisa", :address {:country :PO}}
@@ -784,6 +863,11 @@
                              :value "18"}]}
                   (m/explain [:map-of string? int?] {:age "18"})))
 
+    (is (= {"age" 18} (m/conform [:map-of string? int?] {"age" 18})))
+    (is (= {:age 18} (m/conform [:map-of keyword? int?] {:age 18})))
+    (is (= ::m/nonconforming (m/conform [:map-of string? int?] {:age "18"})))
+    (is (= ::m/nonconforming (m/conform [:map-of string? int?] 1)))
+
     (is (= {1 1} (m/decode [:map-of int? pos-int?] {"1" "1"} mt/string-transformer)))
 
     (is (= {:x 24}
@@ -814,7 +898,7 @@
       (doseq [element [:vector :sequential :set]]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element int? int?])))))
 
-    (testing "validation"
+    (testing "validation + conform"
       (let [expectations {"vector" [[true [:vector int?] [1 2 3]]
                                     [false [:vector int?] [1 "2" 3]]
                                     [false [:vector int?] [1 2 "3"]]
@@ -882,7 +966,8 @@
                 [expected schema value] data]
           (testing name
             (is (= expected (m/validate schema value)))
-            (is (= expected (m/validate (over-the-wire schema) value)))))))
+            (is (= expected (m/validate (over-the-wire schema) value)))
+            (is (= (if expected value ::m/nonconforming) (m/conform schema value)))))))
 
     (testing "transform"
       (is (= {:x 1} (m/decode [:vector [:map [:x int?]]] {:x 1} (mt/transformer {:name "test"}))))
@@ -1061,257 +1146,279 @@
              (mu/to-map-syntax [:tuple int? int?])))))
 
   (testing "seqex schemas"
-    (testing "validate & explain"
-      (doseq [typ [:cat :cat*]]
-        (testing typ
-          (testing "empty"
-            (let [s [typ]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (doseq [typ [:cat :cat*]]
+      (testing typ
+        (testing "empty"
+          (let [s [typ]]
+            (are [v v* errs]
+              (let [es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :cat) v v*) ::m/nonconforming))))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                [] nil
-                [0] [{:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}])))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              [] {} nil
+              [0] nil [{:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}])))
 
-          (testing "single"
-            (let [s [typ (case typ :cat string? [:s string?])]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+        (testing "single"
+          (let [s [typ (case typ :cat string? [:s string?])]]
+            (are [v v* errs]
+              (let [es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :cat) v v*) ::m/nonconforming))))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                [] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-                ["foo"] nil
-                [0] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 0}]
-                ["foo" "bar"] [{:path [], :in [1], :schema s, :value "bar", :type ::m/input-remaining}])))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              [] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+              ["foo"] {:s "foo"} nil
+              [0] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 0}]
+              ["foo" "bar"] nil [{:path [], :in [1], :schema s, :value "bar", :type ::m/input-remaining}])))
 
-          (testing "pair"
-            (let [s [typ (case typ :cat string? [:s string?]) (case typ :cat int? [:n int?])]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+        (testing "pair"
+          (let [s [typ (case typ :cat string? [:s string?]) (case typ :cat int? [:n int?])]]
+            (are [v v* errs]
+              (let [es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :cat) v v*) ::m/nonconforming))))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                [] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-                ["foo"] [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
-                ["foo" 0] nil
-                ["foo" "bar"] [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value "bar"}]
-                [1 2] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 1}]
-                ["foo" 0 1] [{:path [], :in [2], :schema s, :value 1, :type ::m/input-remaining}])))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              [] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+              ["foo"] nil [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
+              ["foo" 0] {:s "foo", :n 0} nil
+              ["foo" "bar"] nil [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value "bar"}]
+              [1 2] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 1}]
+              ["foo" 0 1] nil [{:path [], :in [2], :schema s, :value 1, :type ::m/input-remaining}])))
 
-          (testing "triplet"
-            (let [s [typ (case typ :cat string? [:s string?]) (case typ :cat int? [:n int?])
-                     (case typ :cat keyword? [:k keyword?])]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+        (testing "triplet"
+          (let [s [typ (case typ :cat string? [:s string?]) (case typ :cat int? [:n int?])
+                   (case typ :cat keyword? [:k keyword?])]]
+            (are [v v* errs]
+              (let [es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :cat) v v*) ::m/nonconforming))))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                [] [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-                ["foo"] [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
-                ["foo" 0] [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
-                ["foo" 0 :bar] nil
-                ["foo" 0 "bar"] [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value "bar"}]
-                ["foo" 0 :bar 0] [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              [] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+              ["foo"] nil [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
+              ["foo" 0] nil [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
+              ["foo" 0 :bar] {:s "foo", :n 0, :k :bar} nil
+              ["foo" 0 "bar"] nil [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value "bar"}]
+              ["foo" 0 :bar 0] nil [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))
 
-          (testing "* backtracks"
-            (is (m/validate [:cat [:* pos?] [:= 4]] [4 4 4 4])))))
+        (testing "* backtracks"
+          (let [s [:cat [:* pos?] [:= 4]]
+                s* [:cat* [:pos [:* pos?]] [:four [:= 4]]]
+                v [4 4 4 4]]
+            (is (m/validate s v))
 
-      (doseq [typ [:alt :alt*]]
-        (testing typ
-          (testing "empty"
-            (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [typ]))))
+            (is (= [[4 4 4] 4] (m/conform s v)))
+            (is (= {:pos [4 4 4], :four 4} (m/conform s* v)))))))
 
-          (testing "single"
-            (let [s [typ (case typ :alt string? [:s string?])]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (doseq [typ [:alt :alt*]]
+      (testing typ
+        (testing "empty"
+          (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [typ]))))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                ["foo"] nil
-                [0] [{:path [(case typ :alt* :s 0)], :in [0], :schema string?, :value 0}]
-                ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))
+        (testing "single"
+          (let [s [typ (case typ :alt string? [:s string?])]]
+            (are [v v*s errs]
+              (let [[v* v**] v*s
+                    es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/nonconforming))))
 
-          (testing "pair"
-            (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              ["foo"] ["foo" (miu/-tagged :s "foo")] nil
+              [0] nil [{:path [(case typ :alt* :s 0)], :in [0], :schema string?, :value 0}]
+              ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                ["foo"] nil
-                [0] nil
-                ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
-                [0 "foo"] [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}])))
+        (testing "pair"
+          (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])]]
+            (are [v v*s errs]
+              (let [[v* v**] v*s
+                    es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/nonconforming))))
 
-          (testing "triplet"
-            (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])
-                     (case typ :alt keyword? [:k keyword?])]]
-              (are [v errs]
-                (let [es errs]
-                  (and (= (m/validate s v) (nil? es))
-                       (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              ["foo"] ["foo" (miu/-tagged :s "foo")] nil
+              [0] [0 (miu/-tagged :n 0)] nil
+              ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+              [0 "foo"] nil [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}])))
 
-                0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-                "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-                nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-                ["foo"] nil
-                [0] nil
-                [:foo] nil
-                ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
-                [0 "foo"] [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}]
-                [:foo 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))))
+        (testing "triplet"
+          (let [s [typ (case typ :alt string? [:s string?]) (case typ :alt int? [:n int?])
+                   (case typ :alt keyword? [:k keyword?])]]
+            (are [v v*s errs]
+              (let [[v* v**] v*s
+                    es errs]
+                (and (= (m/validate s v) (nil? es))
+                     (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                     (= (m/conform s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/nonconforming))))
 
-      (testing "?"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:?])))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:? string? int?])))
+              0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+              "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+              nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+              ["foo"] ["foo" (miu/-tagged :s "foo")] nil
+              [0] [0 (miu/-tagged :n 0)] nil
+              [:foo] [:foo (miu/-tagged :k :foo)] nil
+              ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+              [0 "foo"] nil [{:path [], :in [1], :schema s, :value "foo", :type ::m/input-remaining}]
+              [:foo 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))))
 
-        (let [s [:? string?]]
-          (are [v errs]
-            (let [es errs]
-              (and (= (m/validate s v) (nil? es))
-                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (testing "?"
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:?])))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:? string? int?])))
 
-            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-            [] nil
-            ["foo"] nil
-            [0] [{:path [0], :in [0], :schema string?, :value 0}
-                 {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" 0] [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]))
+      (let [s [:? string?]]
+        (are [v v* errs]
+          (let [es errs]
+            (and (= (m/validate s v) (nil? es))
+                 (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                 (= (m/conform s v) (if (nil? es) v* ::m/nonconforming))))
 
-        (testing "pathological case (terminates)"
-          (let [n 50]
-            (is (m/validate (into [:cat] (concat (repeat n [:? [:= :a]])
-                                                 (repeat n [:= :a])))
-                            (repeat n :a))))))
+          0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+          "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+          nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+          [] nil nil
+          ["foo"] "foo" nil
+          [0] nil [{:path [0], :in [0], :schema string?, :value 0}
+                   {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
+          ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]))
 
-      (testing "*"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:* string? int?])))
+      (testing "pathological case (terminates)"
+        (let [n 50
+              s (into [:cat] (concat (repeat n [:? [:= :a]])
+                                     (repeat n [:= :a])))
+              v (repeat n :a)]
+          (is (m/validate s v))
+          (is (= (concat (repeat n nil) v) (m/conform s v))))))
 
-        (let [s [:* string?]]
-          (are [v errs]
-            (let [es errs]
-              (and (= (m/validate s v) (nil? es))
-                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (testing "*"
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:* string? int?])))
 
-            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-            [] nil
-            ["foo"] nil
-            [0] [{:path [0], :in [0], :schema string?, :value 0}
-                 {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
-                       {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" "bar"] nil)))
+      (let [s [:* string?]]
+        (are [v errs]
+          (let [es errs]
+            (and (= (m/validate s v) (nil? es))
+                 (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                 (= (m/conform s v) (if (nil? es) v ::m/nonconforming))))
 
-      (testing "+"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
+          0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+          "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+          nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+          [] nil
+          ["foo"] nil
+          [0] [{:path [0], :in [0], :schema string?, :value 0}
+               {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
+          ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
+                     {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+          ["foo" "bar"] nil)))
 
-        (let [s [:+ string?]]
-          (are [v errs]
-            (let [es errs]
-              (and (= (m/validate s v) (nil? es))
-                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (testing "+"
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
 
-            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-            [] [{:path [0], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-            ["foo"] nil
-            [0] [{:path [0], :in [0], :schema string?, :value 0}]
-            ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
-                       {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" "bar"] nil)))
+      (let [s [:+ string?]]
+        (are [v errs]
+          (let [es errs]
+            (and (= (m/validate s v) (nil? es))
+                 (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                 (= (m/conform s v) (if (nil? es) v ::m/nonconforming))))
 
-      (testing "repeat"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3}])))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3} string? int?])))
+          0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+          "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+          nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+          [] [{:path [0], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+          ["foo"] nil
+          [0] [{:path [0], :in [0], :schema string?, :value 0}]
+          ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
+                     {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+          ["foo" "bar"] nil)))
 
-        (let [s [:repeat {:min 1, :max 3} string?]]
-          (are [v errs]
-            (let [es errs]
-              (and (= (m/validate s v) (nil? es))
-                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (testing "repeat"
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3}])))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:repeat {:min 1, :max 3} string? int?])))
 
-            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-            nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-            [] [{:path [0], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-            ["foo"] nil
-            [0] [{:path [0], :in [0], :schema string?, :value 0}]
-            ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
-                       {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" "bar"] nil
-            ["foo" "bar" 0] [{:path [0], :in [2], :schema string?, :value 0}
-                             {:path [], :in [2], :schema s, :value 0, :type ::m/input-remaining}]
-            ["foo" "bar" "baz"] nil
-            ["foo" "bar" "baz" "quux"] [{:path [], :in [3], :schema s, :value "quux", :type ::m/input-remaining}])))
+      (let [s [:repeat {:min 1, :max 3} string?]]
+        (are [v errs]
+          (let [es errs]
+            (and (= (m/validate s v) (nil? es))
+                 (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                 (= (m/conform s v) (if (nil? es) v ::m/nonconforming))))
 
-      (testing ":schema wrap"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:schema])))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:schema [:* string?] [:* int?]])))
+          0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+          "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+          nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
+          [] [{:path [0], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+          ["foo"] nil
+          [0] [{:path [0], :in [0], :schema string?, :value 0}]
+          ["foo" 0] [{:path [0], :in [1], :schema string?, :value 0}
+                     {:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]
+          ["foo" "bar"] nil
+          ["foo" "bar" 0] [{:path [0], :in [2], :schema string?, :value 0}
+                           {:path [], :in [2], :schema s, :value 0, :type ::m/input-remaining}]
+          ["foo" "bar" "baz"] nil
+          ["foo" "bar" "baz" "quux"] [{:path [], :in [3], :schema s, :value "quux", :type ::m/input-remaining}])))
 
-        (let [s [:* [:schema [:* string?]]]]
-          (are [v errs]
-            (let [es errs]
-              (and (= (m/validate s v) (nil? es))
-                   (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))))
+    (testing ":schema wrap"
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:schema])))
+      (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:schema [:* string?] [:* int?]])))
 
-            0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
-            "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
-            [] nil
-            ["foo"] [{:path [0], :in [0], :schema [:* string?], :value "foo", :type ::m/invalid-type}
-                     {:path [], :in [0], :schema s, :value "foo", :type ::m/input-remaining}]
-            [[]] nil
-            [["foo"]] nil
-            [[0]] [{:path [0 0], :in [0 0], :schema string?, :value 0}
-                   {:path [0], :in [0 0], :schema [:* string?], :value 0, :type ::m/input-remaining}
-                   {:path [], :in [0], :schema s, :value [0], :type ::m/input-remaining}])))
+      (let [s [:* [:schema [:* string?]]]]
+        (are [v errs]
+          (let [es errs]
+            (and (= (m/validate s v) (nil? es))
+                 (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
+                 (= (m/conform s v) (if (nil? es) v ::m/nonconforming))))
 
-      (testing "RefSchemas"
-        (is (m/validate
-              [:schema {:registry {"ints" [:+ int?]
-                                   "bools" [:+ boolean?]}}
-               [:* [:cat "ints" "bools"]]]
-              [1 true 2 2 false]))
-        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
-                              (m/validator
-                                [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                 ::ints])))
-        (is (m/validate
-              [:schema {:registry {::ints [:* [:or int? [:ref ::ints]]]}}
-               ::ints]
-              [[1 2 3]]))
-        ;; A bit undesirable, but intentional:
-        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
-                              (m/validator
-                                [:schema {:registry {::boll [:cat boolean?]}}
-                                 [:* [:ref ::boll]]])))))))
+          0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
+          "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
+          [] nil
+          ["foo"] [{:path [0], :in [0], :schema [:* string?], :value "foo", :type ::m/invalid-type}
+                   {:path [], :in [0], :schema s, :value "foo", :type ::m/input-remaining}]
+          [[]] nil
+          [["foo"]] nil
+          [[0]] [{:path [0 0], :in [0 0], :schema string?, :value 0}
+                 {:path [0], :in [0 0], :schema [:* string?], :value 0, :type ::m/input-remaining}
+                 {:path [], :in [0], :schema s, :value [0], :type ::m/input-remaining}])))
+
+    (testing "RefSchemas"
+      (is (m/validate
+            [:schema {:registry {"ints" [:+ int?]
+                                 "bools" [:+ boolean?]}}
+             [:* [:cat "ints" "bools"]]]
+            [1 true 2 2 false]))
+      (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
+                            (m/validator
+                              [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
+                               ::ints])))
+      (is (m/validate
+            [:schema {:registry {::ints [:* [:or int? [:ref ::ints]]]}}
+             ::ints]
+            [[1 2 3]]))
+      ;; A bit undesirable, but intentional:
+      (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
+                            (m/validator
+                              [:schema {:registry {::boll [:cat boolean?]}}
+                               [:* [:ref ::boll]]]))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

@@ -299,6 +299,15 @@
                        :errors [{:path [1], :in [], :schema neg-int?, :value 1}]}
                       (m/explain schema 1))))))
 
+  (testing ":not schema"
+    (testing "boolean validation"
+      (let [schema1 (m/schema [:not true?])
+            schema2 (m/schema [:not false?])]
+        (is (true? (m/validate schema1 false)))
+        (is (false? (m/validate schema1 true)))
+        (is (true? (m/validate schema2 true)))
+        (is (false? (m/validate schema2 false))))))
+
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]
 

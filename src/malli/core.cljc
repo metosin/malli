@@ -500,6 +500,35 @@
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value)))))))
 
+(defn -not-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children options]
+      (-check-children! :not properties children {:min 1 :max 1})
+      (let [children (map #(schema % options) children)
+            form (-create-form :not properties (map -form children))]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] :not)
+          (-type-properties [_])
+          (-validator [_]
+            (let [validator (-validator (first children))]
+              (complement #(validator %))))
+          (-explainer [_ path] (throw (Exception. "Not implemented.")))
+          (-conformer [_] (throw (Exception. "Not implemented.")))
+          (-transformer [this transformer method options] (throw (Exception. "Not implemented.")))
+          (-walk [this walker path options] (throw (Exception. "Not implemented.")))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] (-not-schema))
+          (-form [_] form)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (get children key default))
+          (-set [this key value] (-set-assoc-children this key value)))))))
+
 (defn -val-schema
   ([schema properties]
    (-into-schema (-val-schema) properties [schema] (-options schema)))
@@ -1668,6 +1697,7 @@
   {:and (-and-schema)
    :or (-or-schema)
    :or* (-or*-schema)
+   :not (-not-schema)
    :map (-map-schema)
    :map-of (-map-of-schema)
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})

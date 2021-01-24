@@ -505,7 +505,8 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! :not properties children {:min 1 :max 1})
-      (let [children (map #(schema % options) children)
+      (let [[schema :as  children] (map #(schema % options) children)
+            validator (complement #((-validator schema) %))
             form (-create-form :not properties (map -form children))]
         ^{:type ::schema}
         (reify
@@ -513,9 +514,11 @@
           (-type [_] :not)
           (-type-properties [_])
           (-validator [_]
-            (let [validator (-validator (first children))]
+            (let [validator (-validator schema)]
               (complement #(validator %))))
-          (-explainer [_ path] (throw (Exception. "Not implemented.")))
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (when-not (validator x) (conj acc (-error (conj path 0) in this x)))))
           (-conformer [_] (throw (Exception. "Not implemented.")))
           (-transformer [this transformer method options] (throw (Exception. "Not implemented.")))
           (-walk [this walker path options] (throw (Exception. "Not implemented.")))

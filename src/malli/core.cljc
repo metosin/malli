@@ -513,9 +513,7 @@
           Schema
           (-type [_] :not)
           (-type-properties [_])
-          (-validator [_]
-            (let [validator (-validator schema)]
-              (complement #(validator %))))
+          (-validator [_] validator)
           (-explainer [this path]
             (fn explain [x in acc]
               (when-not (validator x) (conj acc (-error (conj path 0) in this x)))))

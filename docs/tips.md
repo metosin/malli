@@ -79,3 +79,32 @@ Transforming a comma-separated string into a vector of ints:
   (mt/string-transformer))
 ; => [1 2 3 4]
 ```
+
+## Normalizing properties
+
+Returning a Schema form with `nil` in place of empty properties:
+
+```clj
+(require '[malli.core :as m])
+(require '[malli.util :as mu])
+
+(defn normalize-properties [?schema]
+  (m/walk
+    ?schema
+    (fn [schema _ children _]
+      (if (vector? (m/form schema))
+        (into [(m/type schema) (m/properties schema)] children)
+        (m/form schema)))))
+
+(normalize-properties
+  [:map
+   [:x int?]
+   [:y [:tuple int? int?]]
+   [:z [:set [:map [:x [:enum 1 2 3]]]]]])
+;[:map nil
+; [:x nil int?]
+; [:y nil [:tuple nil int? int?]]
+; [:z nil [:set nil
+;          [:map nil
+;           [:x nil [:enum nil 1 2 3]]]]]]
+```

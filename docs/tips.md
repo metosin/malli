@@ -86,7 +86,6 @@ Returning a Schema form with `nil` in place of empty properties:
 
 ```clj
 (require '[malli.core :as m])
-(require '[malli.util :as mu])
 
 (defn normalize-properties [?schema]
   (m/walk

@@ -306,7 +306,23 @@
         (is (true? (m/validate schema1 false)))
         (is (false? (m/validate schema1 true)))
         (is (true? (m/validate schema2 true)))
-        (is (false? (m/validate schema2 false))))))
+        (is (false? (m/validate schema2 false)))))
+
+    (testing ":fn validation"
+      (let [schema (m/schema [:not [:fn #(= % 1)]])]
+        (is (true? (m/validate schema 2)))
+        (is (false? (m/validate schema 1)))
+        (is (true? (m/validate schema "string")))
+        (is (true? (m/validate schema :keyword)))))
+
+    (testing "function validation"
+      (let [schema1 (m/schema [:not pos?])
+            schema2 (m/schema [:not empty?])]
+        (is (true? (m/validate schema1 -1)))
+        (is (true? (m/validate schema1 0)))
+        (is (false? (m/validate schema1 1)))
+        (is (true? (m/validate schema2 "string")))
+        (is (false? (m/validate schema2 ""))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

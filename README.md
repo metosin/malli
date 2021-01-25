@@ -2048,8 +2048,24 @@ clj -Minstall
 
 ## Bundle size for cljs
 
+With default registry (37KB+ Gzipped)
+
 ```bash
+# no sci
 npx shadow-cljs run shadow.cljs.build-report app /tmp/report.html
+
+# with sci
+npx shadow-cljs run shadow.cljs.build-report app-sci /tmp/report.html
+```
+
+With minimal registry (2.4KB+ Gzipped)
+
+```bash
+# no sci
+npx shadow-cljs run shadow.cljs.build-report app2 /tmp/report.html
+
+# with sci
+npx shadow-cljs run shadow.cljs.build-report app2-sci /tmp/report.html
 ```
 
 ## Checking the generated code
@@ -2071,11 +2087,11 @@ With sci (18Mb):
 
 ```clj
 ./bin/native-image demosci
-./demo '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
+./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
 ```
 
 ## License
 
-Copyright © 2019-2020 Metosin Oy and contributors.
+Copyright © 2019-2021 Metosin Oy and contributors.
 
 Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

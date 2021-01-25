@@ -27,7 +27,7 @@
   Despite the CPS and memoization, this implementation looks more like normal
   Clojure code than the 'Pike VM' in Seqexp. Hopefully JITs also see it that
   way and compile decent machine code for it. It is also much easier to extend
-  for actual parsing (e.g. encode, decode [and conform?]) instead of just
+  for actual parsing (e.g. encode, decode [and parse?]) instead of just
   recognition for `validate`."
 
   (:refer-clojure :exclude [+ * repeat cat])
@@ -77,11 +77,11 @@
             (k (inc pos) (rest coll))))
         (fail! driver pos [(miu/-error path in schema nil :malli.core/end-of-input)])))))
 
-(defn item-parser [conform]
+(defn item-parser [parse]
   (fn [_ _ pos coll k]
     (when (seq coll)
-      (let [v (conform (first coll))]
-        (when-not (= v :malli.core/nonconforming)
+      (let [v (parse (first coll))]
+        (when-not (= v :malli.core/invalid)
           (k v (inc pos) (rest coll)))))))
 
 (defn item-encoder [valid? encode]
@@ -532,7 +532,6 @@
 
 ;;;; # Parser
 
-;; Unused ATM but should soon be used to implement Spec `conform` equivalent:
 (defn parser [p]
   (let [p (cat-parser p (end-parser))]
     (fn [coll]
@@ -546,8 +545,8 @@
                 (do
                   (thunk)
                   (if (succeeded? driver) (first (success-result driver)) (recur)))
-                (miu/-fail! :malli.core/nonconforming)))))
-        (miu/-fail! :malli.core/nonconforming)))))
+                :malli.core/invalid))))
+        :malli.core/invalid))))
 
 ;;;; # Transformer
 

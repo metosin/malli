@@ -1243,7 +1243,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ; {:prop "-user", :val [:s "joe"]}]
 ```
 
-`m/parser` to create an optimized parser for the schema: 
+`m/parser` to create an optimized parser: 
 
 ```clj
 (def parse-hiccup

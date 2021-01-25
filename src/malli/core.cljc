@@ -26,9 +26,7 @@
   (-type-properties [this] "returns schema type properties")
   (-validator [this] "returns a predicate function that checks if the schema is valid")
   (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  (-parser [this]
-    "return a function of `x -> parsed-x` to explain how schema is valid.
-    If the value is not valid for the schema, the function throws.")
+  (-parser [this] "return a function of `x -> parsed-x | ::m/invalid` to explain how schema is valid.")
   (-transformer [this transformer method options]
     "returns a function to transform the value for the given schema and method.
     Can also return nil instead of `identity` so that more no-op transforms can be elided.")

@@ -532,7 +532,6 @@
 
 ;;;; # Parser
 
-;; Unused ATM but should soon be used to implement Spec `parse` equivalent:
 (defn parser [p]
   (let [p (cat-parser p (end-parser))]
     (fn [coll]

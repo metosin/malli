@@ -17,10 +17,11 @@ Data-driven Schemas for Clojure/Script.
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [Programming with Schemas](#programming-with-schemas)
+- [Parsing values](#parsing-values) and [Sequence Schemas](#sequence-schemas)
 - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
-- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Sequence Schemas](#sequence-schemas)
+- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
 - [Visualizing Schemas](#visualizing-schemas) with DOT
 - [Fast](#performance)
@@ -1221,6 +1222,54 @@ All samples are valid against the inferred schema:
 ```clj
 (every? (partial m/validate (mp/provide samples)) samples)
 ; => true
+```
+
+## Parsing values
+
+Schemas can be used to parse values using `m/parse` and `m/parser`:
+
+`m/parse` for one-time things:
+
+```clj
+(m/parse
+  [:* [:cat*
+       [:prop string?]
+       [:val [:alt*
+              [:s string?]
+              [:b boolean?]]]]]
+  ["-server" "foo" "-verbose" true "-user" "joe"])
+;[{:prop "-server", :val [:s "foo"]}
+; {:prop "-verbose", :val [:b true]}
+; {:prop "-user", :val [:s "joe"]}]
+```
+
+`m/parser` to create an optimized parser for the schema: 
+
+```clj
+(def parse-hiccup
+  (m/parser
+    [:schema {:registry {"hiccup" [:or*
+                                   [:node [:cat*
+                                           [:name keyword?]
+                                           [:props [:? [:map-of keyword? any?]]]
+                                           [:children [:* [:schema [:ref "hiccup"]]]]]]
+                                   [:primitive [:or*
+                                                [:nil nil?]
+                                                [:boolean boolean?]
+                                                [:number number?]
+                                                [:text string?]]]]}}
+     "hiccup"]))
+
+(parse-hiccup
+  [:div {:class [:foo :bar]}
+   [:p "Hello, world of data"]])
+;[:node
+; {:name :div
+;  :props {:class [:foo :bar]}
+;  :children [[:node
+;              {:name :p
+;               :props nil
+;               :children [[:primitive [:text "Hello, world of data"]]]}]]}]
 ```
 
 ## Map-syntax

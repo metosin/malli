@@ -835,6 +835,36 @@
               [:human [:map [:type 'keyword?] [:name 'string?] [:address [:map [:country 'keyword?]]]]]]
              (m/form schema)))))
 
+  (testing "nested multi schema"
+    (let [schema [:multi {:dispatch :type
+                          :decode/string '(fn [v] (update v :type keyword))}
+                  [:string
+                   [:map
+                    [:type keyword?]
+                    [:value string?]]]
+                  [:number
+                   [:multi {:dispatch :format
+                            :decode/string '(fn [v] (update v :format keyword))}
+                    [:int
+                     [:map
+                      [:type keyword?]
+                      [:value int?]]]
+                    [:double
+                     [:map
+                      [:type keyword?]
+                      [:value double?]]]]]]
+          valid1 {:type "string"
+                  :value "foo"}
+          valid2 {:type "number"
+                  :format "int"
+                  :value 5}
+          invalid1 {:type "number"
+                    :format "int"
+                    :value 6.0}]
+      (is (true? (m/validate schema valid1)))
+      (is (true? (m/validate schema valid2)))
+      (is (false? (m/validate schema invalid1)))))
+
   (testing "map-of schema"
 
     (is (true? (m/validate [:map-of string? int?] {"age" 18})))

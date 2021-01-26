@@ -567,7 +567,7 @@ Transformations are recursive:
 Transform map keys:
 
 ```clj
-(m/decode
+(m/encode
   Address
   {:id "Lillan",
    :tags ["coffee" "artesan" "garden"],
@@ -575,9 +575,9 @@ Transform map keys:
              :city "Tampere"
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
-  (mt/key-transformer {:decode name}))
+  (key-transformer {:encode name}))
 ;{"id" "Lillan",
-; "tags" #{:coffee :artesan :garden},
+; "tags" ["coffee" "artesan" "garden"],
 ; "address" {"street" "Ahlmanintie 29"
 ;            "city" "Tampere"
 ;            "zip" 33100
@@ -590,7 +590,7 @@ Transformers can be composed with `mt/transformer`:
 (def strict-json-transformer
   (mt/transformer
     mt/strip-extra-keys-transformer
-    mt/json-transformer)
+    mt/json-transformer))
 
 (m/decode
   Address

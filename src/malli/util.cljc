@@ -285,7 +285,7 @@
 (defn update
   "Like [[clojure.core/update]], but for LensSchema instances."
   [schema key f & args]
-  (m/-set schema key (apply f (get schema key (m/schema :map (m/options schema))) args)))
+  (m/-set (m/schema schema) key (apply f (get schema key (m/schema :map (m/options schema))) args)))
 
 (defn get-in
   "Like [[clojure.core/get-in]], but for LensSchemas."

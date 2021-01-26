@@ -7,8 +7,8 @@
 
 (def expectations
   [;; predicates
-   [pos-int? {:type "integer", :format "int64", :minimum 1}]
-   [float? {:type "number" :format "float"}]
+   [pos-int? {:type "integer", :minimum 1}]
+   [float? {:type "number"}]
    ;; comparators
    [[:> 6] {:type "number", :exclusiveMinimum 6}]
    [[:>= 6] {:type "number", :minimum 6}]
@@ -16,9 +16,9 @@
    [[:<= 6] {:type "number", :maximum 6}]
    [[:= "x"] {:const "x"}]
    ;; base
-   [[:and int? pos-int?] {:allOf [{:type "integer", :format "int64"}
-                                  {:type "integer", :format "int64" :minimum 1}]}]
-   [[:or int? string?] {:anyOf [{:type "integer", :format "int64"} {:type "string"}]}]
+   [[:and int? pos-int?] {:allOf [{:type "integer"}
+                                  {:type "integer", :minimum 1}]}]
+   [[:or int? string?] {:anyOf [{:type "integer"} {:type "string"}]}]
    [[:map
      [:a string?]
      [:b {:optional true} string?]
@@ -33,8 +33,7 @@
      [:human [:map {:gen/fmap '#(assoc % :type :human)} [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
-                           :size {:type "integer"
-                                  :format "int64"}},
+                           :size {:type "integer"}},
               :required [:type :size]}
              {:type "object",
               :properties {:type {:type "string"},
@@ -58,16 +57,17 @@
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
-   [[:double {:min 1, :max 4}] {:type "number", :format "double", :minimum 1, :maximum 4}]
+   [[:double {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
    [:keyword {:type "string"}]
    [:qualified-keyword {:type "string"}]
    [:symbol {:type "string"}]
    [:qualified-symbol {:type "string"}]
    [:uuid {:type "string", :format "uuid"}]
 
-   [integer? {:type "integer" :format "int32"}]
-   [ratio? {:type "number"}]
-   #?(:clj [rational? {:type "number"}])
+   [integer? {:type "integer"}]
+   #?@(:clj [[ratio? {:type "number"}]
+             [rational? {:type "number"}]]
+       :cljs [])
    ;; protocols
    [(reify
       m/Schema
@@ -109,7 +109,7 @@
               [:x5 {:json-schema {:type "x-string"}} [:string {:json-schema {:default "x"}}]]]))))
 
   (testing "with properties"
-    (is (= {:allOf [{:type "integer", :format "int64"}]
+    (is (= {:allOf [{:type "integer"}]
             :title "age"
             :description "blabla"
             :default 42}
@@ -117,7 +117,7 @@
              [:and {:title "age"
                     :description "blabla"
                     :default 42} int?])))
-    (is (= {:allOf [{:type "integer", :format "int64"}]
+    (is (= {:allOf [{:type "integer"}]
             :title "age2"
             :description "blabla2"
             :default 422
@@ -137,9 +137,9 @@
     (testing "merge"
       (is (= {:title "merge",
               :type "object",
-              :properties {:x {:type "integer", :format "int64", :example 42},
-                           :y {:type "integer", :format "int64"},
-                           :z {:type "integer", :format "int64"}},
+              :properties {:x {:type "integer", :example 42},
+                           :y {:type "integer"},
+                           :z {:type "integer"}},
               :required [:x :y :z]}
              (json-schema/transform
                [:merge {:title "merge"}
@@ -150,8 +150,8 @@
     (testing "union"
       (is (= {:title "union",
               :type "object",
-              :properties {:x {:anyOf [{:type "integer", :format "int64"} {:type "string"}]}
-                           :y {:type "integer", :format "int64"}},
+              :properties {:x {:anyOf [{:type "integer"} {:type "string"}]}
+                           :y {:type "integer"}},
               :required [:x :y]}
              (json-schema/transform
                [:union {:title "union"}
@@ -162,7 +162,7 @@
     (testing "select-keys"
       (is (= {:title "select-keys"
               :type "object"
-              :properties {:x {:type "integer", :format "int64"}}
+              :properties {:x {:type "integer"}}
               :required [:x]}
              (json-schema/transform
                [:select-keys {:title "select-keys"}
@@ -182,13 +182,11 @@
                                                :description {:type "string"},
                                                :origin {:oneOf [{:$ref "#/definitions/Country"} {:type "null"}]},
                                                :price {:type "integer"
-                                                       :format "int64"
                                                        :minimum 1}},
                                   :required [:name :origin :price]},
                         "OrderLine" {:type "object",
                                      :properties {:burger {:$ref "#/definitions/Burger"},
-                                                  :amount {:type "integer"
-                                                           :format "int64"}},
+                                                  :amount {:type "integer"}},
                                      :required [:burger :amount]},
                         "Order" {:type "object",
                                  :properties {:lines {:type "array"
@@ -197,8 +195,7 @@
                                                          :properties {:delivered {:type "boolean"},
                                                                       :address {:type "object",
                                                                                 :properties {:street {:type "string"},
-                                                                                             :zip {:type "integer",
-                                                                                                   :format "int64"},
+                                                                                             :zip {:type "integer"},
                                                                                              :country {:$ref "#/definitions/Country"}},
                                                                                 :required [:street :zip :country]}},
                                                          :required [:delivered :address]}},

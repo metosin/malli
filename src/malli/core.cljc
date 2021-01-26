@@ -151,7 +151,7 @@
 
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
-    (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value) (reset! value (f))))))
+    (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
 
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))

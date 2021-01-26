@@ -22,17 +22,21 @@
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
+;; Note, format value for integer/number is from OpenAPI spec.
+;; JSON Schema spesifies formats for strings like uuid and date-time, but
+;; not numbers, but custom values are allowed.
+
 (defmethod accept ::default [_ _ _ _] {})
 (defmethod accept 'any? [_ _ _ _] {})
 (defmethod accept 'some? [_ _ _ _] {})
 (defmethod accept 'number? [_ _ _ _] {:type "number" :format "double"})
-(defmethod accept 'integer? [_ _ _ _] {:type "integer"})
+(defmethod accept 'integer? [_ _ _ _] {:type "integer" :format "int32"})
 (defmethod accept 'int? [_ _ _ _] {:type "integer" :format "int64"})
 (defmethod accept 'pos-int? [_ _ _ _] {:type "integer", :format "int64", :minimum 1})
 (defmethod accept 'neg-int? [_ _ _ _] {:type "integer", :format "int64", :maximum -1})
 (defmethod accept 'nat-int? [_ _ _ _] {:type "integer", :format "int64" :minimum 0})
-(defmethod accept 'float? [_ _ _ _] {:type "number"})
-(defmethod accept 'double? [_ _ _ _] {:type "number"})
+(defmethod accept 'float? [_ _ _ _] {:type "number" :format "float"})
+(defmethod accept 'double? [_ _ _ _] {:type "number" :format "double"})
 (defmethod accept 'pos? [_ _ _ _] {:type "number" :exclusiveMininum 0})
 (defmethod accept 'neg? [_ _ _ _] {:type "number" :exclusiveMaximum 0})
 (defmethod accept 'boolean? [_ _ _ _] {:type "boolean"})
@@ -48,7 +52,7 @@
 (defmethod accept 'qualified-symbol? [_ _ _ _] {:type "string"})
 (defmethod accept 'uuid? [_ _ _ _] {:type "string" :format "uuid"})
 (defmethod accept 'uri? [_ _ _ _] {:type "string" :format "uri"})
-(defmethod accept 'decimal? [_ _ _ _] {:type "number" :format "double"})
+(defmethod accept 'decimal? [_ _ _ _] {:type "number"})
 (defmethod accept 'inst? [_ _ _ _] {:type "string" :format "date-time"})
 (defmethod accept 'seqable? [_ _ _ _] {:type "array"})
 (defmethod accept 'indexed? [_ _ _ _] {:type "array"})
@@ -62,18 +66,18 @@
 (defmethod accept 'false? [_ _ _ _] {:type "boolean"})
 (defmethod accept 'true? [_ _ _ _] {:type "boolean"})
 (defmethod accept 'zero? [_ _ _ _] {:type "integer"})
-#?(:clj (defmethod accept 'rational? [_ _ _ _] {:type "double"}))
+#?(:clj (defmethod accept 'rational? [_ _ _ _] {:type "number"}))
 (defmethod accept 'coll? [_ _ _ _] {:type "object"})
 (defmethod accept 'empty? [_ _ _ _] {:type "array" :maxItems 0 :minItems 0})
 (defmethod accept 'associative? [_ _ _ _] {:type "object"})
 (defmethod accept 'sequential? [_ _ _ _] {:type "array"})
-(defmethod accept 'ratio? [_ _ _ _] {:type "integer"})
+(defmethod accept 'ratio? [_ _ _ _] {:type "number"})
 (defmethod accept 'bytes? [_ _ _ _] {:type "string" :format "byte"})
 
-(defmethod accept :> [_ _ [value] _] {:type "number" :format "double" :exclusiveMinimum value})
-(defmethod accept :>= [_ _ [value] _] {:type "number" :format "double" :minimum value})
-(defmethod accept :< [_ _ [value] _] {:type "number" :format "double" :exclusiveMaximum value})
-(defmethod accept :<= [_ _ [value] _] {:type "number" :format "double" :maximum value})
+(defmethod accept :> [_ _ [value] _] {:type "number" :exclusiveMinimum value})
+(defmethod accept :>= [_ _ [value] _] {:type "number" :minimum value})
+(defmethod accept :< [_ _ [value] _] {:type "number" :exclusiveMaximum value})
+(defmethod accept :<= [_ _ [value] _] {:type "number" :maximum value})
 (defmethod accept := [_ _ [value] _] {:const value})
 (defmethod accept :not= [_ _ _ _] {})
 
@@ -105,7 +109,8 @@
   (merge {:type "integer"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
 
 (defmethod accept :double [_ schema _ _]
-  (merge {:type "number"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
+  (merge {:type "number" :format "double"}
+         (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
 
 (defmethod accept :boolean [_ _ _ _] {:type "boolean"})
 (defmethod accept :keyword [_ _ _ _] {:type "string"})

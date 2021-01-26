@@ -8,12 +8,12 @@
 (def expectations
   [;; predicates
    [pos-int? {:type "integer", :format "int64", :minimum 1}]
-   [float? {:type "number"}]
+   [float? {:type "number" :format "float"}]
    ;; comparators
-   [[:> 6] {:type "number", :format "double", :exclusiveMinimum 6}]
-   [[:>= 6] {:type "number", :format "double", :minimum 6}]
-   [[:< 6] {:type "number", :format "double", :exclusiveMaximum 6}]
-   [[:<= 6] {:type "number", :format "double", :maximum 6}]
+   [[:> 6] {:type "number", :exclusiveMinimum 6}]
+   [[:>= 6] {:type "number", :minimum 6}]
+   [[:< 6] {:type "number", :exclusiveMaximum 6}]
+   [[:<= 6] {:type "number", :maximum 6}]
    [[:= "x"] {:const "x"}]
    ;; base
    [[:and int? pos-int?] {:allOf [{:type "integer", :format "int64"}
@@ -58,12 +58,16 @@
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
-   [[:double {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
+   [[:double {:min 1, :max 4}] {:type "number", :format "double", :minimum 1, :maximum 4}]
    [:keyword {:type "string"}]
    [:qualified-keyword {:type "string"}]
    [:symbol {:type "string"}]
    [:qualified-symbol {:type "string"}]
    [:uuid {:type "string", :format "uuid"}]
+
+   [integer? {:type "integer" :format "int32"}]
+   [ratio? {:type "number"}]
+   #?(:clj [rational? {:type "number"}])
    ;; protocols
    [(reify
       m/Schema

@@ -6,7 +6,8 @@
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang IDeref)
-                   [malli.impl.util SchemaError])))
+                   (malli.impl.util SchemaError)
+                   (java.util.concurrent.atomic AtomicReference))))
 
 (declare schema schema? into-schema into-schema? eval default-registry -simple-schema -val-schema -ref-schema -schema-schema -registry parser)
 
@@ -148,7 +149,9 @@
 
 (defn -update [m k f] (assoc m k (f (get m k))))
 
-(defn -memoize [f] (let [value (atom nil)] (fn [] (or @value) (reset! value (f)))))
+(defn -memoize [f]
+  (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
+    (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
 
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))

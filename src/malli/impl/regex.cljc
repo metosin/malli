@@ -84,6 +84,13 @@
         (when-not (= v :malli.core/invalid)
           (k v (inc pos) (rest coll)))))))
 
+(defn item-unparser [unparse]
+  (fn [v]
+    (let [res (unparse v)]
+      (if (miu/-invalid? res)
+        res
+        [res]))))
+
 (defn item-encoder [valid? encode]
   (fn [_ _ coll* pos coll k]
     (when (seq coll)
@@ -120,6 +127,8 @@
 ;;;; ## Unit
 
 (defn pure-parser [v] (fn [_ _ pos coll k] (k v pos coll)))
+
+(defn pure-unparser [_] [])
 
 ;;;; # Combinators
 
@@ -171,6 +180,33 @@
                     (reverse krs))]
     (fn [driver regs pos coll k] (acc driver regs {} pos coll k))))
 
+(defn cat-unparser [& unparsers]
+  (let [unparsers (vec unparsers)]
+    (fn [tup]
+      (if (and (vector? tup) (= (count tup) (count unparsers)))
+        (reduce-kv (fn [coll i unparser]
+                     (let [result (unparser (get tup i))]
+                       (if (miu/-invalid? result)
+                         result
+                         (into coll result))))
+                   [] unparsers)
+        :malli.core/invalid))))
+
+(defn cat*-unparser [& unparsers]
+  (let [unparsers (into {} unparsers)]
+    (fn [m]
+      (if (and (map? m) (= (count m) (count unparsers)))
+        (reduce-kv (fn [coll tag unparser]
+                     (if-some [kv (find m tag)]
+                       (let [result (unparser (val kv))]
+                         (if (miu/-invalid? result)
+                           result
+                           (into coll result)))
+                       :malli.core/invalid))
+                   ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
+                   [] unparsers)
+        :malli.core/invalid))))
+
 (defn cat-transformer
   ([] (fn [_ _ coll* pos coll k] (k coll* pos coll)))
   ([?kr] (entry->regex ?kr))
@@ -188,7 +224,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs pos coll k]
-       (park-validator! driver r* regs pos coll k) ; remember fallback
+       (park-validator! driver r* regs pos coll k)          ; remember fallback
        (park-validator! driver r regs pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-validator ?kr (reduce (fn [acc ?kr] (alt-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -198,7 +234,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs pos coll k]
-       (park-explainer! driver r* regs pos coll k) ; remember fallback
+       (park-explainer! driver r* regs pos coll k)          ; remember fallback
        (park-explainer! driver r regs pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-explainer ?kr (reduce (fn [acc ?kr] (alt-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -224,12 +260,27 @@
              (alt*-parser (first krs))
              (rest krs)))))
 
+(defn alt-unparser [& unparsers]
+  (fn [x]
+    (reduce (fn [_ unparse]
+              (let [result (unparse x)]
+                (if (miu/-invalid? result) result (reduced result))))
+            :malli.core/invalid unparsers)))
+
+(defn alt*-unparser [& unparsers]
+  (let [unparsers (into {} unparsers)]
+    (fn [x]
+      (if (miu/-tagged? x)
+        (if-some [kv (find unparsers (key x))]
+          ((val kv) (val x))
+          :malli.core/invalid)))))
+
 (defn alt-transformer
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs coll* pos coll k]
-       (park-transformer! driver r* regs coll* pos coll k) ; remember fallback
+       (park-transformer! driver r* regs coll* pos coll k)  ; remember fallback
        (park-transformer! driver r regs coll* pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-transformer ?kr (reduce (fn [acc ?kr] (alt-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -239,6 +290,7 @@
 (defn ?-validator [p] (alt-validator p (cat-validator)))
 (defn ?-explainer [p] (alt-explainer p (cat-explainer)))
 (defn ?-parser [p] (alt-parser p (pure-parser nil)))
+(defn ?-unparser [p] (alt-unparser p pure-unparser))
 (defn ?-transformer [p] (alt-transformer p (cat-transformer)))
 
 ;;;; ## Kleene Star
@@ -246,13 +298,13 @@
 (defn *-validator [p]
   (let [*p-epsilon (cat-validator)]
     (fn *p [driver regs pos coll k]
-      (park-validator! driver *p-epsilon regs pos coll k) ; remember fallback
+      (park-validator! driver *p-epsilon regs pos coll k)   ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-validator! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-explainer [p]
   (let [*p-epsilon (cat-explainer)]
     (fn *p [driver regs pos coll k]
-      (park-explainer! driver *p-epsilon regs pos coll k) ; remember fallback
+      (park-explainer! driver *p-epsilon regs pos coll k)   ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-explainer! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-parser [p]
@@ -263,6 +315,15 @@
        (park-transformer! driver *p-epsilon regs coll* pos coll k) ; remember fallback
        (p driver regs pos coll
           (fn [v pos coll] (park-transformer! driver *p regs (conj coll* v) pos coll k))))))) ; TCO
+
+(defn *-unparser [up]
+  (fn [v]
+    (reduce (fn [acc v]
+              (let [result (up v)]
+                (if (miu/-invalid? result)
+                  (reduced result)
+                  (into acc result))))
+            [] v)))
 
 (defn *-transformer [p]
   (let [*p-epsilon (cat-transformer)]
@@ -276,6 +337,14 @@
 (defn +-validator [p] (cat-validator p (*-validator p)))
 (defn +-explainer [p] (cat-explainer p (*-explainer p)))
 (defn +-parser [p] (fmap (fn [[v vs]] (cons v vs)) (cat-parser p (*-parser p))))
+
+(defn +-unparser [up]
+  (let [up* (*-unparser up)]
+    (fn [x]
+      (if (and (vector? x) (<= 1 (count x)))
+        (up* x)
+        :malli.core/invalid))))
+
 (defn +-transformer [p] (cat-transformer p (*-transformer p)))
 
 ;;;; ## Repeat
@@ -289,7 +358,7 @@
                      (-park-validator! driver
                                        (fn [driver stack pos coll k]
                                          (compulsories driver (conj (pop stack) (inc (peek stack))) pos coll k))
-                                       regs pos coll k))) ; TCO
+                                       regs pos coll k)))   ; TCO
                 (optionals driver regs pos coll k)))
             (optionals [driver regs pos coll k]
               (if (< (peek regs) max)
@@ -313,7 +382,7 @@
                      (-park-explainer! driver
                                        (fn [driver regs pos coll k]
                                          (compulsories driver (conj (pop regs) (inc (peek regs))) pos coll k))
-                                       regs pos coll k))) ; TCO
+                                       regs pos coll k)))   ; TCO
                 (optionals driver regs pos coll k)))
             (optionals [driver regs pos coll k]
               (if (< (peek regs) max)
@@ -349,9 +418,16 @@
                          driver
                          (fn [driver regs coll* pos coll k]
                            (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
-                         regs coll* pos coll k)))) ; TCO
+                         regs coll* pos coll k))))          ; TCO
                 (k coll* pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
+
+(defn repeat-unparser [min max up]
+  (let [up* (*-unparser up)]
+    (fn [v]
+      (if (and (vector? v) (<= min (count v) max))
+        (up* v)
+        :malli.core/invalid))))
 
 (defn repeat-transformer [min max p]
   (let [rep-epsilon (cat-transformer)]

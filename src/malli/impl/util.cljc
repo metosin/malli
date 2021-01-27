@@ -3,6 +3,10 @@
 
 (defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
 
+(defn -tagged? [v] (instance? MapEntry v))
+
+(defn -invalid? [x] #?(:clj (identical? x :malli.core/invalid), :cljs (keyword-identical? x :malli.core/invalid)))
+
 (defn -fail!
   ([type]
    (-fail! type nil))

@@ -517,8 +517,8 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (when-not (validator x) (conj acc (-error (conj path 0) in this x)))))
-          (-conformer [_]
-            (fn [x] (if (validator x) x (-fail! ::nonconforming))))
+          (-parser [_]
+            (fn [x] (if (validator x) x ::invalid)))
           (-transformer [this transformer method options] (throw (Exception. "Not implemented.")))
           (-walk [this walker path options] (throw (Exception. "Not implemented.")))
           (-properties [_] properties)

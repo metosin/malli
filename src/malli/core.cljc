@@ -627,7 +627,6 @@
                      acc explainers)))))
            (-parser [_]
              (let [parsers (cond-> (mapv
-                                     ;; FIXME: `reduced` (?):
                                      (fn [[key {:keys [optional]} schema]]
                                        (let [parser (-parser schema)]
                                          (fn [m]
@@ -646,7 +645,6 @@
                (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))
            (-unparser [_]
              (let [unparsers (cond-> (mapv
-                                       ;; FIXME: `reduced` (?):
                                        (fn [[k {:keys [optional]} s]]
                                          (let [unparser (-unparser s)]
                                            (fn [m]

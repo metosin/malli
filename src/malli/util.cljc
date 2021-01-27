@@ -358,7 +358,7 @@
      (clojure.core/update children 0 #(m/form % options))
      (apply f (conj children options))]))
 
-(defn -util-schema [{:keys [type min max childs type-properties fn]}]
+(defn -util-schema [{:keys [type min max childs type-properties fn] :as opts}]
   ^{:type ::m/into-schema}
   (reify m/IntoSchema
     (-into-schema [_ properties children options]
@@ -381,6 +381,7 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
+          (-parent [_] (-util-schema opts))
           (-form [_] form)
           m/LensSchema
           (-keep [_])

@@ -306,9 +306,13 @@
 
         (is (true? (m/validate schema1 false)))
         (is (nil? (m/explain schema1 false)))
+        (is (= ::m/nonconforming (m/conform schema1 true)))
+        (is (= false (m/conform schema1 false)))
 
         (is (true? (m/validate schema2 true)))
         (is (nil? (m/explain schema2 true)))
+        (is (= true (m/conform schema2 true)))
+        (is (= ::m/nonconforming (m/conform schema2 false)))
 
         (is (false? (m/validate schema1 true)))
         (is (results= {:schema schema1
@@ -332,12 +336,15 @@
       (let [schema (m/schema [:not [:fn #(= % 1)]])]
         (is (true? (m/validate schema 2)))
         (is (nil? (m/explain schema 2)))
+        (is (= 2 (m/conform schema 2)))
 
         (is (true? (m/validate schema "string")))
         (is (nil? (m/explain schema "string")))
+        (is (= "string" (m/conform schema "string")))
 
         (is (true? (m/validate schema :keyword)))
         (is (nil? (m/explain schema :keyword)))
+        (is (= :keyword (m/conform schema :keyword)))
 
         (is (false? (m/validate schema 1)))
         (is (results= {:schema schema
@@ -346,19 +353,23 @@
                                  :in []
                                  :schema schema
                                  :value 1}]}
-                      (m/explain schema 1)))))
+                      (m/explain schema 1)))
+        (is (= ::m/nonconforming (m/conform schema 1)))))
 
     (testing "function validation"
       (let [schema1 (m/schema [:not pos?])
             schema2 (m/schema [:not empty?])]
         (is (true? (m/validate schema1 -1)))
         (is (nil? (m/explain schema1 -1)))
+        (is (= -1 (m/conform schema1 -1)))
 
         (is (true? (m/validate schema1 0)))
         (is (nil? (m/explain schema1 0)))
+        (is (= 0 (m/conform schema1 0)))
 
         (is (true? (m/validate schema2 "string")))
         (is (nil? (m/explain schema2 "string")))
+        (is (= "string" (m/conform schema2 "string")))
 
         (is (false? (m/validate schema1 1)))
         (is (results= {:schema schema1
@@ -368,6 +379,7 @@
                                  :schema schema1
                                  :value 1}]}
                       (m/explain schema1 1)))
+        (is (= ::m/nonconforming (m/conform schema1 1)))
 
         (is (false? (m/validate schema2 "")))
         (is (results= {:schema schema2
@@ -376,7 +388,8 @@
                                  :in []
                                  :schema schema2
                                  :value ""}]}
-                      (m/explain schema2 ""))))))
+                      (m/explain schema2 "")))
+        (is (= ::m/nonconforming (m/conform schema2 ""))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

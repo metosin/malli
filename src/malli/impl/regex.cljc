@@ -84,12 +84,7 @@
         (when-not (= v :malli.core/invalid)
           (k v (inc pos) (rest coll)))))))
 
-(defn item-unparser [unparse]
-  (fn [v]
-    (let [res (unparse v)]
-      (if (miu/-invalid? res)
-        res
-        [res]))))
+(defn item-unparser [unparse] (fn [v] (miu/-map-valid vector (unparse v))))
 
 (defn item-encoder [valid? encode]
   (fn [_ _ coll* pos coll k]
@@ -184,11 +179,7 @@
   (let [unparsers (vec unparsers)]
     (fn [tup]
       (if (and (vector? tup) (= (count tup) (count unparsers)))
-        (reduce-kv (fn [coll i unparser]
-                     (let [result (unparser (get tup i))]
-                       (if (miu/-invalid? result)
-                         result
-                         (into coll result))))
+        (reduce-kv (fn [coll i unparser] (miu/-map-valid #(into coll %) (unparser (get tup i))))
                    [] unparsers)
         :malli.core/invalid))))
 
@@ -198,10 +189,7 @@
       (if (and (map? m) (= (count m) (count unparsers)))
         (reduce-kv (fn [coll tag unparser]
                      (if-some [kv (find m tag)]
-                       (let [result (unparser (val kv))]
-                         (if (miu/-invalid? result)
-                           result
-                           (into coll result)))
+                       (miu/-map-valid #(into coll %) (unparser (val kv)))
                        :malli.core/invalid))
                    ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
                    [] unparsers)
@@ -262,9 +250,7 @@
 
 (defn alt-unparser [& unparsers]
   (fn [x]
-    (reduce (fn [_ unparse]
-              (let [result (unparse x)]
-                (if (miu/-invalid? result) result (reduced result))))
+    (reduce (fn [_ unparse] (miu/-map-valid reduced (unparse x)))
             :malli.core/invalid unparsers)))
 
 (defn alt*-unparser [& unparsers]
@@ -273,7 +259,8 @@
       (if (miu/-tagged? x)
         (if-some [kv (find unparsers (key x))]
           ((val kv) (val x))
-          :malli.core/invalid)))))
+          :malli.core/invalid)
+        :malli.core/invalid))))
 
 (defn alt-transformer
   ([?kr] (entry->regex ?kr))

@@ -7,6 +7,8 @@
 
 (defn -invalid? [x] #?(:clj (identical? x :malli.core/invalid), :cljs (keyword-identical? x :malli.core/invalid)))
 
+(defn -map-valid [f v] (if (-invalid? v) v (f v)))
+
 (defn -fail!
   ([type]
    (-fail! type nil))

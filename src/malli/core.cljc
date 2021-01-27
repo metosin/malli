@@ -414,16 +414,12 @@
                   acc explainers))))
           (-parser [_]
             (let [parsers (mapv -parser children)]
-              (fn [x] (reduce (fn [_ parser]
-                                (let [result (parser x)]
-                                  (if (-invalid? result) result (reduced result))))
+              (fn [x] (reduce (fn [_ parser] (miu/-map-valid reduced (parser x)))
                               ::invalid parsers))))
           (-unparser [_]
             (let [unparsers (mapv -unparser children)]
               (fn [x]
-                (reduce (fn [_ unparser]
-                          (let [result (unparser x)]
-                            (if (-invalid? result) result (reduced result))))
+                (reduce (fn [_ unparser] (miu/-map-valid reduced (unparser x)))
                         ::invalid unparsers))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)]
@@ -482,8 +478,8 @@
           (-parser [_]
             (let [parsers (mapv (fn [[k _ c]]
                                   (let [c (-parser c)]
-                                    (fn [x] (let [r (c x)]
-                                              (if (-invalid? r) r (reduced (miu/-tagged k r))))))) children)]
+                                    (fn [x] (miu/-map-valid #(reduced (miu/-tagged k %)) (c x)))))
+                                children)]
               (fn [x] (reduce (fn [_ parser] (parser x)) x parsers))))
           (-unparser [_]
             (let [unparsers (into {} (map (fn [[k _ c]] [k (-unparser c)])) children)]
@@ -1151,9 +1147,7 @@
              (let [unparsers (mapv (fn [[_ _ s]] (-unparser s)) children)]
                (fn [x]
                  ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
-                 (reduce (fn [_ unparser]
-                           (let [result (unparser x)]
-                             (if (-invalid? result) result (reduced result))))
+                 (reduce (fn [_ unparser] (miu/-map-valid reduced (unparser x)))
                          ::invalid unparsers))))
            (-transformer [this transformer method options]
              ;; FIXME: Probably should not use `dispatch`, see comment in `-unparser` above.

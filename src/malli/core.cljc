@@ -370,10 +370,14 @@
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
           (-parser [_]
             (let [parsers (mapv -parser children)]
-              (fn [x] (reduce (fn [x parser] (parser x)) x parsers))))
+              (fn [x]
+                (reduce (fn [x parser] (miu/-map-invalid reduced (parser x)))
+                        x parsers))))
           (-unparser [_]
             (let [unparsers (mapv -unparser children)]
-              (fn [x] (reduce (fn [x unparser] (unparser x)) x (rseq unparsers)))))
+              (fn [x]
+                (reduce (fn [x unparser] (miu/-map-invalid reduced (unparser x)))
+                        x (rseq unparsers)))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -732,6 +736,7 @@
                   (reduce-kv (fn [acc k v]
                                (let [k* (key-parser k)
                                      v* (value-parser v)]
+                                 ;; OPTIMIZE: Restore `identical?` check + NOOP
                                  (if (or (-invalid? k*) (-invalid? v*))
                                    (reduced ::invalid)
                                    (assoc acc k* v*))))

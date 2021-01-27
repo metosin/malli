@@ -837,14 +837,18 @@
 
   (testing "nested multi schema"
     (let [schema [:multi {:dispatch :type
-                          :decode/string '(fn [v] (update v :type keyword))}
+                          :decode/string (fn [v]
+                                           (println "type dispatch" v)
+                                           (update v :type keyword))}
                   [:string
                    [:map
                     [:type keyword?]
                     [:value string?]]]
                   [:number
                    [:multi {:dispatch :format
-                            :decode/string '(fn [v] (update v :format keyword))}
+                            :decode/string (fn [v]
+                                             (println "format dispatch" v)
+                                             (update v :format keyword))}
                     [:int
                      [:map
                       [:type keyword?]
@@ -861,9 +865,10 @@
           invalid1 {:type "number"
                     :format "int"
                     :value 6.0}]
-      (is (true? (m/validate schema valid1)))
-      (is (true? (m/validate schema valid2)))
-      (is (false? (m/validate schema invalid1)))))
+      (is (true? (m/validate schema (m/decode schema valid1 mt/string-transformer))))
+      (is (true? (m/validate schema (m/decode schema valid2 mt/string-transformer))))
+      ; (is (false? (m/decode schema invalid1 mt/string-transformer)))
+      ))
 
   (testing "map-of schema"
 

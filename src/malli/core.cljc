@@ -1519,34 +1519,6 @@
                                             children)))
           (-regex-min-max [_] (re-min-max properties children)))))))
 
-(defn -function-schema []
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-into-schema [_ properties children options]
-      (-check-children! :=> properties children {:min 0})
-      (let [children (map #(schema % options) children)
-            form (-create-form :=> properties (map -form children))]
-        ^{:type ::schema}
-        (reify
-          Schema
-          (-type [_] :=>)
-          (-type-properties [_])
-          (-validator [_] (-fail! ::not-implemented))
-          (-explainer [_ path] (-fail! ::not-implemented))
-          (-transformer [this transformer method options]
-            (-fail! ::not-implemented))
-          (-walk [this walker path options]
-            (-fail! ::not-implemented))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-parent [_] (-function-schema))
-          (-form [_] form)
-          LensSchema
-          (-keep [_])
-          (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
-
 ;;
 ;; public api
 ;;

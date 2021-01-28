@@ -831,7 +831,7 @@
                                        (cond
                                          (-invalid? v*) (reduced v*)
                                          (identical? v* v) x
-                                         :else (assoc x i v))))
+                                         :else (assoc x i v*))))
                                    x parsers)))))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)

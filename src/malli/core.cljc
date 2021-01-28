@@ -103,7 +103,6 @@
 ;; impl
 ;;
 
-
 (defn -safe-pred [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
 (defn -keyword->string [x]
@@ -200,24 +199,22 @@
 (defn -guard [pred tf]
   (when tf (fn [x] (if (pred x) (tf x) x))))
 
-(defn -coder [{:keys [enter leave]}]
-  (if (and enter leave) #(leave (enter %)) (or enter leave)))
-
-(defn -intercepting [{:keys [enter leave] :as interceptor} f]
-  (if f
-    (cond
-      (and enter leave) #(leave (f (enter %)))
-      enter #(f (enter %))
-      leave #(leave (f %))
-      :else f)
-    (-coder interceptor)))
+(defn -intercepting
+  ([{:keys [enter leave]}]
+   (if (and enter leave) #(leave (enter %)) (or enter leave)))
+  ([{:keys [enter leave] :as interceptor} f]
+   (if f (cond
+           (and enter leave) #(leave (f (enter %)))
+           enter #(f (enter %))
+           leave #(leave (f %))
+           :else f)
+         (-intercepting interceptor))))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
-        child-transformers (into [] (keep #(-transformer % transformer method options)) children)]
-    (if (seq child-transformers)
-      (-intercepting parent-transformer (apply -comp (rseq child-transformers)))
-      (-coder parent-transformer))))
+        child-transformers (into [] (keep #(-transformer % transformer method options)) children)
+        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
+    (-intercepting parent-transformer child-transformer)))
 
 (defn- -properties-and-children [[x :as xs]]
   (if (or (nil? x) (map? x))
@@ -321,7 +318,7 @@
                 (if-not (validator x) (conj acc (-error path in this x)) acc)))
             (-parser [_] (fn [x] (if (validator x) x ::invalid)))
             (-transformer [this transformer method options]
-              (-coder (-value-transformer transformer this method options)))
+              (-intercepting (-value-transformer transformer this method options)))
             (-walk [this walker path options]
               (if (-accept walker this path options)
                 (-outer walker this path (vec children) options)))
@@ -427,7 +424,7 @@
                                      (reduce-kv
                                        (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
                                        x validators)))))
-                (-coder this-transformer))))
+                (-intercepting this-transformer))))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
@@ -488,7 +485,7 @@
                                      (reduce-kv
                                        (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
                                        x validators)))))
-                (-coder this-transformer))))
+                (-intercepting this-transformer))))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-entries walker path entries options) options)))
@@ -877,7 +874,7 @@
           (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
-            (-coder (-value-transformer transformer this method options)))
+            (-intercepting (-value-transformer transformer this method options)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -915,7 +912,7 @@
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
-            (-coder (-value-transformer transformer this method options)))
+            (-intercepting (-value-transformer transformer this method options)))
           (-parser [_]
             (let [find (-safe-pred #(re-find re %))]
               (fn [x] (if (find x) x ::invalid))))
@@ -958,7 +955,7 @@
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
           (-transformer [this transformer method options]
-            (-coder (-value-transformer transformer this method options)))
+            (-intercepting (-value-transformer transformer this method options)))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -1055,10 +1052,9 @@
                    ->children (reduce-kv (fn [acc k s]
                                            (when-some [t (-transformer s transformer method options)]
                                              (assoc acc k t)))
-                                         {} dispatch-map)]
-               (if (seq ->children)
-                 (-intercepting this-transformer (fn [x] (if-some [t (->children (dispatch x))] (t x) x)))
-                 (-coder this-transformer))))
+                                         {} dispatch-map)
+                   child-transformer (if (seq ->children) (fn [x] (if-some [t (->children (dispatch x))] (t x) x)))]
+               (-intercepting this-transformer child-transformer)))
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))

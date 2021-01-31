@@ -376,8 +376,9 @@
       (let [schema (m/schema [:map
                               [:a int?]
                               [:b [:not empty?]]
-                              [:c [:map [:d [:not [:fn #(= "test" %)]]]]]])]
-        (is (m/validate schema {:a 1 :b "Test" :c {:d "Malli"}}))
+                              [:c [:map [:d [:not [:fn #(= "test" %)]]]]]
+                              [:e [:not [:< 10]]]])]
+        (is (m/validate schema {:a 1 :b "Test" :c {:d "Malli"} :e 10}))
         (is (results= {:errors [{:in [:b]
                                  :message nil
                                  :path [:b 0]
@@ -385,8 +386,8 @@
                                  :type nil
                                  :value ""}]
                        :schema schema
-                       :value {:a 1, :b "", :c {:d "Malli"}}}
-                      (m/explain schema {:a 1 :b "" :c {:d "Malli"}})))
+                       :value {:a 1 :b "" :c {:d "Malli"} :e 10}}
+                      (m/explain schema {:a 1 :b "" :c {:d "Malli"} :e 10})))
         (is (results= {:errors [{:in [:c :d]
                                  :message nil
                                  :path [:c :d 0]
@@ -394,8 +395,17 @@
                                  :type nil
                                  :value "test"}]
                        :schema schema
-                       :value {:a 1, :b "Test", :c {:d "test"}}}
-                      (m/explain schema {:a 1 :b "Test" :c {:d "test"}}))))))
+                       :value {:a 1 :b "Test" :c {:d "test"} :e 10}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "test"} :e 10})))
+        (is (results= {:errors [{:in [:e]
+                                 :message nil
+                                 :path [:e 0]
+                                 :schema (mu/get-in schema [:e])
+                                 :type nil
+                                 :value 9}]
+                       :schema schema
+                       :value {:a 1 :b "Test" :c {:d "Malli"} :e 9}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "Malli"} :e 9}))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

@@ -300,43 +300,6 @@
                       (m/explain schema 1))))))
 
   (testing ":not schema"
-    (testing "boolean validation"
-      (let [schema1 (m/schema [:not true?])
-            schema2 (m/schema [:not false?])]
-
-        (is (true? (m/validate schema1 false)))
-        (is (nil? (m/explain schema1 false)))
-        (is (= ::m/invalid (m/parse schema1 true)))
-        (is (= false (m/parse schema1 false)))
-        (is (= true (m/decode schema1 "true" mt/string-transformer)))
-        (is (= "false" (m/decode schema1 "false" mt/json-transformer)))
-
-        (is (true? (m/validate schema2 true)))
-        (is (nil? (m/explain schema2 true)))
-        (is (= true (m/parse schema2 true)))
-        (is (= ::m/invalid (m/parse schema2 false)))
-
-        (is (false? (m/validate schema1 true)))
-        (is (results= {:schema schema1
-                       :value true
-                       :errors [{:path [0]
-                                 :in []
-                                 :schema schema1
-                                 :value true}]}
-                      (m/explain schema1 true)))
-
-        (is (false? (m/validate schema2 false)))
-        (is (results= {:schema schema2
-                       :value false
-                       :errors [{:path [0]
-                                 :in []
-                                 :schema schema2
-                                 :value false}]}
-                      (m/explain schema2 false)))
-
-        (is (m/walk schema1 (m/schema-walker identity)))
-        (is (m/walk schema2 (m/schema-walker identity)))))
-
     (testing ":fn validation"
       (let [schema (m/schema [:not [:fn #(= % 1)]])]
         (is (true? (m/validate schema 2)))

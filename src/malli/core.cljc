@@ -521,7 +521,9 @@
             (fn [x] (if (validator x) x ::invalid)))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
-          (-walk [this walker path options] (throw (Exception. "Not implemented.")))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)

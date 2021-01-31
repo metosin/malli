@@ -332,7 +332,10 @@
                                  :in []
                                  :schema schema2
                                  :value false}]}
-                      (m/explain schema2 false)))))
+                      (m/explain schema2 false)))
+
+        (is (m/walk schema1 (m/schema-walker identity)))
+        (is (m/walk schema2 (m/schema-walker identity)))))
 
     (testing ":fn validation"
       (let [schema (m/schema [:not [:fn #(= % 1)]])]
@@ -358,7 +361,9 @@
                                  :schema schema
                                  :value 1}]}
                       (m/explain schema 1)))
-        (is (= ::m/invalid (m/parse schema 1)))))
+        (is (= ::m/invalid (m/parse schema 1)))
+
+        (is (m/walk schema (m/schema-walker identity)))))
 
     (testing "function validation"
       (let [schema1 (m/schema [:not pos?])
@@ -399,7 +404,10 @@
                                  :schema schema2
                                  :value ""}]}
                       (m/explain schema2 "")))
-        (is (= ::m/invalid (m/parse schema2 ""))))))
+        (is (= ::m/invalid (m/parse schema2 "")))
+
+        (is (m/walk schema1 (m/schema-walker identity)))
+        (is (m/walk schema2 (m/schema-walker identity))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

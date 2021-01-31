@@ -519,7 +519,8 @@
               (when-not (validator x) (conj acc (-error (conj path 0) in this x)))))
           (-parser [_]
             (fn [x] (if (validator x) x ::invalid)))
-          (-transformer [this transformer method options] (throw (Exception. "Not implemented.")))
+          (-transformer [this transformer method options]
+            (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options] (throw (Exception. "Not implemented.")))
           (-properties [_] properties)
           (-options [_] options)

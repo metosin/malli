@@ -308,6 +308,8 @@
         (is (nil? (m/explain schema1 false)))
         (is (= ::m/invalid (m/parse schema1 true)))
         (is (= false (m/parse schema1 false)))
+        (is (= true (m/decode schema1 "true" mt/string-transformer)))
+        (is (= "false" (m/decode schema1 "false" mt/json-transformer)))
 
         (is (true? (m/validate schema2 true)))
         (is (nil? (m/explain schema2 true)))
@@ -337,6 +339,8 @@
         (is (true? (m/validate schema 2)))
         (is (nil? (m/explain schema 2)))
         (is (= 2 (m/parse schema 2)))
+        (is (= "2" (m/decode schema "2" mt/string-transformer)))
+        (is (= "2" (m/decode schema "2" mt/json-transformer)))
 
         (is (true? (m/validate schema "string")))
         (is (nil? (m/explain schema "string")))
@@ -362,6 +366,8 @@
         (is (true? (m/validate schema1 -1)))
         (is (nil? (m/explain schema1 -1)))
         (is (= -1 (m/parse schema1 -1)))
+        (is (= "-1" (m/decode schema1 "-1" mt/string-transformer)))
+        (is (= "-1" (m/decode schema1 "-1" mt/json-transformer)))
 
         (is (true? (m/validate schema1 0)))
         (is (nil? (m/explain schema1 0)))
@@ -370,6 +376,10 @@
         (is (true? (m/validate schema2 "string")))
         (is (nil? (m/explain schema2 "string")))
         (is (= "string" (m/parse schema2 "string")))
+        (is (= "string" (m/decode schema2 "string" mt/string-transformer)))
+        (is (= "" (m/decode schema2 "" mt/string-transformer)))
+        (is (= "string" (m/decode schema2 "string" mt/json-transformer)))
+        (is (= "" (m/decode schema2 "" mt/json-transformer)))
 
         (is (false? (m/validate schema1 1)))
         (is (results= {:schema schema1

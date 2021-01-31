@@ -1561,7 +1561,7 @@ Type-like schemas: `:string`, `:int`, `:double`, `:boolean`, `.keyword`, `:symbo
 
 #### `malli.core/base-schemas`
 
-Contains `:and`, `:or`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
+Contains `:and`, `:or`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
 
 ### Custom registry
 

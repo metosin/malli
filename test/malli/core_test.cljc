@@ -407,7 +407,32 @@
         (is (= ::m/invalid (m/parse schema2 "")))
 
         (is (m/walk schema1 (m/schema-walker identity)))
-        (is (m/walk schema2 (m/schema-walker identity))))))
+        (is (m/walk schema2 (m/schema-walker identity)))))
+
+    (testing "as a part of a complex schema"
+      (let [schema (m/schema [:map
+                              [:a int?]
+                              [:b [:not empty?]]
+                              [:c [:map [:d [:not [:fn #(= "test" %)]]]]]])]
+        (is (m/validate schema {:a 1 :b "Test" :c {:d "Malli"}}))
+        (is (results= {:errors [{:in [:b]
+                                 :message nil
+                                 :path [:b 0]
+                                 :schema (mu/get-in schema [:b])
+                                 :type nil
+                                 :value ""}]
+                       :schema schema
+                       :value {:a 1, :b "", :c {:d "Malli"}}}
+                      (m/explain schema {:a 1 :b "" :c {:d "Malli"}})))
+        (is (results= {:errors [{:in [:c :d]
+                                 :message nil
+                                 :path [:c :d 0]
+                                 :schema (mu/get-in schema [:c :d])
+                                 :type nil
+                                 :value "test"}]
+                       :schema schema
+                       :value {:a 1, :b "Test", :c {:d "test"}}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "test"}}))))))
 
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]

@@ -516,7 +516,7 @@
           (-validator [_] validator)
           (-explainer [this path]
             (fn explain [x in acc]
-              (when-not (validator x) (conj acc (-error (conj path 0) in this x)))))
+              (if-not (validator x) (conj acc (-error (conj path 0) in this x)) acc)))
           (-parser [_]
             (fn [x] (if (validator x) x ::invalid)))
           (-transformer [this transformer method options]

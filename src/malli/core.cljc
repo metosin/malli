@@ -1239,6 +1239,7 @@
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-explainer [this _] (-fail! ::potentially-recursive-seqex this))
            (-regex-parser [this] (-fail! ::potentially-recursive-seqex this))
+           (-regex-unparser [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))))))))
 
 (defn -schema-schema [{:keys [id raw] :as opts}]
@@ -1295,6 +1296,10 @@
               (if internal?
                 (-regex-parser child)
                 (re/item-parser (parser child))))
+            (-regex-unparser [_]
+              (if internal?
+                (-regex-unparser child)
+                (re/item-unparser (unparser child))))
             (-regex-transformer [_ transformer method options]
               (if internal?
                 (-regex-transformer child transformer method options)

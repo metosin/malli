@@ -237,7 +237,7 @@
 (defn generate
   ([?gen-or-schema]
    (generate ?gen-or-schema nil))
-  ([?gen-or-schema {:keys [seed size] :or {size 1} :as options}]
+  ([?gen-or-schema {:keys [seed size] :or {size 30} :as options}]
    (let [gen (if (gen/generator? ?gen-or-schema) ?gen-or-schema (generator ?gen-or-schema options))]
      (rose/root (gen/call-gen gen (-random seed) size)))))
 
@@ -264,4 +264,3 @@
         validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
     (fn [f] (not (some->> (prop/for-all* [input-generator] #(validate f %))
                           (check/quick-check =>iterations) :shrunk :smallest first)))))
-

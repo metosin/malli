@@ -652,7 +652,7 @@
                                                (let [v (val e)
                                                      v* (unparser v)]
                                                  (cond
-                                                   (-invalid? v) (reduced v)
+                                                   (-invalid? v*) (reduced v*)
                                                    (identical? v* v) m
                                                    :else (assoc m k v*)))
                                                (if optional m (reduced ::invalid))))))

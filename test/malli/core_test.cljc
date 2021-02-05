@@ -1363,7 +1363,7 @@
               v (repeat n :a)]
           (is (m/validate s v))
           (is (= (concat (repeat n nil) v) (m/parse s v)))
-          (is (= v (m/unparse s (concat (repeat n nil) v)))))))
+          (is (= v (m/unparse s (vec (concat (repeat n nil) v))))))))
 
     (testing "*"
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))

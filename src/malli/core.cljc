@@ -95,6 +95,9 @@
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
+(defprotocol SequenceSchema
+  (-min-size [this] "returns minimum size of the sequence"))
+
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:class " v "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form v)))))
@@ -786,7 +789,9 @@
           LensSchema
           (-keep [_] true)
           (-get [_ _ _] schema)
-          (-set [this _ value] (-set-children this [value])))))))
+          (-set [this _ value] (-set-children this [value]))
+          SequenceSchema
+          (-min-size [_] (or min 0)))))))
 
 (defn -tuple-schema []
   ^{:type ::into-schema}
@@ -851,7 +856,9 @@
           LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          SequenceSchema
+          (-min-size [_] size))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}
@@ -1189,7 +1196,9 @@
               (if internal?
                 (-regex-transformer child transformer method options)
                 (re/item-transformer method (-validator child)
-                                     (or (-transformer child transformer method options) identity))))))))))
+                                     (or (-transformer child transformer method options) identity))))
+            SequenceSchema
+            (-min-size [_] (-min-size child))))))))
 
 (defn -function-schema []
   ^{:type ::into-schema}

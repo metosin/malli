@@ -1610,7 +1610,11 @@
 (deftest simple-schemas
   (testing "simple schemas"
     (doseq [[type {:keys [schema validate explain decode encode map-syntax form]}]
-            {:string {:schema [:string {:min 1, :max 4}]
+            {:any {:schema :any
+                   :validate {:success [nil 1 "kikka"]}
+                   :map-syntax {:type :any}
+                   :form :any}
+             :string {:schema [:string {:min 1, :max 4}]
                       :validate {:success ["abba" "a"]
                                  :failure [nil "invalid" "" 1]}
                       :explain [["abba"]

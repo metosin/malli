@@ -657,10 +657,10 @@
                                                    :else (assoc m k v*)))
                                                (if optional m (reduced ::invalid))))))
                                        children)
-                               closed (into [(fn [m]
-                                               (reduce
-                                                 (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                 m (keys m)))]))]
+                                     closed (into [(fn [m]
+                                                     (reduce
+                                                       (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
+                                                       m (keys m)))]))]
                (fn [x] (if (map? x) (reduce (fn [x unparser] (unparser x)) x unparsers) ::invalid))))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
@@ -1783,7 +1783,7 @@
                               :re-parser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                            (re/repeat-parser min max child))
                               :re-unparser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
-                                           (re/repeat-unparser min max child))
+                                             (re/repeat-unparser min max child))
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                                 (re/repeat-transformer min max child))})
 

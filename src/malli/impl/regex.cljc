@@ -212,7 +212,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs pos coll k]
-       (park-validator! driver r* regs pos coll k)          ; remember fallback
+       (park-validator! driver r* regs pos coll k) ; remember fallback
        (park-validator! driver r regs pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-validator ?kr (reduce (fn [acc ?kr] (alt-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -222,7 +222,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs pos coll k]
-       (park-explainer! driver r* regs pos coll k)          ; remember fallback
+       (park-explainer! driver r* regs pos coll k) ; remember fallback
        (park-explainer! driver r regs pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-explainer ?kr (reduce (fn [acc ?kr] (alt-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -267,7 +267,7 @@
   ([?kr ?kr*]
    (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
      (fn [driver regs coll* pos coll k]
-       (park-transformer! driver r* regs coll* pos coll k)  ; remember fallback
+       (park-transformer! driver r* regs coll* pos coll k) ; remember fallback
        (park-transformer! driver r regs coll* pos coll k))))
   ([?kr ?kr* & ?krs]
    (alt-transformer ?kr (reduce (fn [acc ?kr] (alt-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
@@ -285,13 +285,13 @@
 (defn *-validator [p]
   (let [*p-epsilon (cat-validator)]
     (fn *p [driver regs pos coll k]
-      (park-validator! driver *p-epsilon regs pos coll k)   ; remember fallback
+      (park-validator! driver *p-epsilon regs pos coll k) ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-validator! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-explainer [p]
   (let [*p-epsilon (cat-explainer)]
     (fn *p [driver regs pos coll k]
-      (park-explainer! driver *p-epsilon regs pos coll k)   ; remember fallback
+      (park-explainer! driver *p-epsilon regs pos coll k) ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-explainer! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-parser [p]
@@ -345,7 +345,7 @@
                      (-park-validator! driver
                                        (fn [driver stack pos coll k]
                                          (compulsories driver (conj (pop stack) (inc (peek stack))) pos coll k))
-                                       regs pos coll k)))   ; TCO
+                                       regs pos coll k))) ; TCO
                 (optionals driver regs pos coll k)))
             (optionals [driver regs pos coll k]
               (if (< (peek regs) max)
@@ -369,7 +369,7 @@
                      (-park-explainer! driver
                                        (fn [driver regs pos coll k]
                                          (compulsories driver (conj (pop regs) (inc (peek regs))) pos coll k))
-                                       regs pos coll k)))   ; TCO
+                                       regs pos coll k))) ; TCO
                 (optionals driver regs pos coll k)))
             (optionals [driver regs pos coll k]
               (if (< (peek regs) max)
@@ -405,7 +405,7 @@
                          driver
                          (fn [driver regs coll* pos coll k]
                            (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
-                         regs coll* pos coll k))))          ; TCO
+                         regs coll* pos coll k)))) ; TCO
                 (k coll* pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
 

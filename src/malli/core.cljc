@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
-            [malli.impl.util :as miu :refer [-invalid?]]
+            [malli.impl.util :as miu]
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
@@ -633,7 +633,7 @@
                                            (if-let [e (find m key)]
                                              (let [v (val e)
                                                    v* (parser v)]
-                                               (cond (-invalid? v*) (reduced v*)
+                                               (cond (miu/-invalid? v*) (reduced v*)
                                                      (identical? v* v) m
                                                      :else (assoc m key v*)))
                                              (if optional m (reduced ::invalid))))))
@@ -652,7 +652,7 @@
                                                (let [v (val e)
                                                      v* (unparser v)]
                                                  (cond
-                                                   (-invalid? v*) (reduced v*)
+                                                   (miu/-invalid? v*) (reduced v*)
                                                    (identical? v* v) m
                                                    :else (assoc m k v*)))
                                                (if optional m (reduced ::invalid))))))
@@ -735,7 +735,7 @@
                                (let [k* (key-parser k)
                                      v* (value-parser v)]
                                  ;; OPTIMIZE: Restore `identical?` check + NOOP
-                                 (if (or (-invalid? k*) (-invalid? v*))
+                                 (if (or (miu/-invalid? k*) (miu/-invalid? v*))
                                    (reduced ::invalid)
                                    (assoc acc k* v*))))
                              (empty m) m)
@@ -748,7 +748,7 @@
                   (reduce-kv (fn [acc k v]
                                (let [k* (key-unparser k)
                                      v* (value-unparser v)]
-                                 (if (or (-invalid? k*) (-invalid? v*))
+                                 (if (or (miu/-invalid? k*) (miu/-invalid? v*))
                                    (reduced ::invalid)
                                    (assoc acc k* v*))))
                              (empty m) m)
@@ -819,10 +819,10 @@
                   :else (let [x' (reduce
                                    (fn [acc v]
                                      (let [v' (child-parser v)]
-                                       (if (-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                       (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
                                    [] x)]
                           (cond
-                            (-invalid? x') x'
+                            (miu/-invalid? x') x'
                             fempty (into fempty x')
                             :else x'))))))
           (-unparser [_]
@@ -834,10 +834,10 @@
                   :else (let [x' (reduce
                                    (fn [acc v]
                                      (let [v' (child-unparser v)]
-                                       (if (-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                       (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
                                    [] x)]
                           (cond
-                            (-invalid? x') x'
+                            (miu/-invalid? x') x'
                             fempty (into fempty x')
                             :else x'))))))
           (-transformer [this transformer method options]
@@ -901,7 +901,7 @@
                                      (let [v (get x i)
                                            v* (c v)]
                                        (cond
-                                         (-invalid? v*) (reduced v*)
+                                         (miu/-invalid? v*) (reduced v*)
                                          (identical? v* v) x
                                          :else (assoc x i v*))))
                                    x parsers)))))
@@ -915,7 +915,7 @@
                                      (let [v (get x i)
                                            v* (c v)]
                                        (cond
-                                         (-invalid? v*) (reduced v*)
+                                         (miu/-invalid? v*) (reduced v*)
                                          (identical? v* v) x
                                          :else (assoc x i v))))
                                    x unparsers)))))

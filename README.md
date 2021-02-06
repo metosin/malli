@@ -17,7 +17,7 @@ Data-driven Schemas for Clojure/Script.
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [Programming with Schemas](#programming-with-schemas)
-- [Parsing values](#parsing-values) and [Sequence Schemas](#sequence-schemas)
+- [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
 - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
@@ -1246,19 +1246,20 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 `m/parser` to create an optimized parser: 
 
 ```clj
-(def parse-hiccup
-  (m/parser
-    [:schema {:registry {"hiccup" [:or*
-                                   [:node [:cat*
-                                           [:name keyword?]
-                                           [:props [:? [:map-of keyword? any?]]]
-                                           [:children [:* [:schema [:ref "hiccup"]]]]]]
-                                   [:primitive [:or*
-                                                [:nil nil?]
-                                                [:boolean boolean?]
-                                                [:number number?]
-                                                [:text string?]]]]}}
-     "hiccup"]))
+(def Hiccup
+  [:schema {:registry {"hiccup" [:or*
+                                 [:node [:cat*
+                                         [:name keyword?]
+                                         [:props [:? [:map-of keyword? any?]]]
+                                         [:children [:* [:schema [:ref "hiccup"]]]]]]
+                                 [:primitive [:or*
+                                              [:nil nil?]
+                                              [:boolean boolean?]
+                                              [:number number?]
+                                              [:text string?]]]]}}
+   "hiccup"])
+
+(def parse-hiccup (m/parser Hiccup))
 
 (parse-hiccup
   [:div {:class [:foo :bar]}
@@ -1270,6 +1271,19 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ;              {:name :p
 ;               :props nil
 ;               :children [[:primitive [:text "Hello, world of data"]]]}]]}]
+```
+
+## Unparsing values
+
+The inverse of parsing, using `m/unparse` and `m/unparser`:
+
+```clj
+(->> [:div {:class [:foo :bar]}
+      [:p "Hello, world of data"]]
+     (m/parse Hiccup)
+     (m/unparse Hiccup))
+;[:div {:class [:foo :bar]}
+; [:p "Hello, world of data"]]
 ```
 
 ## Map-syntax

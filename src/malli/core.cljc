@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   (:require [malli.sci :as ms]
-            [malli.impl.util :as miu :refer [-invalid?]]
+            [malli.impl.util :as miu]
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
@@ -324,7 +324,7 @@
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (-error path in this x)) acc)))
             (-parser [_] (fn [x] (if (validator x) x ::invalid)))
-            (-unparser [_] (fn [x] (if (validator x) x ::invalid)))
+            (-unparser [this] (-parser this))
             (-transformer [this transformer method options]
               (-intercepting (-value-transformer transformer this method options)))
             (-walk [this walker path options]
@@ -356,7 +356,9 @@
     (-into-schema [_ properties children options]
       (-check-children! :and properties children {:min 1})
       (let [children (mapv #(schema % options) children)
-            form (-create-form :and properties (map -form children))]
+            form (-create-form :and properties (map -form children))
+            ->parser (fn [f m] (let [parsers (m (mapv f children))]
+                                 #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
         ^{:type ::schema}
         (reify
           Schema
@@ -368,16 +370,8 @@
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
-          (-parser [_]
-            (let [parsers (mapv -parser children)]
-              (fn [x]
-                (reduce (fn [x parser] (miu/-map-invalid reduced (parser x)))
-                        x parsers))))
-          (-unparser [_]
-            (let [unparsers (mapv -unparser children)]
-              (fn [x]
-                (reduce (fn [x unparser] (miu/-map-invalid reduced (unparser x)))
-                        x (rseq unparsers)))))
+          (-parser [_] (->parser -parser seq))
+          (-unparser [_] (->parser -unparser rseq))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -399,7 +393,9 @@
     (-into-schema [_ properties children options]
       (-check-children! :or properties children {:min 1})
       (let [children (mapv #(schema % options) children)
-            form (-create-form :or properties (map -form children))]
+            form (-create-form :or properties (map -form children))
+            ->parser (fn [f] (let [parsers (mapv f children)]
+                               #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
         (reify
           Schema
@@ -416,15 +412,8 @@
                     (let [acc'' (explainer x in acc')]
                       (if (identical? acc' acc'') (reduced acc) acc'')))
                   acc explainers))))
-          (-parser [_]
-            (let [parsers (mapv -parser children)]
-              (fn [x] (reduce (fn [_ parser] (miu/-map-valid reduced (parser x)))
-                              ::invalid parsers))))
-          (-unparser [_]
-            (let [unparsers (mapv -unparser children)]
-              (fn [x]
-                (reduce (fn [_ unparser] (miu/-map-valid reduced (unparser x)))
-                        ::invalid unparsers))))
+          (-parser [_] (->parser -parser))
+          (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)]
               (if (seq children)
@@ -573,7 +562,24 @@
      (-into-schema [_ {:keys [closed] :as properties} children options]
        (let [{:keys [children entries forms]} (-parse-entries children opts options)
              form (-create-form :map properties forms)
-             keyset (->> entries (map first) (set))]
+             keyset (->> entries (map first) (set))
+             ->parser (fn [f] (let [parsers (cond-> (mapv
+                                                      (fn [[key {:keys [optional]} schema]]
+                                                        (let [parser (f schema)]
+                                                          (fn [m]
+                                                            (if-let [e (find m key)]
+                                                              (let [v (val e)
+                                                                    v* (parser v)]
+                                                                (cond (miu/-invalid? v*) (reduced v*)
+                                                                      (identical? v* v) m
+                                                                      :else (assoc m key v*)))
+                                                              (if optional m (reduced ::invalid))))))
+                                                      children)
+                                                    closed (into [(fn [m]
+                                                                    (reduce
+                                                                      (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
+                                                                      m (keys m)))]))]
+                                (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
            Schema
@@ -625,43 +631,8 @@
                      (fn [acc explainer]
                        (explainer x in acc))
                      acc explainers)))))
-           (-parser [_]
-             (let [parsers (cond-> (mapv
-                                     (fn [[key {:keys [optional]} schema]]
-                                       (let [parser (-parser schema)]
-                                         (fn [m]
-                                           (if-let [e (find m key)]
-                                             (let [v (val e)
-                                                   v* (parser v)]
-                                               (cond (-invalid? v*) (reduced v*)
-                                                     (identical? v* v) m
-                                                     :else (assoc m key v*)))
-                                             (if optional m (reduced ::invalid))))))
-                                     children)
-                                   closed (into [(fn [m]
-                                                   (reduce
-                                                     (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                     m (keys m)))]))]
-               (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))
-           (-unparser [_]
-             (let [unparsers (cond-> (mapv
-                                       (fn [[k {:keys [optional]} s]]
-                                         (let [unparser (-unparser s)]
-                                           (fn [m]
-                                             (if-some [e (find m k)]
-                                               (let [v (val e)
-                                                     v* (unparser v)]
-                                                 (cond
-                                                   (-invalid? v*) (reduced v*)
-                                                   (identical? v* v) m
-                                                   :else (assoc m k v*)))
-                                               (if optional m (reduced ::invalid))))))
-                                       children)
-                               closed (into [(fn [m]
-                                               (reduce
-                                                 (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                 m (keys m)))]))]
-               (fn [x] (if (map? x) (reduce (fn [x unparser] (unparser x)) x unparsers) ::invalid))))
+           (-parser [_] (->parser -parser))
+           (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (some->> entries
@@ -698,7 +669,20 @@
     (-into-schema [_ properties children options]
       (-check-children! :map-of properties children {:min 2 :max 2})
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
-            form (-create-form :map-of properties (mapv -form children))]
+            form (-create-form :map-of properties (mapv -form children))
+            ->parser (fn [f] (let [key-parser (f key-schema)
+                                   value-parser (f value-schema)]
+                               (fn [x]
+                                 (if (map? x)
+                                   (reduce-kv (fn [acc k v]
+                                                (let [k* (key-parser k)
+                                                      v* (value-parser v)]
+                                                  ;; OPTIMIZE: Restore `identical?` check + NOOP
+                                                  (if (or (miu/-invalid? k*) (miu/-invalid? v*))
+                                                    (reduced ::invalid)
+                                                    (assoc acc k* v*))))
+                                              (empty x) x)
+                                   ::invalid))))]
         ^{:type ::schema}
         (reify
           Schema
@@ -726,33 +710,8 @@
                              (key-explainer key in)
                              (value-explainer value in))))
                     acc m)))))
-          (-parser [_]
-            (let [key-parser (-parser key-schema)
-                  value-parser (-parser value-schema)]
-              (fn [m]
-                (if (map? m)
-                  (reduce-kv (fn [acc k v]
-                               (let [k* (key-parser k)
-                                     v* (value-parser v)]
-                                 ;; OPTIMIZE: Restore `identical?` check + NOOP
-                                 (if (or (-invalid? k*) (-invalid? v*))
-                                   (reduced ::invalid)
-                                   (assoc acc k* v*))))
-                             (empty m) m)
-                  ::invalid))))
-          (-unparser [_]
-            (let [key-unparser (-unparser key-schema)
-                  value-unparser (-unparser value-schema)]
-              (fn [m]
-                (if (map? m)
-                  (reduce-kv (fn [acc k v]
-                               (let [k* (key-unparser k)
-                                     v* (value-unparser v)]
-                                 (if (or (-invalid? k*) (-invalid? v*))
-                                   (reduced ::invalid)
-                                   (assoc acc k* v*))))
-                             (empty m) m)
-                  ::invalid))))
+          (-parser [_] (->parser -parser))
+          (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   ->key (-transformer key-schema transformer method options)
@@ -788,7 +747,21 @@
                               (not (or min max)) (constantly true)
                               (and min max) (fn [x] (let [size (count x)] (<= min size max)))
                               min (fn [x] (let [size (count x)] (<= min size)))
-                              max (fn [x] (let [size (count x)] (<= size max))))]
+                              max (fn [x] (let [size (count x)] (<= size max))))
+            ->parser (fn [f] (let [child-parser (f schema)]
+                               (fn [x]
+                                 (cond
+                                   (not (fpred x)) ::invalid
+                                   (not (validate-limits x)) ::invalid
+                                   :else (let [x' (reduce
+                                                    (fn [acc v]
+                                                      (let [v' (child-parser v)]
+                                                        (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                    [] x)]
+                                           (cond
+                                             (miu/-invalid? x') x'
+                                             fempty (into fempty x')
+                                             :else x'))))))]
         ^{:type ::schema}
         (reify
           Schema
@@ -810,36 +783,8 @@
                             (if (< i size)
                               (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                               acc)))))))
-          (-parser [_]
-            (let [child-parser (-parser schema)]
-              (fn [x]
-                (cond
-                  (not (fpred x)) ::invalid
-                  (not (validate-limits x)) ::invalid
-                  :else (let [x' (reduce
-                                   (fn [acc v]
-                                     (let [v' (child-parser v)]
-                                       (if (-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                   [] x)]
-                          (cond
-                            (-invalid? x') x'
-                            fempty (into fempty x')
-                            :else x'))))))
-          (-unparser [_]
-            (let [child-unparser (-unparser schema)]
-              (fn [x]
-                (cond
-                  (not (fpred x)) ::invalid
-                  (not (validate-limits x)) ::invalid
-                  :else (let [x' (reduce
-                                   (fn [acc v]
-                                     (let [v' (child-unparser v)]
-                                       (if (-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                   [] x)]
-                          (cond
-                            (-invalid? x') x'
-                            fempty (into fempty x')
-                            :else x'))))))
+          (-parser [_] (->parser -parser))
+          (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
             (let [collection? #(or (sequential? %) (set? %))
                   this-transformer (-value-transformer transformer this method options)
@@ -869,7 +814,20 @@
     (-into-schema [_ properties children options]
       (let [children (mapv #(schema % options) children)
             size (count children)
-            form (-create-form :tuple properties (map -form children))]
+            form (-create-form :tuple properties (map -form children))
+            ->parser (fn [f] (let [parsers (into {} (comp (map f) (map-indexed vector)) children)]
+                               (fn [x]
+                                 (cond
+                                   (not (vector? x)) ::invalid
+                                   (not= (count x) size) ::invalid
+                                   :else (reduce-kv (fn [x i c]
+                                                      (let [v (get x i)
+                                                            v* (c v)]
+                                                        (cond
+                                                          (miu/-invalid? v*) (reduced v*)
+                                                          (identical? v* v) x
+                                                          :else (assoc x i v*))))
+                                                    x parsers)))))]
         (-check-children! :tuple properties children {:min 0})
         ^{:type ::schema}
         (reify
@@ -891,34 +849,8 @@
                   (not= (count x) size) (conj acc (-error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
-          (-parser [_]
-            (let [parsers (into {} (comp (map -parser) (map-indexed vector)) children)]
-              (fn [x]
-                (cond
-                  (not (vector? x)) ::invalid
-                  (not= (count x) size) ::invalid
-                  :else (reduce-kv (fn [x i c]
-                                     (let [v (get x i)
-                                           v* (c v)]
-                                       (cond
-                                         (-invalid? v*) (reduced v*)
-                                         (identical? v* v) x
-                                         :else (assoc x i v*))))
-                                   x parsers)))))
-          (-unparser [_]
-            (let [unparsers (into {} (comp (map -unparser) (map-indexed vector)) children)]
-              (fn [x]
-                (cond
-                  (not (vector? x)) ::invalid
-                  (not= (count x) size) ::invalid
-                  :else (reduce-kv (fn [x i c]
-                                     (let [v (get x i)
-                                           v* (c v)]
-                                       (cond
-                                         (-invalid? v*) (reduced v*)
-                                         (identical? v* v) x
-                                         :else (assoc x i v))))
-                                   x unparsers)))))
+          (-parser [_] (->parser -parser))
+          (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
             (let [this-transformer (-value-transformer transformer this method options)
                   ->children (into {} (comp (map-indexed vector)
@@ -961,7 +893,7 @@
             (fn explain [x in acc]
               (if-not (contains? schema x) (conj acc (-error (conj path 0) in this x)) acc)))
           (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
-          (-unparser [_] (fn [x] (if (contains? schema x) x ::invalid)))
+          (-unparser [this] (-parser this))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
@@ -1006,9 +938,7 @@
           (-parser [_]
             (let [find (-safe-pred #(re-find re %))]
               (fn [x] (if (find x) x ::invalid))))
-          (-unparser [_]
-            (let [find (-safe-pred #(re-find re %))]
-              (fn [x] (if (find x) x ::invalid))))
+          (-unparser [this] (-parser this))
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path children options)))
@@ -1047,9 +977,7 @@
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
-          (-unparser [this]
-            (let [validator (-validator this)]
-              (fn [x] (if (validator x) x ::invalid))))
+          (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
           (-walk [this walker path options]
@@ -1071,7 +999,9 @@
     (-into-schema [_ properties children options]
       (-check-children! :maybe properties children {:min 1, :max 1})
       (let [[schema :as children] (map #(schema % options) children)
-            form (-create-form :maybe properties (map -form children))]
+            form (-create-form :maybe properties (map -form children))
+            ->parser (fn [f] (let [parser (f schema)]
+                               (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
         (reify
           Schema
@@ -1084,12 +1014,8 @@
             (let [explainer' (-explainer schema (conj path 0))]
               (fn explain [x in acc]
                 (if (nil? x) acc (explainer' x in acc)))))
-          (-parser [_]
-            (let [parser* (-parser schema)]
-              (fn [x] (if (nil? x) x (parser* x)))))
-          (-unparser [_]
-            (let [unparser* (-unparser schema)]
-              (fn [x] (if (nil? x) x (unparser* x)))))
+          (-parser [_] (->parser -parser))
+          (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]
@@ -1191,7 +1117,9 @@
                       (when-not allow-invalid-refs
                         (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
-             form (-create-form :ref properties children)]
+             form (-create-form :ref properties children)
+             ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
+                                (fn [x] ((parser) x))))]
          ^{:type ::schema}
          (reify
            Schema
@@ -1203,12 +1131,8 @@
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
                (fn [x in acc] ((explainer) x in acc))))
-           (-parser [_]
-             (let [parser (-memoize (fn [] (-parser (-ref))))]
-               (fn [x] ((parser) x))))
-           (-unparser [_]
-             (let [unparser (-memoize (fn [] (-unparser (-ref))))]
-               (fn [x] ((unparser) x))))
+           (-parser [_] (->parser -parser))
+           (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
                    deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
@@ -1330,9 +1254,7 @@
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
-          (-unparser [this]
-            (let [validator (-validator this)]
-              (fn [x] (if (validator x) x ::invalid))))
+          (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
           (-walk [this walker path options]
             (if (-accept walker this path options)
@@ -1783,7 +1705,7 @@
                               :re-parser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                            (re/repeat-parser min max child))
                               :re-unparser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
-                                           (re/repeat-unparser min max child))
+                                             (re/repeat-unparser min max child))
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]]
                                                 (re/repeat-transformer min max child))})
 

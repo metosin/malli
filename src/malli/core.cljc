@@ -1277,7 +1277,7 @@
       (-check-children! :=> properties children {:min 2, :max 2})
       (let [[input output :as children] (map #(schema % options) children)
             form (-create-form :=> properties (map -form children))]
-        (when-not (= :tuple (-type input))
+        (when-not (= :cat (-type input))
           (-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify

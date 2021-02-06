@@ -229,20 +229,20 @@
    (deftest function-schema-test
      (testing "generates valid functions"
 
-       (let [=> (m/schema [:=> [:tuple int? int?] int?])
+       (let [=> (m/schema [:=> [:cat int? int?] int?])
              input (m/-input-schema =>)
              output (m/-output-schema =>)]
          (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000})))))
 
      (testing "arity meta"
        (let [=> [:or
-                 [:=> [:tuple int?] int?]
-                 [:=> [:tuple int? int? int?] int?]]]
+                 [:=> [:cat int?] int?]
+                 [:=> [:cat int? int? int?] int?]]]
          (is (every? (comp #{1 3} :arity meta) (mg/sample => {:size 1000})))))))
 
 (deftest recursive-schema-generation-test-307
   (let [sample (mg/generate [:schema {:registry {::A
-                                                 [:tuple
+                                                 [:cat
                                                   [:= ::a]
                                                   [:vector {:gen/min 2, :gen/max 2} [:ref ::A]]]}}
                              ::A] {:size 1, :seed 1})]

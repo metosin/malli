@@ -1802,12 +1802,12 @@ Registries can be composed:
 
 **alpha, subject to change**
 
-Functions can be described with `:=>`, which takes function arguments (as `:tuple`) and output schemas as children.
+Functions can be described with `:=>`, which takes function arguments (as `:cat`) and output schemas as children.
 
 ```clj
 (defn plus [x y] (+ x y))
 
-(def =>plus [:=> [:tuple int? int?] int?])
+(def =>plus [:=> [:cat int? int?] int?])
 
 (m/validate =>plus plus)
 ; => true
@@ -1839,7 +1839,7 @@ A generated function implementation:
 ; => -1
 
 (plus-gen 1 "2")
-; =throws=> :malli.generator/invalid-input {:schema [:tuple int? int?], :args [1 "2"]}
+; =throws=> :malli.generator/invalid-input {:schema [:cat int? int?], :args [1 "2"]}
 ```
 
 Multiple arities are WIP, currently defined using `:or`:

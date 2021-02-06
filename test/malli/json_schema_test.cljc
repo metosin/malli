@@ -226,4 +226,4 @@
             "Order"]))))
 
 (deftest function-schema-test
-  (is (= {} (json-schema/transform [:=> [:tuple int? int?] int?]))))
+  (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))

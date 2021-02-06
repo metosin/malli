@@ -2038,7 +2038,7 @@
 
 (deftest function-schema-test
   (let [f-ok (fn [x y] (+ x y))
-        => [:=> [:tuple int? int?] int?]]
+        => [:=> [:cat int? int?] int?]]
 
     (testing "by default, all ifn? are valid"
       (is (true? (m/validate => identity)))
@@ -2053,11 +2053,11 @@
       (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator}))))
 
     (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/=>validator mg/=>validator})))
-    (is (results= {:schema [:=> [:tuple int? int?] int?]
+    (is (results= {:schema [:=> [:cat int? int?] int?]
                    :value single-arity
                    :errors [{:path []
                              :in []
-                             :schema [:=> [:tuple int? int?] int?]
+                             :schema [:=> [:cat int? int?] int?]
                              :value single-arity}]}
                   (m/explain => single-arity {::m/=>validator mg/=>validator})))
 
@@ -2065,5 +2065,5 @@
 
     (is (true? (m/validate (over-the-wire =>) f-ok)))
 
-    (is (= {:type :=>, :children [{:type :tuple, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
+    (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
            (mu/to-map-syntax =>)))))

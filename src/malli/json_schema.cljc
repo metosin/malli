@@ -98,6 +98,8 @@
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
 
+(defmethod accept :any [_ _ _ _] {})
+
 (defmethod accept :string [_ schema _ _]
   (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))
 

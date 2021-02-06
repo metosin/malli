@@ -1571,7 +1571,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/type-schemas`
 
-Type-like schemas: `:string`, `:int`, `:double`, `:boolean`, `.keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
+Type-like schemas: `:any`, `:string`, `:int`, `:double`, `:boolean`, `.keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
 
 #### `malli.core/base-schemas`
 

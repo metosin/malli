@@ -28,7 +28,8 @@
           (is (m/validate ?schema value))))))
 
   (testing "simple schemas"
-    (doseq [schema [[:string {:min 1, :max 4}]
+    (doseq [schema [:any
+                    [:string {:min 1, :max 4}]
                     [:int {:min 1, :max 4}]
                     [:double {:min 0.0, :max 1.0}]
                     :boolean

@@ -305,6 +305,114 @@
                        :errors [{:path [1], :in [], :schema neg-int?, :value 1}]}
                       (m/explain schema 1))))))
 
+  (testing ":not schema"
+    (testing ":fn validation"
+      (let [schema (m/schema [:not [:fn #(= % 1)]])]
+        (is (true? (m/validate schema 2)))
+        (is (nil? (m/explain schema 2)))
+        (is (= 2 (m/parse schema 2)))
+        (is (= "2" (m/decode schema "2" mt/string-transformer)))
+        (is (= "2" (m/decode schema "2" mt/json-transformer)))
+
+        (is (true? (m/validate schema "string")))
+        (is (nil? (m/explain schema "string")))
+        (is (= "string" (m/parse schema "string")))
+
+        (is (true? (m/validate schema :keyword)))
+        (is (nil? (m/explain schema :keyword)))
+        (is (= :keyword (m/parse schema :keyword)))
+
+        (is (false? (m/validate schema 1)))
+        (is (results= {:schema schema
+                       :value 1
+                       :errors [{:path [0]
+                                 :in []
+                                 :schema schema
+                                 :value 1}]}
+                      (m/explain schema 1)))
+        (is (= ::m/invalid (m/parse schema 1)))
+
+        (is (m/walk schema (m/schema-walker identity)))))
+
+    (testing "function validation"
+      (let [schema1 (m/schema [:not pos?])
+            schema2 (m/schema [:not empty?])]
+        (is (true? (m/validate schema1 -1)))
+        (is (nil? (m/explain schema1 -1)))
+        (is (= -1 (m/parse schema1 -1)))
+        (is (= "-1" (m/decode schema1 "-1" mt/string-transformer)))
+        (is (= "-1" (m/decode schema1 "-1" mt/json-transformer)))
+
+        (is (true? (m/validate schema1 0)))
+        (is (nil? (m/explain schema1 0)))
+        (is (= 0 (m/parse schema1 0)))
+
+        (is (true? (m/validate schema2 "string")))
+        (is (nil? (m/explain schema2 "string")))
+        (is (= "string" (m/parse schema2 "string")))
+        (is (= "string" (m/decode schema2 "string" mt/string-transformer)))
+        (is (= "" (m/decode schema2 "" mt/string-transformer)))
+        (is (= "string" (m/decode schema2 "string" mt/json-transformer)))
+        (is (= "" (m/decode schema2 "" mt/json-transformer)))
+
+        (is (false? (m/validate schema1 1)))
+        (is (results= {:schema schema1
+                       :value 1
+                       :errors [{:path [0]
+                                 :in []
+                                 :schema schema1
+                                 :value 1}]}
+                      (m/explain schema1 1)))
+        (is (= ::m/invalid (m/parse schema1 1)))
+
+        (is (false? (m/validate schema2 "")))
+        (is (results= {:schema schema2
+                       :value ""
+                       :errors [{:path [0]
+                                 :in []
+                                 :schema schema2
+                                 :value ""}]}
+                      (m/explain schema2 "")))
+        (is (= ::m/invalid (m/parse schema2 "")))
+
+        (is (m/walk schema1 (m/schema-walker identity)))
+        (is (m/walk schema2 (m/schema-walker identity)))))
+
+    (testing "as a part of a complex schema"
+      (let [schema (m/schema [:map
+                              [:a int?]
+                              [:b [:not empty?]]
+                              [:c [:map [:d [:not [:fn #(= "test" %)]]]]]
+                              [:e [:not [:< 10]]]])]
+        (is (m/validate schema {:a 1 :b "Test" :c {:d "Malli"} :e 10}))
+        (is (results= {:errors [{:in [:b]
+                                 :message nil
+                                 :path [:b 0]
+                                 :schema (mu/get-in schema [:b])
+                                 :type nil
+                                 :value ""}]
+                       :schema schema
+                       :value {:a 1 :b "" :c {:d "Malli"} :e 10}}
+                      (m/explain schema {:a 1 :b "" :c {:d "Malli"} :e 10})))
+        (is (results= {:errors [{:in [:c :d]
+                                 :message nil
+                                 :path [:c :d 0]
+                                 :schema (mu/get-in schema [:c :d])
+                                 :type nil
+                                 :value "test"}]
+                       :schema schema
+                       :value {:a 1 :b "Test" :c {:d "test"} :e 10}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "test"} :e 10})))
+        (is (results= {:errors [{:in [:e]
+                                 :message nil
+                                 :path [:e 0]
+                                 :schema (mu/get-in schema [:e])
+                                 :type nil
+                                 :value 9}]
+                       :schema schema
+                       :value {:a 1 :b "Test" :c {:d "Malli"} :e 9}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "Malli"} :e 9}))))))
+
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]
 

@@ -15,6 +15,7 @@
    [[:< 6] {:type "number", :exclusiveMaximum 6}]
    [[:<= 6] {:type "number", :maximum 6}]
    ;; base
+   [[:not string?] {:x-not {:type "string"}}]
    [[:and int? pos-int?] {:type "integer"
                           :format "int64"
                           :x-allOf [{:type "integer", :format "int64"}

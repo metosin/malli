@@ -11,6 +11,7 @@
 (defmethod accept ::default [name schema children options] (json-schema/accept name schema children options))
 (defmethod accept 'nil? [_ _ _ _] {})
 
+(defmethod accept :not [_ _ children _] {:x-not (first children)})
 (defmethod accept :and [_ _ children _] (assoc (first children) :x-allOf children))
 (defmethod accept :or [_ _ children _] (assoc (first children) :x-anyOf children))
 (defmethod accept :multi [_ _ children _] (let [cs (mapv last children)] (assoc (first cs) :x-anyOf cs)))

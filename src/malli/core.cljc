@@ -521,8 +521,8 @@
   (reify IntoSchema
     (-into-schema [_ properties children options]
       (-check-children! :not properties children {:min 1 :max 1})
-      (let [[schema :as  children] (map #(schema % options) children)
-            validator (complement #((-validator schema) %))
+      (let [[schema :as children] (map #(schema % options) children)
+            validator (complement (-validator schema))
             form (-create-form :not properties (map -form children))]
         ^{:type ::schema}
         (reify
@@ -533,8 +533,8 @@
           (-explainer [this path]
             (fn explain [x in acc]
               (if-not (validator x) (conj acc (-error (conj path 0) in this x)) acc)))
-          (-parser [_]
-            (fn [x] (if (validator x) x ::invalid)))
+          (-parser [_] (fn [x] (if (validator x) x ::invalid)))
+          (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options]

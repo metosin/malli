@@ -16,6 +16,7 @@
    [[:<= 6] {:type "number", :maximum 6}]
    [[:= "x"] {:const "x"}]
    ;; base
+   [[:not string?] {:not {:type "string"}}]
    [[:and int? pos-int?] {:allOf [{:type "integer"}
                                   {:type "integer", :minimum 1}]}]
    [[:or int? string?] {:anyOf [{:type "integer"} {:type "string"}]}]

@@ -77,6 +77,7 @@
 (defmethod accept := [_ _ [value] _] {:const value})
 (defmethod accept :not= [_ _ _ _] {})
 
+(defmethod accept :not [_ _ children _] {:not (last children)})
 (defmethod accept :and [_ _ children _] {:allOf children})
 (defmethod accept :or [_ _ children _] {:anyOf children})
 

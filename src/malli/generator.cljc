@@ -7,7 +7,8 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.impl.util :as miu]))
 
 (declare generator generate -create)
 
@@ -257,12 +258,25 @@
 ;; functions
 ;;
 
-(defn =>validator [schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
-  (let [input-schema (m/-input-schema schema)
-        output-schema (m/-output-schema schema)
-        input-generator (generator input-schema options)
-        input-validator (m/validator input-schema)
-        output-validator (m/validator output-schema options)
-        validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
-    (fn [f] (not (some->> (prop/for-all* [input-generator] #(validate f %))
-                          (check/quick-check =>iterations) :shrunk :smallest first)))))
+(defn function-checker
+  ([?schema] (function-checker ?schema nil))
+  ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
+   (let [schema (m/schema ?schema options)
+         explain (fn [schema]
+                   (let [input-schema (m/-input-schema schema)
+                         output-schema (m/-output-schema schema)
+                         input-generator (generator input-schema options)
+                         input-validator (m/validator input-schema)
+                         output-validator (m/validator output-schema options)
+                         validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
+                     (fn [f]
+                       (let [{:keys [result] :as res} (->> (prop/for-all* [input-generator] #(validate f %))
+                                                           (check/quick-check =>iterations))]
+                         (if-not (true? result)
+                           (cond-> (:shrunk res)
+                                   (ex-message result) (-> (update :result ex-message)
+                                                           (dissoc :result-data))))))))]
+     (condp = (m/-type schema)
+       :=> (explain schema)
+       :function (fn [x] (seq (keep #(% x) (map #(function-checker % options) (->> schema (m/-children) (map last))))))
+       (miu/-fail! ::invalid-function-schema {:type (m/-type schema)})))))

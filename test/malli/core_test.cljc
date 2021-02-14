@@ -2045,21 +2045,21 @@
       (is (true? (m/validate => #{}))))
 
     (testing "using generative testing"
-      (is (false? (m/validate => single-arity {::m/=>validator mg/=>validator})))
+      (is (false? (m/validate => single-arity {::m/function-checker mg/function-checker})))
       ;; js allows invalid arity
-      #?(:clj (is (false? (m/validate => (fn [x] x) {::m/=>validator mg/=>validator}))))
-      #?(:clj (is (false? (m/validate => #{} {::m/=>validator mg/=>validator}))))
-      (is (true? (m/validate => f-ok {::m/=>validator mg/=>validator})))
-      (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator}))))
+      #?(:clj (is (false? (m/validate => (fn [x] x) {::m/function-checker mg/function-checker}))))
+      #?(:clj (is (false? (m/validate => #{} {::m/function-checker mg/function-checker}))))
+      (is (true? (m/validate => f-ok {::m/function-checker mg/function-checker})))
+      (is (false? (m/validate => (fn [x y] (str x y)) {::m/function-checker mg/function-checker}))))
 
-    (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/=>validator mg/=>validator})))
+    (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/function-checker mg/function-checker})))
     (is (results= {:schema [:=> [:cat int? int?] int?]
                    :value single-arity
                    :errors [{:path []
                              :in []
                              :schema [:=> [:cat int? int?] int?]
                              :value single-arity}]}
-                  (m/explain => single-arity {::m/=>validator mg/=>validator})))
+                  (m/explain => single-arity {::m/function-checker mg/function-checker})))
 
     (is (= single-arity (m/decode => single-arity mt/string-transformer)))
 

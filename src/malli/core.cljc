@@ -1273,10 +1273,11 @@
 (defn -function-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties children {::keys [=>validator] :as options}]
+    (-into-schema [_ properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children {:min 2, :max 2})
       (let [[input output :as children] (map #(schema % options) children)
-            form (-create-form :=> properties (map -form children))]
+            form (-create-form :=> properties (map -form children))
+            ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (= :cat (-type input))
           (-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
@@ -1285,12 +1286,19 @@
           (-type [_] :=>)
           (-type-properties [_])
           (-validator [this]
-            (if-let [validator (if =>validator (=>validator this options))]
-              (fn [x] (and (ifn? x) (validator x))) ifn?))
+            (if-let [checker (->checker this)]
+              (let [validator (fn [x] (nil? (checker x)))]
+                (fn [x] (and (ifn? x) (validator x)))) ifn?))
           (-explainer [this path]
-            (let [validator (-validator this)]
+            (if-let [checker (->checker this)]
               (fn explain [x in acc]
-                (if-not (validator x) (conj acc (-error path in this x)) acc))))
+                (if (not (fn? x))
+                  (conj acc (-error path in this x))
+                  (if-let [res (checker x)]
+                    (conj acc (assoc (-error path in this x) :shrunk res)))))
+              (let [validator (-validator this)]
+                (fn explain [x in acc]
+                  (if-not (validator x) (conj acc (-error path in this x)) acc)))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))

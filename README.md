@@ -1823,10 +1823,10 @@ By default, validation just checks if a valu ia `ifn?`:
 We can use value generation for more comprehensive testing:
 
 ```clj
-(m/validate =>plus plus {::m/=>validator mg/=>validator})
+(m/validate =>plus plus {::m/function-checker mg/function-checker})
 ; => true
 
-(m/validate =>plus str {::m/=>validator mg/=>validator})
+(m/validate =>plus str {::m/function-checker mg/function-checker})
 ; => false
 ``` 
 
@@ -1852,7 +1852,7 @@ Multiple arities are WIP, currently defined using `:or`:
   (fn math
     ([x] (+ x x))
     ([x y] (+ x y)))
-  {::m/=>validator mg/=>validator})
+  {::m/function-checker mg/function-checker})
 ; => true
 
 (def f (mg/generate

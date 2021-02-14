@@ -374,7 +374,7 @@
 (deftest function-test
   (is (= ["invalid function"]
          (-> [:=> [:cat int? int?] int?]
-             (m/explain malli.core-test/single-arity {::m/=>validator mg/=>validator})
+             (m/explain malli.core-test/single-arity {::m/function-checker mg/function-checker})
              (me/humanize))))
   (is (= ["invalid function"]
          (-> [:=> [:cat int? int?] int?]

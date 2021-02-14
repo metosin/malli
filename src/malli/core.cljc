@@ -1321,6 +1321,45 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
+(defn -multi-arity-function-schema [opts]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-into-schema [_ properties children {::keys [=>validator] :as options}]
+      (-check-children! :function properties children {:min 1})
+      (let [{:keys [children entries forms]} (-parse-entries children opts options)
+            form (-create-form :function properties forms)]
+        (when-not (every? #(= :=> (-type (last %))) children)
+          (-fail! ::non-function-childs {:children children}))
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-type [_] :function)
+          (-type-properties [_])
+          (-validator [this]
+            (if-let [validator (if =>validator (=>validator this options))]
+              (fn [x] (and (ifn? x) (validator x))) ifn?))
+          (-explainer [this path]
+            (let [validator (-validator this)]
+              (fn explain [x in acc]
+                (if-not (validator x) (conj acc (-error path in this x)) acc))))
+          (-parser [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x ::invalid))))
+          (-unparser [this] (-parser this))
+          (-transformer [_ _ _ _])
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-entries walker path entries options) options)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] (-function-schema))
+          (-form [_] form)
+          LensSchema
+          (-keep [_])
+          (-get [this key default] (-get-entries this key default))
+          (-set [this key value] (-set-entries this key value)))))))
+
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 
 (defn- regex-explainer [schema path] (re/explainer schema path (-regex-explainer schema path)))
@@ -1813,6 +1852,7 @@
    :fn (-fn-schema)
    :ref (-ref-schema)
    :=> (-function-schema)
+   :function (-multi-arity-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
 

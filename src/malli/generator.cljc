@@ -101,7 +101,7 @@
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (m/-fail! :test-chuck-not-available))))
 
-(defn -=>gen [schema options]
+(defn -=>-gen [schema options]
   (let [input-schema (m/-input-schema schema)
         validate-input (m/validator input-schema)
         output-schema (m/-output-schema schema)
@@ -114,6 +114,19 @@
               (m/-fail! ::invalid-input {:schema input-schema, :args args}))
             (generate output-generator options)))
         {:arity (-> schema m/-arity)}))))
+
+(defn -function-gen [schema options]
+  (let [arity->f (->> (for [[arity _ schema] (m/children schema)]
+                          [arity (generate schema options)])
+                        (into {}))
+        arities (-> arity->f keys set)
+        varargs-f (arity->f :varargs)]
+    (gen/return
+      (fn [& args]
+        (let [arity (count args)]
+          (if-let [f (arity->f arity varargs-f)]
+            (apply f args)
+            (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))
 
 (defn -regex-generator [schema options]
   (if (m/-regex-op? schema)
@@ -198,7 +211,8 @@
 (defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
-(defmethod -schema-generator :=> [schema options] (-=>gen schema options))
+(defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
+(defmethod -schema-generator :function [schema options] (-function-gen schema options))
 (defmethod -schema-generator :ref [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))

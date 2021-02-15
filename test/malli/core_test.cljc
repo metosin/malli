@@ -2067,3 +2067,33 @@
 
     (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
            (mu/to-map-syntax =>)))))
+
+(comment
+  (def f
+    (mg/generate
+      [:function
+       [0 [:=> :cat int?]]
+       [1 [:=> [:cat int?] nat-int?]]]))
+
+  (f)
+  ;=> 132816
+  ;=> -7823115
+  ;=> -36
+  ;=> -97
+  ;=> 13412759
+  ;=> 1444
+
+  (f 1)
+  ;=> 1038018
+  ;=> 11009747
+  ;=> 8
+  ;=> 59186626
+  ;=> 10
+  ;=> 5373734
+
+  (f "1")
+  ; =throws=> :malli.generator/invalid-input {:schema [:cat int?], :args ["1"]}
+
+  (f 1 2)
+  ; =throws=> :malli.generator/invalid-arity {:arity 2, :arities #{0 1}, :args (1 2), :schema [:function [0 [:=> :cat int?]] [1 [:=> [:cat int?] nat-int?]]]}
+  )

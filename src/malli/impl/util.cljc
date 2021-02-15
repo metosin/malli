@@ -1,6 +1,8 @@
 (ns malli.impl.util
   #?(:clj (:import [clojure.lang MapEntry])))
 
+(def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
+
 (defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
 
 (defn -fail!

@@ -84,6 +84,8 @@
         (when-not (= v :malli.core/invalid)
           (k v (inc pos) (rest coll)))))))
 
+(defn item-unparser [unparse] (fn [v] (miu/-map-valid vector (unparse v))))
+
 (defn item-encoder [valid? encode]
   (fn [_ _ coll* pos coll k]
     (when (seq coll)
@@ -120,6 +122,8 @@
 ;;;; ## Unit
 
 (defn pure-parser [v] (fn [_ _ pos coll k] (k v pos coll)))
+
+(defn pure-unparser [_] [])
 
 ;;;; # Combinators
 
@@ -170,6 +174,26 @@
                     (fn [_ _ m pos coll k] (k m pos coll))
                     (reverse krs))]
     (fn [driver regs pos coll k] (acc driver regs {} pos coll k))))
+
+(defn cat-unparser [& unparsers]
+  (let [unparsers (vec unparsers)]
+    (fn [tup]
+      (if (and (vector? tup) (= (count tup) (count unparsers)))
+        (reduce-kv (fn [coll i unparser] (miu/-map-valid #(into coll %) (unparser (get tup i))))
+                   [] unparsers)
+        :malli.core/invalid))))
+
+(defn cat*-unparser [& unparsers]
+  (let [unparsers (into {} unparsers)]
+    (fn [m]
+      (if (and (map? m) (= (count m) (count unparsers)))
+        (reduce-kv (fn [coll tag unparser]
+                     (if-some [kv (find m tag)]
+                       (miu/-map-valid #(into coll %) (unparser (val kv)))
+                       :malli.core/invalid))
+                   ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
+                   [] unparsers)
+        :malli.core/invalid))))
 
 (defn cat-transformer
   ([] (fn [_ _ coll* pos coll k] (k coll* pos coll)))
@@ -224,6 +248,20 @@
              (alt*-parser (first krs))
              (rest krs)))))
 
+(defn alt-unparser [& unparsers]
+  (fn [x]
+    (reduce (fn [_ unparse] (miu/-map-valid reduced (unparse x)))
+            :malli.core/invalid unparsers)))
+
+(defn alt*-unparser [& unparsers]
+  (let [unparsers (into {} unparsers)]
+    (fn [x]
+      (if (miu/-tagged? x)
+        (if-some [kv (find unparsers (key x))]
+          ((val kv) (val x))
+          :malli.core/invalid)
+        :malli.core/invalid))))
+
 (defn alt-transformer
   ([?kr] (entry->regex ?kr))
   ([?kr ?kr*]
@@ -239,6 +277,7 @@
 (defn ?-validator [p] (alt-validator p (cat-validator)))
 (defn ?-explainer [p] (alt-explainer p (cat-explainer)))
 (defn ?-parser [p] (alt-parser p (pure-parser nil)))
+(defn ?-unparser [p] (alt-unparser p pure-unparser))
 (defn ?-transformer [p] (alt-transformer p (cat-transformer)))
 
 ;;;; ## Kleene Star
@@ -264,6 +303,15 @@
        (p driver regs pos coll
           (fn [v pos coll] (park-transformer! driver *p regs (conj coll* v) pos coll k))))))) ; TCO
 
+(defn *-unparser [up]
+  (fn [v]
+    (reduce (fn [acc v]
+              (let [result (up v)]
+                (if (miu/-invalid? result)
+                  (reduced result)
+                  (into acc result))))
+            [] v)))
+
 (defn *-transformer [p]
   (let [*p-epsilon (cat-transformer)]
     (fn *p [driver regs coll* pos coll k]
@@ -276,6 +324,14 @@
 (defn +-validator [p] (cat-validator p (*-validator p)))
 (defn +-explainer [p] (cat-explainer p (*-explainer p)))
 (defn +-parser [p] (fmap (fn [[v vs]] (cons v vs)) (cat-parser p (*-parser p))))
+
+(defn +-unparser [up]
+  (let [up* (*-unparser up)]
+    (fn [x]
+      (if (and (vector? x) (<= 1 (count x)))
+        (up* x)
+        :malli.core/invalid))))
+
 (defn +-transformer [p] (cat-transformer p (*-transformer p)))
 
 ;;;; ## Repeat
@@ -352,6 +408,13 @@
                          regs coll* pos coll k)))) ; TCO
                 (k coll* pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
+
+(defn repeat-unparser [min max up]
+  (let [up* (*-unparser up)]
+    (fn [v]
+      (if (and (vector? v) (<= min (count v) max))
+        (up* v)
+        :malli.core/invalid))))
 
 (defn repeat-transformer [min max p]
   (let [rep-epsilon (cat-transformer)]

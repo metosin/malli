@@ -77,6 +77,7 @@
 (defmethod accept := [_ _ [value] _] {:const value})
 (defmethod accept :not= [_ _ _ _] {})
 
+(defmethod accept :not [_ _ children _] {:not (last children)})
 (defmethod accept :and [_ _ children _] {:allOf children})
 (defmethod accept :or [_ _ children _] {:anyOf children})
 
@@ -97,6 +98,8 @@
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})
 (defmethod accept :fn [_ _ _ _] {})
+
+(defmethod accept :any [_ _ _ _] {})
 
 (defmethod accept :string [_ schema _ _]
   (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))

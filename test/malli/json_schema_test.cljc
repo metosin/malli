@@ -16,6 +16,7 @@
    [[:<= 6] {:type "number", :maximum 6}]
    [[:= "x"] {:const "x"}]
    ;; base
+   [[:not string?] {:not {:type "string"}}]
    [[:and int? pos-int?] {:allOf [{:type "integer"}
                                   {:type "integer", :minimum 1}]}]
    [[:or int? string?] {:anyOf [{:type "integer"} {:type "string"}]}]
@@ -55,6 +56,7 @@
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
+   [:any {}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
    [[:double {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]

@@ -137,6 +137,8 @@
 
       (is (= 1 (m/parse schema 1)))
       (is (= ::m/invalid (m/parse schema "1")))
+      (is (= 1 (m/unparse schema 1)))
+      (is (= ::m/invalid (m/unparse schema "1")))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -204,9 +206,13 @@
 
       (is (= 1 (m/parse schema 1)))
       (is (= ::m/invalid (m/parse schema 0)))
+      (is (= 1 (m/unparse schema 1)))
+      (is (= ::m/invalid (m/unparse schema 0)))
 
       (is (= (miu/-tagged :pos 1) (m/parse schema* 1)))
       (is (= ::m/invalid (m/parse schema* 0)))
+      (is (= 1 (m/unparse schema* (miu/-tagged :pos 1))))
+      (is (= ::m/invalid (m/unparse schema* (miu/-tagged :pos 0))))
 
       (doseq [schema [schema schema*]]
         (is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -299,6 +305,114 @@
                        :errors [{:path [1], :in [], :schema neg-int?, :value 1}]}
                       (m/explain schema 1))))))
 
+  (testing ":not schema"
+    (testing ":fn validation"
+      (let [schema (m/schema [:not [:fn #(= % 1)]])]
+        (is (true? (m/validate schema 2)))
+        (is (nil? (m/explain schema 2)))
+        (is (= 2 (m/parse schema 2)))
+        (is (= "2" (m/decode schema "2" mt/string-transformer)))
+        (is (= "2" (m/decode schema "2" mt/json-transformer)))
+
+        (is (true? (m/validate schema "string")))
+        (is (nil? (m/explain schema "string")))
+        (is (= "string" (m/parse schema "string")))
+
+        (is (true? (m/validate schema :keyword)))
+        (is (nil? (m/explain schema :keyword)))
+        (is (= :keyword (m/parse schema :keyword)))
+
+        (is (false? (m/validate schema 1)))
+        (is (results= {:schema schema
+                       :value 1
+                       :errors [{:path [0]
+                                 :in []
+                                 :schema schema
+                                 :value 1}]}
+                      (m/explain schema 1)))
+        (is (= ::m/invalid (m/parse schema 1)))
+
+        (is (m/walk schema (m/schema-walker identity)))))
+
+    (testing "function validation"
+      (let [schema1 (m/schema [:not pos?])
+            schema2 (m/schema [:not empty?])]
+        (is (true? (m/validate schema1 -1)))
+        (is (nil? (m/explain schema1 -1)))
+        (is (= -1 (m/parse schema1 -1)))
+        (is (= "-1" (m/decode schema1 "-1" mt/string-transformer)))
+        (is (= "-1" (m/decode schema1 "-1" mt/json-transformer)))
+
+        (is (true? (m/validate schema1 0)))
+        (is (nil? (m/explain schema1 0)))
+        (is (= 0 (m/parse schema1 0)))
+
+        (is (true? (m/validate schema2 "string")))
+        (is (nil? (m/explain schema2 "string")))
+        (is (= "string" (m/parse schema2 "string")))
+        (is (= "string" (m/decode schema2 "string" mt/string-transformer)))
+        (is (= "" (m/decode schema2 "" mt/string-transformer)))
+        (is (= "string" (m/decode schema2 "string" mt/json-transformer)))
+        (is (= "" (m/decode schema2 "" mt/json-transformer)))
+
+        (is (false? (m/validate schema1 1)))
+        (is (results= {:schema schema1
+                       :value 1
+                       :errors [{:path [0]
+                                 :in []
+                                 :schema schema1
+                                 :value 1}]}
+                      (m/explain schema1 1)))
+        (is (= ::m/invalid (m/parse schema1 1)))
+
+        (is (false? (m/validate schema2 "")))
+        (is (results= {:schema schema2
+                       :value ""
+                       :errors [{:path [0]
+                                 :in []
+                                 :schema schema2
+                                 :value ""}]}
+                      (m/explain schema2 "")))
+        (is (= ::m/invalid (m/parse schema2 "")))
+
+        (is (m/walk schema1 (m/schema-walker identity)))
+        (is (m/walk schema2 (m/schema-walker identity)))))
+
+    (testing "as a part of a complex schema"
+      (let [schema (m/schema [:map
+                              [:a int?]
+                              [:b [:not empty?]]
+                              [:c [:map [:d [:not [:fn #(= "test" %)]]]]]
+                              [:e [:not [:< 10]]]])]
+        (is (m/validate schema {:a 1 :b "Test" :c {:d "Malli"} :e 10}))
+        (is (results= {:errors [{:in [:b]
+                                 :message nil
+                                 :path [:b 0]
+                                 :schema (mu/get-in schema [:b])
+                                 :type nil
+                                 :value ""}]
+                       :schema schema
+                       :value {:a 1 :b "" :c {:d "Malli"} :e 10}}
+                      (m/explain schema {:a 1 :b "" :c {:d "Malli"} :e 10})))
+        (is (results= {:errors [{:in [:c :d]
+                                 :message nil
+                                 :path [:c :d 0]
+                                 :schema (mu/get-in schema [:c :d])
+                                 :type nil
+                                 :value "test"}]
+                       :schema schema
+                       :value {:a 1 :b "Test" :c {:d "test"} :e 10}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "test"} :e 10})))
+        (is (results= {:errors [{:in [:e]
+                                 :message nil
+                                 :path [:e 0]
+                                 :schema (mu/get-in schema [:e])
+                                 :type nil
+                                 :value 9}]
+                       :schema schema
+                       :value {:a 1 :b "Test" :c {:d "Malli"} :e 9}}
+                      (m/explain schema {:a 1 :b "Test" :c {:d "Malli"} :e 9}))))))
+
   (testing "comparator schemas"
     (let [schema (m/schema [:> 0])]
 
@@ -312,6 +426,8 @@
 
       (is (= 1 (m/parse schema 1)))
       (is (= ::m/invalid (m/parse schema 0)))
+      (is (= 1 (m/unparse schema 1)))
+      (is (= ::m/invalid (m/unparse schema 0)))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -340,6 +456,8 @@
 
       (is (= 1 (m/parse schema 1)))
       (is (= ::m/invalid (m/parse schema 0)))
+      (is (= 1 (m/unparse schema 1)))
+      (is (= ::m/invalid (m/unparse schema 0)))
 
       ;; TODO: infer type from :enum
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
@@ -371,6 +489,9 @@
       (is (= 1 (m/parse schema 1)))
       (is (nil? (m/parse schema nil)))
       (is (= ::m/invalid (m/parse schema "abba")))
+      (is (= 1 (m/unparse schema 1)))
+      (is (nil? (m/unparse schema nil)))
+      (is (= ::m/invalid (m/unparse schema "abba")))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -413,6 +534,9 @@
         (is (= [1 nil] (m/parse ConsCell [1 nil])))
         (is (= [1 [2 nil]] (m/parse ConsCell [1 [2 nil]])))
         (is (= ::m/invalid (m/parse ConsCell [1 [2]])))
+        (is (= [1 nil] (m/unparse ConsCell [1 nil])))
+        (is (= [1 [2 nil]] (m/unparse ConsCell [1 [2 nil]])))
+        (is (= ::m/invalid (m/unparse ConsCell [1 [2]])))
 
         (is (= [1 ["two" [3 nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/string-transformer)))
         (is (= ["1" ["two" ["3" nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/json-transformer)))
@@ -494,6 +618,8 @@
 
       (is (= 1 (m/parse schema 1)))
       (is (= ::m/invalid (m/parse schema -1)))
+      (is (= 1 (m/unparse schema 1)))
+      (is (= ::m/invalid (m/unparse schema -1)))
 
       (is (= 1 (m/decode schema "1" mt/string-transformer)))
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
@@ -555,6 +681,10 @@
         (is (= ::m/invalid (m/parse schema "abba")))
         (is (= ::m/invalid (m/parse schema ".b")))
         (is (= ::m/invalid (m/parse schema false)))
+        (is (= "a.b" (m/unparse schema "a.b")))
+        (is (= ::m/invalid (m/unparse schema "abba")))
+        (is (= ::m/invalid (m/unparse schema ".b")))
+        (is (= ::m/invalid (m/unparse schema false)))
 
         (is (= 4 (m/decode
                    [:re {:decode/string '{:enter inc, :leave (partial * 2)}} ".*"]
@@ -585,6 +715,10 @@
         (is (= ::m/invalid (m/parse schema 1)))
         (is (= ::m/invalid (m/parse schema 20)))
         (is (= ::m/invalid (m/parse schema "invalid")))
+        (is (= 12 (m/unparse schema 12)))
+        (is (= ::m/invalid (m/unparse schema 1)))
+        (is (= ::m/invalid (m/unparse schema 20)))
+        (is (= ::m/invalid (m/unparse schema "invalid")))
 
         (is (= 4 (m/decode
                    [:fn {:decode/string '{:enter inc, :leave (partial * 2)}} 'int?]
@@ -689,9 +823,16 @@
       (is (= valid2 (m/parse schema valid2)))
       (is (= ::m/invalid (m/parse schema invalid)))
       (is (= ::m/invalid (m/parse schema "not-a-map")))
+      (is (= valid (m/unparse schema valid)))
+      (is (= valid-with-extras (m/unparse schema valid-with-extras)))
+      (is (= valid2 (m/unparse schema valid2)))
+      (is (= ::m/invalid (m/unparse schema invalid)))
+      (is (= ::m/invalid (m/unparse schema "not-a-map")))
 
       (is (= valid (m/parse closed-schema valid)))
       (is (= ::m/invalid (m/parse closed-schema valid-with-extras)))
+      (is (= valid (m/unparse closed-schema valid)))
+      (is (= ::m/invalid (m/unparse closed-schema valid-with-extras)))
 
       (is (= {:x true} (m/decode schema {:x "true"} mt/string-transformer)))
       (is (= {:x true, :y 1} (m/decode schema {:x "true", :y "1"} mt/string-transformer)))
@@ -796,6 +937,12 @@
       (is (= ::m/invalid (m/parse schema invalid2)))
       (is (= ::m/invalid (m/parse schema invalid3)))
       (is (= ::m/invalid (m/parse schema "not-a-map")))
+      (is (= valid1 (m/unparse schema valid1)))
+      (is (= valid2 (m/unparse schema valid2)))
+      (is (= ::m/invalid (m/unparse schema invalid1)))
+      (is (= ::m/invalid (m/unparse schema invalid2)))
+      (is (= ::m/invalid (m/unparse schema invalid3)))
+      (is (= ::m/invalid (m/unparse schema "not-a-map")))
 
       (is (= {:type :sized, :size 10}
              (m/decode schema {:type "sized", :size "10"} mt/string-transformer)))
@@ -867,6 +1014,10 @@
     (is (= {:age 18} (m/parse [:map-of keyword? int?] {:age 18})))
     (is (= ::m/invalid (m/parse [:map-of string? int?] {:age "18"})))
     (is (= ::m/invalid (m/parse [:map-of string? int?] 1)))
+    (is (= {"age" 18} (m/unparse [:map-of string? int?] {"age" 18})))
+    (is (= {:age 18} (m/unparse [:map-of keyword? int?] {:age 18})))
+    (is (= ::m/invalid (m/unparse [:map-of string? int?] {:age "18"})))
+    (is (= ::m/invalid (m/unparse [:map-of string? int?] 1)))
 
     (is (= {1 1} (m/decode [:map-of int? pos-int?] {"1" "1"} mt/string-transformer)))
 
@@ -967,7 +1118,8 @@
           (testing name
             (is (= expected (m/validate schema value)))
             (is (= expected (m/validate (over-the-wire schema) value)))
-            (is (= (if expected value ::m/invalid) (m/parse schema value)))))))
+            (is (= (if expected value ::m/invalid) (m/parse schema value)))
+            (is (= (if expected value ::m/invalid) (m/unparse schema value)))))))
 
     (testing "transform"
       (is (= {:x 1} (m/decode [:vector [:map [:x int?]]] {:x 1} (mt/transformer {:name "test"}))))
@@ -1154,7 +1306,8 @@
               (let [es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :cat) v v*)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1168,7 +1321,8 @@
               (let [es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :cat) v v*)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1184,7 +1338,8 @@
               (let [es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :cat) v v*)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1203,7 +1358,8 @@
               (let [es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :cat) v v*) s) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1222,7 +1378,9 @@
             (is (m/validate s v))
 
             (is (= [[4 4 4] 4] (m/parse s v)))
-            (is (= {:pos [4 4 4], :four 4} (m/parse s* v)))))))
+            (is (= {:pos [4 4 4], :four 4} (m/parse s* v)))
+            (is (= v (m/unparse s [[4 4 4] 4])))
+            (is (= v (m/unparse s* {:pos [4 4 4], :four 4})))))))
 
     (doseq [typ [:alt :alt*]]
       (testing typ
@@ -1236,7 +1394,8 @@
                     es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :alt) v* v**)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1252,7 +1411,8 @@
                     es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :alt) v* v**)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1270,7 +1430,8 @@
                     es errs]
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                     (= (m/parse s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/invalid))))
+                     (= (m/parse s v) (if (nil? es) (if (= typ :alt) v* v**) ::m/invalid))
+                     (or (some? es) (= (m/unparse s (if (= typ :alt) v* v**)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1291,7 +1452,8 @@
           (let [es errs]
             (and (= (m/validate s v) (nil? es))
                  (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                 (= (m/parse s v) (if (nil? es) v* ::m/invalid))))
+                 (= (m/parse s v) (if (nil? es) v* ::m/invalid))
+                 (or (some? es) (= (m/unparse s v*) v))))
 
           0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
           "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1308,7 +1470,8 @@
                                      (repeat n [:= :a])))
               v (repeat n :a)]
           (is (m/validate s v))
-          (is (= (concat (repeat n nil) v) (m/parse s v))))))
+          (is (= (concat (repeat n nil) v) (m/parse s v)))
+          (is (= v (m/unparse s (vec (concat (repeat n nil) v))))))))
 
     (testing "*"
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:*])))
@@ -1319,7 +1482,8 @@
           (let [es errs]
             (and (= (m/validate s v) (nil? es))
                  (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                 (= (m/parse s v) (if (nil? es) v ::m/invalid))))
+                 (= (m/parse s v) (if (nil? es) v ::m/invalid))
+                 (or (some? es) (= (m/unparse s v) v))))
 
           0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
           "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1341,7 +1505,8 @@
           (let [es errs]
             (and (= (m/validate s v) (nil? es))
                  (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                 (= (m/parse s v) (if (nil? es) v ::m/invalid))))
+                 (= (m/parse s v) (if (nil? es) v ::m/invalid))
+                 (or (some? es) (= (m/unparse s v) v))))
 
           0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
           "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1362,7 +1527,8 @@
           (let [es errs]
             (and (= (m/validate s v) (nil? es))
                  (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                 (= (m/parse s v) (if (nil? es) v ::m/invalid))))
+                 (= (m/parse s v) (if (nil? es) v ::m/invalid))
+                 (or (some? es) (= (m/unparse s v) v))))
 
           0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
           "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1387,7 +1553,8 @@
           (let [es errs]
             (and (= (m/validate s v) (nil? es))
                  (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
-                 (= (m/parse s v) (if (nil? es) v ::m/invalid))))
+                 (= (m/parse s v) (if (nil? es) v ::m/invalid))
+                 (or (some? es) (= (m/unparse s v) v))))
 
           0 [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
           "foo" [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
@@ -1551,7 +1718,11 @@
 (deftest simple-schemas
   (testing "simple schemas"
     (doseq [[type {:keys [schema validate explain decode encode map-syntax form]}]
-            {:string {:schema [:string {:min 1, :max 4}]
+            {:any {:schema :any
+                   :validate {:success [nil 1 "kikka"]}
+                   :map-syntax {:type :any}
+                   :form :any}
+             :string {:schema [:string {:min 1, :max 4}]
                       :validate {:success ["abba" "a"]
                                  :failure [nil "invalid" "" 1]}
                       :explain [["abba"]

@@ -73,4 +73,15 @@
            \"Order$Delivery$Address\" -> \"Country\" [arrowtail=\"odiamond\"]
            \"OrderLine\" -> \"Burger\" [arrowtail=\"odiamond\"]
          }"
-        (md/transform Order))))
+        (md/transform Order)))
+
+  (is (trimmed=
+        "digraph {
+           node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+           edge [dir=\"back\", arrowtail=\"none\"]
+
+           \":malli.dot/schema\" [label=\"{:malli.dot/schema|[:and int? [:\\< 100]]\\l}\", fillcolor=\"#fff0cd\"]
+           }"
+        (md/transform [:and int? [:< 100]])
+        ))
+  )

@@ -1830,6 +1830,30 @@
             (is (= {:value 42}
                    (m/properties schema)))))))))
 
+(deftest -min-size-test
+  (are [s min-size]
+    (= (m/-min-size (m/schema s)) min-size)
+
+    int? 1
+    [:cat] 0
+    [:cat int?] 1
+    [:cat int? [:cat]] 1
+    [:cat int? [:cat string? int?]] 3
+    [:cat*] 0
+    [:cat* [:n int?]] 1
+    [:cat* [:n int?] [:named [:cat]]] 1
+    [:cat* [:n int?] [:named [:cat string? int?]]] 3
+    [:alt int?] 1
+    [:alt int? [:cat]] 0
+    [:alt* [:n int?]] 1
+    [:alt* [:n int?] [:empty [:cat]]] 0
+    [:* int?] 0
+    [:? int?] 0
+    [:+ [:cat string? int?]] 2
+    [:+ [:? int?]] 0
+    [:repeat {:min 5, :max 15} [:cat string? int?]] 10
+    [:repeat {:min 5, :max 15} [:* int?]] 0))
+
 (defn single-arity
   ([x] x)
   ([_ _] (m/-fail! ::arity-error)))

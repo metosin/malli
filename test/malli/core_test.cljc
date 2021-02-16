@@ -2023,7 +2023,14 @@
     [:+ [:cat string? int?]] 2
     [:+ [:? int?]] 0
     [:repeat {:min 5, :max 15} [:cat string? int?]] 10
-    [:repeat {:min 5, :max 15} [:* int?]] 0))
+    [:repeat {:min 5, :max 15} [:* int?]] 0
+    [:schema {:registry {:named [:cat string? int?]}} :named] 2
+    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] 10)
+
+  (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
+                        (m/-min-size
+                          (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
+                                   ::ints])))))
 
 (defn single-arity
   ([x] x)

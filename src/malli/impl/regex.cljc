@@ -207,46 +207,39 @@
 
 ;;;; ## Alternation
 
-(defn alt-validator
-  ([?kr] (entry->regex ?kr))
-  ([?kr ?kr*]
-   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver regs pos coll k]
-       (park-validator! driver r* regs pos coll k)          ; remember fallback
-       (park-validator! driver r regs pos coll k))))
-  ([?kr ?kr* & ?krs]
-   (alt-validator ?kr (reduce (fn [acc ?kr] (alt-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
+(defn alt-validator [& ?krs]
+  (reduce (fn [acc ?kr]
+            (let [r (entry->regex acc), r* (entry->regex ?kr)]
+              (fn [driver regs pos coll k]
+                (park-validator! driver r* regs pos coll k) ; remember fallback
+                (park-validator! driver r regs pos coll k))))
+          (reverse ?krs)))
 
-(defn alt-explainer
-  ([?kr] (entry->regex ?kr))
-  ([?kr ?kr*]
-   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver regs pos coll k]
-       (park-explainer! driver r* regs pos coll k)          ; remember fallback
-       (park-explainer! driver r regs pos coll k))))
-  ([?kr ?kr* & ?krs]
-   (alt-explainer ?kr (reduce (fn [acc ?kr] (alt-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
+(defn alt-explainer [& ?krs]
+  (reduce (fn [acc ?kr]
+            (let [r (entry->regex acc), r* (entry->regex ?kr)]
+              (fn [driver regs pos coll k]
+                (park-explainer! driver r* regs pos coll k) ; remember fallback
+                (park-explainer! driver r regs pos coll k))))
+          (reverse ?krs)))
 
-(defn alt-parser
-  ([r] r)
-  ([r & rs]
-   (reduce (fn [acc r]
-             (fn [driver regs pos coll k]
-               (park-validator! driver acc regs pos coll k) ; remember fallback
-               (park-validator! driver r regs pos coll k)))
-           (reverse (cons r rs)))))
+(defn alt-parser [& rs]
+  (reduce (fn [acc r]
+            (fn [driver regs pos coll k]
+              (park-validator! driver acc regs pos coll k)  ; remember fallback
+              (park-validator! driver r regs pos coll k)))
+          (reverse rs)))
 
-(defn alt*-parser
-  ([[tag r]] (fmap (fn [v] (miu/-tagged tag v)) r))
-  ([kr & krs]
-   (let [krs (reverse (cons kr krs))]
-     (reduce (fn [acc [tag r]]
-               (let [r (fmap (fn [v] (miu/-tagged tag v)) r)]
-                 (fn [driver regs pos coll k]
-                   (park-validator! driver acc regs pos coll k) ; remember fallback
-                   (park-validator! driver r regs pos coll k))))
-             (alt*-parser (first krs))
-             (rest krs)))))
+(defn alt*-parser [& krs]
+  (let [[kr & krs] (reverse krs)]
+    (reduce (fn [acc [tag r]]
+              (let [r (fmap (fn [v] (miu/-tagged tag v)) r)]
+                (fn [driver regs pos coll k]
+                  (park-validator! driver acc regs pos coll k) ; remember fallback
+                  (park-validator! driver r regs pos coll k))))
+            (let [[tag r] kr]
+              (fmap (fn [v] (miu/-tagged tag v)) r))
+            krs)))
 
 (defn alt-unparser [& unparsers]
   (fn [x]
@@ -262,15 +255,13 @@
           :malli.core/invalid)
         :malli.core/invalid))))
 
-(defn alt-transformer
-  ([?kr] (entry->regex ?kr))
-  ([?kr ?kr*]
-   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver regs coll* pos coll k]
-       (park-transformer! driver r* regs coll* pos coll k)  ; remember fallback
-       (park-transformer! driver r regs coll* pos coll k))))
-  ([?kr ?kr* & ?krs]
-   (alt-transformer ?kr (reduce (fn [acc ?kr] (alt-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
+(defn alt-transformer [& ?krs]
+  (reduce (fn [acc ?kr]
+            (let [r (entry->regex acc), r* (entry->regex ?kr)]
+              (fn [driver regs coll* pos coll k]
+                (park-transformer! driver r regs coll* pos coll k) ; remember fallback
+                (park-transformer! driver r* regs coll* pos coll k))))
+          (reverse ?krs)))
 
 ;;;; ## Option
 

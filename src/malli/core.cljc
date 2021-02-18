@@ -1324,11 +1324,12 @@
 (defn -multi-arity-function-schema [opts]
   ^{:type ::into-schema}
   (reify IntoSchema
-    (-into-schema [_ properties children {::keys [=>validator] :as options}]
+    (-into-schema [_ properties children {::keys [function-checker] :as options}]
       (-check-children! :function properties children {:min 1})
-      (let [{:keys [children entries forms]} (-parse-entries children opts options)
-            form (-create-form :function properties forms)]
-        (when-not (every? #(= :=> (-type (last %))) children)
+      (let [children (map #(schema % options) children)
+            form (-create-form :function properties children)
+            ->checker (if function-checker #(function-checker % options) (constantly nil))]
+        (when-not (every? #(= :=> (-type %)) children)
           (-fail! ::non-function-childs {:children children}))
         ^{:type ::schema}
         (reify
@@ -1336,8 +1337,9 @@
           (-type [_] :function)
           (-type-properties [_])
           (-validator [this]
-            (if-let [validator (if =>validator (=>validator this options))]
-              (fn [x] (and (ifn? x) (validator x))) ifn?))
+            (if-let [checker (->checker this)]
+              (let [validator (fn [x] (nil? (checker x)))]
+                (fn [x] (and (ifn? x) (validator x)))) ifn?))
           (-explainer [this path]
             (let [validator (-validator this)]
               (fn explain [x in acc]
@@ -1349,7 +1351,7 @@
           (-transformer [_ _ _ _])
           (-walk [this walker path options]
             (if (-accept walker this path options)
-              (-outer walker this path (-inner-entries walker path entries options) options)))
+              (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)

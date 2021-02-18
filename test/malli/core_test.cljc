@@ -18,6 +18,7 @@
                                              (update :schema m/form)
                                              (update :type (fnil identity nil))
                                              (update :message (fnil identity nil))
+                                             (dissoc :check)
                                              (miu/map->SchemaError)))))))
 
 (defn results= [& results]
@@ -2030,7 +2031,7 @@
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                         (m/-regex-min-max
                           (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                   ::ints])))))
+                                     ::ints])))))
 
 (defn single-arity
   ([x] x)

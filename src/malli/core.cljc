@@ -1295,7 +1295,7 @@
                 (if (not (fn? x))
                   (conj acc (-error path in this x))
                   (if-let [res (checker x)]
-                    (conj acc (assoc (-error path in this x) :shrunk res)))))
+                    (conj acc (assoc (-error path in this x) :check res)))))
               (let [validator (-validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (-error path in this x)) acc)))))

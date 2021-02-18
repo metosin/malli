@@ -2001,34 +2001,34 @@
             (is (= {:value 42}
                    (m/properties schema)))))))))
 
-(deftest -min-size-test
-  (are [s min-size]
-    (= (m/-min-size (m/schema s)) min-size)
+(deftest -regex-min-max-size-test
+  (are [s min-max]
+    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))
 
-    int? 1
-    [:cat] 0
-    [:cat int?] 1
-    [:cat int? [:cat]] 1
-    [:cat int? [:cat string? int?]] 3
-    [:cat*] 0
-    [:cat* [:n int?]] 1
-    [:cat* [:n int?] [:named [:cat]]] 1
-    [:cat* [:n int?] [:named [:cat string? int?]]] 3
-    [:alt int?] 1
-    [:alt int? [:cat]] 0
-    [:alt* [:n int?]] 1
-    [:alt* [:n int?] [:empty [:cat]]] 0
-    [:* int?] 0
-    [:? int?] 0
-    [:+ [:cat string? int?]] 2
-    [:+ [:? int?]] 0
-    [:repeat {:min 5, :max 15} [:cat string? int?]] 10
-    [:repeat {:min 5, :max 15} [:* int?]] 0
-    [:schema {:registry {:named [:cat string? int?]}} :named] 2
-    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] 10)
+    int? [1 1]
+    [:cat] [0 0]
+    [:cat int?] [1 1]
+    [:cat int? [:cat]] [1 1]
+    [:cat int? [:cat string? int?]] [3 3]
+    [:cat*] [0 0]
+    [:cat* [:n int?]] [1 1]
+    [:cat* [:n int?] [:named [:cat]]] [1 1]
+    [:cat* [:n int?] [:named [:cat string? int?]]] [3 3]
+    [:alt int?] [1 1]
+    [:alt int? [:cat]] [0 1]
+    [:alt* [:n int?]] [1 1]
+    [:alt* [:n int?] [:empty [:cat]]] [0 1]
+    [:* int?] [0 nil]
+    [:? int?] [0 1]
+    [:+ [:cat string? int?]] [2 nil]
+    [:+ [:? int?]] [0 nil]
+    [:repeat {:min 5, :max 15} [:cat string? int?]] [10 30]
+    [:repeat {:min 5, :max 15} [:* int?]] [0 nil]
+    [:schema {:registry {:named [:cat string? int?]}} :named] [2 2]
+    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30])
 
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
-                        (m/-min-size
+                        (m/-regex-min-max
                           (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
                                    ::ints])))))
 

@@ -139,41 +139,43 @@
 
 (defn cat-validator
   ([] (fn [_ _ pos coll k] (k pos coll)))
-  ([?kr] (entry->regex ?kr))
-  ([?kr ?kr*]
-   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver regs pos coll k]
-       (r driver regs pos coll (fn [pos coll] (r* driver regs pos coll k))))))
-  ([?kr ?kr* & ?krs]
-   (cat-validator ?kr (reduce (fn [acc ?kr] (cat-validator ?kr acc)) (reverse (cons ?kr* ?krs))))))
+  ([?kr & ?krs]
+   (reduce (fn [acc ?kr]
+             (let [r* (entry->regex ?kr)]
+               (fn [driver regs pos coll k]
+                 (acc driver regs pos coll (fn [pos coll] (r* driver regs pos coll k))))))
+           (entry->regex ?kr) ?krs)))
 
 (defn cat-explainer
   ([] (fn [_ _ pos coll k] (k pos coll)))
-  ([?kr] (entry->regex ?kr))
-  ([?kr ?kr*]
-   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver regs pos coll k]
-       (r driver regs pos coll (fn [pos coll] (r* driver regs pos coll k))))))
-  ([?kr ?kr* & ?krs]
-   (cat-explainer ?kr (reduce (fn [acc ?kr] (cat-explainer ?kr acc)) (reverse (cons ?kr* ?krs))))))
+  ([?kr & ?krs]
+   (reduce (fn [acc ?kr]
+             (let [r* (entry->regex ?kr)]
+               (fn [driver regs pos coll k]
+                 (acc driver regs pos coll (fn [pos coll] (r* driver regs pos coll k))))))
+           (entry->regex ?kr) ?krs)))
 
-(defn cat-parser [& rs]
-  (let [acc (reduce (fn [acc r]
+(defn cat-parser
+  ([] (fn [_ _ pos coll k] (k [] pos coll)))
+  ([r & rs]
+   (let [sp (reduce (fn [acc r]
                       (fn [driver regs coll* pos coll k]
                         (r driver regs pos coll
                            (fn [v pos coll] (acc driver regs (conj coll* v) pos coll k)))))
                     (fn [_ _ coll* pos coll k] (k coll* pos coll))
-                    (reverse rs))]
-    (fn [driver regs pos coll k] (acc driver regs [] pos coll k))))
+                    (reverse (cons r rs)))]
+     (fn [driver regs pos coll k] (sp driver regs [] pos coll k)))))
 
-(defn cat*-parser [& krs]
-  (let [acc (reduce (fn [acc [tag r]]
+(defn cat*-parser
+  ([] (fn [_ _ pos coll k] (k {} pos coll)))
+  ([kr & krs]
+   (let [sp (reduce (fn [acc [tag r]]
                       (fn [driver regs m pos coll k]
                         (r driver regs pos coll
                            (fn [v pos coll] (acc driver regs (assoc m tag v) pos coll k)))))
                     (fn [_ _ m pos coll k] (k m pos coll))
-                    (reverse krs))]
-    (fn [driver regs pos coll k] (acc driver regs {} pos coll k))))
+                    (reverse (cons kr krs)))]
+     (fn [driver regs pos coll k] (sp driver regs {} pos coll k)))))
 
 (defn cat-unparser [& unparsers]
   (let [unparsers (vec unparsers)]
@@ -197,13 +199,12 @@
 
 (defn cat-transformer
   ([] (fn [_ _ coll* pos coll k] (k coll* pos coll)))
-  ([?kr] (entry->regex ?kr))
-  ([?kr ?kr*]
-   (let [r (entry->regex ?kr), r* (entry->regex ?kr*)]
-     (fn [driver regs coll* pos coll k]
-       (r driver regs coll* pos coll (fn [coll* pos coll] (r* driver regs coll* pos coll k))))))
-  ([?kr ?kr* & ?krs]
-   (cat-transformer ?kr (reduce (fn [acc ?kr] (cat-transformer ?kr acc)) (reverse (cons ?kr* ?krs))))))
+  ([?kr & ?krs]
+   (reduce (fn [acc ?kr]
+             (let [r (entry->regex ?kr)]
+               (fn [driver regs coll* pos coll k]
+                 (acc driver regs coll* pos coll (fn [coll* pos coll] (r driver regs coll* pos coll k))))))
+           (entry->regex ?kr) ?krs)))
 
 ;;;; ## Alternation
 

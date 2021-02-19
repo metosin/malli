@@ -118,6 +118,8 @@
 (defmethod accept :qualified-symbol [_ _ _ _] {:type "string"})
 (defmethod accept :uuid [_ _ _ _] {:type "string" :format "uuid"})
 
+(defmethod accept :=> [_ _ _ _] {})
+(defmethod accept :function [_ _ _ _] {})
 (defmethod accept :ref [_ schema _ _] (-ref (m/-ref schema)))
 (defmethod accept :schema [_ schema _ options] (-schema schema options))
 (defmethod accept ::m/schema [_ schema _ options] (-schema schema options))

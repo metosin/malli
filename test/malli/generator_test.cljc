@@ -227,18 +227,13 @@
 
 #?(:clj
    (deftest function-schema-test
-     (testing "generates valid functions"
+     (let [=> (m/schema [:=> [:cat int? int?] int?])
+           input (m/-input-schema =>)
+           output (m/-output-schema =>)]
+       (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000}))))
 
-       (let [=> (m/schema [:=> [:cat int? int?] int?])
-             input (m/-input-schema =>)
-             output (m/-output-schema =>)]
-         (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000})))))
-
-     (testing "arity meta"
-       (let [=> [:or
-                 [:=> [:cat int?] int?]
-                 [:=> [:cat int? int? int?] int?]]]
-         (is (every? (comp #{1 3} :arity meta) (mg/sample => {:size 1000})))))))
+     (let [=> (m/schema [:function [:=> [:cat int?] int?] [:=> [:cat int? int?] int?]])]
+       (is (every? #(m/validate int? (apply % (mg/generate [:or [:cat int?] [:cat int? int?]]))) (mg/sample => {:size 1000}))))))
 
 (deftest recursive-schema-generation-test-307
   (let [sample (mg/generate [:schema {:registry {::A

@@ -129,7 +129,7 @@
 
 ;;;; ## Functor
 
-(defn fmap [f p]
+(defn fmap-parser [f p]
   (fn [driver regs pos coll k]
     (p driver regs pos coll (fn [v pos coll] (k (f v) pos coll)))))
 
@@ -234,12 +234,12 @@
 (defn alt*-parser [& krs]
   (let [[kr & krs] (reverse krs)]
     (reduce (fn [acc [tag r]]
-              (let [r (fmap (fn [v] (miu/-tagged tag v)) r)]
+              (let [r (fmap-parser (fn [v] (miu/-tagged tag v)) r)]
                 (fn [driver regs pos coll k]
                   (park-validator! driver acc regs pos coll k) ; remember fallback
                   (park-validator! driver r regs pos coll k))))
             (let [[tag r] kr]
-              (fmap (fn [v] (miu/-tagged tag v)) r))
+              (fmap-parser (fn [v] (miu/-tagged tag v)) r))
             krs)))
 
 (defn alt-unparser [& unparsers]
@@ -315,7 +315,7 @@
 
 (defn +-validator [p] (cat-validator p (*-validator p)))
 (defn +-explainer [p] (cat-explainer p (*-explainer p)))
-(defn +-parser [p] (fmap (fn [[v vs]] (cons v vs)) (cat-parser p (*-parser p))))
+(defn +-parser [p] (fmap-parser (fn [[v vs]] (cons v vs)) (cat-parser p (*-parser p))))
 
 (defn +-unparser [up]
   (let [up* (*-unparser up)]

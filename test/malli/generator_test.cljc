@@ -9,21 +9,22 @@
             [malli.util :as mu]))
 
 (deftest generator-test
-  (doseq [[?schema] json-schema-test/expectations
+  (doseq [[?schema _ ?fn] json-schema-test/expectations
           ;; cljs doesn't have a regex generator :(
-          #?@(:cljs [:when (not= (m/type ?schema) :re)])]
+          #?@(:cljs [:when (not= (m/type ?schema) :re)])
+          :let [f (if ?fn #(%) identity)]]
     (testing (m/form ?schema)
       (testing "generate"
-        (is (= (mg/generate ?schema {:seed 123})
-               (mg/generate ?schema {:seed 123})))
-        (is (= (mg/generate ?schema {:seed 123, :size 10})
-               (mg/generate ?schema {:seed 123, :size 10})))
+        (is (= (f (mg/generate ?schema {:seed 123}))
+               (f (mg/generate ?schema {:seed 123}))))
+        (is (= (f (mg/generate ?schema {:seed 123, :size 10}))
+               (f (mg/generate ?schema {:seed 123, :size 10}))))
         (is (m/validate ?schema (mg/generate ?schema {:seed 123}))))
       (testing "sample"
-        (is (= (mg/sample ?schema {:seed 123})
-               (mg/sample ?schema {:seed 123})))
-        (is (= (mg/sample ?schema {:seed 123, :size 10})
-               (mg/sample ?schema {:seed 123, :size 10})))
+        (is (= (map f (mg/sample ?schema {:seed 123}))
+               (map f (mg/sample ?schema {:seed 123}))))
+        (is (= (map f (mg/sample ?schema {:seed 123, :size 10}))
+               (map f (mg/sample ?schema {:seed 123, :size 10}))))
         (doseq [value (mg/sample ?schema {:seed 123})]
           (is (m/validate ?schema value))))))
 

@@ -56,7 +56,7 @@
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
-   [[:fn int?] {}]
+   [[:fn {:gen/elements [1]} int?] {}]
    [:any {}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
@@ -67,8 +67,8 @@
    [:qualified-symbol {:type "string"}]
    [:uuid {:type "string", :format "uuid"}]
 
-   [[:=> :cat int?] {}]
-   [[:function [:=> :cat int?]] {}]
+   [[:=> :cat int?] {} :fn]
+   [[:function [:=> :cat int?]] {} :fn]
 
    [integer? {:type "integer"}]
    #?@(:clj [[ratio? {:type "number"}]

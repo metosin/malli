@@ -164,31 +164,3 @@
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
-
-(ns user)
-
-(require '[malli.core :as m])
-
-(defn kikka
-  ([x] (* x x))
-  ([x y & z] (apply + (* x y) z)))
-
-(m/=> kikka [:function
-             [:=> [:cat :int] [:int {:min 0}]]
-             [:=> [:cat :int :int [:* :int]] :int]])
-
-(require '[malli.clj-kondo :as clj-kondo])
-
-(clj-kondo/linter-config (clj-kondo/collect))
-;{:linters
-; {:type-mismatch
-;  {:namespaces
-;   {user
-;    {kikka
-;     {:arities {1 {:args [:int]},
-;                :varargs {:args [:int :int {:op :rest, :spec :int}],
-;                          :min-arity 2}}}}}}}}
-
-(kikka -2) ; => 4
-(kikka 2 3) ; => 5
-(kikka 2 3 4) ; => 10

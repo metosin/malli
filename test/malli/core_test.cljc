@@ -2038,63 +2038,78 @@
   ([_ _] (m/-fail! ::arity-error)))
 
 (deftest function-schema-test
-  (let [f-ok (fn [x y] (+ x y))
-        => [:=> [:cat int? int?] int?]]
 
-    (testing "by default, all ifn? are valid"
-      (is (true? (m/validate => identity)))
-      (is (true? (m/validate => #{}))))
+  (testing ":=>"
+    (let [valid-f (fn [x y] (+ x y))
+          schema [:=> [:cat int? int?] int?]]
 
-    (testing "using generative testing"
-      (is (false? (m/validate => single-arity {::m/function-checker mg/function-checker})))
-      ;; js allows invalid arity
-      #?(:clj (is (false? (m/validate => (fn [x] x) {::m/function-checker mg/function-checker}))))
-      #?(:clj (is (false? (m/validate => #{} {::m/function-checker mg/function-checker}))))
-      (is (true? (m/validate => f-ok {::m/function-checker mg/function-checker})))
-      (is (false? (m/validate => (fn [x y] (str x y)) {::m/function-checker mg/function-checker}))))
+      (testing "by default, all ifn? are valid"
+        (is (true? (m/validate schema identity)))
+        (is (true? (m/validate schema #{}))))
 
-    (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/function-checker mg/function-checker})))
-    (is (results= {:schema [:=> [:cat int? int?] int?]
-                   :value single-arity
-                   :errors [{:path []
-                             :in []
-                             :schema [:=> [:cat int? int?] int?]
-                             :value single-arity}]}
-                  (m/explain => single-arity {::m/function-checker mg/function-checker})))
+      (testing "using generative testing"
+        (is (false? (m/validate schema single-arity {::m/function-checker mg/function-checker})))
+        ;; js allows invalid arity
+        #?(:clj (is (false? (m/validate schema (fn [x] x) {::m/function-checker mg/function-checker}))))
+        #?(:clj (is (false? (m/validate schema #{} {::m/function-checker mg/function-checker}))))
+        (is (true? (m/validate schema valid-f {::m/function-checker mg/function-checker})))
+        (is (false? (m/validate schema (fn [x y] (str x y)) {::m/function-checker mg/function-checker})))
 
-    (is (= single-arity (m/decode => single-arity mt/string-transformer)))
+        (is (nil? (m/explain schema (fn [x y] (+ x y)) {::m/function-checker mg/function-checker})))
+        (is (results= {:schema [:=> [:cat int? int?] int?]
+                       :value single-arity
+                       :errors [{:path []
+                                 :in []
+                                 :schema [:=> [:cat int? int?] int?]
+                                 :value single-arity}]}
+                      (m/explain schema single-arity {::m/function-checker mg/function-checker})))
 
-    (is (true? (m/validate (over-the-wire =>) f-ok)))
+        (is (= single-arity (m/decode schema single-arity mt/string-transformer)))
 
-    (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
-           (mu/to-map-syntax =>)))))
+        (is (true? (m/validate (over-the-wire schema) valid-f)))
 
-(comment
-  (def f
-    (mg/generate
-      [:function
-       [0 [:=> :cat int?]]
-       [1 [:=> [:cat int?] nat-int?]]]))
+        (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
+               (mu/to-map-syntax schema))))))
 
-  (f)
-  ;=> 132816
-  ;=> -7823115
-  ;=> -36
-  ;=> -97
-  ;=> 13412759
-  ;=> 1444
+  (testing ":function"
+    (let [valid-f (fn ([x] x) ([x y] (- x y)))
+          invalid-f (fn ([x] x) ([x y] (str x y)))
+          ?schema [:function
+                   [:=> [:cat int?] int?]
+                   [:=> [:cat int? int?] int?]]
+          schema1 (m/schema ?schema)
+          schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
 
-  (f 1)
-  ;=> 1038018
-  ;=> 11009747
-  ;=> 8
-  ;=> 59186626
-  ;=> 10
-  ;=> 5373734
+      (testing "by default, all ifn? are valid"
+        (is (true? (m/validate schema1 identity)))
+        (is (true? (m/validate schema1 #{}))))
 
-  (f "1")
-  ; =throws=> :malli.generator/invalid-input {:schema [:cat int?], :args ["1"]}
+      (testing "using generative testing"
+        (is (false? (m/validate schema2 identity)))
+        (is (false? (m/validate schema2 #{})))
 
-  (f 1 2)
-  ; =throws=> :malli.generator/invalid-arity {:arity 2, :arities #{0 1}, :args (1 2), :schema [:function [0 [:=> :cat int?]] [1 [:=> [:cat int?] nat-int?]]]}
-  )
+        (is (false? (m/validate schema2 single-arity)))
+        ;; js allows invalid arity
+        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
+        #?(:clj (is (false? (m/validate schema2 #{}))))
+        (is (true? (m/validate schema2 valid-f)))
+        (is (false? (m/validate schema2 (fn [x y] (str x y)))))
+
+        (is (nil? (m/explain schema2 valid-f)))
+
+        (is (results= {:schema schema2
+                       :value invalid-f
+                       :errors [{:path []
+                                 :in []
+                                 :schema schema2
+                                 :value invalid-f}]}
+                      (m/explain schema2 invalid-f))))
+
+      (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
+
+      (is (true? (m/validate (over-the-wire schema1) valid-f)))
+
+      (is (= {:type :function,
+              :children [{:type :=>, :children [{:type :cat, :children [{:type 'int?}]} {:type 'int?}]}
+                         {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}]}
+             (mu/to-map-syntax schema1))))))

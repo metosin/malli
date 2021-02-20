@@ -2041,7 +2041,7 @@
   ;; js allows invalid arity
 
   (testing ":=>"
-    (let [valid-f (fn [x y] (+ x y))
+    (let [valid-f (fn [x y] (- x y))
           ?schema [:=> [:cat int? int?] int?]
           schema1 (m/schema ?schema)
           schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]

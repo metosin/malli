@@ -2038,38 +2038,40 @@
   ([_ _] (m/-fail! ::arity-error)))
 
 (deftest function-schema-test
+  ;; js allows invalid arity
 
   (testing ":=>"
     (let [valid-f (fn [x y] (+ x y))
-          schema [:=> [:cat int? int?] int?]]
+          ?schema [:=> [:cat int? int?] int?]
+          schema1 (m/schema ?schema)
+          schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
 
       (testing "by default, all ifn? are valid"
-        (is (true? (m/validate schema identity)))
-        (is (true? (m/validate schema #{}))))
+        (is (true? (m/validate schema1 identity)))
+        (is (true? (m/validate schema1 #{}))))
 
       (testing "using generative testing"
-        (is (false? (m/validate schema single-arity {::m/function-checker mg/function-checker})))
-        ;; js allows invalid arity
-        #?(:clj (is (false? (m/validate schema (fn [x] x) {::m/function-checker mg/function-checker}))))
-        #?(:clj (is (false? (m/validate schema #{} {::m/function-checker mg/function-checker}))))
-        (is (true? (m/validate schema valid-f {::m/function-checker mg/function-checker})))
-        (is (false? (m/validate schema (fn [x y] (str x y)) {::m/function-checker mg/function-checker})))
+        (is (false? (m/validate schema2 single-arity)))
+        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
+        #?(:clj (is (false? (m/validate schema2 #{}))))
+        (is (true? (m/validate schema2 valid-f)))
+        (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (m/explain schema (fn [x y] (+ x y)) {::m/function-checker mg/function-checker})))
+        (is (nil? (m/explain schema2 (fn [x y] (+ x y)))))
         (is (results= {:schema [:=> [:cat int? int?] int?]
                        :value single-arity
                        :errors [{:path []
                                  :in []
                                  :schema [:=> [:cat int? int?] int?]
                                  :value single-arity}]}
-                      (m/explain schema single-arity {::m/function-checker mg/function-checker})))
+                      (m/explain schema2 single-arity)))
 
-        (is (= single-arity (m/decode schema single-arity mt/string-transformer)))
+        (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
-        (is (true? (m/validate (over-the-wire schema) valid-f)))
+        (is (true? (m/validate (over-the-wire schema1) valid-f)))
 
         (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
-               (mu/to-map-syntax schema))))))
+               (mu/to-map-syntax schema1))))))
 
   (testing ":function"
     (let [valid-f (fn ([x] x) ([x y] (- x y)))
@@ -2085,11 +2087,10 @@
         (is (true? (m/validate schema1 #{}))))
 
       (testing "using generative testing"
-        (is (false? (m/validate schema2 identity)))
+        #?(:clj (is (false? (m/validate schema2 identity))))
         (is (false? (m/validate schema2 #{})))
 
         (is (false? (m/validate schema2 single-arity)))
-        ;; js allows invalid arity
         #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         #?(:clj (is (false? (m/validate schema2 #{}))))
         (is (true? (m/validate schema2 valid-f)))
@@ -2107,7 +2108,7 @@
 
       (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
 
-      (is (true? (m/validate (over-the-wire schema1) valid-f)))
+      (is (= true (m/validate (over-the-wire schema1) valid-f)))
 
       (is (= {:type :function,
               :children [{:type :=>, :children [{:type :cat, :children [{:type 'int?}]} {:type 'int?}]}

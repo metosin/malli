@@ -1327,7 +1327,7 @@
     (-into-schema [_ properties children {::keys [function-checker] :as options}]
       (-check-children! :function properties children {:min 1})
       (let [children (map #(schema % options) children)
-            form (-create-form :function properties children)
+            form (-create-form :function properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (-type %)) children)
           (-fail! ::non-function-childs {:children children}))

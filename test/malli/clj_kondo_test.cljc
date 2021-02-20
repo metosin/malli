@@ -41,12 +41,13 @@
                 :z :vector}}
          (clj-kondo/transform Schema)))
 
-  (is (= {'malli.clj-kondo-test
-          {'kikka
-           {:arities {1 {:args [:int]},
-                      :varargs {:args [:int :int {:op :rest, :spec :int}],
-                                :min-arity 2}}}}}
-         (-> 'malli.clj-kondo-test
-             (clj-kondo/collect)
-             (clj-kondo/linter-config)
-             (get-in [:linters :type-mismatch :namespaces])))))
+  #?(:clj
+     (is (= {'malli.clj-kondo-test
+             {'kikka
+              {:arities {1 {:args [:int]},
+                         :varargs {:args [:int :int {:op :rest, :spec :int}],
+                                   :min-arity 2}}}}}
+            (-> 'malli.clj-kondo-test
+                (clj-kondo/collect)
+                (clj-kondo/linter-config)
+                (get-in [:linters :type-mismatch :namespaces]))))))

@@ -1341,9 +1341,15 @@
               (let [validator (fn [x] (nil? (checker x)))]
                 (fn [x] (and (ifn? x) (validator x)))) ifn?))
           (-explainer [this path]
-            (let [validator (-validator this)]
+            (if-let [checker (->checker this)]
               (fn explain [x in acc]
-                (if-not (validator x) (conj acc (-error path in this x)) acc))))
+                (if (not (fn? x))
+                  (conj acc (-error path in this x))
+                  (if-let [res (checker x)]
+                    (conj acc (assoc (-error path in this x) :check res)))))
+              (let [validator (-validator this)]
+                (fn explain [x in acc]
+                  (if-not (validator x) (conj acc (-error path in this x)) acc)))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))

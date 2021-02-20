@@ -292,12 +292,19 @@
                        output-validator (m/validator output-schema options)
                        validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
                    (fn [f]
-                     (let [{:keys [result] :as res} (->> (prop/for-all* [input-generator] #(validate f %))
-                                                         (check/quick-check =>iterations))]
+                     (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
+                                                        (check/quick-check =>iterations))
+                           smallest (-> shrunk :smallest first)]
                        (if-not (true? result)
-                         (cond-> (:shrunk res)
-                                 (ex-message result) (-> (update :result ex-message)
-                                                         (dissoc :result-data))))))))]
+                         (let [explain-input (m/explain input-schema smallest)
+                               response (if-not explain-input
+                                          (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
+                               explain-output (if-not explain-input (m/explain output-schema response))]
+                           (cond-> shrunk
+                                   explain-input (assoc ::explain-input explain-input)
+                                   explain-output (assoc ::explain-output explain-output)
+                                   (ex-message result) (-> (update :result ex-message)
+                                                           (dissoc :result-data)))))))))]
      (condp = (m/-type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]

@@ -93,9 +93,17 @@
 (defmethod accept :qualified-symbol [_ _ _ _] :symbol)
 (defmethod accept :uuid [_ _ _ _] :any) ;;??
 
+(defmethod accept :=> [_ _ _ _] :fn)
+(defmethod accept :function [_ _ _ _] :fn)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))
+
+(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :* [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :cat [_ _ children _] children)
+(defmethod accept :cat* [_ _ children _] (mapv last children))
 
 (defmethod accept :merge [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept :union [_ schema _ options] (transform (m/deref schema) options))
@@ -124,32 +132,63 @@
 
 (defn from [{:keys [schema ns name]}]
   (let [ns-name (-> ns str symbol)
-        schema (if (= :or (m/type schema)) schema (m/into-schema :or nil [schema] (m/options schema)))]
+        schema (if (= :function (m/type schema)) schema (m/into-schema :function nil [schema] (m/options schema)))]
     (reduce
       (fn [acc schema]
         (let [[input return] (m/children schema)
-              args (mapv transform (m/children input))
+              args (transform input)
               ret (transform return)
-              arity (count args)]
-          (conj acc {:ns ns-name
-                     :name name
-                     :arity arity
-                     :args args
-                     :ret ret}))) [] (m/children schema))))
+              {:keys [min max]} (m/-regex-min-max input)
+              arity (if (= min max) min :varargs)]
+          (conj acc (cond-> {:ns ns-name
+                             :name name
+                             :arity arity
+                             :args args
+                             :ret ret}
+                            (= arity :varargs) (assoc :min-arity min)))))
+      [] (m/children schema))))
 
 (defn collect
   ([] (collect nil))
   ([ns]
    (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
-     (->> (for [[k vs] (m/=>schemas) :when (-collect k) [_ v] vs v (from v)] v)))))
+     (->> (for [[k vs] (m/function-schemas) :when (-collect k) [_ v] vs v (from v)] v)))))
 
 (defn linter-config [xs]
   (reduce
-    (fn [acc {:keys [ns name arity args ret]}]
+    (fn [acc {:keys [ns name arity] :as data}]
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
-        {:args args, :ret ret}))
+        (select-keys data [:args :re :min-arity])))
     {:lint-as {'malli.schema/defn 'schema.core/defn}} xs))
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+
+(ns user)
+
+(require '[malli.core :as m])
+
+(defn kikka
+  ([x] (* x x))
+  ([x y & z] (apply + (* x y) z)))
+
+(m/=> kikka [:function
+             [:=> [:cat :int] [:int {:min 0}]]
+             [:=> [:cat :int :int [:* :int]] :int]])
+
+(require '[malli.clj-kondo :as clj-kondo])
+
+(clj-kondo/linter-config (clj-kondo/collect))
+;{:linters
+; {:type-mismatch
+;  {:namespaces
+;   {user
+;    {kikka
+;     {:arities {1 {:args [:int]},
+;                :varargs {:args [:int :int {:op :rest, :spec :int}],
+;                          :min-arity 2}}}}}}}}
+
+(kikka -2) ; => 4
+(kikka 2 3) ; => 5
+(kikka 2 3 4) ; => 10

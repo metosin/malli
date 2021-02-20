@@ -1278,7 +1278,7 @@
       (let [[input output :as children] (map #(schema % options) children)
             form (-create-form :=> properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
-        (when-not (= :cat (-type input))
+        (when-not (#{:cat :cat*} (-type input))
           (-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify
@@ -1870,24 +1870,19 @@
 ;; function schemas (alpha, subject to change)
 ;;
 
-(def ^:private -=>schemas* (atom {}))
-(defn =>schemas [] @-=>schemas*)
+(def ^:private -function-schemas* (atom {}))
+(defn function-schemas [] @-function-schemas*)
 
-(defn =>schema
+(defn function-schema
   ([?schema]
-   (=>schema ?schema nil))
+   (function-schema ?schema nil))
   ([?schema options]
-   (let [s (schema ?schema options)]
-     (condp = (type s)
-       :=> s
-       :or (let [arity->=> (group-by -arity (children s))]
-             (when-not (= (count (children s)) (count arity->=>))
-               (-fail! ::overlapping-arities {:arities arity->=>})) s)
-       (-fail! :invalid-=>schema {:type (type s), :schema s})))))
+   (let [s (schema ?schema options), t (type s)]
+     (cond-> s (not (#{:=> :function} t)) (-fail! :invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-=>schema! [ns name value]
-  (swap! -=>schemas* assoc-in [ns name]
-         {:schema (=>schema value)
+(defn -register-function-schema! [ns name value]
+  (swap! -function-schemas* assoc-in [ns name]
+         {:schema (function-schema value)
           :meta (meta name)
           :ns ns
           :name name}))
@@ -1895,4 +1890,4 @@
 (defmacro => [name value]
   (let [name' `'~(symbol (str name))]
     `(let [ns# (symbol (str *ns*))]
-       (-register-=>schema! ns# ~name' ~value))))
+       (-register-function-schema! ns# ~name' ~value))))

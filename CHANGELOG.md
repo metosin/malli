@@ -16,8 +16,29 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* todo
+### Public API
 
+* support for sequence schemas: `:cat`, `cat*`, `alt`, `alt*`, `:?`, `:*`, `:+` and `repeat`, see [Sequence Schemas](./README.md#sequence-schemas).
+* support for parsing and unparsing schemas: `m/parse`, `m/parser`, `m/unparse`, `m/unparser`, see [Parsing values](./README.md#parsing-values).
+* support for function schmas: `:=>` and `:function`, see [Function Schemas](./README.md#function-schemas).
+* support for [clj-kondo](https://github.com/clj-kondo/clj-kondo), see [Clj-kondo](./README.md#clj-kondo).
+* new schemas: `:any` (e.g. `any?`), `:not` (complement) and `:or*` (or with named branches)
+* `:qualified-keyword` support `:namespace` property
+
+* FIX: Schema vizualization is not working for `[:< ...]` like schemas, [#370](https://github.com/metosin/malli/issues/370)
+* Ensure we use size 30 for generator (for more variety), [#364](https://github.com/metosin/malli/pull/364)
+* Set JSON Schema types and formats for numbers properly [#354](https://github.com/metosin/malli/pull/354)
+* -memoize actually memoized. easily 100x faster now [#350](https://github.com/metosin/malli/pull/350)  
+* Fix interceptor composition, [#347](https://github.com/metosin/malli/pull/350)
+* `malli.util`: add a rename-keys utility, similar to clojure.set [#338](https://github.com/metosin/malli/pull/338)
+* Let `mu/update´ accept plain data schemas, [#329](https://github.com/metosin/malli/pull/329)
+* `mu/find`, [#322](https://github.com/metosin/malli/pull/322)
+
+### Extender API
+
+* **BREAKING**: `m/Schema` has new methods: `-parent`, `-parser` and `-unparser`
+* **BREAKING**: `m/-coder` and `m/-chain` are replaced wih `m/-intercepting`
+  
 ## 0.2.1 (2020-10-22)
 
 * fix `:sequential` decoding with empty sequence under `mt/json-transformer`, fixes [#288](https://github.com/metosin/malli/issues/288)

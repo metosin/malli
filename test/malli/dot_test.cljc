@@ -82,6 +82,4 @@
 
            \":malli.dot/schema\" [label=\"{:malli.dot/schema|[:and int? [:\\< 100]]\\l}\", fillcolor=\"#fff0cd\"]
            }"
-        (md/transform [:and int? [:< 100]])
-        ))
-  )
+        (md/transform [:and int? [:< 100]]))))

@@ -267,11 +267,11 @@
   (if (= (-type schema) :=>)
     (let [[input output] (-children schema)
           {:keys [min max]} (-regex-min-max input)]
-      {:min min
-       :max max
-       :arity (if (= min max) min :varargs)
-       :input input
-       :output output})))
+      (cond-> {:min min
+               :arity (if (= min max) min :varargs)
+               :input input
+               :output output}
+              max (assoc :max max)))))
 
 ;;
 ;; simple schema helpers

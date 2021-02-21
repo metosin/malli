@@ -102,7 +102,7 @@
        (m/-fail! :test-chuck-not-available))))
 
 (defn -=>-gen [schema options]
-  (let [{:keys [min max input output] :or {min 0, max miu/+max-size+}} (m/-function-info schema)
+  (let [{:keys [min max input output] :or {max miu/+max-size+}} (m/-function-info schema)
         validate-input (m/validator input)
         output-generator (generator output options)]
     (gen/return
@@ -120,14 +120,14 @@
                              [arity (assoc info :f (generate schema options))]))
                          (into {}))
         arities (-> arity->info keys set)
-        {:keys [min-arity] :as varargs-info} (arity->info :varargs)]
+        varargs-info (arity->info :varargs)]
     (gen/return
       (fn [& args]
         (let [arity (count args)
               info (arity->info arity)]
           (cond
             info (apply (:f info) args)
-            varargs-info (if (< arity min-arity)
+            varargs-info (if (< arity (:min varargs-info))
                            (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})
                            (apply (:f varargs-info) args))
             :else (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))

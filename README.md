@@ -1800,14 +1800,32 @@ Registries can be composed:
 
 ## Function Schemas
 
-**alpha, subject to change**
+Functions can be described with `:=>`, which has two children: input schema (as `:cat`) and output schemas. Multi-arity functions can be composed with `:function`.
 
-Functions can be described with `:=>`, which takes function arguments (as `:tuple`) and output schemas as children.
+```clj
+;; no args, no return
+[:=> :cat nil?] 
+
+;; two int args, positive int returned
+[:=> [:cat int? int?] pos-int?]
+
+;; named varargs, e.g. (fn [x & xs] (* x (apply + xs)))
+[:=> [:cat* 
+      [:x int?]
+      [:xs [:* int?]]]
+      
+;; multi-arity fn
+[:function
+ [:=> [:cat int?] int?]
+ [:=> [:cat int? int? [:* int?]] int?]]
+```
+
+Function validation:
 
 ```clj
 (defn plus [x y] (+ x y))
 
-(def =>plus [:=> [:tuple int? int?] int?])
+(def =>plus [:=> [:cat int? int?] int?])
 
 (m/validate =>plus plus)
 ; => true
@@ -1820,14 +1838,35 @@ By default, validation just checks if a valu ia `ifn?`:
 ; => true :(
 ```
 
-We can use value generation for more comprehensive testing:
+Using generative testing for better results:
 
 ```clj
-(m/validate =>plus plus {::m/=>validator mg/=>validator})
+(m/validate =>plus plus {::m/function-checker mg/function-checker})
 ; => true
 
-(m/validate =>plus str {::m/=>validator mg/=>validator})
+(m/validate =>plus str {::m/function-checker mg/function-checker})
 ; => false
+
+(m/explain =>plus str {::m/function-checker mg/function-checker})
+;{:schema [:=> [:cat int? int?] int?],
+; :value #object[clojure.core$str],
+; :errors (#Error{:path [],
+;                 :in [],
+;                 :schema [:=> [:cat int? int?] int?],
+;                 :value #object[clojure.core$str],
+;                 :check {:total-nodes-visited 1,
+;                         :depth 0,
+;                         :pass? false,
+;                         :result false,
+;                         :result-data nil,
+;                         :time-shrinking-ms 0,
+;                         :smallest [(0 0)],
+;                         :malli.generator/explain-output {:schema int?,
+;                                                          :value "00",
+;                                                          :errors (#Error{:path []
+;                                                                          :in []
+;                                                                          :schema int?
+;                                                                          :value "00"})}}})}
 ``` 
 
 A generated function implementation:
@@ -1839,39 +1878,79 @@ A generated function implementation:
 ; => -1
 
 (plus-gen 1 "2")
-; =throws=> :malli.generator/invalid-input {:schema [:tuple int? int?], :args [1 "2"]}
+; =throws=> :malli.generator/invalid-input {:schema [:cat int? int?], :args [1 "2"]}
 ```
 
-Multiple arities are WIP, currently defined using `:or`:
+Multiple arities are defined using `:function`:
 
 ```clj
+(def SmallInt
+  [:int {:min -100, :max 100}])
+
+(def MyFunction
+  (m/schema
+    [:function
+     [:=> [:cat SmallInt] :int]
+     [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]]
+    {::m/function-checker mg/function-checker}))
+
 (m/validate
-  [:or
-   [:=> [:tuple pos-int?] pos-int?]
-   [:=> [:tuple int? int?] int?]]
-  (fn math
-    ([x] (+ x x))
-    ([x y] (+ x y)))
-  {::m/=>validator mg/=>validator})
+  MyFunction
+  (fn
+    ([x] x)
+    ([x y & z] (apply - (- x y) z))))
 ; => true
 
-(def f (mg/generate
-         [:or
-          [:=> [:tuple int?] pos-int?]
-          [:=> [:tuple int? int?] int?]]))
+(m/validate
+  MyFunction
+  (fn
+    ([x] x)
+    ([x y & z] (str x y z))))
+; => false
 
-;; fixes the arity, which is not correct
-(-> f meta :arity)
-; => 1
+(m/explain
+  MyFunction
+  (fn
+    ([x] x)
+    ([x y & z] (str x y z))))
+;{:schema [:function
+;          [:=> [:cat SmallInt] :int]
+;          [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]],
+; :value #object[],
+; :errors (#Error{:path [],
+;                 :in [],
+;                 :schema [:function
+;                          [:=> [:cat SmallInt] :int]
+;                          [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]],
+;                 :value #object[],
+;                 :check ({:total-nodes-visited 1,
+;                          :depth 0,
+;                          :pass? false,
+;                          :result false,
+;                          :result-data nil,
+;                          :time-shrinking-ms 0,
+;                          :smallest [(0 0)],
+;                          :malli.generator/explain-output {:schema :int,
+;                                                           :value "00",
+;                                                           :errors (#Error{:path []
+;                                                                           :in []
+;                                                                           :schema :int
+;                                                                           :value "00"})}})})}
 
-(f 42)
-; => 2
+(def generated-f (mg/generate MyFunction))
 
-(f 42 42)
-; =thrown=> :malli.generator/invalid-input {:schema [:tuple int?], :args [42 42]}
+(generated-f)
+; =throws=> :malli.generator/invalid-arity {:arity 0, :arities #{1 :varargs}, :args nil, :schema ...}
+
+(generated-f 1)
+; => 5832893
+
+(generated-f 1 2)
+; => -120532359
+
+(generated-f 1 2 3 4)
+; => -57994624
 ```
-
-Varargs are WIP too (waiting for #180).
 
 ## Function Schema Registry
 
@@ -1880,16 +1959,16 @@ Vars can be annotated with function schemas using `m/=>` macro, backed by a glob
 ```clj
 (defn square [x] (* x x))
 
-(m/=> square [:=> [:tuple int?] pos-int?])
+(m/=> square [:=> [:cat int?] pos-int?])
 ```
 
 Listing registered function Var schemas:
 
 ```clj
-(m/=>schemas)
+(m/function-schemas)
 ;{user
 ; {square
-;  {:schema [:=> [:tuple int?] pos-int?]
+;  {:schema [:=> [:cat int?] pos-int?]
 ;   :meta nil
 ;   :ns malli.generator-test
 ;   :name square}}}
@@ -1903,15 +1982,15 @@ Given functions and function Schemas:
 
 ```clj
 (defn square [x] (* x x))
-(m/=> square [:=> [:tuple int?] nat-int?])
+(m/=> square [:=> [:cat int?] nat-int?])
 
 (defn plus
   ([x] x)
   ([x y] (+ x y)))
 
-(m/=> plus [:or
-            [:=> [:tuple int?] int?]
-            [:=> [:tuple int? int?] int?]])
+(m/=> plus [:function
+            [:=> [:cat int?] int?]
+            [:=> [:cat int? int?] int?]])
 ```
 
 Generating `clj-kondo` configuration from current namespace:

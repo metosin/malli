@@ -21,7 +21,16 @@
      [:z [:vector [:map-of int? int?]]]]
     {:registry (merge (m/default-schemas) (mu/schemas))}))
 
+(defn kikka
+  ([x] (* x x))
+  ([x y & z] (apply + (* x y) z)))
+
+(m/=> kikka [:function
+             [:=> [:cat :int] [:int {:min 0}]]
+             [:=> [:cat :int :int [:* :int]] :int]])
+
 (deftest clj-kondo-integration-test
+
   (is (= {:op :keys,
           :opt {::price :double, :tags :set, ::y :boolean},
           :req {::id :string,
@@ -30,4 +39,15 @@
                 :select-keys {:op :keys, :req {:x :int}},
                 :nested {:op :keys, :req {:id :string, :price :double}},
                 :z :vector}}
-         (clj-kondo/transform Schema))))
+         (clj-kondo/transform Schema)))
+
+  #?(:clj
+     (is (= {'malli.clj-kondo-test
+             {'kikka
+              {:arities {1 {:args [:int]},
+                         :varargs {:args [:int :int {:op :rest, :spec :int}],
+                                   :min-arity 2}}}}}
+            (-> 'malli.clj-kondo-test
+                (clj-kondo/collect)
+                (clj-kondo/linter-config)
+                (get-in [:linters :type-mismatch :namespaces]))))))

@@ -9,21 +9,22 @@
             [malli.util :as mu]))
 
 (deftest generator-test
-  (doseq [[?schema] json-schema-test/expectations
+  (doseq [[?schema _ ?fn] json-schema-test/expectations
           ;; cljs doesn't have a regex generator :(
-          #?@(:cljs [:when (not= (m/type ?schema) :re)])]
+          #?@(:cljs [:when (not= (m/type ?schema) :re)])
+          :let [f (if ?fn #(%) identity)]]
     (testing (m/form ?schema)
       (testing "generate"
-        (is (= (mg/generate ?schema {:seed 123})
-               (mg/generate ?schema {:seed 123})))
-        (is (= (mg/generate ?schema {:seed 123, :size 10})
-               (mg/generate ?schema {:seed 123, :size 10})))
+        (is (= (f (mg/generate ?schema {:seed 123}))
+               (f (mg/generate ?schema {:seed 123}))))
+        (is (= (f (mg/generate ?schema {:seed 123, :size 10}))
+               (f (mg/generate ?schema {:seed 123, :size 10}))))
         (is (m/validate ?schema (mg/generate ?schema {:seed 123}))))
       (testing "sample"
-        (is (= (mg/sample ?schema {:seed 123})
-               (mg/sample ?schema {:seed 123})))
-        (is (= (mg/sample ?schema {:seed 123, :size 10})
-               (mg/sample ?schema {:seed 123, :size 10})))
+        (is (= (map f (mg/sample ?schema {:seed 123}))
+               (map f (mg/sample ?schema {:seed 123}))))
+        (is (= (map f (mg/sample ?schema {:seed 123, :size 10}))
+               (map f (mg/sample ?schema {:seed 123, :size 10}))))
         (doseq [value (mg/sample ?schema {:seed 123})]
           (is (m/validate ?schema value))))))
 
@@ -227,22 +228,16 @@
 
 #?(:clj
    (deftest function-schema-test
-     (testing "generates valid functions"
+     (let [=> (m/schema [:=> [:cat int? int?] int?])
+           {:keys [input output]} (m/-function-info =>)]
+       (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000}))))
 
-       (let [=> (m/schema [:=> [:tuple int? int?] int?])
-             input (m/-input-schema =>)
-             output (m/-output-schema =>)]
-         (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000})))))
-
-     (testing "arity meta"
-       (let [=> [:or
-                 [:=> [:tuple int?] int?]
-                 [:=> [:tuple int? int? int?] int?]]]
-         (is (every? (comp #{1 3} :arity meta) (mg/sample => {:size 1000})))))))
+     (let [=> (m/schema [:function [:=> [:cat int?] int?] [:=> [:cat int? int?] int?]])]
+       (is (every? #(m/validate int? (apply % (mg/generate [:or [:cat int?] [:cat int? int?]]))) (mg/sample => {:size 1000}))))))
 
 (deftest recursive-schema-generation-test-307
   (let [sample (mg/generate [:schema {:registry {::A
-                                                 [:tuple
+                                                 [:cat
                                                   [:= ::a]
                                                   [:vector {:gen/min 2, :gen/max 2} [:ref ::A]]]}}
                              ::A] {:size 1, :seed 1})]

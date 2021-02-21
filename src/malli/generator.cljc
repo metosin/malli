@@ -7,7 +7,8 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.impl.util :as miu]))
 
 (declare generator generate -create)
 
@@ -100,19 +101,36 @@
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (m/-fail! :test-chuck-not-available))))
 
-(defn -=>gen [schema options]
-  (let [input-schema (m/-input-schema schema)
-        validate-input (m/validator input-schema)
-        output-schema (m/-output-schema schema)
-        output-generator (generator output-schema options)]
+(defn -=>-gen [schema options]
+  (let [{:keys [min max input output] :or {max miu/+max-size+}} (m/-function-info schema)
+        validate-input (m/validator input)
+        output-generator (generator output options)]
     (gen/return
-      (with-meta
-        (fn [& args]
-          (let [args (vec args)]
-            (when-not (validate-input args)
-              (m/-fail! ::invalid-input {:schema input-schema, :args args}))
-            (generate output-generator options)))
-        {:arity (-> schema m/-arity)}))))
+      (fn [& args]
+        (let [args (vec args), arity (count args)]
+          (when-not (<= min arity max)
+            (m/-fail! ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :schema schema}))
+          (when-not (validate-input args)
+            (m/-fail! ::invalid-input {:schema input, :args args}))
+          (generate output-generator options))))))
+
+(defn -function-gen [schema options]
+  (let [arity->info (->> (for [schema (m/children schema)]
+                           (let [{:keys [arity] :as info} (m/-function-info schema)]
+                             [arity (assoc info :f (generate schema options))]))
+                         (into {}))
+        arities (-> arity->info keys set)
+        varargs-info (arity->info :varargs)]
+    (gen/return
+      (fn [& args]
+        (let [arity (count args)
+              info (arity->info arity)]
+          (cond
+            info (apply (:f info) args)
+            varargs-info (if (< arity (:min varargs-info))
+                           (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})
+                           (apply (:f varargs-info) args))
+            :else (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))
 
 (defn -regex-generator [schema options]
   (if (m/-regex-op? schema)
@@ -197,7 +215,8 @@
 (defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
-(defmethod -schema-generator :=> [schema options] (-=>gen schema options))
+(defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
+(defmethod -schema-generator :function [schema options] (-function-gen schema options))
 (defmethod -schema-generator :ref [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
@@ -257,12 +276,32 @@
 ;; functions
 ;;
 
-(defn =>validator [schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
-  (let [input-schema (m/-input-schema schema)
-        output-schema (m/-output-schema schema)
-        input-generator (generator input-schema options)
-        input-validator (m/validator input-schema)
-        output-validator (m/validator output-schema options)
-        validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
-    (fn [f] (not (some->> (prop/for-all* [input-generator] #(validate f %))
-                          (check/quick-check =>iterations) :shrunk :smallest first)))))
+(defn function-checker
+  ([?schema] (function-checker ?schema nil))
+  ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
+   (let [schema (m/schema ?schema options)
+         check (fn [schema]
+                 (let [{:keys [input output]} (m/-function-info schema)
+                       input-generator (generator input options)
+                       input-validator (m/validator input)
+                       output-validator (m/validator output options)
+                       validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
+                   (fn [f]
+                     (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
+                                                        (check/quick-check =>iterations))
+                           smallest (-> shrunk :smallest first)]
+                       (if-not (true? result)
+                         (let [explain-input (m/explain input smallest)
+                               response (if-not explain-input
+                                          (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
+                               explain-output (if-not explain-input (m/explain output response))]
+                           (cond-> shrunk
+                                   explain-input (assoc ::explain-input explain-input)
+                                   explain-output (assoc ::explain-output explain-output)
+                                   (ex-message result) (-> (update :result ex-message)
+                                                           (dissoc :result-data)))))))))]
+     (condp = (m/-type schema)
+       :=> (check schema)
+       :function (let [checkers (map #(function-checker % options) (m/-children schema))]
+                   (fn [x] (->> checkers (keep #(% x)) (seq))))
+       (miu/-fail! ::invalid-function-schema {:type (m/-type schema)})))))

@@ -56,6 +56,7 @@
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
+   [[:fn {:gen/elements [1]} int?] {}]
    [:any {}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
@@ -65,6 +66,9 @@
    [:symbol {:type "string"}]
    [:qualified-symbol {:type "string"}]
    [:uuid {:type "string", :format "uuid"}]
+
+   [[:=> :cat int?] {} :fn]
+   [[:function [:=> :cat int?]] {} :fn]
 
    [integer? {:type "integer"}]
    #?@(:clj [[ratio? {:type "number"}]
@@ -226,4 +230,4 @@
             "Order"]))))
 
 (deftest function-schema-test
-  (is (= {} (json-schema/transform [:=> [:tuple int? int?] int?]))))
+  (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))

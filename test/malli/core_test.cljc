@@ -18,6 +18,7 @@
                                              (update :schema m/form)
                                              (update :type (fnil identity nil))
                                              (update :message (fnil identity nil))
+                                             (dissoc :check)
                                              (miu/map->SchemaError)))))))
 
 (defn results= [& results]
@@ -2001,69 +2002,140 @@
             (is (= {:value 42}
                    (m/properties schema)))))))))
 
-(deftest -min-size-test
-  (are [s min-size]
-    (= (m/-min-size (m/schema s)) min-size)
+(deftest -regex-min-max-size-test
+  (are [s min-max]
+    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))
 
-    int? 1
-    [:cat] 0
-    [:cat int?] 1
-    [:cat int? [:cat]] 1
-    [:cat int? [:cat string? int?]] 3
-    [:cat*] 0
-    [:cat* [:n int?]] 1
-    [:cat* [:n int?] [:named [:cat]]] 1
-    [:cat* [:n int?] [:named [:cat string? int?]]] 3
-    [:alt int?] 1
-    [:alt int? [:cat]] 0
-    [:alt* [:n int?]] 1
-    [:alt* [:n int?] [:empty [:cat]]] 0
-    [:* int?] 0
-    [:? int?] 0
-    [:+ [:cat string? int?]] 2
-    [:+ [:? int?]] 0
-    [:repeat {:min 5, :max 15} [:cat string? int?]] 10
-    [:repeat {:min 5, :max 15} [:* int?]] 0
-    [:schema {:registry {:named [:cat string? int?]}} :named] 2
-    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] 10)
+    int? [1 1]
+    [:cat] [0 0]
+    [:cat int?] [1 1]
+    [:cat int? [:cat]] [1 1]
+    [:cat int? [:cat string? int?]] [3 3]
+    [:cat*] [0 0]
+    [:cat* [:n int?]] [1 1]
+    [:cat* [:n int?] [:named [:cat]]] [1 1]
+    [:cat* [:n int?] [:named [:cat string? int?]]] [3 3]
+    [:alt int?] [1 1]
+    [:alt int? [:cat]] [0 1]
+    [:alt* [:n int?]] [1 1]
+    [:alt* [:n int?] [:empty [:cat]]] [0 1]
+    [:* int?] [0 nil]
+    [:? int?] [0 1]
+    [:+ [:cat string? int?]] [2 nil]
+    [:+ [:? int?]] [0 nil]
+    [:repeat {:min 5, :max 15} [:cat string? int?]] [10 30]
+    [:repeat {:min 5, :max 15} [:* int?]] [0 nil]
+    [:schema {:registry {:named [:cat string? int?]}} :named] [2 2]
+    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30])
 
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
-                        (m/-min-size
+                        (m/-regex-min-max
                           (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                   ::ints])))))
+                                     ::ints])))))
 
 (defn single-arity
   ([x] x)
   ([_ _] (m/-fail! ::arity-error)))
 
 (deftest function-schema-test
-  (let [f-ok (fn [x y] (+ x y))
-        => [:=> [:tuple int? int?] int?]]
+  ;; js allows invalid arity
 
-    (testing "by default, all ifn? are valid"
-      (is (true? (m/validate => identity)))
-      (is (true? (m/validate => #{}))))
+  (testing ":=>"
+    (let [valid-f (fn [x y] (- x y))
+          ?schema [:=> [:cat int? int?] int?]
+          schema1 (m/schema ?schema)
+          schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
 
-    (testing "using generative testing"
-      (is (false? (m/validate => single-arity {::m/=>validator mg/=>validator})))
-      ;; js allows invalid arity
-      #?(:clj (is (false? (m/validate => (fn [x] x) {::m/=>validator mg/=>validator}))))
-      #?(:clj (is (false? (m/validate => #{} {::m/=>validator mg/=>validator}))))
-      (is (true? (m/validate => f-ok {::m/=>validator mg/=>validator})))
-      (is (false? (m/validate => (fn [x y] (str x y)) {::m/=>validator mg/=>validator}))))
+      (testing "by default, all ifn? are valid"
+        (is (true? (m/validate schema1 identity)))
+        (is (true? (m/validate schema1 #{}))))
 
-    (is (nil? (m/explain => (fn [x y] (+ x y)) {::m/=>validator mg/=>validator})))
-    (is (results= {:schema [:=> [:tuple int? int?] int?]
-                   :value single-arity
-                   :errors [{:path []
-                             :in []
-                             :schema [:=> [:tuple int? int?] int?]
-                             :value single-arity}]}
-                  (m/explain => single-arity {::m/=>validator mg/=>validator})))
+      (testing "using generative testing"
+        (is (false? (m/validate schema2 single-arity)))
+        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
+        #?(:clj (is (false? (m/validate schema2 #{}))))
+        (is (true? (m/validate schema2 valid-f)))
+        (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-    (is (= single-arity (m/decode => single-arity mt/string-transformer)))
+        (is (nil? (m/explain schema2 (fn [x y] (+ x y)))))
+        (is (results= {:schema [:=> [:cat int? int?] int?]
+                       :value single-arity
+                       :errors [{:path []
+                                 :in []
+                                 :schema [:=> [:cat int? int?] int?]
+                                 :value single-arity}]}
+                      (m/explain schema2 single-arity)))
 
-    (is (true? (m/validate (over-the-wire =>) f-ok)))
+        (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
-    (is (= {:type :=>, :children [{:type :tuple, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
-           (mu/to-map-syntax =>)))))
+        (is (true? (m/validate (over-the-wire schema1) valid-f)))
+
+        (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
+               (mu/to-map-syntax schema1))))))
+
+  (testing ":function"
+
+    (testing "invalid arities"
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/non-function-childs"
+            (m/schema
+              [:function
+               :cat])))
+
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/duplicate-arities"
+            (m/schema
+              [:function
+               [:=> :cat nil?]
+               [:=> :cat nil?]])))
+
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/duplicate-min-arities"
+            (m/schema
+              [:function
+               [:=> :cat nil?]
+               [:=> [:cat [:? nil?]] nil?]]))))
+
+    (let [valid-f (fn ([x] x) ([x y] (- x y)))
+          invalid-f (fn ([x] x) ([x y] (str x y)))
+          ?schema [:function
+                   [:=> [:cat int?] int?]
+                   [:=> [:cat int? int?] int?]]
+          schema1 (m/schema ?schema)
+          schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
+
+      (testing "by default, all ifn? are valid"
+        (is (true? (m/validate schema1 identity)))
+        (is (true? (m/validate schema1 #{}))))
+
+      (testing "using generative testing"
+        #?(:clj (is (false? (m/validate schema2 identity))))
+        (is (false? (m/validate schema2 #{})))
+
+        (is (false? (m/validate schema2 single-arity)))
+        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
+        #?(:clj (is (false? (m/validate schema2 #{}))))
+        (is (true? (m/validate schema2 valid-f)))
+        (is (false? (m/validate schema2 (fn [x y] (str x y)))))
+
+        (is (nil? (m/explain schema2 valid-f)))
+
+        (is (results= {:schema schema2
+                       :value invalid-f
+                       :errors [{:path []
+                                 :in []
+                                 :schema schema2
+                                 :value invalid-f}]}
+                      (m/explain schema2 invalid-f))))
+
+      (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
+
+      (is (= true (m/validate (over-the-wire schema1) valid-f)))
+
+      (is (= {:type :function,
+              :children [{:type :=>, :children [{:type :cat, :children [{:type 'int?}]} {:type 'int?}]}
+                         {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}]}
+             (mu/to-map-syntax schema1))))))

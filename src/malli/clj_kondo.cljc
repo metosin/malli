@@ -135,11 +135,9 @@
         schema (if (= :function (m/type schema)) schema (m/into-schema :function nil [schema] (m/options schema)))]
     (reduce
       (fn [acc schema]
-        (let [[input return] (m/children schema)
+        (let [{:keys [input output arity min]} (m/-function-info schema)
               args (transform input)
-              ret (transform return)
-              {:keys [min max]} (m/-regex-min-max input)
-              arity (if (= min max) min :varargs)]
+              ret (transform output)]
           (conj acc (cond-> {:ns ns-name
                              :name name
                              :arity arity

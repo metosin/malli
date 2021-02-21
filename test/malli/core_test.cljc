@@ -2074,6 +2074,31 @@
                (mu/to-map-syntax schema1))))))
 
   (testing ":function"
+
+    (testing "invalid arities"
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/non-function-childs"
+            (m/schema
+              [:function
+               :cat])))
+
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/duplicate-arities"
+            (m/schema
+              [:function
+               [:=> :cat nil?]
+               [:=> :cat nil?]])))
+
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/duplicate-min-arities"
+            (m/schema
+              [:function
+               [:=> :cat nil?]
+               [:=> [:cat [:? nil?]] nil?]]))))
+
     (let [valid-f (fn ([x] x) ([x y] (- x y)))
           invalid-f (fn ([x] x) ([x y] (str x y)))
           ?schema [:function

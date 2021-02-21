@@ -229,8 +229,7 @@
 #?(:clj
    (deftest function-schema-test
      (let [=> (m/schema [:=> [:cat int? int?] int?])
-           input (m/-input-schema =>)
-           output (m/-output-schema =>)]
+           {:keys [input output]} (m/-function-info =>)]
        (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000}))))
 
      (let [=> (m/schema [:function [:=> [:cat int?] int?] [:=> [:cat int? int?] int?]])]

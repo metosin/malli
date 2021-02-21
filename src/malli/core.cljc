@@ -44,11 +44,6 @@
 (defprotocol MapSchema
   (-entries [this] "returns sequence of `key -val-schema` MapEntries"))
 
-(defprotocol FunctionSchema
-  (-arity [this])
-  (-input-schema [this])
-  (-output-schema [this]))
-
 (defprotocol LensSchema
   (-keep [this] "returns truthy if schema contributes to value path")
   (-get [this key default] "returns schema at key")
@@ -267,6 +262,20 @@
     (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
       [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
+
+(defn -function-info [schema]
+  (if (= (-type schema) :=>)
+    (let [[input output] (-children schema)
+          {:keys [min max]} (-regex-min-max input)]
+      {:min min
+       :max max
+       :arity (if (= min max) min :varargs)
+       :input input
+       :output output})))
+
+;;
+;; simple schema helpers
+;;
 
 (defn -min-max-pred [f]
   (fn [{:keys [min max]}]
@@ -1270,12 +1279,12 @@
                                      (or (-transformer child transformer method options) identity))))
             (-regex-min-max [_] (-regex-min-max child))))))))
 
-(defn -function-schema []
+(defn -=>-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children {:min 2, :max 2})
-      (let [[input output :as children] (map #(schema % options) children)
+      (let [[input :as children] (map #(schema % options) children)
             form (-create-form :=> properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :cat*} (-type input))
@@ -1310,18 +1319,14 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-parent [_] (-function-schema))
+          (-parent [_] (-=>-schema))
           (-form [_] form)
-          FunctionSchema
-          (-arity [_] (count (-children input)))
-          (-input-schema [_] input)
-          (-output-schema [_] output)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn -multi-arity-function-schema [opts]
+(defn -function-schema [_]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children {::keys [function-checker] :as options}]
@@ -1331,6 +1336,11 @@
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (-type %)) children)
           (-fail! ::non-function-childs {:children children}))
+        (let [infos (map -function-info children)]
+          (when-not (= (count children) (count (distinct (map :arity infos))))
+            (-fail! ::duplicate-arities {:infos infos}))
+          (when-not (= (count children) (count (distinct (map :min infos))))
+            (-fail! ::duplicate-min-arities {:infos infos})))
         ^{:type ::schema}
         (reify
           Schema
@@ -1361,7 +1371,7 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-parent [_] (-function-schema))
+          (-parent [_] (-=>-schema))
           (-form [_] form)
           LensSchema
           (-keep [_])
@@ -1859,8 +1869,8 @@
    :re (-re-schema false)
    :fn (-fn-schema)
    :ref (-ref-schema)
-   :=> (-function-schema)
-   :function (-multi-arity-function-schema nil)
+   :=> (-=>-schema)
+   :function (-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
 

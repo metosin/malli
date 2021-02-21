@@ -102,26 +102,22 @@
        (m/-fail! :test-chuck-not-available))))
 
 (defn -=>-gen [schema options]
-  (let [input-schema (m/-input-schema schema)
-        validate-input (m/validator input-schema)
-        output-schema (m/-output-schema schema)
-        output-generator (generator output-schema options)
-        {:keys [min max] :or {min 0, max miu/+max-size+} :as arities} (m/-regex-min-max (m/-input-schema schema))]
+  (let [{:keys [min max input output] :or {min 0, max miu/+max-size+}} (m/-function-info schema)
+        validate-input (m/validator input)
+        output-generator (generator output options)]
     (gen/return
       (fn [& args]
         (let [args (vec args), arity (count args)]
           (when-not (<= min arity max)
-            (m/-fail! ::invalid-arity {:arity arity, :arities #{arities}, :args args, :schema schema}))
+            (m/-fail! ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :schema schema}))
           (when-not (validate-input args)
-            (m/-fail! ::invalid-input {:schema input-schema, :args args}))
+            (m/-fail! ::invalid-input {:schema input, :args args}))
           (generate output-generator options))))))
 
 (defn -function-gen [schema options]
   (let [arity->info (->> (for [schema (m/children schema)]
-                           (let [{:keys [min max]} (m/-regex-min-max (m/-input-schema schema))]
-                             [(if (= min max) min :varargs)
-                              (cond-> {:f (generate schema options)}
-                                      (not max) (assoc :min-arity min))]))
+                           (let [{:keys [arity] :as info} (m/-function-info schema)]
+                             [arity (assoc info :f (generate schema options))]))
                          (into {}))
         arities (-> arity->info keys set)
         {:keys [min-arity] :as varargs-info} (arity->info :varargs)]
@@ -132,7 +128,7 @@
           (cond
             info (apply (:f info) args)
             varargs-info (if (< arity min-arity)
-                           (m/-fail! ::varargs-min-arity {:arity arity, :min-arity min-arity :arities arities, :args args, :schema schema})
+                           (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})
                            (apply (:f varargs-info) args))
             :else (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))
 
@@ -285,21 +281,20 @@
   ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
    (let [schema (m/schema ?schema options)
          check (fn [schema]
-                 (let [input-schema (m/-input-schema schema)
-                       output-schema (m/-output-schema schema)
-                       input-generator (generator input-schema options)
-                       input-validator (m/validator input-schema)
-                       output-validator (m/validator output-schema options)
+                 (let [{:keys [input output]} (m/-function-info schema)
+                       input-generator (generator input options)
+                       input-validator (m/validator input)
+                       output-validator (m/validator output options)
                        validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
                    (fn [f]
                      (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
                                                         (check/quick-check =>iterations))
                            smallest (-> shrunk :smallest first)]
                        (if-not (true? result)
-                         (let [explain-input (m/explain input-schema smallest)
+                         (let [explain-input (m/explain input smallest)
                                response (if-not explain-input
                                           (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
-                               explain-output (if-not explain-input (m/explain output-schema response))]
+                               explain-output (if-not explain-input (m/explain output response))]
                            (cond-> shrunk
                                    explain-input (assoc ::explain-input explain-input)
                                    explain-output (assoc ::explain-output explain-output)

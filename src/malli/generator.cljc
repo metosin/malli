@@ -283,9 +283,8 @@
          check (fn [schema]
                  (let [{:keys [input output]} (m/-function-info schema)
                        input-generator (generator input options)
-                       input-validator (m/validator input)
                        output-validator (m/validator output options)
-                       validate (fn [f args] (and (input-validator args) (output-validator (apply f args))))]
+                       validate (fn [f args] (output-validator (apply f args)))]
                    (fn [f]
                      (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
                                                         (check/quick-check =>iterations))

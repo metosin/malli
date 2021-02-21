@@ -421,3 +421,10 @@
 
   (address-flame)
   (schema-flames))
+
+(comment
+  (let [f (m/eval '(fn [x] (> x 10)))]
+    (time
+      (prof/profile
+        (dotimes [_ 5000000]
+          (f 12))))))

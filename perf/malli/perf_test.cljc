@@ -2,6 +2,9 @@
   (:require [clojure.spec.alpha :as s]
             [criterium.core :as cc]
             [clj-async-profiler.core :as prof]
+            [minimallist.helper :as mh]
+            [minimallist.core :as mc]
+            [net.cgrand.seqexp :as se]
             [malli.core :as m]
             [spec-tools.core :as st]
             [malli.transform :as transform]))
@@ -291,6 +294,55 @@
     (cc/quick-bench (quick-select-keys {:a 1, :b 2}))
     (cc/quick-bench (quick-select-keys {:a 1, :b 2, :c 3, :d 4}))))
 
+(defn sequence-perf-test []
+  ;; 27µs
+  (let [valid? (partial s/valid? (s/* int?))]
+    (cc/quick-bench (valid? (range 10))))
+
+  ;; 2.7µs
+  (let [valid? (m/validator [:* int?])]
+    (cc/quick-bench (valid? (range 10)))))
+
+(defn simple-regex []
+  (let [data ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]
+
+        seqxp (se/*
+                (se/as [:opts]
+                       (se/cat
+                         (se/as [:opts :prop] string?)
+                         (se/as [:opts :val] (se/|
+                                               (se/as [:opts :val :s] string?)
+                                               (se/as [:opts :val :b] boolean?))))))
+        valid-seqxp? (partial se/exec-tree seqxp)
+
+        spec (s/* (s/cat :prop string?,
+                         :val (s/alt :s string?
+                                     :b boolean?)))
+        valid-spec? (partial s/valid? spec)
+
+        minimallist (mh/* (mh/cat [:prop (mh/fn string?)]
+                                  [:val (mh/alt [:s (mh/fn string?)]
+                                                [:b (mh/fn boolean?)])]))
+        valid-minimallist? (partial mc/valid? minimallist)
+
+        malli [:* [:cat* [:prop string?]
+                   [:val [:alt*
+                          [:s string?]
+                          [:b boolean?]]]]]
+        valid-malli? (m/validator malli)]
+
+    ;; 90µs
+    (cc/quick-bench (valid-seqxp? data))
+
+    ;; 40µs
+    (cc/quick-bench (valid-spec? data))
+
+    ;; 12µs
+    (cc/quick-bench (valid-minimallist? data))
+
+    ;; 2µs
+    (cc/quick-bench (valid-malli? data))))
+
 (defn schema-flames []
 
   ;; "Elapsed time: 10472.153783 msecs"
@@ -361,6 +413,8 @@
   (map-transform-test)
   (select-keys-perf-test)
   (fn-test)
+  (sequence-perf-test)
+  (simple-regex)
 
   (prof/serve-files 8080)
   (prof/clear-results)

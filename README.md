@@ -1959,16 +1959,16 @@ Vars can be annotated with function schemas using `m/=>` macro, backed by a glob
 ```clj
 (defn square [x] (* x x))
 
-(m/=> square [:=> [:tuple int?] pos-int?])
+(m/=> square [:=> [:cat int?] pos-int?])
 ```
 
 Listing registered function Var schemas:
 
 ```clj
-(m/=>schemas)
+(m/function-schemas)
 ;{user
 ; {square
-;  {:schema [:=> [:tuple int?] pos-int?]
+;  {:schema [:=> [:cat int?] pos-int?]
 ;   :meta nil
 ;   :ns malli.generator-test
 ;   :name square}}}
@@ -1982,15 +1982,15 @@ Given functions and function Schemas:
 
 ```clj
 (defn square [x] (* x x))
-(m/=> square [:=> [:tuple int?] nat-int?])
+(m/=> square [:=> [:cat int?] nat-int?])
 
 (defn plus
   ([x] x)
   ([x y] (+ x y)))
 
-(m/=> plus [:or
-            [:=> [:tuple int?] int?]
-            [:=> [:tuple int? int?] int?]])
+(m/=> plus [:function
+            [:=> [:cat int?] int?]
+            [:=> [:cat int? int?] int?]])
 ```
 
 Generating `clj-kondo` configuration from current namespace:

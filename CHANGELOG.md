@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* todo
+
 ## 0.2.1 (2020-10-22)
 
 * fix `:sequential` decoding with empty sequence under `mt/json-transformer`, fixes [#288](https://github.com/metosin/malli/issues/288)

@@ -119,13 +119,9 @@
       (name x))
     x))
 
-(def -fail! miu/-fail!)
-
-(def -error miu/-error)
-
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
-    (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
+    (miu/-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
 
 (defn -create-form [type properties children]
   (cond
@@ -188,7 +184,7 @@
                                              (-reference? e) (if naked-keys [[e nil e] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
                                              :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
-                             _ (when (nil? k) (-fail! ::naked-keys-not-supported))
+                             _ (when (nil? k) (miu/-fail! ::naked-keys-not-supported))
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
                              c [k p (schema s options)]]
@@ -198,7 +194,7 @@
         es (reduce #(merge-with into %1 %2) {} (mapv -parse children))
         keys (->> es :entries (map first))]
     (when-not (= keys (distinct keys))
-      (-fail! ::non-distinct-entry-keys {:keys keys}))
+      (miu/-fail! ::non-distinct-entry-keys {:keys keys}))
     es))
 
 (defn -guard [pred tf]
@@ -245,13 +241,13 @@
 (defn- -schema [?schema options]
   (or (and (or (schema? ?schema) (into-schema? ?schema)) ?schema)
       (-lookup ?schema options)
-      (-fail! ::invalid-schema {:schema ?schema})))
+      (miu/-fail! ::invalid-schema {:schema ?schema})))
 
 (defn -into-transformer [x]
   (cond
     (satisfies? Transformer x) x
     (fn? x) (-into-transformer (x))
-    :else (-fail! ::invalid-transformer {:value x})))
+    :else (miu/-fail! ::invalid-transformer {:value x})))
 
 (defn- -property-registry [m options f]
   (let [options (assoc options ::allow-invalid-refs true)]
@@ -334,7 +330,7 @@
             (-validator [_] validator)
             (-explainer [this path]
               (fn explain [x in acc]
-                (if-not (validator x) (conj acc (-error path in this x)) acc)))
+                (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))
             (-parser [_] (fn [x] (if (validator x) x ::invalid)))
             (-unparser [this] (-parser this))
             (-transformer [this transformer method options]
@@ -350,7 +346,7 @@
             LensSchema
             (-keep [_])
             (-get [_ _ default] default)
-            (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))))))))
+            (-set [this key _] (miu/-fail! ::non-associative-schema {:schema this, :key key}))))))))
 
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))
 (defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
@@ -544,7 +540,7 @@
           (-validator [_] validator)
           (-explainer [this path]
             (fn explain [x in acc]
-              (if-not (validator x) (conj acc (-error (conj path 0) in this x)) acc)))
+              (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc)))
           (-parser [_] (fn [x] (if (validator x) x ::invalid)))
           (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
@@ -661,7 +657,7 @@
                                               (if-let [e (find x key)]
                                                 (explainer (val e) (conj in key) acc)
                                                 (if-not optional
-                                                  (conj acc (-error (conj path key) (conj in key) this nil ::missing-key))
+                                                  (conj acc (miu/-error (conj path key) (conj in key) this nil ::missing-key))
                                                   acc)))))
                                         children)
                                       closed (into [(fn [x in acc]
@@ -669,11 +665,11 @@
                                                         (fn [acc k]
                                                           (if (contains? keyset k)
                                                             acc
-                                                            (conj acc (-error (conj path k) (conj in k) this nil ::extra-key))))
+                                                            (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
                                                         acc (keys x)))]))]
                (fn [x in acc]
                  (if-not (map? x)
-                   (conj acc (-error path in this x ::invalid-type))
+                   (conj acc (miu/-error path in this x ::invalid-type))
                    (reduce
                      (fn [acc explainer]
                        (explainer x in acc))
@@ -749,7 +745,7 @@
                   value-explainer (-explainer value-schema (conj path 1))]
               (fn explain [m in acc]
                 (if-not (map? m)
-                  (conj acc (-error path in this m ::invalid-type))
+                  (conj acc (miu/-error path in this m ::invalid-type))
                   (reduce-kv
                     (fn [acc key value]
                       (let [in (conj in key)]
@@ -823,8 +819,8 @@
             (let [explainer (-explainer schema (conj path 0))]
               (fn [x in acc]
                 (cond
-                  (not (fpred x)) (conj acc (-error path in this x ::invalid-type))
-                  (not (validate-limits x)) (conj acc (-error path in this x ::limits))
+                  (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
+                  (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
                   :else (let [size (count x)]
                           (loop [acc acc, i 0, [x & xs] x]
                             (if (< i size)
@@ -892,8 +888,8 @@
             (let [explainers (mapv (fn [[i s]] (-explainer s (conj path i))) (map-indexed vector children))]
               (fn [x in acc]
                 (cond
-                  (not (vector? x)) (conj acc (-error path in this x ::invalid-type))
-                  (not= (count x) size) (conj acc (-error path in this x ::tuple-size))
+                  (not (vector? x)) (conj acc (miu/-error path in this x ::invalid-type))
+                  (not= (count x) size) (conj acc (miu/-error path in this x ::tuple-size))
                   :else (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
                           (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))
           (-parser [_] (->parser -parser))
@@ -938,7 +934,7 @@
             (fn [x] (contains? schema x)))
           (-explainer [this path]
             (fn explain [x in acc]
-              (if-not (contains? schema x) (conj acc (-error (conj path 0) in this x)) acc)))
+              (if-not (contains? schema x) (conj acc (miu/-error (conj path 0) in this x)) acc)))
           (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
           (-unparser [this] (-parser this))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
@@ -976,10 +972,10 @@
             (fn explain [x in acc]
               (try
                 (if-not (re-find re x)
-                  (conj acc (-error path in this x))
+                  (conj acc (miu/-error path in this x))
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
-                  (conj acc (-error path in this x (:type (ex-data e))))))))
+                  (conj acc (miu/-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
           (-parser [_]
@@ -1017,10 +1013,10 @@
             (fn explain [x in acc]
               (try
                 (if-not (f x)
-                  (conj acc (-error path in this x))
+                  (conj acc (miu/-error path in this x))
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
-                  (conj acc (-error path in this x (:type (ex-data e))))))))
+                  (conj acc (miu/-error path in this x (:type (ex-data e))))))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
@@ -1078,7 +1074,7 @@
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [this key value] (if (= 0 key)
                                    (-set-children this [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
+                                   (miu/-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
 
 (defn -multi-schema
   ([]
@@ -1094,7 +1090,7 @@
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
          (when-not dispatch
-           (-fail! ::missing-property {:key :dispatch}))
+           (miu/-fail! ::missing-property {:key :dispatch}))
          ^{:type ::schema}
          (reify
            Schema
@@ -1112,7 +1108,7 @@
                (fn [x in acc]
                  (if-let [explainer (explainers (dispatch x))]
                    (explainer x in acc)
-                   (conj acc (-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
+                   (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-parser [_]
              (let [parsers (reduce-kv (fn [acc k s] (assoc acc k (-parser s))) {} dispatch-map)]
                (fn [x]
@@ -1158,11 +1154,11 @@
      (-into-schema [_ properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
        (-check-children! :ref properties children {:min 1, :max 1})
        (when-not (-reference? ref)
-         (-fail! ::invalid-ref {:ref ref}))
+         (miu/-fail! ::invalid-ref {:ref ref}))
        (let [-ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
                       (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
                       (when-not allow-invalid-refs
-                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
+                        (miu/-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
              form (-create-form :ref properties children)
              ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
@@ -1201,18 +1197,18 @@
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
-                                                (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                                (miu/-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))
            RegexSchema
            (-regex-op? [_] false)
-           (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
-           (-regex-explainer [this _] (-fail! ::potentially-recursive-seqex this))
-           (-regex-parser [this] (-fail! ::potentially-recursive-seqex this))
-           (-regex-unparser [this] (-fail! ::potentially-recursive-seqex this))
-           (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))
-           (-regex-min-max [this] (-fail! ::potentially-recursive-seqex this))))))))
+           (-regex-validator [this] (miu/-fail! ::potentially-recursive-seqex this))
+           (-regex-explainer [this _] (miu/-fail! ::potentially-recursive-seqex this))
+           (-regex-parser [this] (miu/-fail! ::potentially-recursive-seqex this))
+           (-regex-unparser [this] (miu/-fail! ::potentially-recursive-seqex this))
+           (-regex-transformer [this _ _ _] (miu/-fail! ::potentially-recursive-seqex this))
+           (-regex-min-max [this] (miu/-fail! ::potentially-recursive-seqex this))))))))
 
 (defn -schema-schema [{:keys [id raw] :as opts}]
   ^{:type ::into-schema}
@@ -1249,7 +1245,7 @@
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
             (-set [this key value] (if (= key 0) (-set-children this [value])
-                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                                 (miu/-fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
@@ -1288,7 +1284,7 @@
             form (-create-form :=> properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :cat*} (-type input))
-          (-fail! ::invalid-input-schema {:input input}))
+          (miu/-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify
           Schema
@@ -1302,12 +1298,12 @@
             (if-let [checker (->checker this)]
               (fn explain [x in acc]
                 (if (not (fn? x))
-                  (conj acc (-error path in this x))
+                  (conj acc (miu/-error path in this x))
                   (if-let [res (checker x)]
-                    (conj acc (assoc (-error path in this x) :check res)))))
+                    (conj acc (assoc (miu/-error path in this x) :check res)))))
               (let [validator (-validator this)]
                 (fn explain [x in acc]
-                  (if-not (validator x) (conj acc (-error path in this x)) acc)))))
+                  (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
@@ -1335,12 +1331,12 @@
             form (-create-form :function properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (-type %)) children)
-          (-fail! ::non-function-childs {:children children}))
+          (miu/-fail! ::non-function-childs {:children children}))
         (let [infos (map -function-info children)]
           (when-not (= (count children) (count (distinct (map :arity infos))))
-            (-fail! ::duplicate-arities {:infos infos}))
+            (miu/-fail! ::duplicate-arities {:infos infos}))
           (when-not (= (count children) (count (distinct (map :min infos))))
-            (-fail! ::duplicate-min-arities {:infos infos})))
+            (miu/-fail! ::duplicate-min-arities {:infos infos})))
         ^{:type ::schema}
         (reify
           Schema
@@ -1354,12 +1350,12 @@
             (if-let [checker (->checker this)]
               (fn explain [x in acc]
                 (if (not (fn? x))
-                  (conj acc (-error path in this x))
+                  (conj acc (miu/-error path in this x))
                   (if-let [res (checker x)]
-                    (conj acc (assoc (-error path in this x) :check res)))))
+                    (conj acc (assoc (miu/-error path in this x) :check res)))))
               (let [validator (-validator this)]
                 (fn explain [x in acc]
-                  (if-not (validator x) (conj acc (-error path in this x)) acc)))))
+                  (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
@@ -1734,7 +1730,7 @@
               'm/children children
               'm/entries entries}})
 
-(let [-fail! #(-fail! ::sci-not-available {:code %})
+(let [-fail! #(miu/-fail! ::sci-not-available {:code %})
       -eval? #(or (symbol? %) (string? %) (sequential? %))
       -evaluator (memoize ms/evaluator)]
   (defn eval
@@ -1880,7 +1876,7 @@
 (def default-registry
   (mr/registry (cond (identical? mr/type "default") (default-schemas)
                      (identical? mr/type "custom") (mr/custom-default-registry)
-                     :else (-fail! ::invalid-registry.type {:type mr/type}))))
+                     :else (miu/-fail! ::invalid-registry.type {:type mr/type}))))
 
 ;;
 ;; function schemas (alpha, subject to change)
@@ -1894,7 +1890,7 @@
    (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
-     (cond-> s (not (#{:=> :function} t)) (-fail! :invalid-=>schema {:type t, :schema s})))))
+     (cond-> s (not (#{:=> :function} t)) (miu/-fail! :invalid-=>schema {:type t, :schema s})))))
 
 (defn -register-function-schema! [ns name value]
   (swap! -function-schemas* assoc-in [ns name]

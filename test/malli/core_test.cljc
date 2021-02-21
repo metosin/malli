@@ -133,7 +133,7 @@
                      :errors [{:path [], :in [], :schema schema, :value "1"}]}
                     {:schema schema
                      :value "1"
-                     :errors [(m/-error [] [] schema "1")]}
+                     :errors [(miu/-error [] [] schema "1")]}
                     (m/explain schema "1")))
 
       (is (= 1 (m/parse schema 1)))
@@ -2035,7 +2035,7 @@
 
 (defn single-arity
   ([x] x)
-  ([_ _] (m/-fail! ::arity-error)))
+  ([_ _] (miu/-fail! ::arity-error)))
 
 (deftest function-schema-test
   ;; js allows invalid arity

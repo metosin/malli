@@ -214,7 +214,7 @@
               (fn [driver regs pos coll k]
                 (park-validator! driver r* regs pos coll k) ; remember fallback
                 (park-validator! driver r regs pos coll k))))
-          (reverse ?krs)))
+          ?krs))
 
 (defn alt-explainer [& ?krs]
   (reduce (fn [acc ?kr]
@@ -222,25 +222,24 @@
               (fn [driver regs pos coll k]
                 (park-explainer! driver r* regs pos coll k) ; remember fallback
                 (park-explainer! driver r regs pos coll k))))
-          (reverse ?krs)))
+          ?krs))
 
 (defn alt-parser [& rs]
   (reduce (fn [acc r]
             (fn [driver regs pos coll k]
               (park-validator! driver acc regs pos coll k)  ; remember fallback
               (park-validator! driver r regs pos coll k)))
-          (reverse rs)))
+          rs))
 
-(defn alt*-parser [& krs]
-  (let [[kr & krs] (reverse krs)]
-    (reduce (fn [acc [tag r]]
-              (let [r (fmap-parser (fn [v] (miu/-tagged tag v)) r)]
-                (fn [driver regs pos coll k]
-                  (park-validator! driver acc regs pos coll k) ; remember fallback
-                  (park-validator! driver r regs pos coll k))))
-            (let [[tag r] kr]
-              (fmap-parser (fn [v] (miu/-tagged tag v)) r))
-            krs)))
+(defn alt*-parser [kr & krs]
+  (reduce (fn [acc [tag r]]
+            (let [r (fmap-parser (fn [v] (miu/-tagged tag v)) r)]
+              (fn [driver regs pos coll k]
+                (park-validator! driver acc regs pos coll k) ; remember fallback
+                (park-validator! driver r regs pos coll k))))
+          (let [[tag r] kr]
+            (fmap-parser (fn [v] (miu/-tagged tag v)) r))
+          krs))
 
 (defn alt-unparser [& unparsers]
   (fn [x]
@@ -260,9 +259,9 @@
   (reduce (fn [acc ?kr]
             (let [r (entry->regex acc), r* (entry->regex ?kr)]
               (fn [driver regs coll* pos coll k]
-                (park-transformer! driver r regs coll* pos coll k) ; remember fallback
-                (park-transformer! driver r* regs coll* pos coll k))))
-          (reverse ?krs)))
+                (park-transformer! driver r* regs coll* pos coll k) ; remember fallback
+                (park-transformer! driver r regs coll* pos coll k))))
+          ?krs))
 
 ;;;; ## Option
 

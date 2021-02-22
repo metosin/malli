@@ -1461,8 +1461,8 @@
           nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
           [] nil nil
           ["foo"] "foo" nil
-          [0] nil [{:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}
-                   {:path [0], :in [0], :schema string?, :value 0}]
+          [0] nil [{:path [0], :in [0], :schema string?, :value 0}
+                   {:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}]
           ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}]))
 
       (testing "pathological case (terminates)"

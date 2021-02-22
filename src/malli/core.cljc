@@ -298,8 +298,7 @@
                              is? (satisfies? IntoSchema this)]
                          (extend-protocol Schemas (class this)
                            (-schema? [_] s?)
-                           (-into-schema? [_] is?))))
-               (satisfies? protocol this))]
+                           (-into-schema? [_] is?)))))]
   (extend-protocol Schemas
     nil
     (-schema? [_] false)

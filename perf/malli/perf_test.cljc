@@ -343,6 +343,26 @@
     ;; 2µs
     (cc/quick-bench (valid-malli? data))))
 
+(defn parsing []
+
+  ;; 44µs
+  (let [spec (s/* (s/cat :prop string?,
+                         :val (s/alt :s string?
+                                     :b boolean?)))
+        parse (partial s/conform spec)]
+    (cc/quick-bench
+      (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
+
+  ;; 2.5µs
+  (let [schema [:* [:cat*
+                    [:prop string?]
+                    [:val [:alt*
+                           [:s string?]
+                           [:b boolean?]]]]]
+        parse (m/parser schema)]
+    (cc/quick-bench
+      (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]))))
+
 (defn schema-flames []
 
   ;; "Elapsed time: 10472.153783 msecs"
@@ -415,6 +435,7 @@
   (fn-test)
   (sequence-perf-test)
   (simple-regex)
+  (parsing)
 
   (prof/serve-files 8080)
   (prof/clear-results)

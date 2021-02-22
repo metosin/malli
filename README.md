@@ -141,9 +141,10 @@ Other times, we use a map as a homogeneous index. In this case, all our key-valu
 pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 ```clj
-(m/validate [:map-of :string [:map [:lat number?] [:long number?]]]
-            {"oslo" {:lat 60 :long 11}
-             "helsinki" {:lat 60 :long 24}})
+(m/validate 
+  [:map-of :string [:map [:lat number?] [:long number?]]]
+  {"oslo" {:lat 60 :long 11}
+   "helsinki" {:lat 60 :long 24}})
 ;; => true
 ```
 
@@ -2100,6 +2101,28 @@ Validation:
 (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
   (cc/quick-bench
     (valid? 0)))
+```
+
+Parsing:
+
+```clj
+;; 44µs
+(let [spec (s/* (s/cat :prop string?,
+                       :val (s/alt :s string?
+                                   :b boolean?)))
+      parse (partial s/conform spec)]
+  (cc/quick-bench
+    (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
+
+;; 2.5µs
+(let [schema [:* [:cat*
+                  [:prop string?]
+                  [:val [:alt*
+                         [:s string?]
+                         [:b boolean?]]]]]
+      parse (m/parser schema)]
+  (cc/quick-bench
+    (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 ```
 
 Coercion:

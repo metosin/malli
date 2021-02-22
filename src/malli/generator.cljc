@@ -29,9 +29,9 @@
 (defn -min-max [schema options]
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
     (when (and min gen-min (< gen-min min))
-      (m/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+      (miu/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
     (when (and max gen-max (> gen-max max))
-      (m/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
+      (miu/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
     {:min (or gen-min min)
      :max (or gen-max max)}))
 
@@ -99,7 +99,7 @@
      (if-let [string-from-regex @(dynaload/dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
        (let [re (or (first (m/children schema options)) (m/form schema options))]
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
-       (m/-fail! :test-chuck-not-available))))
+       (miu/-fail! :test-chuck-not-available))))
 
 (defn -=>-gen [schema options]
   (let [{:keys [min max input output] :or {max miu/+max-size+}} (m/-function-info schema)
@@ -109,9 +109,9 @@
       (fn [& args]
         (let [args (vec args), arity (count args)]
           (when-not (<= min arity max)
-            (m/-fail! ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :schema schema}))
+            (miu/-fail! ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :schema schema}))
           (when-not (validate-input args)
-            (m/-fail! ::invalid-input {:schema input, :args args}))
+            (miu/-fail! ::invalid-input {:schema input, :args args}))
           (generate output-generator options))))))
 
 (defn -function-gen [schema options]
@@ -128,9 +128,9 @@
           (cond
             info (apply (:f info) args)
             varargs-info (if (< arity (:min varargs-info))
-                           (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})
+                           (miu/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})
                            (apply (:f varargs-info) args))
-            :else (m/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))
+            :else (miu/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))
 
 (defn -regex-generator [schema options]
   (if (m/-regex-op? schema)
@@ -243,7 +243,7 @@
       fmap (gen/fmap (m/eval fmap (or options (m/options schema))) (or elements gen (gen/return nil)))
       elements elements
       gen gen
-      :else (m/-fail! ::no-generator {:schema schema, :options options}))))
+      :else (miu/-fail! ::no-generator {:schema schema, :options options}))))
 
 ;;
 ;; public api

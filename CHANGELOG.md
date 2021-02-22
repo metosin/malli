@@ -38,6 +38,8 @@ Malli is in [alpha](README.md#alpha).
 
 * **BREAKING**: `m/Schema` has new methods: `-parent`, `-parser` and `-unparser`
 * **BREAKING**: `m/-coder` and `m/-chain` are replaced wih `m/-intercepting`
+* **BREAKING**: `m/-fail!` is now `miu/-fail!`
+* **BREAKING**: `m/-error` is now `miu/-error`
   
 ## 0.2.1 (2020-10-22)
 

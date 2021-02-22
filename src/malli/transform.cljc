@@ -2,6 +2,7 @@
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
   (:require #?@(:cljs [[goog.date.UtcDateTime]
                        [goog.date.Date]])
+            [malli.impl.util :as miu]
             [malli.core :as m])
   #?(:clj (:import (java.util Date UUID)
                    (java.time Instant ZoneId)
@@ -23,7 +24,7 @@
     (let [compiled (::compiled options 0)
           options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
-        (m/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
+        (miu/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
       (if-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
           (dissoc ?interceptor :compile)
@@ -46,7 +47,7 @@
     (ifn? ?interceptor)
     {:enter ?interceptor}
 
-    :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
+    :else (miu/-fail! ::invalid-transformer {:value ?interceptor})))
 
 ;;
 ;; from strings

@@ -340,7 +340,7 @@
     ;; 12µs
     (cc/quick-bench (valid-minimallist? data))
 
-    ;; 2µs
+    ;; 1.5µs
     (cc/quick-bench (valid-malli? data))))
 
 (defn parsing []

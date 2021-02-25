@@ -203,8 +203,9 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 `:cat*` and `:alt*` allow naming the subsequences / alternatives
 
 ```clj
-(m/explain [:* [:cat* [:prop string?] [:val [:alt* [:s string?] [:b boolean?]]]]]
-    ["-server" "foo" "-verbose" 11 "-user" "joe"])
+(m/explain
+  [:* [:cat* [:prop string?] [:val [:alt* [:s string?] [:b boolean?]]]]]
+  ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
 ;;     :errors (#Error{:path [0 :val :s], :in [3], :schema string?, :value 11}
@@ -214,8 +215,9 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 while `:cat` and `:alt` just use numeric indices for paths:
 
 ```clj
-(m/explain [:* [:cat string? [:alt string? boolean?]]]
-           ["-server" "foo" "-verbose" 11 "-user" "joe"])
+(m/explain 
+  [:* [:cat string? [:alt string? boolean?]]]
+  ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:cat string? [:alt string? boolean?]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
 ;;     :errors (#Error{:path [0 1 0], :in [3], :schema string?, :value 11}
@@ -227,13 +229,16 @@ mean a sequence of one element that matches that schema. To force that behaviour
 a seqex child `:schema` can be used:
 
 ```clj
-(m/validate [:cat [:= :names] [:schema [:* string?]]
-                  [:= :nums] [:schema [:* number?]]]
-            [:names ["a" "b"] :nums [1 2 3]]) ; => true
+(m/validate
+  [:cat [:= :names] [:schema [:* string?]] [:= :nums] [:schema [:* number?]]]
+  [:names ["a" "b"] :nums [1 2 3]])
+; => true
 
 ;; whereas
-(m/validate [:cat [:= :names] [:* string?] [:= :nums] [:* number?]]
-            [:names "a" "b" :nums 1 2 3]) ; => true
+(m/validate
+  [:cat [:= :names] [:* string?] [:= :nums] [:* number?]]
+  [:names "a" "b" :nums 1 2 3]) 
+; => true
 ```
 
 Although a lot of effort has gone into making the seqex implementation fast

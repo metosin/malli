@@ -325,7 +325,8 @@
                                                 [:b (mh/fn boolean?)])]))
         valid-minimallist? (partial mc/valid? minimallist)
 
-        malli [:* [:cat* [:prop string?]
+        malli [:* [:cat*
+                   [:prop string?]
                    [:val [:alt*
                           [:s string?]
                           [:b boolean?]]]]]

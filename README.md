@@ -1491,6 +1491,8 @@ Schema Types are described using `m/IntoSchema` protocol, which has a factory me
 `(-into-schema [this properties children options])` to create the actual Schema instances. 
 See `malli.core` for example implementations.
 
+### Simple Schema
+
 For simple cases, there is `m/-simple-schema`:
 
 ```clj
@@ -1543,6 +1545,30 @@ register the types:
 
 (json-schema/transform [Over6 {:json-schema/example 42}])
 ; => {:type "integer", :format "int64", :minimum 6, :example 42}
+```
+
+### Content Dependent Simple Schema
+
+You can also build content-dependent schemas by using a callback function of `properties children -> opts` instead of static `opts`:
+
+```clj
+(def Over
+  (m/-simple-schema
+    (fn [{:keys [value]} _]
+      (assert (int? value))
+      {:type :user/over
+       :pred #(and (int? %) (> % value))
+       :type-properties {:error/fn (fn [error _] (str "should be over " value ", was " (:value error)))
+                         :decode/string mt/-string->long
+                         :json-schema/type "integer"
+                         :json-schema/format "int64"
+                         :json-schema/minimum value
+                         :gen/gen (gen/large-integer* {:min (inc value)})}})))
+
+(-> [Over {:value 12}]
+    (m/explain 10)
+    (me/humanize))
+; => ["should be over 12, was 10"]
 ```
 
 ## Schema Registry

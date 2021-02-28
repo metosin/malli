@@ -325,9 +325,9 @@
                                                 [:b (mh/fn boolean?)])]))
         valid-minimallist? (partial mc/valid? minimallist)
 
-        malli [:* [:cat*
+        malli [:* [:cat-named
                    [:prop string?]
-                   [:val [:alt*
+                   [:val [:alt-named
                           [:s string?]
                           [:b boolean?]]]]]
         valid-malli? (m/validator malli)]
@@ -355,9 +355,9 @@
       (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 
   ;; 2.5µs
-  (let [schema [:* [:cat*
+  (let [schema [:* [:cat-named
                     [:prop string?]
-                    [:val [:alt*
+                    [:val [:alt-named
                            [:s string?]
                            [:b boolean?]]]]]
         parse (m/parser schema)]

@@ -178,7 +178,7 @@
 
   (testing "composite schemas"
     (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])
-          schema* (m/schema [:and int? [:or* [:pos pos-int?] [:neg neg-int?]]])]
+          schema* (m/schema [:and int? [:or-named [:pos pos-int?] [:neg neg-int?]]])]
 
       (doseq [schema [schema schema*]]
         (is (true? (m/validate schema 1)))
@@ -189,7 +189,7 @@
 
       (is (= pos-int? (m/validator [:and pos-int? pos-int? pos-int?])))
       (is (= pos-int? (m/validator [:or pos-int? pos-int? pos-int?])))
-      (is (= pos-int? (m/validator [:or* [:a pos-int?] [:b pos-int?] [:c pos-int?]])))
+      (is (= pos-int? (m/validator [:or-named [:a pos-int?] [:b pos-int?] [:c pos-int?]])))
 
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema,
@@ -235,13 +235,13 @@
              (mu/to-map-syntax schema)))
       (is (= {:type :and
               :children [{:type 'int?}
-                         {:type :or*
+                         {:type :or-named
                           :children [[:pos nil {:type 'pos-int?}]
                                      [:neg nil {:type 'neg-int?}]]}]}
              (mu/to-map-syntax schema*)))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))
-      (is (= [:and 'int? [:or* [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
+      (is (= [:and 'int? [:or-named [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
 
     (testing "transforming :or"
       (testing "first valid transformed branch is used"
@@ -250,7 +250,7 @@
                          int?
                          [:map [:y keyword?]]
                          keyword?]
-                        [:or*
+                        [:or-named
                          [:äxy [:map [:x keyword?]]]
                          [:n int?]
                          [:yxy [:map [:y keyword?]]]
@@ -274,7 +274,7 @@
                          [:map
                           [:y keyword?]
                           [:enter boolean?]]]
-                        [:or* {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
+                        [:or-named {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
                                                :leave (fn [m] (update m :leave #(or % true)))}}
                          [:äxy [:map
                                 [:x keyword?]
@@ -1299,7 +1299,7 @@
              (mu/to-map-syntax [:tuple int? int?])))))
 
   (testing "seqex schemas"
-    (doseq [typ [:cat :cat*]]
+    (doseq [typ [:cat :cat-named]]
       (testing typ
         (testing "empty"
           (let [s [typ]]
@@ -1328,9 +1328,9 @@
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-              [] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+              [] nil [{:path [(case typ :cat-named :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
               ["foo"] {:s "foo"} nil
-              [0] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 0}]
+              [0] nil [{:path [(case typ :cat-named :s 0)], :in [0], :schema string?, :value 0}]
               ["foo" "bar"] nil [{:path [], :in [1], :schema s, :value "bar", :type ::m/input-remaining}])))
 
         (testing "pair"
@@ -1345,11 +1345,11 @@
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-              [] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-              ["foo"] nil [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
+              [] nil [{:path [(case typ :cat-named :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+              ["foo"] nil [{:path [(case typ :cat-named :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
               ["foo" 0] {:s "foo", :n 0} nil
-              ["foo" "bar"] nil [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value "bar"}]
-              [1 2] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value 1}]
+              ["foo" "bar"] nil [{:path [(case typ :cat-named :n 1)], :in [1], :schema int?, :value "bar"}]
+              [1 2] nil [{:path [(case typ :cat-named :s 0)], :in [0], :schema string?, :value 1}]
               ["foo" 0 1] nil [{:path [], :in [2], :schema s, :value 1, :type ::m/input-remaining}])))
 
         (testing "triplet"
@@ -1365,16 +1365,16 @@
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-              [] nil [{:path [(case typ :cat* :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-              ["foo"] nil [{:path [(case typ :cat* :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
-              ["foo" 0] nil [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
+              [] nil [{:path [(case typ :cat-named :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
+              ["foo"] nil [{:path [(case typ :cat-named :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
+              ["foo" 0] nil [{:path [(case typ :cat-named :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
               ["foo" 0 :bar] {:s "foo", :n 0, :k :bar} nil
-              ["foo" 0 "bar"] nil [{:path [(case typ :cat* :k 2)], :in [2], :schema keyword?, :value "bar"}]
+              ["foo" 0 "bar"] nil [{:path [(case typ :cat-named :k 2)], :in [2], :schema keyword?, :value "bar"}]
               ["foo" 0 :bar 0] nil [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))
 
         (testing "* backtracks"
           (let [s [:cat [:* pos?] [:= 4]]
-                s* [:cat* [:pos [:* pos?]] [:four [:= 4]]]
+                s* [:cat-named [:pos [:* pos?]] [:four [:= 4]]]
                 v [4 4 4 4]]
             (is (m/validate s v))
 
@@ -1383,7 +1383,7 @@
             (is (= v (m/unparse s [[4 4 4] 4])))
             (is (= v (m/unparse s* {:pos [4 4 4], :four 4})))))))
 
-    (doseq [typ [:alt :alt*]]
+    (doseq [typ [:alt :alt-named]]
       (testing typ
         (testing "empty"
           (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [typ]))))
@@ -1402,7 +1402,7 @@
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
               ["foo"] ["foo" (miu/-tagged :s "foo")] nil
-              [0] nil [{:path [(case typ :alt* :s 0)], :in [0], :schema string?, :value 0}]
+              [0] nil [{:path [(case typ :alt-named :s 0)], :in [0], :schema string?, :value 0}]
               ["foo" 0] nil [{:path [], :in [1], :schema s, :value 0, :type ::m/input-remaining}])))
 
         (testing "pair"
@@ -2011,14 +2011,14 @@
     [:cat int?] [1 1]
     [:cat int? [:cat]] [1 1]
     [:cat int? [:cat string? int?]] [3 3]
-    [:cat*] [0 0]
-    [:cat* [:n int?]] [1 1]
-    [:cat* [:n int?] [:named [:cat]]] [1 1]
-    [:cat* [:n int?] [:named [:cat string? int?]]] [3 3]
+    [:cat-named] [0 0]
+    [:cat-named [:n int?]] [1 1]
+    [:cat-named [:n int?] [:named [:cat]]] [1 1]
+    [:cat-named [:n int?] [:named [:cat string? int?]]] [3 3]
     [:alt int?] [1 1]
     [:alt int? [:cat]] [0 1]
-    [:alt* [:n int?]] [1 1]
-    [:alt* [:n int?] [:empty [:cat]]] [0 1]
+    [:alt-named [:n int?]] [1 1]
+    [:alt-named [:n int?] [:empty [:cat]]] [0 1]
     [:* int?] [0 nil]
     [:? int?] [0 1]
     [:+ [:cat string? int?]] [2 nil]

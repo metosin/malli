@@ -22,7 +22,7 @@ Malli is in [alpha](README.md#alpha).
 * support for parsing and unparsing schemas: `m/parse`, `m/parser`, `m/unparse`, `m/unparser`, see [Parsing values](./README.md#parsing-values).
 * support for function schmas: `:=>` and `:function`, see [Function Schemas](./README.md#function-schemas).
 * support for [clj-kondo](https://github.com/clj-kondo/clj-kondo), see [Clj-kondo](./README.md#clj-kondo).
-* new schemas: `:any` (e.g. `any?`), `:not` (complement) and `:or*` (or with named branches)
+* new schemas: `:any` (e.g. `any?`), `:not` (complement) and `:or-named` (or with named branches)
 * `:qualified-keyword` support `:namespace` property
 
 * FIX: Schema vizualization is not working for `[:< ...]` like schemas, [#370](https://github.com/metosin/malli/issues/370)

@@ -157,7 +157,7 @@
     (fn [acc {:keys [ns name arity] :as data}]
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
-        (select-keys data [:args :re :min-arity])))
+        (select-keys data [:args :ret :min-arity])))
     {:lint-as {'malli.schema/defn 'schema.core/defn}} xs))
 
 #?(:clj

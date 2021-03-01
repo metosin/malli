@@ -44,8 +44,10 @@
   #?(:clj
      (is (= {'malli.clj-kondo-test
              {'kikka
-              {:arities {1 {:args [:int]},
+              {:arities {1 {:args [:int],
+                            :ret :int},
                          :varargs {:args [:int :int {:op :rest, :spec :int}],
+                                   :ret :int,
                                    :min-arity 2}}}}}
             (-> 'malli.clj-kondo-test
                 (clj-kondo/collect)

@@ -269,22 +269,22 @@
         [:cat int? keyword?] ["1" "kikka"] [1 :kikka]
         [:cat int? keyword?] ["kikka" "kukka"] ["kikka" "kukka"]
 
-        [:cat-named] [] []
-        [:cat-named] "1" "1"
-        [:cat-named] nil nil
-        [:cat-named [:n int?]] ["1"] [1]
-        [:cat-named [:n int?] [:k keyword?]] ["1" "kikka"] [1 :kikka]
-        [:cat-named [:n int?] [:k keyword?]] ["kikka" "kukka"] ["kikka" "kukka"]
+        [:catn] [] []
+        [:catn] "1" "1"
+        [:catn] nil nil
+        [:catn [:n int?]] ["1"] [1]
+        [:catn [:n int?] [:k keyword?]] ["1" "kikka"] [1 :kikka]
+        [:catn [:n int?] [:k keyword?]] ["kikka" "kukka"] ["kikka" "kukka"]
 
         [:alt int?] ["1"] [1]
         [:alt int? keyword?] ["1"] [1]
         [:alt keyword? int?] ["1"] [:1]
         [:alt int? keyword?] ["kikka"] [:kikka]
 
-        [:alt-named [:n int?]] ["1"] [1]
-        [:alt-named [:n int?] [:k keyword?]] ["1"] [1]
-        [:alt-named [:k keyword?] [:n int?]] ["1"] [:1]
-        [:alt-named [:n int?] [:k keyword?]] ["kikka"] [:kikka]
+        [:altn [:n int?]] ["1"] [1]
+        [:altn [:n int?] [:k keyword?]] ["1"] [1]
+        [:altn [:k keyword?] [:n int?]] ["1"] [:1]
+        [:altn [:n int?] [:k keyword?]] ["kikka"] [:kikka]
 
         [:? int?] [] []
         [:? int?] "1" "1"

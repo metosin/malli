@@ -166,7 +166,7 @@
                     (reverse (cons r rs)))]
      (fn [driver regs pos coll k] (sp driver regs [] pos coll k)))))
 
-(defn cat*-parser
+(defn catn-parser
   ([] (fn [_ _ pos coll k] (k {} pos coll)))
   ([kr & krs]
    (let [sp (reduce (fn [acc [tag r]]
@@ -185,7 +185,7 @@
                    [] unparsers)
         :malli.core/invalid))))
 
-(defn cat*-unparser [& unparsers]
+(defn catn-unparser [& unparsers]
   (let [unparsers (into {} unparsers)]
     (fn [m]
       (if (and (map? m) (= (count m) (count unparsers)))
@@ -227,11 +227,11 @@
 (defn alt-parser [& rs]
   (reduce (fn [acc r]
             (fn [driver regs pos coll k]
-              (park-validator! driver acc regs pos coll k)  ; remember fallback
+              (park-validator! driver acc regs pos coll k) ; remember fallback
               (park-validator! driver r regs pos coll k)))
           rs))
 
-(defn alt*-parser [kr & krs]
+(defn altn-parser [kr & krs]
   (reduce (fn [acc [tag r]]
             (let [r (fmap-parser (fn [v] (miu/-tagged tag v)) r)]
               (fn [driver regs pos coll k]
@@ -246,7 +246,7 @@
     (reduce (fn [_ unparse] (miu/-map-valid reduced (unparse x)))
             :malli.core/invalid unparsers)))
 
-(defn alt*-unparser [& unparsers]
+(defn altn-unparser [& unparsers]
   (let [unparsers (into {} unparsers)]
     (fn [x]
       (if (miu/-tagged? x)
@@ -276,13 +276,13 @@
 (defn *-validator [p]
   (let [*p-epsilon (cat-validator)]
     (fn *p [driver regs pos coll k]
-      (park-validator! driver *p-epsilon regs pos coll k)   ; remember fallback
+      (park-validator! driver *p-epsilon regs pos coll k) ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-validator! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-explainer [p]
   (let [*p-epsilon (cat-explainer)]
     (fn *p [driver regs pos coll k]
-      (park-explainer! driver *p-epsilon regs pos coll k)   ; remember fallback
+      (park-explainer! driver *p-epsilon regs pos coll k) ; remember fallback
       (p driver regs pos coll (fn [pos coll] (park-explainer! driver *p regs pos coll k)))))) ; TCO
 
 (defn *-parser [p]
@@ -396,7 +396,7 @@
                          driver
                          (fn [driver regs coll* pos coll k]
                            (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
-                         regs coll* pos coll k))))          ; TCO
+                         regs coll* pos coll k)))) ; TCO
                 (k coll* pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
 

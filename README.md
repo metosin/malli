@@ -164,20 +164,20 @@ You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for ve
 ```
 
 Malli also supports sequence regexes like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
-The supported operators are `:cat` & `:cat-named` for concatenation / sequencing
+The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 ```clj
 (m/validate [:cat string? int?] ["foo" 0]) ; => true
 
-(m/validate [:cat-named [:s string?] [:n int?]] ["foo" 0]) ; => true
+(m/validate [:catn [:s string?] [:n int?]] ["foo" 0]) ; => true
 ```
 
-`:alt` & `:alt-named` for alternatives
+`:alt` & `:altn` for alternatives
 
 ```clj
 (m/validate [:alt keyword? string?] ["foo"]) ; => true
 
-(m/validate [:alt-named [:kw keyword?] [:s string?]] ["foo"]) ; => true
+(m/validate [:altn [:kw keyword?] [:s string?]] ["foo"]) ; => true
 ```
 
 and `:?`, `:*`, `:+` & `:repeat` for repetition:
@@ -200,11 +200,11 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 (m/validate [:repeat {:min 2, :max 4} int?] [1 2 3 4 5]) ; => false
 ```
 
-`:cat-named` and `:alt-named` allow naming the subsequences / alternatives
+`:catn` and `:altn` allow naming the subsequences / alternatives
 
 ```clj
 (m/explain
-  [:* [:cat-named [:prop string?] [:val [:alt-named [:s string?] [:b boolean?]]]]]
+  [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
@@ -1238,9 +1238,9 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 
 ```clj
 (m/parse
-  [:* [:cat-named
+  [:* [:catn
        [:prop string?]
-       [:val [:alt-named
+       [:val [:altn
               [:s string?]
               [:b boolean?]]]]]
   ["-server" "foo" "-verbose" true "-user" "joe"])
@@ -1253,12 +1253,12 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 
 ```clj
 (def Hiccup
-  [:schema {:registry {"hiccup" [:or-named
-                                 [:node [:cat-named
+  [:schema {:registry {"hiccup" [:orn
+                                 [:node [:catn
                                          [:name keyword?]
                                          [:props [:? [:map-of keyword? any?]]]
                                          [:children [:* [:schema [:ref "hiccup"]]]]]]
-                                 [:primitive [:or-named
+                                 [:primitive [:orn
                                               [:nil nil?]
                                               [:boolean boolean?]
                                               [:number number?]
@@ -1816,7 +1816,7 @@ Functions can be described with `:=>`, which has two children: input schema (as 
 [:=> [:cat int? int?] pos-int?]
 
 ;; named varargs, e.g. (fn [x & xs] (* x (apply + xs)))
-[:=> [:cat-named 
+[:=> [:catn 
       [:x int?]
       [:xs [:* int?]]]
       
@@ -2120,9 +2120,9 @@ Parsing:
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 
 ;; 2.5µs
-(let [schema [:* [:cat-named
+(let [schema [:* [:catn
                   [:prop string?]
-                  [:val [:alt-named
+                  [:val [:altn
                          [:s string?]
                          [:b boolean?]]]]]
       parse (m/parser schema)]

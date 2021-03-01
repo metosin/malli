@@ -226,9 +226,9 @@
 (defmethod -schema-generator :select-keys [schema options] (generator (m/deref schema) options))
 
 (defmethod -schema-generator :cat [schema options] (-cat-gen schema options))
-(defmethod -schema-generator :cat* [schema options] (-cat-gen schema options))
+(defmethod -schema-generator :catn [schema options] (-cat-gen schema options))
 (defmethod -schema-generator :alt [schema options] (-alt-gen schema options))
-(defmethod -schema-generator :alt* [schema options] (-alt-gen schema options))
+(defmethod -schema-generator :altn [schema options] (-alt-gen schema options))
 
 (defmethod -schema-generator :? [schema options] (-?-gen schema options))
 (defmethod -schema-generator :* [schema options] (-*-gen schema options))

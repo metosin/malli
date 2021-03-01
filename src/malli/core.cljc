@@ -453,17 +453,17 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn -or*-schema []
+(defn -orn-schema []
   ^{:type ::into-schema}
   (reify IntoSchema
     (-into-schema [_ properties children options]
-      (-check-children! :or* properties children {:min 1})
+      (-check-children! :orn properties children {:min 1})
       (let [{:keys [children entries forms]} (-parse-entries children {:naked-keys true} options)
-            form (-create-form :or* properties forms)]
+            form (-create-form :orn properties forms)]
         ^{:type ::schema}
         (reify
           Schema
-          (-type [_] :or*)
+          (-type [_] :orn)
           (-type-properties [_])
           (-validator [_]
             (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) children))]
@@ -515,7 +515,7 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-parent [_] (-or*-schema))
+          (-parent [_] (-orn-schema))
           (-form [_] form)
 
           LensSchema
@@ -1282,7 +1282,7 @@
       (let [[input :as children] (map #(schema % options) children)
             form (-create-form :=> properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
-        (when-not (#{:cat :cat*} (-type input))
+        (when-not (#{:cat :catn} (-type input))
           (miu/-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify
@@ -1832,25 +1832,25 @@
                            :re-unparser (fn [_ children] (apply re/alt-unparser children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))
                            :re-min-max (fn [_ children] (reduce -re-alt-min-max {:min miu/+max-size+, :max 0} children))})
-   :cat* (-sequence-entry-schema {:type :cat*, :child-bounds {}
+   :catn (-sequence-entry-schema {:type :catn, :child-bounds {}
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
-                                  :re-parser (fn [_ children] (apply re/cat*-parser children))
-                                  :re-unparser (fn [_ children] (apply re/cat*-unparser children))
+                                  :re-parser (fn [_ children] (apply re/catn-parser children))
+                                  :re-unparser (fn [_ children] (apply re/catn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
                                   :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (map last children)))})
-   :alt* (-sequence-entry-schema {:type :alt*, :child-bounds {:min 1}
+   :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
-                                  :re-parser (fn [_ children] (apply re/alt*-parser children))
-                                  :re-unparser (fn [_ children] (apply re/alt*-unparser children))
+                                  :re-parser (fn [_ children] (apply re/altn-parser children))
+                                  :re-unparser (fn [_ children] (apply re/altn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:min miu/+max-size+, :max 0} (map last children)))})})
 
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
-   :or* (-or*-schema)
+   :orn (-orn-schema)
    :not (-not-schema)
    :map (-map-schema)
    :map-of (-map-of-schema)

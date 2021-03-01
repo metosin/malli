@@ -103,7 +103,7 @@
 (defmethod accept :* [_ _ [child] _] {:op :rest, :spec (transform child)})
 (defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec (transform child)})
 (defmethod accept :cat [_ _ children _] children)
-(defmethod accept :cat* [_ _ children _] (mapv last children))
+(defmethod accept :catn [_ _ children _] (mapv last children))
 
 (defmethod accept :merge [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept :union [_ schema _ options] (transform (m/deref schema) options))

@@ -14,11 +14,11 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.3.0 (2021-02-02)
 
 ### Public API
 
-* support for sequence schemas: `:cat`, `cat*`, `alt`, `alt*`, `:?`, `:*`, `:+` and `repeat`, see [Sequence Schemas](./README.md#sequence-schemas).
+* support for sequence schemas: `:cat`, `catn`, `alt`, `altn`, `:?`, `:*`, `:+` and `repeat`, see [Sequence Schemas](./README.md#sequence-schemas).
 * support for parsing and unparsing schemas: `m/parse`, `m/parser`, `m/unparse`, `m/unparser`, see [Parsing values](./README.md#parsing-values).
 * support for function schmas: `:=>` and `:function`, see [Function Schemas](./README.md#function-schemas).
 * support for [clj-kondo](https://github.com/clj-kondo/clj-kondo), see [Clj-kondo](./README.md#clj-kondo).

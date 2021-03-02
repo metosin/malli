@@ -1863,7 +1863,7 @@ Function validation:
 ; => true
 ```
 
-By default, validation just checks if a valu ia `ifn?`:
+By default, validation just checks if a value is `ifn?`:
 
 ```clj
 (m/validate =>plus str)

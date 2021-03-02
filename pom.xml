@@ -18,7 +18,7 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.3.0-SNAPSHOT</tag>
+    <tag>0.3.0</tag>
   </scm>
 
   <dependencies>

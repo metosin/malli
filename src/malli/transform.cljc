@@ -49,6 +49,8 @@
 
     :else (miu/-fail! ::invalid-transformer {:value ?interceptor})))
 
+(defn -safe [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ %)))
+
 ;;
 ;; from strings
 ;;
@@ -78,9 +80,7 @@
   (if (number? x) (double x) x))
 
 (defn -string->keyword [x]
-  (if (string? x)
-    (keyword x)
-    x))
+  (if (string? x) (keyword x) x))
 
 (defn -string->boolean [x]
   (if (string? x)

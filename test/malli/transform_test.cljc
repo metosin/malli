@@ -794,3 +794,10 @@
       (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
               1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}
              (m/decode schema data mt/json-transformer))))))
+
+#?(:clj
+   (deftest -safe-test
+     (let [schema [:int {:decode/num (mt/-safe #(Long/parseLong %))}]]
+       (is (= 1 (m/decode schema "1" (mt/transformer {:name :num}))))
+       (is (= 1 (m/decode schema 1 (mt/transformer {:name :num}))))
+       (is (= "safe" (m/decode schema "safe" (mt/transformer {:name :num})))))))

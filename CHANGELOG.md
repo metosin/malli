@@ -31,7 +31,7 @@ Malli is in [alpha](README.md#alpha).
 * -memoize actually memoized. easily 100x faster now [#350](https://github.com/metosin/malli/pull/350)  
 * Fix interceptor composition, [#347](https://github.com/metosin/malli/pull/350)
 * `malli.util`: add a rename-keys utility, similar to clojure.set [#338](https://github.com/metosin/malli/pull/338)
-* Let `mu/update´ accept plain data schemas, [#329](https://github.com/metosin/malli/pull/329)
+* Let `mu/update` accept plain data schemas, [#329](https://github.com/metosin/malli/pull/329)
 * `mu/find`, [#322](https://github.com/metosin/malli/pull/322)
 
 ### Extender API

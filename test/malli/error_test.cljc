@@ -445,3 +445,17 @@
                                [:x]]]]
             :let [schema (m/schema schema {:registry registry})]]
       (is (= errors (-> schema (m/explain {:x 1}) (me/humanize)))))))
+
+(deftest sequence-test
+  (is (= [nil ["end of input"]]
+         (-> [:cat int? int?]
+             (m/explain [1])
+             (me/humanize))))
+  (is (= [nil nil ["input remaining"]]
+         (-> [:cat int? int?]
+             (m/explain [1 2 3])
+             (me/humanize))))
+  (is (= [nil nil ["should be an int" "should be a string" "input remaining"]]
+         (-> [:cat int? int? [:? int?] [:? string?]]
+             (m/explain [1 2 :foo])
+             (me/humanize)))))

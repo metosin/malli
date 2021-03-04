@@ -22,6 +22,8 @@
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
    ::misspelled-value {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                         (str "did you mean " (str/join " or " (map last likely-misspelling-of))))}}
+   ::m/input-remaining {:error/message {:en "input remaining"}}
+   ::m/end-of-input {:error/message {:en "end of input"}}
    'any? {:error/message {:en "should be any"}}
    'some? {:error/message {:en "should be some"}}
    'number? {:error/message {:en "should be a number"}}
@@ -205,12 +207,12 @@
           default-locale :en} :as options}]
    (or (-message error (m/properties schema) locale options)
        (-message error (m/type-properties schema) locale options)
-       (-message error (errors (m/type schema)) locale options)
        (-message error (errors type) locale options)
+       (-message error (errors (m/type schema)) locale options)
        (-message error (m/properties schema) default-locale options)
        (-message error (m/type-properties schema) default-locale options)
-       (-message error (errors (m/type schema)) default-locale options)
        (-message error (errors type) default-locale options)
+       (-message error (errors (m/type schema)) default-locale options)
        (-message error (errors ::unknown) locale options)
        (-message error (errors ::unknown) default-locale options))))
 

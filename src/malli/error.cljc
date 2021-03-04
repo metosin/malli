@@ -2,6 +2,16 @@
   (:require [malli.core :as m]
             [clojure.string :as str]))
 
+(defn -pred-min-max-error-fn [{:keys [pred message]}]
+  (fn [{:keys [schema value]} _]
+    (let [{:keys [min max]} (m/properties schema)]
+      (cond
+        (not (pred value)) message
+        (and min (= min max)) (str "should be " min)
+        (and min max) (str "should be between " min " and " max)
+        min (str "should be at least " min)
+        max (str "should be at most " max)))))
+
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
@@ -66,14 +76,8 @@
                                   (first (m/children schema))
                                   (str "either " (->> (m/children schema) butlast (str/join ", "))
                                        " or " (last (m/children schema))))))}}
-   :int {:error/fn {:en (fn [{:keys [schema value]} _]
-                          (let [{:keys [min max]} (m/properties schema)]
-                            (cond
-                              (not (int? value)) "should be an integer"
-                              (and min (= min max)) (str "should be " min)
-                              (and min max) (str "should be between " min " and " max)
-                              min (str "should be at least " min)
-                              max (str "should be at most " max))))}}
+   :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
+   :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
    :string {:error/fn {:en (fn [{:keys [schema value]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond

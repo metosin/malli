@@ -83,10 +83,10 @@
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
-  (let [required (->> children (filter (m/-comp not :optional second)) (mapv first))]
-    {:type "object"
-     :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))
-     :required required}))
+  (let [required (->> children (filter (m/-comp not :optional second)) (mapv first))
+        object {:type "object"
+                :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))}]
+    (if (empty? required) object (assoc object :required required))))
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 (defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})

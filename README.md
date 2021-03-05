@@ -1606,6 +1606,10 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 Type-like schemas: `:any`, `:string`, `:int`, `:double`, `:boolean`, `.keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
 
+### `malli.core/sequence-schemas`
+
+Sequence/regex-schemas: `:+`, `:*`, `:?`, `:repeat`, `:cat`, `:alt`, `:catn`, `:altn`.
+
 #### `malli.core/base-schemas`
 
 Contains `:and`, `:or`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.

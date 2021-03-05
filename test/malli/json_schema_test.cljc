@@ -98,6 +98,23 @@
            (json-schema/transform
              [:map {:json-schema {:type "file"}} [:file any?]]))))
 
+  (testing "Having all attributes optional in input should not output a required at all even empty. JSON-Schema validation will failed on this
+            (see http://json-schema.org/understanding-json-schema/reference/object.html#required-properties and
+             the rule: \"In Draft 4, required must contain at least one string.\")"
+    (is (= {:type "object",
+            :properties {:x1 {:title "x", :type "string"},
+                         :x2 {:title "x"},
+                         :x3 {:title "x", :type "string", :default "x"},
+                         :x4 {:title "x-string", :default "x2"},
+                         :x5 {:type "x-string"}},}
+           (json-schema/transform
+            [:map
+             [:x1 {:json-schema/title "x"          :optional true} :string]
+             [:x2 {:json-schema {:title "x"}       :optional true} [:string {:json-schema/default "x"}]]
+             [:x3 {:json-schema/title "x"          :optional true} [:string {:json-schema/default "x"}]]
+             [:x4 {:json-schema/title "x-string"   :optional true} [:string {:json-schema {:default "x2"}}]]
+             [:x5 {:json-schema {:type "x-string"} :optional true} [:string {:json-schema {:default "x"}}]]]))))
+
   (testing "map-entry overrides"
     (is (= {:type "object",
             :properties {:x1 {:title "x", :type "string"},

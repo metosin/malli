@@ -543,6 +543,8 @@ Two-way schema-driven value transformations with `m/decode` and `m/encode` using
 
 Default Transformers include: `string-transformer`, `json-transformer`, `strip-extra-keys-transformer`, `default-value-transformer` and `key-transformer`.
 
+**NOTE**: the included transformers are best-effort, i.e. they won't throw on bad input, they will just pass the input value through unchanged. You should make sure your schema validation catches these non-transformed values. Custom transformers should follow the same idiom.
+
 ```clj
 (m/decode int? "42" mt/string-transformer)
 ; 42

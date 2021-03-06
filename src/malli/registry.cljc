@@ -45,16 +45,16 @@
 (defn mutable-registry [db]
   (reify
     Registry
-    (-schema [_ type] (get @db type))
-    (-schemas [_] @db)))
+    (-schema [_ type] (-schema (registry @db) type))
+    (-schemas [_] (-schemas (registry @db)))))
 
 (def ^:dynamic *registry* {})
 
 (defn dynamic-registry []
   (reify
     Registry
-    (-schema [_ type] (get *registry* type))
-    (-schemas [_] *registry*)))
+    (-schema [_ type] (-schema (registry *registry*) type))
+    (-schemas [_] (-schemas (registry *registry*)))))
 
 (defn lazy-registry [default-registry provider]
   (let [cache* (atom {})

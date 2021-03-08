@@ -405,7 +405,13 @@
                    [:map {:title "map"}
                     [:a int?]
                     [:b string?]
-                    [:c string?]]))))
+                    [:c string?]]))
+    (is (mu/equals (mu/update schema :d #(or % boolean?))
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:b {:optional true} int?]
+                    [:c string?]
+                    [:d boolean?]]))))
 
 (deftest assoc-in-test
   (is (mu/equals (mu/assoc-in (m/schema [:vector int?]) [0] string?) [:vector string?]))

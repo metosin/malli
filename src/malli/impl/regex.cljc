@@ -225,17 +225,17 @@
           ?krs))
 
 (defn alt-parser [& rs]
-  (reduce (fn [acc r]
+  (reduce (fn [r r*]
             (fn [driver regs pos coll k]
-              (park-validator! driver acc regs pos coll k) ; remember fallback
+              (park-validator! driver r* regs pos coll k) ; remember fallback
               (park-validator! driver r regs pos coll k)))
           rs))
 
 (defn altn-parser [kr & krs]
-  (reduce (fn [acc [tag r]]
-            (let [r (fmap-parser (fn [v] (miu/-tagged tag v)) r)]
+  (reduce (fn [r [tag r*]]
+            (let [r* (fmap-parser (fn [v] (miu/-tagged tag v)) r*)]
               (fn [driver regs pos coll k]
-                (park-validator! driver acc regs pos coll k) ; remember fallback
+                (park-validator! driver r* regs pos coll k) ; remember fallback
                 (park-validator! driver r regs pos coll k))))
           (let [[tag r] kr]
             (fmap-parser (fn [v] (miu/-tagged tag v)) r))

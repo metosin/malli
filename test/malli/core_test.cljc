@@ -993,7 +993,34 @@
               {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}
               [:sized [:map [:type 'keyword?] [:size 'int?]]]
               [:human [:map [:type 'keyword?] [:name 'string?] [:address [:map [:country 'keyword?]]]]]]
-             (m/form schema)))))
+             (m/form schema))))
+
+    (let [schema [:multi {:dispatch first}
+                  [:human [:cat [:= :human]]]
+                  [:bear [:cat [:= :bear] [:* :int]]]
+                  [:m/default [:tuple :string :string]]]]
+
+      (testing "validate"
+        (is (m/validate schema [:human]))
+        (is (m/validate schema [:bear 1 2 3]))
+        (is (m/validate schema ["defaultit" "toimii"]))
+        (is (not (m/validate schema [:so :invalid]))))
+
+      (testing "explain"
+        (is (not (m/explain schema [:human])))
+        (is (not (m/explain schema [:bear 1 2 3])))
+        (is (not (m/explain schema ["defaultit" "toimii"])))
+        (is (results= {:schema schema,
+                       :value [:so :invalid],
+                       :errors [{:path [:m/default 0], :in [0], :schema :string, :value :so}
+                                {:path [:m/default 1], :in [1], :schema :string, :value :invalid}]}
+                      (m/explain schema [:so :invalid]))))
+
+      (testing "parser"
+        (is (= [:human] (m/parse schema [:human])))
+        (is (= [:bear [1 2 3]] (m/parse schema [:bear 1 2 3])))
+        (is (= ["defaultit" "toimii"] (m/parse schema ["defaultit" "toimii"])))
+        (is (= ::m/invalid (m/parse schema [:so :invalid]))))))
 
   (testing "map-of schema"
 

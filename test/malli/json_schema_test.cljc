@@ -31,7 +31,8 @@
    [[:multi {:dispatch :type
              :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]
-     [:human [:map {:gen/fmap '#(assoc % :type :human)} [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+     [:human [:map {:gen/fmap '#(assoc % :type :human)} [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]
+     [:m/default :string]]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"}},
@@ -42,7 +43,8 @@
                            :address {:type "object"
                                      :properties {:country {:type "string"}}
                                      :required [:country]}},
-              :required [:type :name :address]}]}]
+              :required [:type :name :address]}
+             {:type "string"}]}]
    [[:map-of string? string?] {:type "object"
                                :additionalProperties {:type "string"}}]
    [[:vector string?] {:type "array", :items {:type "string"}}]

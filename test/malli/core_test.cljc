@@ -869,6 +869,18 @@
     (is (true? (m/validate [:map [:b boolean?]] {:b false})))
     (is (true? (m/validate [:map [:n nil?]] {:n nil}))))
 
+  (testing "nil keys"
+    (is (true? (m/validate
+                 [:map
+                  ["status" [:enum "ok"]]
+                  [1 any?]
+                  [nil any?]
+                  [::a string?]]
+                 {"status" "ok"
+                  1 'number
+                  nil :yay
+                  ::a "properly awesome"}))))
+
   (testing "accumulating errors #84"
     (let [re #"b"
           schema [:map

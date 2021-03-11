@@ -184,7 +184,6 @@
                                              (-reference? e) (if naked-keys [[e nil e] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
                                              :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
-                             _ (when (nil? k) (miu/-fail! ::naked-keys-not-supported))
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
                              c [k p (schema s options)]]

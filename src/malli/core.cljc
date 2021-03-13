@@ -1087,7 +1087,7 @@
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))
-             finder (fn [{:keys [:m/default] :as m}] (fn [x] (m x default)))]
+             finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]
          (when-not dispatch
            (miu/-fail! ::missing-property {:key :dispatch}))
          ^{:type ::schema}

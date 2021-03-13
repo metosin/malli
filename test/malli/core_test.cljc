@@ -998,7 +998,7 @@
     (let [schema [:multi {:dispatch first}
                   [:human [:cat [:= :human]]]
                   [:bear [:cat [:= :bear] [:* :int]]]
-                  [:m/default [:tuple :string :string]]]]
+                  [::m/default [:tuple :string :string]]]]
 
       (testing "validate"
         (is (m/validate schema [:human]))
@@ -1012,8 +1012,8 @@
         (is (not (m/explain schema ["defaultit" "toimii"])))
         (is (results= {:schema schema,
                        :value [:so :invalid],
-                       :errors [{:path [:m/default 0], :in [0], :schema :string, :value :so}
-                                {:path [:m/default 1], :in [1], :schema :string, :value :invalid}]}
+                       :errors [{:path [::m/default 0], :in [0], :schema :string, :value :so}
+                                {:path [::m/default 1], :in [1], :schema :string, :value :invalid}]}
                       (m/explain schema [:so :invalid]))))
 
       (testing "parser"

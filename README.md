@@ -1046,14 +1046,14 @@ Closed dispatch with `:multi` schema and `:dispatch` property:
 ; true
 ```
 
-Default branch with `:m/default`:
+Default branch with `::m/default`:
 
 ```clj
 (def valid?
   (m/validator
     [:multi {:dispatch :type}
      ["object" [:map-of :keyword :string]]
-     [:m/default :string]]))
+     [::m/default :string]]))
 
 (valid? {:type "object", :key "1", :value "100"})
 ; => true

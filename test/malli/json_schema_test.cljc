@@ -32,7 +32,7 @@
              :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]
      [:human [:map {:gen/fmap '#(assoc % :type :human)} [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]
-     [:m/default :string]]
+     [::m/default :string]]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"}},

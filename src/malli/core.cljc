@@ -1086,7 +1086,8 @@
              {:keys [children entries forms]} (-parse-entries children opts' options)
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties) options)
-             dispatch-map (->> (for [[k s] entries] [k s]) (into {}))]
+             dispatch-map (->> (for [[k s] entries] [k s]) (into {}))
+             finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]
          (when-not dispatch
            (miu/-fail! ::missing-property {:key :dispatch}))
          ^{:type ::schema}
@@ -1095,22 +1096,22 @@
            (-type [_] type)
            (-type-properties [_] (:type-properties opts'))
            (-validator [_]
-             (let [validators (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map)]
+             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map))]
                (fn [x]
-                 (if-let [validator (validators (dispatch x))]
+                 (if-let [validator (find (dispatch x))]
                    (validator x)
                    false))))
            (-explainer [this path]
-             (let [explainers (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries)
+             (let [find (finder (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries))
                    ->path (if (keyword? dispatch) #(conj % dispatch) identity)]
                (fn [x in acc]
-                 (if-let [explainer (explainers (dispatch x))]
+                 (if-let [explainer (find (dispatch x))]
                    (explainer x in acc)
                    (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-parser [_]
-             (let [parsers (reduce-kv (fn [acc k s] (assoc acc k (-parser s))) {} dispatch-map)]
+             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-parser s))) {} dispatch-map))]
                (fn [x]
-                 (if-some [parser (parsers (dispatch x))]
+                 (if-some [parser (find (dispatch x))]
                    (parser x)
                    ::invalid))))
            (-unparser [_]

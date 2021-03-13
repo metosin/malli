@@ -1,10 +1,11 @@
-(ns malli.schema.impl
+(ns malli.experimental.schema.impl
   "Macros and macro helpers used in schema.core."
   (:require
     [malli.core :as m]
     #?@(:cljs [goog.string.format
                [goog.object :as gobject]
-               [goog.string :as gstring]])))
+               [goog.string :as gstring]])
+    [malli.impl.util :as miu]))
 
 (defn format* [fmt & args]
   (apply #?(:clj format, :cljs gstring/format) fmt args))
@@ -123,7 +124,7 @@
 
 
 (defn simple-arglist-schema-form [rest? regular-args]
-  (into [:tuple] (mapv (partial single-arg-schema-form rest?) (map-indexed vector regular-args))))
+  (into [:cat] (mapv (partial single-arg-schema-form rest?) (map-indexed vector regular-args))))
 
 (defn rest-arg-schema-form [arg]
   (let [s (extract-schema-form arg)]
@@ -207,7 +208,7 @@
 
                      ;; sequence schemas not supported
                      (when rest-arg
-                       (m/-fail! ::varags-not-supported {:args bind}))
+                       (miu/-fail! ::varags-not-supported {:args bind}))
 
                      (list
                        (if rest-arg
@@ -216,12 +217,12 @@
                        `(let [validate# ~(if (:always-validate (meta fn-name)) `true `(deref ~'ufv__))]
                           (when validate#
                             (let [args# ~(if rest-arg `(list* ~@bind-syms ~rest-sym) bind-syms)]
-                              (malli.schema/fn-validator :input ~ns '~fn-name ~input-schema-sym @~input-explainer-sym args#)))
+                              (malli.experimental.schema/fn-validator :input ~ns '~fn-name ~input-schema-sym @~input-explainer-sym args#)))
                           (let [o# (loop ~(into (vec (interleave (map #(with-meta % {}) bind) bind-syms))
                                                 (when rest-arg [rest-arg rest-sym]))
                                      ~@(apply-prepost-conditions body))]
                             (when validate#
-                              (malli.schema/fn-validator :output ~ns '~fn-name ~output-schema-sym @~output-explainer-sym o#))
+                              (malli.experimental.schema/fn-validator :output ~ns '~fn-name ~output-schema-sym @~output-explainer-sym o#))
                             o#))))
                    (cons (into regular-args (when rest-arg ['& rest-arg]))
                          body))}))
@@ -249,7 +250,7 @@
                             (apply concat schema-bindings)
                             (mapcat :more-bindings processed-arities)))
      :arglists (map :arglist processed-arities)
-     :schemas (into [:or] (mapv :schema processed-arities))
+     :schemas (into [:function] (mapv :schema processed-arities))
      :raw-arglists (map :raw-arglist processed-arities)
      :fn-body fn-forms}))
 

@@ -2,19 +2,18 @@
 
 (do
 
-  (require '[malli.schema :as ms])
+  (require '[malli.experimental.schema :as ms])
   (require '[malli.core :as m])
 
   ;; plumatic-style inline schemas
-  (ms/defn fun :- [:tuple int? pos-int?]
+  (ms/defn fun :- [:tuple int? int?]
     "return number and the square"
     [x :- int?]
     [x (* x x)])
 
   ;; annotating existing clojure functions
   (defn times [x y] (* x y))
-  (m/=> times [:=> [:tuple int? int?] int?])
-
+  (m/=> times [:=> [:cat int? int?] int?])
 
   ;; static analysis via clj-kondo
   (comment
@@ -22,19 +21,17 @@
     (times "1" 1))
 
   ;; emit clj-kondo type-linting info
-  (require '[malli.clj-kondo :as mc])
-  (-> (mc/collect)
-      (mc/linter-config)
-      (mc/save!))
+  ((requiring-resolve 'malli.clj-kondo/emit!))
 
   )
+
 
 (comment
 
   (meta #'fun)
   (square -11)
   ; Execution error (ExceptionInfo) at malli.core/-fail! (core.cljc:80).
-  ; :malli.schema/fn-error
+  ; :malli.experimental.schema/fn-error
   ;
   ;	   name: demo/square
   ;	  phase: :input

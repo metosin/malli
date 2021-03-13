@@ -160,6 +160,6 @@
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
         (select-keys data [:args :ret :min-arity])))
-    {} xs))
+    {:lint-as {'malli.experimental.schema/defn 'schema.core/defn}} xs))
 
 #?(:clj (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

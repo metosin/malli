@@ -1,7 +1,8 @@
-(ns malli.schema
+(ns malli.experimental.schema
   (:refer-clojure :exclude [defn])
   (:require [clojure.string :as str]
-            [malli.schema.impl :as msi]
+            [malli.experimental.schema.impl :as msi]
+            [malli.impl.util :as miu]
             [malli.error :as me]
             [malli.core :as m]))
 
@@ -57,16 +58,17 @@
   [phase ns fn-name schema explainer value]
   (when-let [error (explainer value)]
     (let [humanized (me/humanize error)]
-      (m/-fail! ::fn-error
-                (msi/format*
-                  (str "\n\n"
-                       "\t\u001B[0;37m   name: \u001B[0;33m%s \033[0m\n"
-                       "\t\u001B[0;37m  phase: \u001B[0;33m%s \033[0m\n"
-                       "\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n"
-                       "\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n"
-                       "\t\u001B[0;37m errors: \u001B[0;33m%s\u001B[0m\n\n")
-                  (symbol (str ns) (str fn-name)) phase (m/form schema) (pr-str value) (pr-str humanized))
-                {:phase phase, :schema schema :value value :error error, :humanized humanized}))))
+      (miu/-fail!
+        ::fn-error
+        (msi/format*
+          (str "\n\n"
+               "\t\u001B[0;37m   name: \u001B[0;33m%s \033[0m\n"
+               "\t\u001B[0;37m  phase: \u001B[0;33m%s \033[0m\n"
+               "\t\u001B[0;37m schema: \u001B[0;33m%s \033[0m\n"
+               "\t\u001B[0;37m  value: \u001B[0;33m%s\u001B[0m\n"
+               "\t\u001B[0;37m errors: \u001B[0;33m%s\u001B[0m\n\n")
+          (symbol (str ns) (str fn-name)) phase (m/form schema) (pr-str value) (pr-str humanized))
+        {:phase phase, :schema schema :value value :error error, :humanized humanized}))))
 
 (defmacro defn [& defn-args]
   (let [[name & more-defn-args] (msi/normalized-defn-args &env defn-args)

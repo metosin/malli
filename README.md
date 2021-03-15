@@ -584,7 +584,7 @@ Transform map keys:
              :city "Tampere"
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
-  (key-transformer {:encode name}))
+  (mt/key-transformer {:encode name}))
 ;{"id" "Lillan",
 ; "tags" ["coffee" "artesan" "garden"],
 ; "address" {"street" "Ahlmanintie 29"
@@ -1625,7 +1625,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/type-schemas`
 
-Type-like schemas: `:any`, `:string`, `:int`, `:double`, `:boolean`, `.keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
+Type-like schemas: `:any`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
 
 ### `malli.core/sequence-schemas`
 

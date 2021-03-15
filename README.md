@@ -409,7 +409,7 @@ Detailed errors with `m/explain`:
 ; :errors (#Error{:path [:tags 0]
 ;                 :in [:tags 0]
 ;                 :schema keyword?
-                  ::value "coffee"}
+;                 :value "coffee"}
 ;          #Error{:path [:address :city],
 ;                 :in [:address :city],
 ;                 :schema [:map
@@ -1870,7 +1870,7 @@ Functions can be described with `:=>`, which has two children: input schema (as 
 ;; named varargs, e.g. (fn [x & xs] (* x (apply + xs)))
 [:=> [:catn 
       [:x int?]
-      [:xs [:* int?]]]
+      [:xs [:* int?]]] int?]
       
 ;; multi-arity fn
 [:function

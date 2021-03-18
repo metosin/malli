@@ -1724,10 +1724,10 @@
 
 (defn -default-sci-options []
   {:preset :termination-safe
-   :bindings {'m/properties properties
-              'm/type type
-              'm/children children
-              'm/entries entries}})
+   :namespaces {'malli.core {'properties properties
+                             'type type
+                             'children children
+                             'entries entries}}})
 
 (let [-fail! #(miu/-fail! ::sci-not-available {:code %})
       -eval? #(or (symbol? %) (string? %) (sequential? %))

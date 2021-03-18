@@ -7,5 +7,6 @@
         fork (dynaload/dynaload 'sci.core/fork {:default nil})]
     (fn [] (if (and @eval-string* @init @fork)
              (let [ctx (init options)]
+               (eval-string* ctx "(alias 'm 'malli.core)")
                (fn eval [s] (eval-string* (fork ctx) (str s))))
              fail!))))

@@ -107,3 +107,42 @@ Returning a Schema form with `nil` in place of empty properties:
 ;          [:map nil
 ;           [:x nil [:enum nil 1 2 3]]]]]]
 ```
+
+## Walking Schema and Entry Properties
+
+1. walk entries on the way in
+2. unwalk entries on the way out
+
+```clj
+(defn walk-properties [schema f]
+  (m/walk
+    schema
+    (fn [s _ c _]
+      (m/into-schema
+        (m/-parent s)
+        (f (m/-properties s))
+        (cond->> c (m/entries s) (map (fn [[k p s]] [k (f p) (first (m/children s))])))
+        (m/options s)))
+    {::m/walk-entry-vals true}))
+```
+
+Stripping all swagger-keys:
+
+```clj
+(defn remove-swagger-keys [p]
+  (not-empty
+    (reduce-kv
+      (fn [acc k _]
+        (cond-> acc (some #{:swagger} [k (-> k namespace keyword)]) (dissoc k)))
+      p p)))
+
+(walk-properties
+  [:map {:title "Organisation name"}
+   [:ref {:swagger/description "Reference to the organisation"
+          :swagger/example "Acme floor polish, Houston TX"} :string]
+   [:kikka [:string {:swagger {:title "kukka"}}]]]
+  remove-swagger-keys)
+;[:map {:title "Organisation name"}
+; [:ref :string]
+; [:kikka :string]]
+```

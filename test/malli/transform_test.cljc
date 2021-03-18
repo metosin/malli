@@ -770,6 +770,12 @@
     (is (= {:user/verified false} (m/decode [:map [:user/verified {:default false} boolean?]] {} mt/default-value-transformer)))
     (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer))))
 
+  (testing "optional key"
+    (is (= {:x 5} (m/decode [:map [:x :int] [:y {:optional true, :default 0} :int]] {:x 5}
+                            mt/default-value-transformer)))
+    (is (= {:x 5} (m/decode [:map [:x :int] [:y {:optional true} [:int {:default 0}]]] {:x 5}
+                            mt/default-value-transformer))))
+
   (testing "with custom options"
     (is (= false (m/decode [:and {:? false} boolean?] nil (mt/default-value-transformer {:key :?}))))
     (is (= {:user {:first-name "", :last-name ""}}

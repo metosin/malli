@@ -380,18 +380,23 @@
   ([]
    (default-value-transformer nil))
   ([{:keys [key defaults] :or {key :default}}]
-   (let [get-default (fn [schema] (let [default (some-> schema m/properties key)]
-                                    (if (some? default) default (some->> schema m/type (get defaults) (#(% schema))))))
+   (let [get-default (fn [schema]
+                       (if-some [default (some-> schema m/properties key)]
+                         default
+                         (some->> schema m/type (get defaults) (#(% schema)))))
          set-default {:compile (fn [schema _]
-                                 (if-some [default (get-default schema)]
+                                 (when-some [default (get-default schema)]
                                    (fn [x] (if (nil? x) default x))))}
          add-defaults {:compile (fn [schema _]
-                                  (let [defaults (->> (m/children schema)
-                                                      (keep (fn [[k {default key} v]]
-                                                              (if-some [default (if (some? default) default (get-default v))]
-                                                                [k default])))
-                                                      (into {}))]
-                                    (if (seq defaults)
+                                  (let [defaults (into {}
+                                                       (keep (fn [[k {default key :keys [optional]} v]]
+                                                               (when-not optional
+                                                                 (when-some [default (if (some? default)
+                                                                                       default
+                                                                                       (get-default v))]
+                                                                   [k default]))))
+                                                       (m/children schema))]
+                                    (when (seq defaults)
                                       (fn [x]
                                         (if (map? x)
                                           (reduce-kv

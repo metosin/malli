@@ -112,7 +112,7 @@
   [schema f & args]
   (let [properties (apply f (m/properties schema) args)]
     (m/into-schema
-      (m/type schema)
+      (m/-parent schema)
       (if (seq properties) properties)
       (m/children schema)
       (m/options schema))))

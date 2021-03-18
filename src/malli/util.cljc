@@ -110,11 +110,10 @@
 (defn update-properties
   "Returns a Schema instance with updated properties."
   [?schema f & args]
-  (let [schema (m/schema ?schema)
-        properties (apply f (m/-properties schema) args)]
+  (let [schema (m/schema ?schema)]
     (m/into-schema
       (m/-parent schema)
-      (if (seq properties) properties)
+      (not-empty (apply f (m/-properties schema) args))
       (m/-children schema)
       (m/-options schema))))
 

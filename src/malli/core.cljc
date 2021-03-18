@@ -1723,7 +1723,8 @@
 ;;
 
 (defn -default-sci-options []
-  {:namespaces {'malli.core {'properties properties
+  {:preset :termination-safe
+   :namespaces {'malli.core {'properties properties
                              'type type
                              'children children
                              'entries entries}}})

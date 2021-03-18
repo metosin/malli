@@ -388,13 +388,14 @@
                                  (when-some [default (get-default schema)]
                                    (fn [x] (if (nil? x) default x))))}
          add-defaults {:compile (fn [schema _]
-                                  (let [defaults (->> (m/children schema)
-                                                      (keep (fn [[k {default key} v]]
-                                                              (when-some [default (if (some? default)
-                                                                                    default
-                                                                                    (get-default v))]
-                                                                [k default])))
-                                                      (into {}))]
+                                  (let [defaults (into {}
+                                                       (keep (fn [[k {default key :keys [optional]} v]]
+                                                               (when-not optional
+                                                                 (when-some [default (if (some? default)
+                                                                                       default
+                                                                                       (get-default v))]
+                                                                   [k default]))))
+                                                       (m/children schema))]
                                     (when (seq defaults)
                                       (fn [x]
                                         (if (map? x)

@@ -109,13 +109,14 @@
 
 (defn update-properties
   "Returns a Schema instance with updated properties."
-  [schema f & args]
-  (let [properties (apply f (m/properties schema) args)]
+  [?schema f & args]
+  (let [schema (m/schema ?schema)
+        properties (apply f (m/-properties schema) args)]
     (m/into-schema
       (m/-parent schema)
       (if (seq properties) properties)
-      (m/children schema)
-      (m/options schema))))
+      (m/-children schema)
+      (m/-options schema))))
 
 (defn closed-schema
   "Closes recursively all :map schemas by adding `{:closed true}`
@@ -239,10 +240,10 @@
    (transform-entries
      ?schema
      (fn [entries]
-       (let [source-keys      (set (keys kmap))
-             target-keys      (set (vals kmap))
+       (let [source-keys (set (keys kmap))
+             target-keys (set (vals kmap))
              remove-conflicts (fn [[k]] (or (source-keys k) (not (target-keys k))))
-             alter-keys       (fn [[k m v]] [(c/get kmap k k) m v])]
+             alter-keys (fn [[k m v]] [(c/get kmap k k) m v])]
          (->> entries (filter remove-conflicts) (map alter-keys))))
      options)))
 

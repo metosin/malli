@@ -351,7 +351,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ; => false
 ```
 
-**NOTE**: Malli uses `:termination-safe` option with sci, but [it might not be a good idea](https://github.com/borkdude/sci/issues/348)
+**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348)
 to read `sci` functions from untrusted sources. You can explictely disable with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
 ```clj

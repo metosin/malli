@@ -1762,6 +1762,10 @@
                    :validate {:success [nil 1 "kikka"]}
                    :map-syntax {:type :any}
                    :form :any}
+             :nil {:schema :nil
+                   :validate {:success [nil], :failure [1 "kikka"]}
+                   :map-syntax {:type :nil}
+                   :form :nil}
              :string {:schema [:string {:min 1, :max 4}]
                       :validate {:success ["abba" "a"]
                                  :failure [nil "invalid" "" 1]}

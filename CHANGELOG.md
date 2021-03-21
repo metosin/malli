@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `:nil` schema
+
 ## 0.3.1 (2021-03-21)
 
 ### Public API

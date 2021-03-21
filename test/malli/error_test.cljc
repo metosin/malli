@@ -356,6 +356,25 @@
                 :f 5.0})
              (me/humanize)))))
 
+(deftest any-test
+  (testing "success"
+    (is (= nil
+           (-> :any
+               (m/explain "bla")
+               (me/humanize))))))
+
+(deftest nil-test
+  (testing "success"
+    (is (= nil
+           (-> :nil
+               (m/explain nil)
+               (me/humanize)))))
+  (testing "failure"
+    (is (= ["should be nil"]
+           (-> :nil
+               (m/explain "gogo")
+               (me/humanize))))))
+
 (deftest re-test
   (testing "success"
     (is (= nil

@@ -1625,7 +1625,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/type-schemas`
 
-Type-like schemas: `:any`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
+Type-like schemas: `:any`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
 
 ### `malli.core/sequence-schemas`
 
@@ -1862,7 +1862,7 @@ Functions can be described with `:=>`, which has two children: input schema (as 
 
 ```clj
 ;; no args, no return
-[:=> :cat nil?] 
+[:=> :cat :nil]
 
 ;; two int args, positive int returned
 [:=> [:cat int? int?] pos-int?]

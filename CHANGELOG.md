@@ -14,7 +14,21 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## 0.3.0 (2021-02-02)
+## 0.3.1 (2021-03-21)
+
+### Public API
+
+* Add `:orn` json-schema & generator, [#400](https://github.com/metosin/malli/pull/400)
+* Ignore optional properties in `mt/default-value-transformer`, [#397](https://github.com/metosin/malli/pull/397)
+* Support `nil` keys in maps, [#392](https://github.com/metosin/malli/pull/392)
+* `:m/default` for `:multi`, [#391](https://github.com/metosin/malli/pull/391)
+* Fix inconsistent park-ing in alt(n)-parser, [#390](https://github.com/metosin/malli/pull/390)
+* Fix json schema generation when all attributes of a map are optional, [#385](https://github.com/metosin/malli/pull/385)
+* Note about transformers best-effort behavior, [#384](https://github.com/metosin/malli/pull/384)
+* Humanized regex/sequence errors, [#383](https://github.com/metosin/malli/pull/383)
+* Humanized error for `:double`, [#382](https://github.com/metosin/malli/pull/382)
+
+## 0.3.0 (2021-03-02)
 
 ### Public API
 

@@ -80,6 +80,7 @@
 (defmethod accept :not [_ _ children _] {:not (last children)})
 (defmethod accept :and [_ _ children _] {:allOf children})
 (defmethod accept :or [_ _ children _] {:anyOf children})
+(defmethod accept :orn [_ _ children _] {:anyOf (map last children)})
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]

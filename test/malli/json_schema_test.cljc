@@ -20,6 +20,7 @@
    [[:and int? pos-int?] {:allOf [{:type "integer"}
                                   {:type "integer", :minimum 1}]}]
    [[:or int? string?] {:anyOf [{:type "integer"} {:type "string"}]}]
+   [[:orn [:i int?] [:s string?]] {:anyOf [{:type "integer"} {:type "string"}]}]
    [[:map
      [:a string?]
      [:b {:optional true} string?]

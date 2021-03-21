@@ -146,3 +146,53 @@ Stripping all swagger-keys:
 ; [:ref :string]
 ; [:kikka :string]]
 ```
+
+## Allowing invalid values on optional keys
+
+e.g. don't fail if the optional keys hava invalid values.
+
+1. create a helper function that transforms the schema swapping the actual schema with `:any`
+2. done.
+
+```clj
+(defn allow-invalid-optional-values [schema]
+  (m/walk
+    schema
+    (m/schema-walker
+      (fn [s]
+        (cond-> s
+                (m/entries s)
+                (mu/transform-entries
+                  (partial map (fn [[k {:keys [optional] :as p} s]] [k p (if optional :any s)]))
+                  (m/options s)))))))
+
+(allow-invalid-optional-values
+  [:map
+   [:a string?]
+   [:b {:optional true} int?]
+   [:c [:maybe
+        [:map
+         [:d string?]
+         [:e {:optional true} int?]]]]])
+;[:map
+; [:a string?]
+; [:b {:optional true} :any]
+; [:c [:maybe [:map
+;              [:d string?]
+;              [:e {:optional true} :any]]]]]
+
+(m/validate
+  [:map
+   [:a string?]
+   [:b {:optional true} int?]]
+  {:a "Hey" :b "Nope"})
+; => false
+
+(m/validate
+  (allow-invalid-optional-values
+    [:map
+     [:a string?]
+     [:b {:optional true} int?]])
+  {:a "Hey" :b "Nope"})
+; => true
+```

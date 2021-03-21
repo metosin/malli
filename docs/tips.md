@@ -163,8 +163,7 @@ e.g. don't fail if the optional keys hava invalid values.
         (cond-> s
                 (m/entries s)
                 (mu/transform-entries
-                  (partial map (fn [[k {:keys [optional] :as p} s]] [k p (if optional :any s)]))
-                  (m/options s)))))))
+                  (partial map (fn [[k {:keys [optional] :as p} s]] [k p (if optional :any s)]))))))))
 
 (allow-invalid-optional-values
   [:map

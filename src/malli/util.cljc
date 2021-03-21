@@ -194,9 +194,11 @@
 
 (defn transform-entries
   "Transforms entries with f."
-  [?schema f options]
-  (let [schema (m/deref-all (m/schema ?schema options))]
-    (m/into-schema (m/type schema) (m/properties schema) (f (m/children schema)))))
+  ([?schema f]
+   (transform-entries ?schema f nil))
+  ([?schema f options]
+   (let [schema (m/deref-all (m/schema ?schema options))]
+     (m/into-schema (m/-parent schema) (m/-properties schema) (f (m/-children schema))))))
 
 (defn optional-keys
   "Makes map keys optional."

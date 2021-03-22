@@ -78,6 +78,7 @@
                                   (first (m/children schema))
                                   (str "either " (->> (m/children schema) butlast (str/join ", "))
                                        " or " (last (m/children schema))))))}}
+   :nil {:error/message {:en "should be nil"}}
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
    :string {:error/fn {:en (fn [{:keys [schema value]} _]

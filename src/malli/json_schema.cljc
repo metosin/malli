@@ -101,6 +101,7 @@
 (defmethod accept :fn [_ _ _ _] {})
 
 (defmethod accept :any [_ _ _ _] {})
+(defmethod accept :nil [_ _ _ _] {:type "null"})
 
 (defmethod accept :string [_ schema _ _]
   (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))

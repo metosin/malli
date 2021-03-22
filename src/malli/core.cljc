@@ -1098,10 +1098,7 @@
            (-type-properties [_] (:type-properties opts'))
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map))]
-               (fn [x]
-                 (if-let [validator (find (dispatch x))]
-                   (validator x)
-                   false))))
+               (fn [x] (if-let [validator (find (dispatch x))] (validator x) false))))
            (-explainer [this path]
              (let [find (finder (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries))
                    ->path (if (keyword? dispatch) #(conj % dispatch) identity)]
@@ -1110,19 +1107,14 @@
                    (explainer x in acc)
                    (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-parser [_]
-             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-parser s))) {} dispatch-map))]
-               (fn [x]
-                 (if-some [parser (find (dispatch x))]
-                   (parser x)
-                   ::invalid))))
+             (let [parse (fn [k s] (as-> (-parser s) $ (fn [x] (miu/-map-valid #(miu/-tagged k %) ($ x)))))
+                   find (finder (reduce-kv (fn [acc k s] (assoc acc k (parse k s))) {} dispatch-map))]
+               (fn [x] (if-some [parser (find (dispatch x))] (parser x) ::invalid))))
            (-unparser [_]
-             (let [unparsers (mapv (fn [[_ _ s]] (-unparser s)) children)]
-               (fn [x]
-                 ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
-                 (reduce (fn [_ unparser] (miu/-map-valid reduced (unparser x)))
-                         ::invalid unparsers))))
+             (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} dispatch-map)]
+               (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (key x))] (f (val x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
-             ;; FIXME: Probably should not use `dispatch`, see comment in `-unparser` above.
+             ;; FIXME: Probably should not use `dispatch`
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s]
                                            (when-some [t (-transformer s transformer method options)]

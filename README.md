@@ -1301,6 +1301,21 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ;               :children [[:primitive [:text "Hello, world of data"]]]}]]}]
 ```
 
+Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`. For others it returns the value.
+
+```clj
+(def Multi
+  [:multi {:dispatch :type}
+   [:user [:map [:size :int]]]
+   [::m/default :any]])
+
+(m/parse Multi {:type :user, :size 1})
+; => [:user {:type :user, :size 1}]
+
+(m/parse Multi {:type "sized", :size 1})
+; => [:malli.core/default {:type "sized", :size 1}]
+```
+
 ## Unparsing values
 
 The inverse of parsing, using `m/unparse` and `m/unparser`:

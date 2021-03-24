@@ -944,14 +944,14 @@
                                :type :malli.core/invalid-dispatch-value}]}
                     (m/explain schema invalid3)))
 
-      (is (= valid1 (m/parse schema valid1)))
-      (is (= valid2 (m/parse schema valid2)))
+      (is (= (miu/-tagged :sized valid1) (m/parse schema valid1)))
+      (is (= (miu/-tagged :human valid2) (m/parse schema valid2)))
       (is (= ::m/invalid (m/parse schema invalid1)))
       (is (= ::m/invalid (m/parse schema invalid2)))
       (is (= ::m/invalid (m/parse schema invalid3)))
       (is (= ::m/invalid (m/parse schema "not-a-map")))
-      (is (= valid1 (m/unparse schema valid1)))
-      (is (= valid2 (m/unparse schema valid2)))
+      (is (= valid1 (m/unparse schema (m/parse schema valid1))))
+      (is (= valid2 (m/unparse schema (m/parse schema valid2))))
       (is (= ::m/invalid (m/unparse schema invalid1)))
       (is (= ::m/invalid (m/unparse schema invalid2)))
       (is (= ::m/invalid (m/unparse schema invalid3)))
@@ -1017,9 +1017,9 @@
                       (m/explain schema [:so :invalid]))))
 
       (testing "parser"
-        (is (= [:human] (m/parse schema [:human])))
-        (is (= [:bear [1 2 3]] (m/parse schema [:bear 1 2 3])))
-        (is (= ["defaultit" "toimii"] (m/parse schema ["defaultit" "toimii"])))
+        (is (= (miu/-tagged :human [:human]) (m/parse schema [:human])))
+        (is (= (miu/-tagged :bear [:bear [1 2 3]]) (m/parse schema [:bear 1 2 3])))
+        (is (= (miu/-tagged ::m/default ["defaultit" "toimii"]) (m/parse schema ["defaultit" "toimii"])))
         (is (= ::m/invalid (m/parse schema [:so :invalid]))))))
 
   (testing "map-of schema"

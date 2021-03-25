@@ -16,7 +16,8 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* `:nil` schema
+* `:nil` schema, [#401](https://github.com/metosin/malli/pull/401)
+* **BREAKING/FIX**: parsing `:multi` returns branch information, [#403](https://github.com/metosin/malli/pull/403)
 
 ## 0.3.1 (2021-03-21)
 

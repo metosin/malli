@@ -1301,7 +1301,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ;               :children [[:primitive [:text "Hello, world of data"]]]}]]}]
 ```
 
-Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`. For others it returns the value.
+Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
 
 ```clj
 (def Multi

@@ -1107,7 +1107,7 @@
                    (explainer x in acc)
                    (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-parser [_]
-             (let [parse (fn [k s] (as-> (-parser s) $ (fn [x] (miu/-map-valid #(miu/-tagged k %) ($ x)))))
+             (let [parse (fn [k s] (let [p (-parser s)] (fn [x] (miu/-map-valid #(miu/-tagged k %) (p x)))))
                    find (finder (reduce-kv (fn [acc k s] (assoc acc k (parse k s))) {} dispatch-map))]
                (fn [x] (if-some [parser (find (dispatch x))] (parser x) ::invalid))))
            (-unparser [_]
@@ -1115,6 +1115,7 @@
                (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (key x))] (f (val x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
              ;; FIXME: Probably should not use `dispatch`
+             ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s]
                                            (when-some [t (-transformer s transformer method options)]

@@ -55,6 +55,7 @@
 
   * if either schemas is `nil`, the other one is used, regardless of value
   * with two :map schemas, both keys and values are merged
+  * for :and schemas, the first child is used in merge, rest kept as-is
   * with two :map entries, `:merge-entries` fn is used (default last one wins)
   * with any other schemas, `:merge-default` fn is used (default last one wins)
 
@@ -69,11 +70,15 @@
                                         (if ?schema2 (m/deref-all (m/schema ?schema2 options)))]
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
-               merge-required (fn [_ r2] r2)}} options]
+               merge-required (fn [_ r2] r2)}} options
+         mapand (fn [s] (if (= :map (m/type s)) [nil s] (concat [(m/properties s)] (m/children s))))
+         join (fn [[p1 c1 & cs1] [p2 c2 & cs2]]
+                (m/into-schema :and (c/merge p1 p2) (concat [(merge c1 c2)] cs1 cs2) options))]
      (cond
        (not schema1) schema2
        (not schema2) schema1
-       (not= :map (m/type schema1) (m/type schema2)) (merge-default schema1 schema2 options)
+       (not (every? (comp #{:map :and} m/type) schemas)) (merge-default schema1 schema2 options)
+       (not (every? (comp #{:map} m/type) schemas)) (join (mapand schema1) (mapand schema2))
        :else (let [p (c/merge (m/properties schema1) (m/properties schema2))]
                (-> [:map]
                    (cond-> p (conj p))

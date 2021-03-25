@@ -65,7 +65,47 @@
 
     [:schema [:schema [:map [:x int?]]]]
     [:schema [:schema [:schema [:map [:y int?]]]]]
-    [:map [:x int?] [:y int?]]))
+    [:map [:x int?] [:y int?]]
+
+    [:map {:title "x", :x true} [:x :int]]
+    [:map {:title "y", :y true} [:y :int]]
+    [:map {:title "y", :x true, :y true}
+     [:x :int] [:y :int]]
+
+    [:map {:title "x", :x true} [:x :int]]
+    [:and {:and "y", :y false}
+     [:map {:title "y", :y true}
+      [:y :int]]
+     map?]
+    [:and {:and "y", :y false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int]
+      [:y :int]]
+     map?]
+
+    [:and {:and "x", :x false} [:map {:title "x", :x true} [:x :int]] map?]
+    [:map {:title "y", :y true} [:y :int]]
+    [:and {:and "x", :x false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int]
+      [:y :int]]
+     map?]
+
+    [:and {:and "x", :x false} [:map {:title "x", :x true} [:x :int]] map?]
+    [:and {:and "y", :y false} [:map {:title "y", :y true} [:y :int]] map?]
+    [:and {:and "y", :x false, :y false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int] [:y :int]]
+     map?
+     map?]
+
+    [:and {:and "x"} [:map {:title "x", :x true} [:x :int]] map?]
+    map?
+    map?
+
+    [:and boolean? int?]
+    [:and map?]
+    [:and map? int?]))
 
 (deftest union-test
   (are [?s1 ?s2 expected]

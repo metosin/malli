@@ -824,6 +824,22 @@ Merging Schemas (last value wins):
 ;            [:country string?]]]]
 ```
 
+With `:and`, first child is used in merge:
+
+```clj
+(mu/merge
+  [:and {:type "entity"}
+   [:map {:title "user"} 
+    [:name :string]]
+   map?]
+  [:map {:description "aged"} [:age :int]])
+;[:and {:type "entity"} 
+; [:map {:title "user", :description "aged"} 
+;  [:name :string] 
+;  [:age :int]] 
+; map?]
+```
+
 Schema unions (merged values of both schemas are valid for union schema):
 
 ```clj

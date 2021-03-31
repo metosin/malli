@@ -71,14 +71,14 @@
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
-         mapand (fn [s] (if (= :map (m/type s)) [nil s] (concat [(m/properties s)] (m/children s))))
+         tear (fn [s] (if (= :map (m/type s)) [nil s] (concat [(m/properties s)] (m/children s))))
          join (fn [[p1 c1 & cs1] [p2 c2 & cs2]]
                 (m/into-schema :and (c/merge p1 p2) (concat [(merge c1 c2)] cs1 cs2) options))]
      (cond
        (not schema1) schema2
        (not schema2) schema1
        (not (every? (comp #{:map :and} m/type) schemas)) (merge-default schema1 schema2 options)
-       (not (every? (comp #{:map} m/type) schemas)) (join (mapand schema1) (mapand schema2))
+       (not (every? (comp #{:map} m/type) schemas)) (join (tear schema1) (tear schema2))
        :else (let [p (c/merge (m/properties schema1) (m/properties schema2))]
                (-> [:map]
                    (cond-> p (conj p))

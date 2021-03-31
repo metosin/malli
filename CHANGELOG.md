@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.4.0 (2021-03-31)
 
 * `:nil` schema, [#401](https://github.com/metosin/malli/pull/401)
 * **BREAKING/FIX**: parsing `:multi` returns branch information, [#403](https://github.com/metosin/malli/pull/403)

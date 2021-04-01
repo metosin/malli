@@ -243,10 +243,6 @@
                              ::A] {:size 1, :seed 1})]
     (is (-> sample flatten count (> 1)))))
 
-(deftest -delay-test
-  (is (= 12 (mg/generate (gen/return 12))))
-  (is (= 12 (mg/generate (mg/-delay (gen/return 12))))))
-
 (deftest slow-recursive-test
   (let [schema [:schema {:registry {::A [:tuple [:= :A]]
                                     ::B [:tuple [:= :B]]

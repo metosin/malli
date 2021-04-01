@@ -8,16 +8,12 @@
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
             [malli.core :as m]
-            [malli.impl.util :as miu])
-  #?(:cljs (:require-macros [malli.generator :refer [-delay]])))
+            [malli.impl.util :as miu]))
 
 (declare generator generate -create)
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
-
-(defmacro -delay [& body]
-  `((fn [gfnd#] (gen/->Generator (fn [rnd# size#] ((:gen @gfnd#) rnd# size#)))) (delay ~@body)))
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
@@ -104,6 +100,10 @@
        (let [re (or (first (m/children schema options)) (m/form schema options))]
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (miu/-fail! :test-chuck-not-available))))
+
+(defn -ref-gen [schema options]
+  (let [gen* (delay (generator (m/deref-all schema) options))]
+    (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
 
 (defn -=>-gen [schema options]
   (let [{:keys [min max input output] :or {max miu/+max-size+}} (m/-function-info schema)
@@ -223,7 +223,7 @@
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
-(defmethod -schema-generator :ref [schema options] (-delay (generator (m/deref schema) options)))
+(defmethod -schema-generator :ref [schema options] (-ref-gen schema options))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
 

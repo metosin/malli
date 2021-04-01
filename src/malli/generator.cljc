@@ -8,12 +8,16 @@
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
             [malli.core :as m]
-            [malli.impl.util :as miu]))
+            [malli.impl.util :as miu])
+  #?(:cljs (:require-macros [malli.generator :refer [-delay]])))
 
 (declare generator generate -create)
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
+
+(defmacro -delay [& body]
+  `((fn [gfnd#] (gen/->Generator (fn [rnd# size#] ((:gen @gfnd#) rnd# size#)))) (delay ~@body)))
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
@@ -70,10 +74,10 @@
                   (gen/vector gen/any 0 0)))))
 
 (defn -or-gen [schema options]
-  (gen/one-of (keep #(some->> (-maybe-recur % options) (generator %)) (m/children schema options))))
+  (-delay (gen/one-of (keep #(some->> (-maybe-recur % options) (generator %)) (m/children schema options)))))
 
 (defn -multi-gen [schema options]
-  (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/entries schema options))))
+  (-delay (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/entries schema options)))))
 
 (defn -map-gen [schema options]
   (let [entries (m/entries schema)
@@ -146,10 +150,11 @@
        (gen/fmap #(apply concat %))))
 
 (defn -alt-gen [schema options]
-  (gen/one-of (keep (fn [e]
-                      (let [child (entry->schema e)]
-                        (some->> (-maybe-recur child options) (-regex-generator child))))
-                    (m/children schema options))))
+  (-delay
+    (gen/one-of (keep (fn [e]
+                        (let [child (entry->schema e)]
+                          (some->> (-maybe-recur child options) (-regex-generator child))))
+                      (m/children schema options)))))
 
 (defn -?-gen [schema options]
   (let [child (m/-get schema 0 nil)]

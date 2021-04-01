@@ -74,10 +74,10 @@
                   (gen/vector gen/any 0 0)))))
 
 (defn -or-gen [schema options]
-  (-delay (gen/one-of (keep #(some->> (-maybe-recur % options) (generator %)) (m/children schema options)))))
+  (gen/one-of (keep #(some->> (-maybe-recur % options) (generator %)) (m/children schema options))))
 
 (defn -multi-gen [schema options]
-  (-delay (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/entries schema options)))))
+  (gen/one-of (keep #(some->> (-maybe-recur (last %) options) (generator (last %))) (m/entries schema options))))
 
 (defn -map-gen [schema options]
   (let [entries (m/entries schema)
@@ -150,11 +150,10 @@
        (gen/fmap #(apply concat %))))
 
 (defn -alt-gen [schema options]
-  (-delay
-    (gen/one-of (keep (fn [e]
-                        (let [child (entry->schema e)]
-                          (some->> (-maybe-recur child options) (-regex-generator child))))
-                      (m/children schema options)))))
+  (gen/one-of (keep (fn [e]
+                      (let [child (entry->schema e)]
+                        (some->> (-maybe-recur child options) (-regex-generator child))))
+                    (m/children schema options))))
 
 (defn -?-gen [schema options]
   (let [child (m/-get schema 0 nil)]
@@ -224,7 +223,7 @@
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
-(defmethod -schema-generator :ref [schema options] (generator (m/deref schema) options))
+(defmethod -schema-generator :ref [schema options] (-delay (generator (m/deref schema) options)))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
 

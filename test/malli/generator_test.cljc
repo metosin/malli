@@ -242,3 +242,23 @@
                                                   [:vector {:gen/min 2, :gen/max 2} [:ref ::A]]]}}
                              ::A] {:size 1, :seed 1})]
     (is (-> sample flatten count (> 1)))))
+
+(deftest slow-recursive-test
+  (let [schema [:schema {:registry {::A [:tuple [:= :A]]
+                                    ::B [:tuple [:= :B]]
+                                    ::C [:tuple [:= :C]]
+                                    ::D [:tuple [:= :D]]
+                                    ::E [:tuple [:= :E] [:ref ::item]]
+                                    ::F [:tuple [:= :F] [:ref ::item]]
+                                    ::G [:tuple [:= :G] [:ref ::item]]
+                                    ::item [:multi {:dispatch first}
+                                            [:A ::A]
+                                            [:B ::B]
+                                            [:C ::C]
+                                            [:D ::D]
+                                            [:E ::E]
+                                            [:F ::F]
+                                            [:G ::G]]}}
+                ::E]
+        valid? (m/validator schema)]
+    (is (every? valid? (mg/sample schema {:size 10000})))))

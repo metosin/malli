@@ -101,6 +101,10 @@
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (miu/-fail! :test-chuck-not-available))))
 
+(defn -ref-gen [schema options]
+  (let [gen* (delay (generator (m/deref-all schema) options))]
+    (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
+
 (defn -=>-gen [schema options]
   (let [{:keys [min max input output] :or {max miu/+max-size+}} (m/-function-info schema)
         validate-input (m/validator input)
@@ -219,7 +223,7 @@
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
-(defmethod -schema-generator :ref [schema options] (generator (m/deref schema) options))
+(defmethod -schema-generator :ref [schema options] (-ref-gen schema options))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
 

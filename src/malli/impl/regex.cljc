@@ -28,7 +28,10 @@
   Clojure code than the 'Pike VM' in Seqexp. Hopefully JITs also see it that
   way and compile decent machine code for it. It is also much easier to extend
   for actual parsing (e.g. encode, decode [and parse?]) instead of just
-  recognition for `validate`."
+  recognition for `validate`.
+
+  For a more detailed explanation of this namespace see also
+  https://www.metosin.fi/blog/malli-regex-schemas/."
 
   (:refer-clojure :exclude [+ * repeat cat])
   (:require [malli.impl.util :as miu])

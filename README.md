@@ -29,6 +29,7 @@ Data-driven Schemas for Clojure/Script.
 
 Presentations:
 
+- [Structure and Interpretation of Malli Regex Schemas](https://www.metosin.fi/blog/malli-regex-schemas/)
 - LNDCLJ 9.12.2020: [Designing with Malli](https://youtu.be/bQDkuF6-py4), slides [here](https://www.slideshare.net/mobile/metosin/designing-with-malli)
 - [Malli, Data-Driven Schemas for Clojure/Script](https://www.metosin.fi/blog/malli/)
 - CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
@@ -40,6 +41,7 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 - [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
 - [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
 - [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
+- [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
 
 ## Examples
 

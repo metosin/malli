@@ -42,6 +42,7 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 - [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
 - [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
 - [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
+- [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
 
 ## Examples
 

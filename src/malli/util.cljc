@@ -370,6 +370,8 @@
   (reify m/IntoSchema
     (-type [_] type)
     (-type-properties [_] type-properties)
+    (-properties-schema [_])
+    (-children-schema [_])
     (-into-schema [parent properties children options]
       (m/-check-children! type properties children {:min min, :max max})
       (let [[children forms schema] (fn properties (vec children) options)

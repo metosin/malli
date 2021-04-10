@@ -20,6 +20,9 @@ Malli is in [alpha](README.md#alpha).
 
 * **BREAKING**: `-type` is moved from `Schema` to `IntoSchema`.
 * **BREAKING**: `-type-properties` is moved from `Schema` to `IntoSchema`.
+* new Protocol methods in `IntoSchema` Protocol
+  * `(-properties-schema [this] "maybe returns :map schema describing schema properties")`
+  * `(-children-schema [this] "maybe returns sequence schema describing schema children")`
 
 ## 0.4.0 (2021-03-31)
 

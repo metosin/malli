@@ -305,7 +305,7 @@
                                    explain-output (assoc ::explain-output explain-output)
                                    (ex-message result) (-> (update :result ex-message)
                                                            (dissoc :result-data)))))))))]
-     (condp = (m/-type schema)
+     (condp = (m/type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]
                    (fn [x] (->> checkers (keep #(% x)) (seq))))

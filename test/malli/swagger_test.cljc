@@ -84,7 +84,7 @@
    [(reify
       m/Schema
       (-properties [_])
-      (-type [_])
+      (-parent [_] (reify m/IntoSchema (-type [_])))
       (-form [_])
       (-type-properties [_])
       (-validator [_] int?)

@@ -368,7 +368,8 @@
 (defn -util-schema [{:keys [type min max childs type-properties fn] :as opts}]
   ^{:type ::m/into-schema}
   (reify m/IntoSchema
-    (-into-schema [_ properties children options]
+    (-type [_] type)
+    (-into-schema [parent properties children options]
       (m/-check-children! type properties children {:min min, :max max})
       (let [[children forms schema] (fn properties (vec children) options)
             walkable-childs (if childs (subvec children 0 childs) children)
@@ -376,7 +377,6 @@
         ^{:type ::m/schema}
         (reify
           m/Schema
-          (-type [_] type)
           (-type-properties [_] type-properties)
           (-validator [_] (m/-validator schema))
           (-explainer [_ path] (m/-explainer schema path))
@@ -388,7 +388,7 @@
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
-          (-parent [_] (-util-schema opts))
+          (-parent [_] parent)
           (-form [_] form)
           m/LensSchema
           (-keep [_])

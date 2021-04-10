@@ -105,8 +105,8 @@
   (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
-#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:class " v "}"))))
-#?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form v)))))
+#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
+#?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
 
 ;;
 ;; impl

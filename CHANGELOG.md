@@ -19,6 +19,7 @@ Malli is in [alpha](README.md#alpha).
 ### Extender API
 
 * **BREAKING**: `-type` is moved from `Schema` to `IntoSchema`.
+* **BREAKING**: `-type-properties` is moved from `Schema` to `IntoSchema`.
 
 ## 0.4.0 (2021-03-31)
 

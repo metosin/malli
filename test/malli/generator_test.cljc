@@ -206,7 +206,7 @@
   (let [values #{1 2 3 5 8 13}
         schema (reify
                  m/Schema
-                 (-type-properties [_])
+                 (-parent [_] (reify m/IntoSchema (-type-properties [_])))
                  (-properties [_])
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]

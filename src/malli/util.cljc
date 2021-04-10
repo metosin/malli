@@ -365,10 +365,11 @@
      (clojure.core/update children 0 #(m/form % options))
      (apply f (conj children options))]))
 
-(defn -util-schema [{:keys [type min max childs type-properties fn] :as opts}]
+(defn -util-schema [{:keys [type min max childs type-properties fn]}]
   ^{:type ::m/into-schema}
   (reify m/IntoSchema
     (-type [_] type)
+    (-type-properties [_] type-properties)
     (-into-schema [parent properties children options]
       (m/-check-children! type properties children {:min min, :max max})
       (let [[children forms schema] (fn properties (vec children) options)
@@ -377,7 +378,6 @@
         ^{:type ::m/schema}
         (reify
           m/Schema
-          (-type-properties [_] type-properties)
           (-validator [_] (m/-validator schema))
           (-explainer [_ path] (m/-explainer schema path))
           (-transformer [this transformer method options]

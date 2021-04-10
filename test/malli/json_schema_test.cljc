@@ -82,9 +82,8 @@
    [(reify
       m/Schema
       (-properties [_])
-      (-parent [_] (reify m/IntoSchema (-type [_])))
+      (-parent [_] (reify m/IntoSchema (-type [_]) (-type-properties [_])))
       (-form [_])
-      (-type-properties [_])
       (-validator [_] int?)
       (-walk [t w p o] (m/-outer w t p nil o))
       json-schema/JsonSchema

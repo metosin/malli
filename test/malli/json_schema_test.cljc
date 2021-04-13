@@ -73,6 +73,7 @@
 
    [[:=> :cat int?] {} :fn]
    [[:function [:=> :cat int?]] {} :fn]
+   [ifn? {}]
 
    [integer? {:type "integer"}]
    #?@(:clj [[ratio? {:type "number"}]

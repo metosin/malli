@@ -29,6 +29,12 @@
              [:=> [:cat :int] [:int {:min 0}]]
              [:=> [:cat :int :int [:* :int]] :int]])
 
+(defn siren
+  [f coll]
+  (into {} (map (juxt f identity) coll)))
+
+(m/=> siren [:=> [:cat ifn? coll?] map?])
+
 (deftest clj-kondo-integration-test
 
   (is (= {:op :keys,
@@ -48,7 +54,9 @@
                             :ret :int},
                          :varargs {:args [:int :int {:op :rest, :spec :int}],
                                    :ret :int,
-                                   :min-arity 2}}}}}
+                                   :min-arity 2}}}
+              'siren
+              {:arities {2 {:args [:ifn :coll], :ret :map}}}}}
             (-> 'malli.clj-kondo-test
                 (clj-kondo/collect)
                 (clj-kondo/linter-config)

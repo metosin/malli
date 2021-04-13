@@ -72,6 +72,7 @@
    #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
    :re {:error/message {:en "should match regex"}}
    :=> {:error/message {:en "invalid function"}}
+   'ifn? {:error/message {:en "should be an ifn"}}
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
                            (str "should be "
                                 (if (= 1 (count (m/children schema)))

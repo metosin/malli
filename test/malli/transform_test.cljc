@@ -710,6 +710,7 @@
                       [[:enum P1 "S" "M" "L"] "s" "S"]
                       [[:re P1 ".*"] "kikka" "KIKKA"]
                       [[:fn P1 'string?] "kikka" "KIKKA"]
+                      [[ifn? P1] "kikka" "KIKKA"]
                       [[:maybe P1 keyword?] "kikka" :KIKKA]
                       [[:vector PS keyword?] ["kikka"] [:KIKKA]]
                       [[:sequential PS keyword?] ["kikka"] [:KIKKA]]

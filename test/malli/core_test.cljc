@@ -698,6 +698,16 @@
 
         (is (= form (m/form schema))))))
 
+  (testing "ifn schemas"
+    (let [schema (m/schema ifn?)]
+      (is (true? (m/validate schema (fn []))))
+      (is (true? (m/validate schema (constantly 1))))
+      (is (true? (m/validate schema :keyword)))
+      (is (true? (m/validate schema #?(:clj (reify clojure.lang.IFn
+                                              (invoke [_] "Invoked!"))
+                                       :cljs (reify IFn
+                                              (-invoke [_] "Invoked!"))))))))
+
   (testing "fn schemas"
     (doseq [fn ['(fn [x] (and (int? x) (< 10 x 18)))
                 "(fn [x] (and (int? x) (< 10 x 18)))"]]

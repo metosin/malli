@@ -331,6 +331,22 @@ Using regular expressions:
 ; => false
 ```
 
+`ifn?` accepts any value that implements Clojure(Script)'s IFn:
+
+```clj
+(m/validate ifn? :keyword)
+; => true
+
+(m/validate ifn? [])
+; => true
+
+(m/validate ifn? {})
+; => true
+
+(s/validate ifn? 123)
+; => false
+```
+
 ## Serializable Functions
 
 Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If

@@ -14,9 +14,19 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## 0.5.0 (2021-04-13)
+## UNRELEASED
+
+### Public API
 
 * Add `ifn?` predicate, [#416](https://github.com/metosin/malli/pull/416)
+
+### Extender API
+
+* **BREAKING**: `-type` is moved from `Schema` to `IntoSchema`.
+* **BREAKING**: `-type-properties` is moved from `Schema` to `IntoSchema`.
+* new Protocol methods in `IntoSchema` Protocol
+  * `(-properties-schema [this] "maybe returns :map schema describing schema properties")`
+  * `(-children-schema [this] "maybe returns sequence schema describing schema children")`
 
 ## 0.4.0 (2021-03-31)
 

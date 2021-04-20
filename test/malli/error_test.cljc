@@ -423,6 +423,10 @@
              (m/explain 123)
              (me/humanize)))))
 
+(deftest ifn-test
+  (is (= ["should be an ifn"]
+         (me/humanize (m/explain ifn? 123)))))
+
 (deftest multi-error-test
   (let [schema [:multi {:dispatch :type}
                 ["plus" [:map [:value int?]]]

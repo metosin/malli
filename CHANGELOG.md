@@ -16,6 +16,10 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+### Public API
+
+* Add `ifn?` predicate, [#416](https://github.com/metosin/malli/pull/416)
+
 ### Extender API
 
 * **BREAKING**: `-type` is moved from `Schema` to `IntoSchema`.

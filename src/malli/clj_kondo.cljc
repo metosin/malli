@@ -53,6 +53,7 @@
 (defmethod accept 'sequential? [_ _ _ _] :sequential)
 (defmethod accept 'ratio? [_ _ _ _] :int) ;;??
 (defmethod accept 'bytes? [_ _ _ _] :char-sequence) ;;??
+(defmethod accept 'ifn? [_ _ _ _] :ifn)
 
 (defmethod accept :> [_ _ _ _] :number) ;;??
 (defmethod accept :>= [_ _ _ _] :number) ;;??

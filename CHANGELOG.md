@@ -19,6 +19,7 @@ Malli is in [alpha](README.md#alpha).
 ### Public API
 
 * Add `ifn?` predicate, [#416](https://github.com/metosin/malli/pull/416)
+* Accumulate errors correctly with `m/-explain` with `:function` and `:=>` Schemas
 
 ### Extender API
 

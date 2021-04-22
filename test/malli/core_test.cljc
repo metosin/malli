@@ -703,10 +703,10 @@
       (is (true? (m/validate schema (fn []))))
       (is (true? (m/validate schema (constantly 1))))
       (is (true? (m/validate schema :keyword)))
-      (is (true? (m/validate schema #?(:clj (reify clojure.lang.IFn
-                                              (invoke [_] "Invoked!"))
+      (is (true? (m/validate schema #?(:clj  (reify clojure.lang.IFn
+                                               (invoke [_] "Invoked!"))
                                        :cljs (reify IFn
-                                              (-invoke [_] "Invoked!"))))))))
+                                               (-invoke [_] "Invoked!"))))))))
 
   (testing "fn schemas"
     (doseq [fn ['(fn [x] (and (int? x) (< 10 x 18)))
@@ -2183,6 +2183,16 @@
                                  :schema schema2
                                  :value invalid-f}]}
                       (m/explain schema2 invalid-f))))
+
+      (testing "non-accumulating errors"
+        (let [schema (m/schema
+                       [:tuple :int [:function [:=> [:cat :int] :int]]]
+                       {::m/function-checker malli.generator/function-checker})
+              f (fn [_] 1)]
+          (is (results= {:schema schema,
+                         :value ["1" f],
+                         :errors [{:path [0], :in [0], :schema :int, :value "1"}]}
+                        (m/explain schema ["1" f])))))
 
       (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
 

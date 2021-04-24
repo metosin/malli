@@ -24,8 +24,8 @@
 (defprotocol IntoSchema
   (-type [this] "returns type of the schema")
   (-type-properties [this] "returns schema type properties")
-  (-properties-schema [this] "maybe returns :map schema describing schema properties")
-  (-children-schema [this] "maybe returns sequence schema describing schema children")
+  (-properties-schema [this options] "maybe returns :map schema describing schema properties")
+  (-children-schema [this options] "maybe returns sequence schema describing schema children")
   (-into-schema [this properties children options] "creates a new schema instance"))
 
 (defprotocol Schema
@@ -319,8 +319,8 @@
     (reify IntoSchema
       (-type [_] (:type @props*))
       (-type-properties [_] (:type-properties @props*))
-      (-properties-schema [_])
-      (-children-schema [_])
+      (-properties-schema [_ _])
+      (-children-schema [_ _])
       (-into-schema [parent properties children options]
         (if (fn? ?props)
           (-into-schema (-simple-schema (?props properties children)) properties children options)
@@ -371,8 +371,8 @@
   (reify IntoSchema
     (-type [_] :and)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :and properties children {:min 1})
       (let [children (mapv #(schema % options) children)
@@ -410,8 +410,8 @@
   (reify IntoSchema
     (-type [_] :or)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :or properties children {:min 1})
       (let [children (mapv #(schema % options) children)
@@ -470,8 +470,8 @@
   (reify IntoSchema
     (-type [_] :orn)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children {:min 1})
       (let [{:keys [children entries forms]} (-parse-entries children {:naked-keys true} options)
@@ -542,8 +542,8 @@
   (reify IntoSchema
     (-type [_] :not)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :not properties children {:min 1 :max 1})
       (let [[schema :as children] (map #(schema % options) children)
@@ -581,8 +581,8 @@
    (reify IntoSchema
      (-type [_] ::val)
      (-type-properties [_])
-     (-properties-schema [_])
-     (-children-schema [_])
+     (-properties-schema [_ _])
+     (-children-schema [_ _])
      (-into-schema [parent properties children options]
        (-check-children! ::val properties children {:min 1, :max 1})
        (let [[schema :as children] (map #(schema % options) children)
@@ -728,8 +728,8 @@
   (reify IntoSchema
     (-type [_] :map-of)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :map-of properties children {:min 2 :max 2})
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
@@ -875,8 +875,8 @@
   (reify IntoSchema
     (-type [_] :tuple)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (let [children (mapv #(schema % options) children)
             size (count children)
@@ -979,8 +979,8 @@
   (reify IntoSchema
     (-type [_] :re)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties [child :as children] options]
       (-check-children! :re properties children {:min 1, :max 1})
       (let [children (vec children)
@@ -1064,8 +1064,8 @@
   (reify IntoSchema
     (-type [_] :maybe)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :maybe properties children {:min 1, :max 1})
       (let [[schema :as children] (map #(schema % options) children)
@@ -1109,8 +1109,8 @@
    (reify IntoSchema
      (-type [_] :multi)
      (-type-properties [_] (:type-properties opts))
-     (-properties-schema [_])
-     (-children-schema [_])
+     (-properties-schema [_ _])
+     (-children-schema [_ _])
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
@@ -1238,8 +1238,8 @@
     (reify IntoSchema
       (-type [_] type)
       (-type-properties [_])
-      (-properties-schema [_])
-      (-children-schema [_])
+      (-properties-schema [_ _])
+      (-children-schema [_ _])
       (-into-schema [parent properties children options]
         (-check-children! type properties children {:min 1, :max 1})
         (let [[child :as children] (map #(schema % options) children)
@@ -1351,8 +1351,8 @@
   (reify IntoSchema
     (-type [_] :function)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :function properties children {:min 1})
       (let [children (map #(schema % options) children)
@@ -1418,8 +1418,8 @@
   (reify IntoSchema
     (-type [_] type)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children child-bounds)
       (let [children (mapv #(schema % options) children)
@@ -1463,8 +1463,8 @@
   (reify IntoSchema
     (-type [_] type)
     (-type-properties [_])
-    (-properties-schema [_])
-    (-children-schema [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children child-bounds)
       (let [{:keys [children entries forms]} (-parse-entries children opts options)

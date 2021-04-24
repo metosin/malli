@@ -1765,7 +1765,12 @@
       (is (m/validate schema {::id 123 ::location [1 1] ::country "Finland" :name "Malli"})))
 
     (testing "Optional qualified keyword is optional"
-      (is (m/validate schema {::id 123 ::location [1 1] :name "Malli"})))))
+      (is (m/validate schema {::id 123 ::location [1 1] :name "Malli"}))))
+
+  (testing "invalid ref"
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-ref"
+          (m/schema [:map {:registry {:kikka :int}} :int])))))
 
 (deftest simple-schemas
   (testing "simple schemas"

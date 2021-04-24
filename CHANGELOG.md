@@ -20,6 +20,8 @@ Malli is in [alpha](README.md#alpha).
 
 * Add `ifn?` predicate, [#416](https://github.com/metosin/malli/pull/416)
 * Accumulate errors correctly with `m/-explain` with `:function` and `:=>` Schemas
+* Fix [#419](https://github.com/metosin/malli/issues/419): Parsing bug in :map schema
+* Fix [#418](https://github.com/metosin/malli/issues/418): Better error messages / docs for registry references
 
 ### Extender API
 

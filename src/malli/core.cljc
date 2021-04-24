@@ -1507,9 +1507,9 @@
 ;; public api
 ;;
 
-(defn schema?
-  "Checks if x is a Schema instance"
-  [x] (-schema? x))
+;;
+;; into-schema
+;;
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
@@ -1522,6 +1522,46 @@
   ([type properties children options]
    (let [[properties options] (-properties-and-options properties options -form)]
      (-into-schema (-schema type options) (if (seq properties) properties) children options))))
+
+(defn type
+  "Returns the Schema type."
+  ([?schema]
+   (type ?schema nil))
+  ([?schema options]
+   (-type (-parent (schema ?schema options)))))
+
+(defn type-properties
+  "Returns the Schema type properties"
+  ([?schema]
+   (type-properties ?schema nil))
+  ([?schema options]
+   (-type-properties (-parent (schema ?schema options)))))
+
+(defn properties-schema
+  "Returns properties schema for Schema or IntoSchema."
+  ([?schema]
+   (properties-schema ?schema nil))
+  ([?schema options]
+   (if (into-schema? ?schema)
+     (some-> ?schema (-properties-schema options) schema)
+     (some-> (schema ?schema options) -parent (-properties-schema options)))))
+
+(defn children-schema
+  "Returns children schema for Schema or IntoSchema."
+  ([?schema]
+   (children-schema ?schema nil))
+  ([?schema options]
+   (if (into-schema? ?schema)
+     (some-> ?schema (-children-schema options) schema)
+     (some-> (schema ?schema options) -parent (-children-schema options)))))
+
+;;
+;; schema
+;;
+
+(defn schema?
+  "Checks if x is a Schema instance"
+  [x] (-schema? x))
 
 (defn schema
   "Creates a Schema object from any of the following:
@@ -1556,13 +1596,6 @@
   ([?schema options]
    (-properties (schema ?schema options))))
 
-(defn type-properties
-  "Returns the Schema type properties"
-  ([?schema]
-   (type-properties ?schema nil))
-  ([?schema options]
-   (-type-properties (-parent (schema ?schema options)))))
-
 (defn options
   "Returns options used in creating the Schema"
   ([?schema]
@@ -1578,13 +1611,6 @@
   ([?schema options]
    (let [schema (schema ?schema options)]
      (-children schema))))
-
-(defn type
-  "Returns the Schema type."
-  ([?schema]
-   (type ?schema nil))
-  ([?schema options]
-   (-type (-parent (schema ?schema options)))))
 
 (defn walk
   "Postwalks recursively over the Schema and it's children.

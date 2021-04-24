@@ -1147,9 +1147,9 @@
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s]
                                            (when-some [t (-transformer s transformer method options)]
-                                             (assoc acc k t)))
-                                         {} dispatch-map)
-                   child-transformer (if (seq ->children) (fn [x] (if-some [t (->children (dispatch x))] (t x) x)))]
+                                             (assoc acc k t))) {} dispatch-map)
+                   find (finder ->children)
+                   child-transformer (if (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
                (-intercepting this-transformer child-transformer)))
            (-walk [this walker path options]
              (if (-accept walker this path options)

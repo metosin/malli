@@ -8,7 +8,8 @@
             [malli.impl.util :as miu]
             [clojure.walk :as walk]
             [malli.generator :as mg]
-            [clojure.test.check.generators :as gen]))
+            [clojure.test.check.generators :as gen]
+            [clojure.string :as str]))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -2209,3 +2210,14 @@
               :children [{:type :=>, :children [{:type :cat, :children [{:type 'int?}]} {:type 'int?}]}
                          {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}]}
              (mu/to-map-syntax schema1))))))
+
+(deftest test-415
+  (testing "multi default is not transformed"
+    (let [transformer (mt/key-transformer
+                        {:encode (comp keyword str/upper-case name)})
+          schema [:multi {:dispatch :foo-bar}
+                  [:bar [:map [:foo-bar keyword?]]]
+                  [::m/default [:map [:foo-bar keyword?]]]]]
+
+      (is (= {:FOO-BAR "bar"} (m/encode schema {:foo-bar "bar"} transformer)))
+      (is (= {:FOO-BAR "baz"} (m/encode schema {:foo-bar "baz"} transformer))))))

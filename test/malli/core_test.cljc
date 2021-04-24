@@ -1754,16 +1754,18 @@
 
 (deftest custom-registry-qualified-keyword-in-map-test
   (let [schema [:map {:registry {::id int?
+                                 ::location [:tuple :int :int]
                                  ::country string?}}
                 ::id
+                [::location]
                 [:name string?]
                 [::country {:optional true}]]]
 
     (testing "Example with qualified keyword + optional, regular key"
-      (is (m/validate schema {::id 123 ::country "Finland" :name "Malli"})))
+      (is (m/validate schema {::id 123 ::location [1 1] ::country "Finland" :name "Malli"})))
 
     (testing "Optional qualified keyword is optional"
-      (is (m/validate schema {::id 123 :name "Malli"})))))
+      (is (m/validate schema {::id 123 ::location [1 1] :name "Malli"})))))
 
 (deftest simple-schemas
   (testing "simple schemas"

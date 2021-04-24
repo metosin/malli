@@ -184,6 +184,7 @@
 (defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
   (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
                                              (-reference? e) (if naked-keys [[e nil e] e])
+                                             (and (= 1 (count e)) (-reference? (first e))) (if naked-keys [[(first e) nil (first e)] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
                                              :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])

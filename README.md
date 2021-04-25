@@ -1202,6 +1202,12 @@ Schemas can be used to generate values:
   {:seed 10, :size 10})
 ;; => "kikka_WT3K0yax2"
 
+;; gen/schema
+(mg/generate
+  [:any {:gen/schema [:int {:min 10, :max 20}]}]
+  {:seed 10})
+; => 19
+
 (require '[clojure.test.check.generators :as gen])
 
 ;; gen/gen (note, not serializable)

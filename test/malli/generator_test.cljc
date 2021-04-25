@@ -118,6 +118,11 @@
     (is (every? #{1 2} (mg/sample [:and {:gen/elements [1 2]} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/elements [1 2], :gen/fmap 'str} int?] {:size 1000}))))
 
+  (testing "gen/schema"
+    (is (every? #{1 2} (mg/sample [:int {:gen/schema [:int {:gen/elements [1 2]}]}] {:size 1000})))
+    (is (every? #{"+1" "+2"} (mg/sample [:int {:gen/schema [:int {:gen/elements [1 2], :gen/fmap str}]
+                                               :gen/fmap (partial str "+")}] {:size 1000}))))
+
   (testing "gen/gen"
     (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))

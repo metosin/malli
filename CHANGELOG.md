@@ -23,14 +23,16 @@ Malli is in [alpha](README.md#alpha).
 * Fix [#419](https://github.com/metosin/malli/issues/419): Parsing bug in :map schema
 * Fix [#418](https://github.com/metosin/malli/issues/418): Better error messages / docs for registry references
 * Fix [#415](https://github.com/metosin/malli/issues/415): Default branch in multi schema are not transformed
+* New `m/properties-schema` and `m/children-schema` to resolve Malli Schemas for `IntoSchema`s. Empty implementations.
+* Nwe `:gen/schema` property for declarate generation, e.g. `[:string {:gen/schema :int, :gen/fmap str}]` 
 
 ### Extender API
 
 * **BREAKING**: `-type` is moved from `Schema` to `IntoSchema`.
 * **BREAKING**: `-type-properties` is moved from `Schema` to `IntoSchema`.
 * new Protocol methods in `IntoSchema` Protocol
-  * `(-properties-schema [this] "maybe returns :map schema describing schema properties")`
-  * `(-children-schema [this] "maybe returns sequence schema describing schema children")`
+  * `(-properties-schema [this options] "maybe returns :map schema describing schema properties")`
+  * `(-children-schema [this options] "maybe returns sequence schema describing schema children")`
 
 ## 0.4.0 (2021-03-31)
 

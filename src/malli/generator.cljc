@@ -243,12 +243,14 @@
 (defmethod -schema-generator :repeat [schema options] (-repeat-gen schema options))
 
 (defn- -create [schema options]
-  (let [{:gen/keys [gen fmap elements]} (merge (m/type-properties schema) (m/properties schema))
+  (let [{:gen/keys [gen fmap elements] gen-schema :gen/schema} (merge (m/type-properties schema) (m/properties schema))
         gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))
+        gen-schema (when gen-schema (generator gen-schema options))
         elements (when elements (gen/elements elements))]
     (cond
-      fmap (gen/fmap (m/eval fmap (or options (m/options schema))) (or elements gen (gen/return nil)))
+      fmap (gen/fmap (m/eval fmap (or options (m/options schema))) (or elements gen-schema gen (gen/return nil)))
       elements elements
+      gen-schema gen-schema
       gen gen
       :else (miu/-fail! ::no-generator {:schema schema, :options options}))))
 

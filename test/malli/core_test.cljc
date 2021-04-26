@@ -99,7 +99,7 @@
     (testing "custom bindings"
       (let [f '(fn [schema] (m/form schema))]
         (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval f) :string)))
-        (is (= :string ((m/eval f {::m/sci-options {:bindings {'m/form m/form}}}) :string)))))))
+        (is (= :string ((m/eval f {::m/sci-options {:namespaces {'malli.core {'form m/form}}}}) :string)))))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]

@@ -32,8 +32,6 @@
       (miu/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
     (when (and max gen-max (> gen-max max))
       (miu/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
-           :min (or gen-min min)
-           :max (or gen-max max)
     {:min (or gen-min min)
      :max (or gen-max max)}))
 
@@ -214,9 +212,16 @@
 (defmethod -schema-generator :nil [_ _] (gen/return nil))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
-(defmethod -schema-generator :double [schema options] (gen/double* (merge {:infinite? false, :NaN? false}
-                                                                          (m/properties schema options)
-                                                                          (-min-max schema options))))
+(defmethod -schema-generator :double [schema options]
+  (gen/double* (merge (let [props (m/properties schema
+                                                options)]
+                        {:infinite? (or (:gen/infinite? props)
+                                        (:infinite? props)
+                                        false)
+                         :NaN?      (or (:gen/NaN? props)
+                                        (:NaN? props)
+                                        false)})
+                      (-min-max schema options))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

@@ -41,15 +41,33 @@
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
   (testing "double properties"
-    (is (pos? (count (filter (fn [x]
-                               (or (#?(:clj Double/isNaN
-                                       :cljs js/isNaN)
-                                    x)
-                                   (#{##Inf ##-Inf} x)))
-                             (mg/sample [:double
-                                         {:infinite? true
-                                          :NaN?      true}]
-                                        {:size 1000}))))))
+    (let [infinity?     #(or (= %
+                                ##Inf)
+                             (= %
+                                ##-Inf))
+          NaN?          (fn [x]
+                          (#?(:clj  Double/isNaN
+                              :cljs js/isNaN)
+                           x))
+          special?      #(or (NaN? %)
+                             (infinity? %))
+          test-presence (fn [f options]
+                          (some f
+                                (mg/sample [:double options]
+                                           {:size 1000})))]
+      (is (test-presence infinity?
+                         {:gen/infinite? true}))
+      (is (test-presence infinity?
+                         {:infinite? true}))
+      (is (test-presence NaN?
+                         {:gen/NaN? true}))
+      (is (test-presence NaN?
+                         {:NaN? true}))
+      (is (test-presence special?
+                         {:infinite? true
+                          :NaN?      true}))
+      (is (not (test-presence special?
+                              nil)))))
 
   (testing "map entries"
     (is (= {:korppu "koira"

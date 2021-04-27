@@ -40,6 +40,17 @@
                     :qualified-symbol]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
+  (testing "double properties"
+    (is (pos? (count (filter (fn [x]
+                               (or (#?(:clj Double/isNaN
+                                       :cljs js/isNaN)
+                                    x)
+                                   (#{##Inf ##-Inf} x)))
+                             (mg/sample [:double
+                                         {:infinite? true
+                                          :NaN?      true}]
+                                        {:size 1000}))))))
+
   (testing "map entries"
     (is (= {:korppu "koira"
             :piilomaan "pikku aasi"

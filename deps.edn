@@ -3,8 +3,7 @@
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.10"}
                                lambdaisland/kaocha {:mvn/version "1.0.829"}
                                lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
-                               borkdude/sci {:git/url "https://github.com/borkdude/sci.git"
-                                             :sha "b310358cd41f761d7bbd50227a36d1160938ce71"}
+                               borkdude/sci {:mvn/version "0.2.4"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}
                                metosin/spec-tools {:mvn/version "0.10.5"}
                                metosin/schema-tools {:mvn/version "0.12.3"}

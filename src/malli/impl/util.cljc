@@ -1,5 +1,6 @@
 (ns malli.impl.util
-  #?(:clj (:import [clojure.lang MapEntry])))
+  #?(:clj (:import (java.util.concurrent TimeoutException TimeUnit FutureTask)
+                   (clojure.lang MapEntry))))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 
@@ -20,3 +21,11 @@
 (defn -error
   ([path in schema value] (->SchemaError path in schema value nil nil))
   ([path in schema value type] (->SchemaError path in schema value type nil)))
+
+#?(:clj
+   (defn ^:no-doc -run [^Runnable f ms]
+     (let [task (FutureTask. f), t (Thread. task)]
+       (try
+         (.start t) (.get task ms TimeUnit/MILLISECONDS)
+         (catch TimeoutException _ (.cancel task true) (.stop t) ::timeout)
+         (catch Exception e (.cancel task true) (.stop t) (throw e))))))

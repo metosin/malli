@@ -746,17 +746,19 @@
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
 
-    (testing "non-terminating functions fail fast"
-      (let [schema [:fn '(fn [x] (< x (apply max (range))))]]
-        (is (false? (m/validate schema 1)))
-        (is (results= {:schema schema
-                       :value 1
-                       :errors [{:path []
-                                 :in []
-                                 :schema schema
-                                 :value 1
-                                 :type :sci.error/realized-beyond-max}]}
-                      (m/explain schema 1))))))
+    #?(:clj
+       (testing "non-terminating functions DO NOT fail fast"
+         (let [schema [:fn '(fn [x] (< x (apply max (range))))]]
+           (is (= ::miu/timeout (miu/-run (fn [] (m/validate schema 1)) 100)))
+           #_(is (false? (m/validate schema 1)))
+           #_(is (results= {:schema schema
+                            :value 1
+                            :errors [{:path []
+                                      :in []
+                                      :schema schema
+                                      :value 1
+                                      :type :sci.error/realized-beyond-max}]}
+                           (m/explain schema 1)))))))
 
   (testing "map schemas"
     (let [schema (m/schema

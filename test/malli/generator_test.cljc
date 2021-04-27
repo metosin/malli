@@ -267,3 +267,10 @@
                 ::E]
         valid? (m/validator schema)]
     (is (every? valid? (mg/sample schema {:size 10000})))))
+
+(deftest recursive-distinct-col-test
+  (is (not (every? empty?
+                   (mg/sample [:set
+                               {:registry {::foo :int}}
+                               [:ref ::foo]]
+                              {:size 1000})))))

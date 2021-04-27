@@ -168,7 +168,7 @@
      @state)))
 
 (defn distinct-by
-  "Returns a sequence of distict (f x) values)"
+  "Returns a sequence of distinct (f x) values)"
   [f coll]
   (let [seen (atom #{})]
     (filter (fn [x] (let [v (f x)] (if-not (@seen v) (swap! seen conj v)))) coll)))

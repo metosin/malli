@@ -50,7 +50,7 @@
   (let [{:keys [min max]} (-min-max schema options)
         [continue options] (-recur schema options)
         child (-> schema m/children first)
-        gen (if continue (generator child options))]
+        gen (when continue (generator child options))]
     (gen/fmap f (cond
                   (not gen) (gen/vector gen/any 0 0)
                   (and min (= min max)) (gen/vector gen min)
@@ -59,12 +59,11 @@
                   max (gen/vector gen 0 max)
                   :else (gen/vector gen)))))
 
-(defn- -coll-distict-gen [schema f options]
+(defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
         [continue options] (-recur schema options)
         child (-> schema m/children first)
-        gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
-              (generator child options))]
+        gen (when continue (generator child options))]
     (gen/fmap f (if gen
                   (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
                   (gen/vector gen/any 0 0)))))
@@ -200,7 +199,7 @@
 (defmethod -schema-generator :multi [schema options] (-multi-gen schema options))
 (defmethod -schema-generator :vector [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))
-(defmethod -schema-generator :set [schema options] (-coll-distict-gen schema set options))
+(defmethod -schema-generator :set [schema options] (-coll-distinct-gen schema set options))
 (defmethod -schema-generator :enum [schema options] (gen/elements (m/children schema options)))
 
 (defmethod -schema-generator :maybe [schema options]

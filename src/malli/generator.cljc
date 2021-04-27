@@ -50,7 +50,7 @@
   (let [{:keys [min max]} (-min-max schema options)
         [continue options] (-recur schema options)
         child (-> schema m/children first)
-        gen (if continue (generator child options))]
+        gen (when continue (generator child options))]
     (gen/fmap f (cond
                   (not gen) (gen/vector gen/any 0 0)
                   (and min (= min max)) (gen/vector gen min)
@@ -63,8 +63,7 @@
   (let [{:keys [min max]} (-min-max schema options)
         [continue options] (-recur schema options)
         child (-> schema m/children first)
-        gen (if-not (and (= :ref (m/type child)) continue (<= (or min 0) 0))
-              (generator child options))]
+        gen (when continue (generator child options))]
     (gen/fmap f (if gen
                   (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
                   (gen/vector gen/any 0 0)))))

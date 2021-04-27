@@ -3,7 +3,7 @@
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.10"}
                                lambdaisland/kaocha {:mvn/version "1.0.829"}
                                lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
-                               borkdude/sci {:mvn/version "0.2.4"}
+                               borkdude/sci {:mvn/version "0.2.5"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}
                                metosin/spec-tools {:mvn/version "0.10.5"}
                                metosin/schema-tools {:mvn/version "0.12.3"}
@@ -16,8 +16,7 @@
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :sci {:extra-deps {borkdude/sci {:git/url "https://github.com/borkdude/sci.git"
-                                            :sha "a083698ffcbfd4b81b4b5aaff96cf8d0de6fc4e1"}}}
+           :sci {:extra-deps {borkdude/sci {:mvn/version "0.2.5"}}}
            :shadow {:extra-paths ["app"]
                     :extra-deps {thheller/shadow-cljs {:mvn/version "2.12.5"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
@@ -37,8 +36,7 @@
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
                      :extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}
-                                  borkdude/sci {:git/url "https://github.com/borkdude/sci.git"
-                                                :sha "a083698ffcbfd4b81b4b5aaff96cf8d0de6fc4e1"}}}
+                                  borkdude/sci {:mvn/version "0.2.5"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}

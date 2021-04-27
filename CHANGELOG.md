@@ -24,7 +24,8 @@ Malli is in [alpha](README.md#alpha).
 * Fix [#418](https://github.com/metosin/malli/issues/418): Better error messages / docs for registry references
 * Fix [#415](https://github.com/metosin/malli/issues/415): Default branch in multi schema are not transformed
 * New `m/properties-schema` and `m/children-schema` to resolve Malli Schemas for `IntoSchema`s. Empty implementations.
-* Nwe `:gen/schema` property for declarate generation, e.g. `[:string {:gen/schema :int, :gen/fmap str}]` 
+* New `:gen/schema` property for declarative generation, e.g. `[:string {:gen/schema :int, :gen/fmap str}]`
+* Fix [#427](https://github.com/metosin/malli/issues/427): Generated sets of :ref are always empty
 
 ### Extender API
 

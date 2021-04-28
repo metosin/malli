@@ -1190,23 +1190,35 @@ Schemas can be used to generate values:
   {:seed 42, :size 10})
 ; => "CaR@MavCk70OHiX.yZ"
 
-;; gen/elements (note, are not validated)
+;; :gen/elements (note, are not validated)
 (mg/generate
   [:and {:gen/elements ["kikka" "kukka" "kakka"]} string?]
   {:seed 10})
 ; => "kikka"
 
-;; portable gen/fmap
+;; portable :gen/fmap
 (mg/generate
   [:and {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})
 ;; => "kikka_WT3K0yax2"
 
-;; gen/schema
+;; :gen/schema
 (mg/generate
   [:any {:gen/schema [:int {:min 10, :max 20}]}]
   {:seed 10})
 ; => 19
+
+;; :gen/min & :gen/max for numbers and collections
+(mg/generate 
+  [:vector {:gen/min 4, :gen/max 4} :int] '
+  {:seed 1})
+; => [-8522515 -1433 -1 1]
+
+;; :gen/infinite? & :gen/NaN? for :double
+(mg/generate 
+  [:double {:gen/infinite? true, :gen/NaN? true}] 
+  {:seed 1})
+; => ##Inf
 
 (require '[clojure.test.check.generators :as gen])
 

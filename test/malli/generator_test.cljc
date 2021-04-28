@@ -41,29 +41,22 @@
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
 
   (testing "double properties"
-    (let [infinity?     #(or (= %
-                                ##Inf)
-                             (= %
-                                ##-Inf))
-          NaN?          (fn [x]
-                          (#?(:clj  Double/isNaN
-                              :cljs js/isNaN)
-                           x))
-          special?      #(or (NaN? %)
-                             (infinity? %))
+    (let [infinity? #(or (= % ##Inf)
+                         (= % ##-Inf))
+          NaN? (fn [x]
+                 (#?(:clj  Double/isNaN
+                     :cljs js/isNaN)
+                   x))
+          special? #(or (NaN? %)
+                        (infinity? %))
           test-presence (fn [f options]
-                          (some f
-                                (mg/sample [:double options]
-                                           {:size 1000})))]
-      (is (test-presence infinity?
-                         {:gen/infinite? true}))
-      (is (test-presence NaN?
-                         {:gen/NaN? true}))
-      (is (test-presence special?
-                         {:gen/infinite? true
-                          :gen/NaN?      true}))
-      (is (not (test-presence special?
-                              nil)))))
+                          (some f (mg/sample [:double options]
+                                             {:size 1000})))]
+      (is (test-presence infinity? {:gen/infinite? true}))
+      (is (test-presence NaN? {:gen/NaN? true}))
+      (is (test-presence special? {:gen/infinite? true
+                                   :gen/NaN? true}))
+      (is (not (test-presence special? nil)))))
 
   (testing "map entries"
     (is (= {:korppu "koira"
@@ -294,8 +287,7 @@
     (is (every? valid? (mg/sample schema {:size 10000})))))
 
 (deftest recursive-distinct-col-test
-  (is (not (every? empty?
-                   (mg/sample [:set
-                               {:registry {::foo :int}}
-                               [:ref ::foo]]
-                              {:size 1000})))))
+  (is (not (every? empty? (mg/sample [:set
+                                      {:registry {::foo :int}}
+                                      [:ref ::foo]]
+                                     {:size 1000})))))

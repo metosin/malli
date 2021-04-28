@@ -212,7 +212,12 @@
 (defmethod -schema-generator :nil [_ _] (gen/return nil))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
-(defmethod -schema-generator :double [schema options] (gen/double* (merge (-min-max schema options) {:infinite? false, :NaN? false})))
+(defmethod -schema-generator :double [schema options]
+  (gen/double* (merge (let [props (m/properties schema
+                                                options)]
+                        {:infinite? (get props :gen/infinite? false)
+                         :NaN?      (get props :gen/NaN? false)})
+                      (-min-max schema options))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

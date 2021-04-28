@@ -215,12 +215,8 @@
 (defmethod -schema-generator :double [schema options]
   (gen/double* (merge (let [props (m/properties schema
                                                 options)]
-                        {:infinite? (or (:gen/infinite? props)
-                                        (:infinite? props)
-                                        false)
-                         :NaN?      (or (:gen/NaN? props)
-                                        (:NaN? props)
-                                        false)})
+                        {:infinite? (get props :gen/infinite? false)
+                         :NaN?      (get props :gen/NaN? false)})
                       (-min-max schema options))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)

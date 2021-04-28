@@ -57,15 +57,11 @@
                                            {:size 1000})))]
       (is (test-presence infinity?
                          {:gen/infinite? true}))
-      (is (test-presence infinity?
-                         {:infinite? true}))
       (is (test-presence NaN?
                          {:gen/NaN? true}))
-      (is (test-presence NaN?
-                         {:NaN? true}))
       (is (test-presence special?
-                         {:infinite? true
-                          :NaN?      true}))
+                         {:gen/infinite? true
+                          :gen/NaN?      true}))
       (is (not (test-presence special?
                               nil)))))
 

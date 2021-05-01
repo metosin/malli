@@ -689,7 +689,7 @@ Going crazy:
                             :leave '(partial * 3)}}]]]
   {:x 1} 
   (mt/transformer {:name :math}))
-; => {:x 42}
+; => {:x 24}
 ```
 
 ## Default values

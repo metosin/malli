@@ -213,9 +213,10 @@
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
 (defmethod -schema-generator :double [schema options]
-  (gen/double* (merge (let [props (m/properties schema options)]
+  (gen/double* (merge (let [props (m/properties schema
+                                                options)]
                         {:infinite? (get props :gen/infinite? false)
-                         :NaN? (get props :gen/NaN? false)})
+                         :NaN?      (get props :gen/NaN? false)})
                       (-min-max schema options))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
@@ -245,17 +246,61 @@
 (defmethod -schema-generator :+ [schema options] (gen/not-empty (-*-gen schema options)))
 (defmethod -schema-generator :repeat [schema options] (-repeat-gen schema options))
 
-(defn- -create [schema options]
-  (let [{:gen/keys [gen fmap elements] gen-schema :gen/schema} (merge (m/type-properties schema) (m/properties schema))
-        gen (or gen (when-not elements (if (satisfies? Generator schema) (-generator schema options) (-schema-generator schema options))))
-        gen-schema (when gen-schema (generator gen-schema options))
-        elements (when elements (gen/elements elements))]
-    (cond
-      fmap (gen/fmap (m/eval fmap (or options (m/options schema))) (or elements gen-schema gen (gen/return nil)))
-      elements elements
-      gen-schema gen-schema
-      gen gen
-      :else (miu/-fail! ::no-generator {:schema schema, :options options}))))
+;;
+;; Creating a generator by different means, centralized under [[-create]]
+;;
+
+(defn- -create-from-elements
+  [props]
+  (some-> (:gen/elements props)
+          gen/elements))
+
+(defn- -create-from-gen
+  [props schema options]
+  (or (:gen/gen props)
+      (when-not (:gen/elements props)
+        (if (satisfies? Generator
+                        schema)
+          (-generator schema
+                      options)
+          (-schema-generator schema
+                             options)))))
+
+(defn- -create-from-schema
+  [props options]
+  (some-> (:gen/schema props)
+          (generator options)))
+
+(defn- -create-from-fmap
+  [props schema options]
+  (when-some [fmap (:gen/fmap props)]
+    (gen/fmap (m/eval fmap
+                      (or options
+                          (m/options schema)))
+              (or (-create-from-elements props)
+                  (-create-from-schema props
+                                       options)
+                  (-create-from-gen props
+                                    schema
+                                    options)
+                  (gen/return nil)))))
+
+(defn- -create
+  [schema options]
+  (let [props (merge (m/type-properties schema)
+                     (m/properties schema))]
+    (or (-create-from-fmap props
+                           schema
+                           options)
+        (-create-from-elements props)
+        (-create-from-schema props
+                             options)
+        (-create-from-gen props
+                          schema
+                          options)
+        (miu/-fail! ::no-generator
+                    {:options options
+                     :schema  schema}))))
 
 ;;
 ;; public api

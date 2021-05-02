@@ -103,6 +103,21 @@
               (m/validate #".{8,}" (mg/generate [:re {:gen/elements elements} re-test]))
               (m/validate #"prefix_.{8,}" (mg/generate [:re {:gen/fmap fmap, :gen/elements elements} re-test])))))
 
+  (testing "regex with custom generators"
+    (is (= 42 (mg/generate [:re
+                            {:gen/gen (gen/return 42)}
+                            #"abc"]))
+        "Using :gen/gen")
+    (is (= 42 (mg/generate [:re
+                            {:gen/fmap (fn [_] 42)
+                             :gen/schema :int}
+                            #"abc"]))
+        "Using :gen/fmap and :gen/schema")
+    (is (= 42 (mg/generate [:re
+                            {:gen/elements [42]}
+                            #"abc"]))
+        "Using :gen/elements"))
+
   (testing "no generator"
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)

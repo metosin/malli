@@ -2223,3 +2223,16 @@
 
       (is (= {:FOO-BAR "bar"} (m/encode schema {:foo-bar "bar"} transformer)))
       (is (= {:FOO-BAR "baz"} (m/encode schema {:foo-bar "baz"} transformer))))))
+
+(deftest custom-collection-test
+  (let [List (m/-collection-schema
+               (fn [properties [child]]
+                 {:type :list
+                  :pred list?
+                  :empty '()
+                  :type-properties {:error/message "should be a list"
+                                    :gen/schema [:vector properties child]
+                                    :gen/fmap #(or (list* %) '())}}))]
+
+    (is (m/validate [List :int] '(1 2)))
+    (is (not (m/validate [List :int] [1 2])))))

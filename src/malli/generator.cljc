@@ -249,10 +249,8 @@
 ;; Creating a generator by different means, centralized under [[-create]]
 ;;
 
-(defn- -create-from-elements
-  [props]
-  (some-> (:gen/elements props)
-          gen/elements))
+(defn- -create-from-elements [props]
+  (some-> (:gen/elements props) gen/elements))
 
 (defn- -create-from-gen
   [props schema options]
@@ -260,26 +258,20 @@
       (when-not (:gen/elements props)
         (if (satisfies? Generator schema)
           (-generator schema options)
-          (-schema-generator schema  options)))))
+          (-schema-generator schema options)))))
 
-(defn- -create-from-schema
-  [props options]
-  (some-> (:gen/schema props)
-          (generator options)))
+(defn- -create-from-schema [props options]
+  (some-> (:gen/schema props) (generator options)))
 
-(defn- -create-from-fmap
-  [props schema options]
+(defn- -create-from-fmap [props schema options]
   (when-some [fmap (:gen/fmap props)]
-    (gen/fmap (m/eval fmap
-                      (or options
-                          (m/options schema)))
+    (gen/fmap (m/eval fmap (or options (m/options schema)))
               (or (-create-from-elements props)
                   (-create-from-schema props options)
                   (-create-from-gen props schema options)
                   (gen/return nil)))))
 
-(defn- -create
-  [schema options]
+(defn- -create [schema options]
   (let [props (merge (m/type-properties schema)
                      (m/properties schema))]
     (or (-create-from-fmap props schema options)

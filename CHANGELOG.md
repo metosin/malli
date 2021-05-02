@@ -14,6 +14,13 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+### Public API
+
+* Fix [#435](https://github.com/metosin/malli/issues/435): :re ignores :gen/xxx properties in absence of :gen/gen
+* More customization on -collection-schema [#433](https://github.com/metosin/malli/pull/433)
+
 ## 0.5.0 (2021-04-28)
 
 ### Public API

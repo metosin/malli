@@ -1,5 +1,6 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
+  #?(:cljs (:require-macros malli.core))
   (:require [malli.sci :as ms]
             [malli.impl.util :as miu]
             [malli.impl.regex :as re]
@@ -1965,7 +1966,8 @@
           :ns ns
           :name name}))
 
-(defmacro => [name value]
-  (let [name' `'~(symbol (str name))]
-    `(let [ns# (symbol (str *ns*))]
-       (-register-function-schema! ns# ~name' ~value))))
+#?(:clj
+   (defmacro => [name value]
+     (let [name' `'~(symbol (str name))
+           ns'   `'~(symbol (str *ns*))]
+       `(-register-function-schema! ~ns' ~name' ~value))))

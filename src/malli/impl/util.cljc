@@ -1,6 +1,36 @@
 (ns malli.impl.util
   #?(:clj (:import (java.util.concurrent TimeoutException TimeUnit FutureTask)
+                   (malli.impl NoStackException)
                    (clojure.lang MapEntry))))
+
+#?(:clj
+   (do
+     (defonce fail-modes #{:default :fast :fast-no-stacktrace})
+     (defonce ^:private fail-mode (atom :default))
+     (defn set-fail-mode!
+       [mode]
+       (assert (fail-modes mode))
+       (reset! fail-mode mode))
+
+     (defn very-fast-ex-info
+       ([msg map]
+        (NoStackException. msg map)))
+
+     (defn fast-ex-info
+       ([msg map]
+        (clojure.lang.ExceptionInfo. msg map)))
+
+     (defn -ex-info
+       [msg map]
+       (condp identical? @fail-mode
+         :default (ex-info msg map)
+         :fast (fast-ex-info msg map)
+         :fast-no-stacktrace (very-fast-ex-info msg map))))
+
+   :cljs
+   (defn -ex-info
+     [msg map]
+     (ex-info msg map)))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 
@@ -14,7 +44,7 @@
 (defn -fail!
   ([type] (-fail! type nil))
   ([type data] (-fail! type nil data))
-  ([type message data] (throw (ex-info (str type " " (pr-str data) message) {:type type, :data data}))))
+  ([type message data] (throw (-ex-info (str type " " (pr-str data) message) {:type type, :data data}))))
 
 (defrecord SchemaError [path in schema value type message])
 

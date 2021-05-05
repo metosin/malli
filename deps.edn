@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "classes"]
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.11"}
                                lambdaisland/kaocha {:mvn/version "1.0.861"}
@@ -24,6 +24,8 @@
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
                                 :sha "f68d66d99d95f4d2bfd61f001e28a8ad7c4d3a12"}}
                   :main-opts ["-m" "io.dominic.slow-namespace-clj.core"]}
+           :aot {:extra-paths ["classes"]
+                 :main-opts ["-e" "(compile,'malli.impl.NoStackException)"]}
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
                                :sha "b093f79420fef019faf62a75b888b5e10f4e8cc9"}}

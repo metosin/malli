@@ -13,5 +13,3 @@ classes
 /demosci
 /target
 .clj-kondo
-.DS_Store
-.lsp/*

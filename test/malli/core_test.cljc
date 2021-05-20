@@ -2236,3 +2236,12 @@
 
     (is (m/validate [List :int] '(1 2)))
     (is (not (m/validate [List :int] [1 2])))))
+
+(deftest function-schema-registry-test
+  (let [prior-function-schemas (m/function-schemas)
+        new-function-schemas   (m/=> function-schema-registry-test-fn [:=> :cat :nil])
+        this-ns-schemas        (get new-function-schemas 'malli.core-test)
+        fn-schema              (get this-ns-schemas 'function-schema-registry-test-fn)]
+    (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))
+    (is (map? this-ns-schemas))
+    (is (map? fn-schema))))

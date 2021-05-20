@@ -2220,7 +2220,7 @@ Validation:
 (let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
       valid? (partial s/valid? spec)]
   (cc/quick-bench
-    (valid? spec 0)))
+    (valid? 0)))
 
 ;; 5ns
 (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]

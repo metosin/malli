@@ -138,7 +138,7 @@
      options)))
 
 (defn open-schema
-  "Closes recursively all :map schemas by removing `:closed`
+  "Opens recursively all :map schemas by removing `:closed`
   property, unless schema explicitely open with `{:closed false}`"
   ([?schema]
    (open-schema ?schema nil))

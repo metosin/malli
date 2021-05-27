@@ -1149,7 +1149,7 @@ Without the `:ref` keyword, malli would have tried to expand an infinite schema 
   [:schema {:registry {::cons [:maybe [:tuple pos-int? ::cons]]}}
    ::cons]
   [16 [64 [26 [1 [13 nil]]]]])
-; StackOverlow Error 
+; StackOverflowError 
 ```
 
 Mutual recursion works too. Thanks to the `:schema` construct, many schemas could be defined in the local registry, the top-level one being promoted by the `:schema` second parameter:

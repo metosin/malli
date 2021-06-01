@@ -114,10 +114,10 @@
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))
 
-(defn- -message [error x locale options]
+(defn- -message [error props locale options]
   (let [options (or options (m/options (:schema error)))]
-    (if x (or (if-let [fn (-maybe-localized (:error/fn x) locale)] ((m/eval fn options) error options))
-              (-maybe-localized (:error/message x) locale)))))
+    (if props (or (if-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
+                  (-maybe-localized (:error/message props) locale)))))
 
 (defn- -ensure [x k]
   (if (sequential? x)

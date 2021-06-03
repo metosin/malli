@@ -535,6 +535,26 @@ Errors can be targeted using `:error/path` property:
 ; {:password2 ["passwords don't match"]}
 ```
 
+By default, only direct erronous schema properties are used:
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]] ;; here, :int fails, no error props
+    (m/explain {:foo "1"})
+    (me/humanize))
+; => {:foo ["should be an integer"]}
+```
+
+Looking up humanized errors from parent schemas with custom `:resolve`:
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize {:resolve me/resolve-root-error}))
+; => {:foo ["entry-failure"]}
+```
+
 ## Spell Checking
 
 For closed schemas, key spelling can be checked with:

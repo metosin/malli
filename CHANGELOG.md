@@ -14,6 +14,20 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* humanized errors for `:boolean`
+* **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`  
+* humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize {:resolve me/resolve-root-error}))
+; => {:foo ["entry-failure"]}
+```
+
 ## 0.5.1 (2021-05-02)
 
 ### Public API

@@ -551,7 +551,7 @@ Looking up humanized errors from parent schemas with custom `:resolve`:
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
-    (me/humanize {:resolve me/resolve-root-error-message-and-path}))
+    (me/humanize {:resolve me/resolve-root-error}))
 ; => {:foo ["entry-failure"]}
 ```
 

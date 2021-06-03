@@ -488,19 +488,19 @@
          (-> [:map
               [:foo :int]]
              (m/explain {:foo "1"})
-             (me/humanize {:resolve me/resolve-root-error-message-and-path}))))
+             (me/humanize {:resolve me/resolve-root-error}))))
 
   (is (= {:foo ["entry-failure"]}
          (-> [:map
               [:foo {:error/message "entry-failure"} :int]]
              (m/explain {:foo "1"})
-             (me/humanize {:resolve me/resolve-root-error-message-and-path}))))
+             (me/humanize {:resolve me/resolve-root-error}))))
 
   (is (= {:malli/error ["map-failure"]}
          (-> [:map {:error/message "map-failure"}
               [:foo {:error/message "entry-failure"} :int]]
              (m/explain {:foo "1"})
-             (me/humanize {:resolve me/resolve-root-error-message-and-path}))))
+             (me/humanize {:resolve me/resolve-root-error}))))
 
   (testing "entry sees child schema via :error/fn"
     (is (= {:foo ["failure"]}
@@ -508,13 +508,13 @@
                 [:foo {:error/fn (fn [{:keys [schema]} _]
                                    (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
                (m/explain {:foo "1"})
-               (me/humanize {:resolve me/resolve-root-error-message-and-path}))))))
+               (me/humanize {:resolve me/resolve-root-error}))))))
 
 
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
-    (me/humanize {:resolve me/resolve-root-error-message-and-path}))
+    (me/humanize {:resolve me/resolve-root-error}))
 ; => {:foo ["entry-failure"]}
 
 (-> [:map

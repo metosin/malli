@@ -509,16 +509,3 @@
                                    (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
                (m/explain {:foo "1"})
                (me/humanize {:resolve me/resolve-root-error}))))))
-
-
-(-> [:map
-     [:foo {:error/message "entry-failure"} :int]]
-    (m/explain {:foo "1"})
-    (me/humanize {:resolve me/resolve-root-error}))
-; => {:foo ["entry-failure"]}
-
-(-> [:map
-     [:foo {:error/message "entry-failure"} :int]]
-    (m/explain {:foo "1"})
-    (me/humanize))
-; => {:foo ["should be an integer"]}

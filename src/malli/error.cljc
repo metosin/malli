@@ -208,7 +208,7 @@
   ([{:keys [schema type] :as error}
     {:keys [errors unknown locale default-locale]
      :or {errors default-errors
-          unknown-error true
+          unknown true
           default-locale :en} :as options}]
    (or (-message error (m/properties schema) locale options)
        (-message error (m/type-properties schema) locale options)

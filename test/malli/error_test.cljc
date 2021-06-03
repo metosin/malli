@@ -143,8 +143,8 @@
                (m/explain {:x 1, :extra "key"})
                (me/humanize)))))
 
-  (testing "multiple errors on same key are accumulated into vector"
-    (is (= {:x ["missing required key" "missing required key"]}
+  (testing "multiple errors on same key are presented just once"
+    (is (= {:x ["missing required key"]}
            (me/humanize
              {:value {},
               :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
@@ -482,3 +482,43 @@
          (-> [:cat int? int? [:? int?] [:? string?]]
              (m/explain [1 2 :foo])
              (me/humanize)))))
+
+(deftest error-definion-lookup-test
+  (is (= {:foo ["should be an integer"]}
+         (-> [:map
+              [:foo :int]]
+             (m/explain {:foo "1"})
+             (me/humanize {:resolve me/resolve-root-error-message-and-path}))))
+
+  (is (= {:foo ["entry-failure"]}
+         (-> [:map
+              [:foo {:error/message "entry-failure"} :int]]
+             (m/explain {:foo "1"})
+             (me/humanize {:resolve me/resolve-root-error-message-and-path}))))
+
+  (is (= {:malli/error ["map-failure"]}
+         (-> [:map {:error/message "map-failure"}
+              [:foo {:error/message "entry-failure"} :int]]
+             (m/explain {:foo "1"})
+             (me/humanize {:resolve me/resolve-root-error-message-and-path}))))
+
+  (testing "entry sees child schema via :error/fn"
+    (is (= {:foo ["failure"]}
+           (-> [:map
+                [:foo {:error/fn (fn [{:keys [schema]} _]
+                                   (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
+               (m/explain {:foo "1"})
+               (me/humanize {:resolve me/resolve-root-error-message-and-path}))))))
+
+
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize {:resolve me/resolve-root-error-message-and-path}))
+; => {:foo ["entry-failure"]}
+
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize))
+; => {:foo ["should be an integer"]}

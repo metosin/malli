@@ -1,6 +1,7 @@
 (ns malli.error
   (:require [malli.core :as m]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [malli.util :as mu]))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
   (fn [{:keys [schema value]} _]
@@ -82,6 +83,7 @@
    :nil {:error/message {:en "should be nil"}}
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
+   :boolean {:error/message {:en "should be a boolean"}}
    :string {:error/fn {:en (fn [{:keys [schema value]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond
@@ -134,7 +136,7 @@
 (defn- -put [x k v]
   (cond
     (set? x) (conj x v)
-    (associative? x) (update x k (fn [e] (if (-just-error? v) (into (vec e) v) v)))
+    (associative? x) (update x k (fn [e] (if (-just-error? v) (vec (distinct (into (vec e) v))) v)))
     :else (-put (vec x) k v))) ;; we coerce errors into vectors
 
 (defn- -assoc-in [acc value [p & ps] error]
@@ -204,8 +206,9 @@
   ([error]
    (error-message error nil))
   ([{:keys [schema type] :as error}
-    {:keys [errors locale default-locale]
+    {:keys [errors unknown locale default-locale]
      :or {errors default-errors
+          unknown-error true
           default-locale :en} :as options}]
    (or (-message error (m/properties schema) locale options)
        (-message error (m/type-properties schema) locale options)
@@ -215,8 +218,21 @@
        (-message error (m/type-properties schema) default-locale options)
        (-message error (errors type) default-locale options)
        (-message error (errors (m/type schema)) default-locale options)
-       (-message error (errors ::unknown) locale options)
-       (-message error (errors ::unknown) default-locale options))))
+       (and unknown (-message error (errors ::unknown) locale options))
+       (and unknown (-message error (errors ::unknown) default-locale options)))))
+
+(defn direct-error-message-and-path [_ error options]
+  [(error-path error options) (error-message error options)])
+
+(defn resolve-root-error-message-and-path [{:keys [schema]} {:keys [path] :as error} options]
+  (let [options (assoc options :unknown false)]
+    (loop [p path, l nil, mp p, m (error-message error options)]
+      (let [[p' m'] (or (when-let [m' (error-message {:schema (mu/get-in schema p)} options)] [p m'])
+                        (when-let [[_ props schema] (and l (mu/find (mu/get-in schema p) l))]
+                          (let [schema (mu/update-properties schema merge props)]
+                            (when-let [m' (error-message {:schema schema} options)] [(conj p l) m'])))
+                        (when m [mp m]))]
+        (if (seq p) (recur (pop p) (last p) p' m') (when m [p' m']))))))
 
 (defn with-error-message
   ([error]
@@ -269,11 +285,15 @@
 (defn humanize
   ([explanation]
    (humanize explanation nil))
-  ([{:keys [value errors]} {f :wrap :or {f :message} :as options}]
+  ([{:keys [value errors] :as explanation} {:keys [wrap resolve]
+                                            :or {wrap :message
+                                                 resolve direct-error-message-and-path}
+                                            :as options}]
    (if errors
      (if (coll? value)
        (reduce
          (fn [acc error]
-           (-assoc-in acc value (error-path error options) [(f (with-error-message error options))]))
+           (let [[path message] (resolve explanation error options)]
+             (-assoc-in acc value path [(wrap (assoc error :message message))])))
          nil errors)
-       [(f (with-error-message (first errors) options))]))))
+       [(wrap (with-error-message (first errors) options))]))))

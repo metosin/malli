@@ -283,6 +283,10 @@
                    $))))))))
 
 (defn humanize
+  "Humanized a explanation. Accepts the following optitons:
+
+  - `:wrap`, a function of `error -> message`, defaulting ot `:message`
+  - `:resolve`, a function of `explanation error options -> path message`"
   ([explanation]
    (humanize explanation nil))
   ([{:keys [value errors] :as explanation} {:keys [wrap resolve]

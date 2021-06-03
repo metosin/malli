@@ -226,7 +226,7 @@
 
 (defn resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
   (let [options (assoc options :unknown false)]
-    (loop [p path, l nil, mp p, m (error-message error options)]
+    (loop [p path, l nil, mp path, m (error-message error options)]
       (let [[p' m'] (or (when-let [m' (error-message {:schema (mu/get-in schema p)} options)] [p m'])
                         (when-let [[_ props schema] (and l (mu/find (mu/get-in schema p) l))]
                           (let [schema (mu/update-properties schema merge props)]

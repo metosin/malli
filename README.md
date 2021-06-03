@@ -535,11 +535,11 @@ Errors can be targeted using `:error/path` property:
 ; {:password2 ["passwords don't match"]}
 ```
 
-By default, only erronous schema properties are used:
+By default, only direct erronous schema properties are used:
 
 ```clj
 (-> [:map
-     [:foo {:error/message "entry-failure"} :int]]
+     [:foo {:error/message "entry-failure"} :int]] ;; here, :int fails, no error props
     (m/explain {:foo "1"})
     (me/humanize))
 ; => {:foo ["should be an integer"]}

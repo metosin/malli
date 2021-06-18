@@ -323,7 +323,7 @@
         [:enum "A" "B"] 3 "C" ::throws
 
         [:map [:x string?]] :x int? [:map [:x 'int?]]
-        [:map [:x {:optional true} string?]] :x int? [:map [:x 'int?]]
+        [:map [:x {:optional true} string?]] :x int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
         ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
@@ -444,7 +444,7 @@
     (is (mu/equals (mu/update schema :b (constantly string?))
                    [:map {:title "map"}
                     [:a int?]
-                    [:b string?]
+                    [:b {:optional true} string?]
                     [:c string?]]))
     (is (mu/equals (mu/update schema :d #(or % boolean?))
                    [:map {:title "map"}

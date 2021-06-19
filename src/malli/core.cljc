@@ -176,8 +176,8 @@
 
 (defn -set-entries [schema key value]
   (let [found (atom nil)
+        new-props (when (vector? key) (second key))
         [key :as new-child] (if (vector? key) (conj key value) [key value])
-        new-props (when (= (count new-child) 3) (nth new-child 1))
         children (cond-> (mapv (fn [[k props :as child]]
                                  (if (= key k)
                                    (do (reset! found true)

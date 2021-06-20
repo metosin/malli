@@ -195,3 +195,84 @@ e.g. don't fail if the optional keys hava invalid values.
   {:a "Hey" :b "Nope"})
 ; => true
 ```
+## Collecting inlined reference definitions from schemas
+
+By default, one can inline schema reference definitions with `:map`, like:
+
+```clj
+(def User
+  [:map
+   [::id :int]
+   [:name :string]
+   [::country {:optional true} :string]])
+```
+
+It would be nice to be able to simplify the schemas into:
+
+```clj
+[:map
+ ::id
+ [:name :string]
+ [::country {:optional true}]]
+```
+
+Use cases:
+* Simplify large schemas
+* Finding differences in semantics
+* Refactoring multiple schemas to use a shared registry
+
+Naive implementation (doesn't look up the local registries):
+
+```clj
+(defn collect-references [schema]
+  (let [acc* (atom {})
+        ->registry (fn [registry]
+                     (->> (for [[k d] registry]
+                            (if (seq (rest d))
+                              (miu/-fail! ::ambiguous-references {:data d})
+                              [k (first (keys d))]))
+                          (into {})))
+        schema (m/walk
+                 schema
+                 (fn [schema path children _]
+                   (let [children (if (= :map (m/type schema)) ;; just maps
+                                    (->> children
+                                         (mapv (fn [[k p s]]
+                                                 ;; we found inlined references
+                                                 (if (and (m/-reference? k) (not (m/-reference? s)))
+                                                   (do (swap! acc* update-in [k (m/form s)] (fnil conj #{}) (conj path k))
+                                                       (if (seq p) [k p] k))
+                                                   [k p s]))))
+                                    children)
+                         ;; accumulated registry, fail on ambiguous refs
+                         registry (->registry @acc*)]
+                     ;; return simplified schema
+                     (m/into-schema
+                       (m/-parent schema)
+                       (m/-properties schema)
+                       children
+                       {:registry (mr/composite-registry (m/-registry (m/options schema)) registry)}))))]
+    {:registry (->registry @acc*)
+     :schema schema}))
+```
+
+In action:
+
+```clj
+(collect-references User)
+;{:registry {:user/id :int,
+;            :user/country :string}
+; :schema [:map
+;          :user/id
+;          [:name :string]
+;          [:user/country {:optional true}]]}
+```
+
+```clj
+(collect-references
+  [:map
+   [:user/id :int]
+   [:child [:map
+            [:user/id :string]]]])
+; =throws=> :user/ambiguous-references {:data {:string #{[:child :user/id]}, :int #{[:user/id]}}}
+```

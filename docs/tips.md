@@ -229,7 +229,7 @@ Naive implementation (doesn't look up the local registries):
         ->registry (fn [registry]
                      (->> (for [[k d] registry]
                             (if (seq (rest d))
-                              (miu/-fail! ::ambiguous-references {:data d})
+                              (m/-fail! ::ambiguous-references {:data d})
                               [k (first (keys d))]))
                           (into {})))
         schema (m/walk

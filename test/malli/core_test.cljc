@@ -2098,7 +2098,7 @@
 
 (defn single-arity
   ([x] x)
-  ([_ _] (miu/-fail! ::arity-error)))
+  ([_ _] (m/-fail! ::arity-error)))
 
 (deftest function-schema-test
   ;; js allows invalid arity

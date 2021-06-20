@@ -24,7 +24,7 @@
     (let [compiled (::compiled options 0)
           options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
-        (miu/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
+        (m/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
       (if-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
           (dissoc ?interceptor :compile)
@@ -47,7 +47,7 @@
     (ifn? ?interceptor)
     {:enter ?interceptor}
 
-    :else (miu/-fail! ::invalid-transformer {:value ?interceptor})))
+    :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
 
 (defn -safe [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ %)))
 

@@ -18,6 +18,7 @@ Malli is in [alpha](README.md#alpha).
 
 ### Public API
 
+* `malli.plantuml` for [PlantUML](https://plantuml.com/) generation
 * humanized errors for `:boolean`
 * **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`  
 * humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):

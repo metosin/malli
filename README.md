@@ -24,7 +24,7 @@ Data-driven Schemas for Clojure/Script.
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
-- [Visualizing Schemas](#visualizing-schemas) with DOT
+- Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - [Fast](#performance)
 
 Presentations:
@@ -2188,12 +2188,14 @@ In action:
 
 ## Visualizing Schemas
 
-Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
+### DOT
+
+Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language):
 
 ```clj
 (require '[malli.dot :as md])
 
-(md/transform
+(def Address
   [:schema
    {:registry {"Country" [:map
                           [:name [:enum :FI :PO]]
@@ -2215,30 +2217,29 @@ Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(grap
                                                [:zip int?]
                                                [:country "Country"]]]]]]}}
    "Order"])
-; digraph {
-;   node [shape="record", style="filled", color="#000000"]
-;   edge [dir="back", arrowtail="none"]
-;  
-;   "Burger" [label="{Burger|:name string?\l:description string?\l:origin [:maybe \"Country\"]\l:price pos-int?\l}", fillcolor="#fff0cd"]
-;   "Country" [label="{Country|:name [:enum :FI :PO]\l:neighbors [:vector [:ref \"Country\"]]\l}", fillcolor="#fff0cd"]
-;   "Order" [label="{Order|:lines [:vector \"OrderLine\"]\l:delivery Order$Delivery\l}", fillcolor="#fff0cd"]
-;   "Order$Delivery" [label="{Order$Delivery|:delivered boolean?\l:address Order$Delivery$Address\l}", fillcolor="#e6caab"]
-;   "Order$Delivery$Address" [label="{Order$Delivery$Address|:street string?\l:zip int?\l:country Country\l}", fillcolor="#e6caab"]
-;   "OrderLine" [label="{OrderLine|:burger Burger\l:amount int?\l}", fillcolor="#fff0cd"]
-;  
-;   "Burger" -> "Country" [arrowtail="odiamond"]
-;   "Country" -> "Country" [arrowtail="odiamond"]
-;   "Order" -> "OrderLine" [arrowtail="odiamond"]
-;   "Order" -> "Order$Delivery" [arrowtail="diamond"]
-;   "Order$Delivery" -> "Order$Delivery$Address" [arrowtail="diamond"]
-;   "Order$Delivery$Address" -> "Country" [arrowtail="odiamond"]
-;   "OrderLine" -> "Burger" [arrowtail="odiamond"]
-; }
+
+(md/transform Address)
+; "digraph { ... }"
 ```
 
 Visualized with [Graphviz](https://graphviz.org/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
+
+### PlantUML
+
+Transforming Schemas into [PlantUML](https://plantuml.com/):
+
+```clj
+(require '[malli.plantuml :as plantuml])
+
+(plantuml/transform Address)
+; "@startuml ... @enduml"
+```
+
+Visualized with [PlantText](https://www.planttext.com/):
+
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/plantuml.png"/>
 
 ## Performance
 

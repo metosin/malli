@@ -8,15 +8,14 @@
   ([?schema options]
    (let [registry (-> ?schema (m/schema options) md/-lift md/-collect md/-normalize :registry)
          entity? #(->> % (get registry) m/properties ::md/entity not)
-         esc #(str/escape (str %) {\> "\\>", \{ "\\{", \} "\\}", \< "\\<", \" "\\\""})
          sorted #(sort-by (m/-comp str first) %)]
      (with-out-str
        (println "@startuml")
        (doseq [[k v] (sorted registry)]
          (println (if (entity? k) "entity" "abstract") k "{\n"
-            (or (some->> (m/entries v) (map (fn [[k s]] (str k " " (m/form (m/deref s))))) (str/join "\n "))
-                (esc (m/form v))))
-         (println "}\n"))
+            (or (some->> (m/entries v) (map (fn [[k s]] (str (pr-str k) " " (pr-str (m/form (m/deref s)))))) (str/join "\n "))
+                (pr-str (m/form v))))
+         (println "}"))
        (doseq [[from tos] (sorted (md/-get-links registry)), to tos]
-         (println from (if (entity? to) "<|--" "*--") to))
+         (println from (if (entity? to) "o--" "*--") to))
        (println "@enduml")))))

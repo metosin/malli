@@ -45,7 +45,8 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 - [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
 - [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
 - [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
- 
+- [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
+
 ## Examples
 
 Defining and validating Schemas:

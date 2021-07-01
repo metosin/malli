@@ -46,7 +46,7 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 - [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
 - [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
 - [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
-- [malli-cli](https://github.com/piotr-yuxuan/malli-cli)
+- [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
 
 ## Examples
 

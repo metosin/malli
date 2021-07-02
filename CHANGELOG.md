@@ -16,6 +16,14 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Much faster validators (loop unrolling) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
+
+```clj
+;; 164ns -> 36ns
+(let [valid? (m/validator [:and [:> 0] [:> 1] [:> 2] [:> 3] [:> 4]])]
+  (cc/quick-bench (valid? 5)))
+```
+
 ### Public API
 
 * `malli.plantuml` for [PlantUML](https://plantuml.com/) generation

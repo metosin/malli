@@ -390,10 +390,8 @@
           Schema
           (-validator [_]
             (let [validators (distinct (map -validator children))]
-              #?(:clj
-                 (miu/-every-pred validators)
-                 :cljs
-                 (if (second validators) (apply every-pred validators) (first validators)))))
+              #?(:clj  (miu/-every-pred validators)
+                 :cljs (if (second validators) (apply every-pred validators) (first validators)))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -432,10 +430,8 @@
           Schema
           (-validator [_]
             (let [validators (distinct (map -validator children))]
-              #?(:clj
-                 (miu/-some-pred validators)
-                 :cljs
-                 (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
+              #?(:clj  (miu/-some-pred validators)
+                 :cljs (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
@@ -493,10 +489,8 @@
           Schema
           (-validator [_]
             (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) children))]
-              #?(:clj
-                 (miu/-some-pred validators)
-                 :cljs
-                 (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
+              #?(:clj  (miu/-some-pred validators)
+                 :cljs (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[k _ c]] (-explainer c (conj path k))) children)]
               (fn explain [x in acc]
@@ -672,8 +666,7 @@
                                                         (fn [acc k] (if (contains? keyset k) acc (reduced false)))
                                                         true (keys m)))]))
                    validate #?(:clj (miu/-every-pred validators)
-                               :cljs (fn [m]
-                                       (boolean (reduce #(or (%2 m) (reduced false)) true validators))))]
+                               :cljs (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true validators))))]
                (fn [m] (and (map? m) (validate m)))))
            (-explainer [this path]
              (let [explainers (cond-> (mapv
@@ -1977,5 +1970,5 @@
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
-           ns'   `'~(symbol (str *ns*))]
+           ns' `'~(symbol (str *ns*))]
        `(-register-function-schema! ~ns' ~name' ~value))))

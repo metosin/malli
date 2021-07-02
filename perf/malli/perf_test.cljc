@@ -364,6 +364,22 @@
     (cc/quick-bench
       (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]))))
 
+(defn and-map-perf-test []
+
+  ;; 164ns -> 36ns
+  (let [valid? (m/validator (into [:and] (map (fn [x] [:> x]) (range 5))))]
+    (cc/with-progress-reporting
+      (cc/quick-bench (valid? 5))))
+
+  ;; 150ns -> 126n
+  (let [->key #(keyword (str "key_" %))
+        valid? (m/validator (into [:map] (map (fn [x] [(->key x) :any]) (range 5))))
+        value (reduce (fn [acc x] (assoc acc (->key x) x)) {} (range 5))]
+    #_(prof/profile
+      (time (dotimes [_ 40000000] (valid? value))))
+    (cc/with-progress-reporting
+      (cc/quick-bench (valid? value)))))
+
 (defn schema-flames []
 
   ;; "Elapsed time: 10472.153783 msecs"
@@ -437,6 +453,7 @@
   (sequence-perf-test)
   (simple-regex)
   (parsing)
+  (and-map-perf-test)
 
   (prof/serve-files 8080)
   (prof/clear-results)

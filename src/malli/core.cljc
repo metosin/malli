@@ -6,7 +6,7 @@
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang IDeref)
+                   (clojure.lang IDeref Associative)
                    (malli.impl.util SchemaError)
                    (java.util.concurrent.atomic AtomicReference))))
 
@@ -659,7 +659,7 @@
                                         (fn [[key {:keys [optional]} value]]
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
-                                            #?(:clj (fn [^clojure.lang.Associative m] (if-let [map-entry (.entryAt m key)] (valid? (val map-entry)) default))
+                                            #?(:clj (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                                :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                         children)
                                       closed (into [(fn [m]

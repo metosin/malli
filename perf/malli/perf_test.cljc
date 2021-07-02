@@ -371,12 +371,12 @@
     (cc/with-progress-reporting
       (cc/quick-bench (valid? 5))))
 
-  ;; 150ns -> 126n
+  ;; 150ns -> 126n -> 39ns
   (let [->key #(keyword (str "key_" %))
         valid? (m/validator (into [:map] (map (fn [x] [(->key x) :any]) (range 5))))
         value (reduce (fn [acc x] (assoc acc (->key x) x)) {} (range 5))]
     #_(prof/profile
-      (time (dotimes [_ 40000000] (valid? value))))
+        (time (dotimes [_ 40000000] (valid? value))))
     (cc/with-progress-reporting
       (cc/quick-bench (valid? value)))))
 

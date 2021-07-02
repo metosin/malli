@@ -659,7 +659,8 @@
                                         (fn [[key {:keys [optional]} value]]
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
-                                            (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))))
+                                            #?(:clj (fn [^clojure.lang.Associative m] (if-let [map-entry (.entryAt m key)] (valid? (val map-entry)) default))
+                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                         children)
                                       closed (into [(fn [m]
                                                       (reduce

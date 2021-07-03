@@ -659,7 +659,7 @@
                                         (fn [[key {:keys [optional]} value]]
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
-                                            #?(:clj (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
+                                            #?(:clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                                :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                         children)
                                       closed (into [(fn [m]
@@ -1853,7 +1853,7 @@
 
 (defn- -re-min-max [f {min' :min, max' :max} child]
   (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (f min' min'')} (and max' max'') (assoc :max (f max' max'')))))
+    (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
 
 (defn- -re-alt-min-max [{min' :min, max' :max} child]
   (let [{min'' :min max'' :max} (-regex-min-max child)]
@@ -1973,3 +1973,44 @@
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))]
        `(-register-function-schema! ~ns' ~name' ~value))))
+
+(defn -instrument
+  ([props]
+   (-instrument props nil nil))
+  ([props f]
+   (-instrument props f nil))
+  ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options]
+   (let [schema (-> props :schema (schema options))]
+     (case (type schema)
+       :=> (let [{:keys [min max input output] :or {max miu/+max-size+}} (-function-info schema)
+                 [validate-input validate-output] (map validator [input output])
+                 [wrap-input wrap-output] (map (partial contains? scope) [:input :output])
+                 f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
+             (fn [& args]
+               (let [args (vec args), arity (count args)]
+                 (when wrap-input
+                   (when-not (<= min arity max)
+                     (report ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :input input, :schema schema}))
+                   (when-not (validate-input args)
+                     (report ::invalid-input {:input input, :args args, :schema schema})))
+                 (let [value (apply f args)]
+                   (when wrap-output
+                     (when-not (validate-output value)
+                       (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
+                   value))))
+       :function (let [arity->info (->> (for [schema (children schema)]
+                                          (let [{:keys [arity] :as info} (-function-info schema)]
+                                            [arity (assoc info :f (-instrument (assoc props :schema schema) f options))]))
+                                        (into {}))
+                       arities (-> arity->info keys set)
+                       varargs-info (arity->info :varargs)]
+                   (if (= 1 (count arities))
+                     (-> arity->info first val :f)
+                     (fn [& args]
+                       (let [arity (count args)
+                             {:keys [input] :as info} (arity->info arity)
+                             report-arity #(report ::invalid-arity {:arity arity, :arities arities, :args args, :input input, :schema schema})]
+                         (cond
+                           info (apply (:f info) args)
+                           varargs-info (if (< arity (:min varargs-info)) (report-arity) (apply (:f varargs-info) args))
+                           :else (report-arity))))))))))

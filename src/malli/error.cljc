@@ -142,8 +142,10 @@
 (defn- -assoc-in [acc value [p & ps] error]
   (cond
     p (let [acc' (-ensure (or acc (empty value)) p)
-            value' (if ps (-assoc-in (-get acc p) (-get value p) ps error) error)]
-        (-put acc' p value'))
+            error' (if (or ps (map? value))
+                     (-assoc-in (-get acc p) (-get value p) ps error)
+                     error)]
+        (-put acc' p error'))
     (map? value) (recur acc value [:malli/error] error)
     acc acc
     :else error))

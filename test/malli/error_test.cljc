@@ -148,7 +148,20 @@
            (me/humanize
              {:value {},
               :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
-                       {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]})))))
+                       {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]}))))
+
+  (testing "maps can have top level errors and key errors"
+    (is (= {:person {:malli/error ["should be a seq"],
+                     :name ["missing required key"]}}
+           (-> [:map [:person [:and seq? [:map [:name string?]]]]]
+               (m/explain {:person {}})
+               (me/humanize)))))
+
+  (testing "maps have errors inside"
+    (is (= {:person {:malli/error ["should be a seq"]}}
+           (-> [:map [:person seq?]]
+               (m/explain {:person {}})
+               (me/humanize))))))
 
 (deftest humanize-customization-test
   (let [schema [:map

@@ -23,7 +23,7 @@ Data-driven Schemas for Clojure/Script.
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
-- [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
+- [Function Schemas](#function-schemas) with [instumentation](#instrumentation) and [clj-kondo](#clj-kondo) support
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - [Fast](#performance)
 
@@ -2110,6 +2110,89 @@ Multiple arities are defined using `:function`:
 
 (generated-f 1 2 3 4)
 ; => -57994624
+```
+
+### Instrumentation
+
+Adding runtime validation to functions with `m/-instrument`:
+
+```clj
+(def pow2
+  (m/-instrument
+    {:schema [:=> [:cat :int] [:int {:max 6}]]}
+    (fn [x] (* x x))))
+
+(pow2 2)
+; => 4
+
+(pow2 "2")
+; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["2"], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(pow2 4)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 16, :args [4], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(pow2 4 2)
+; =throws=> :malli.core/invalid-arity {:arity 2, :arities #{{:min 1, :max 1}}, :args [4 2], :input [:cat :int], :schema [:=> [:cat :int] [:int {:max 6}]]}
+```
+
+Multi-arity functions with custom scopes and reporting:
+
+```clj
+(def multi-arity-pow
+  (-instrument
+    {:schema [:function
+              [:=> [:cat :int] [:int {:max 6}]]
+              [:=> [:cat :int :int] [:int {:max 6}]]]
+     :scope #{:input :output}
+     :report (fn [error props]
+               (println "\n" error)
+               (clojure.pprint/pprint props))}
+    (fn
+      ([x] (* x x))
+      ([x y] (* x y)))))
+
+(multi-arity-pow 2)
+;
+;:malli.core/invalid-output
+;{:output [:int {:max 6}],
+; :value 16,
+; :args [4],
+; :schema [:=> [:cat :int] [:int {:max 6}]]}
+; => 16
+
+(multi-arity-pow 5 0.1)
+;
+;:malli.core/invalid-input
+;{:input [:cat :int :int],
+; :args [5 0.1],
+; :schema [:=> [:cat :int :int] [:int {:max 6}]]}
+;
+;:malli.core/invalid-output
+;{:output [:int {:max 6}],
+; :value 0.5,
+; :args [5 0.1],
+; :schema [:=> [:cat :int :int] [:int {:max 6}]]}
+; => 0.5
+```
+
+Generating functions from schemas:
+
+```clj
+(def pow2
+  (m/-instrument
+    {:schema [:function
+              [:=> [:cat :int] [:int {:max 6}]]
+              [:=> [:cat :int :int] [:int {:max 6}]]]
+     :gen mg/generate}))
+
+(pow2 10)
+; => -26059
+
+(pow2 10 20)
+; => -5815318
+
+(pow2 10 20 30)
+; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
 ```
 
 ## Function Schema Registry

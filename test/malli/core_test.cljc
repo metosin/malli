@@ -2138,13 +2138,14 @@
 
   (testing ":function"
 
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli.core/non-function-childs"
+          (m/schema
+            [:function
+             :cat])))
+
     (testing "invalid arities"
-      (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/non-function-childs"
-            (m/schema
-              [:function
-               :cat])))
 
       (is (thrown-with-msg?
             #?(:clj Exception, :cljs js/Error)

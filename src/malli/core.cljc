@@ -1857,7 +1857,7 @@
 
 (defn- -re-alt-min-max [{min' :min, max' :max} child]
   (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (min min' min'')} (and max' max'') (assoc :max (max max' max'')))))
+    (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
 
 (defn sequence-schemas []
   {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}
@@ -1894,28 +1894,28 @@
                            :re-parser (fn [_ children] (apply re/cat-parser children))
                            :re-unparser (fn [_ children] (apply re/cat-unparser children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))
-                           :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} children))})
+                           :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:max 0} children))})
    :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}
                            :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
                            :re-parser (fn [_ children] (apply re/alt-parser children))
                            :re-unparser (fn [_ children] (apply re/alt-unparser children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))
-                           :re-min-max (fn [_ children] (reduce -re-alt-min-max {:min miu/+max-size+, :max 0} children))})
+                           :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} children))})
    :catn (-sequence-entry-schema {:type :catn, :child-bounds {}
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
                                   :re-parser (fn [_ children] (apply re/catn-parser children))
                                   :re-unparser (fn [_ children] (apply re/catn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
-                                  :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (map last children)))})
+                                  :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:max 0} (map last children)))})
    :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
                                   :re-parser (fn [_ children] (apply re/altn-parser children))
                                   :re-unparser (fn [_ children] (apply re/altn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
-                                  :re-min-max (fn [_ children] (reduce -re-alt-min-max {:min miu/+max-size+, :max 0} (map last children)))})})
+                                  :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (map last children)))})})
 
 (defn base-schemas []
   {:and (-and-schema)
@@ -1982,15 +1982,15 @@
   ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options]
    (let [schema (-> props :schema (schema options))]
      (case (type schema)
-       :=> (let [{:keys [min max input output] :or {max miu/+max-size+}} (-function-info schema)
+       :=> (let [{:keys [min max input output]} (-function-info schema)
                  [validate-input validate-output] (map validator [input output])
                  [wrap-input wrap-output] (map (partial contains? scope) [:input :output])
                  f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
              (fn [& args]
                (let [args (vec args), arity (count args)]
                  (when wrap-input
-                   (when-not (<= min arity max)
-                     (report ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :input input, :schema schema}))
+                   (when-not (<= min arity (or max miu/+max-size+))
+                     (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
                    (when-not (validate-input args)
                      (report ::invalid-input {:input input, :args args, :schema schema})))
                  (let [value (apply f args)]

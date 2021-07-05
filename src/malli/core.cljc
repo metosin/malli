@@ -1971,8 +1971,10 @@
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
-           ns' `'~(symbol (str *ns*))]
-       `(-register-function-schema! ~ns' ~name' ~value))))
+           ns' `'~(symbol (str *ns*))
+           sym `'~(symbol (str *ns*) (str name))]
+       `(do (-register-function-schema! ~ns' ~name' ~value)
+            ~sym))))
 
 (defn -instrument
   ([props]

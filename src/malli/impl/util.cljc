@@ -11,6 +11,11 @@
 (defn -map-valid [f v] (if (-invalid? v) v (f v)))
 (defn -map-invalid [f v] (if (-invalid? v) (f v) v))
 
+(defn -unlift-keys [m prefix]
+  (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
+
+(defn -unlift [m prefix] (get m prefix))
+
 (defrecord SchemaError [path in schema value type message])
 
 (defn -error

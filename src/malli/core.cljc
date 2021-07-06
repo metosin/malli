@@ -1961,19 +1961,19 @@
    (let [s (schema ?schema options), t (type s)]
      (cond-> s (not (#{:=> :function} t)) (-fail! :invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name value]
+(defn -register-function-schema! [ns name {:keys [schema] :as data}]
   (swap! -function-schemas* assoc-in [ns name]
-         {:schema (function-schema value)
-          :meta (meta name)
-          :ns ns
-          :name name}))
+         (merge data {:schema (function-schema schema)
+                      :meta (meta name)
+                      :ns ns
+                      :name name})))
 
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
            sym `'~(symbol (str *ns*) (str name))]
-       `(do (-register-function-schema! ~ns' ~name' ~value)
+       `(do (-register-function-schema! ~ns' ~name' {:schema ~value})
             ~sym))))
 
 (defn -instrument

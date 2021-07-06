@@ -13,9 +13,11 @@
       (do (swap! definitions assoc ref result) (-ref ref))
       result)))
 
+;; TODO: miu/-unlift-keys
 (defn unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
+;; TODO: miu/-unlift
 (defn unlift [m prefix] (get m prefix))
 
 (defn select [m] (select-keys m [:title :description :default]))

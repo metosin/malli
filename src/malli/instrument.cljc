@@ -1,6 +1,7 @@
 (ns malli.instrument
   (:require [malli.core :as m]
             [malli.clj-kondo :as clj-kondo]
+            [malli.impl.util :as miu]
             [clojure.data :as data]))
 
 (def ^:private instrumented* (atom nil))
@@ -30,9 +31,16 @@
                          (alter-var-root v (constantly original-fn))
                          (println "..unstrumented" v))))))))
 
+(defn -accept-default [v]
+  (let [{:keys [ns name malli/schema] :as meta} (meta v)]
+    (when schema (m/-register-function-schema! (-> ns str symbol) name (miu/-unlift-keys meta "malli")))))
+
 ;;
 ;; public api
 ;;
+
+(defn collect! [{:keys [ns accept] :or {accept -accept-default}}]
+  (doseq [[_ v] (ns-publics ns)] (accept v)))
 
 (defn instrument!
   ([] (instrument! nil))

@@ -5,15 +5,19 @@
 
 (def ^:private instrumented* (atom nil))
 
-(defn -filter-ns [& ns] (fn [n _ _] ((set ns) n)))
+(defn -find-var [n s] (find-var (symbol (str n "/" s))))
+
 (defn -filter-all [] (constantly true))
+(defn -filter-ns [& ns] (fn [n _ _] ((set ns) n)))
+(defn -filter-var [f] (fn [n s _] (f (-find-var n s))))
+(defn -filter-schema [f] (fn [_ _ {:keys [schema]}] (f schema)))
 
 (defn -strument!
   ([] (-strument! nil))
   ([{:keys [mode data filters] :or {mode :instrument, data (m/function-schemas), filters [(-filter-all)]}}]
    (doseq [[n d] data, [s d] d]
      (if (some #(% n s d) filters)
-       (if-let [v (find-var (symbol (str n "/" s)))]
+       (if-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))]
                          (swap! instrumented* (fnil assoc {}) v d)

@@ -45,14 +45,17 @@
 (defn stop! []
   (remove-watch @#'m/-function-schemas* ::watch)
   (unstrument!)
-  (clj-kondo/emit!))
+  (clj-kondo/emit!)
+  (println "stopped instrumentation"))
 
 (defn start!
   ([] (start! nil))
   ([options]
-   (stop!)
+   (with-out-str (stop!))
    (let [watch (fn [_ _ old new]
                  (instrument! (assoc options :data (second (data/diff old new))))
                  (clj-kondo/emit!))]
      (add-watch @#'m/-function-schemas* ::watch watch))
-   (instrument! options)))
+   (instrument! options)
+   (clj-kondo/emit!)
+   (println "started instrumentation")))

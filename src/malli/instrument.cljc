@@ -1,8 +1,7 @@
 (ns malli.instrument
   (:require [malli.core :as m]
             [malli.clj-kondo :as clj-kondo]
-            [malli.impl.util :as miu]
-            [clojure.data :as data]))
+            [malli.impl.util :as miu]))
 
 (def ^:private instrumented* (atom nil))
 
@@ -15,15 +14,16 @@
 
 (defn -strument!
   ([] (-strument! nil))
-  ([{:keys [mode data filters] :or {mode :instrument, data (m/function-schemas)}}]
+  ([{:keys [mode data filters gen] :or {mode :instrument, data (m/function-schemas)}}]
    (doseq [[n d] data, [s d] d]
      (if (or (not filters) (some #(% n s d) filters))
        (if-let [v (-find-var n s)]
          (case mode
-           :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))]
+           :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))
+                             dgen (cond-> d (and gen (true? (:gen d))) (assoc :gen gen))]
                          (swap! instrumented* (fnil assoc {}) v d)
                          (alter-meta! v assoc ::original-fn original-fn)
-                         (alter-var-root v (constantly (m/-instrument d original-fn)))
+                         (alter-var-root v (constantly (m/-instrument dgen original-fn)))
                          (println "..instrumented" v))
            :unstrument (when-let [original-fn (and (contains? @instrumented* v) (::original-fn (meta v)))]
                          (swap! instrumented* (fn [s] (some-> s (dissoc v) (seq) (->> (into {})))))
@@ -61,7 +61,13 @@
   ([options]
    (with-out-str (stop!))
    (let [watch (fn [_ _ old new]
-                 (instrument! (assoc options :data (second (data/diff old new))))
+                 (instrument! (assoc options :data (->> (for [[n d] new
+                                                              :let [no (get old n)]
+                                                              [s d] d
+                                                              :when (not= d (get no s))]
+                                                          [[n s] d])
+                                                        (into {})
+                                                        (reduce-kv assoc-in {}))))
                  (clj-kondo/emit!))]
      (add-watch @#'m/-function-schemas* ::watch watch))
    (instrument! options)

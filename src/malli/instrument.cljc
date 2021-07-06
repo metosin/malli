@@ -14,9 +14,9 @@
 
 (defn -strument!
   ([] (-strument! nil))
-  ([{:keys [mode data filters] :or {mode :instrument, data (m/function-schemas), filters [(-filter-all)]}}]
+  ([{:keys [mode data filters] :or {mode :instrument, data (m/function-schemas)}}]
    (doseq [[n d] data, [s d] d]
-     (if (some #(% n s d) filters)
+     (if (or (not filters) (some #(% n s d) filters))
        (if-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))]

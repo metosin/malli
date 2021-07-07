@@ -27,6 +27,7 @@
   (-type-properties [this] "returns schema type properties")
   (-properties-schema [this options] "maybe returns :map schema describing schema properties")
   (-children-schema [this options] "maybe returns sequence schema describing schema children")
+  (-inferrer [this options] "maybe returns a function of `type -> value -> schema")
   (-into-schema [this properties children options] "creates a new schema instance"))
 
 (defprotocol Schema
@@ -327,6 +328,7 @@
       (-type-properties [_] (:type-properties @props*))
       (-properties-schema [_ _])
       (-children-schema [_ _])
+      (-inferrer [_ _])
       (-into-schema [parent properties children options]
         (if (fn? ?props)
           (-into-schema (-simple-schema (?props properties children)) properties children options)
@@ -379,6 +381,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :and properties children {:min 1})
       (let [children (mapv #(schema % options) children)
@@ -419,6 +422,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :or properties children {:min 1})
       (let [children (mapv #(schema % options) children)
@@ -480,6 +484,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children {:min 1})
       (let [{:keys [children entries forms]} (-parse-entries children {:naked-keys true} options)
@@ -553,6 +558,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :not properties children {:min 1 :max 1})
       (let [[schema :as children] (map #(schema % options) children)
@@ -592,6 +598,7 @@
      (-type-properties [_])
      (-properties-schema [_ _])
      (-children-schema [_ _])
+     (-inferrer [_ _])
      (-into-schema [parent properties children options]
        (-check-children! ::val properties children {:min 1, :max 1})
        (let [[schema :as children] (map #(schema % options) children)
@@ -733,6 +740,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :map-of properties children {:min 2 :max 2})
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
@@ -809,6 +817,7 @@
       (-type-properties [_] (:type-properties @props*))
       (-properties-schema [_ _])
       (-children-schema [_ _])
+      (-inferrer [_ _])
       (-into-schema [parent {:keys [min max] :as properties} children options]
         (if (fn? ?props)
           (-into-schema (-collection-schema (?props properties children)) properties children options)
@@ -887,6 +896,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (let [children (mapv #(schema % options) children)
             size (count children)
@@ -991,6 +1001,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties [child :as children] options]
       (-check-children! :re properties children {:min 1, :max 1})
       (let [children (vec children)
@@ -1076,6 +1087,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :maybe properties children {:min 1, :max 1})
       (let [[schema :as children] (map #(schema % options) children)
@@ -1121,6 +1133,7 @@
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
+     (-inferrer [_ _])
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
@@ -1250,6 +1263,7 @@
       (-type-properties [_])
       (-properties-schema [_ _])
       (-children-schema [_ _])
+      (-inferrer [_ _])
       (-into-schema [parent properties children options]
         (-check-children! type properties children {:min 1, :max 1})
         (let [[child :as children] (map #(schema % options) children)
@@ -1363,6 +1377,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :function properties children {:min 1})
       (let [children (map #(schema % options) children)
@@ -1430,6 +1445,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children child-bounds)
       (let [children (mapv #(schema % options) children)
@@ -1475,6 +1491,7 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
+    (-inferrer [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children child-bounds)
       (let [{:keys [children entries forms]} (-parse-entries children opts options)

@@ -1897,7 +1897,7 @@
                            :re-parser (fn [_ children] (apply re/cat-parser children))
                            :re-unparser (fn [_ children] (apply re/cat-unparser children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))
-                           :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:max 0} children))})
+                           :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} children))})
    :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}
                            :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
@@ -1911,7 +1911,7 @@
                                   :re-parser (fn [_ children] (apply re/catn-parser children))
                                   :re-unparser (fn [_ children] (apply re/catn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
-                                  :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:max 0} (map last children)))})
+                                  :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (map last children)))})
    :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))

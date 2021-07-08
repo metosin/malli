@@ -2241,7 +2241,8 @@
 (deftest function-schema-registry-test
   (reset! @#'m/-function-schemas* nil)
   (let [prior-function-schemas (m/function-schemas)
-        new-function-schemas (m/=> function-schema-registry-test-fn [:=> :cat :nil])
+        _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
+        new-function-schemas (m/function-schemas)
         this-ns-schemas (get new-function-schemas 'malli.core-test)
         fn-schema (get this-ns-schemas 'function-schema-registry-test-fn)]
     (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))

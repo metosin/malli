@@ -3,9 +3,6 @@
             [malli.instrument :as mi]
             [malli.core :as m]))
 
-;; clear function schemas, isolation
-(reset! @#'m/-function-schemas* nil)
-
 (defn plus [x] (inc x))
 (m/=> plus [:=> [:cat :int] [:int {:max 6}]])
 
@@ -21,7 +18,7 @@
     (unstrument!)
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
-          #"java.lang.String cannot be cast to java.lang.Number"
+          #"cannot be cast to"
           ((->plus) "2")))
     (is (= 7 ((->plus) 6))))
 
@@ -52,7 +49,7 @@
     (unstrument!)
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
-          #"java.lang.String cannot be cast to java.lang.Number"
+          #"cannot be cast to"
           ((->minus) "2")))
     (is (= 5 ((->minus) 6))))
 

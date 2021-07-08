@@ -16,20 +16,19 @@
 
   (testing "without instrumentation"
     (unstrument!)
-    (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #"cannot be cast to"
+    (is (thrown?
+          ClassCastException
           ((->plus) "2")))
     (is (= 7 ((->plus) 6))))
 
   (testing "with instrumentation"
     (instrument!)
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
+          Exception
           #":malli.core/invalid-input"
           ((->plus) "2")))
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
+          Exception
           #":malli.core/invalid-output"
           ((->plus) 6)))))
 
@@ -47,19 +46,18 @@
 
   (testing "without instrumentation"
     (unstrument!)
-    (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #"cannot be cast to"
+    (is (thrown?
+          ClassCastException
           ((->minus) "2")))
     (is (= 5 ((->minus) 6))))
 
   (testing "with instrumentation"
     (instrument!)
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
+          Exception
           #":malli.core/invalid-input"
           ((->minus) "2")))
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
+          Exception
           #":malli.core/invalid-output"
           ((->minus) 6)))))

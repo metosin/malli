@@ -127,6 +127,9 @@
       (name x))
     x))
 
+(defn -unlift-keys [m prefix]
+  (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
+
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
     (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))

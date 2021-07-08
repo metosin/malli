@@ -1,9 +1,6 @@
 (ns malli.instrument
   (:require [malli.core :as m]
-            [malli.clj-kondo :as clj-kondo]
-            [malli.impl.util :as miu]))
-
-(def ^:private instrumented* (atom nil))
+            [malli.clj-kondo :as clj-kondo]))
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
 
@@ -21,19 +18,17 @@
          (case mode
            :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))
                              dgen (cond-> d (and gen (true? (:gen d))) (assoc :gen gen))]
-                         (swap! instrumented* (fnil assoc {}) v d)
                          (alter-meta! v assoc ::original-fn original-fn)
                          (alter-var-root v (constantly (m/-instrument dgen original-fn)))
                          (println "..instrumented" v))
-           :unstrument (when-let [original-fn (and (contains? @instrumented* v) (::original-fn (meta v)))]
-                         (swap! instrumented* (fn [s] (some-> s (dissoc v) (seq) (->> (into {})))))
+           :unstrument (when-let [original-fn (::original-fn (meta v))]
                          (alter-meta! v dissoc ::original-fn)
                          (alter-var-root v (constantly original-fn))
                          (println "..unstrumented" v))))))))
 
 (defn -accept-default [v]
   (let [{:keys [ns name malli/schema] :as meta} (meta v)]
-    (when schema (m/-register-function-schema! (-> ns str symbol) name (miu/-unlift-keys meta "malli")))))
+    (when schema (m/-register-function-schema! (-> ns str symbol) name (m/-unlift-keys meta "malli")))))
 
 ;;
 ;; public api

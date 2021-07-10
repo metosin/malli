@@ -2239,7 +2239,7 @@
     (is (not (m/validate [List :int] [1 2])))))
 
 (deftest function-schema-registry-test
-  (reset! @#'m/-function-schemas* nil)
+  (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)
         _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
         new-function-schemas (m/function-schemas)

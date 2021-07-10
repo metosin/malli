@@ -151,7 +151,6 @@
   ([] (collect nil))
   ([ns]
    (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
-     (prn ns "->" (m/function-schemas))
      (->> (for [[k vs] (m/function-schemas) :when (-collect k) [_ v] vs v (from v)] v)))))
 
 (defn linter-config [xs]

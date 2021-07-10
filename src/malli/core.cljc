@@ -1954,7 +1954,7 @@
 ;; function schemas (alpha, subject to change)
 ;;
 
-(def ^:private -function-schemas* (atom {}))
+(defonce ^:private -function-schemas* (atom {}))
 (defn function-schemas [] @-function-schemas*)
 
 (defn function-schema

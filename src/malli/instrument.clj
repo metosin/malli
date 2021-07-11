@@ -11,13 +11,14 @@
 
 (defn -strument!
   ([] (-strument! nil))
-  ([{:keys [mode data filters gen] :or {mode :instrument, data (m/function-schemas)}}]
+  ([{:keys [mode data filters gen] :or {mode :instrument, data (m/function-schemas)} :as options}]
    (doseq [[n d] data, [s d] d]
      (if (or (not filters) (some #(% n s d) filters))
        (if-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))
-                             dgen (cond-> d (and gen (true? (:gen d))) (assoc :gen gen))]
+                             dgen (cond-> (merge (select-keys options [:scope :report :gen]) d)
+                                          (and gen (true? (:gen d))) (assoc :gen gen))]
                          (alter-meta! v assoc ::original-fn original-fn)
                          (alter-var-root v (constantly (m/-instrument dgen original-fn)))
                          (println "..instrumented" v))

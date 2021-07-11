@@ -2195,6 +2195,68 @@ Generating functions from schemas:
 ; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
 ```
 
+### Var instrumentation
+
+For instrumenting function Vars (e.g. `defn`s), there is `malli.instument`:
+
+```clj
+(defn plus [x] (inc x))
+(m/=> plus [:=> [:cat :int] [:int {:max 6}]])
+
+(require '[malli.instrument :as mi])
+
+(plus 6)
+; => 7
+
+;; all registered functions
+(mi/instrument!)
+
+(plus 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(mi/unstrument!)
+; => 7
+```
+
+Configuring instrumentation:
+
+```clj
+(mi/instrument!
+  {:filters [;; all from one ns
+             (mi/-filter-ns 'user)
+             ;; some vars
+             (mi/-filter-var #{#'plus})
+             ;; all vars with :malli/instrument meta
+             (mi/-filter-var #(-> % meta :malli/instrument))]
+   ;; scope
+   :scope #{:input :output}
+   ;; just print
+   :report println})
+
+(plus 8)
+; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; => 9
+```
+
+Strting instrumentation in watch-mode re-instruments functions when their defintions change:
+
+```clj
+(defn plus [x] (inc x))
+(m/=> plus [:=> [:cat :int] [:int {:max 6}]])
+
+(mi/start!)
+
+(plus 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(m/=> plus [:=> [:cat :int] :int])
+
+(plus 6)
+; => 7
+
+(mi/stop!)
+```
+
 ## Function Schema Registry
 
 Vars can be annotated with function schemas using `m/=>` macro, backed by a global registry:

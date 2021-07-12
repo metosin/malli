@@ -219,3 +219,178 @@ Multi-arity functions can be composed with `:function`:
 ```
 
 ## Instrumentation
+
+Besides testing function schemas as values, we can also intrument functions with function schemas to enable runtime validation of arguments and return values.
+
+Simplest way to do this is to use `m/-instrument` which takes options map and a function and returns a instrumented function. Valid options include:
+
+| key       | description |
+| ----------|-------------|
+| `:schema` | function schema
+| `:scope`  | optional set of scope definitions, defaults to #{:input :output}
+| `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
+| `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
+
+Instrumentig a function with input & return constraints:
+
+```clj
+(def pow
+  (m/-instrument
+    {:schema [:=> [:cat :int] [:int {:max 6}]]}
+    (fn [x] (* x x))))
+
+(pow 2)
+; => 4
+
+(pow "2")
+; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["2"], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(pow 4)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 16, :args [4], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(pow 4 2)
+; =throws=> :malli.core/invalid-arity {:arity 2, :arities #{{:min 1, :max 1}}, :args [4 2], :input [:cat :int], :schema [:=> [:cat :int] [:int {:max 6}]]}
+```
+
+Multi-arity functions with defined scopes and custom reporting function:
+
+```clj
+(def multi-arity-pow
+  (m/-instrument
+    {:schema [:function
+              [:=> [:cat :int] [:int {:max 6}]]
+              [:=> [:cat :int :int] [:int {:max 6}]]]
+     :scope #{:input :output}
+     :report println}
+    (fn
+      ([x] (* x x))
+      ([x y] (* x y)))))
+
+(multi-arity-pow 4)
+; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 16, :args [4], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; => 16
+
+(multi-arity-pow 5 0.1)
+; =prints=> :malli.core/invalid-input {:input [:cat :int :int], :args [5 0.1], :schema [:=> [:cat :int :int] [:int {:max 6}]]}
+; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 0.5, :args [5 0.1], :schema [:=> [:cat :int :int] [:int {:max 6}]]}
+; => 0.5
+```
+
+With `:gen` we can omit the function body. Here's an example to generate random values based on the return schema:
+
+```clj
+(def pow-gen
+  (m/-instrument
+    {:schema [:function
+              [:=> [:cat :int] [:int {:max 6}]]
+              [:=> [:cat :int :int] [:int {:max 6}]]]
+     :gen mg/generate}))
+
+(pow-gen 10)
+; => -253
+
+(pow-gen 10 20)
+; => -159
+
+(pow-gen 10 20 30)
+; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
+```
+
+### Function Var Schemas
+
+Functions Vars can be annotated with function schemas using `m/=>` macro, which stores the var -> function schema mappings in a global registry.
+
+A simple function (Var) and registered schema for it:
+
+```clj
+(defn plus1 [x] (inc x))
+(m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
+``` 
+
+The order doesn't matter, so you could also do:
+
+```clj
+(m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
+(defn plus1 [x] (inc x))
+```
+
+We can list the current accumulation of function (Var) schemas:
+
+```clj
+(m/function-schemas)
+;{user {plus1 {:schema [:=> [:cat :int] [:int {:max 6}]]
+;              :meta nil
+;              :ns user
+;              :name plus1}}}
+```
+
+### Function Var Instrumentation
+
+The Function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is `malli.instrument` namespace. It's mainly intended for development time, but can also be used for production builds.
+
+```clj
+(require '[malli.instrument :as mi])
+```
+
+To instrument the Vars, there is `mi/instrument!` and to remove the instrumentation, `mi/unstrument!`.
+
+```clj
+(plus 6)
+; => 7
+
+;; instrument all registered vars
+(mi/instrument!)
+
+(plus 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(mi/unstrument!)
+; => 7
+```
+
+Instrumentation can be configured with the same options as `m/-instrument` and with a set of `:filters` to select which Vars should be instrumented.
+
+```clj
+(mi/instrument!
+  {:filters [;; everything from user ns
+             (mi/-filter-ns 'user)
+             ;; ... and some vars
+             (mi/-filter-var #{#'plus})
+             ;; all other vars with :always-validate meta
+             (mi/-filter-var #(-> % meta :always-validate))]
+   ;; scope
+   :scope #{:input :output}
+   ;; just print
+   :report println})
+
+(plus 8)
+; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; => 9
+```
+
+Note: if you register new function (Var) schemas or redefine existing ones, you need to call `mi/instrument!` again. This is not good for developer experience (DX). And we can do better.
+
+### Development Instrumentation
+
+For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` and starts watching for registry changes. Any change that matches the filters, will cause the Var to be automatically re-instrumented.
+
+```clj
+(mi/start!)
+; =prints=> ..instrumented #'user/plus1
+; =prints=> started instrumentation
+
+(plus 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(m/=> plus1 [:=> [:cat :int] :int])
+; =prints=> ..instrumented #'user/plus1
+
+(plus 6)
+; => 7
+
+(mi/stop!)
+; =prints=> ..unstrumented #'user/plus1
+; =prints=> stopped instrumentation
+```
+
+TODO: track also var changes + register 

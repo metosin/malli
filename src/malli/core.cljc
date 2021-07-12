@@ -1964,22 +1964,27 @@
    (let [s (schema ?schema options), t (type s)]
      (cond-> s (not (#{:=> :function} t)) (-fail! :invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name {:keys [schema] :as data}]
-  (swap! -function-schemas* assoc-in [ns name]
-         (merge data {:schema (function-schema schema)
-                      :meta (meta name)
-                      :ns ns
-                      :name name})))
+(defn -register-function-schema! [ns name data]
+  (swap! -function-schemas* assoc-in [ns name] (-> data (update :schema function-schema) (assoc :ns ns) (assoc :name name))))
 
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
            sym `'~(symbol (str *ns*) (str name))]
-       `(do (-register-function-schema! ~ns' ~name' {:schema ~value})
-            ~sym))))
+       `(do (-register-function-schema! ~ns' ~name' (merge ~(meta name) {:schema ~value})) ~sym))))
 
 (defn -instrument
+  "Takes an instrumentation properties map and a function and returns a wrapped function,
+   which will validate function arguments and return values based on the function schema
+   definition. The following properties are used:
+
+   | key       | description |
+   | ----------|-------------|
+   | `:schema` | function schema
+   | `:scope`  | optional set of scope definitions, defaults to #{:input :output}
+   | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
+   | `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([props]
    (-instrument props nil nil))
   ([props f]

@@ -296,7 +296,7 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 ; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
 ```
 
-### Function Var Schemas
+## Function Var Schemas
 
 Functions Vars can be annotated with function schemas using `m/=>` macro, which stores the var -> function schema mappings in a global registry.
 
@@ -324,7 +324,7 @@ We can list the current accumulation of function (Var) schemas:
 ;              :name plus1}}}
 ```
 
-### Function Var Instrumentation
+## Function Var Instrumentation
 
 The Function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is `malli.instrument` namespace. It's mainly intended for development time, but can also be used for production builds.
 
@@ -370,9 +370,9 @@ Instrumentation can be configured with the same options as `m/-instrument` and w
 
 Note: if you register new function (Var) schemas or redefine existing ones, you need to call `mi/instrument!` again. This is not good for developer experience (DX). And we can do better.
 
-### Development Instrumentation
+## Development Instrumentation
 
-For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` and starts watching for registry changes. Any change that matches the filters, will cause the Var to be automatically re-instrumented.
+For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` and starts watching for registry changes. Any change that matches the filters, will cause the Var to be automatically re-instrumented. It also emits [CLJ-Kondo](README.md#clj-kondo) linter config enabling static type checking.
 
 ```clj
 (mi/start!)
@@ -393,4 +393,76 @@ For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` tak
 ; =prints=> stopped instrumentation
 ```
 
-TODO: track also var changes + register 
+## Function Var Schemas as Var metadata
+
+We can also store Malli schemas and instrumentation options as function Var metadata:
+
+```clj
+(defn minus
+  "a normal clojure function, no dependencies to malli"
+  {:malli/schema [:=> [:cat :int] [:int {:min 6}]]}
+  [x] (dec x))
+```
+
+To read the Var metadata and register it to the global registry, we need to call `mi/collect!`. It reads all public vars from a given namespace and if the var has `:malli/schema` metadata, it registers the function Var schema for it and returns a set of all registered vars.
+
+```clj
+(mi/collect!)
+; => #{#'user/minus}
+
+(mi/instrument!)
+; =prints=> ..instrumented #'user/minus
+
+(minus 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:min 6}], :value 5, :args [6], :schema [:=> [:cat :int] [:int {:min 6}]]}
+```
+
+All options keys with `malli` ns are read when collecting. Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
+
+A more complete example of injecting malli into existing Clojure codebase:
+
+```clj
+(ns domain)
+
+;; just data
+(def User
+  [:map
+   [:name :string]
+   [:age [:int {:min 0, :max 120}]]
+   [:skills [:set {:gen/max 5} :keyword]]
+   [:address [:map
+              [:street :string]]]])
+
+;; empty function
+(defn get-user
+  "given an id, returns a user or nil"
+  {:malli/schema [:=> [:cat :int] [:maybe User]]
+   :malli/scope #{:input :output}
+   :malli/gen true}
+  [_id])
+
+;; inject malli (at develpoment time)
+(require '[malli.instrument :as mi])
+(require '[malli.generator :as mg])
+
+;; collect fuction var schemas
+(mi/collect! {:ns 'domain})
+
+;; start instrumentation with support for body generation
+(mi/start! {:gen mg/generate})
+; =prints=> ..instrumented #'domain/get-user
+; =prints=> started instrumentation
+
+(get-user "12") ;; <- static checking
+; =throwd=> :malli.core/invalid-input {:input [:cat :int], :args ["12"], :schema [:=> [:cat :int] [:maybe [:map [:name :string] [:age [:int {:min 0, :max 120}]] [:skills [:set #:gen{:max 5} :keyword]] [:address [:map [:street :string]]]]]]}
+
+(get-user 1)
+;{:name "ESG0GT2cW8iihTsPl5d2F16Jk0",
+; :age 78,
+; :skills #{:_4o? :Oi6hy+ie :-:!!TKj :Vw:vD.},
+; :address {:street "mqlWhmN269511f2p8056P"}}
+
+(mi/stop!)
+; =prints=> ..unstrumented #'domain/get-user
+; =prints=> stopped instrumentation
+```

@@ -27,16 +27,19 @@
                          (alter-var-root v (constantly original-fn))
                          (println "..unstrumented" v))))))))
 
-(defn -accept-default [v]
-  (let [{:keys [ns name malli/schema] :as meta} (meta v)]
-    (when schema (m/-register-function-schema! (-> ns str symbol) name (m/-unlift-keys meta "malli")))))
-
 ;;
 ;; public api
 ;;
 
-(defn collect! [{:keys [ns accept] :or {accept -accept-default}}]
-  (doseq [[_ v] (ns-publics ns)] (accept v)))
+(defn collect!
+  ([] (collect! {:ns *ns*}))
+  ([{:keys [ns]}]
+   (not-empty
+     (reduce
+       (fn [acc v]
+         (let [{:keys [ns name malli/schema] :as meta} (meta v)
+               v' (when schema (m/-register-function-schema! (-> ns str symbol) name (m/-unlift-keys meta "malli")))]
+           (cond-> acc v' (conj v)))) #{} (vals (ns-publics ns))))))
 
 (defn instrument!
   ([] (instrument! nil))

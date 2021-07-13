@@ -459,7 +459,7 @@ A more complete example of using malli instrumentation in an existing Clojure co
 ; =prints=> started instrumentation
 
 (get-user "1") ;; <- static checking
-; =throwd=> :malli.core/invalid-input {:input [:cat :int], :args ["1"], :schema [:=> [:cat :int] [:maybe [:map [:name :string] [:age [:int {:min 0, :max 120}]] [:address [:map [:street :string] [:country [:enum "fi" "po"]]]]]]]}
+; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["1"], :schema [:=> [:cat :int] [:maybe [:map [:name :string] [:age [:int {:min 0, :max 120}]] [:address [:map [:street :string] [:country [:enum "fi" "po"]]]]]]]}
 
 (get-user 1)
 ;{:name "7YL9cHGy"
@@ -474,7 +474,7 @@ A more complete example of using malli instrumentation in an existing Clojure co
 
 Here's the same code seen from [Cursive IDE](https://cursive-ide.com/), note the `static checking` error on invald input:
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/fn-var-schema.png"/>
+<img src="img/fn-var-schema.png"/>
 
 ## Future work
 

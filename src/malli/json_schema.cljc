@@ -64,6 +64,8 @@
 (defmethod accept 'sequential? [_ _ _ _] {:type "array"})
 #?(:clj (defmethod accept 'ratio? [_ _ _ _] {:type "number"}))
 (defmethod accept 'bytes? [_ _ _ _] {:type "string" :format "byte"})
+(defmethod accept 'ifn? [_ _ _ _] {})
+(defmethod accept 'fn? [_ _ _ _] {})
 
 (defmethod accept :> [_ _ [value] _] {:type "number" :exclusiveMinimum value})
 (defmethod accept :>= [_ _ [value] _] {:type "number" :minimum value})

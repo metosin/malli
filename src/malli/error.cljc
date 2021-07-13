@@ -74,6 +74,7 @@
    :re {:error/message {:en "should match regex"}}
    :=> {:error/message {:en "invalid function"}}
    'ifn? {:error/message {:en "should be an ifn"}}
+   'fn? {:error/message {:en "should be an fn"}}
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
                            (str "should be "
                                 (if (= 1 (count (m/children schema)))

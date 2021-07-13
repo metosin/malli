@@ -31,9 +31,15 @@ Malli is in [alpha](README.md#alpha).
 
 ### Public API
 
-* `malli.plantuml` for [PlantUML](https://plantuml.com/) generation
+* **BREAKING**: `malli.json-schema/unlift-keys` is removed in favor of `malli.core/-unlift-keys`
+* **BREAKING**: `malli.json-schema/unlift` is removed in favor of `get`
+* **BREAKING**: `malli.provider/stats` is removed (was already deprecated)
+* **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`
+
+* new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
+* new `malli.instrument` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
 * humanized errors for `:boolean`
-* **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`  
+* predicate schema for `fn?`
 * humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
 
 ```clj
@@ -46,7 +52,10 @@ Malli is in [alpha](README.md#alpha).
 
 ### Extender API
 
-* `malli.util.impl/-fail!` is now `malli.core/-fail!`.
+* `malli.util.impl/-fail!` is now `malli.core/-fail!`
+* `malli.core/-unlift-keys`
+* `malli.core/-instrument`
+* **BREAKING**: `malli.core/-register-function-schema!` is now 4-arity, new argument is data map
 
 ## 0.5.1 (2021-05-02)
 

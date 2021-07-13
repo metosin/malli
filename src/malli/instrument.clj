@@ -40,7 +40,7 @@
      (reduce
        (fn [acc v]
          (let [{:keys [ns name malli/schema] :as meta} (meta v)
-               v' (when schema (m/-register-function-schema! (-> ns str symbol) name (m/-unlift-keys meta "malli")))]
+               v' (when schema (m/-register-function-schema! (-> ns str symbol) name schema (m/-unlift-keys meta "malli")))]
            (cond-> acc v' (conj v)))) #{} (vals (ns-publics ns))))))
 
 (defn instrument!

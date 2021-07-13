@@ -1964,15 +1964,15 @@
    (let [s (schema ?schema options), t (type s)]
      (cond-> s (not (#{:=> :function} t)) (-fail! :invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name data]
-  (swap! -function-schemas* assoc-in [ns name] (-> data (update :schema function-schema) (assoc :ns ns) (assoc :name name))))
+(defn -register-function-schema! [ns name schema data]
+  (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema schema), :ns ns, :name name})))
 
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
            sym `'~(symbol (str *ns*) (str name))]
-       `(do (-register-function-schema! ~ns' ~name' (merge ~(meta name) {:schema ~value})) ~sym))))
+       `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,

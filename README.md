@@ -23,7 +23,7 @@ Data-driven Schemas for Clojure/Script.
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
-- [Function Schemas](#function-schemas) with [instumentation](#instrumentation) and [clj-kondo](#clj-kondo) support
+- [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - [Fast](#performance)
 
@@ -1715,7 +1715,7 @@ The default immutable registry is merged from the following parts, enabling easy
 
 #### `malli.core/predicate-schemas`
 
-Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
+Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?`, `bytes?`, `ifn?` and `fn?`.
 
 #### `malli.core/class-schemas`
 
@@ -1966,28 +1966,6 @@ See [Working with functions](docs/function-schemas.md).
 
 See [Instrumentation](docs/function-schemas.md#instrumentation).
 
-## Function Schema Registry
-
-Vars can be annotated with function schemas using `m/=>` macro, backed by a global registry:
-
-```clj
-(defn square [x] (* x x))
-
-(m/=> square [:=> [:cat int?] pos-int?])
-```
-
-Listing registered function Var schemas:
-
-```clj
-(m/function-schemas)
-;{user
-; {square
-;  {:schema [:=> [:cat int?] pos-int?]
-;   :meta nil
-;   :ns malli.generator-test
-;   :name square}}}
-```
-
 ## Clj-kondo
 
 [Clj-kondo](https://github.com/borkdude/clj-kondo) is a linter for Clojure code that sparks joy.
@@ -2185,6 +2163,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Minimallist https://github.com/green-coder/minimallist
+- malli-instrument https://github.com/setzer22/malli-instrument
 - Core.typed https://github.com/clojure/core.typed
 - TypeScript https://www.typescriptlang.org/
 - Struct https://funcool.github.io/struct/latest/

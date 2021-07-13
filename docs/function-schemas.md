@@ -1,16 +1,19 @@
-# Working with Functions
+# Function Schemas
 
-* [predicate schemas](#predicate-schemas)
-* [function schemas](#function-schemas)
-  * [generative testing](#generative-testing)
-  * [generating functions](#generating-functions)
-  * [multi-arity functions](#multi-arity-functions)
-  * [instrumentation](#instrumentation)
-* [defn schemas](#defn-schemas)
-  * [defn instrumentation](#defn-instrumentation)
-* [development instumentation](#development-instrumentation)
-  * [static type checking](#static)
-* [defn schemas via metadata](#defn-schemas-via-meta-data)
+* [Functions](#functions)
+* [Predicate Schemas](#predicate-schemas)
+* [Function Schemas](#function-schemas)
+  * [Generative Testing](#generative-testing)
+  * [Generating Functions](#generating-functions)
+  * [Multi-arity Functions](#multi-arity-functions)
+  * [Instrumentation](#instrumentation)
+* [Defn Schemas](#defn-schemas)
+  * [Defn Instrumentation](#defn-instrumentation)
+* [Development Instumentation](#development-instrumentation)
+  * [Static Type Checking](#static-type-checking)
+* [Defn Schemas via metadata](#defn-schemas-via-metadata)
+
+## Functions
 
 In Clojure, functions are first-class. Here's a simple function:
 
@@ -97,7 +100,7 @@ Bummer.
 
 Enter, generative testing.
 
-### Generative testing
+### Generative Testing
 
 Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [test.check](https://github.com/clojure/test.check) to check the functions at runtime. For this, there is `:malli.core/function-checker` option.
 
@@ -140,7 +143,7 @@ Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not a
 
 But, why `mg/function-checker` is not enabled by default? The reason is that it uses generartive testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be expecially bad for CLJS bundle size.
 
-### Generating functions
+### Generating Functions
 
 We can also generate function implementations based on the function schemas. The generated functions check the function arity and arguments at runtime and return generated values.
 
@@ -157,7 +160,7 @@ We can also generate function implementations based on the function schemas. The
 ; => -1
 ```
 
-### Multi-arity functions
+### Multi-arity Functions
 
 Multi-arity functions can be composed with `:function`:
 
@@ -424,7 +427,7 @@ Here's the same code seen from [Cursive IDE](https://cursive-ide.com/).
 
 <img src="docs/img/clj-kondo-instrument.png" width="512"/>
 
-## Defn Schemas via meta-data
+## Defn Schemas via Metadata
 
 Another option to define `defn` schemas is to use standard Var metadata.
 

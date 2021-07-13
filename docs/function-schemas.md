@@ -474,7 +474,7 @@ A more complete example of using malli instrumentation in an existing Clojure co
 
 Here's the same code seen from [Cursive IDE](https://cursive-ide.com/), note the `static checking` error on invald input:
 
-<img src="img/fn-var-schema.png"/>
+<img src="img/fn-var-schema.png" width="664"/>
 
 ## Future work
 

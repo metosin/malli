@@ -17,8 +17,10 @@
        (if-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (::original-fn (meta v)) (deref v))
-                             dgen (cond-> (merge (select-keys options [:scope :report :gen]) d)
-                                          (and gen (true? (:gen d))) (assoc :gen gen))]
+                             dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
+                                        (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
+                                              (true? (:gen d)) (dissoc $ :gen)
+                                              :else $))]
                          (alter-meta! v assoc ::original-fn original-fn)
                          (alter-var-root v (constantly (m/-instrument dgen original-fn)))
                          (println "..instrumented" v))

@@ -1982,7 +1982,7 @@
    | key       | description |
    | ----------|-------------|
    | `:schema` | function schema
-   | `:scope`  | optional set of scope definitions, defaults to #{:input :output}
+   | `:scope`  | optional set of scope definitions, defaults to `#{:input :output}`
    | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([props]

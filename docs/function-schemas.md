@@ -40,9 +40,9 @@ Enter, function schemas.
 
 ## Function Schemas
 
-Function valus can be described with `:=>` and `:function` schemas. It allows to describe both function arguments as [sequence schemas](README.md#sequence-schemas) and function output as schemas.
+Function values can be described with `:=>` and `:function` schemas. They allows description of both function arguments (as [sequence schemas](README.md#sequence-schemas)) and function return values.
 
-Example function definitions:
+Examples of function definitions:
 
 ```clj
 ;; no args, no return
@@ -62,7 +62,7 @@ Example function definitions:
  [:=> [:cat :int :int [:* :int]] :int]]      
 ```
 
-Function definition for our `plus` looks like this:
+Function definition for the `plus` looks like this:
 
 ```clj
 (def =>plus [:=> [:cat :int :int] :int])
@@ -75,7 +75,7 @@ Let's try:
 ; => true
 ```
 
-But, wait, as there is no way to know the function arity, arguments and returns at runtime, so how did that validation work? Actually, it didn't. By default. `:=>` validation just checks that it's a `fn?`, so this holds too:
+But, wait, as there was no way to know the function arity & other information at runtime, so how did the validation work? Actually, it didn't. By default. `:=>` validation just checks that it's a `fn?`, so this holds too:
 
 ```clj
 (m/validate =>plus str)
@@ -87,7 +87,7 @@ Enter, generative testing.
 
 ## Generative testing
 
-Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [test.check](https://github.com/clojure/test.check) to check the functions at runtime.
+Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [test.check](https://github.com/clojure/test.check) to check the functions at runtime. For this, there is `:malli.core/function-checker` option.
 
 ```clj
 (require '[malli.generator :as mg])
@@ -124,13 +124,13 @@ Explanation why it is not valid:
 ;                                                                          :value "00"})}}})}
 ```
 
-Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not an `:int`. Great.
+Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not an `:int`. Looks good.
 
-But, why `mg/function-checker` is not enabled by default? It uses generartive testing, which is orders of magnitude slower and would introduce an extra dependency of `test.check` to `malli.core` making the core library much heavier. This would be expecially bad for CLJS bundle size.
+But, why `mg/function-checker` is not enabled by default? The reason is that it uses generartive testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be expecially bad for CLJS bundle size.
 
 ## Generating functions
 
-We can also generate implementations for functions based on the function schemas. The generated functions check the function arity and arguments at runtime and return generated values.
+We can also generate function implementations based on the function schemas. The generated functions check the function arity and arguments at runtime and return generated values.
 
 ```clj
 (def plus-gen (mg/generate =>plus))
@@ -150,43 +150,44 @@ We can also generate implementations for functions based on the function schemas
 Multi-arity functions can be composed with `:function`:
 
 ```clj
-(def MyFunction
+;; multi-arity fn with function checking always on
+(def =>my-fn
   (m/schema
-    [:function {:registry {"SmallInt" [:int {:min -100, :max 100}]}}
-     [:=> [:cat "SmallInt"] :int]
-     [:=> [:cat "SmallInt" "SmallInt" [:* "SmallInt"]] :int]]
+    [:function {:registry {::small-int [:int {:min -100, :max 100}]}}
+     [:=> [:cat ::small-int] :int]
+     [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]]
     {::m/function-checker mg/function-checker}))
 
 (m/validate
-  MyFunction
+  =>my-fn
   (fn
     ([x] x)
     ([x y & z] (apply - (- x y) z))))
 ; => true
 
 (m/validate
-  MyFunction
+  =>my-fn
   (fn
     ([x] x)
     ([x y & z] (str x y z))))
 ; => false
 
 (m/explain
-  MyFunction
+  =>my-fn
   (fn
     ([x] x)
     ([x y & z] (str x y z))))
 ;{:schema [:function
-;          {:registry {"SmallInt" [:int {:min -100, :max 100}]}}
-;          [:=> [:cat "SmallInt"] :int]
-;          [:=> [:cat "SmallInt" "SmallInt" [:* "SmallInt"]] :int]],
+;          {:registry {::small-int [:int {:min -100, :max 100}]}}
+;          [:=> [:cat ::small-int] :int]
+;          [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]],
 ; :value #object[malli.core_test$eval27255$fn__27256],
 ; :errors (#Error{:path [],
 ;                 :in [],
 ;                 :schema [:function
-;                          {:registry {"SmallInt" [:int {:min -100, :max 100}]}}
-;                          [:=> [:cat "SmallInt"] :int]
-;                          [:=> [:cat "SmallInt" "SmallInt" [:* "SmallInt"]] :int]],
+;                          {:registry {::small-int [:int {:min -100, :max 100}]}}
+;                          [:=> [:cat ::small-int] :int]
+;                          [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]],
 ;                 :value #object[malli.core_test$eval27255$fn__27256],
 ;                 :check ({:total-nodes-visited 2,
 ;                          :depth 1,
@@ -201,35 +202,38 @@ Multi-arity functions can be composed with `:function`:
 ;                                                                           :in []
 ;                                                                           :schema :int
 ;                                                                           :value "00"})}})})}
+```
 
+Generating multi-arity functions:
 
-(def generated-f (mg/generate MyFunction))
+```clj
+(def my-fn-gen (mg/generate =>my-fn))
 
-(generated-f)
-; =throws=> :malli.core/invalid-arity {:arity 0, :arities #{1 :varargs}, :args nil, :input nil, :schema [:function {:registry {"SmallInt" [:int {:min -100, :max 100}]}} [:=> [:cat "SmallInt"] :int] [:=> [:cat "SmallInt" "SmallInt" [:* "SmallInt"]] :int]]}
+(my-fn-gen)
+; =throws=> :malli.core/invalid-arity {:arity 0, :arities #{1 :varargs}, :args nil, :input nil, :schema [:function {:registry {::small-int [:int {:min -100, :max 100}]}} [:=> [:cat ::small-int] :int] [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]]}
 
-(generated-f 1)
+(my-fn-gen 1)
 ; => -3237
 
-(generated-f 1 2)
+(my-fn-gen 1 2)
 ; => --543
 
-(generated-f 1 2 3 4)
+(my-fn-gen 1 2 3 4)
 ; => -2326
 ```
 
 ## Instrumentation
 
-Besides testing function schemas as values, we can also intrument functions with function schemas to enable runtime validation of arguments and return values.
+Besides testing function schemas as values, we can also intrument functions to enable runtime validation of arguments and return values.
 
 Simplest way to do this is to use `m/-instrument` which takes options map and a function and returns a instrumented function. Valid options include:
 
 | key       | description |
 | ----------|-------------|
 | `:schema` | function schema
-| `:scope`  | optional set of scope definitions, defaults to #{:input :output}
+| `:scope`  | optional set of scope definitions, defaults to `#{:input :output}`
 | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
-| `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
+| `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value
 
 Instrumentig a function with input & return constraints:
 
@@ -252,7 +256,7 @@ Instrumentig a function with input & return constraints:
 ; =throws=> :malli.core/invalid-arity {:arity 2, :arities #{{:min 1, :max 1}}, :args [4 2], :input [:cat :int], :schema [:=> [:cat :int] [:int {:max 6}]]}
 ```
 
-Multi-arity functions with defined scopes and custom reporting function:
+Example of a multi-arity function with instrumentation scopes and custom reporting function:
 
 ```clj
 (def multi-arity-pow
@@ -298,23 +302,23 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 
 ## Function Var Schemas
 
-Functions Vars can be annotated with function schemas using `m/=>` macro, which stores the var -> function schema mappings in a global registry.
+Functions Vars can be annotated with function schemas using `m/=>` macro, which stores the var -> schema mappings in a global registry.
 
-A simple function (Var) and registered schema for it:
+A simple function (Var) and schema for it:
 
 ```clj
 (defn plus1 [x] (inc x))
 (m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
 ``` 
 
-The order doesn't matter, so you could also do:
+The order doesn't matter, so this also works:
 
 ```clj
 (m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
 (defn plus1 [x] (inc x))
 ```
 
-We can list the current accumulation of function (Var) schemas:
+Listing the current accumulation of function (Var) schemas:
 
 ```clj
 (m/function-schemas)
@@ -326,13 +330,13 @@ We can list the current accumulation of function (Var) schemas:
 
 ## Function Var Instrumentation
 
-The Function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is `malli.instrument` namespace. It's mainly intended for development time, but can also be used for production builds.
+The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentations focus is for development time, but can also be used for production builds.
 
 ```clj
 (require '[malli.instrument :as mi])
 ```
 
-To instrument the Vars, there is `mi/instrument!` and to remove the instrumentation, `mi/unstrument!`.
+Vars can be instrumented with `mi/instrument!` and the instrumentation can be removed with `mi/unstrument!`.
 
 ```clj
 (plus 6)
@@ -368,11 +372,13 @@ Instrumentation can be configured with the same options as `m/-instrument` and w
 ; => 9
 ```
 
-Note: if you register new function (Var) schemas or redefine existing ones, you need to call `mi/instrument!` again. This is not good for developer experience (DX). And we can do better.
+Note: if you register new function (Var) schemas or redefine existing ones, you need to call `mi/instrument!` again. This is not good developer experience.
+
+We can do better.
 
 ## Development Instrumentation
 
-For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` and starts watching for registry changes. Any change that matches the filters, will cause the Var to be automatically re-instrumented. It also emits [CLJ-Kondo](README.md#clj-kondo) linter config enabling static type checking.
+For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` and starts watching for registry changes. Any change that matches the filters, will cause the Var to be automatically re-instrumented. It also emits [clj-kondo](README.md#clj-kondo) linter config for instrumented Var enabling static type checking/linting for those.
 
 ```clj
 (mi/start!)
@@ -419,7 +425,7 @@ To read the Var metadata and register it to the global registry, we need to call
 
 All options keys with `malli` ns are read when collecting. Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
 
-A more complete example of injecting malli into existing Clojure codebase:
+A more complete example of using malli instrumentation in an existing Clojure codebase:
 
 ```clj
 (ns domain)
@@ -429,9 +435,9 @@ A more complete example of injecting malli into existing Clojure codebase:
   [:map
    [:name :string]
    [:age [:int {:min 0, :max 120}]]
-   [:skills [:set {:gen/max 5} :keyword]]
    [:address [:map
-              [:street :string]]]])
+              [:street :string]
+              [:country [:enum "fi" "po"]]]]])
 
 ;; empty function
 (defn get-user
@@ -445,24 +451,34 @@ A more complete example of injecting malli into existing Clojure codebase:
 (require '[malli.instrument :as mi])
 (require '[malli.generator :as mg])
 
-;; collect fuction var schemas
-(mi/collect! {:ns 'domain})
+(mi/collect!)
+; #{#'domain/get-user}
 
-;; start instrumentation with support for body generation
 (mi/start! {:gen mg/generate})
 ; =prints=> ..instrumented #'domain/get-user
 ; =prints=> started instrumentation
 
-(get-user "12") ;; <- static checking
-; =throwd=> :malli.core/invalid-input {:input [:cat :int], :args ["12"], :schema [:=> [:cat :int] [:maybe [:map [:name :string] [:age [:int {:min 0, :max 120}]] [:skills [:set #:gen{:max 5} :keyword]] [:address [:map [:street :string]]]]]]}
+(get-user "1") ;; <- static checking
+; =throwd=> :malli.core/invalid-input {:input [:cat :int], :args ["1"], :schema [:=> [:cat :int] [:maybe [:map [:name :string] [:age [:int {:min 0, :max 120}]] [:address [:map [:street :string] [:country [:enum "fi" "po"]]]]]]]}
 
 (get-user 1)
-;{:name "ESG0GT2cW8iihTsPl5d2F16Jk0",
-; :age 78,
-; :skills #{:_4o? :Oi6hy+ie :-:!!TKj :Vw:vD.},
-; :address {:street "mqlWhmN269511f2p8056P"}}
+;{:name "7YL9cHGy"
+; :age 76
+; :address {:street "Zia1u8V8r58P8Cs6Xb1GF2Hd1C"
+;           :country "fi"}}
 
 (mi/stop!)
 ; =prints=> ..unstrumented #'domain/get-user
 ; =prints=> stopped instrumentation
 ```
+
+Here's the same code seen from [Cursive IDE](https://cursive-ide.com/), note the `static checking` error on invald input:
+
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/fn-var-schema.png"/>
+
+## Future work
+
+* [pretty printer for schema errors](https://github.com/metosin/malli/issues/19)
+* [support Schema defn syntax](https://github.com/metosin/malli/issues/125)
+* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for better DX.
+

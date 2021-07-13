@@ -1,5 +1,17 @@
 # Working with Functions
 
+* [predicate schemas](#predicate-schemas)
+* [function schemas](#function-schemas)
+  * [generative testing](#generative-testing)
+  * [generating functions](#generating-functions)
+  * [multi-arity functions](#multi-arity-functions)
+  * [instrumentation](#instrumentation)
+* [defn schemas](#defn-schemas)
+  * [defn instrumentation](#defn-instrumentation)
+* [development instumentation](#development-instrumentation)
+  * [static type checking](#static)
+* [defn schemas via metadata](#defn-schemas-via-meta-data)
+
 In Clojure, functions are first-class. Here's a simple function:
 
 ```clj
@@ -85,7 +97,7 @@ Bummer.
 
 Enter, generative testing.
 
-## Generative testing
+### Generative testing
 
 Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [test.check](https://github.com/clojure/test.check) to check the functions at runtime. For this, there is `:malli.core/function-checker` option.
 
@@ -128,7 +140,7 @@ Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not a
 
 But, why `mg/function-checker` is not enabled by default? The reason is that it uses generartive testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be expecially bad for CLJS bundle size.
 
-## Generating functions
+### Generating functions
 
 We can also generate function implementations based on the function schemas. The generated functions check the function arity and arguments at runtime and return generated values.
 
@@ -145,7 +157,7 @@ We can also generate function implementations based on the function schemas. The
 ; => -1
 ```
 
-## Multi-arity functions
+### Multi-arity functions
 
 Multi-arity functions can be composed with `:function`:
 
@@ -222,7 +234,7 @@ Generating multi-arity functions:
 ; => -2326
 ```
 
-## Instrumentation
+### Instrumentation
 
 Besides testing function schemas as values, we can also intrument functions to enable runtime validation of arguments and return values.
 
@@ -300,9 +312,9 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 ; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
 ```
 
-## Function Var Schemas
+## Defn Schemas
 
-Functions Vars can be annotated with function schemas using `m/=>` macro, which stores the var -> schema mappings in a global registry.
+Function Vars (e.g. `defn`) can be annotated with function schemas using `m/=>` macro, which stores the var -> schema mappings in a global registry.
 
 A simple function (Var) and schema for it:
 
@@ -328,7 +340,7 @@ Listing the current accumulation of function (Var) schemas:
 ;              :name plus1}}}
 ```
 
-## Function Var Instrumentation
+### Defn Instrumentation
 
 The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentations focus is for development time, but can also be used for production builds.
 
@@ -339,16 +351,18 @@ The function (Var) registry is passive and doesn't do anything by itself. To ins
 Vars can be instrumented with `mi/instrument!` and the instrumentation can be removed with `mi/unstrument!`.
 
 ```clj
-(plus 6)
+(plus1 6)
 ; => 7
 
 ;; instrument all registered vars
 (mi/instrument!)
 
-(plus 6)
+(plus1 6)
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (mi/unstrument!)
+
+(plus1 6)
 ; => 7
 ```
 
@@ -367,7 +381,7 @@ Instrumentation can be configured with the same options as `m/-instrument` and w
    ;; just print
    :report println})
 
-(plus 8)
+(plus1 8)
 ; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
 ; => 9
 ```
@@ -378,14 +392,17 @@ We can do better.
 
 ## Development Instrumentation
 
-For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` and starts watching for registry changes. Any change that matches the filters, will cause the Var to be automatically re-instrumented. It also emits [clj-kondo](README.md#clj-kondo) linter config for instrumented Var enabling static type checking/linting for those.
+For smoother DX, we can use stateful instrumentation. For this, there is `mi/start!` and `mi/stop!`. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` once and starts watching for registry changes. Any change that matches the filters, will cause the `defn` to be automatically re-instrumented.
 
 ```clj
 (mi/start!)
 ; =prints=> ..instrumented #'user/plus1
 ; =prints=> started instrumentation
 
-(plus 6)
+(plus1 "6")
+; => :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(plus1 6)
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (m/=> plus1 [:=> [:cat :int] :int])
@@ -399,18 +416,27 @@ For smoother DX, there are `mi/start!` and `mi/stop!` functions. `mi/start!` tak
 ; =prints=> stopped instrumentation
 ```
 
-## Function Var Schemas as Var metadata
+### Static Type Checking
 
-We can also store Malli schemas and instrumentation options as function Var metadata:
+Stateful instrumentation also emits [clj-kondo](README.md#clj-kondo) type configs enabling static type checking/linting for the instrumented functions.
+
+Here's the same code seen from [Cursive IDE](https://cursive-ide.com/).
+
+<img src="docs/img/clj-kondo-instrument.png" width="512"/>
+
+## Defn Schemas via meta-data
+
+Another option to define `defn` schemas is to use standard Var metadata.
 
 ```clj
 (defn minus
   "a normal clojure function, no dependencies to malli"
   {:malli/schema [:=> [:cat :int] [:int {:min 6}]]}
-  [x] (dec x))
+  [x] 
+  (dec x))
 ```
 
-To read the Var metadata and register it to the global registry, we need to call `mi/collect!`. It reads all public vars from a given namespace and if the var has `:malli/schema` metadata, it registers the function Var schema for it and returns a set of all registered vars.
+In order to enable instrumentation, we have to collect the Var metadata into the malli function schema registry. For this, there is `mi/collect!`. It reads all public vars from a given namespace and registers function schemas from`:malli/schema` metadata.
 
 ```clj
 (mi/collect!)
@@ -423,9 +449,18 @@ To read the Var metadata and register it to the global registry, we need to call
 ; =throws=> :malli.core/invalid-output {:output [:int {:min 6}], :value 5, :args [6], :schema [:=> [:cat :int] [:int {:min 6}]]}
 ```
 
-All options keys with `malli` ns are read when collecting. Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
+All keys with `malli` namespace are read. The list of relevant keys:
 
-A more complete example of using malli instrumentation in an existing Clojure codebase:
+| key             | description |
+| ----------------|-------------|
+| `:malli/schema` | function schema
+| `:malli/scope`  | optional set of scope definitions, defaults to `#{:input :output}`
+| `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
+| `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value
+
+Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
+
+A more complete example of using malli instrumentation using var meta-data:
 
 ```clj
 (ns domain)
@@ -472,13 +507,12 @@ A more complete example of using malli instrumentation in an existing Clojure co
 ; =prints=> stopped instrumentation
 ```
 
-Here's the same code seen from [Cursive IDE](https://cursive-ide.com/), note the `static checking` error on invald input:
+Here's the same code seen from [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
 
-<img src="img/fn-var-schema.png" width="664"/>
+<img src="docs/img/defn-schema.png" width="664"/>
 
 ## Future work
 
 * [pretty printer for schema errors](https://github.com/metosin/malli/issues/19)
 * [support Schema defn syntax](https://github.com/metosin/malli/issues/125)
-* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for better DX.
-
+* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for enchanced DX.

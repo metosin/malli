@@ -458,7 +458,7 @@ For better DX, there is `malli.dev` namespace.
 (require '[malli.dev :as dev])
 ```
 
-It's main entry points is `dev/start!`, taking same options as `mi/instrument!`. It runs `mi/instrument!` once and starts watching the function registry for changes. Any change that matches the filters will cause automatic re-instrumentation for the functions. `md/stop!` removes all instrumentation and stops watching the registry.
+It's main entry points is `dev/start!`, taking same options as `mi/instrument!`. It runs `mi/instrument!` once and starts watching the function registry for changes. Any change that matches the filters will cause automatic re-instrumentation for the functions. `dev/stop!` removes all instrumentation and stops watching the registry.
 
 ```clj
 (defn plus1 [x] (inc x))

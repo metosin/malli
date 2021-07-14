@@ -455,10 +455,10 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 ; =prints=> started instrumentation
 
 (plus1 "6")
-; => :malli.core/invalid-input {:input [:cat [:int {:max 5}]], :args ["6"], :schema [:=> [:cat [:int {:max 5}]] [:int {:max 6}]]}
+; => :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (plus1 6)
-; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat [:int {:max 5}]] [:int {:max 6}]]}
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (m/=> plus1 [:=> [:cat :int] :int])
 ; =prints=> ..instrumented #'user/plus1

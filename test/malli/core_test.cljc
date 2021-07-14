@@ -2138,13 +2138,14 @@
 
   (testing ":function"
 
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli.core/non-function-childs"
+          (m/schema
+            [:function
+             :cat])))
+
     (testing "invalid arities"
-      (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/non-function-childs"
-            (m/schema
-              [:function
-               :cat])))
 
       (is (thrown-with-msg?
             #?(:clj Exception, :cljs js/Error)
@@ -2238,10 +2239,64 @@
     (is (not (m/validate [List :int] [1 2])))))
 
 (deftest function-schema-registry-test
+  (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)
-        new-function-schemas (m/=> function-schema-registry-test-fn [:=> :cat :nil])
+        _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
+        new-function-schemas (m/function-schemas)
         this-ns-schemas (get new-function-schemas 'malli.core-test)
         fn-schema (get this-ns-schemas 'function-schema-registry-test-fn)]
     (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))
     (is (map? this-ns-schemas))
     (is (map? fn-schema))))
+
+(deftest -instrument-test
+  (let [int<=6 [:int {:max 6}]]
+
+    (testing "single-arity, with defaults"
+      (let [pow2 (m/-instrument {:schema [:=> [:cat :int] int<=6]} (fn [x] (* x x)))]
+        (is (= 4 (pow2 2)))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-input"
+              (pow2 "2")))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-output"
+              (pow2 4)))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-arity"
+              (pow2 4 2)))))
+
+    (testing "multi-arity, with options"
+      (let [report* (atom [])
+            <-report #(let [report @report*] (reset! report* []) report)
+            pow2 (m/-instrument
+                   {:schema [:function
+                             [:=> [:cat :int] int<=6]
+                             [:=> [:cat :int :int] int<=6]]
+                    :scope #{:input :output}
+                    :report (fn [error _] (swap! report* conj error))}
+                   (fn
+                     ([x] (* x x))
+                     ([x y] (* x y))))]
+        (is (= 4 (pow2 2)))
+
+        (is (= 16 (pow2 4)))
+        (is (= [::m/invalid-output] (<-report)))
+
+        (is (= 0.5 (pow2 5 0.1)))
+        (is (= [::m/invalid-input ::m/invalid-output] (<-report)))))
+
+    (testing "generated function"
+      (let [pow2 (m/-instrument
+                   {:schema [:function
+                             [:=> [:cat :int] int<=6]
+                             [:=> [:cat :int :int] int<=6]]
+                    :gen mg/generate})]
+        (is (m/validate int<=6 (pow2 100)))
+        (is (m/validate int<=6 (pow2 100 100)))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-arity"
+              (pow2 100 100 100)))))))

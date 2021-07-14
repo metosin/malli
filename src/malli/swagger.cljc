@@ -43,14 +43,14 @@
 
 (defn- -swagger-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
-    (or (json-schema/unlift p :swagger)
-        (json-schema/unlift p :json-schema)
+    (or (get p :swagger)
+        (get p :json-schema)
         (merge (json-schema/select p)
                (if (satisfies? SwaggerSchema schema)
                  (-accept schema children options)
                  (accept (m/type schema) schema children options))
-               (json-schema/unlift-keys p :json-schema)
-               (json-schema/unlift-keys p :swagger)))))
+               (m/-unlift-keys p :json-schema)
+               (m/-unlift-keys p :swagger)))))
 
 (defn -transform [?schema options] (m/walk ?schema -swagger-walker options))
 

@@ -54,6 +54,7 @@
 (defmethod accept 'ratio? [_ _ _ _] :int) ;;??
 (defmethod accept 'bytes? [_ _ _ _] :char-sequence) ;;??
 (defmethod accept 'ifn? [_ _ _ _] :ifn)
+(defmethod accept 'fn? [_ _ _ _] :fn)
 
 (defmethod accept :> [_ _ _ _] :number) ;;??
 (defmethod accept :>= [_ _ _ _] :number) ;;??
@@ -159,7 +160,6 @@
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
         (select-keys data [:args :ret :min-arity])))
-    {:lint-as {'malli.schema/defn 'schema.core/defn}} xs))
+    {:lint-as {'malli.experimental.schema/defn 'schema.core/defn}} xs))
 
-#?(:clj
-   (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+#?(:clj (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

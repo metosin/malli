@@ -29,8 +29,7 @@
              [:=> [:cat :int] [:int {:min 0}]]
              [:=> [:cat :int :int [:* :int]] :int]])
 
-(defn siren
-  [f coll]
+(defn siren [f coll]
   (into {} (map (juxt f identity) coll)))
 
 (m/=> siren [:=> [:cat ifn? coll?] map?])

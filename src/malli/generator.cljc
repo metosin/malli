@@ -7,8 +7,8 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]
-            [malli.impl.util :as miu]))
+            [malli.instrument :as mi]
+            [malli.core :as m]))
 
 (declare generator generate -create)
 
@@ -316,3 +316,18 @@
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]
                    (fn [x] (->> checkers (keep #(% x)) (seq))))
        (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
+
+(defn check
+  ([?schema f] (check ?schema f nil))
+  ([?schema f options]
+   (let [schema (m/schema ?schema options)]
+     (m/explain (m/-update-options schema #(assoc % ::m/function-checker function-checker)) f))))
+
+(defn check!
+  ([] (check! nil))
+  ([options]
+   (let [res* (atom {})]
+     (mi/-strument! (assoc options :mode (fn [v {:keys [schema]}]
+                                           (some->> (check schema (or (mi/-original v) (deref v)))
+                                                    (swap! res* assoc (symbol v))))))
+     (not-empty @res*))))

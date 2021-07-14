@@ -173,6 +173,9 @@
 (defn -set-children [schema children]
   (-into-schema (-parent schema) (-properties schema) children (-options schema)))
 
+(defn -update-options [schema f]
+  (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
+
 (defn -set-assoc-children [schema key value]
   (-set-children schema (assoc (-children schema) key value)))
 

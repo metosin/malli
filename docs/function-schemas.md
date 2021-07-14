@@ -9,6 +9,7 @@
   * [Instrumentation](#instrumentation)
 * [Defn Schemas](#defn-schemas)
   * [Defn Instrumentation](#defn-instrumentation)
+  * [Defn Checking](#defn-checking)
 * [Development Instumentation](#development-instrumentation)
   * [Static Type Checking](#static-type-checking)
 * [Defn Schemas via metadata](#defn-schemas-via-metadata)
@@ -389,24 +390,75 @@ Instrumentation can be configured with the same options as `m/-instrument` and w
 ; => 9
 ```
 
-Note: if you register new function (Var) schemas or redefine existing ones, you need to call `mi/instrument!` again. This is not good developer experience.
+### Defn Checking
+
+We can also check the defn schemas against their function implementations using `mg/check!`. It takes same options as `mi/instrument!`. 
+
+Checking all registered schemas:
+
+```clj
+(mg/check!)
+;{user/plus1 {:schema [:=> [:cat :int] [:int {:max 6}]],
+;             :value #object[user$plus1],
+;             :errors (#Error{:path [],
+;                             :in [],
+;                             :schema [:=> [:cat :int] [:int {:max 6}]],
+;                             :value #object[user$plus1],
+;                             :check {:total-nodes-visited 12,
+;                                     :depth 4,
+;                                     :pass? false,
+;                                     :result false,
+;                                     :result-data nil,
+;                                     :time-shrinking-ms 0,
+;                                     :smallest [(6)],
+;                                     :malli.generator/explain-output {:schema [:int {:max 6}],
+;                                                                      :value 7,
+;                                                                      :errors (#Error{:path [],
+;                                                                                      :in [],
+;                                                                                      :schema [:int {:max 6}],
+;                                                                                      :value 7})}}})}}
+```
+
+It reports that the `plus1` is not correct. It accepts `:int` but promises to return `[:int {:max 6}]`. Let's fix the contract by constraining the input values.
+
+```clj
+(m/=> plus1 [:=> [:cat [:int {:max 5}]] [:int {:max 6}]])
+
+(mg/check!)
+; => nil
+```
+
+All good! But, it's still wrong as the actual implementation allows invalid inputs resulting in invalid outputs (e.g. `6` -> `7`). We could enable instrumentation for the function to fail on invalid inputs at runtime - or write similar range checks ourselves into the function body.
+
+A pragmatically correct schema for `plus1` would be `[:=> [:cat :int] [:int]]`. It also checks, but actually fail on `Long/MAX_VALUE` as input. Fully correct schema would be `[:=> [:cat [:int {:max (dec Long/MAX_VALUE)}] [:int]]]`. Generative testing is best effort, not a silver bullet.
+
+More troubles - we have redefined the `plus1` function schema and the instrumentation is now out of sync. We have to call `mi/instrument!` to re-instrument it correctly. This is not good developer experience. 
 
 We can do better.
 
 ## Development Instrumentation
 
-For smoother DX, we can use stateful instrumentation. For this, there is `mi/start!` and `mi/stop!`. `mi/start!` takes the same options as `mi/instrument!`, runs `mi/instrument!` once and starts watching for registry changes. Any change that matches the filters, will cause the `defn` to be automatically re-instrumented.
+For better DX, there is `malli.dev` namespace. 
 
 ```clj
-(mi/start!)
+(require '[malli.dev :as dev])
+```
+
+It's main entry points is `dev/start!`, taking same options as `mi/instrument!`. It runs `mi/instrument!` once and starts watching the function registry for changes. Any change that matches the filters will cause automatic re-instrumentation for the functions. `md/stop!` removes all instrumentation and stops watching the registry.
+
+```clj
+(defn plus1 [x] (inc x))
+(m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
+
+(dev/start!)
 ; =prints=> ..instrumented #'user/plus1
 ; =prints=> started instrumentation
 
 (plus1 "6")
-; => :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; => :malli.core/invalid-input {:input [:cat [:int {:max 5}]], :args ["6"], :schema [:=> [:cat [:int {:max 5}]] [:int {:max 6}]]}
 
 (plus1 6)
-; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat [:int {:max 5}]] [:int {:max 6}]]}
 
 (m/=> plus1 [:=> [:cat :int] :int])
 ; =prints=> ..instrumented #'user/plus1
@@ -414,22 +466,22 @@ For smoother DX, we can use stateful instrumentation. For this, there is `mi/sta
 (plus 6)
 ; => 7
 
-(mi/stop!)
+(dev/stop!)
 ; =prints=> ..unstrumented #'user/plus1
 ; =prints=> stopped instrumentation
 ```
 
 ### Static Type Checking
 
-Stateful instrumentation also emits [clj-kondo](README.md#clj-kondo) type configs enabling static type checking/linting for the instrumented functions.
+Running `malli.dev` instrumentation also emits [clj-kondo](README.md#clj-kondo) type configs for all `defn`s, enabling basic static type checking/linting for the instrumented functions.
 
-Here's the same code seen from [Cursive IDE](https://cursive-ide.com/).
+Here's the above code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
 
-<img src="docs/img/clj-kondo-instrument.png" width="512"/>
+<img src="docs/img/clj-kondo-instrument.png">
 
 ## Defn Schemas via Metadata
 
-Another option to define `defn` schemas is to use standard Var metadata.
+Another option to define `defn` schemas is to use standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. Itä's just data.
 
 ```clj
 (defn minus
@@ -439,7 +491,7 @@ Another option to define `defn` schemas is to use standard Var metadata.
   (dec x))
 ```
 
-In order to enable instrumentation, we have to collect the Var metadata into the malli function schema registry. For this, there is `mi/collect!`. It reads all public vars from a given namespace and registers function schemas from`:malli/schema` metadata.
+To enable instrumentation for the `defn`, we need to call `mi/collect!`. It reads all public vars from a given namespace and registers function schemas from `:malli/schema` metadata.
 
 ```clj
 (mi/collect!)
@@ -463,7 +515,9 @@ All keys with `malli` namespace are read. The list of relevant keys:
 
 Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
 
-A more complete example of using malli instrumentation using var meta-data:
+### Example
+
+Example of using `malli.dev` instrumentation with var meta-data:
 
 ```clj
 (ns domain)
@@ -486,13 +540,14 @@ A more complete example of using malli instrumentation using var meta-data:
   [_id])
 
 ;; inject malli (at develpoment time)
+(require '[malli.dev :as dev])
 (require '[malli.instrument :as mi])
 (require '[malli.generator :as mg])
 
 (mi/collect!)
 ; #{#'domain/get-user}
 
-(mi/start! {:gen mg/generate})
+(dev/start! {:gen mg/generate})
 ; =prints=> ..instrumented #'domain/get-user
 ; =prints=> started instrumentation
 
@@ -505,14 +560,14 @@ A more complete example of using malli instrumentation using var meta-data:
 ; :address {:street "Zia1u8V8r58P8Cs6Xb1GF2Hd1C"
 ;           :country "fi"}}
 
-(mi/stop!)
+(dev/stop!)
 ; =prints=> ..unstrumented #'domain/get-user
 ; =prints=> stopped instrumentation
 ```
 
-Here's the same code seen from [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
+Here's the same code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
 
-<img src="docs/img/defn-schema.png" width="664"/>
+<img src="docs/img/defn-schema.png"/>
 
 ## Future work
 

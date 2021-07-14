@@ -1,29 +1,26 @@
 (ns malli.demo)
 
-(do
+(require '[malli.experimental.schema :as ms])
+(require '[malli.dev :as dev])
+(require '[malli.core :as m])
 
-  (require '[malli.experimental.schema :as ms])
-  (require '[malli.core :as m])
+(dev/start!)
 
-  ;; plumatic-style inline schemas
-  (ms/defn fun :- [:tuple int? int?]
-    "return number and the square"
-    [x :- int?]
-    [x (* x x)])
+;; plumatic-style inline schemas
+(ms/defn fun :- [:tuple :int :int]
+  "return number and the square"
+  [x :- :int]
+  [x (* x x)])
 
-  ;; annotating existing clojure functions
-  (defn times [x y] (* x y))
-  (m/=> times [:=> [:cat int? int?] int?])
+;; annotating existing clojure functions
+(defn times [x y] (* x y))
+(m/=> times [:=> [:cat :int :int] :int])
 
-  ;; static analysis via clj-kondo
-  (comment
-    (fun "1")
-    (times "1" 1))
+;; static analysis via clj-kondo
+(comment
+  (fun "1")
+  (times "1" 1))
 
-  ;; emit clj-kondo type-linting info
-  ((requiring-resolve 'malli.clj-kondo/emit!))
-
-  )
 
 
 (comment
@@ -41,15 +38,15 @@
 
 
   (meta #'square)
-  ;{:schema [:or [:-> [:tuple int?] pos-int?]],
+  ;{:schema [:or [:-> [:tuple :int] [:int {:min 0}]]],
   ; :ns #object[clojure.lang.Namespace 0x3c5f3ba8 "demo"],
   ; :name square,
   ; :file "/Users/tommi/projects/metosin/malli/src/malli/schema.cljc",
   ; :column 1,
-  ; :raw-arglists ([x :- int?]),
+  ; :raw-arglists ([x :- :int]),
   ; :line 64,
   ; :arglists ([x]),
-  ; :doc "\n[:or\n [:-> [:tuple int?] pos-int?]]"}
+  ; :doc "\n[:or\n [:-> [:tuple :int] [:int {:min 0}]]]"}
 
   #_(clojure.repl/doc square)
 
@@ -58,8 +55,8 @@
   ; demo/fun
   ; ([x] [x y])
   ;
-  ;   [:-> [:tuple int?] any?]
-  ;   [:-> [:tuple int? int?] [:tuple int? pos-int?]]
+  ;   [:-> [:tuple :int] any?]
+  ;   [:-> [:tuple :int :int] [:tuple :int [:int {:min 0}]]]
   ;
   ;   returns a tuple of a number and it's value squared
 
@@ -69,25 +66,25 @@
 
 
   [:=>
-   [:tuple int? pos-int?]
-   [:tuple int?]
-   [:tuple int? int?]]
+   [:tuple :int [:int {:min 0}]]
+   [:tuple :int]
+   [:tuple :int :int]]
 
   [:=>
-   [:tuple int? pos-int?]
-   [[:tuple int?]
-    [:tuple int? int?]]]
+   [:tuple :int [:int {:min 0}]]
+   [[:tuple :int]
+    [:tuple :int :int]]]
 
-  [:=> {:output [:tuple int? pos-int?]
-        :input [[:tuple int?]
-                [:tuple int? int?]]}]
+  [:=> {:output [:tuple :int [:int {:min 0}]]
+        :input [[:tuple :int]
+                [:tuple :int :int]]}]
 
-  [:=> {:output [:tuple int? pos-int?]
-        :inputs [[:tuple int? int?]]}]
+  [:=> {:output [:tuple :int [:int {:min 0}]]
+        :inputs [[:tuple :int :int]]}]
 
-  [:=> {:- [:tuple int? pos-int?]}
-   [:tuple int?]
-   [:tuple int? int?]]
+  [:=> {:- [:tuple :int [:int {:min 0}]]}
+   [:tuple :int]
+   [:tuple :int :int]]
 
   (comment
     (require '[schema.core])
@@ -115,26 +112,26 @@
       ([x y]
        [x (* x x)]))
 
-    (ms/=> fun {:output [:tuple int? pos-int?]
-                :input [[:tuple int?]
-                        [:tuple int? int?]]})
+    (ms/=> fun {:output [:tuple :int [:int {:min 0}]]
+                :input [[:tuple :int]
+                        [:tuple :int :int]]})
 
 
 
-    (ms/=> fun {:arities {1 {:output int?
-                             :input [:tuple int?]}
-                          2 {:output [:tuple int? pos-int?]
-                             :input [:tuple int? int?]}}})
+    (ms/=> fun {:arities {1 {:output :int
+                             :input [:tuple :int]}
+                          2 {:output [:tuple :int [:int {:min 0}]]
+                             :input [:tuple :int :int]}}})
 
 
     (defn fun1 [x] (* x x))
 
     ;; short
-    (ms/=> fun1 [:=> int? [:tuple pos-int?]])
+    (ms/=> fun1 [:=> :int [:tuple [:int {:min 0}]]])
 
     ;; long
-    (ms/=> fun1 {:arities {1 {:input int?
-                              :output [:tuple pos-int?]}}})
+    (ms/=> fun1 {:arities {1 {:input :int
+                              :output [:tuple [:int {:min 0}]]}}})
 
 
     (defn fun5
@@ -143,11 +140,11 @@
 
     ;; short
     (ms/=> fun [:or
-                [:=> int? [:tuple int?]]
-                [:=> [:tuple int? pos-int?] [:tuple int?]]])
+                [:=> :int [:tuple :int]]
+                [:=> [:tuple :int [:int {:min 0}]] [:tuple :int]]])
 
     ;; long
-    (ms/=> fun {:arities {1 {:output int?
-                             :input [:tuple int?]}
-                          2 {:output [:tuple int? pos-int?]
-                             :input [:tuple int? int?]}}})))
+    (ms/=> fun {:arities {1 {:output :int
+                             :input [:tuple :int]}
+                          2 {:output [:tuple :int [:int {:min 0}]]
+                             :input [:tuple :int :int]}}})))

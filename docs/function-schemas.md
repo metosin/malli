@@ -430,9 +430,23 @@ It reports that the `plus1` is not correct. It accepts `:int` but promises to re
 
 All good! But, it's still wrong as the actual implementation allows invalid inputs resulting in invalid outputs (e.g. `6` -> `7`). We could enable instrumentation for the function to fail on invalid inputs at runtime - or write similar range checks ourselves into the function body.
 
-A pragmatically correct schema for `plus1` would be `[:=> [:cat :int] [:int]]`. It also checks, but actually fail on `Long/MAX_VALUE` as input. Fully correct schema would be `[:=> [:cat [:int {:max (dec Long/MAX_VALUE)}] [:int]]]`. Generative testing is best effort, not a silver bullet.
+A pragmatically correct schema for `plus1` would be `[:=> [:cat :int] [:int]]`. It also checks, but would fail on `Long/MAX_VALUE` as input. Fully correct schema would be `[:=> [:cat [:int {:max (dec Long/MAX_VALUE)}] [:int]]]`. Generative testing is best effort, not a silver bullet.
 
-More troubles - we have redefined the `plus1` function schema and the instrumentation is now out of sync. We have to call `mi/instrument!` to re-instrument it correctly. This is not good developer experience. 
+We redefined `plus1` function schema and the instrumentation is now out of sync. We have to call `mi/instrument!` to re-instrument it correctly. 
+
+```clj
+;; the old schema
+(plus1 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+
+(mi/instrument!)
+
+;; the new schema
+(plus1 6)
+; =throws=> :malli.core/invalid-input {:input [:cat [:int {:max 5}]], :args [6], :schema [:=> [:cat [:int {:max 5}]] [:int {:max 6}]]}
+```
+
+This is not good developer experience. 
 
 We can do better.
 
@@ -455,7 +469,7 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 ; =prints=> started instrumentation
 
 (plus1 "6")
-; => :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (plus1 6)
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}

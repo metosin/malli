@@ -37,7 +37,8 @@ Malli is in [alpha](README.md#alpha).
 * **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`
 
 * new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
-* new `malli.instrument` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
+* new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
+* new `malli.generator/check` and `malli.generator/check!` for generative testing of functions and `defn`s.
 * humanized errors for `:boolean`
 * predicate schema for `fn?`
 * humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):

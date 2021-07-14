@@ -477,7 +477,7 @@ Running `malli.dev` instrumentation also emits [clj-kondo](README.md#clj-kondo) 
 
 Here's the above code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
 
-<img src="img/clj-kondo-instrument.png">
+<img src="img/clj-kondo-instrumentation.png">
 
 ## Defn Schemas via Metadata
 

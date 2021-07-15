@@ -440,13 +440,13 @@ A pragmatically correct schema for `plus1` would be `[:=> [:cat :int] [:int]]`. 
 We redefined `plus1` function schema and the instrumentation is now out of sync. We have to call `mi/instrument!` to re-instrument it correctly. 
 
 ```clj
-;; the old schema
+;; the old schema & old error
 (plus1 6)
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (mi/instrument!)
 
-;; the new schema
+;; the new schema & new error
 (plus1 6)
 ; =throws=> :malli.core/invalid-input {:input [:cat [:int {:max 5}]], :args [6], :schema [:=> [:cat [:int {:max 5}]] [:int {:max 6}]]}
 ```

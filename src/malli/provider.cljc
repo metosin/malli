@@ -47,12 +47,6 @@
 ;; public api
 ;;
 
-(defn ^:deprecated stats
-  ([xs]
-   (stats xs nil))
-  ([xs options]
-   (reduce (->inferrer options) options xs)))
-
 (defn schema
   ([stats]
    (schema stats nil))

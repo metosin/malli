@@ -23,7 +23,7 @@ Data-driven Schemas for Clojure/Script.
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
-- [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
+- [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - [Fast](#performance)
 
@@ -332,22 +332,6 @@ Using regular expressions:
 ; => true
 
 (m/validate my-schema {:x 1, :y 2})
-; => false
-```
-
-`ifn?` accepts any value that implements Clojure(Script)'s IFn:
-
-```clj
-(m/validate ifn? :keyword)
-; => true
-
-(m/validate ifn? [])
-; => true
-
-(m/validate ifn? {})
-; => true
-
-(s/validate ifn? 123)
 ; => false
 ```
 
@@ -1715,7 +1699,7 @@ The default immutable registry is merged from the following parts, enabling easy
 
 #### `malli.core/predicate-schemas`
 
-Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
+Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?`, `bytes?`, `ifn?` and `fn?`.
 
 #### `malli.core/class-schemas`
 
@@ -1960,179 +1944,11 @@ Registries can be composed:
 
 ## Function Schemas
 
-Functions can be described with `:=>`, which has two children: input schema (as `:cat`) and output schemas. Multi-arity functions can be composed with `:function`.
+See [Working with functions](docs/function-schemas.md).
 
-```clj
-;; no args, no return
-[:=> :cat :nil]
+### Instrumentation
 
-;; two int args, positive int returned
-[:=> [:cat int? int?] pos-int?]
-
-;; named varargs, e.g. (fn [x & xs] (* x (apply + xs)))
-[:=> [:catn 
-      [:x int?]
-      [:xs [:* int?]]] int?]
-      
-;; multi-arity fn
-[:function
- [:=> [:cat int?] int?]
- [:=> [:cat int? int? [:* int?]] int?]]
-```
-
-Function validation:
-
-```clj
-(defn plus [x y] (+ x y))
-
-(def =>plus [:=> [:cat int? int?] int?])
-
-(m/validate =>plus plus)
-; => true
-```
-
-By default, validation just checks if a value is `ifn?`:
-
-```clj
-(m/validate =>plus str)
-; => true :(
-```
-
-Using generative testing for better results:
-
-```clj
-(m/validate =>plus plus {::m/function-checker mg/function-checker})
-; => true
-
-(m/validate =>plus str {::m/function-checker mg/function-checker})
-; => false
-
-(m/explain =>plus str {::m/function-checker mg/function-checker})
-;{:schema [:=> [:cat int? int?] int?],
-; :value #object[clojure.core$str],
-; :errors (#Error{:path [],
-;                 :in [],
-;                 :schema [:=> [:cat int? int?] int?],
-;                 :value #object[clojure.core$str],
-;                 :check {:total-nodes-visited 1,
-;                         :depth 0,
-;                         :pass? false,
-;                         :result false,
-;                         :result-data nil,
-;                         :time-shrinking-ms 0,
-;                         :smallest [(0 0)],
-;                         :malli.generator/explain-output {:schema int?,
-;                                                          :value "00",
-;                                                          :errors (#Error{:path []
-;                                                                          :in []
-;                                                                          :schema int?
-;                                                                          :value "00"})}}})}
-``` 
-
-A generated function implementation:
-
-```clj
-(def plus-gen (mg/generate =>plus))
-
-(plus-gen 1 2)
-; => -1
-
-(plus-gen 1 "2")
-; =throws=> :malli.generator/invalid-input {:schema [:cat int? int?], :args [1 "2"]}
-```
-
-Multiple arities are defined using `:function`:
-
-```clj
-(def SmallInt
-  [:int {:min -100, :max 100}])
-
-(def MyFunction
-  (m/schema
-    [:function
-     [:=> [:cat SmallInt] :int]
-     [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]]
-    {::m/function-checker mg/function-checker}))
-
-(m/validate
-  MyFunction
-  (fn
-    ([x] x)
-    ([x y & z] (apply - (- x y) z))))
-; => true
-
-(m/validate
-  MyFunction
-  (fn
-    ([x] x)
-    ([x y & z] (str x y z))))
-; => false
-
-(m/explain
-  MyFunction
-  (fn
-    ([x] x)
-    ([x y & z] (str x y z))))
-;{:schema [:function
-;          [:=> [:cat SmallInt] :int]
-;          [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]],
-; :value #object[],
-; :errors (#Error{:path [],
-;                 :in [],
-;                 :schema [:function
-;                          [:=> [:cat SmallInt] :int]
-;                          [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]],
-;                 :value #object[],
-;                 :check ({:total-nodes-visited 1,
-;                          :depth 0,
-;                          :pass? false,
-;                          :result false,
-;                          :result-data nil,
-;                          :time-shrinking-ms 0,
-;                          :smallest [(0 0)],
-;                          :malli.generator/explain-output {:schema :int,
-;                                                           :value "00",
-;                                                           :errors (#Error{:path []
-;                                                                           :in []
-;                                                                           :schema :int
-;                                                                           :value "00"})}})})}
-
-(def generated-f (mg/generate MyFunction))
-
-(generated-f)
-; =throws=> :malli.generator/invalid-arity {:arity 0, :arities #{1 :varargs}, :args nil, :schema ...}
-
-(generated-f 1)
-; => 5832893
-
-(generated-f 1 2)
-; => -120532359
-
-(generated-f 1 2 3 4)
-; => -57994624
-```
-
-## Function Schema Registry
-
-Vars can be annotated with function schemas using `m/=>` macro, backed by a global registry:
-
-```clj
-(defn square [x] (* x x))
-
-(m/=> square [:=> [:cat int?] pos-int?])
-```
-
-Listing registered function Var schemas:
-
-```clj
-(m/function-schemas)
-;{user
-; {square
-;  {:schema [:=> [:cat int?] pos-int?]
-;   :meta nil
-;   :ns malli.generator-test
-;   :name square}}}
-```
+See [Instrumentation](docs/function-schemas.md#instrumentation).
 
 ## Clj-kondo
 
@@ -2331,6 +2147,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Minimallist https://github.com/green-coder/minimallist
+- malli-instrument https://github.com/setzer22/malli-instrument
 - Core.typed https://github.com/clojure/core.typed
 - TypeScript https://www.typescriptlang.org/
 - Struct https://funcool.github.io/struct/latest/

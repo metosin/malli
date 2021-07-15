@@ -13,11 +13,6 @@
       (do (swap! definitions assoc ref result) (-ref ref))
       result)))
 
-(defn unlift-keys [m prefix]
-  (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
-
-(defn unlift [m prefix] (get m prefix))
-
 (defn select [m] (select-keys m [:title :description :default]))
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
@@ -69,6 +64,8 @@
 (defmethod accept 'sequential? [_ _ _ _] {:type "array"})
 #?(:clj (defmethod accept 'ratio? [_ _ _ _] {:type "number"}))
 (defmethod accept 'bytes? [_ _ _ _] {:type "string" :format "byte"})
+(defmethod accept 'ifn? [_ _ _ _] {})
+(defmethod accept 'fn? [_ _ _ _] {})
 
 (defmethod accept :> [_ _ [value] _] {:type "number" :exclusiveMinimum value})
 (defmethod accept :>= [_ _ [value] _] {:type "number" :minimum value})
@@ -132,12 +129,12 @@
 
 (defn- -json-schema-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
-    (or (unlift p :json-schema)
+    (or (get p :json-schema)
         (merge (select p)
                (if (satisfies? JsonSchema schema)
                  (-accept schema children options)
                  (accept (m/type schema) schema children options))
-               (unlift-keys p :json-schema)))))
+               (m/-unlift-keys p :json-schema)))))
 
 (defn -transform [?schema options] (m/walk ?schema -json-schema-walker options))
 

@@ -127,6 +127,9 @@
       (name x))
     x))
 
+(defn -unlift-keys [m prefix]
+  (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
+
 (defn -check-children! [type properties children {:keys [min max] :as opts}]
   (if (or (and min (< (count children) min)) (and max (> (count children) max)))
     (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
@@ -169,6 +172,9 @@
 
 (defn -set-children [schema children]
   (-into-schema (-parent schema) (-properties schema) children (-options schema)))
+
+(defn -update-options [schema f]
+  (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
 
 (defn -set-assoc-children [schema key value]
   (-set-children schema (assoc (-children schema) key value)))
@@ -659,7 +665,7 @@
                                         (fn [[key {:keys [optional]} value]]
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
-                                            #?(:clj (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
+                                            #?(:clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                                :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                         children)
                                       closed (into [(fn [m]
@@ -1827,7 +1833,7 @@
         #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
         #'inst? #'seqable? #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
         #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)
-        #'ifn?]
+        #'ifn? #'fn?]
        (reduce -register-var {})))
 
 (defn class-schemas []
@@ -1853,11 +1859,11 @@
 
 (defn- -re-min-max [f {min' :min, max' :max} child]
   (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (f min' min'')} (and max' max'') (assoc :max (f max' max'')))))
+    (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
 
 (defn- -re-alt-min-max [{min' :min, max' :max} child]
   (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (min min' min'')} (and max' max'') (assoc :max (max max' max'')))))
+    (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
 
 (defn sequence-schemas []
   {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}
@@ -1901,7 +1907,7 @@
                            :re-parser (fn [_ children] (apply re/alt-parser children))
                            :re-unparser (fn [_ children] (apply re/alt-unparser children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))
-                           :re-min-max (fn [_ children] (reduce -re-alt-min-max {:min miu/+max-size+, :max 0} children))})
+                           :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} children))})
    :catn (-sequence-entry-schema {:type :catn, :child-bounds {}
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
@@ -1915,7 +1921,7 @@
                                   :re-parser (fn [_ children] (apply re/altn-parser children))
                                   :re-unparser (fn [_ children] (apply re/altn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
-                                  :re-min-max (fn [_ children] (reduce -re-alt-min-max {:min miu/+max-size+, :max 0} (map last children)))})})
+                                  :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (map last children)))})})
 
 (defn base-schemas []
   {:and (-and-schema)
@@ -1951,7 +1957,7 @@
 ;; function schemas (alpha, subject to change)
 ;;
 
-(def ^:private -function-schemas* (atom {}))
+(defonce ^:private -function-schemas* (atom {}))
 (defn function-schemas [] @-function-schemas*)
 
 (defn function-schema
@@ -1961,15 +1967,63 @@
    (let [s (schema ?schema options), t (type s)]
      (cond-> s (not (#{:=> :function} t)) (-fail! :invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name value]
-  (swap! -function-schemas* assoc-in [ns name]
-         {:schema (function-schema value)
-          :meta (meta name)
-          :ns ns
-          :name name}))
+(defn -register-function-schema! [ns name schema data]
+  (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema schema), :ns ns, :name name})))
 
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
-           ns' `'~(symbol (str *ns*))]
-       `(-register-function-schema! ~ns' ~name' ~value))))
+           ns' `'~(symbol (str *ns*))
+           sym `'~(symbol (str *ns*) (str name))]
+       `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
+
+(defn -instrument
+  "Takes an instrumentation properties map and a function and returns a wrapped function,
+   which will validate function arguments and return values based on the function schema
+   definition. The following properties are used:
+
+   | key       | description |
+   | ----------|-------------|
+   | `:schema` | function schema
+   | `:scope`  | optional set of scope definitions, defaults to `#{:input :output}`
+   | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
+   | `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
+  ([props]
+   (-instrument props nil nil))
+  ([props f]
+   (-instrument props f nil))
+  ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options]
+   (let [schema (-> props :schema (schema options))]
+     (case (type schema)
+       :=> (let [{:keys [min max input output]} (-function-info schema)
+                 [validate-input validate-output] (map validator [input output])
+                 [wrap-input wrap-output] (map (partial contains? scope) [:input :output])
+                 f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
+             (fn [& args]
+               (let [args (vec args), arity (count args)]
+                 (when wrap-input
+                   (when-not (<= min arity (or max miu/+max-size+))
+                     (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
+                   (when-not (validate-input args)
+                     (report ::invalid-input {:input input, :args args, :schema schema})))
+                 (let [value (apply f args)]
+                   (when wrap-output
+                     (when-not (validate-output value)
+                       (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
+                   value))))
+       :function (let [arity->info (->> (for [schema (children schema)]
+                                          (let [{:keys [arity] :as info} (-function-info schema)]
+                                            [arity (assoc info :f (-instrument (assoc props :schema schema) f options))]))
+                                        (into {}))
+                       arities (-> arity->info keys set)
+                       varargs-info (arity->info :varargs)]
+                   (if (= 1 (count arities))
+                     (-> arity->info first val :f)
+                     (fn [& args]
+                       (let [arity (count args)
+                             {:keys [input] :as info} (arity->info arity)
+                             report-arity #(report ::invalid-arity {:arity arity, :arities arities, :args args, :input input, :schema schema})]
+                         (cond
+                           info (apply (:f info) args)
+                           varargs-info (if (< arity (:min varargs-info)) (report-arity) (apply (:f varargs-info) args))
+                           :else (report-arity))))))))))

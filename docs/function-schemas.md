@@ -108,17 +108,22 @@ Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [te
 ```clj
 (require '[malli.generator :as mg])
 
-(m/validate =>plus plus {::m/function-checker mg/function-checker})
+(def =>plus 
+  (m/schema 
+    [:=> [:cat :int :int] :int] 
+    {::m/function-checker mg/function-checker}))
+
+(m/validate =>plus plus)
 ; => true
 
-(m/validate =>plus str {::m/function-checker mg/function-checker})
+(m/validate =>plus str)
 ; => false
 ```
 
 Explanation why it is not valid:
 
 ```clj
-(m/explain =>plus str {::m/function-checker mg/function-checker})
+(m/explain =>plus str)
 ;{:schema [:=> [:cat :int :int] :int],
 ; :value #object[clojure.core$str],
 ; :errors (#Error{:path [],

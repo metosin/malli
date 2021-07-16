@@ -41,6 +41,7 @@ Malli is in [alpha](README.md#alpha).
 * new `malli.generator/check` and `malli.generator/check!` for generative testing of functions and `defn`s.
 * humanized errors for `:boolean`
 * predicate schema for `fn?`
+* fix crash in humanize for maps [#333](https://github.com/metosin/malli/pull/333)
 * humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
 
 ```clj

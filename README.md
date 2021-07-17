@@ -130,7 +130,7 @@ Maps keys are not limited to keywords:
 
 ## Qualified keys in a map
 
-You can also use [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references. References must be either qualified keywords of strings.
+You can also use [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references. References must be either qualified keywords or strings.
 
 ```clj
 (m/validate

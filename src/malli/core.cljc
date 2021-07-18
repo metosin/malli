@@ -6,9 +6,10 @@
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang IDeref Associative)
+                   (clojure.lang IDeref Associative IPersistentCollection MapEntry IPersistentVector)
                    (malli.impl.util SchemaError)
-                   (java.util.concurrent.atomic AtomicReference))))
+                   (java.util.concurrent.atomic AtomicReference)
+                   (java.util ArrayList Collection))))
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
@@ -282,6 +283,38 @@
                :input input
                :output output}
               max (assoc :max max)))))
+
+(defn -map-transformer [ts]
+  #?(:clj  (let [tl (ArrayList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
+             (fn [x] (let [i (.iterator ^Iterable tl)]
+                       (loop [x ^Associative x]
+                         (if (.hasNext i)
+                           (let [e ^MapEntry (.next i), k (.key e)]
+                             (if-let [xe (.entryAt x k)] (recur (.assoc x k ((.val e) (.val xe)))) x))
+                           x)))))
+     :cljs (fn [x] (reduce-kv
+                     (fn reduce-child-transformers [m k t]
+                       (if-let [entry (find m k)]
+                         (assoc m k (t (val entry)))
+                         m)) x ts))))
+
+(defn -tuple-transformer [ts]
+  #?(:clj  (let [tl (ArrayList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
+             (fn [x] (let [i (.iterator ^Iterable tl)]
+                       (loop [x ^IPersistentVector x]
+                         (if (.hasNext i)
+                           (let [e ^MapEntry (.next i), k (.key e)]
+                             (recur (.assoc x k ((.val e) (.nth x k)))))
+                           x)))))
+     :cljs (fn [x] (reduce-kv -update x ts))))
+
+(defn -collection-transformer [t empty]
+  #?(:clj  (fn [x] (let [i (.iterator ^Iterable x)]
+                     (loop [x ^IPersistentCollection empty]
+                       (if (.hasNext i)
+                         (recur (.cons x (t (.next i))))
+                         x))))
+     :cljs (fn [x] (into (if x empty) (map t) x))))
 
 ;;
 ;; simple schema helpers
@@ -636,6 +669,8 @@
    (reify IntoSchema
      (-type [_] :map)
      (-type-properties [_])
+     (-properties-schema [_ _])
+     (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
        (let [{:keys [children entries forms]} (-parse-entries children opts options)
              form (-create-form :map properties forms)
@@ -708,13 +743,7 @@
                                        (keep (fn [[k s]]
                                                (when-some [t (-transformer s transformer method options)] [k t])))
                                        (into {}))
-                   apply->children (when (seq ->children)
-                                     #(reduce-kv
-                                        (fn reduce-child-transformers [m k t]
-                                          (if-let [entry (find m k)]
-                                            (assoc m k (t (val entry)))
-                                            m))
-                                        % ->children))
+                   apply->children (when (seq ->children) (-map-transformer ->children))
                    apply->children (-guard map? apply->children)]
                (-intercepting this-transformer apply->children)))
            (-walk [this walker path options]
@@ -869,7 +898,7 @@
                         child-transformer (-transformer schema transformer method options)
                         ->child (when child-transformer
                                   (if fempty
-                                    #(into (if % fempty) (map child-transformer) %)
+                                    (-collection-transformer child-transformer fempty)
                                     #(map child-transformer %)))
                         ->child (-guard collection? ->child)]
                     (-intercepting this-transformer ->child)))
@@ -936,9 +965,8 @@
                   ->children (into {} (comp (map-indexed vector)
                                             (keep (fn [[k c]]
                                                     (when-some [t (-transformer c transformer method options)]
-                                                      [k t]))))
-                                   children)
-                  apply->children (when (seq ->children) #(reduce-kv -update % ->children))
+                                                      [k t])))) children)
+                  apply->children (when (seq ->children) (-tuple-transformer ->children))
                   apply->children (-guard vector? apply->children)]
               (-intercepting this-transformer apply->children)))
           (-walk [this walker path options]

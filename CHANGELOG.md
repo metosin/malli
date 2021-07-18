@@ -16,7 +16,7 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* Much faster validators (loop unrolling & using spesific functions) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
+* Much faster validators on CLJ (loop unrolling & programming against interfaces) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
 
 ```clj
 ;; 164ns -> 36ns
@@ -27,6 +27,28 @@ Malli is in [alpha](README.md#alpha).
 (let [valid? (m/validator [:map [:a :any] [:b :any] [:c :any] [:d :any] [:e :any]])
       value {:a 1, :b 2, :c 3, :d 4, :e 5}]
   (cc/quick-bench (valid? value)))
+```
+
+* Much faster collection transformers on CLJ (loop unrolling & programming against interfaces):
+
+```clj
+(let [decode (m/decoder
+               [:map
+                [:id :string]
+                [:type :keyword]
+                [:address
+                 [:map
+                  [:street :string]
+                  [:lonlat [:tuple :double :double]]]]]
+               (mt/json-transformer))
+      json {:id "pulla"
+            :type "food"
+            :address {:street "hämeenkatu 14"
+                      :lonlat [61 23.7644223]}}]
+                      
+  ;; 920ns => 160ns
+  (cc/quick-bench
+    (decode json)))
 ```
 
 ### Public API

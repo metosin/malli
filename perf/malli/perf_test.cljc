@@ -151,10 +151,10 @@
 
 (defn transform-test []
   (let [json {:id "Metosin"
-              :tags #{"clj" "cljs"}
+              :tags ["clj" "cljs"]
               :address {:street "Hämeenkatu 14"
                         :zip 33800
-                        :lonlat [61.4983866 23.7644223]}}]
+                        :lonlat [61 23.7644223]}}]
 
     (let [json->place #(st/coerce ::place % st/json-transformer)]
       (clojure.pprint/pprint (json->place json))
@@ -165,7 +165,7 @@
     (let [json->place (m/decoder Place transform/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
-      ;; 1µs
+      ;; 1µs -> 400ns
       (cc/quick-bench (json->place json)))))
 
 (defn transform-test2 []

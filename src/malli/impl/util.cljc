@@ -43,7 +43,7 @@
            f (gensym "f__")
            cases (mapcat (fn [i] [i `(-combine-n ~c ~i ~preds)]) (range 2 (inc n)))
            else `(let [p# (~f (take ~n ~preds)) q# (~f (drop ~n ~preds))]
-                   (fn [x#] (and (p# x#) (q# x#))))]
+                   (fn [x#] (~c (p# x#) (q# x#))))]
        `(fn ~f [~preds]
           (case (count ~preds)
             0 (constantly true)

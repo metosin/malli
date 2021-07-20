@@ -1,5 +1,6 @@
 (ns malli.util-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.impl.util :as miu]
             [malli.util :as mu]
             [malli.core :as m]))
 
@@ -906,3 +907,38 @@
   (is (= [:b {:optional true} Int]
          (-> [:map [:a [:map [:b {:optional true} Int]]]]
              (mu/get-in [:a [::m/find :b]])))))
+
+#?(:clj
+   (deftest composers
+     (let [-t (constantly true)
+           -f (constantly false)
+           t (into [] (repeat 16 -t))
+           f (into [] (repeat 16 -f))
+           t+f (conj t -f)
+           f+t (conj f -t)
+           tf (into [-t] f)
+           ft (into [-f] t)
+           ff (conj f -f)
+           tt (conj t -t)]
+       (testing "every pred behaves like and: one false => result is false"
+         (is (true?  ((miu/-every-pred [-t]) nil)))
+         (is (false? ((miu/-every-pred [-f]) nil)))
+         (is (true?  ((miu/-every-pred t) nil)))
+         (is (false? ((miu/-every-pred f) nil)))
+         (is (false? ((miu/-every-pred t+f) nil)))
+         (is (false? ((miu/-every-pred f+t) nil)))
+         (is (false? ((miu/-every-pred tf) nil)))
+         (is (false? ((miu/-every-pred ft) nil)))
+         (is (false? ((miu/-every-pred ff) nil)))
+         (is (true?  ((miu/-every-pred tt) nil))))
+       (testing "some pred behaves like or: one true => result is true"
+         (is (true?  ((miu/-some-pred [-t]) nil)))
+         (is (false? ((miu/-some-pred [-f]) nil)))
+         (is (true?  ((miu/-some-pred t) nil)))
+         (is (false? ((miu/-some-pred f) nil)))
+         (is (true?  ((miu/-some-pred t+f) nil)))
+         (is (true?  ((miu/-some-pred f+t) nil)))
+         (is (true?  ((miu/-some-pred tf) nil)))
+         (is (true?  ((miu/-some-pred ft) nil)))
+         (is (false? ((miu/-some-pred ff) nil)))
+         (is (true?  ((miu/-some-pred tt) nil)))))))

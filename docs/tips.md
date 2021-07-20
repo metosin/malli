@@ -80,6 +80,39 @@ Transforming a comma-separated string into a vector of ints:
 ; => [1 2 3 4]
 ```
 
+Using a custom transformer:
+
+```clj
+(defn query-decoder [schema]
+  (m/decoder
+    schema
+    (mt/transformer
+      (mt/transformer
+        {:name "vectorize strings"
+         :decoders
+         {:vector
+          {:compile (fn [schema _]
+                      (let [separator (-> schema m/properties :query/separator (or ","))]
+                        (fn [x]
+                          (cond
+                            (not (string? x)) x
+                            (str/includes? x separator) (into [] (.split ^String x separator))
+                            :else [x]))))}}})
+      (mt/string-transformer))))
+
+(def decode
+  (query-decoder
+    [:map
+     [:a [:vector {:query/separator ";"} :int]]
+     [:b [:vector :int]]]))
+
+(decode {:a "1", :b "1"})
+; => {:a [1], :b [1]}
+
+(decode {:a "1;2", :b "1,2"})
+; => {:a [1 2], :b [1 2]}
+```
+
 ## Normalizing properties
 
 Returning a Schema form with `nil` in place of empty properties:

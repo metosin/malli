@@ -216,15 +216,8 @@
   (when tf (fn [x] (if (pred x) (tf x) x))))
 
 (defn -intercepting
-  ([{:keys [enter leave]}]
-   (if (and enter leave) #(leave (enter %)) (or enter leave)))
-  ([{:keys [enter leave] :as interceptor} f]
-   (if f (cond
-           (and enter leave) #(leave (f (enter %)))
-           enter #(f (enter %))
-           leave #(leave (f %))
-           :else f)
-         (-intercepting interceptor))))
+  ([interceptor] (-intercepting interceptor nil))
+  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)

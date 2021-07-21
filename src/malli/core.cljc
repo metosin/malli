@@ -119,7 +119,7 @@
   ([type data] (-fail! type nil data))
   ([type message data] (throw (ex-info (str type " " (pr-str data) message) {:type type, :data data}))))
 
-(defn -safe-pred [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ false)))
+(defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -1027,7 +1027,7 @@
         (reify
           Schema
           (-validator [_]
-            (-safe-pred #(boolean (re-find re %))))
+            (-safe-pred #(re-find re %)))
           (-explainer [this path]
             (fn explain [x in acc]
               (try

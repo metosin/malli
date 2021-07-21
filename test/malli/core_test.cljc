@@ -2300,3 +2300,9 @@
               #?(:clj Exception, :cljs js/Error)
               #":malli.core/invalid-arity"
               (pow2 100 100 100)))))))
+
+(deftest -safe-pred-test
+  (is (true? ((m/-safe-pred (constantly "true")) ::any)))
+  (is (false? ((m/-safe-pred (constantly nil)) ::any)))
+  (is (true? (m/validate [:fn (constantly "true")] ::any)))
+  (is (false? (m/validate [:fn (constantly nil)] ::any))))

@@ -283,7 +283,7 @@
                        (loop [x ^Associative x]
                          (if (.hasNext i)
                            (let [e ^MapEntry (.next i), k (.key e)]
-                             (if-let [xe (.entryAt x k)] (recur (.assoc x k ((.val e) (.val xe)))) x))
+                             (recur (if-let [xe (.entryAt x k)] (.assoc x k ((.val e) (.val xe))) x)))
                            x)))))
      :cljs (fn [x] (reduce-kv
                      (fn reduce-child-transformers [m k t]

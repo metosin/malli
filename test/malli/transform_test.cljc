@@ -808,3 +808,11 @@
        (is (= 1 (m/decode schema "1" (mt/transformer {:name :num}))))
        (is (= 1 (m/decode schema 1 (mt/transformer {:name :num}))))
        (is (= "safe" (m/decode schema "safe" (mt/transformer {:name :num})))))))
+
+(deftest regression-480-test
+  (let [value {:b #uuid"f5a54a8f-7d78-4495-9138-e810885d1cdb"}
+        schema [:map [:a :int] [:b :uuid]]]
+    (is (= value
+           (as-> value $
+                 (m/encode schema $ mt/string-transformer)
+                 (m/decode schema $ mt/string-transformer))))))

@@ -4,33 +4,36 @@
                    (clojure.lang MapEntry))))
 
 #?(:clj
-   (do
-     (defonce fail-modes #{:default :fast :fast-no-stacktrace})
-     (defonce ^:private fail-mode (atom :default))
-     (defn set-fail-mode!
-       [mode]
-       (assert (fail-modes mode))
-       (reset! fail-mode mode))
-
-     (defn very-fast-ex-info
-       ([msg map]
-        (NoStackException. msg map)))
-
-     (defn fast-ex-info
-       ([msg map]
-        (clojure.lang.ExceptionInfo. msg map)))
-
-     (defn -ex-info
-       [msg map]
-       (condp identical? @fail-mode
-         :default (ex-info msg map)
-         :fast (fast-ex-info msg map)
-         :fast-no-stacktrace (very-fast-ex-info msg map))))
-
-   :cljs
-   (defn -ex-info
+   (defn no-stack-ex-info
+     "Allocate an exception without a stack trace."
      [msg map]
-     (ex-info msg map)))
+     (NoStackException. msg map)))
+
+#?(:clj
+   (defn raw-ex-info
+     "Like [[clojure.core/ex-info]] but does not elide top frames."
+     [msg map]
+     (clojure.lang.ExceptionInfo. msg map)))
+
+#?(:clj (def +ex-info+ (atom ex-info)))
+
+#?(:clj
+   (defn set-ex-info!
+     "Set ex-info function to one of three modes:
+  - default: [[clojure.core/ex-info]]
+  - raw: [[raw-ex-info]], does not elide top frames
+  - no-stacktrace: [[no-stack-ex-info]], fastest, does not create stack trace."
+     [mode]
+     (reset!
+      +ex-info+
+      (case mode
+        :default ex-info
+        :raw raw-ex-info
+        :no-stacktrace no-stack-ex-info))))
+
+(defn -ex-info
+  [msg map]
+  (#?(:clj @+ex-info+ :cljs ex-info) msg map))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 

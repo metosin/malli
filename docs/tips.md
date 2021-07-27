@@ -141,6 +141,69 @@ Returning a Schema form with `nil` in place of empty properties:
 ;           [:x nil [:enum nil 1 2 3]]]]]]
 ```
 
+## Default value from a function
+
+The `mt/default-value-transformer` can fill default values if the `:default` property is given. It
+is possible though to calculate a default value with a given function providing custom transformer
+derived from `mt/default-value-transformer`:
+
+```clj
+(defn default-fn-value-transformer
+  ([]
+   (default-fn-value-transformer nil))
+  ([{:keys [key] :or {key :default-fn}}]
+   (let [add-defaults
+         {:compile
+          (fn [schema _]
+            (let [->k-default (fn [[k {default key :keys [optional]} v]]
+                                (when-not optional
+                                  (when-some [default (or default (some-> v m/properties key))]
+                                    [k default])))
+                  defaults    (into {} (keep ->k-default) (m/children schema))
+                  exercise    (fn [x defaults]
+                                (reduce-kv (fn [acc k v]
+                                             ; the key difference compare to default-value-transformer
+                                             ; we evaluate v instead of just passing it
+                                             (if-not (contains? x k)
+                                               (-> (assoc acc k ((m/eval v) x))
+                                                   (try (catch Exception _ acc)))
+                                               acc))
+                                           x defaults))]
+              (when (seq defaults)
+                (fn [x] (if (map? x) (exercise x defaults) x)))))}]
+     (mt/transformer
+      {:decoders {:map add-defaults}
+       :encoders {:map add-defaults}}))))
+```
+
+Example 1: if `:secondary` is missing, same its value to value of `:primary`
+```clj
+(m/decode
+ [:map
+  [:primary string?]
+  [:secondary {:default-fn '#(:primary %)} string?]]
+ {:primary "blue"}
+ (default-fn-value-transformer))
+```
+
+Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
+```clj
+(def Purchase
+  [:map
+   [:qty {:default 1} number?]
+   [:price {:optional true} number?]
+   [:cost {:default-fn '(fn [m] (* (:qty m) (:price m)))} number?]])
+
+(def decode-autonomous-vals
+  (m/decoder Purchase (mt/transformer (mt/string-transformer) (mt/default-value-transformer))))
+(def decode-interconnected-vals
+  (m/decoder Purchase (default-fn-value-transformer)))
+
+(-> {:qty "100" :price "1.2"} decode-autonomous-vals decode-interconnected-vals) ;; => {:price 1.2, :qty 1, :cost 1.2}
+(-> {:price "1.2"} decode-autonomous-vals decode-interconnected-vals)            ;; => {:qty 100.0, :price 1.2, :cost 120.0}
+(-> {:prie "1.2"} decode-autonomous-vals decode-interconnected-vals)             ;; => {:prie "1.2", :qty 1}
+```
+
 ## Walking Schema and Entry Properties
 
 1. walk entries on the way in

@@ -65,6 +65,7 @@ Malli is in [alpha](README.md#alpha).
 * humanized errors for `:boolean`
 * predicate schema for `fn?`
 * fix crash in humanize for maps [#333](https://github.com/metosin/malli/pull/333)
+* `malli.util/transform-entries` passes in options [#340]/(https://github.com/metosin/malli/pull/340)  
 * humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
 
 ```clj

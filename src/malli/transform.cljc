@@ -316,7 +316,7 @@
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
-        ->chain (m/-comp m/-transformer-chain m/-into-transformer)
+        ->chain (miu/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
@@ -346,7 +346,7 @@
       :decoders (-> (-json-decoders)
                     (assoc :map-of {:compile (fn [schema _]
                                                (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
-                                                           (m/-comp m/-keyword->string) (-transform-map-keys))
+                                                           (miu/-comp m/-keyword->string) (-transform-map-keys))
                                                    (-transform-map-keys m/-keyword->string)))})
                     (cond-> json-vectors (assoc :vector -sequential->vector)))
       :encoders (-json-encoders)})))
@@ -360,7 +360,7 @@
 (defn strip-extra-keys-transformer
   ([]
    (strip-extra-keys-transformer nil))
-  ([{:keys [accept] :or {accept (m/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
+  ([{:keys [accept] :or {accept (miu/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
    (let [transform {:compile (fn [schema _]
                                (if (accept schema)
                                  (if-let [ks (some->> schema m/entries (map first) seq set)]

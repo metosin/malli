@@ -150,15 +150,6 @@
 
 (defn -boolean-fn [x] (cond (boolean? x) (constantly x) (ifn? x) x :else (constantly false)))
 
-(defn -comp
-  ([] identity)
-  ([f] f)
-  ([f g] (fn [x] (f (g x))))
-  ([f g h] (fn [x] (f (g (h x)))))
-  ([f1 f2 f3 & fs]
-   (let [fs (reverse (list* f1 f2 f3 fs))]
-     #(loop [ret ((first fs) %), fs (next fs)] (if fs (recur ((first fs) ret) (next fs)) ret)))))
-
 (defn -update [m k f] (assoc m k (f (get m k))))
 
 (defn -memoize [f]
@@ -199,7 +190,7 @@
                                              (not (sequential? e)) (if (and naked-keys (-reference? e)) [[e nil e] e] (-fail! ::invalid-ref {:ref e}))
                                              (and (= 1 (count e)) (-reference? (first e))) (if naked-keys [[(first e) nil (first e)] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
-                                             :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
+                                             :else [e (->> (-update (vec e) (dec (count e)) (miu/-comp -form #(schema % options))) (keep identity) (vec))])
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
                              c [k p (schema s options)]]
@@ -217,12 +208,12 @@
 
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
+  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply miu/-comp))))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
         child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
+        child-transformer (if (seq child-transformers) (apply miu/-comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
 (defn- -properties-and-children [[x :as xs]]

@@ -1,5 +1,6 @@
 (ns malli.json-schema
   (:require [malli.core :as m]
+            [malli.impl.util :as miu]
             [clojure.set :as set]))
 
 (defprotocol JsonSchema
@@ -81,7 +82,7 @@
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
-  (let [required (->> children (filter (m/-comp not :optional second)) (mapv first))
+  (let [required (->> children (filter (miu/-comp not :optional second)) (mapv first))
         object {:type "object"
                 :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))}]
     (if (empty? required) object (assoc object :required required))))

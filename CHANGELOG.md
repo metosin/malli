@@ -19,11 +19,11 @@ Malli is in [alpha](README.md#alpha).
 * Much faster validators on CLJ (loop unrolling & programming against interfaces) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
 
 ```clj
-;; 164ns -> 36ns
+;; 164ns -> 28ns
 (let [valid? (m/validator [:and [:> 0] [:> 1] [:> 2] [:> 3] [:> 4]])]
   (cc/quick-bench (valid? 5)))
   
-;; 150ns -> 39ns
+;; 150ns -> 30ns
 (let [valid? (m/validator [:map [:a :any] [:b :any] [:c :any] [:d :any] [:e :any]])
       value {:a 1, :b 2, :c 3, :d 4, :e 5}]
   (cc/quick-bench (valid? value)))

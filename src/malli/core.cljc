@@ -6,10 +6,10 @@
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang IDeref Associative IPersistentCollection MapEntry IPersistentVector)
+                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector)
                    (malli.impl.util SchemaError)
                    (java.util.concurrent.atomic AtomicReference)
-                   (java.util ArrayList Collection))))
+                   (java.util Collection LinkedList))))
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
@@ -273,7 +273,7 @@
               max (assoc :max max)))))
 
 (defn -map-transformer [ts]
-  #?(:clj  (let [tl (ArrayList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
+  #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
              (fn [x] (let [i (.iterator ^Iterable tl)]
                        (loop [x ^Associative x]
                          (if (.hasNext i)
@@ -287,7 +287,7 @@
                          m)) x ts))))
 
 (defn -tuple-transformer [ts]
-  #?(:clj  (let [tl (ArrayList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
+  #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
              (fn [x] (let [i (.iterator ^Iterable tl)]
                        (loop [x ^IPersistentVector x]
                          (if (.hasNext i)

@@ -57,6 +57,7 @@ Malli is in [alpha](README.md#alpha).
 * **BREAKING**: `malli.json-schema/unlift` is removed in favor of `get`
 * **BREAKING**: `malli.provider/stats` is removed (was already deprecated)
 * **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`
+* **BREAKING**: `malli.util/update` doesn't the properties of the key it updates, fixes [#412](https://github.com/metosin/malli/issues/412)
 
 * new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
 * new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).

@@ -326,7 +326,7 @@
         [:map [:x string?]] :x int? [:map [:x 'int?]]
         [:map [:x {:optional true} string?]] :x int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
-        ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
+        [:map [:x {:optional true} string?]] [:x] int? [:map [:x 'int?]]
         [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
         [:map [:x {:optional true} string?]] :y string? [:map [:x {:optional true} 'string?] [:y 'string?]]
         [:map [:x string?]] [:y {:optional true}] string? [:map [:x 'string?] [:y {:optional true} 'string?]]
@@ -490,7 +490,10 @@
                  [:map [:a {:optional true} [:map [:x {:optional true} any?]]]]))
   (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
                                [[:a {:optional false}] [:x {:optional false}]] (constantly any?))
-                 [:map [:a {:optional false} [:map [:x {:optional false} any?]]]])))
+                 [:map [:a {:optional false} [:map [:x {:optional false} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a] [:x {:optional false}]] (constantly any?))
+                 [:map [:a [:map [:x {:optional false} any?]]]])))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]

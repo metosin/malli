@@ -177,20 +177,15 @@
               (fn [[k _ s]] (when (= k key) s)))
             (-children schema)) default))
 
-(defn -set-entries [schema key value]
+(defn -set-entries [schema ?key value]
   (let [found (atom nil)
-        new-props (when (vector? key) (second key))
-        [key :as new-child] (if (vector? key) (conj key value) [key value])
-        children (cond-> (mapv (fn [[k props :as child]]
+        [key props override] (if (vector? ?key) [(first ?key) (second ?key) true] [?key])
+        children (cond-> (mapv (fn [[k p :as entry]]
                                  (if (= key k)
-                                   (do (reset! found true)
-                                       (cond-> [key]
-                                         new-props (conj new-props)
-                                         (and (not new-props) props) (conj props)
-                                         :always (conj value)))
-                                   child))
+                                   (do (reset! found true) [key (if override props p) value])
+                                   entry))
                                (-children schema))
-                         (not @found) (conj new-child)
+                         (not @found) (conj (if key [key props value] (-fail! ::key-missing)))
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (-set-children schema children)))
 

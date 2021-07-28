@@ -14,6 +14,152 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Much faster validators on CLJ (loop unrolling & programming against interfaces) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
+
+```clj
+;; 164ns -> 36ns
+(let [valid? (m/validator [:and [:> 0] [:> 1] [:> 2] [:> 3] [:> 4]])]
+  (cc/quick-bench (valid? 5)))
+  
+;; 150ns -> 39ns
+(let [valid? (m/validator [:map [:a :any] [:b :any] [:c :any] [:d :any] [:e :any]])
+      value {:a 1, :b 2, :c 3, :d 4, :e 5}]
+  (cc/quick-bench (valid? value)))
+```
+
+* Much faster collection transformers on CLJ (loop unrolling & programming against interfaces):
+
+```clj
+(let [decode (m/decoder
+               [:map
+                [:id :string]
+                [:type :keyword]
+                [:address
+                 [:map
+                  [:street :string]
+                  [:lonlat [:tuple :double :double]]]]]
+               (mt/json-transformer))
+      json {:id "pulla"
+            :type "food"
+            :address {:street "hämeenkatu 14"
+                      :lonlat [61 23.7644223]}}]
+                      
+  ;; 920ns => 160ns
+  (cc/quick-bench
+    (decode json)))
+```
+
+### Public API
+
+* **BREAKING**: `malli.json-schema/unlift-keys` is removed in favor of `malli.core/-unlift-keys`
+* **BREAKING**: `malli.json-schema/unlift` is removed in favor of `get`
+* **BREAKING**: `malli.provider/stats` is removed (was already deprecated)
+* **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`
+* **BREAKING**: `malli.util/update` doesn't the properties of the key it updates, fixes [#412](https://github.com/metosin/malli/issues/412)
+
+* new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
+* new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
+* new `malli.generator/check` and `malli.generator/check!` for generative testing of functions and `defn`s.
+* humanized errors for `:boolean`
+* predicate schema for `fn?`
+* fix crash in humanize for maps [#333](https://github.com/metosin/malli/pull/333)
+* humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize {:resolve me/resolve-root-error}))
+; => {:foo ["entry-failure"]}
+```
+
+### Extender API
+
+* `malli.util.impl/-fail!` is now `malli.core/-fail!`
+* `malli.core/-unlift-keys`
+* `malli.core/-instrument`
+* **BREAKING**: `malli.core/-register-function-schema!` is now 4-arity, new argument is data map
+
+## 0.5.1 (2021-05-02)
+
+### Public API
+
+* Fix [#435](https://github.com/metosin/malli/issues/435): :re ignores :gen/xxx properties in absence of :gen/gen
+* More customization on -collection-schema [#433](https://github.com/metosin/malli/pull/433)
+
+## 0.5.0 (2021-04-28)
+
+### Public API
+
+* Add `ifn?` predicate, [#416](https://github.com/metosin/malli/pull/416)
+* Accumulate errors correctly with `m/-explain` with `:function` and `:=>` Schemas
+* New `m/properties-schema` and `m/children-schema` to resolve Malli Schemas for `IntoSchema`s. Empty implementations.
+* New `:gen/schema` property for declarative generation, e.g. `[:string {:gen/schema :int, :gen/fmap str}]`
+* Support double generator options via schema properties
+* Fix [#419](https://github.com/metosin/malli/issues/419): Parsing bug in :map schema
+* Fix [#418](https://github.com/metosin/malli/issues/418): Better error messages / docs for registry references
+* Fix [#415](https://github.com/metosin/malli/issues/415): Default branch in multi schema are not transformed
+* Fix [#427](https://github.com/metosin/malli/issues/427): Generated sets of :ref are always empty
+
+### Extender API
+
+* **BREAKING**: `-type` is moved from `Schema` to `IntoSchema`.
+* **BREAKING**: `-type-properties` is moved from `Schema` to `IntoSchema`.
+* new Protocol methods in `IntoSchema` Protocol
+  * `(-properties-schema [this options] "maybe returns :map schema describing schema properties")`
+  * `(-children-schema [this options] "maybe returns sequence schema describing schema children")`
+
+## 0.4.0 (2021-03-31)
+
+### Public API
+
+* `:nil` schema, [#401](https://github.com/metosin/malli/pull/401)
+* **BREAKING/FIX**: parsing `:multi` returns branch information, [#403](https://github.com/metosin/malli/pull/403)
+* `:and` merges using first child, [#405](https://github.com/metosin/malli/pull/405)
+
+## 0.3.1 (2021-03-21)
+
+### Public API
+
+* Add `:orn` json-schema & generator, [#400](https://github.com/metosin/malli/pull/400)
+* Ignore optional properties in `mt/default-value-transformer`, [#397](https://github.com/metosin/malli/pull/397)
+* Support `nil` keys in maps, [#392](https://github.com/metosin/malli/pull/392)
+* `:m/default` for `:multi`, [#391](https://github.com/metosin/malli/pull/391)
+* Fix inconsistent park-ing in alt(n)-parser, [#390](https://github.com/metosin/malli/pull/390)
+* Fix json schema generation when all attributes of a map are optional, [#385](https://github.com/metosin/malli/pull/385)
+* Note about transformers best-effort behavior, [#384](https://github.com/metosin/malli/pull/384)
+* Humanized regex/sequence errors, [#383](https://github.com/metosin/malli/pull/383)
+* Humanized error for `:double`, [#382](https://github.com/metosin/malli/pull/382)
+
+## 0.3.0 (2021-03-02)
+
+### Public API
+
+* support for sequence schemas: `:cat`, `catn`, `alt`, `altn`, `:?`, `:*`, `:+` and `repeat`, see [Sequence Schemas](./README.md#sequence-schemas).
+* support for parsing and unparsing schemas: `m/parse`, `m/parser`, `m/unparse`, `m/unparser`, see [Parsing values](./README.md#parsing-values).
+* support for function schmas: `:=>` and `:function`, see [Function Schemas](./README.md#function-schemas).
+* support for [clj-kondo](https://github.com/clj-kondo/clj-kondo), see [Clj-kondo](./README.md#clj-kondo).
+* new schemas: `:any` (e.g. `any?`), `:not` (complement) and `:orn` (or with named branches)
+* `:qualified-keyword` support `:namespace` property
+
+* FIX: Schema vizualization is not working for `[:< ...]` like schemas, [#370](https://github.com/metosin/malli/issues/370)
+* Ensure we use size 30 for generator (for more variety), [#364](https://github.com/metosin/malli/pull/364)
+* Set JSON Schema types and formats for numbers properly [#354](https://github.com/metosin/malli/pull/354)
+* -memoize actually memoized. easily 100x faster now [#350](https://github.com/metosin/malli/pull/350)  
+* Fix interceptor composition, [#347](https://github.com/metosin/malli/pull/350)
+* `malli.util`: add a rename-keys utility, similar to clojure.set [#338](https://github.com/metosin/malli/pull/338)
+* Let `mu/update` accept plain data schemas, [#329](https://github.com/metosin/malli/pull/329)
+* `mu/find`, [#322](https://github.com/metosin/malli/pull/322)
+
+### Extender API
+
+* **BREAKING**: `m/Schema` has new methods: `-parent`, `-parser` and `-unparser`
+* **BREAKING**: `m/-coder` and `m/-chain` are replaced wih `m/-intercepting`
+* **BREAKING**: `m/-fail!` is now `miu/-fail!`
+* **BREAKING**: `m/-error` is now `miu/-error`
+  
 ## 0.2.1 (2020-10-22)
 
 * fix `:sequential` decoding with empty sequence under `mt/json-transformer`, fixes [#288](https://github.com/metosin/malli/issues/288)

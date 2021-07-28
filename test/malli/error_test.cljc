@@ -143,12 +143,25 @@
                (m/explain {:x 1, :extra "key"})
                (me/humanize)))))
 
-  (testing "multiple errors on same key are accumulated into vector"
-    (is (= {:x ["missing required key" "missing required key"]}
+  (testing "multiple errors on same key are presented just once"
+    (is (= {:x ["missing required key"]}
            (me/humanize
              {:value {},
               :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
-                       {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]})))))
+                       {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]}))))
+
+  (testing "maps can have top level errors and key errors"
+    (is (= {:person {:malli/error ["should be a seq"],
+                     :name ["missing required key"]}}
+           (-> [:map [:person [:and seq? [:map [:name string?]]]]]
+               (m/explain {:person {}})
+               (me/humanize)))))
+
+  (testing "maps have errors inside"
+    (is (= {:person {:malli/error ["should be a seq"]}}
+           (-> [:map [:person seq?]]
+               (m/explain {:person {}})
+               (me/humanize))))))
 
 (deftest humanize-customization-test
   (let [schema [:map
@@ -333,6 +346,48 @@
                 :f 5})
              (me/humanize)))))
 
+(deftest double-test
+  (is (= {:a ["should be a double"]
+          :b ["should be at least 1"]
+          :c ["should be at most 4"]
+          :d ["should be between 1 and 4"]
+          :e ["should be a double"]
+          :f ["should be 4"]}
+         (-> [:map
+              [:a :double]
+              [:b [:double {:min 1}]]
+              [:c [:double {:max 4}]]
+              [:d [:double {:min 1, :max 4}]]
+              [:e [:double {:min 1, :max 4}]]
+              [:f [:double {:min 4, :max 4}]]]
+             (m/explain
+               {:a "123"
+                :b 0.0
+                :c 5.0
+                :d 0.0
+                :e "123"
+                :f 5.0})
+             (me/humanize)))))
+
+(deftest any-test
+  (testing "success"
+    (is (= nil
+           (-> :any
+               (m/explain "bla")
+               (me/humanize))))))
+
+(deftest nil-test
+  (testing "success"
+    (is (= nil
+           (-> :nil
+               (m/explain nil)
+               (me/humanize)))))
+  (testing "failure"
+    (is (= ["should be nil"]
+           (-> :nil
+               (m/explain "gogo")
+               (me/humanize))))))
+
 (deftest re-test
   (testing "success"
     (is (= nil
@@ -373,13 +428,17 @@
 
 (deftest function-test
   (is (= ["invalid function"]
-         (-> [:=> [:tuple int? int?] int?]
-             (m/explain malli.core-test/single-arity {::m/=>validator mg/=>validator})
+         (-> [:=> [:cat int? int?] int?]
+             (m/explain malli.core-test/single-arity {::m/function-checker mg/function-checker})
              (me/humanize))))
   (is (= ["invalid function"]
-         (-> [:=> [:tuple int? int?] int?]
+         (-> [:=> [:cat int? int?] int?]
              (m/explain 123)
              (me/humanize)))))
+
+(deftest ifn-test
+  (is (= ["should be an ifn"]
+         (me/humanize (m/explain ifn? 123)))))
 
 (deftest multi-error-test
   (let [schema [:multi {:dispatch :type}
@@ -422,3 +481,44 @@
                                [:x]]]]
             :let [schema (m/schema schema {:registry registry})]]
       (is (= errors (-> schema (m/explain {:x 1}) (me/humanize)))))))
+
+(deftest sequence-test
+  (is (= [nil ["end of input"]]
+         (-> [:cat int? int?]
+             (m/explain [1])
+             (me/humanize))))
+  (is (= [nil nil ["input remaining"]]
+         (-> [:cat int? int?]
+             (m/explain [1 2 3])
+             (me/humanize))))
+  (is (= [nil nil ["should be an int" "should be a string" "input remaining"]]
+         (-> [:cat int? int? [:? int?] [:? string?]]
+             (m/explain [1 2 :foo])
+             (me/humanize)))))
+
+(deftest error-definion-lookup-test
+  (is (= {:foo ["should be an integer"]}
+         (-> [:map
+              [:foo :int]]
+             (m/explain {:foo "1"})
+             (me/humanize {:resolve me/resolve-root-error}))))
+
+  (is (= {:foo ["entry-failure"]}
+         (-> [:map
+              [:foo {:error/message "entry-failure"} :int]]
+             (m/explain {:foo "1"})
+             (me/humanize {:resolve me/resolve-root-error}))))
+
+  (is (= {:malli/error ["map-failure"]}
+         (-> [:map {:error/message "map-failure"}
+              [:foo {:error/message "entry-failure"} :int]]
+             (m/explain {:foo "1"})
+             (me/humanize {:resolve me/resolve-root-error}))))
+
+  (testing "entry sees child schema via :error/fn"
+    (is (= {:foo ["failure"]}
+           (-> [:map
+                [:foo {:error/fn (fn [{:keys [schema]} _]
+                                   (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
+               (m/explain {:foo "1"})
+               (me/humanize {:resolve me/resolve-root-error}))))))

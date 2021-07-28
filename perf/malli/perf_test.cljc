@@ -2,6 +2,9 @@
   (:require [clojure.spec.alpha :as s]
             [criterium.core :as cc]
             [clj-async-profiler.core :as prof]
+            [minimallist.helper :as mh]
+            [minimallist.core :as mc]
+            [net.cgrand.seqexp :as se]
             [malli.core :as m]
             [spec-tools.core :as st]
             [malli.transform :as transform]))
@@ -148,10 +151,10 @@
 
 (defn transform-test []
   (let [json {:id "Metosin"
-              :tags #{"clj" "cljs"}
+              :tags ["clj" "cljs"]
               :address {:street "Hämeenkatu 14"
                         :zip 33800
-                        :lonlat [61.4983866 23.7644223]}}]
+                        :lonlat [61 23.7644223]}}]
 
     (let [json->place #(st/coerce ::place % st/json-transformer)]
       (clojure.pprint/pprint (json->place json))
@@ -162,7 +165,7 @@
     (let [json->place (m/decoder Place transform/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
-      ;; 1µs
+      ;; 1µs -> 400ns
       (cc/quick-bench (json->place json)))))
 
 (defn transform-test2 []
@@ -291,6 +294,92 @@
     (cc/quick-bench (quick-select-keys {:a 1, :b 2}))
     (cc/quick-bench (quick-select-keys {:a 1, :b 2, :c 3, :d 4}))))
 
+(defn sequence-perf-test []
+  ;; 27µs
+  (let [valid? (partial s/valid? (s/* int?))]
+    (cc/quick-bench (valid? (range 10))))
+
+  ;; 2.7µs
+  (let [valid? (m/validator [:* int?])]
+    (cc/quick-bench (valid? (range 10)))))
+
+(defn simple-regex []
+  (let [data ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]
+
+        seqxp (se/*
+                (se/as [:opts]
+                       (se/cat
+                         (se/as [:opts :prop] string?)
+                         (se/as [:opts :val] (se/|
+                                               (se/as [:opts :val :s] string?)
+                                               (se/as [:opts :val :b] boolean?))))))
+        valid-seqxp? (partial se/exec-tree seqxp)
+
+        spec (s/* (s/cat :prop string?,
+                         :val (s/alt :s string?
+                                     :b boolean?)))
+        valid-spec? (partial s/valid? spec)
+
+        minimallist (mh/* (mh/cat [:prop (mh/fn string?)]
+                                  [:val (mh/alt [:s (mh/fn string?)]
+                                                [:b (mh/fn boolean?)])]))
+        valid-minimallist? (partial mc/valid? minimallist)
+
+        malli [:* [:catn
+                   [:prop string?]
+                   [:val [:altn
+                          [:s string?]
+                          [:b boolean?]]]]]
+        valid-malli? (m/validator malli)]
+
+    ;; 90µs
+    (cc/quick-bench (valid-seqxp? data))
+
+    ;; 40µs
+    (cc/quick-bench (valid-spec? data))
+
+    ;; 12µs
+    (cc/quick-bench (valid-minimallist? data))
+
+    ;; 1.5µs
+    (cc/quick-bench (valid-malli? data))))
+
+(defn parsing []
+
+  ;; 44µs
+  (let [spec (s/* (s/cat :prop string?,
+                         :val (s/alt :s string?
+                                     :b boolean?)))
+        parse (partial s/conform spec)]
+    (cc/quick-bench
+      (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
+
+  ;; 2.5µs
+  (let [schema [:* [:catn
+                    [:prop string?]
+                    [:val [:altn
+                           [:s string?]
+                           [:b boolean?]]]]]
+        parse (m/parser schema)]
+    (cc/quick-bench
+      (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]))))
+
+(defn and-map-perf-test []
+
+  ;; 164ns -> 36ns
+  (let [valid? (m/validator (into [:and] (map (fn [x] [:> x]) (range 5))))]
+    (cc/with-progress-reporting
+      (cc/quick-bench (valid? 5))))
+
+  ;; 150ns -> 126n -> 39ns
+  (let [->key #(keyword (str "key_" %))
+        valid? (m/validator (into [:map] (map (fn [x] [(->key x) :any]) (range 5))))
+        value (reduce (fn [acc x] (assoc acc (->key x) x)) {} (range 5))]
+    #_(prof/profile
+        (time (dotimes [_ 40000000] (valid? value))))
+    (cc/with-progress-reporting
+      (cc/quick-bench (valid? value)))))
+
 (defn schema-flames []
 
   ;; "Elapsed time: 10472.153783 msecs"
@@ -361,9 +450,20 @@
   (map-transform-test)
   (select-keys-perf-test)
   (fn-test)
+  (sequence-perf-test)
+  (simple-regex)
+  (parsing)
+  (and-map-perf-test)
 
   (prof/serve-files 8080)
   (prof/clear-results)
 
   (address-flame)
   (schema-flames))
+
+(comment
+  (let [f (m/eval '(fn [x] (> x 10)))]
+    (time
+      (prof/profile
+        (dotimes [_ 5000000]
+          (f 12))))))

@@ -1,5 +1,7 @@
 (ns malli.generator-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [clojure.test.check.properties :refer [for-all]]
+            [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
             [malli.generator :as mg]
@@ -7,26 +9,28 @@
             [malli.util :as mu]))
 
 (deftest generator-test
-  (doseq [[?schema] json-schema-test/expectations
+  (doseq [[?schema _ ?fn] json-schema-test/expectations
           ;; cljs doesn't have a regex generator :(
-          #?@(:cljs [:when (not= (m/type ?schema) :re)])]
+          #?@(:cljs [:when (not= (m/type ?schema) :re)])
+          :let [f (if ?fn #(%) identity)]]
     (testing (m/form ?schema)
       (testing "generate"
-        (is (= (mg/generate ?schema {:seed 123})
-               (mg/generate ?schema {:seed 123})))
-        (is (= (mg/generate ?schema {:seed 123, :size 10})
-               (mg/generate ?schema {:seed 123, :size 10})))
+        (is (= (f (mg/generate ?schema {:seed 123}))
+               (f (mg/generate ?schema {:seed 123}))))
+        (is (= (f (mg/generate ?schema {:seed 123, :size 10}))
+               (f (mg/generate ?schema {:seed 123, :size 10}))))
         (is (m/validate ?schema (mg/generate ?schema {:seed 123}))))
       (testing "sample"
-        (is (= (mg/sample ?schema {:seed 123})
-               (mg/sample ?schema {:seed 123})))
-        (is (= (mg/sample ?schema {:seed 123, :size 10})
-               (mg/sample ?schema {:seed 123, :size 10})))
+        (is (= (map f (mg/sample ?schema {:seed 123}))
+               (map f (mg/sample ?schema {:seed 123}))))
+        (is (= (map f (mg/sample ?schema {:seed 123, :size 10}))
+               (map f (mg/sample ?schema {:seed 123, :size 10}))))
         (doseq [value (mg/sample ?schema {:seed 123})]
           (is (m/validate ?schema value))))))
 
   (testing "simple schemas"
-    (doseq [schema [[:string {:min 1, :max 4}]
+    (doseq [schema [:any
+                    [:string {:min 1, :max 4}]
                     [:int {:min 1, :max 4}]
                     [:double {:min 0.0, :max 1.0}]
                     :boolean
@@ -35,6 +39,24 @@
                     :qualified-keyword
                     :qualified-symbol]]
       (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+
+  (testing "double properties"
+    (let [infinity? #(or (= % ##Inf)
+                         (= % ##-Inf))
+          NaN? (fn [x]
+                 (#?(:clj  Double/isNaN
+                     :cljs js/isNaN)
+                   x))
+          special? #(or (NaN? %)
+                        (infinity? %))
+          test-presence (fn [f options]
+                          (some f (mg/sample [:double options]
+                                             {:size 1000})))]
+      (is (test-presence infinity? {:gen/infinite? true}))
+      (is (test-presence NaN? {:gen/NaN? true}))
+      (is (test-presence special? {:gen/infinite? true
+                                   :gen/NaN? true}))
+      (is (not (test-presence special? nil)))))
 
   (testing "map entries"
     (is (= {:korppu "koira"
@@ -81,6 +103,21 @@
               (m/validate #".{8,}" (mg/generate [:re {:gen/elements elements} re-test]))
               (m/validate #"prefix_.{8,}" (mg/generate [:re {:gen/fmap fmap, :gen/elements elements} re-test])))))
 
+  (testing "regex with custom generators"
+    (is (= 42 (mg/generate [:re
+                            {:gen/gen (gen/return 42)}
+                            #"abc"]))
+        "Using :gen/gen")
+    (is (= 42 (mg/generate [:re
+                            {:gen/fmap (fn [_] 42)
+                             :gen/schema :int}
+                            #"abc"]))
+        "Using :gen/fmap and :gen/schema")
+    (is (= 42 (mg/generate [:re
+                            {:gen/elements [42]}
+                            #"abc"]))
+        "Using :gen/elements"))
+
   (testing "no generator"
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
@@ -114,9 +151,58 @@
     (is (every? #{1 2} (mg/sample [:and {:gen/elements [1 2]} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/elements [1 2], :gen/fmap 'str} int?] {:size 1000}))))
 
+  (testing "gen/schema"
+    (is (every? #{1 2} (mg/sample [:int {:gen/schema [:int {:gen/elements [1 2]}]}] {:size 1000})))
+    (is (every? #{"+1" "+2"} (mg/sample [:int {:gen/schema [:int {:gen/elements [1 2], :gen/fmap str}]
+                                               :gen/fmap (partial str "+")}] {:size 1000}))))
+
   (testing "gen/gen"
     (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
     (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
+
+(defn- schema+coll-gen [type children-gen]
+  (gen/let [children children-gen]
+    (let [schema (into [type] children)]
+      (gen/tuple (gen/return schema) (mg/generator schema)))))
+
+(def ^:private seqex-child
+  (let [s (gen/elements [string? int? keyword?])]
+    (gen/one-of [s (gen/fmap #(vector :* %) s)])))
+
+(defspec cat-test 100
+  (for-all [[s coll] (schema+coll-gen :cat (gen/vector seqex-child))]
+    (m/validate s coll)))
+
+(defspec catn-test 100
+  (for-all [[s coll] (->> (gen/vector (gen/tuple gen/keyword seqex-child))
+                          (gen/such-that (fn [coll] (or (empty? coll) (apply distinct? (map first coll)))))
+                          (schema+coll-gen :catn))]
+    (m/validate s coll)))
+
+(defspec alt-test 100
+  (for-all [[s coll] (schema+coll-gen :alt (gen/not-empty (gen/vector seqex-child)))]
+    (m/validate s coll)))
+
+(defspec altn-test 100
+  (for-all [[s coll] (->> (gen/not-empty (gen/vector (gen/tuple gen/keyword seqex-child)))
+                          (gen/such-that (fn [coll] (or (empty? coll) (apply distinct? (map first coll)))))
+                          (schema+coll-gen :altn))]
+    (m/validate s coll)))
+
+(defspec ?*+-test 100
+  (for-all [[s coll] (gen/let [type (gen/elements [:? :* :+])
+                               child seqex-child]
+                       (let [schema [type child]]
+                         (gen/tuple (gen/return schema) (mg/generator schema))))]
+    (m/validate s coll)))
+
+(defspec repeat-test 100
+  (for-all [[s coll] (schema+coll-gen :repeat (gen/tuple
+                                                (gen/let [min gen/nat
+                                                          len gen/nat]
+                                                  {:min min, :max (+ min len)})
+                                                seqex-child))]
+    (m/validate s coll)))
 
 (deftest min-max-test
 
@@ -158,7 +244,7 @@
   (let [values #{1 2 3 5 8 13}
         schema (reify
                  m/Schema
-                 (-type-properties [_])
+                 (-parent [_] (reify m/IntoSchema (-type-properties [_])))
                  (-properties [_])
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]
@@ -180,23 +266,43 @@
 
 #?(:clj
    (deftest function-schema-test
-     (testing "generates valid functions"
+     (let [=> (m/schema [:=> [:cat int? int?] int?])
+           {:keys [input output]} (m/-function-info =>)]
+       (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000}))))
 
-       (let [=> (m/schema [:=> [:tuple int? int?] int?])
-             input (m/-input-schema =>)
-             output (m/-output-schema =>)]
-         (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000})))))
-
-     (testing "arity meta"
-       (let [=> [:or
-                 [:=> [:tuple int?] int?]
-                 [:=> [:tuple int? int? int?] int?]]]
-         (is (every? (comp #{1 3} :arity meta) (mg/sample => {:size 1000})))))))
+     (let [=> (m/schema [:function [:=> [:cat int?] int?] [:=> [:cat int? int?] int?]])]
+       (is (every? #(m/validate int? (apply % (mg/generate [:or [:cat int?] [:cat int? int?]]))) (mg/sample => {:size 1000}))))))
 
 (deftest recursive-schema-generation-test-307
   (let [sample (mg/generate [:schema {:registry {::A
-                                                 [:tuple
+                                                 [:cat
                                                   [:= ::a]
                                                   [:vector {:gen/min 2, :gen/max 2} [:ref ::A]]]}}
                              ::A] {:size 1, :seed 1})]
     (is (-> sample flatten count (> 1)))))
+
+(deftest slow-recursive-test
+  (let [schema [:schema {:registry {::A [:tuple [:= :A]]
+                                    ::B [:tuple [:= :B]]
+                                    ::C [:tuple [:= :C]]
+                                    ::D [:tuple [:= :D]]
+                                    ::E [:tuple [:= :E] [:ref ::item]]
+                                    ::F [:tuple [:= :F] [:ref ::item]]
+                                    ::G [:tuple [:= :G] [:ref ::item]]
+                                    ::item [:multi {:dispatch first}
+                                            [:A ::A]
+                                            [:B ::B]
+                                            [:C ::C]
+                                            [:D ::D]
+                                            [:E ::E]
+                                            [:F ::F]
+                                            [:G ::G]]}}
+                ::E]
+        valid? (m/validator schema)]
+    (is (every? valid? (mg/sample schema {:size 10000})))))
+
+(deftest recursive-distinct-col-test
+  (is (not (every? empty? (mg/sample [:set
+                                      {:registry {::foo :int}}
+                                      [:ref ::foo]]
+                                     {:size 1000})))))

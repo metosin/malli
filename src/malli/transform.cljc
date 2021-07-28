@@ -2,6 +2,7 @@
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
   (:require #?@(:cljs [[goog.date.UtcDateTime]
                        [goog.date.Date]])
+            [malli.impl.util :as miu]
             [malli.core :as m])
   #?(:clj (:import (java.util Date UUID)
                    (java.time Instant ZoneId)
@@ -37,7 +38,7 @@
     (reduce
       (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
         (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
-              leave (if (and leave new-leave) #(new-leave (leave %)) (or leave new-leave))]
+              leave (if (and leave new-leave) #(leave (new-leave %)) (or leave new-leave))]
           {:enter enter :leave leave}))
       (keep #(-interceptor % schema options) ?interceptor))
 
@@ -47,6 +48,8 @@
     {:enter ?interceptor}
 
     :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
+
+(defn -safe [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ %)))
 
 ;;
 ;; from strings
@@ -77,9 +80,7 @@
   (if (number? x) (double x) x))
 
 (defn -string->keyword [x]
-  (if (string? x)
-    (keyword x)
-    x))
+  (if (string? x) (keyword x) x))
 
 (defn -string->boolean [x]
   (if (string? x)
@@ -315,7 +316,7 @@
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
-        ->chain (m/-comp m/-transformer-chain m/-into-transformer)
+        ->chain (miu/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
@@ -345,7 +346,7 @@
       :decoders (-> (-json-decoders)
                     (assoc :map-of {:compile (fn [schema _]
                                                (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
-                                                           (m/-comp m/-keyword->string) (-transform-map-keys))
+                                                           (miu/-comp m/-keyword->string) (-transform-map-keys))
                                                    (-transform-map-keys m/-keyword->string)))})
                     (cond-> json-vectors (assoc :vector -sequential->vector)))
       :encoders (-json-encoders)})))
@@ -359,7 +360,7 @@
 (defn strip-extra-keys-transformer
   ([]
    (strip-extra-keys-transformer nil))
-  ([{:keys [accept] :or {accept (m/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
+  ([{:keys [accept] :or {accept (miu/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
    (let [transform {:compile (fn [schema _]
                                (if (accept schema)
                                  (if-let [ks (some->> schema m/entries (map first) seq set)]
@@ -379,18 +380,23 @@
   ([]
    (default-value-transformer nil))
   ([{:keys [key defaults] :or {key :default}}]
-   (let [get-default (fn [schema] (let [default (some-> schema m/properties key)]
-                                    (if (some? default) default (some->> schema m/type (get defaults) (#(% schema))))))
+   (let [get-default (fn [schema]
+                       (if-some [default (some-> schema m/properties key)]
+                         default
+                         (some->> schema m/type (get defaults) (#(% schema)))))
          set-default {:compile (fn [schema _]
-                                 (if-some [default (get-default schema)]
+                                 (when-some [default (get-default schema)]
                                    (fn [x] (if (nil? x) default x))))}
          add-defaults {:compile (fn [schema _]
-                                  (let [defaults (->> (m/children schema)
-                                                      (keep (fn [[k {default key} v]]
-                                                              (if-some [default (if (some? default) default (get-default v))]
-                                                                [k default])))
-                                                      (into {}))]
-                                    (if (seq defaults)
+                                  (let [defaults (into {}
+                                                       (keep (fn [[k {default key :keys [optional]} v]]
+                                                               (when-not optional
+                                                                 (when-some [default (if (some? default)
+                                                                                       default
+                                                                                       (get-default v))]
+                                                                   [k default]))))
+                                                       (m/children schema))]
+                                    (when (seq defaults)
                                       (fn [x]
                                         (if (map? x)
                                           (reduce-kv

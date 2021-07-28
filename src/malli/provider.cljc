@@ -2,29 +2,18 @@
   (:require [malli.core :as m]
             [malli.registry :as mr]))
 
-(declare ->infer)
-(declare schema)
-
 (def preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean?]
                      (reverse) (zipmap (range)) (assoc 'any? -10 'some? -9)))
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
-(defn- registry-schemas [options] (->> options (m/-registry) (mr/-schemas) (vals) (keep #(-safe? m/schema %))))
-
-(defn- ->infer-schemas [options]
-  (fn [x] (-> options (registry-schemas) (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1)))))
-
-(defn- -infer-map [acc x options]
-  (reduce-kv (fn [acc k v] (update-in acc [:keys k] (->infer options) v)) acc x))
-
-(defn- -infer-seq [acc x options]
-  (reduce (->infer options) acc x))
-
-(defn- ->infer [options]
-  (let [infer-schemas (->infer-schemas options)
+(defn- ->inferrer [options]
+  (let [schemas (->> options (m/-registry) (mr/-schemas) (vals) (keep #(-safe? m/schema %)) (vec))
+        infer-value (fn [x] (-> schemas (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1))))
+        infer-map (fn [infer] (fn [acc x] (reduce-kv (fn [acc k v] (update-in acc [:keys k] infer v)) acc x)))
+        infer-seq (fn [infer] (fn [acc x] (reduce infer acc x)))
         merge+ (fnil #(merge-with + %1 %2) {})]
-    (fn [acc x]
+    (fn infer [acc x]
       (let [type (cond
                    (map? x) :map
                    (set? x) :set
@@ -35,11 +24,11 @@
             (update :count (fnil inc 0))
             (update-in [:types type :count] (fnil inc 0))
             (cond-> (= :value type) (-> (update-in [:types type :values] merge+ {x 1})
-                                        (update-in [:types type :schemas] merge+ (infer-schemas x)))
-                    (= :map type) (update-in [:types type] (fnil -infer-map {}) x options)
-                    (#{:set :vector :sequential} type) (update-in [:types type :values] (fnil -infer-seq {}) x options)))))))
+                                        (update-in [:types type :schemas] merge+ (infer-value x)))
+                    (= :map type) (update-in [:types type] (fnil (infer-map infer) {}) x)
+                    (#{:set :vector :sequential} type) (update-in [:types type :values] (fnil (infer-seq infer) {}) x)))))))
 
-(defn- -map-schema [{:keys [count] :as stats} options]
+(defn- -map-schema [{:keys [count] :as stats} schema options]
   (->> (:keys stats)
        (map (fn [[k kstats]]
               (let [kschema (schema kstats options)]
@@ -58,12 +47,6 @@
 ;; public api
 ;;
 
-(defn stats
-  ([xs]
-   (stats xs nil))
-  ([xs options]
-   (reduce (->infer options) options xs)))
-
 (defn schema
   ([stats]
    (schema stats nil))
@@ -74,12 +57,19 @@
        (case type
          :value (-value-schema (type types))
          (:set :vector :sequential) [type (-> types type :values (schema options))]
-         :map (-map-schema (type types) options)))
+         :map (-map-schema (type types) schema options)))
      (nil? types) (m/schema any?)
      :else (into [:or] (map (fn [[type]] (schema (update stats :types select-keys [type]) options)) types)))))
+
+(defn provider
+  ([]
+   (provider nil))
+  ([options]
+   (let [inferrer (->inferrer options)]
+     (fn [xs] (-> (reduce inferrer {} xs) (schema options))))))
 
 (defn provide
   ([xs]
    (provide xs nil))
   ([xs options]
-   (-> xs (stats options) (schema options))))
+   ((provider options) xs)))

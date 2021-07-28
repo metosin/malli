@@ -1,6 +1,7 @@
 (ns malli.clj-kondo
   (:require #?(:clj [clojure.java.io :as io])
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.impl.util :as miu]))
 
 (declare transform)
 
@@ -53,6 +54,8 @@
 (defmethod accept 'sequential? [_ _ _ _] :sequential)
 (defmethod accept 'ratio? [_ _ _ _] :int) ;;??
 (defmethod accept 'bytes? [_ _ _ _] :char-sequence) ;;??
+(defmethod accept 'ifn? [_ _ _ _] :ifn)
+(defmethod accept 'fn? [_ _ _ _] :fn)
 
 (defmethod accept :> [_ _ _ _] :number) ;;??
 (defmethod accept :>= [_ _ _ _] :number) ;;??
@@ -66,7 +69,7 @@
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
-  (let [{req true opt false} (->> children (group-by (m/-comp not :optional second)))
+  (let [{req true opt false} (->> children (group-by (miu/-comp not :optional second)))
         opt (apply array-map (mapcat (fn [[k _ s]] [k s]) opt))
         req (apply array-map (mapcat (fn [[k _ s]] [k s]) req))]
     (cond-> {:op :keys}, (seq opt) (assoc :opt opt), (seq req) (assoc :req req))))
@@ -93,9 +96,17 @@
 (defmethod accept :qualified-symbol [_ _ _ _] :symbol)
 (defmethod accept :uuid [_ _ _ _] :any) ;;??
 
+(defmethod accept :=> [_ _ _ _] :fn)
+(defmethod accept :function [_ _ _ _] :fn)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))
+
+(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :* [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :cat [_ _ children _] children)
+(defmethod accept :catn [_ _ children _] (mapv last children))
 
 (defmethod accept :merge [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept :union [_ schema _ options] (transform (m/deref schema) options))
@@ -124,32 +135,33 @@
 
 (defn from [{:keys [schema ns name]}]
   (let [ns-name (-> ns str symbol)
-        schema (if (= :or (m/type schema)) schema (m/into-schema :or nil [schema] (m/options schema)))]
+        schema (if (= :function (m/type schema)) schema (m/into-schema :function nil [schema] (m/options schema)))]
     (reduce
       (fn [acc schema]
-        (let [[input return] (m/children schema)
-              args (mapv transform (m/children input))
-              ret (transform return)
-              arity (count args)]
-          (conj acc {:ns ns-name
-                     :name name
-                     :arity arity
-                     :args args
-                     :ret ret}))) [] (m/children schema))))
+        (let [{:keys [input output arity min]} (m/-function-info schema)
+              args (transform input)
+              ret (transform output)]
+          (conj acc (cond-> {:ns ns-name
+                             :name name
+                             :arity arity
+                             :args args
+                             :ret ret}
+                            (= arity :varargs) (assoc :min-arity min)))))
+      [] (m/children schema))))
 
 (defn collect
   ([] (collect nil))
   ([ns]
    (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
-     (->> (for [[k vs] (m/=>schemas) :when (-collect k) [_ v] vs v (from v)] v)))))
+     (->> (for [[k vs] (m/function-schemas) :when (-collect k) [_ v] vs v (from v)] v)))))
 
 (defn linter-config [xs]
   (reduce
-    (fn [acc {:keys [ns name arity args ret]}]
+    (fn [acc {:keys [ns name arity] :as data}]
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
-        {:args args, :ret ret}))
-    {:lint-as {'malli.schema/defn 'schema.core/defn}} xs))
+        (select-keys data [:args :ret :min-arity])))
+    {} xs))
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

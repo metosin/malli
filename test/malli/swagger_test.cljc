@@ -1,5 +1,6 @@
 (ns malli.swagger-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.core-test]
             [malli.swagger :as swagger]
             [malli.core :as m]
             [malli.util :as mu]))
@@ -9,11 +10,12 @@
    [pos-int? {:type "integer", :format "int64", :minimum 1}]
    [float? {:type "number" :format "float"}]
    ;; comparators
-   [[:> 6] {:type "number", :format "double", :exclusiveMinimum 6}]
-   [[:>= 6] {:type "number", :format "double", :minimum 6}]
-   [[:< 6] {:type "number", :format "double", :exclusiveMaximum 6}]
-   [[:<= 6] {:type "number", :format "double", :maximum 6}]
+   [[:> 6] {:type "number", :exclusiveMinimum 6}]
+   [[:>= 6] {:type "number", :minimum 6}]
+   [[:< 6] {:type "number", :exclusiveMaximum 6}]
+   [[:<= 6] {:type "number", :maximum 6}]
    ;; base
+   [[:not string?] {:x-not {:type "string"}}]
    [[:and int? pos-int?] {:type "integer"
                           :format "int64"
                           :x-allOf [{:type "integer", :format "int64"}
@@ -66,11 +68,25 @@
                                         {:type "string"}]}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
+   [[:int {:min 1, :max 4}] {:type "integer", :format "int64", :minimum 1, :maximum 4}]
+   [[:double {:min 1, :max 4}] {:type "number", :format "double" :minimum 1, :maximum 4}]
+   [:keyword {:type "string"}]
+   [:qualified-keyword {:type "string"}]
+   [:symbol {:type "string"}]
+   [:qualified-symbol {:type "string"}]
+   [:uuid {:type "string", :format "uuid"}]
+
+   [integer? {:type "integer" :format "int32"}]
+   #?@(:clj [[ratio? {:type "number"}]
+             [rational? {:type "number"}]]
+       :cljs [])
    ;; protocols
    [(reify
       m/Schema
-      (-type-properties [_])
       (-properties [_])
+      (-parent [_] (reify m/IntoSchema (-type [_]) (-type-properties [_])))
+      (-form [_])
+      (-validator [_] int?)
       (-walk [t w p o] (m/-outer w t p nil o))
       swagger/SwaggerSchema
       (-accept [_ _ _] {:type "custom"})) {:type "custom"}]

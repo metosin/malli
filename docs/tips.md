@@ -79,3 +79,296 @@ Transforming a comma-separated string into a vector of ints:
   (mt/string-transformer))
 ; => [1 2 3 4]
 ```
+
+Using a custom transformer:
+
+```clj
+(defn query-decoder [schema]
+  (m/decoder
+    schema
+    (mt/transformer
+      (mt/transformer
+        {:name "vectorize strings"
+         :decoders
+         {:vector
+          {:compile (fn [schema _]
+                      (let [separator (-> schema m/properties :query/separator (or ","))]
+                        (fn [x]
+                          (cond
+                            (not (string? x)) x
+                            (str/includes? x separator) (into [] (.split ^String x separator))
+                            :else [x]))))}}})
+      (mt/string-transformer))))
+
+(def decode
+  (query-decoder
+    [:map
+     [:a [:vector {:query/separator ";"} :int]]
+     [:b [:vector :int]]]))
+
+(decode {:a "1", :b "1"})
+; => {:a [1], :b [1]}
+
+(decode {:a "1;2", :b "1,2"})
+; => {:a [1 2], :b [1 2]}
+```
+
+## Normalizing properties
+
+Returning a Schema form with `nil` in place of empty properties:
+
+```clj
+(require '[malli.core :as m])
+
+(defn normalize-properties [?schema]
+  (m/walk
+    ?schema
+    (fn [schema _ children _]
+      (if (vector? (m/form schema))
+        (into [(m/type schema) (m/properties schema)] children)
+        (m/form schema)))))
+
+(normalize-properties
+  [:map
+   [:x int?]
+   [:y [:tuple int? int?]]
+   [:z [:set [:map [:x [:enum 1 2 3]]]]]])
+;[:map nil
+; [:x nil int?]
+; [:y nil [:tuple nil int? int?]]
+; [:z nil [:set nil
+;          [:map nil
+;           [:x nil [:enum nil 1 2 3]]]]]]
+```
+
+## Default value from a function
+
+The `mt/default-value-transformer` can fill default values if the `:default` property is given. It
+is possible though to calculate a default value with a given function providing custom transformer
+derived from `mt/default-value-transformer`:
+
+```clj
+(defn default-fn-value-transformer
+  ([]
+   (default-fn-value-transformer nil))
+  ([{:keys [key] :or {key :default-fn}}]
+   (let [add-defaults
+         {:compile
+          (fn [schema _]
+            (let [->k-default (fn [[k {default key :keys [optional]} v]]
+                                (when-not optional
+                                  (when-some [default (or default (some-> v m/properties key))]
+                                    [k default])))
+                  defaults    (into {} (keep ->k-default) (m/children schema))
+                  exercise    (fn [x defaults]
+                                (reduce-kv (fn [acc k v]
+                                             ; the key difference compare to default-value-transformer
+                                             ; we evaluate v instead of just passing it
+                                             (if-not (contains? x k)
+                                               (-> (assoc acc k ((m/eval v) x))
+                                                   (try (catch Exception _ acc)))
+                                               acc))
+                                           x defaults))]
+              (when (seq defaults)
+                (fn [x] (if (map? x) (exercise x defaults) x)))))}]
+     (mt/transformer
+      {:decoders {:map add-defaults}
+       :encoders {:map add-defaults}}))))
+```
+
+Example 1: if `:secondary` is missing, same its value to value of `:primary`
+```clj
+(m/decode
+ [:map
+  [:primary string?]
+  [:secondary {:default-fn '#(:primary %)} string?]]
+ {:primary "blue"}
+ (default-fn-value-transformer))
+```
+
+Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
+```clj
+(def Purchase
+  [:map
+   [:qty {:default 1} number?]
+   [:price {:optional true} number?]
+   [:cost {:default-fn '(fn [m] (* (:qty m) (:price m)))} number?]])
+
+(def decode-autonomous-vals
+  (m/decoder Purchase (mt/transformer (mt/string-transformer) (mt/default-value-transformer))))
+(def decode-interconnected-vals
+  (m/decoder Purchase (default-fn-value-transformer)))
+
+(-> {:qty "100" :price "1.2"} decode-autonomous-vals decode-interconnected-vals) ;; => {:price 1.2, :qty 1, :cost 1.2}
+(-> {:price "1.2"} decode-autonomous-vals decode-interconnected-vals)            ;; => {:qty 100.0, :price 1.2, :cost 120.0}
+(-> {:prie "1.2"} decode-autonomous-vals decode-interconnected-vals)             ;; => {:prie "1.2", :qty 1}
+```
+
+## Walking Schema and Entry Properties
+
+1. walk entries on the way in
+2. unwalk entries on the way out
+
+```clj
+(defn walk-properties [schema f]
+  (m/walk
+    schema
+    (fn [s _ c _]
+      (m/into-schema
+        (m/-parent s)
+        (f (m/-properties s))
+        (cond->> c (m/entries s) (map (fn [[k p s]] [k (f p) (first (m/children s))])))
+        (m/options s)))
+    {::m/walk-entry-vals true}))
+```
+
+Stripping all swagger-keys:
+
+```clj
+(defn remove-swagger-keys [p]
+  (not-empty
+    (reduce-kv
+      (fn [acc k _]
+        (cond-> acc (some #{:swagger} [k (-> k namespace keyword)]) (dissoc k)))
+      p p)))
+
+(walk-properties
+  [:map {:title "Organisation name"}
+   [:ref {:swagger/description "Reference to the organisation"
+          :swagger/example "Acme floor polish, Houston TX"} :string]
+   [:kikka [:string {:swagger {:title "kukka"}}]]]
+  remove-swagger-keys)
+;[:map {:title "Organisation name"}
+; [:ref :string]
+; [:kikka :string]]
+```
+
+## Allowing invalid values on optional keys
+
+e.g. don't fail if the optional keys hava invalid values.
+
+1. create a helper function that transforms the schema swapping the actual schema with `:any`
+2. done.
+
+```clj
+(defn allow-invalid-optional-values [schema]
+  (m/walk
+    schema
+    (m/schema-walker
+      (fn [s]
+        (cond-> s
+                (m/entries s)
+                (mu/transform-entries
+                  (partial map (fn [[k {:keys [optional] :as p} s]] [k p (if optional :any s)]))))))))
+
+(allow-invalid-optional-values
+  [:map
+   [:a string?]
+   [:b {:optional true} int?]
+   [:c [:maybe
+        [:map
+         [:d string?]
+         [:e {:optional true} int?]]]]])
+;[:map
+; [:a string?]
+; [:b {:optional true} :any]
+; [:c [:maybe [:map
+;              [:d string?]
+;              [:e {:optional true} :any]]]]]
+
+(m/validate
+  [:map
+   [:a string?]
+   [:b {:optional true} int?]]
+  {:a "Hey" :b "Nope"})
+; => false
+
+(m/validate
+  (allow-invalid-optional-values
+    [:map
+     [:a string?]
+     [:b {:optional true} int?]])
+  {:a "Hey" :b "Nope"})
+; => true
+```
+## Collecting inlined reference definitions from schemas
+
+By default, one can inline schema reference definitions with `:map`, like:
+
+```clj
+(def User
+  [:map
+   [::id :int]
+   [:name :string]
+   [::country {:optional true} :string]])
+```
+
+It would be nice to be able to simplify the schemas into:
+
+```clj
+[:map
+ ::id
+ [:name :string]
+ [::country {:optional true}]]
+```
+
+Use cases:
+* Simplify large schemas
+* Finding differences in semantics
+* Refactoring multiple schemas to use a shared registry
+
+Naive implementation (doesn't look up the local registries):
+
+```clj
+(defn collect-references [schema]
+  (let [acc* (atom {})
+        ->registry (fn [registry]
+                     (->> (for [[k d] registry]
+                            (if (seq (rest d))
+                              (m/-fail! ::ambiguous-references {:data d})
+                              [k (first (keys d))]))
+                          (into {})))
+        schema (m/walk
+                 schema
+                 (fn [schema path children _]
+                   (let [children (if (= :map (m/type schema)) ;; just maps
+                                    (->> children
+                                         (mapv (fn [[k p s]]
+                                                 ;; we found inlined references
+                                                 (if (and (m/-reference? k) (not (m/-reference? s)))
+                                                   (do (swap! acc* update-in [k (m/form s)] (fnil conj #{}) (conj path k))
+                                                       (if (seq p) [k p] k))
+                                                   [k p s]))))
+                                    children)
+                         ;; accumulated registry, fail on ambiguous refs
+                         registry (->registry @acc*)]
+                     ;; return simplified schema
+                     (m/into-schema
+                       (m/-parent schema)
+                       (m/-properties schema)
+                       children
+                       {:registry (mr/composite-registry (m/-registry (m/options schema)) registry)}))))]
+    {:registry (->registry @acc*)
+     :schema schema}))
+```
+
+In action:
+
+```clj
+(collect-references User)
+;{:registry {:user/id :int,
+;            :user/country :string}
+; :schema [:map
+;          :user/id
+;          [:name :string]
+;          [:user/country {:optional true}]]}
+```
+
+```clj
+(collect-references
+  [:map
+   [:user/id :int]
+   [:child [:map
+            [:user/id :string]]]])
+; =throws=> :user/ambiguous-references {:data {:string #{[:child :user/id]}, :int #{[:user/id]}}}
+```

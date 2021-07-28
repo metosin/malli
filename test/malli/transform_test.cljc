@@ -255,7 +255,98 @@
       (is (= ["kikka" "1"] (m/encode [:tuple keyword? int?] [:kikka 1] mt/string-transformer)))
       (is (= 1.0 (m/encode [:tuple keyword? int?] 1.0 mt/string-transformer)))
       (is (= nil (m/encode [:tuple keyword? int?] nil mt/string-transformer)))
-      (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer))))))
+      (is (= ["kikka" "1" "2"] (m/encode [:tuple keyword? int?] [:kikka 1 "2"] mt/string-transformer)))))
+
+  (testing "seqex"
+    (testing "decode"
+      (are [s v v*]
+        (= (m/decode s v mt/string-transformer) v*)
+
+        [:cat] [] []
+        [:cat] "1" "1"
+        [:cat] nil nil
+        [:cat int?] ["1"] [1]
+        [:cat int? keyword?] ["1" "kikka"] [1 :kikka]
+        [:cat int? keyword?] ["kikka" "kukka"] ["kikka" "kukka"]
+
+        [:catn] [] []
+        [:catn] "1" "1"
+        [:catn] nil nil
+        [:catn [:n int?]] ["1"] [1]
+        [:catn [:n int?] [:k keyword?]] ["1" "kikka"] [1 :kikka]
+        [:catn [:n int?] [:k keyword?]] ["kikka" "kukka"] ["kikka" "kukka"]
+
+        [:alt int?] ["1"] [1]
+        [:alt int? keyword?] ["1"] [1]
+        [:alt keyword? int?] ["1"] [:1]
+        [:alt int? keyword?] ["kikka"] [:kikka]
+
+        [:altn [:n int?]] ["1"] [1]
+        [:altn [:n int?] [:k keyword?]] ["1"] [1]
+        [:altn [:k keyword?] [:n int?]] ["1"] [:1]
+        [:altn [:n int?] [:k keyword?]] ["kikka"] [:kikka]
+
+        [:? int?] [] []
+        [:? int?] "1" "1"
+        [:? int?] nil nil
+        [:? int?] ["1"] [1]
+        [:? int?] ["1" "2"] ["1" "2"]
+
+        [:* int?] [] []
+        [:* int?] ["1"] [1]
+        [:* int?] ["1" "2"] [1 2]
+        [:* int?] ["1" "kikka"] ["1" "kikka"]
+
+        [:+ int?] [] []
+        [:+ int?] ["1"] [1]
+        [:+ int?] ["1" "2"] [1 2]
+        [:+ int?] ["1" "kikka"] ["1" "kikka"]
+
+        [:repeat {:min 2, :max 4} int?] [] []
+        [:repeat {:min 2, :max 4} int?] nil nil
+        [:repeat {:min 2, :max 4} int?] ["1"] ["1"]
+        [:repeat {:min 2, :max 4} int?] ["1" "2"] [1 2]
+        [:repeat {:min 2, :max 4} int?] ["1" "kikka"] ["1" "kikka"]
+        [:repeat {:min 2, :max 4} int?] ["1" "2" "3" "4" "5"] ["1" "2" "3" "4" "5"]))
+
+    (testing "encode"
+      (are [s v v*]
+        (= (m/encode s v mt/string-transformer) v*)
+
+        [:cat] [] []
+        [:cat] 1 1
+        [:cat] nil nil
+        [:cat int?] [1] ["1"]
+        [:cat int? keyword?] [1 :kikka] ["1" "kikka"]
+        [:cat int? keyword?] [:kikka :kukka] [:kikka :kukka]
+
+        [:alt int?] [1] ["1"]
+        [:alt int? keyword?] [1] ["1"]
+        [:alt keyword? int?] [:1] ["1"]
+        [:alt int? keyword?] [:kikka] ["kikka"]
+
+        [:? int?] [] []
+        [:? int?] 1 1
+        [:? int?] nil nil
+        [:? int?] [1] ["1"]
+        [:? int?] [1 2] [1 2]
+
+        [:* int?] [] []
+        [:* int?] [1] ["1"]
+        [:* int?] [1 2] ["1" "2"]
+        [:* int?] [1 :kikka] [1 :kikka]
+
+        [:+ int?] [] []
+        [:+ int?] [1] ["1"]
+        [:+ int?] [1 2] ["1" "2"]
+        [:+ int?] [1 :kikka] [1 :kikka]
+
+        [:repeat {:min 2, :max 4} int?] [] []
+        [:repeat {:min 2, :max 4} int?] nil nil
+        [:repeat {:min 2, :max 4} int?] [1] [1]
+        [:repeat {:min 2, :max 4} int?] [1 2] ["1" "2"]
+        [:repeat {:min 2, :max 4} int?] [1 :kikka] [1 :kikka]
+        [:repeat {:min 2, :max 4} int?] [1 2 3 4 5] [1 2 3 4 5]))))
 
 (deftest collection-transform-test
   (testing "decode"
@@ -619,6 +710,7 @@
                       [[:enum P1 "S" "M" "L"] "s" "S"]
                       [[:re P1 ".*"] "kikka" "KIKKA"]
                       [[:fn P1 'string?] "kikka" "KIKKA"]
+                      [[ifn? P1] "kikka" "KIKKA"]
                       [[:maybe P1 keyword?] "kikka" :KIKKA]
                       [[:vector PS keyword?] ["kikka"] [:KIKKA]]
                       [[:sequential PS keyword?] ["kikka"] [:KIKKA]]
@@ -679,6 +771,12 @@
     (is (= {:user/verified false} (m/decode [:map [:user/verified {:default false} boolean?]] {} mt/default-value-transformer)))
     (is (= false (m/decode [:and {:default false} boolean?] nil mt/default-value-transformer))))
 
+  (testing "optional key"
+    (is (= {:x 5} (m/decode [:map [:x :int] [:y {:optional true, :default 0} :int]] {:x 5}
+                            mt/default-value-transformer)))
+    (is (= {:x 5} (m/decode [:map [:x :int] [:y {:optional true} [:int {:default 0}]]] {:x 5}
+                            mt/default-value-transformer))))
+
   (testing "with custom options"
     (is (= false (m/decode [:and {:? false} boolean?] nil (mt/default-value-transformer {:key :?}))))
     (is (= {:user {:first-name "", :last-name ""}}
@@ -703,3 +801,18 @@
       (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
               1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}
              (m/decode schema data mt/json-transformer))))))
+
+#?(:clj
+   (deftest -safe-test
+     (let [schema [:int {:decode/num (mt/-safe #(Long/parseLong %))}]]
+       (is (= 1 (m/decode schema "1" (mt/transformer {:name :num}))))
+       (is (= 1 (m/decode schema 1 (mt/transformer {:name :num}))))
+       (is (= "safe" (m/decode schema "safe" (mt/transformer {:name :num})))))))
+
+(deftest regression-480-test
+  (let [value {:b #uuid"f5a54a8f-7d78-4495-9138-e810885d1cdb"}
+        schema [:map [:a :int] [:b :uuid]]]
+    (is (= value
+           (as-> value $
+                 (m/encode schema $ mt/string-transformer)
+                 (m/decode schema $ mt/string-transformer))))))

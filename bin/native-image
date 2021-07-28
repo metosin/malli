@@ -19,7 +19,7 @@ fi
 
 "$GRAALVM_HOME/bin/native-image" \
     -cp "$(clojure -A:graalvm -Spath):classes" \
-    -H:Name=demo \
+    -H:Name=$1 \
     -J-Dborkdude.dynaload.aot=true \
     -H:+ReportExceptionStackTraces \
     --initialize-at-build-time  \

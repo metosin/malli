@@ -1,5 +1,6 @@
 (ns malli.util-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.impl.util :as miu]
             [malli.util :as mu]
             [malli.core :as m]
             [malli.registry :as mr]))
@@ -66,7 +67,47 @@
 
     [:schema [:schema [:map [:x int?]]]]
     [:schema [:schema [:schema [:map [:y int?]]]]]
-    [:map [:x int?] [:y int?]]))
+    [:map [:x int?] [:y int?]]
+
+    [:map {:title "x", :x true} [:x :int]]
+    [:map {:title "y", :y true} [:y :int]]
+    [:map {:title "y", :x true, :y true}
+     [:x :int] [:y :int]]
+
+    [:map {:title "x", :x true} [:x :int]]
+    [:and {:and "y", :y false}
+     [:map {:title "y", :y true}
+      [:y :int]]
+     map?]
+    [:and {:and "y", :y false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int]
+      [:y :int]]
+     map?]
+
+    [:and {:and "x", :x false} [:map {:title "x", :x true} [:x :int]] map?]
+    [:map {:title "y", :y true} [:y :int]]
+    [:and {:and "x", :x false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int]
+      [:y :int]]
+     map?]
+
+    [:and {:and "x", :x false} [:map {:title "x", :x true} [:x :int]] map?]
+    [:and {:and "y", :y false} [:map {:title "y", :y true} [:y :int]] map?]
+    [:and {:and "y", :x false, :y false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int] [:y :int]]
+     map?
+     map?]
+
+    [:and {:and "x"} [:map {:title "x", :x true} [:x :int]] map?]
+    map?
+    map?
+
+    [:and boolean? int?]
+    [:and map?]
+    [:and map? int?]))
 
 (deftest union-test
   (are [?s1 ?s2 expected]
@@ -172,6 +213,25 @@
                        [:a])
                      [:map [:a int?]])))))
 
+(deftest rename-keys-test
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/rename-keys schema {}) schema))
+    (is (mu/equals (mu/rename-keys schema nil) schema))
+    (is (mu/equals (mu/rename-keys schema {:a :a}) schema))
+    (is (mu/equals (mu/rename-keys schema {:extra :k}) schema))
+    (is (mu/equals (mu/rename-keys schema {:a :b}) [:map {:title "map"}
+                                                    [:b int?]
+                                                    [:c string?]]))
+    (is (mu/equals (mu/rename-keys schema {:a :b
+                                           :b :c
+                                           :c :a}) [:map {:title "map"}
+                                                    [:b int?]
+                                                    [:c {:optional true} int?]
+                                                    [:a string?]]))))
+
 ;;
 ;; LensSchemas
 ;;
@@ -265,9 +325,9 @@
         [:enum "A" "B"] 3 "C" ::throws
 
         [:map [:x string?]] :x int? [:map [:x 'int?]]
-        [:map [:x {:optional true} string?]] :x int? [:map [:x 'int?]]
+        [:map [:x {:optional true} string?]] :x int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
-        ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
+        [:map [:x {:optional true} string?]] [:x] int? [:map [:x 'int?]]
         [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
         [:map [:x {:optional true} string?]] :y string? [:map [:x {:optional true} 'string?] [:y 'string?]]
         [:map [:x string?]] [:y {:optional true}] string? [:map [:x 'string?] [:y {:optional true} 'string?]]
@@ -351,6 +411,7 @@
 
 (deftest update-test
   (is (mu/equals (mu/update (m/schema [:vector int?]) 0 (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update [:vector int?] 0 (constantly string?)) [:vector string?]))
   (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 1 (constantly string?)) [:tuple int? string?]))
   (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 2 (constantly string?)) [:tuple int? int? string?]))
   (is (mu/equals (mu/update (m/schema [:or int? int?]) 1 (constantly string?)) [:or int? string?]))
@@ -385,8 +446,14 @@
     (is (mu/equals (mu/update schema :b (constantly string?))
                    [:map {:title "map"}
                     [:a int?]
-                    [:b string?]
-                    [:c string?]]))))
+                    [:b {:optional true} string?]
+                    [:c string?]]))
+    (is (mu/equals (mu/update schema :d #(or % boolean?))
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:b {:optional true} int?]
+                    [:c string?]
+                    [:d boolean?]]))))
 
 (deftest assoc-in-test
   (is (mu/equals (mu/assoc-in (m/schema [:vector int?]) [0] string?) [:vector string?]))
@@ -414,7 +481,20 @@
   (is (mu/equals (mu/update-in (m/schema [:map]) [:a :b :c :d] (constantly int?))
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/update-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?])))
+  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [:a] (constantly any?))
+                 [:map [:a {:optional true} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [[:a {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [:a :x] (constantly any?))
+                 [:map [:a {:optional true} [:map [:x {:optional true} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a {:optional false}] [:x {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} [:map [:x {:optional false} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a] [:x {:optional false}]] (constantly any?))
+                 [:map [:a [:map [:x {:optional false} any?]]]])))
 
 (deftest transform-entries-test
   (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))
@@ -862,3 +942,38 @@
   (is (= [:b {:optional true} Int]
          (-> [:map [:a [:map [:b {:optional true} Int]]]]
              (mu/get-in [:a [::m/find :b]])))))
+
+#?(:clj
+   (deftest composers
+     (let [-t (constantly true)
+           -f (constantly false)
+           t (into [] (repeat 16 -t))
+           f (into [] (repeat 16 -f))
+           t+f (conj t -f)
+           f+t (conj f -t)
+           tf (into [-t] f)
+           ft (into [-f] t)
+           ff (conj f -f)
+           tt (conj t -t)]
+       (testing "every pred behaves like and: one false => result is false"
+         (is (true?  ((miu/-every-pred [-t]) nil)))
+         (is (false? ((miu/-every-pred [-f]) nil)))
+         (is (true?  ((miu/-every-pred t) nil)))
+         (is (false? ((miu/-every-pred f) nil)))
+         (is (false? ((miu/-every-pred t+f) nil)))
+         (is (false? ((miu/-every-pred f+t) nil)))
+         (is (false? ((miu/-every-pred tf) nil)))
+         (is (false? ((miu/-every-pred ft) nil)))
+         (is (false? ((miu/-every-pred ff) nil)))
+         (is (true?  ((miu/-every-pred tt) nil))))
+       (testing "some pred behaves like or: one true => result is true"
+         (is (true?  ((miu/-some-pred [-t]) nil)))
+         (is (false? ((miu/-some-pred [-f]) nil)))
+         (is (true?  ((miu/-some-pred t) nil)))
+         (is (false? ((miu/-some-pred f) nil)))
+         (is (true?  ((miu/-some-pred t+f) nil)))
+         (is (true?  ((miu/-some-pred f+t) nil)))
+         (is (true?  ((miu/-some-pred tf) nil)))
+         (is (true?  ((miu/-some-pred ft) nil)))
+         (is (false? ((miu/-some-pred ff) nil)))
+         (is (true?  ((miu/-some-pred tt) nil)))))))

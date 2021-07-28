@@ -324,7 +324,7 @@
         [:enum "A" "B"] 3 "C" ::throws
 
         [:map [:x string?]] :x int? [:map [:x 'int?]]
-        [:map [:x {:optional true} string?]] :x int? [:map [:x 'int?]]
+        [:map [:x {:optional true} string?]] :x int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
         ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
@@ -445,7 +445,7 @@
     (is (mu/equals (mu/update schema :b (constantly string?))
                    [:map {:title "map"}
                     [:a int?]
-                    [:b string?]
+                    [:b {:optional true} string?]
                     [:c string?]]))
     (is (mu/equals (mu/update schema :d #(or % boolean?))
                    [:map {:title "map"}
@@ -480,7 +480,17 @@
   (is (mu/equals (mu/update-in (m/schema [:map]) [:a :b :c :d] (constantly int?))
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/update-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?])))
+  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [:a] (constantly any?))
+                 [:map [:a {:optional true} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [[:a {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [:a :x] (constantly any?))
+                 [:map [:a {:optional true} [:map [:x {:optional true} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a {:optional false}] [:x {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} [:map [:x {:optional false} any?]]]])))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]

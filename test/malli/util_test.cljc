@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.impl.util :as miu]
             [malli.util :as mu]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.registry :as mr]))
 
 (defn form= [& ?schemas]
   (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))
@@ -494,6 +495,27 @@
   (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
                                [[:a] [:x {:optional false}]] (constantly any?))
                  [:map [:a [:map [:x {:optional false} any?]]]])))
+
+(deftest transform-entries-test
+  (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))
+        options            {:registry registry}
+        key->key-transform #(map (fn [[k m _]] [k m k]) %)
+
+        schema              [:map [:a/x {:m true} int?]]
+        schema-with-options (m/schema schema options)
+        result-schema       (m/schema [:map [:a/x {:m true} :a/x]] options)]
+
+    (testing "manual options are preserved in output type from the transform"
+      (is (mu/equals
+            (mu/transform-entries schema key->key-transform options)
+            result-schema
+            options)))
+
+    (testing "schema-attached-options are preserved in output type from the transform"
+      (is (mu/equals
+            (mu/transform-entries schema-with-options key->key-transform nil)
+            result-schema
+            options)))))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]

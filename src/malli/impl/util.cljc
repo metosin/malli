@@ -68,7 +68,3 @@
    (-comp
     (apply -comp fs)
     (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))))
-
-(defn -reverse
-  [xs]
-  (reduce (fn [acc x] (cons x acc)) () xs))

@@ -215,15 +215,17 @@
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (-set-children schema children)))
 
-(defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
-  (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
-                                             (not (sequential? e)) (if (and naked-keys (-reference? e)) [[e nil e] e] (-fail! ::invalid-ref {:ref e}))
-                                             (and (= 1 (count e)) (-reference? (first e))) (if naked-keys [[(first e) nil (first e)] e])
-                                             (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
-                                             :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
+(defn -parse-entries [children {:keys [naked-keys lazy-refs]} {::keys [extract-meta] :as options}]
+  (let [-parse (fn [e] (let [[[k ?p ?v :as e] f] (cond
+                                                   (not (sequential? e)) (if (and naked-keys (-reference? e)) [[e nil e] e] (-fail! ::invalid-ref {:ref e}))
+                                                   (and (= 1 (count e)) (-reference? (first e))) (if naked-keys [[(first e) nil (first e)] e])
+                                                   (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
+                                                   :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
-                             s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
-                             c [k p (schema s options)]]
+                             p' (cond-> p extract-meta (#(merge (meta e) %)))
+                             s (schema (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options)) options)
+                             f (if (= p p') f (cond-> [k p'] (not= k ?s) (conj s)))
+                             c [k p' s]]
                          {:children [c]
                           :entries [(miu/-tagged k (-val-schema (last c) p))]
                           :forms [f]}))
@@ -246,10 +248,9 @@
         child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
-(defn- -properties-and-children [[x :as xs]]
-  (if (or (nil? x) (map? x))
-    [x (rest xs)]
-    [nil xs]))
+(defn- -properties-and-children [[_ & [x :as xs] :as s] {::keys [extract-meta]}]
+  (cond-> (if (or (nil? x) (map? x)) [x (rest xs)] [nil xs])
+          extract-meta (update 0 #(merge (meta s) %))))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -1634,7 +1635,7 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
+     (vector? ?schema) (let [[p c] (-properties-and-children ?schema options)]
                          (into-schema (-schema (first ?schema) options) p c options))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)

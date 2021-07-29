@@ -2065,6 +2065,12 @@
             (is (= {:value 42}
                    (m/properties schema)))))))))
 
+(deftest parent-test
+  (testing "registered schemas"
+    (is (= (mr/-schema m/default-registry :string) (m/parent [:string {:min 0}]))))
+  (testing "non-registered schemas"
+    (is (= Over6 (m/parent [Over6 {:json-schema/example 42}])))))
+
 (deftest -regex-min-max-size-test
   (are [s min-max]
     (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))

@@ -1644,6 +1644,13 @@
    (let [schema (schema ?schema options)]
      (-children schema))))
 
+(defn parent
+  "Returns the IntoSchema instance that created the Schema"
+  ([?schema]
+   (parent ?schema nil))
+  ([?schema options]
+   (-parent (schema ?schema options))))
+
 (defn walk
   "Postwalks recursively over the Schema and it's children.
    The walker callback is a arity4 function with the following

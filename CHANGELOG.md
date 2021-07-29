@@ -62,6 +62,7 @@ Malli is in [alpha](README.md#alpha).
 * new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
 * new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
 * new `malli.generator/check` and `malli.generator/check!` for generative testing of functions and `defn`s.
+* new `malli.core/parent`
 * humanized errors for `:boolean`
 * predicate schema for `fn?`
 * fix crash in humanize for maps [#333](https://github.com/metosin/malli/pull/333)

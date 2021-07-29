@@ -150,6 +150,32 @@
 
 (defn -boolean-fn [x] (cond (boolean? x) (constantly x) (ifn? x) x :else (constantly false)))
 
+#?(:clj
+   (defn -comp
+     ([] identity)
+     ([f] f)
+     ([f g] (fn [x] (f (g x))))
+     ([f g h] (fn [x] (f (g (h x)))))
+     ([f1 f2 f3 f4] (fn [x] (-> x f4 f3 f2 f1)))
+     ([f1 f2 f3 f4 f5] (fn [x] (-> x f5 f4 f3 f2 f1)))
+     ([f1 f2 f3 f4 f5 f6] (fn [x] (-> x f6 f5 f4 f3 f2 f1)))
+     ([f1 f2 f3 f4 f5 f6 f7] (fn [x] (-> x f7 f6 f5 f4 f3 f2 f1)))
+     ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
+     ([f1 f2 f3 f4 f5 f6 f7 f8 & fs]
+      (-comp
+       (apply -comp fs)
+       (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))))
+   :cljs
+   (defn -comp
+     ([] identity)
+     ([f] f)
+     ([f g] (fn [x] (f (g x))))
+     ([f g h] (fn [x] (f (g (h x)))))
+     ([f1 f2 f3 & fs]
+      (-comp
+       (apply -comp fs)
+       (fn [x] (-> x f3 f2 f1))))))
+
 (defn -update [m k f] (assoc m k (f (get m k))))
 
 (defn -memoize [f]
@@ -194,7 +220,7 @@
                                              (not (sequential? e)) (if (and naked-keys (-reference? e)) [[e nil e] e] (-fail! ::invalid-ref {:ref e}))
                                              (and (= 1 (count e)) (-reference? (first e))) (if naked-keys [[(first e) nil (first e)] e])
                                              (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
-                                             :else [e (->> (-update (vec e) (dec (count e)) (miu/-comp -form #(schema % options))) (keep identity) (vec))])
+                                             :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
                              [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
                              s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
                              c [k p (schema s options)]]
@@ -212,12 +238,12 @@
 
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply miu/-comp))))
+  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
         child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (if (seq child-transformers) (apply miu/-comp (rseq child-transformers)))]
+        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
 (defn- -properties-and-children [[x :as xs]]

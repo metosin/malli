@@ -53,22 +53,3 @@
 
 #?(:clj (def ^{:arglists '([[& preds]])} -every-pred (-pred-composer and 16)))
 #?(:clj (def ^{:arglists '([[& preds]])} -some-pred (-pred-composer or 16)))
-
-(defn -comp
-  ([] identity)
-  ([f] f)
-  ([f g] (fn [x] (f (g x))))
-  ([f g h] (fn [x] (f (g (h x)))))
-  ([f1 f2 f3 f4] (fn [x] (-> x f4 f3 f2 f1)))
-  ([f1 f2 f3 f4 f5] (fn [x] (-> x f5 f4 f3 f2 f1)))
-  ([f1 f2 f3 f4 f5 f6] (fn [x] (-> x f6 f5 f4 f3 f2 f1)))
-  ([f1 f2 f3 f4 f5 f6 f7] (fn [x] (-> x f7 f6 f5 f4 f3 f2 f1)))
-  ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
-  ([f1 f2 f3 f4 f5 f6 f7 f8 & fs]
-   (-comp
-    (apply -comp fs)
-    (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))))
-
-(defn -reverse
-  [xs]
-  (reduce (fn [acc x] (cons x acc)) () xs))

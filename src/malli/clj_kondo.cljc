@@ -1,7 +1,6 @@
 (ns malli.clj-kondo
   (:require #?(:clj [clojure.java.io :as io])
-            [malli.core :as m]
-            [malli.impl.util :as miu]))
+            [malli.core :as m]))
 
 (declare transform)
 
@@ -69,7 +68,7 @@
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
-  (let [{req true opt false} (->> children (group-by (miu/-comp not :optional second)))
+  (let [{req true opt false} (->> children (group-by (m/-comp not :optional second)))
         opt (apply array-map (mapcat (fn [[k _ s]] [k s]) opt))
         req (apply array-map (mapcat (fn [[k _ s]] [k s]) req))]
     (cond-> {:op :keys}, (seq opt) (assoc :opt opt), (seq req) (assoc :req req))))

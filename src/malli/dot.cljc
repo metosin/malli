@@ -1,7 +1,6 @@
 (ns malli.dot
   (:require [malli.core :as m]
             [malli.util :as mu]
-            [malli.impl.util :as miu]
             [malli.registry :as mr]
             [clojure.string :as str]))
 
@@ -22,7 +21,7 @@
     @state))
 
 (defn -schema-name [base path]
-  (->> path (remove #{:malli.core/in}) (map (miu/-comp str/capitalize m/-keyword->string)) (into [base]) (str/join "$")))
+  (->> path (remove #{:malli.core/in}) (map (m/-comp str/capitalize m/-keyword->string)) (into [base]) (str/join "$")))
 
 (defn -normalize [{:keys [registry] :as ctx}]
   (let [registry* (atom registry)]
@@ -59,7 +58,7 @@
          entity? #(->> % (get registry) m/properties ::entity)
          props #(str "[" (str/join ", " (map (fn [[k v]] (str (name k) "=" (if (fn? v) (v) (pr-str v)))) %)) "]")
          esc #(str/escape (str %) {\> "\\>", \{ "\\{", \} "\\}", \< "\\<", \" "\\\""})
-         sorted #(sort-by (miu/-comp str first) %)
+         sorted #(sort-by (m/-comp str first) %)
          wrap #(str "\"" % "\"")
          label (fn [k v] (str "\"{" k "|"
                               (or (some->> (m/entries v) (map (fn [[k s]] (str k " " (esc (m/form (m/deref s)))))) (str/join "\\l"))

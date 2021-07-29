@@ -1,7 +1,6 @@
 (ns malli.error
   (:require [malli.core :as m]
             [clojure.string :as str]
-            [malli.impl.util :as miu]
             [malli.util :as mu]))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
@@ -180,7 +179,7 @@
                 sequence1)))
 
 (defn- -similar-key [ky ky2]
-  (let [min-len (apply min (map (miu/-comp count #(if (str/starts-with? % ":") (subs % 1) %) str) [ky ky2]))
+  (let [min-len (apply min (map (m/-comp count #(if (str/starts-with? % ":") (subs % 1) %) str) [ky ky2]))
         dist (-levenshtein (str ky) (str ky2))]
     (when (<= dist (-length->threshold min-len)) dist)))
 

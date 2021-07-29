@@ -8,16 +8,18 @@
   []
   (remove-watch @#'m/-function-schemas* ::watch)
   (mi/unstrument!)
-  (clj-kondo/emit!)
+  (clj-kondo/save! {})
   (println "stopped instrumentation"))
 
 (defn start!
-  "Starts instrumentation for a filtered set of function Vars (e.g. `defn`s).
-   See [[malli.core/-instrument]] for possible options. Re-instruments if the
-   function schemas change. Also emits clj-kondo type annotations."
+  "Collects defn schemas from all loaded namespaces and starts instrumentation for
+   a filtered set of function Vars (e.g. `defn`s). See [[malli.core/-instrument]]
+   for possible options. Re-instruments if the function schemas change. Also emits
+   clj-kondo type annotations."
   ([] (start! nil))
   ([options]
    (with-out-str (stop!))
+   (mi/collect! {:ns (all-ns)})
    (let [watch (fn [_ _ old new]
                  (mi/instrument! (assoc options :data (->> (for [[n d] new
                                                                  :let [no (get old n)]

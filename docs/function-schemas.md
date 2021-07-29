@@ -463,7 +463,7 @@ For better DX, there is `malli.dev` namespace.
 (require '[malli.dev :as dev])
 ```
 
-It's main entry points is `dev/start!`, taking same options as `mi/instrument!`. It runs `mi/instrument!` once and starts watching the function registry for changes. Any change that matches the filters will cause automatic re-instrumentation for the functions. `dev/stop!` removes all instrumentation and stops watching the registry.
+It's main entry points is `dev/start!`, taking same options as `mi/instrument!`. It runs `mi/instrument!` and `mi/collect!` (for all loaded namespaces) once and starts watching the function registry for changes. Any change that matches the filters will cause automatic re-instrumentation for the functions. `dev/stop!` removes all instrumentation and stops watching the registry.
 
 ```clj
 (defn plus1 [x] (inc x))
@@ -560,11 +560,7 @@ Example of using `malli.dev` instrumentation with var meta-data:
 
 ;; inject malli (at develpoment time)
 (require '[malli.dev :as dev])
-(require '[malli.instrument :as mi])
 (require '[malli.generator :as mg])
-
-(mi/collect!)
-; #{#'domain/get-user}
 
 (dev/start! {:gen mg/generate})
 ; =prints=> ..instrumented #'domain/get-user

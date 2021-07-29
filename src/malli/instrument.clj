@@ -30,6 +30,10 @@
                          (println "..unstrumented" v))
            (mode v d)))))))
 
+(defn -collect! [v]
+  (let [{:keys [ns name malli/schema] :as meta} (meta v)]
+    (when schema (m/-register-function-schema! (-> ns str symbol) name schema (m/-unlift-keys meta "malli")) v)))
+
 ;;
 ;; public api
 ;;
@@ -46,12 +50,7 @@
    | `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([] (collect! {:ns *ns*}))
   ([{:keys [ns]}]
-   (not-empty
-     (reduce
-       (fn [acc v]
-         (let [{:keys [ns name malli/schema] :as meta} (meta v)
-               v' (when schema (m/-register-function-schema! (-> ns str symbol) name schema (m/-unlift-keys meta "malli")))]
-           (cond-> acc v' (conj v)))) #{} (vals (mapcat ns-publics (-sequential ns)))))))
+   (not-empty (reduce (fn [acc v] (let [v (-collect! v)] (cond-> acc v (conj v)))) #{} (vals (mapcat ns-publics (-sequential ns)))))))
 
 (defn instrument!
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).

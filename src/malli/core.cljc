@@ -1203,9 +1203,8 @@
              ;; FIXME: Probably should not use `dispatch`
              ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
              (let [this-transformer (-value-transformer transformer this method options)
-                   ->children (reduce-kv (fn [acc k s]
-                                           (when-some [t (-transformer s transformer method options)]
-                                             (assoc acc k t))) {} dispatch-map)
+                   ->children (reduce-kv (fn [acc k s] (let [t (-transformer s transformer method options)]
+                                                         (cond-> acc t (assoc k t)))) {} dispatch-map)
                    find (finder ->children)
                    child-transformer (if (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
                (-intercepting this-transformer child-transformer)))

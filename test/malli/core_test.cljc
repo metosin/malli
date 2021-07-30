@@ -984,6 +984,22 @@
                 [:math [:map [:type keyword?] [:x [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]]]
                {:type :math, :x 1} mt/string-transformer)))
 
+      (testing "in multi schema (two options)"
+        (is (= {:category :book :title "FOUNTAINHEAD"}
+               (m/decode
+                 [:multi
+                  {:dispatch :category}
+                  [:book
+                   [:map
+                    [:category [:= :book]]
+                    [:title {:decode/string-upper clojure.string/upper-case} string?]]]
+                  [:video
+                   [:map
+                    [:category [:= :video]]
+                    [:name string?]]]]
+                 {:category :book :title "Fountainhead"}
+                 (mt/transformer {:name :string-upper})))))
+
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
       (is (= {:type :multi

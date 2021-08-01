@@ -149,31 +149,24 @@
 
 (defn -boolean-fn [x] (cond (boolean? x) (constantly x) (ifn? x) x :else (constantly false)))
 
-#?(:clj
-   (defn -comp
-     ([] identity)
-     ([f] f)
-     ([f g] (fn [x] (f (g x))))
-     ([f g h] (fn [x] (f (g (h x)))))
-     ([f1 f2 f3 f4] (fn [x] (-> x f4 f3 f2 f1)))
-     ([f1 f2 f3 f4 f5] (fn [x] (-> x f5 f4 f3 f2 f1)))
-     ([f1 f2 f3 f4 f5 f6] (fn [x] (-> x f6 f5 f4 f3 f2 f1)))
-     ([f1 f2 f3 f4 f5 f6 f7] (fn [x] (-> x f7 f6 f5 f4 f3 f2 f1)))
-     ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
-     ([f1 f2 f3 f4 f5 f6 f7 f8 & fs]
-      (-comp
-       (apply -comp fs)
-       (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))))
-   :cljs
-   (defn -comp
-     ([] identity)
-     ([f] f)
-     ([f g] (fn [x] (f (g x))))
-     ([f g h] (fn [x] (f (g (h x)))))
-     ([f1 f2 f3 & fs]
-      (-comp
-       (apply -comp fs)
-       (fn [x] (-> x f3 f2 f1))))))
+(defn -comp
+  ([] identity)
+  ([f] f)
+  ([f g] (fn [x] (f (g x))))
+  ([f g h] (fn [x] (f (g (h x)))))
+  #?@(:clj  [([f1 f2 f3 f4] (fn [x] (-> x f4 f3 f2 f1)))
+             ([f1 f2 f3 f4 f5] (fn [x] (-> x f5 f4 f3 f2 f1)))
+             ([f1 f2 f3 f4 f5 f6] (fn [x] (-> x f6 f5 f4 f3 f2 f1)))
+             ([f1 f2 f3 f4 f5 f6 f7] (fn [x] (-> x f7 f6 f5 f4 f3 f2 f1)))
+             ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
+             ([f1 f2 f3 f4 f5 f6 f7 f8 & fs]
+              (-comp
+                (apply -comp fs)
+                (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1))))]
+      :cljs [([f1 f2 f3 & fs]
+              (-comp
+                (apply -comp fs)
+                (fn [x] (-> x f3 f2 f1))))]))
 
 (defn -update [m k f] (assoc m k (f (get m k))))
 

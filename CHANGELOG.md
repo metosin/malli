@@ -84,6 +84,7 @@ Malli is in [alpha](README.md#alpha).
 * `malli.core/-unlift-keys`
 * `malli.core/-instrument`
 * **BREAKING**: `malli.core/-register-function-schema!` is now 4-arity, new argument is data map
+* **BREAKING**: `malli.core/-fail!` has only arity 1 & 2 versions
 
 ## 0.5.1 (2021-05-02)
 

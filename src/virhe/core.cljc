@@ -1,4 +1,4 @@
-(ns virhe.pretty
+(ns virhe.core
   (:require #?(:clj [clojure.string :as str])
             [arrangement.core]
             [fipp.visit]
@@ -210,10 +210,10 @@
 
 (defn -exception-doc [e printer]
   (let [data (-> e ex-data :data)
-        {:keys [title body] :or {title (:title printer)}} (-transform (-> e ex-data :type) (ex-message e) data printer)
+        {:keys [title body] :or {title (:title printer)}} (-format (-> e ex-data :type) (ex-message e) data printer)
         location (-location e (:throwing-fn-name printer))]
     (-section title location body printer)))
 
 (defn -event-doc [type data printer]
-  (let [{:keys [title body] :or {title (:title printer)}} (-transform type nil data printer)]
+  (let [{:keys [title body] :or {title (:title printer)}} (-format type nil data printer)]
     (-section title nil body printer)))

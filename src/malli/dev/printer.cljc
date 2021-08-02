@@ -1,5 +1,5 @@
 (ns malli.dev.printer
-  (:require [virhe.pretty :as v]
+  (:require [virhe.core :as v]
             [malli.error :as me]
             [malli.core :as m]))
 

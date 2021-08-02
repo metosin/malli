@@ -1,4 +1,5 @@
-(ns virhe.core
+(ns malli.dev.virhe
+  "initial code for https://github.com/metosin/virhe"
   (:require #?(:clj [clojure.string :as str])
             [arrangement.core]
             [fipp.visit]

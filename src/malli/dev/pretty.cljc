@@ -1,5 +1,5 @@
 (ns malli.dev.pretty
-  (:require [virhe.core :as v]
+  (:require [malli.dev.virhe :as v]
             [malli.error :as me]
             [malli.core :as m]))
 

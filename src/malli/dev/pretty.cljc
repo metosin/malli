@@ -1,4 +1,4 @@
-(ns malli.dev.printer
+(ns malli.dev.pretty
   (:require [virhe.core :as v]
             [malli.error :as me]
             [malli.core :as m]))
@@ -17,7 +17,7 @@
 
 (defn -errors [schema value printer]
   (->> (for [error (->> value (m/explain schema) (me/with-error-messages) :errors)]
-         (v/-format (into {} error) printer))
+         (v/-visit (into {} error) printer))
        (interpose :break)))
 
 (defn -block [text body printer]
@@ -54,18 +54,22 @@
 ;; public api
 ;;
 
-(defn report [type data]
-  (let [printer (-printer {:width 120})]
-    (-> (v/-event-doc type data printer)
-        (v/-print-doc printer))))
+(defn reporter
+  ([] (reporter (-printer)))
+  ([printer]
+   (fn [type data]
+     (-> (v/-event-doc type data printer)
+         (v/-print-doc printer)))))
 
-(defn throw! [type data]
-  (let [printer (-printer {:width 120})
-        exception (ex-info (str type) {:type type :data data})
-        message (-> (v/-exception-doc exception printer)
-                    (v/-print-doc printer)
-                    (with-out-str))]
-    (throw (ex-info message (ex-data exception)))))
+(defn thrower
+  ([] (thrower (-printer)))
+  ([printer]
+   (fn [type data]
+     (let [exception (ex-info (str type) {:type type :data data})
+           message (-> (v/-exception-doc exception printer)
+                       (v/-print-doc printer)
+                       (with-out-str))]
+       (throw (ex-info message (ex-data exception)))))))
 
 ;;
 ;; spike
@@ -76,14 +80,14 @@
     {:schema [:function
               [:=> [:cat :int] :string]
               [:=> [:cat :int :int] :string]]
-     :report throw!}
-    (fn [x] (str x))))
+     :report (thrower)}
+    (fn [x] x)))
 
-(kikka "1" "2" "3")
+(kikka "1" "3" "3")
 
 #_(try
-  (kikka "1")
-  (catch Exception e
-    (let [printer (-printer)]
-      (-> (v/-exception-doc e printer)
-          (v/-print-doc printer)))))
+    (kikka "1")
+    (catch Exception e
+      (let [printer (-printer)]
+        (-> (v/-exception-doc e printer)
+            (v/-print-doc printer)))))

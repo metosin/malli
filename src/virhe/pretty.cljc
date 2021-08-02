@@ -1,5 +1,5 @@
 (ns virhe.pretty
-  (:require [clojure.string :as str]
+  (:require #?(:clj [clojure.string :as str])
             [arrangement.core]
             [fipp.visit]
             [fipp.edn]
@@ -40,26 +40,20 @@
    :error 196})
 
 (comment
-  (defn- -color [color & text]
+  (defn- -colorz [color & text]
     (str "\033[38;5;" (colors color color) "m" (apply str text) "\u001B[0m"))
 
   (doseq [c (range 0 255)]
-    (println (-color c "kikka") "->" c))
+    (println (-colorz c "kikka") "->" c))
 
   (doseq [[n c] colors]
-    (println (-color c "kikka") "->" c n))
-
-  (doseq [[k v] expound.ansi/sgr-code]
-    (println (expound.ansi/sgr "kikka" k) "->" k)))
-
-(defn- -start [x] (str "\033[38;5;" x "m"))
-(defn- -end [] "\u001B[0m")
+    (println (-colorz c "kikka") "->" c n)))
 
 (defn -color [color & text]
   [:span
-   [:pass (-start (colors color))]
+   [:pass (str "\033[38;5;" (colors color) "m")]
    (apply str text)
-   [:pass (-end)]])
+   [:pass "\u001B[0m"]])
 
 ;;
 ;; EDN
@@ -146,8 +140,7 @@
     (fipp.visit/visit this (fipp.ednize/record->tagged x))))
 
 (defn printer
-  ([]
-   (printer nil))
+  ([] (printer nil))
   ([options]
    (map->EdnPrinter
      (merge
@@ -159,7 +152,7 @@
        options))))
 
 (defn -pprint
-  ([x] (-pprint x {}))
+  ([x] (-pprint x (printer)))
   ([x printer]
    (let [printer (dissoc printer :margin)
          margin (apply str (take (:margin printer 0) (repeat " ")))]
@@ -169,70 +162,54 @@
 (defn -print-doc [doc printer]
   (fipp.engine/pprint-document doc {:width (:width printer)}))
 
-(defn -repeat-str [s n]
-  (apply str (take n (repeat s))))
+(defn -format [x printer]
+  (fipp.visit/visit printer x))
 
-;; TODO: this is hack, but seems to work and is safe.
-(defn -parse-source-str [[target _ file line]]
-  (try
-    (if (not= 1 line)
-      (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
-            target-name (name target)
-            ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
-        (str ns ":" line))
-      "repl")
-    (catch #?(:clj Exception, :cljs js/Error) _ "unknown")))
-
-(defn -source-str [e n]
-  #?(:clj  (-> e (#'clojure.core/elide-top-frames n) Throwable->map :trace first -parse-source-str)
-     :cljs "unknown"))
+(defn -location [e n]
+  #?(:clj (let [[target _ file line] (-> (#'clojure.core/elide-top-frames e n) Throwable->map :trace first)]
+            (try (if (not= 1 line)
+                   (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
+                         target-name (name target)
+                         ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
+                     (str ns ":" line)))
+                 (catch Exception _)))))
 
 (defn -title [message source {:keys [width]}]
   (let [between (- width (count message) 8 (count source))]
     [:group
      (-color :title-dark "-- ")
      (-color :title message " ")
-     (-color :title-dark (-repeat-str "-" between))
+     (-color :title-dark (apply str (take between (repeat "-"))))
      (if source
        (-color :title " " source " ")
        (-color :title-dark "--"))
      (-color :title-dark "--")]))
 
 (defn -footer [{:keys [width]}]
-  (-color :title-dark (-repeat-str "-" width)))
+  (-color :title-dark (apply str (take width (repeat "-")))))
 
 (defn -text [& text]
   (apply -color :text text))
 
-(defn -line-breaks [lines]
-  (interpose [:break] lines))
-
-(defn -indent [n x]
-  [:group (-repeat-str " " n) x])
-
-(defn -format [x printer]
-  (fipp.visit/visit printer x))
-
-(defn -section [title source body printer]
+(defn -section [title location body printer]
   [:group
-   (-title title source printer)
-   [:break] [:break]
+   (-title title location printer)
+   :break :break
    body
-   [:break] [:break]
+   :break :break
    (-footer printer)])
 
 (defmulti -format-event (fn [type _ _ _] type) :default ::default)
 
 (defmethod -format-event ::default [_ message data printer]
-  {:body (into [:group (-text message)] (if data [[:break] [:break] (-format data printer)]))})
+  {:body (into [:group (-text (or (:message data) message))] (if data [:break :break (-format data printer)]))})
 
-(defn -exception [e printer]
+(defn -exception-section [e printer]
   (let [data (-> e ex-data :data)
         {:keys [title body] :or {title (:title printer)}} (-format-event (-> e ex-data :type) (ex-message e) data printer)
-        source (-source-str e (:throwing-fn-name printer))]
-    (-section title source body printer)))
+        location (-location e (:throwing-fn-name printer))]
+    (-section title location body printer)))
 
 (defn -event-section [type data printer]
   (let [{:keys [title body] :or {title (:title printer)}} (-format-event type nil data printer)]
     (-section title nil body printer)))
-

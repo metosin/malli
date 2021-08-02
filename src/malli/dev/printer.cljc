@@ -16,42 +16,38 @@
 
 (defn -errors [schema value printer]
   (->> (for [error (->> value (m/explain schema) (me/with-error-messages) :errors)]
-         (v/-indent 2 [:group (v/-format (into {} error) printer)]))
-       (v/-line-breaks)))
+         (v/-format (into {} error) printer))
+       (interpose :break)))
+
+(defn -block [text body]
+  [:group (v/-text text) :break :break [:align 2 body]])
+
+;;
+;; formatters
+;;
 
 (defmethod v/-format-event ::m/invalid-input [_ _ {:keys [args input]} printer]
   {:body
    [:group
-    (v/-text "Invalid function arguments:")
-    [:break] [:break]
-    (v/-indent 2 (v/-format args printer))
-    [:break] [:break]
-    (v/-text "Input Schema:")
-    [:break] [:break]
-    (v/-indent 2 (v/-format input printer))
-    [:break] [:break]
-    (v/-text "Errors:")
-    [:break] [:break]
-    (-errors input args printer)
-    [:break] [:break]
-    (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas")]})
+    (-block "Invalid function arguments:" (v/-format args printer)) :break :break
+    (-block "Input Schema:" (v/-format input printer)) :break :break
+    (-block "Errors:" (-errors input args printer)) :break :break
+    (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
 (defmethod v/-format-event ::m/invalid-output [_ _ {:keys [value output]} printer]
   {:body
    [:group
-    (v/-text "Invalid function return value:")
-    [:break] [:break]
-    (v/-indent 2 (v/-format value printer))
-    [:break] [:break]
-    (v/-text "Output Schema:")
-    [:break] [:break]
-    (v/-indent 2 (v/-format output printer))
-    [:break] [:break]
-    (v/-text "Errors:")
-    [:break] [:break]
-    (-errors output value printer)
-    [:break] [:break]
-    (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas")]})
+    (-block "Invalid function return value:" (v/-format value printer)) :break :break
+    (-block "Output Schema:" (v/-format output printer)) :break :break
+    (-block "Errors:" (-errors output value printer)) :break :break
+    (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
+
+(defmethod v/-format-event ::m/invalid-arity [_ _ {:keys [args arity schema]} printer]
+  {:body
+   [:group
+    (-block (str "Invalid function arity (" arity "):") (v/-format args printer)) :break :break
+    (-block "Function Schema:" (v/-format schema printer)) :break :break
+    (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
 ;;
 ;; public api
@@ -64,10 +60,11 @@
 
 (defn throw! [type data]
   (let [printer (-printer {:width 120})
-        message (-> (v/-event-section type data printer)
+        exception (ex-info (str type) {:type type :data data})
+        message (-> (v/-exception-section exception printer)
                     (v/-print-doc printer)
                     (with-out-str))]
-    (throw (ex-info message {:type type, :data data}))))
+    (throw (ex-info message (ex-data exception)))))
 
 ;;
 ;; spike
@@ -75,15 +72,17 @@
 
 (def kikka
   (m/-instrument
-    {:schema [:=> [:cat :int] :string]
+    {:schema [:function
+              [:=> [:cat :int] :string]
+              [:=> [:cat :int :int] :string]]
      :report throw!}
     (fn [x] (str x))))
 
-(kikka "1")
+(kikka "1" "2" "3")
 
-(try
+#_(try
   (kikka "1")
   (catch Exception e
     (let [printer (-printer)]
-      (-> (v/-exception e printer)
+      (-> (v/-exception-section e printer)
           (v/-print-doc printer)))))

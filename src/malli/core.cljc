@@ -116,7 +116,7 @@
 
 (defn -fail!
   ([type] (-fail! type nil))
-  ([type data] (throw (ex-info (str type " " (pr-str data)) {:type type, :data data}))))
+  ([type data] (throw (ex-info (str type " " (pr-str data)) {:type type, :message type, :data data}))))
 
 (defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 

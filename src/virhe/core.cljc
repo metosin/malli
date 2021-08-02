@@ -10,50 +10,32 @@
 ;; colors
 ;;
 
-(def colors
-  {:white 255
-   :text 253
-   :grey 245
+(def -dark-colors
+  {:title 45
    :title-dark 32
-   :title 45
-   :red 217
-
+   :text 253
+   :link 255
    :string 180
-   :comment 243
-   :doc 223
-   :core-form 39
-   :function-name 178
-   :variable-name 85
    :constant 149
    :type 123
-   :foreign 220
-   :builtin 167
-   :half-contrast 243
-   :half-contrast-inverse 243
-   :eldoc-varname 178
-   :eldoc-separator 243
-   :arglists 243
-   :anchor 39
-   :light-anchor 39
-   :apropos-highlight 45
-   :apropos-namespace 243
    :error 196})
 
 (comment
   (defn- -colorz [color & text]
-    (str "\033[38;5;" (colors color color) "m" (apply str text) "\u001B[0m"))
+    (str "\033[38;5;" (-dark-colors color color) "m" (apply str text) "\u001B[0m"))
 
   (doseq [c (range 0 255)]
     (println (-colorz c "kikka") "->" c))
 
-  (doseq [[n c] colors]
+  (doseq [[n c] -dark-colors]
     (println (-colorz c "kikka") "->" c n)))
 
-(defn -color [color & text]
-  [:span
-   [:pass (str "\033[38;5;" (colors color) "m")]
-   (apply str text)
-   [:pass "\u001B[0m"]])
+(defn -color [color body printer]
+  (let [colors (:colors printer -dark-colors)]
+    [:span
+     [:pass (str "\033[38;5;" (get colors color (:error colors)) "m")]
+     body
+     [:pass "\u001B[0m"]]))
 
 ;;
 ;; EDN
@@ -71,38 +53,38 @@
                                  (fipp.ednize/edn x)))
                              (fipp.ednize/edn x))))
 
-  (visit-nil [_]
-    (-color :text "nil"))
+  (visit-nil [this]
+    (-color :text "nil" this))
 
-  (visit-boolean [_ x]
-    (-color :text (str x)))
+  (visit-boolean [this x]
+    (-color :text (str x) this))
 
-  (visit-string [_ x]
-    (-color :string (pr-str x)))
+  (visit-string [this x]
+    (-color :string (pr-str x) this))
 
-  (visit-character [_ x]
-    (-color :text (pr-str x)))
+  (visit-character [this x]
+    (-color :text (pr-str x) this))
 
-  (visit-symbol [_ x]
-    (-color :text (str x)))
+  (visit-symbol [this x]
+    (-color :text (str x) this))
 
-  (visit-keyword [_ x]
-    (-color :constant (pr-str x)))
+  (visit-keyword [this x]
+    (-color :constant (pr-str x) this))
 
-  (visit-number [_ x]
-    (-color :text (pr-str x)))
+  (visit-number [this x]
+    (-color :text (pr-str x) this))
 
   (visit-seq [this x]
     (if-let [pretty (symbols (first x))]
       (pretty this x)
-      (fipp.edn/pretty-coll this (-color :text "(") x :line (-color :text ")") fipp.visit/visit)))
+      (fipp.edn/pretty-coll this (-color :text "(" this) x :line (-color :text ")" this) fipp.visit/visit)))
 
   (visit-vector [this x]
-    (fipp.edn/pretty-coll this (-color :text "[") x :line (-color :text "]") fipp.visit/visit))
+    (fipp.edn/pretty-coll this (-color :text "[" this) x :line (-color :text "]" this) fipp.visit/visit))
 
   (visit-map [this x]
     (let [xs (sort-by identity (fn [a b] (arrangement.core/rank (first a) (first b))) x)]
-      (fipp.edn/pretty-coll this (-color :text "{") xs [:span (-color :text ",") :line] (-color :text "}")
+      (fipp.edn/pretty-coll this (-color :text "{" this) xs [:span (-color :text "," this) :line] (-color :text "}" this)
                             (fn [printer [k v]]
                               [:span (fipp.visit/visit printer k) " " (fipp.visit/visit printer v)]))))
 
@@ -112,7 +94,7 @@
 
   (visit-tagged [this {:keys [tag form]}]
     (let [object? (= 'object tag)
-          tag-f (if (map? form) (partial -color :type) identity)]
+          tag-f (if (map? form) #(-color :type % this) identity)]
       [:group "#" (tag-f (pr-str tag))
        (when (or (and print-meta (meta form)) (not (coll? form)))
          " ")
@@ -120,8 +102,8 @@
          [:group
           [:align
            "["
-           (-color :type (first form)) :line
-           (-color :text (second form)) :line
+           (-color :type (first form) this) :line
+           (-color :text (second form) this) :line
            (fipp.visit/visit this (last form))] "]"]
          (fipp.visit/visit this form))]))
 
@@ -174,22 +156,22 @@
                      (str ns ":" line)))
                  (catch Exception _)))))
 
-(defn -title [message source {:keys [width]}]
+(defn -title [message source {:keys [width] :as printer}]
   (let [between (- width (count message) 8 (count source))]
     [:group
-     (-color :title-dark "-- ")
-     (-color :title message " ")
-     (-color :title-dark (apply str (take between (repeat "-"))))
+     (-color :title-dark "-- " printer)
+     (-color :title [:span message " "] printer)
+     (-color :title-dark (apply str (take between (repeat "-"))) printer)
      (if source
-       (-color :title " " source " ")
-       (-color :title-dark "--"))
-     (-color :title-dark "--")]))
+       (-color :title [:span " " source " "] printer)
+       (-color :title-dark "--" printer))
+     (-color :title-dark "--" printer)]))
 
-(defn -footer [{:keys [width]}]
-  (-color :title-dark (apply str (take width (repeat "-")))))
+(defn -footer [{:keys [width] :as printer}]
+  (-color :title-dark (apply str (take width (repeat "-"))) printer))
 
-(defn -text [& text]
-  (apply -color :text text))
+(defn -text [body printer]
+  (-color :text body printer))
 
 (defn -section [title location body printer]
   [:group
@@ -202,7 +184,7 @@
 (defmulti -format (fn [type _ _ _] type) :default ::default)
 
 (defmethod -format ::default [_ message data printer]
-  {:body (into [:group (-text (or (:message data) message))] (if data [:break :break (-visit data printer)]))})
+  {:body (into [:group (-text (or (:message data) message) printer)] (if data [:break :break (-visit data printer)]))})
 
 ;;
 ;; documents

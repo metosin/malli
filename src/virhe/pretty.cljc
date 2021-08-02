@@ -1,11 +1,10 @@
 (ns virhe.pretty
   (:require [clojure.string :as str]
-            [malli.exception :as exception]
             [arrangement.core]
             [fipp.visit]
             [fipp.edn]
-            [fipp.ednize]
-            [fipp.engine]))
+            [fipp.engine]
+            [fipp.ednize]))
 
 ;;
 ;; colors
@@ -56,7 +55,7 @@
 (defn- -start [x] (str "\033[38;5;" x "m"))
 (defn- -end [] "\u001B[0m")
 
-(defn color [color & text]
+(defn -color [color & text]
   [:span
    [:pass (-start (colors color))]
    (apply str text)
@@ -79,37 +78,37 @@
                              (fipp.ednize/edn x))))
 
   (visit-nil [_]
-    (color :text "nil"))
+    (-color :text "nil"))
 
   (visit-boolean [_ x]
-    (color :text (str x)))
+    (-color :text (str x)))
 
   (visit-string [_ x]
-    (color :string (pr-str x)))
+    (-color :string (pr-str x)))
 
   (visit-character [_ x]
-    (color :text (pr-str x)))
+    (-color :text (pr-str x)))
 
   (visit-symbol [_ x]
-    (color :text (str x)))
+    (-color :text (str x)))
 
   (visit-keyword [_ x]
-    (color :constant (pr-str x)))
+    (-color :constant (pr-str x)))
 
   (visit-number [_ x]
-    (color :text (pr-str x)))
+    (-color :text (pr-str x)))
 
   (visit-seq [this x]
     (if-let [pretty (symbols (first x))]
       (pretty this x)
-      (fipp.edn/pretty-coll this (color :text "(") x :line (color :text ")") fipp.visit/visit)))
+      (fipp.edn/pretty-coll this (-color :text "(") x :line (-color :text ")") fipp.visit/visit)))
 
   (visit-vector [this x]
-    (fipp.edn/pretty-coll this (color :text "[") x :line (color :text "]") fipp.visit/visit))
+    (fipp.edn/pretty-coll this (-color :text "[") x :line (-color :text "]") fipp.visit/visit))
 
   (visit-map [this x]
     (let [xs (sort-by identity (fn [a b] (arrangement.core/rank (first a) (first b))) x)]
-      (fipp.edn/pretty-coll this (color :text "{") xs [:span (color :text ",") :line] (color :text "}")
+      (fipp.edn/pretty-coll this (-color :text "{") xs [:span (-color :text ",") :line] (-color :text "}")
                             (fn [printer [k v]]
                               [:span (fipp.visit/visit printer k) " " (fipp.visit/visit printer v)]))))
 
@@ -119,7 +118,7 @@
 
   (visit-tagged [this {:keys [tag form]}]
     (let [object? (= 'object tag)
-          tag-f (if (map? form) (partial color :type) identity)]
+          tag-f (if (map? form) (partial -color :type) identity)]
       [:group "#" (tag-f (pr-str tag))
        (when (or (and print-meta (meta form)) (not (coll? form)))
          " ")
@@ -127,8 +126,8 @@
          [:group
           [:align
            "["
-           (color :type (first form)) :line
-           (color :text (second form)) :line
+           (-color :type (first form)) :line
+           (-color :text (second form)) :line
            (fipp.visit/visit this (last form))] "]"]
          (fipp.visit/visit this form))]))
 
@@ -159,96 +158,81 @@
         :print-meta *print-meta*}
        options))))
 
-(defn pprint
-  ([x] (pprint x {}))
-  ([x options]
-   (let [printer (printer (dissoc options :margin))
-         margin (apply str (take (:margin options 0) (repeat " ")))]
+(defn -pprint
+  ([x] (-pprint x {}))
+  ([x printer]
+   (let [printer (dissoc printer :margin)
+         margin (apply str (take (:margin printer 0) (repeat " ")))]
      (binding [*print-meta* false]
-       (fipp.engine/pprint-document [:group margin [:group (fipp.visit/visit printer x)]] options)))))
+       (fipp.engine/pprint-document [:group margin [:group (fipp.visit/visit printer x)]] printer)))))
 
-(defn visit [printer x]
-  (fipp.visit/visit printer x))
-
-(defn print-doc [doc printer]
+(defn -print-doc [doc printer]
   (fipp.engine/pprint-document doc {:width (:width printer)}))
 
-(defn repeat-str [s n]
+(defn -repeat-str [s n]
   (apply str (take n (repeat s))))
 
 ;; TODO: this is hack, but seems to work and is safe.
-(defn parse-source-str [[target _ file line]]
+(defn -parse-source-str [[target _ file line]]
   (try
-    (if (and (not= 1 line))
+    (if (not= 1 line)
       (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
             target-name (name target)
             ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
         (str ns ":" line))
       "repl")
-    (catch #?(:clj Exception, :cljs js/Error) _
-      "unknown")))
+    (catch #?(:clj Exception, :cljs js/Error) _ "unknown")))
 
-(defn source-str [e]
-  #?(:clj  (->> e Throwable->map :trace
-                (drop-while #(not= (name (first %)) "reitit.core$router"))
-                (drop-while #(= (name (first %)) "reitit.core$router"))
-                next first parse-source-str)
+(defn -source-str [e n]
+  #?(:clj  (-> e (#'clojure.core/elide-top-frames n) Throwable->map :trace first -parse-source-str)
      :cljs "unknown"))
 
-(defn message-str [e]
-  #?(:clj (.getMessage ^Exception e) :cljs (ex-message e)))
-
-(defn title [message source {:keys [width]}]
+(defn -title [message source {:keys [width]}]
   (let [between (- width (count message) 8 (count source))]
     [:group
-     (color :title-dark "-- ")
-     (color :title message " ")
-     (color :title-dark (repeat-str "-" between) " ")
-     (color :title source) " "
-     (color :title-dark (str "--"))]))
+     (-color :title-dark "-- ")
+     (-color :title message " ")
+     (-color :title-dark (-repeat-str "-" between))
+     (if source
+       (-color :title " " source " ")
+       (-color :title-dark "--"))
+     (-color :title-dark "--")]))
 
-(defn footer [{:keys [width]}]
-  (color :title-dark (repeat-str "-" width)))
+(defn -footer [{:keys [width]}]
+  (-color :title-dark (-repeat-str "-" width)))
 
-(defn text [& text]
-  (apply color :text text))
+(defn -text [& text]
+  (apply -color :text text))
 
-(defn edn
-  ([x] (edn x {}))
-  ([x options]
-   (str/trimr (with-out-str (pprint x options)))))
+(defn -line-breaks [lines]
+  (interpose [:break] lines))
 
-(defn exception-str [title-str message source printer]
-  (with-out-str
-    (print-doc
-      [:group
-       (title title-str source printer)
-       [:break] [:break]
-       message
-       [:break] [:break]
-       (footer printer)]
-      printer)))
+(defn -indent [n x]
+  [:group (-repeat-str " " n) x])
 
-(defmulti format-exception (fn [type _ _] type))
+(defn -format [x printer]
+  (fipp.visit/visit printer x))
 
-(defn exception [title-str e]
+(defn -section [title source body printer]
+  [:group
+   (-title title source printer)
+   [:break] [:break]
+   body
+   [:break] [:break]
+   (-footer printer)])
+
+(defmulti -format-event (fn [type _ _ _] type) :default ::default)
+
+(defmethod -format-event ::default [_ message data printer]
+  {:body (into [:group (-text message)] (if data [[:break] [:break] (-format data printer)]))})
+
+(defn -exception [e printer]
   (let [data (-> e ex-data :data)
-        message (format-exception (-> e ex-data :type) (message-str e) data)
-        source (source-str e)]
-    (ex-info (exception-str title-str message source (printer)) (assoc (or data {}) ::exception/cause e))))
+        {:keys [title body] :or {title (:title printer)}} (-format-event (-> e ex-data :type) (ex-message e) data printer)
+        source (-source-str e (:throwing-fn-name printer))]
+    (-section title source body printer)))
 
-(defn indent [x n]
-  [:group (repeat-str " " n) [:align x]])
+(defn -event-section [type data printer]
+  (let [{:keys [title body] :or {title (:title printer)}} (-format-event type nil data printer)]
+    (-section title nil body printer)))
 
-;;
-;; Formatters
-;;
-
-(defmethod format-exception :default [_ message data]
-  (prn data)
-  (into [:group (text message)] (if data [[:break] [:break] (edn data)])))
-
-#_(throw (exception "Model creation failed" (ex-info "kosh" {})))
-
-#_(println
-    (edn {:a 1} {:margin 3}))

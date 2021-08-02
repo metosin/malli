@@ -162,7 +162,7 @@
 (defn -print-doc [doc printer]
   (fipp.engine/pprint-document doc {:width (:width printer)}))
 
-(defn -format [x printer]
+(defn -visit [x printer]
   (fipp.visit/visit printer x))
 
 (defn -location [e n]
@@ -202,18 +202,18 @@
 (defmulti -format (fn [type _ _ _] type) :default ::default)
 
 (defmethod -format ::default [_ message data printer]
-  {:body (into [:group (-text (or (:message data) message))] (if data [:break :break (-format data printer)]))})
+  {:body (into [:group (-text (or (:message data) message))] (if data [:break :break (-visit data printer)]))})
 
 ;;
 ;; documents
 ;;
 
 (defn -exception-doc [e printer]
-  (let [data (-> e ex-data :data)
-        {:keys [title body] :or {title (:title printer)}} (-format (-> e ex-data :type) (ex-message e) data printer)
+  (let [{:keys [type data]} (ex-data e)
+        {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
         location (-location e (:throwing-fn-name printer))]
     (-section title location body printer)))
 
 (defn -event-doc [type data printer]
-  (let [{:keys [title body] :or {title (:title printer)}} (-format type nil data printer)]
+  (let [{:keys [title body] :or {title (:title printer)}} (-format type (:message data) data printer)]
     (-section title nil body printer)))

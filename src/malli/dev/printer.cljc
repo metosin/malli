@@ -29,24 +29,24 @@
 (defmethod v/-format ::m/invalid-input [_ _ {:keys [args input]} printer]
   {:body
    [:group
-    (-block "Invalid function arguments:" (v/-format args printer)) :break :break
-    (-block "Input Schema:" (v/-format input printer)) :break :break
+    (-block "Invalid function arguments:" (v/-visit args printer)) :break :break
+    (-block "Input Schema:" (v/-visit input printer)) :break :break
     (-block "Errors:" (-errors input args printer)) :break :break
     (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
 (defmethod v/-format ::m/invalid-output [_ _ {:keys [value output]} printer]
   {:body
    [:group
-    (-block "Invalid function return value:" (v/-format value printer)) :break :break
-    (-block "Output Schema:" (v/-format output printer)) :break :break
+    (-block "Invalid function return value:" (v/-visit value printer)) :break :break
+    (-block "Output Schema:" (v/-visit output printer)) :break :break
     (-block "Errors:" (-errors output value printer)) :break :break
     (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
 (defmethod v/-format ::m/invalid-arity [_ _ {:keys [args arity schema]} printer]
   {:body
    [:group
-    (-block (str "Invalid function arity (" arity "):") (v/-format args printer)) :break :break
-    (-block "Function Schema:" (v/-format schema printer)) :break :break
+    (-block (str "Invalid function arity (" arity "):") (v/-visit args printer)) :break :break
+    (-block "Function Schema:" (v/-visit schema printer)) :break :break
     (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
 ;;

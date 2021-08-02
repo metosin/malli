@@ -6,7 +6,7 @@
 (defn -printer
   ([] (-printer nil))
   ([options]
-   (v/printer
+   (v/-printer
      (merge
        {:title "Schema Error"
         :width 100
@@ -77,17 +77,8 @@
 
 (def kikka
   (m/-instrument
-    {:schema [:function
-              [:=> [:cat :int] :string]
-              [:=> [:cat :int :int] :string]]
+    {:schema [:=> [:cat :int] :string]
      :report (thrower)}
     (fn [x] x)))
 
 (kikka "1" "3" "3")
-
-#_(try
-    (kikka "1")
-    (catch Exception e
-      (let [printer (-printer)]
-        (-> (v/-exception-doc e printer)
-            (v/-print-doc printer)))))

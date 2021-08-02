@@ -21,16 +21,6 @@
    :type 123
    :error 196})
 
-(comment
-  (defn- -colorz [color & text]
-    (str "\033[38;5;" (-dark-colors color color) "m" (apply str text) "\u001B[0m"))
-
-  (doseq [c (range 0 255)]
-    (println (-colorz c "kikka") "->" c))
-
-  (doseq [[n c] -dark-colors]
-    (println (-colorz c "kikka") "->" c n)))
-
 (defn -color [color body printer]
   (let [colors (:colors printer -dark-colors)]
     [:span
@@ -122,8 +112,8 @@
   (visit-record [this x]
     (fipp.visit/visit this (fipp.ednize/record->tagged x))))
 
-(defn printer
-  ([] (printer nil))
+(defn -printer
+  ([] (-printer nil))
   ([options]
    (map->EdnPrinter
      (merge
@@ -135,7 +125,7 @@
        options))))
 
 (defn -pprint
-  ([x] (-pprint x (printer)))
+  ([x] (-pprint x (-printer)))
   ([x printer]
    (let [printer (dissoc printer :margin)
          margin (apply str (take (:margin printer 0) (repeat " ")))]
@@ -181,6 +171,10 @@
    body
    :break :break
    (-footer printer)])
+
+;;
+;; formatting
+;;
 
 (defmulti -format (fn [type _ _ _] type) :default ::default)
 

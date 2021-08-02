@@ -298,14 +298,15 @@
                :output output}
               max (assoc :max max)))))
 
+#?(:clj
+   (defn -entry-transformer [[k t]]
+     (fn [^Associative x]
+       (if-let [e ^MapEntry (.entryAt x k)]
+         (.assoc x k (t (.val e)))
+         x))))
+
 (defn -map-transformer [ts]
-  #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
-             (fn [x] (let [i (.iterator ^Iterable tl)]
-                       (loop [x ^Associative x]
-                         (if (.hasNext i)
-                           (let [e ^MapEntry (.next i), k (.key e)]
-                             (recur (if-let [xe (.entryAt x k)] (.assoc x k ((.val e) (.val xe))) x)))
-                           x)))))
+  #?(:clj (apply -comp (map -entry-transformer ts))
      :cljs (fn [x] (reduce-kv
                      (fn reduce-child-transformers [m k t]
                        (if-let [entry (find m k)]

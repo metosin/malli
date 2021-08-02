@@ -199,9 +199,9 @@
    :break :break
    (-footer printer)])
 
-(defmulti -transform (fn [type _ _ _] type) :default ::default)
+(defmulti -format (fn [type _ _ _] type) :default ::default)
 
-(defmethod -transform ::default [_ message data printer]
+(defmethod -format ::default [_ message data printer]
   {:body (into [:group (-text (or (:message data) message))] (if data [:break :break (-format data printer)]))})
 
 ;;

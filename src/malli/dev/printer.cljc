@@ -26,7 +26,7 @@
 ;; formatters
 ;;
 
-(defmethod v/-format-event ::m/invalid-input [_ _ {:keys [args input]} printer]
+(defmethod v/-transform ::m/invalid-input [_ _ {:keys [args input]} printer]
   {:body
    [:group
     (-block "Invalid function arguments:" (v/-format args printer)) :break :break
@@ -34,7 +34,7 @@
     (-block "Errors:" (-errors input args printer)) :break :break
     (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
-(defmethod v/-format-event ::m/invalid-output [_ _ {:keys [value output]} printer]
+(defmethod v/-transform ::m/invalid-output [_ _ {:keys [value output]} printer]
   {:body
    [:group
     (-block "Invalid function return value:" (v/-format value printer)) :break :break
@@ -42,7 +42,7 @@
     (-block "Errors:" (-errors output value printer)) :break :break
     (-block "More information:" (v/-color :white "https://cljdoc.org/d/metosin/malli/0.6.0-SNAPSHOT/doc/function-schemas"))]})
 
-(defmethod v/-format-event ::m/invalid-arity [_ _ {:keys [args arity schema]} printer]
+(defmethod v/-transform ::m/invalid-arity [_ _ {:keys [args arity schema]} printer]
   {:body
    [:group
     (-block (str "Invalid function arity (" arity "):") (v/-format args printer)) :break :break
@@ -55,13 +55,13 @@
 
 (defn report [type data]
   (let [printer (-printer {:width 120})]
-    (-> (v/-event-section type data printer)
+    (-> (v/-event-doc type data printer)
         (v/-print-doc printer))))
 
 (defn throw! [type data]
   (let [printer (-printer {:width 120})
         exception (ex-info (str type) {:type type :data data})
-        message (-> (v/-exception-section exception printer)
+        message (-> (v/-exception-doc exception printer)
                     (v/-print-doc printer)
                     (with-out-str))]
     (throw (ex-info message (ex-data exception)))))
@@ -84,5 +84,5 @@
   (kikka "1")
   (catch Exception e
     (let [printer (-printer)]
-      (-> (v/-exception-section e printer)
+      (-> (v/-exception-doc e printer)
           (v/-print-doc printer)))))

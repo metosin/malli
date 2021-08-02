@@ -199,17 +199,21 @@
    :break :break
    (-footer printer)])
 
-(defmulti -format-event (fn [type _ _ _] type) :default ::default)
+(defmulti -transform (fn [type _ _ _] type) :default ::default)
 
-(defmethod -format-event ::default [_ message data printer]
+(defmethod -transform ::default [_ message data printer]
   {:body (into [:group (-text (or (:message data) message))] (if data [:break :break (-format data printer)]))})
 
-(defn -exception-section [e printer]
+;;
+;; documents
+;;
+
+(defn -exception-doc [e printer]
   (let [data (-> e ex-data :data)
-        {:keys [title body] :or {title (:title printer)}} (-format-event (-> e ex-data :type) (ex-message e) data printer)
+        {:keys [title body] :or {title (:title printer)}} (-transform (-> e ex-data :type) (ex-message e) data printer)
         location (-location e (:throwing-fn-name printer))]
     (-section title location body printer)))
 
-(defn -event-section [type data printer]
-  (let [{:keys [title body] :or {title (:title printer)}} (-format-event type nil data printer)]
+(defn -event-doc [type data printer]
+  (let [{:keys [title body] :or {title (:title printer)}} (-transform type nil data printer)]
     (-section title nil body printer)))

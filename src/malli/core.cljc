@@ -299,18 +299,14 @@
               max (assoc :max max)))))
 
 (defn -map-transformer [ts]
-  #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
-             (fn [x] (let [i (.iterator ^Iterable tl)]
-                       (loop [x ^Associative x]
-                         (if (.hasNext i)
-                           (let [e ^MapEntry (.next i), k (.key e)]
-                             (recur (if-let [xe (.entryAt x k)] (.assoc x k ((.val e) (.val xe))) x)))
-                           x)))))
-     :cljs (fn [x] (reduce-kv
-                     (fn reduce-child-transformers [m k t]
-                       (if-let [entry (find m k)]
-                         (assoc m k (t (val entry)))
-                         m)) x ts))))
+  #?(:clj  (apply -comp (map (fn child-transformer [[k t]]
+                               (fn [^Associative x]
+                                 (if-let [e ^MapEntry (.entryAt x k)]
+                                   (.assoc x k (t (.val e))) x))) (rseq ts)))
+     :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
+                             (if-let [entry (find m k)]
+                               (assoc m k (t (val entry)))
+                               m)) x ts))))
 
 (defn -tuple-transformer [ts]
   #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
@@ -753,10 +749,9 @@
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   ->children (some->> entries
-                                       (keep (fn [[k s]]
-                                               (when-some [t (-transformer s transformer method options)] [k t])))
-                                       (into {}))
+                   ->children (reduce (fn [acc [k s]]
+                                        (let [t (-transformer s transformer method options)]
+                                          (cond-> acc t (conj [k t])))) [] entries)
                    apply->children (when (seq ->children) (-map-transformer ->children))
                    apply->children (-guard map? apply->children)]
                (-intercepting this-transformer apply->children)))

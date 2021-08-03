@@ -1058,6 +1058,13 @@
     (is (false? (m/validate [:map-of string? int?] {:age "18"})))
     (is (false? (m/validate [:map-of string? int?] 1)))
 
+    (testing "limits"
+      (is (true?  (m/validate [:map-of {:min 1} keyword? int?] {:age 18})))
+      (is (false? (m/validate [:map-of {:min 2} keyword? int?] {:age 18})))
+      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18})))
+      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18 :-a-g-e 3})))
+      (is (false? (m/validate [:map-of {:max 1} keyword? int?] {:age 18 :-a-g-e 3}))))
+
     (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
     (is (some? (m/explain [:map-of string? int?] ::invalid)))
     (is (results= {:schema [:map-of string? int?],

@@ -786,10 +786,11 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
-    (-into-schema [parent properties children options]
+    (-into-schema [parent {:keys [min max] :as properties} children options]
       (-check-children! :map-of properties children {:min 2 :max 2})
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
             form (-create-form :map-of properties (mapv -form children))
+            validate-limits (-validate-limits min max)
             ->parser (fn [f] (let [key-parser (f key-schema)
                                    value-parser (f value-schema)]
                                (fn [x]
@@ -811,6 +812,7 @@
                   value-valid? (-validator value-schema)]
               (fn [m]
                 (and (map? m)
+                     (validate-limits m)
                      (reduce-kv
                        (fn [_ key value]
                          (or (and (key-valid? key) (value-valid? value)) (reduced false)))
@@ -821,13 +823,15 @@
               (fn explain [m in acc]
                 (if-not (map? m)
                   (conj acc (miu/-error path in this m ::invalid-type))
-                  (reduce-kv
-                    (fn [acc key value]
-                      (let [in (conj in key)]
-                        (->> acc
-                             (key-explainer key in)
-                             (value-explainer value in))))
-                    acc m)))))
+                  (if-not (validate-limits m)
+                    (conj acc (miu/-error path in this m ::limits))
+                    (reduce-kv
+                     (fn [acc key value]
+                       (let [in (conj in key)]
+                         (->> acc
+                              (key-explainer key in)
+                              (value-explainer value in))))
+                     acc m))))))
           (-parser [_] (->parser -parser))
           (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]

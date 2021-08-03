@@ -2328,3 +2328,33 @@
   (is (false? ((m/-safe-pred (constantly nil)) ::any)))
   (is (true? (m/validate [:fn (constantly "true")] ::any)))
   (is (false? (m/validate [:fn (constantly nil)] ::any))))
+
+(deftest validate-limits
+  (testing "Upper and lower bound"
+    (let [f (m/-validate-limits 3 7)]
+      (is (false? (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (false? (f (range 8))))))
+  (testing "Upper bound, no lower bound"
+    (let [f (m/-validate-limits nil 7)]
+      (is (true?  (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (false? (f (range 8))))))
+  (testing "Lower bound, no upper bounds"
+    (let [f (m/-validate-limits 3 nil)]
+      (is (false? (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (true?  (f (range 8))))))
+  (testing "No bounds"
+    (let [f (m/-validate-limits nil nil)]
+      (is (true?  (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (true?  (f (range 8)))))))

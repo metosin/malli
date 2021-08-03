@@ -345,6 +345,10 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
+(defn -validate-limits
+  [min max]
+  (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
+
 (defn -qualified-keyword-pred [properties]
   (when-let [ns-name (some-> properties :namespace name)]
     (fn [x] (= (namespace x) ns-name))))
@@ -866,11 +870,7 @@
             (-check-children! type properties children {:min 1 :max 1})
             (let [[schema :as children] (mapv #(schema % options) children)
                   form (-create-form type properties (map -form children))
-                  validate-limits (cond
-                                    (not (or min max)) (constantly true)
-                                    (and min max) (fn [x] (let [size (count x)] (<= min size max)))
-                                    min (fn [x] (let [size (count x)] (<= min size)))
-                                    max (fn [x] (let [size (count x)] (<= size max))))
+                  validate-limits (-validate-limits min max)
                   ->parser (fn [f] (let [child-parser (f schema)]
                                      (fn [x]
                                        (cond

@@ -597,18 +597,12 @@
       (reset! state nil)
       (m/decode schema {:x 1, :y "2"} transformer)
       (is (= [[:decode :enter :map {:x 1, :y "2"}]
-              #?@(:clj
-                  [[:decode :enter ::m/val "2"]
-                   [:decode :enter 'string? "2"]
-                   [:decode :leave 'string? "2"]
-                   [:decode :leave ::m/val "2"]])
               [:decode :enter ::m/val 1]
               [:decode :leave ::m/val 1]
-              #?@(:cljs
-                  [[:decode :enter ::m/val "2"]
-                   [:decode :enter 'string? "2"]
-                   [:decode :leave 'string? "2"]
-                   [:decode :leave ::m/val "2"]])
+              [:decode :enter ::m/val "2"]
+              [:decode :enter 'string? "2"]
+              [:decode :leave 'string? "2"]
+              [:decode :leave ::m/val "2"]
               [:decode :leave :map {:x 1, :y "2"}]]
              @state)))
 
@@ -616,18 +610,12 @@
       (reset! state nil)
       (m/encode schema {:x 1, :y "2"} transformer)
       (is (= [[:encode :enter :map {:x 1, :y "2"}]
-              #?@(:clj
-                  [[:encode :enter ::m/val "2"]
-                   [:encode :enter 'string? "2"]
-                   [:encode :leave 'string? "2"]
-                   [:encode :leave ::m/val "2"]])
               [:encode :enter ::m/val 1]
               [:encode :leave ::m/val 1]
-              #?@(:cljs
-                  [[:encode :enter ::m/val "2"]
-                   [:encode :enter 'string? "2"]
-                   [:encode :leave 'string? "2"]
-                   [:encode :leave ::m/val "2"]])
+              [:encode :enter ::m/val "2"]
+              [:encode :enter 'string? "2"]
+              [:encode :leave 'string? "2"]
+              [:encode :leave ::m/val "2"]
               [:encode :leave :map {:x 1, :y "2"}]]
              @state)))))
 

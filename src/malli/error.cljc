@@ -16,6 +16,13 @@
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
+   ::m/limits {:error/fn {:en (fn [{:keys [schema _value]} _]
+                                (let [{:keys [min max]} (m/properties schema)]
+                                  (cond
+                                    (and min (= min max)) (str "should have " min " elements")
+                                    (and min max) (str "should have between " min " and " max " elements")
+                                    min (str "should have at least " min " elements")
+                                    max (str "should have at most " max " elements"))))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}

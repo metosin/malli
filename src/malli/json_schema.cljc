@@ -87,10 +87,45 @@
     (if (empty? required) object (assoc object :required required))))
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
-(defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
-(defmethod accept :vector [_ _ children _] {:type "array", :items (first children)})
-(defmethod accept :sequential [_ _ children _] {:type "array", :items (first children)})
-(defmethod accept :set [_ _ children _] {:type "array", :items (first children), :uniqueItems true})
+
+(defn- minmax-properties
+  [m schema kmin kmax]
+  (merge
+   m
+   (-> schema
+       m/properties
+       (select-keys [:min :max])
+       (set/rename-keys {:min kmin, :max kmax}))))
+
+(defmethod accept :map-of [_ schema children _]
+  (minmax-properties
+   {:type "object",
+    :additionalProperties (second children)}
+   schema
+   :minProperties
+   :maxProperties))
+
+(defmethod accept :vector [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children)}
+   schema
+   :minItems
+   :maxItems))
+
+(defmethod accept :sequential [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children)}
+   schema
+   :minItems
+   :maxItems))
+
+(defmethod accept :set [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children), :uniqueItems true}
+   schema
+   :minItems
+   :maxItems))
+
 (defmethod accept :enum [_ _ children _] {:enum children})
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})

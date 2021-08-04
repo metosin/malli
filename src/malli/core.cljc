@@ -341,6 +341,10 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
+(defn -validate-limits
+  [min max]
+  (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
+
 (defn -qualified-keyword-pred [properties]
   (when-let [ns-name (some-> properties :namespace name)]
     (fn [x] (= (namespace x) ns-name))))
@@ -777,10 +781,11 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
-    (-into-schema [parent properties children options]
+    (-into-schema [parent {:keys [min max] :as properties} children options]
       (-check-children! :map-of properties children {:min 2 :max 2})
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
             form (-create-form :map-of properties (mapv -form children))
+            validate-limits (-validate-limits min max)
             ->parser (fn [f] (let [key-parser (f key-schema)
                                    value-parser (f value-schema)]
                                (fn [x]
@@ -802,6 +807,7 @@
                   value-valid? (-validator value-schema)]
               (fn [m]
                 (and (map? m)
+                     (validate-limits m)
                      (reduce-kv
                        (fn [_ key value]
                          (or (and (key-valid? key) (value-valid? value)) (reduced false)))
@@ -812,13 +818,15 @@
               (fn explain [m in acc]
                 (if-not (map? m)
                   (conj acc (miu/-error path in this m ::invalid-type))
-                  (reduce-kv
-                    (fn [acc key value]
-                      (let [in (conj in key)]
-                        (->> acc
-                             (key-explainer key in)
-                             (value-explainer value in))))
-                    acc m)))))
+                  (if-not (validate-limits m)
+                    (conj acc (miu/-error path in this m ::limits))
+                    (reduce-kv
+                     (fn [acc key value]
+                       (let [in (conj in key)]
+                         (->> acc
+                              (key-explainer key in)
+                              (value-explainer value in))))
+                     acc m))))))
           (-parser [_] (->parser -parser))
           (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
@@ -861,11 +869,7 @@
             (-check-children! type properties children {:min 1 :max 1})
             (let [[schema :as children] (mapv #(schema % options) children)
                   form (-create-form type properties (map -form children))
-                  validate-limits (cond
-                                    (not (or min max)) (constantly true)
-                                    (and min max) (fn [x] (let [size (count x)] (<= min size max)))
-                                    min (fn [x] (let [size (count x)] (<= min size)))
-                                    max (fn [x] (let [size (count x)] (<= size max))))
+                  validate-limits (-validate-limits min max)
                   ->parser (fn [f] (let [child-parser (f schema)]
                                      (fn [x]
                                        (cond

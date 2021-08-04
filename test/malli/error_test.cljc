@@ -522,3 +522,26 @@
                                    (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
                (m/explain {:foo "1"})
                (me/humanize {:resolve me/resolve-root-error}))))))
+
+(deftest limits
+  (is (= {:a [["should be an int"]]
+          :b ["should have at least 2 elements"]
+          :c ["should have at most 5 elements"]
+          :d ["should have between 2 and 5 elements"]
+          :e ["should have between 2 and 5 elements"]
+          :f ["should have 5 elements"]}
+         (-> [:map
+              [:a [:vector int?]]
+              [:b [:vector {:min 2} int?]]
+              [:c [:vector {:max 5} int?]]
+              [:d [:vector {:min 2, :max 5} int?]]
+              [:e [:vector {:min 2, :max 5} int?]]
+              [:f [:vector {:min 5, :max 5} int?]]]
+             (m/explain
+              {:a ["123"]
+               :b [1]
+               :c [1 2 3 4 5 6]
+               :d [1]
+               :e [1.2]
+               :f [1 2 3 4]})
+             (me/humanize)))))

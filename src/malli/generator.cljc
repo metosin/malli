@@ -89,8 +89,15 @@
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
 (defn -map-of-gen [schema options]
-  (let [[k-gen v-gen] (map #(generator % options) (m/children schema options))]
-    (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
+  (let [{:keys [min max]} (-min-max schema options)
+        [k-gen v-gen] (map #(generator % options) (m/children schema options))
+        opts (cond
+               (and min (= min max)) {:num-elements min}
+               (and min max) {:min-elements min :max-elements max}
+               min {:min-elements min}
+               max {:max-elements max}
+               :else {})]
+    (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen) opts))))
 
 #?(:clj
    (defn -re-gen [schema options]

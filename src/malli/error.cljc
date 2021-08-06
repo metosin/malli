@@ -144,7 +144,7 @@
 
 (defn -assoc-in [a v [p & ps] e]
   (let [v' (-get v p)
-        a' (or a (if (sequential? v) [] (empty v)))]
+        a' (or a (cond (sequential? v) [], (record? v) {}, :else (empty v)))]
     (cond
       ;; error present, let's not go deeper
       (and p (-error? a')) a

@@ -546,6 +546,8 @@
                 :f [1 2 3 4]})
              (me/humanize)))))
 
+(defrecord Horror [])
+
 (deftest robust-humanize-form
   (let [f (fn [s] [:fn {:error/message s} (constantly false)])
         => ::irrelevant]
@@ -566,6 +568,10 @@
       [:map [:x [:and [:map [:y :any]] seq? (f "kosh")]]] {:x {}} => {:x {:y ["missing required key"]
                                                                           :malli/error ["should be a seq" "kosh"]}}
       [:map [:x [:and [:map [:y :any]] seq?]]] {:x {:y 123}} => {:x ["should be a seq"]}
+
+      ;; records
+      [:map [:x [:and [:map [:y :any]] seq?]]] (map->Horror {:x (map->Horror {})}) => {:x {:y ["missing required key"]
+                                                                                           :malli/error ["should be a seq"]}}
 
       ;; don't derive error form from value in case of top-level error
       [:map [:x [:and seq? [:map [:y :any]]]]] 123 => ["invalid type"]

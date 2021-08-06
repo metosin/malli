@@ -12,7 +12,6 @@
                                minimallist/minimallist {:mvn/version "0.0.10"}
                                net.cgrand/seqexp {:mvn/version "0.6.2"}
                                meta-merge/meta-merge {:mvn/version "1.0.0"}
-                               fipp/fipp {:mvn/version "0.6.24"}
                                expound/expound {:mvn/version "0.8.9"}
                                lambdaisland/deep-diff {:mvn/version "0.0-47"}
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
@@ -51,4 +50,5 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         borkdude/dynaload {:mvn/version "0.2.2"}
         borkdude/edamame {:mvn/version "0.0.11"}
+        fipp/fipp {:mvn/version "0.6.24"}
         org.clojure/test.check {:mvn/version "1.1.0"}}}

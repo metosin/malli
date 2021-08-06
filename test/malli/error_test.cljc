@@ -143,8 +143,8 @@
                (m/explain {:x 1, :extra "key"})
                (me/humanize)))))
 
-  (testing "multiple errors on same key are presented just once"
-    (is (= {:x ["missing required key"]}
+  (testing "multiple errors on same key are preserved"
+    (is (= {:x ["missing required key" "missing required key"]}
            (me/humanize
              {:value {},
               :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
@@ -153,12 +153,12 @@
   (testing "maps can have top level errors and key errors"
     (is (= {:person {:malli/error ["should be a seq"],
                      :name ["missing required key"]}}
-           (-> [:map [:person [:and seq? [:map [:name string?]]]]]
+           (-> [:map [:person [:and [:map [:name string?]] seq?]]]
                (m/explain {:person {}})
                (me/humanize)))))
 
   (testing "maps have errors inside"
-    (is (= {:person {:malli/error ["should be a seq"]}}
+    (is (= {:person ["should be a seq"]}
            (-> [:map [:person seq?]]
                (m/explain {:person {}})
                (me/humanize))))))
@@ -257,33 +257,33 @@
                                :password2 "faarao"})
                    (me/humanize)))))))
 
-  (testing "on collections, first error wins"
+  (testing "on collections"
     (let [schema [:and
                   [:vector int?]
-                  [:fn {:error/message "first should be positive"}
-                   '(fn [[x]] (pos? x))]
-                  [:fn {:error/message "first should be positive (masked)"}
-                   '(fn [[x]] (pos? x))]]]
-      (is (= ["first should be positive"]
-             (-> schema
-                 (m/explain [-2 1])
-                 (me/humanize))))
-      (is (= [nil ["should be an int"]]
-             (-> schema
-                 (m/explain [-2 "1"])
-                 (me/humanize))))
-      (is (= ["invalid type"]
-             (-> schema
-                 (m/explain '(-2 "1"))
-                 (me/humanize))))))
+                  [:fn {:error/message "error1"} '(fn [[x]] (pos? x))]
+                  [:fn {:error/message "error2"} '(fn [[x]] (pos? x))]]]
+      (testing "value errors are reported over extra top-level errpors"
+        (is (= [nil ["should be an int"]]
+               (-> schema
+                   (m/explain [-2 "1"])
+                   (me/humanize)))))
+      (testing "without value errors, all top-level errors are collected"
+        (is (= ["error1" "error2"]
+               (-> schema
+                   (m/explain [-2 1])
+                   (me/humanize))))
+        (is (= ["invalid type" "error1" "error2"]
+               (-> schema
+                   (m/explain '(-2 "1"))
+                   (me/humanize)))))))
 
-  (testing "on non-collections, first error wins"
+  (testing "on non-collections, all errors are collectd"
     (let [schema [:and
                   [:fn {:error/message "should be >= 1"} '(fn [x] (or (not (int? x)) (>= x 1)))]
                   int?
                   [:fn {:error/message "should be >= 2"} '(fn [x] (or (not (int? x)) (>= x 2)))]]]
 
-      (is (= ["should be >= 1"]
+      (is (= ["should be >= 1" "should be >= 2"]
              (-> schema
                  (m/explain 0)
                  (me/humanize))))
@@ -509,7 +509,7 @@
              (m/explain {:foo "1"})
              (me/humanize {:resolve me/resolve-root-error}))))
 
-  (is (= {:malli/error ["map-failure"]}
+  (is (= ["map-failure"]
          (-> [:map {:error/message "map-failure"}
               [:foo {:error/message "entry-failure"} :int]]
              (m/explain {:foo "1"})
@@ -538,10 +538,49 @@
               [:e [:vector {:min 2, :max 5} int?]]
               [:f [:vector {:min 5, :max 5} int?]]]
              (m/explain
-              {:a ["123"]
-               :b [1]
-               :c [1 2 3 4 5 6]
-               :d [1]
-               :e [1.2]
-               :f [1 2 3 4]})
+               {:a ["123"]
+                :b [1]
+                :c [1 2 3 4 5 6]
+                :d [1]
+                :e [1.2]
+                :f [1 2 3 4]})
              (me/humanize)))))
+
+(deftest robust-humanize-form
+  (let [f (fn [s] [:fn {:error/message s} (constantly false)])
+        => ::irrelevant]
+    (are [schema value _ expected]
+      (is (= expected (-> (m/explain schema value) (me/humanize))))
+
+      ;; simple cases
+      :any :any => nil
+      [:and :any :any] :any => nil
+      [:and (f "1") :any] :any => ["1"]
+      [:and (f "1") (f "1") :any] :any => ["1" "1"]
+      [:and (f "1") (f "2")] {:a :map} => ["1" "2"]
+
+      ;; accumulate into maps if error shape is already a map
+      [:map [:x [:and [:map [:y :any]] seq?]]] 123 => ["invalid type"]
+      [:map [:x [:and [:map [:y :any]] seq?]]] {} => {:x ["missing required key"]}
+      [:map [:x [:and [:map [:y :any]] seq?]]] {:x 123} => {:x ["invalid type" "should be a seq"]}
+      [:map [:x [:and [:map [:y :any]] seq? (f "kosh")]]] {:x {}} => {:x {:y ["missing required key"]
+                                                                          :malli/error ["should be a seq" "kosh"]}}
+      [:map [:x [:and [:map [:y :any]] seq?]]] {:x {:y 123}} => {:x ["should be a seq"]}
+
+      ;; don't derive error form from value in case of top-level error
+      [:map [:x [:and seq? [:map [:y :any]]]]] 123 => ["invalid type"]
+      [:map [:x [:and seq? [:map [:y :any]]]]] {} => {:x ["missing required key"]}
+      [:map [:x [:and seq? [:map [:y :any]]]]] {:x 123} => {:x ["should be a seq" "invalid type"]}
+      [:map [:x [:and seq? [:map [:y :any]]]]] {:x {}} => {:x ["should be a seq"]}
+
+      ;; tuple sizes
+      [:map [:x [:tuple :int :int :int]]] {} => {:x ["missing required key"]}
+      [:map [:x [:tuple :int :int :int]]] {:x []} => {:x ["invalid tuple size 0, expected 3"]}
+      [:map [:x [:tuple :int :int :int]]] {:x [1 "2" 3]} => {:x [nil ["should be an integer"]]}
+      [:map [:x [:tuple :int :int :int]]] {:x [1 "2" "3"]} => {:x [nil ["should be an integer"] ["should be an integer"]]}
+      [:map [:x [:tuple :int [:and :int (f "fails")] :int]]] {:x [1 "2" "3"]} => {:x [nil ["should be an integer" "fails"] ["should be an integer"]]}
+      [:map [:x [:tuple :int :int :int]]] {:x [1 2 3]} => nil
+
+      ;; sequences
+      [:and [:sequential :int] (f "1") (f "2")] [1 "2"] => [nil ["should be an integer"]]
+      [:and [:sequential :int] (f "1") (f "2")] [1 2] => ["1" "2"])))

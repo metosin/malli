@@ -23,6 +23,9 @@
                                     (and min max) (str "should have between " min " and " max " elements")
                                     min (str "should have at least " min " elements")
                                     max (str "should have at most " max " elements"))))}}
+   ::m/tuple-size {:error/fn {:en (fn [{:keys [schema _value]} _]
+                                    (let [size (count (m/children schema))]
+                                      (str "invalid tuple size " (count _value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
@@ -129,34 +132,32 @@
     (if props (or (if-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
                   (-maybe-localized (:error/message props) locale)))))
 
-(defn- -ensure [x k]
-  (if (sequential? x)
-    (let [size' (count x)]
-      (if (> k size') (into (vec x) (repeat (- (inc k) size') nil)) x))
-    x))
+(defn -error [e] ^::error [e])
+(defn -error? [x] (-> x meta ::error))
 
-(defn- -just-error? [x]
-  (and (vector? x) (= 1 (count x)) (string? (first x))))
+(defn- -get [x k] (when (or (set? x) (associative? x)) (get x k)))
 
-(defn- -get [x k]
-  (if (or (set? x) (associative? x)) (get x k) (-get (vec x) k)))
+(defn -push [x k v]
+  (let [x' (if-let [x' (when (and (number? k) (or (set? x) (sequential? x))) (vec x))]
+             (let [size' (count x')] (if (> k size') (into x (repeat (- (inc k) size') nil)) x)) x)]
+    (if (set? x') (conj x' v) (assoc x' k v))))
 
-(defn- -put [x k v]
-  (cond
-    (set? x) (conj x v)
-    (associative? x) (update x k (fn [e] (if (-just-error? v) (vec (distinct (into (vec e) v))) v)))
-    :else (-put (vec x) k v))) ;; we coerce errors into vectors
-
-(defn- -assoc-in [acc value [p & ps] error]
-  (cond
-    p (let [acc' (-ensure (or acc (empty value)) p)
-            error' (if (or ps (map? value))
-                     (-assoc-in (-get acc p) (-get value p) ps error)
-                     error)]
-        (-put acc' p error'))
-    (map? value) (recur acc value [:malli/error] error)
-    acc acc
-    :else error))
+(defn -assoc-in [a v [p & ps] e]
+  (let [v' (-get v p)
+        a' (or a (if (sequential? v) [] (empty v)))]
+    (cond
+      ;; error present, let's not go deeper
+      (and p (-error? a')) a
+      ;; we can go deeper
+      p (-push a' p (-assoc-in (-get a' p) v' ps e))
+      ;; it's a map!
+      (map? a) (-assoc-in a' v [:malli/error] e)
+      ;; accumulate
+      (-error? a') (conj a' e)
+      ;; lose it
+      (vector? (not-empty a')) a'
+      ;; first blood
+      :else (-error e))))
 
 (defn- -path [{:keys [schema]}
               {:keys [locale default-locale]
@@ -304,10 +305,8 @@
                                                  resolve resolve-direct-error}
                                             :as options}]
    (if errors
-     (if (coll? value)
-       (reduce
-         (fn [acc error]
-           (let [[path message] (resolve explanation error options)]
-             (-assoc-in acc value path [(wrap (assoc error :message message))])))
-         nil errors)
-       [(wrap (with-error-message (first errors) options))]))))
+     (reduce
+       (fn [acc error]
+         (let [[path message] (resolve explanation error options)]
+           (-assoc-in acc value path (wrap (assoc error :message message)))))
+       nil errors))))

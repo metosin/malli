@@ -56,16 +56,17 @@ Malli is in [alpha](README.md#alpha).
 * **BREAKING**: `malli.json-schema/unlift-keys` is removed in favor of `malli.core/-unlift-keys`
 * **BREAKING**: `malli.json-schema/unlift` is removed in favor of `get`
 * **BREAKING**: `malli.provider/stats` is removed (was already deprecated)
-* **BREAKING**: humanized message duplicates are removed, e.g. `{:foo ["fail" "fail"]}` => `{:foo ["fail"]}`
 * **BREAKING**: `malli.util/update` doesn't the properties of the key it updates, fixes [#412](https://github.com/metosin/malli/issues/412)
+* **BREAKING**: New rules for humanized errors, see [#502](https://github.com/metosin/malli/pull/502), fixes [#80](https://github.com/metosin/malli/issues/80), [#428](https://github.com/metosin/malli/issues/428) and [#499](https://github.com/metosin/malli/issues/499).
 
+* `:map-of` supports `:min` and `:max` properties
+* Collection Schemas emit correct JSON Schema min & max declarations
 * new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
 * new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
 * new `malli.generator/check` and `malli.generator/check!` for generative testing of functions and `defn`s.
 * new `malli.core/parent`
-* humanized errors for `:boolean`
+* humanized errors for `:boolean` & `:malli.core/tuple-limit`
 * predicate schema for `fn?`
-* fix crash in humanize for maps [#333](https://github.com/metosin/malli/pull/333)
 * `malli.util/transform-entries` passes in options [#340]/(https://github.com/metosin/malli/pull/340)  
 * humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
 

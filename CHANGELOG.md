@@ -59,12 +59,12 @@ Malli is in [alpha](README.md#alpha).
 * **BREAKING**: `malli.util/update` doesn't the properties of the key it updates, fixes [#412](https://github.com/metosin/malli/issues/412)
 * **BREAKING**: New rules for humanized errors, see [#502](https://github.com/metosin/malli/pull/502), fixes [#80](https://github.com/metosin/malli/issues/80), [#428](https://github.com/metosin/malli/issues/428) and [#499](https://github.com/metosin/malli/issues/499).
 
-* `:map-of` supports `:min` and `:max` properties
-* Collection Schemas emit correct JSON Schema min & max declarations
-* new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
 * new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
+* new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
 * new `malli.generator/check` and `malli.generator/check!` for generative testing of functions and `defn`s.
 * new `malli.core/parent`
+* `:map-of` supports `:min` and `:max` properties
+* Collection Schemas emit correct JSON Schema min & max declarations
 * humanized errors for `:boolean` & `:malli.core/tuple-limit`
 * predicate schema for `fn?`
 * `malli.util/transform-entries` passes in options [#340]/(https://github.com/metosin/malli/pull/340)  
@@ -78,12 +78,17 @@ Malli is in [alpha](README.md#alpha).
 ; => {:foo ["entry-failure"]}
 ```
 
+* New experimental pretty printer for schema errors, using [fipp](https://github.com/brandonbloom/fipp).
+
+<img src="https://user-images.githubusercontent.com/567532/127866349-f41e1f43-d1c2-4200-bdc4-8e5ca473b76e.png">
+
 ### Extender API
 
 * `malli.util.impl/-fail!` is now `malli.core/-fail!`
 * `malli.core/-unlift-keys`
 * `malli.core/-instrument`
 * **BREAKING**: `malli.core/-register-function-schema!` is now 4-arity, new argument is data map
+* **BREAKING**: `malli.core/-fail!` has only arity 1 & 2 versions
 
 ## 0.5.1 (2021-05-02)
 

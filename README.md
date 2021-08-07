@@ -1140,7 +1140,9 @@ Any (serializable) function can be used for `:dispatch`:
 
 ## Recursive Schemas
 
-[Local Registry](#local-registry) allows an easy way to create recursive schemas. To be recursive, the schema refers to another schema of the local registry using two useful keywords `:ref` and `:schema`. First, the schema is defined in the local registry, one of the value refer to another schema with the `:ref` keyword. The top-level schema is defined in the second argument of the `:schema` definition:
+To create a recursive schema, introduce a [local registry](#local-registry) with the first argument to `:schema`, and then wrap all recursive positions in the registry with `:ref`. Now use `:schema`'s second argument to define a schema in terms of the recursive schema(s) in the registry.
+
+For example, here is a recursive schema for singly-linked lists of positive integers:
 
 ```clj
 (m/validate
@@ -1150,7 +1152,7 @@ Any (serializable) function can be used for `:dispatch`:
 ; => true
 ```
 
-Without the `:ref` keyword, malli would have tried to expand an infinite schema and would have fallen in a stack overflow exception:
+Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow exception is thrown:
 
 ```clj
 (m/validate

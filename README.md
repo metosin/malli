@@ -523,7 +523,7 @@ Errors can be targeted using `:error/path` property:
 ; {:password2 ["passwords don't match"]}
 ```
 
-By default, only direct erronous schema properties are used:
+By default, only direct erroneous schema properties are used:
 
 ```clj
 (-> [:map

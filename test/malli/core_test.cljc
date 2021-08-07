@@ -2100,11 +2100,36 @@
   ([x] x)
   ([_ _] (miu/-fail! ::arity-error)))
 
+(defn validate-times
+  "Validate value n times while validation returns `true`,
+  and return the final result."
+  [n schema v]
+  {:pre [(pos? n)]}
+  (let [res (m/validate schema v)]
+    (if (or (= 1 n) (not (true? res)))
+      res
+      (recur (dec n) schema v))))
+
+(defn explain-times
+  "Explain value n times while explain returns `nil`,
+  and return the final result."
+  [n schema v]
+  {:pre [(pos? n)]}
+  (let [res (m/explain schema v)]
+    (if (or (= 1 n) (not (nil? res)))
+      res
+      (recur (dec n) schema v))))
+
+(def function-schema-validation-times
+  "Number of times to test a successful generative test involving :=>."
+  1000)
+
 (deftest function-schema-test
   ;; js allows invalid arity
 
   (testing ":=>"
-    (let [valid-f (fn [x y] (- x y))
+    (let [valid-f (fn [x y]
+                    (unchecked-subtract x y))
           ?schema [:=> [:cat int? int?] int?]
           schema1 (m/schema ?schema)
           schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
@@ -2117,10 +2142,10 @@
         (is (false? (m/validate schema2 single-arity)))
         #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         #?(:clj (is (false? (m/validate schema2 #{}))))
-        (is (true? (m/validate schema2 valid-f)))
+        (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (m/explain schema2 (fn [x y] (+ x y)))))
+        (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
         (is (results= {:schema [:=> [:cat int? int?] int?]
                        :value single-arity
                        :errors [{:path []
@@ -2131,7 +2156,7 @@
 
         (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
-        (is (true? (m/validate (over-the-wire schema1) valid-f)))
+        (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
         (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
                (mu/to-map-syntax schema1))))))
@@ -2162,7 +2187,7 @@
                [:=> :cat nil?]
                [:=> [:cat [:? nil?]] nil?]]))))
 
-    (let [valid-f (fn ([x] x) ([x y] (- x y)))
+    (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
           invalid-f (fn ([x] x) ([x y] (str x y)))
           ?schema [:function
                    [:=> [:cat int?] int?]
@@ -2181,10 +2206,10 @@
         (is (false? (m/validate schema2 single-arity)))
         #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         #?(:clj (is (false? (m/validate schema2 #{}))))
-        (is (true? (m/validate schema2 valid-f)))
+        (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (m/explain schema2 valid-f)))
+        (is (nil? (explain-times function-schema-validation-times schema2 valid-f)))
 
         (is (results= {:schema schema2
                        :value invalid-f
@@ -2206,7 +2231,7 @@
 
       (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
 
-      (is (= true (m/validate (over-the-wire schema1) valid-f)))
+      (is (true? (m/validate (over-the-wire schema1) valid-f)))
 
       (is (= {:type :function,
               :children [{:type :=>, :children [{:type :cat, :children [{:type 'int?}]} {:type 'int?}]}

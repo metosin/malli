@@ -12,7 +12,9 @@
   * [Defn Checking](#defn-checking)
 * [Development Instumentation](#development-instrumentation)
   * [Static Type Checking](#static-type-checking)
+  * [Pretty Errors](#pretty-errors)
 * [Defn Schemas via metadata](#defn-schemas-via-metadata)
+  * [TL;DR](#tldr)
 
 ## Functions
 
@@ -397,12 +399,12 @@ Instrumentation can be configured with the same options as `m/-instrument` and w
 
 ### Defn Checking
 
-We can also check the defn schemas against their function implementations using `mg/check!`. It takes same options as `mi/instrument!`. 
+We can also check the defn schemas against their function implementations using `mi/check`. It takes same options as `mi/instrument!`. 
 
 Checking all registered schemas:
 
 ```clj
-(mg/check!)
+(mg/check)
 ;{user/plus1 {:schema [:=> [:cat :int] [:int {:max 6}]],
 ;             :value #object[user$plus1],
 ;             :errors (#Error{:path [],
@@ -429,7 +431,7 @@ It reports that the `plus1` is not correct. It accepts `:int` but promises to re
 ```clj
 (m/=> plus1 [:=> [:cat [:int {:max 5}]] [:int {:max 6}]])
 
-(mg/check!)
+(mg/check)
 ; => nil
 ```
 
@@ -498,6 +500,62 @@ Here's the above code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo
 
 <img src="img/clj-kondo-instrumentation.png">
 
+### Pretty Errors
+
+For prettier runtime error messages, we can swap the default error printer / thrower.
+
+```clj
+(require '[malli.dev.pretty :as pretty])
+```
+
+```clj
+(defn plus1 [x] (inc x))
+(m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
+
+(dev/start! {:report (pretty/reporter)})
+
+(plus1 "2")
+; =prints=>
+; -- Schema Error ----------------------------------------------------------------
+; 
+; Invalid function arguments:
+; 
+;   ["2"]
+; 
+; Input Schema:
+; 
+;   [:cat :int]
+; 
+; Errors:
+; 
+;   {:in [0],
+;    :message "should be an integer",
+;    :path [0],
+;    :schema :int,
+;    :type nil,
+;    :value "2"}
+; 
+; More information:
+; 
+;   https://cljdoc.org/d/metosin/malli/LATEST/doc/function-schemas
+; 
+; --------------------------------------------------------------------------------
+; =throws=> Execution error (ClassCastException) at malli.demo/plus1 (demo.cljc:9).
+;           java.lang.String cannot be cast to java.lang.Number
+```
+
+To throw the prettified error instead of just printint it:
+
+```clj
+(dev/start! {:report (pretty/thrower)})
+```
+
+Pretty printer uses [fipp](https://github.com/brandonbloom/fipp) under the hood and has lot of configuration options:
+
+```clj
+(dev/start! {:report (pretty/reporter (pretty/-printer {:width 80}))})
+```
+
 ## Defn Schemas via Metadata
 
 Another option to define `defn` schemas is to use standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. Itä's just data.
@@ -534,50 +592,27 @@ All keys with `malli` namespace are read. The list of relevant keys:
 
 Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
 
-### Example
+### TL;DR
 
-Example of using `malli.dev` instrumentation with var meta-data:
+Example of annotating function with var meta-data and using `malli.dev` for dev-time function instrumentation, pretty runtime exceptions and clj-kondo for static checking:
 
 ```clj
-(ns domain)
+(ns malli.demo)
 
-;; just data
-(def User
-  [:map
-   [:name :string]
-   [:age [:int {:min 0, :max 120}]]
-   [:address [:map
-              [:street :string]
-              [:country [:enum "fi" "po"]]]]])
+(defn plus1
+  "Adds one to the number"
+  {:malli/schema [:=> [:cat :int] :int]}
+  [x] (inc x))
 
-;; empty function
-(defn get-user
-  "given an id, returns a user or nil"
-  {:malli/schema [:=> [:cat :int] [:maybe User]]
-   :malli/scope #{:input :output}
-   :malli/gen true}
-  [_id])
-
-;; inject malli (at develpoment time)
+;; instrument, clj-kondo + pretty errors
 (require '[malli.dev :as dev])
-(require '[malli.generator :as mg])
+(require '[malli.dev.pretty :as pretty])
+(dev/start! {:report (pretty/reporter)})
 
-(dev/start! {:gen mg/generate})
-; =prints=> ..instrumented #'domain/get-user
-; =prints=> started instrumentation
+(plus1 "123")
 
-(get-user "1") ;; <- static checking
-; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["1"], :schema [:=> [:cat :int] [:maybe [:map [:name :string] [:age [:int {:min 0, :max 120}]] [:address [:map [:street :string] [:country [:enum "fi" "po"]]]]]]]}
-
-(get-user 1)
-;{:name "7YL9cHGy"
-; :age 76
-; :address {:street "Zia1u8V8r58P8Cs6Xb1GF2Hd1C"
-;           :country "fi"}}
-
-(dev/stop!)
-; =prints=> ..unstrumented #'domain/get-user
-; =prints=> stopped instrumentation
+(comment
+  (dev/stop!))
 ```
 
 Here's the same code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
@@ -586,6 +621,5 @@ Here's the same code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo]
 
 ## Future work
 
-* [pretty printer for schema errors](https://github.com/metosin/malli/issues/19)
 * [support Schema defn syntax](https://github.com/metosin/malli/issues/125)
 * better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for enchanced DX.

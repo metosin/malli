@@ -7,7 +7,6 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            #?(:clj [malli.instrument :as mi])
             [malli.core :as m]))
 
 (declare generator generate -create)
@@ -329,13 +328,3 @@
   ([?schema f options]
    (let [schema (m/schema ?schema options)]
      (m/explain (m/-update-options schema #(assoc % ::m/function-checker function-checker)) f))))
-
-#?(:clj
-   (defn check!
-     ([] (check! nil))
-     ([options]
-      (let [res* (atom {})]
-        (mi/-strument! (assoc options :mode (fn [v {:keys [schema]}]
-                                              (some->> (check schema (or (mi/-original v) (deref v)))
-                                                       (swap! res* assoc (symbol v))))))
-        (not-empty @res*)))))

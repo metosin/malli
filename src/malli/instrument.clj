@@ -1,5 +1,6 @@
 (ns malli.instrument
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [malli.generator :as mg]))
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
@@ -37,6 +38,17 @@
 ;;
 ;; public api
 ;;
+
+(defn check
+  "Checks all registered function schemas using generative testing.
+   Returns nil or a map of symbol -> explanation in case of errors."
+  ([] (check nil))
+  ([options]
+   (let [res* (atom {})]
+     (-strument! (assoc options :mode (fn [v {:keys [schema]}]
+                                           (some->> (mg/check schema (or (-original v) (deref v)))
+                                                    (swap! res* assoc (symbol v))))))
+     (not-empty @res*))))
 
 (defn collect!
   "Reads all public Vars from a given namespace(s) and registers a function (var) schema if `:malli/schema`

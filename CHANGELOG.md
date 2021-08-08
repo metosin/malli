@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## 0.6.1 (2021-08-08)
+
+* add missing optional dependency to `mvxcvi/arrangement` to make pretty printing work
+
 ## 0.6.0 (2021-08-08)
 
 * Much faster validators on CLJ (loop unrolling & programming against interfaces) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):

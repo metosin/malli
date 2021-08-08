@@ -50,5 +50,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         borkdude/dynaload {:mvn/version "0.2.2"}
         borkdude/edamame {:mvn/version "0.0.11"}
+        org.clojure/test.check {:mvn/version "1.1.0"}
+        ;; pretty errors, optional deps
         fipp/fipp {:mvn/version "0.6.24"}
-        org.clojure/test.check {:mvn/version "1.1.0"}}}
+        mvxcvi/arrangement {:mvn/version "1.2.0"}}}

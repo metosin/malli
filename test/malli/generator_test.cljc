@@ -306,3 +306,112 @@
                                       {:registry {::foo :int}}
                                       [:ref ::foo]]
                                      {:size 1000})))))
+
+(comment
+  (gen/one-of
+    [(gen/return nil)
+     (gen/tuple (gen/return "ping")
+                (gen/recursive-gen
+                  (fn [pong])))
+     ])
+
+  [:schema
+   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   ::ping]
+  (->> (gen/sample
+         (gen/recursive-gen
+           (fn [ping]
+             (gen/tuple (gen/return "ping")
+                        (gen/recursive-gen
+                          (fn [pong]
+                            (gen/tuple (gen/return "pong")
+                                       ping))
+                          (gen/return nil))))
+           (gen/return nil))
+         100)
+       (drop 75))
+
+  [:schema
+   {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
+               ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
+   ::ping]
+  (->> (gen/sample
+         (gen/recursive-gen
+           (fn [ping]
+             (gen/tuple (gen/return "ping")
+                        (gen/one-of
+                          [(gen/return nil)
+                           (gen/recursive-gen
+                             (fn [pong]
+                               (gen/tuple (gen/return "pong")
+                                          ping))
+                             (gen/tuple (gen/return "pong")
+                                        (gen/return nil)))])))
+           (gen/tuple (gen/return "ping")
+                      (gen/return nil)))
+         100)
+       (drop 75))
+
+  [:schema
+   {:registry {::data    [:or
+                          ::int
+                          ::vector]
+               ::int     :int
+               ::vector  [:vector
+                          [:ref ::data]]}}
+   ::data]
+  (->> (gen/sample
+         (gen/recursive-gen
+           (fn [data]
+             (gen/vector
+               data))
+           gen/large-integer)
+         100)
+       (drop 75))
+
+  )
+
+(deftest schema->scalar-schema-test
+  (doseq [{:keys [schema scalar-schema container-schema]}
+          [{:schema [:schema
+                     {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                                 ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                     ::ping]
+            :scalar-schema :nil
+            :container-schema [:tuple [:= "ping"]
+                               [:schema
+                                {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                                            ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                                ::ping]]}
+           {:schema [:schema
+                     {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
+                                 ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
+                     ::ping]
+            :scalar-schema [:tuple [:= "pong"] :nil]
+            :container-schema [:tuple
+                               [:= "pong"]
+                               [:schema
+                                {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
+                                            ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
+                                ::ping]]}
+           {:schema [:schema
+                     {:registry {::data    [:or
+                                            ::int
+                                            ::vector]
+                                 ::int     :int
+                                 ::vector  [:vector
+                                            [:ref ::data]]}}
+                     ::data]
+            :scalar-schema :int
+            :container-schema [:vector
+                               [:schema
+                                {:registry {::data    [:or
+                                                       ::int
+                                                       ::vector]
+                                            ::int     :int
+                                            ::vector  [:vector
+                                                       [:ref ::data]]}}
+                                ::data]]}]]
+    (is (= scalar-schema (mg/schema->scalar-schema schema)))
+    (is (= container-schema (mg/schema->scalar-schema schema)))))

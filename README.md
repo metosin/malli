@@ -23,12 +23,13 @@ Data-driven Schemas for Clojure/Script.
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
-- [Function Schemas](#function-schemas) with [clj-kondo](#clj-kondo) support
-- [Visualizing Schemas](#visualizing-schemas) with DOT
+- [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
+- Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - [Fast](#performance)
 
 Presentations:
 
+- [ClojureScript Podcast: Malli wtih Tommi Reiman](https://soundcloud.com/user-959992602/s4-e30-malli-wtih-tommi-reiman)
 - [Structure and Interpretation of Malli Regex Schemas](https://www.metosin.fi/blog/malli-regex-schemas/)
 - LNDCLJ 9.12.2020: [Designing with Malli](https://youtu.be/bQDkuF6-py4), slides [here](https://www.slideshare.net/mobile/metosin/designing-with-malli)
 - [Malli, Data-Driven Schemas for Clojure/Script](https://www.metosin.fi/blog/malli/)
@@ -43,6 +44,9 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 - [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
 - [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
 - [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
+- [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
+- [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
+- [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
 
 ## Examples
 
@@ -126,7 +130,7 @@ Maps keys are not limited to keywords:
 
 ## Qualified keys in a map
 
-You can also use [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references. References must be either qualified keywords of strings.
+You can also use [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references. References must be either qualified keywords or strings.
 
 ```clj
 (m/validate
@@ -331,22 +335,6 @@ Using regular expressions:
 ; => false
 ```
 
-`ifn?` accepts any value that implements Clojure(Script)'s IFn:
-
-```clj
-(m/validate ifn? :keyword)
-; => true
-
-(m/validate ifn? [])
-; => true
-
-(m/validate ifn? {})
-; => true
-
-(s/validate ifn? 123)
-; => false
-```
-
 ## Serializable Functions
 
 Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
@@ -371,7 +359,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ; => false
 ```
 
-**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be carefull `sci` functions from untrusted sources. You can explictely disable with option `::m/disable-sci` and set the default options with `::m/sci-options`.
+**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
 ```clj
 (m/validate [:fn 'int?] 1 {::m/disable-sci true})
@@ -533,6 +521,26 @@ Errors can be targeted using `:error/path` property:
                 :password2 "faarao"})
     (me/humanize))
 ; {:password2 ["passwords don't match"]}
+```
+
+By default, only direct erroneous schema properties are used:
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]] ;; here, :int fails, no error props
+    (m/explain {:foo "1"})
+    (me/humanize))
+; => {:foo ["should be an integer"]}
+```
+
+Looking up humanized errors from parent schemas with custom `:resolve` (BETA, subject to change):
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize {:resolve me/-resolve-root-error}))
+; => {:foo ["entry-failure"]}
 ```
 
 ## Spell Checking
@@ -1132,7 +1140,9 @@ Any (serializable) function can be used for `:dispatch`:
 
 ## Recursive Schemas
 
-[Local Registry](#local-registry) allows an easy way to create recursive schemas. To be recursive, the schema refers to another schema of the local registry using two useful keywords `:ref` and `:schema`. First, the schema is defined in the local registry, one of the value refer to another schema with the `:ref` keyword. The top-level schema is defined in the second argument of the `:schema` definition:
+To create a recursive schema, introduce a [local registry](#local-registry) and wrap all recursive positions in the registry with `:ref`. Now you may reference the recursive schemas in the body of the schema.
+
+For example, here is a recursive schema using `:schema` for singly-linked lists of positive integers:
 
 ```clj
 (m/validate
@@ -1142,14 +1152,14 @@ Any (serializable) function can be used for `:dispatch`:
 ; => true
 ```
 
-Without the `:ref` keyword, malli would have tried to expand an infinite schema and would have fallen in a stack overflow exception:
+Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow error is thrown:
 
 ```clj
 (m/validate
   [:schema {:registry {::cons [:maybe [:tuple pos-int? ::cons]]}}
    ::cons]
   [16 [64 [26 [1 [13 nil]]]]])
-; StackOverlow Error 
+; StackOverflowError 
 ```
 
 Mutual recursion works too. Thanks to the `:schema` construct, many schemas could be defined in the local registry, the top-level one being promoted by the `:schema` second parameter:
@@ -1691,7 +1701,7 @@ The default immutable registry is merged from the following parts, enabling easy
 
 #### `malli.core/predicate-schemas`
 
-Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?` and `bytes?`.
+Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?`, `bytes?`, `ifn?` and `fn?`.
 
 #### `malli.core/class-schemas`
 
@@ -1936,179 +1946,11 @@ Registries can be composed:
 
 ## Function Schemas
 
-Functions can be described with `:=>`, which has two children: input schema (as `:cat`) and output schemas. Multi-arity functions can be composed with `:function`.
+See [Working with functions](docs/function-schemas.md).
 
-```clj
-;; no args, no return
-[:=> :cat :nil]
+### Instrumentation
 
-;; two int args, positive int returned
-[:=> [:cat int? int?] pos-int?]
-
-;; named varargs, e.g. (fn [x & xs] (* x (apply + xs)))
-[:=> [:catn 
-      [:x int?]
-      [:xs [:* int?]]] int?]
-      
-;; multi-arity fn
-[:function
- [:=> [:cat int?] int?]
- [:=> [:cat int? int? [:* int?]] int?]]
-```
-
-Function validation:
-
-```clj
-(defn plus [x y] (+ x y))
-
-(def =>plus [:=> [:cat int? int?] int?])
-
-(m/validate =>plus plus)
-; => true
-```
-
-By default, validation just checks if a value is `ifn?`:
-
-```clj
-(m/validate =>plus str)
-; => true :(
-```
-
-Using generative testing for better results:
-
-```clj
-(m/validate =>plus plus {::m/function-checker mg/function-checker})
-; => true
-
-(m/validate =>plus str {::m/function-checker mg/function-checker})
-; => false
-
-(m/explain =>plus str {::m/function-checker mg/function-checker})
-;{:schema [:=> [:cat int? int?] int?],
-; :value #object[clojure.core$str],
-; :errors (#Error{:path [],
-;                 :in [],
-;                 :schema [:=> [:cat int? int?] int?],
-;                 :value #object[clojure.core$str],
-;                 :check {:total-nodes-visited 1,
-;                         :depth 0,
-;                         :pass? false,
-;                         :result false,
-;                         :result-data nil,
-;                         :time-shrinking-ms 0,
-;                         :smallest [(0 0)],
-;                         :malli.generator/explain-output {:schema int?,
-;                                                          :value "00",
-;                                                          :errors (#Error{:path []
-;                                                                          :in []
-;                                                                          :schema int?
-;                                                                          :value "00"})}}})}
-``` 
-
-A generated function implementation:
-
-```clj
-(def plus-gen (mg/generate =>plus))
-
-(plus-gen 1 2)
-; => -1
-
-(plus-gen 1 "2")
-; =throws=> :malli.generator/invalid-input {:schema [:cat int? int?], :args [1 "2"]}
-```
-
-Multiple arities are defined using `:function`:
-
-```clj
-(def SmallInt
-  [:int {:min -100, :max 100}])
-
-(def MyFunction
-  (m/schema
-    [:function
-     [:=> [:cat SmallInt] :int]
-     [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]]
-    {::m/function-checker mg/function-checker}))
-
-(m/validate
-  MyFunction
-  (fn
-    ([x] x)
-    ([x y & z] (apply - (- x y) z))))
-; => true
-
-(m/validate
-  MyFunction
-  (fn
-    ([x] x)
-    ([x y & z] (str x y z))))
-; => false
-
-(m/explain
-  MyFunction
-  (fn
-    ([x] x)
-    ([x y & z] (str x y z))))
-;{:schema [:function
-;          [:=> [:cat SmallInt] :int]
-;          [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]],
-; :value #object[],
-; :errors (#Error{:path [],
-;                 :in [],
-;                 :schema [:function
-;                          [:=> [:cat SmallInt] :int]
-;                          [:=> [:cat SmallInt SmallInt [:* SmallInt]] :int]],
-;                 :value #object[],
-;                 :check ({:total-nodes-visited 1,
-;                          :depth 0,
-;                          :pass? false,
-;                          :result false,
-;                          :result-data nil,
-;                          :time-shrinking-ms 0,
-;                          :smallest [(0 0)],
-;                          :malli.generator/explain-output {:schema :int,
-;                                                           :value "00",
-;                                                           :errors (#Error{:path []
-;                                                                           :in []
-;                                                                           :schema :int
-;                                                                           :value "00"})}})})}
-
-(def generated-f (mg/generate MyFunction))
-
-(generated-f)
-; =throws=> :malli.generator/invalid-arity {:arity 0, :arities #{1 :varargs}, :args nil, :schema ...}
-
-(generated-f 1)
-; => 5832893
-
-(generated-f 1 2)
-; => -120532359
-
-(generated-f 1 2 3 4)
-; => -57994624
-```
-
-## Function Schema Registry
-
-Vars can be annotated with function schemas using `m/=>` macro, backed by a global registry:
-
-```clj
-(defn square [x] (* x x))
-
-(m/=> square [:=> [:cat int?] pos-int?])
-```
-
-Listing registered function Var schemas:
-
-```clj
-(m/function-schemas)
-;{user
-; {square
-;  {:schema [:=> [:cat int?] pos-int?]
-;   :meta nil
-;   :ns malli.generator-test
-;   :name square}}}
-```
+See [Instrumentation](docs/function-schemas.md#instrumentation).
 
 ## Clj-kondo
 
@@ -2166,12 +2008,14 @@ In action:
 
 ## Visualizing Schemas
 
-Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language)):
+### DOT
+
+Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language):
 
 ```clj
 (require '[malli.dot :as md])
 
-(md/transform
+(def Address
   [:schema
    {:registry {"Country" [:map
                           [:name [:enum :FI :PO]]
@@ -2193,30 +2037,29 @@ Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(grap
                                                [:zip int?]
                                                [:country "Country"]]]]]]}}
    "Order"])
-; digraph {
-;   node [shape="record", style="filled", color="#000000"]
-;   edge [dir="back", arrowtail="none"]
-;  
-;   "Burger" [label="{Burger|:name string?\l:description string?\l:origin [:maybe \"Country\"]\l:price pos-int?\l}", fillcolor="#fff0cd"]
-;   "Country" [label="{Country|:name [:enum :FI :PO]\l:neighbors [:vector [:ref \"Country\"]]\l}", fillcolor="#fff0cd"]
-;   "Order" [label="{Order|:lines [:vector \"OrderLine\"]\l:delivery Order$Delivery\l}", fillcolor="#fff0cd"]
-;   "Order$Delivery" [label="{Order$Delivery|:delivered boolean?\l:address Order$Delivery$Address\l}", fillcolor="#e6caab"]
-;   "Order$Delivery$Address" [label="{Order$Delivery$Address|:street string?\l:zip int?\l:country Country\l}", fillcolor="#e6caab"]
-;   "OrderLine" [label="{OrderLine|:burger Burger\l:amount int?\l}", fillcolor="#fff0cd"]
-;  
-;   "Burger" -> "Country" [arrowtail="odiamond"]
-;   "Country" -> "Country" [arrowtail="odiamond"]
-;   "Order" -> "OrderLine" [arrowtail="odiamond"]
-;   "Order" -> "Order$Delivery" [arrowtail="diamond"]
-;   "Order$Delivery" -> "Order$Delivery$Address" [arrowtail="diamond"]
-;   "Order$Delivery$Address" -> "Country" [arrowtail="odiamond"]
-;   "OrderLine" -> "Burger" [arrowtail="odiamond"]
-; }
+
+(md/transform Address)
+; "digraph { ... }"
 ```
 
 Visualized with [Graphviz](https://graphviz.org/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
+
+### PlantUML
+
+Transforming Schemas into [PlantUML](https://plantuml.com/):
+
+```clj
+(require '[malli.plantuml :as plantuml])
+
+(plantuml/transform Address)
+; "@startuml ... @enduml"
+```
+
+Visualized with [PlantText](https://www.planttext.com/):
+
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/plantuml.png"/>
 
 ## Performance
 
@@ -2306,6 +2149,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Minimallist https://github.com/green-coder/minimallist
+- malli-instrument https://github.com/setzer22/malli-instrument
 - Core.typed https://github.com/clojure/core.typed
 - TypeScript https://www.typescriptlang.org/
 - Struct https://funcool.github.io/struct/latest/
@@ -2323,7 +2167,7 @@ The api layers and stability:
 
 * **public api**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. Most stable part of the library, should not change (much) in alpha
 * **extender api**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
-* **private api**: private vars, all bets are off.
+* **private api**: private vars and `malli.impl` namespaces, all bets are off.
 
 ## Supported Java versions
 

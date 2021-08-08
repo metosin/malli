@@ -1,7 +1,9 @@
 (ns malli.util-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.impl.util :as miu]
             [malli.util :as mu]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.registry :as mr]))
 
 (defn form= [& ?schemas]
   (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))
@@ -323,9 +325,9 @@
         [:enum "A" "B"] 3 "C" ::throws
 
         [:map [:x string?]] :x int? [:map [:x 'int?]]
-        [:map [:x {:optional true} string?]] :x int? [:map [:x 'int?]]
+        [:map [:x {:optional true} string?]] :x int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
-        ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
+        [:map [:x {:optional true} string?]] [:x] int? [:map [:x 'int?]]
         [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
         [:map [:x {:optional true} string?]] :y string? [:map [:x {:optional true} 'string?] [:y 'string?]]
         [:map [:x string?]] [:y {:optional true}] string? [:map [:x 'string?] [:y {:optional true} 'string?]]
@@ -444,7 +446,7 @@
     (is (mu/equals (mu/update schema :b (constantly string?))
                    [:map {:title "map"}
                     [:a int?]
-                    [:b string?]
+                    [:b {:optional true} string?]
                     [:c string?]]))
     (is (mu/equals (mu/update schema :d #(or % boolean?))
                    [:map {:title "map"}
@@ -479,7 +481,41 @@
   (is (mu/equals (mu/update-in (m/schema [:map]) [:a :b :c :d] (constantly int?))
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/update-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?])))
+  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [:a] (constantly any?))
+                 [:map [:a {:optional true} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [[:a {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [:a :x] (constantly any?))
+                 [:map [:a {:optional true} [:map [:x {:optional true} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a {:optional false}] [:x {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} [:map [:x {:optional false} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a] [:x {:optional false}]] (constantly any?))
+                 [:map [:a [:map [:x {:optional false} any?]]]])))
+
+(deftest transform-entries-test
+  (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))
+        options            {:registry registry}
+        key->key-transform #(map (fn [[k m _]] [k m k]) %)
+
+        schema              [:map [:a/x {:m true} int?]]
+        schema-with-options (m/schema schema options)
+        result-schema       (m/schema [:map [:a/x {:m true} :a/x]] options)]
+
+    (testing "manual options are preserved in output type from the transform"
+      (is (mu/equals
+            (mu/transform-entries schema key->key-transform options)
+            result-schema
+            options)))
+
+    (testing "schema-attached-options are preserved in output type from the transform"
+      (is (mu/equals
+            (mu/transform-entries schema-with-options key->key-transform nil)
+            result-schema
+            options)))))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]
@@ -906,3 +942,38 @@
   (is (= [:b {:optional true} Int]
          (-> [:map [:a [:map [:b {:optional true} Int]]]]
              (mu/get-in [:a [::m/find :b]])))))
+
+#?(:clj
+   (deftest composers
+     (let [-t (constantly true)
+           -f (constantly false)
+           t (into [] (repeat 16 -t))
+           f (into [] (repeat 16 -f))
+           t+f (conj t -f)
+           f+t (conj f -t)
+           tf (into [-t] f)
+           ft (into [-f] t)
+           ff (conj f -f)
+           tt (conj t -t)]
+       (testing "every pred behaves like and: one false => result is false"
+         (is (true?  ((miu/-every-pred [-t]) nil)))
+         (is (false? ((miu/-every-pred [-f]) nil)))
+         (is (true?  ((miu/-every-pred t) nil)))
+         (is (false? ((miu/-every-pred f) nil)))
+         (is (false? ((miu/-every-pred t+f) nil)))
+         (is (false? ((miu/-every-pred f+t) nil)))
+         (is (false? ((miu/-every-pred tf) nil)))
+         (is (false? ((miu/-every-pred ft) nil)))
+         (is (false? ((miu/-every-pred ff) nil)))
+         (is (true?  ((miu/-every-pred tt) nil))))
+       (testing "some pred behaves like or: one true => result is true"
+         (is (true?  ((miu/-some-pred [-t]) nil)))
+         (is (false? ((miu/-some-pred [-f]) nil)))
+         (is (true?  ((miu/-some-pred t) nil)))
+         (is (false? ((miu/-some-pred f) nil)))
+         (is (true?  ((miu/-some-pred t+f) nil)))
+         (is (true?  ((miu/-some-pred f+t) nil)))
+         (is (true?  ((miu/-some-pred tf) nil)))
+         (is (true?  ((miu/-some-pred ft) nil)))
+         (is (false? ((miu/-some-pred ff) nil)))
+         (is (true?  ((miu/-some-pred tt) nil)))))))

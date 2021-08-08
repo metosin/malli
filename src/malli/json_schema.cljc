@@ -13,11 +13,6 @@
       (do (swap! definitions assoc ref result) (-ref ref))
       result)))
 
-(defn unlift-keys [m prefix]
-  (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
-
-(defn unlift [m prefix] (get m prefix))
-
 (defn select [m] (select-keys m [:title :description :default]))
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
@@ -69,6 +64,8 @@
 (defmethod accept 'sequential? [_ _ _ _] {:type "array"})
 #?(:clj (defmethod accept 'ratio? [_ _ _ _] {:type "number"}))
 (defmethod accept 'bytes? [_ _ _ _] {:type "string" :format "byte"})
+(defmethod accept 'ifn? [_ _ _ _] {})
+(defmethod accept 'fn? [_ _ _ _] {})
 
 (defmethod accept :> [_ _ [value] _] {:type "number" :exclusiveMinimum value})
 (defmethod accept :>= [_ _ [value] _] {:type "number" :minimum value})
@@ -90,10 +87,45 @@
     (if (empty? required) object (assoc object :required required))))
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
-(defmethod accept :map-of [_ _ children _] {:type "object", :additionalProperties (second children)})
-(defmethod accept :vector [_ _ children _] {:type "array", :items (first children)})
-(defmethod accept :sequential [_ _ children _] {:type "array", :items (first children)})
-(defmethod accept :set [_ _ children _] {:type "array", :items (first children), :uniqueItems true})
+
+(defn- minmax-properties
+  [m schema kmin kmax]
+  (merge
+   m
+   (-> schema
+       m/properties
+       (select-keys [:min :max])
+       (set/rename-keys {:min kmin, :max kmax}))))
+
+(defmethod accept :map-of [_ schema children _]
+  (minmax-properties
+   {:type "object",
+    :additionalProperties (second children)}
+   schema
+   :minProperties
+   :maxProperties))
+
+(defmethod accept :vector [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children)}
+   schema
+   :minItems
+   :maxItems))
+
+(defmethod accept :sequential [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children)}
+   schema
+   :minItems
+   :maxItems))
+
+(defmethod accept :set [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children), :uniqueItems true}
+   schema
+   :minItems
+   :maxItems))
+
 (defmethod accept :enum [_ _ children _] {:enum children})
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
@@ -132,12 +164,12 @@
 
 (defn- -json-schema-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
-    (or (unlift p :json-schema)
+    (or (get p :json-schema)
         (merge (select p)
                (if (satisfies? JsonSchema schema)
                  (-accept schema children options)
                  (accept (m/type schema) schema children options))
-               (unlift-keys p :json-schema)))))
+               (m/-unlift-keys p :json-schema)))))
 
 (defn -transform [?schema options] (m/walk ?schema -json-schema-walker options))
 

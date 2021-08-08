@@ -14,6 +14,86 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## 0.6.1 (2021-08-08)
+
+* add missing optional dependency to `mvxcvi/arrangement` to make pretty printing work
+
+## 0.6.0 (2021-08-08)
+
+* Much faster validators on CLJ (loop unrolling & programming against interfaces) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
+
+```clj
+;; 164ns -> 28ns
+(let [valid? (m/validator [:and [:> 0] [:> 1] [:> 2] [:> 3] [:> 4]])]
+  (cc/quick-bench (valid? 5)))
+  
+;; 150ns -> 30ns
+(let [valid? (m/validator [:map [:a :any] [:b :any] [:c :any] [:d :any] [:e :any]])
+      value {:a 1, :b 2, :c 3, :d 4, :e 5}]
+  (cc/quick-bench (valid? value)))
+```
+
+* Much faster collection transformers on CLJ (loop unrolling & programming against interfaces):
+
+```clj
+(let [decode (m/decoder
+               [:map
+                [:id :string]
+                [:type :keyword]
+                [:address
+                 [:map
+                  [:street :string]
+                  [:lonlat [:tuple :double :double]]]]]
+               (mt/json-transformer))
+      json {:id "pulla"
+            :type "food"
+            :address {:street "hämeenkatu 14"
+                      :lonlat [61 23.7644223]}}]
+                      
+  ;; 920ns => 160ns
+  (cc/quick-bench
+    (decode json)))
+```
+
+### Public API
+
+* **BREAKING**: `malli.json-schema/unlift-keys` is removed in favor of `malli.core/-unlift-keys`
+* **BREAKING**: `malli.json-schema/unlift` is removed in favor of `get`
+* **BREAKING**: `malli.provider/stats` is removed (was already deprecated)
+* **BREAKING**: `malli.util/update` doesn't the properties of the key it updates, fixes [#412](https://github.com/metosin/malli/issues/412)
+* **BREAKING**: New rules for humanized errors, see [#502](https://github.com/metosin/malli/pull/502), fixes [#80](https://github.com/metosin/malli/issues/80), [#428](https://github.com/metosin/malli/issues/428) and [#499](https://github.com/metosin/malli/issues/499).
+
+* new `malli.instrument` and `malli.dev` for instrumenting function Vars (e.g. `defn`s), see [the guide](docs/function-schemas.md).
+* new `malli.plantuml` namespace for [PlantUML generation](README.md#plantuml)
+* new `malli.generator/check` for generative testing of functions and `defn`s.
+* new `malli.core/parent`
+* `:map-of` supports `:min` and `:max` properties
+* Collection Schemas emit correct JSON Schema min & max declarations
+* humanized errors for `:boolean` & `:malli.core/tuple-limit`
+* predicate schema for `fn?`
+* `malli.util/transform-entries` passes in options [#340]/(https://github.com/metosin/malli/pull/340)  
+* BETA: humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
+
+```clj
+(-> [:map
+     [:foo {:error/message "entry-failure"} :int]]
+    (m/explain {:foo "1"})
+    (me/humanize {:resolve me/-resolve-root-error}))
+; => {:foo ["entry-failure"]}
+```
+
+* New experimental pretty printer for schema errors, using [fipp](https://github.com/brandonbloom/fipp).
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/defn-schema.png">
+
+### Extender API
+
+* `malli.util.impl/-fail!` is now `malli.core/-fail!`
+* `malli.core/-unlift-keys`
+* `malli.core/-instrument`
+* **BREAKING**: `malli.core/-register-function-schema!` is now 4-arity, new argument is data map
+* **BREAKING**: `malli.core/-fail!` has only arity 1 & 2 versions
+
 ## 0.5.1 (2021-05-02)
 
 ### Public API

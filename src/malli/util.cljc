@@ -203,7 +203,7 @@
    (transform-entries ?schema f nil))
   ([?schema f options]
    (let [schema (m/deref-all (m/schema ?schema options))]
-     (m/into-schema (m/-parent schema) (m/-properties schema) (f (m/-children schema))))))
+     (m/into-schema (m/-parent schema) (m/-properties schema) (f (m/-children schema)) (or (m/options schema) options)))))
 
 (defn optional-keys
   "Makes map keys optional."

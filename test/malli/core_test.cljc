@@ -984,6 +984,22 @@
                 [:math [:map [:type keyword?] [:x [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]]]
                {:type :math, :x 1} mt/string-transformer)))
 
+      (testing "in multi schema (two options)"
+        (is (= {:category :book :title "FOUNTAINHEAD"}
+               (m/decode
+                 [:multi
+                  {:dispatch :category}
+                  [:book
+                   [:map
+                    [:category [:= :book]]
+                    [:title {:decode/string-upper clojure.string/upper-case} string?]]]
+                  [:video
+                   [:map
+                    [:category [:= :video]]
+                    [:name string?]]]]
+                 {:category :book :title "Fountainhead"}
+                 (mt/transformer {:name :string-upper})))))
+
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
       (is (= {:type :multi
@@ -1041,6 +1057,13 @@
     (is (true? (m/validate [:map-of keyword? int?] {:age 18})))
     (is (false? (m/validate [:map-of string? int?] {:age "18"})))
     (is (false? (m/validate [:map-of string? int?] 1)))
+
+    (testing "limits"
+      (is (true?  (m/validate [:map-of {:min 1} keyword? int?] {:age 18})))
+      (is (false? (m/validate [:map-of {:min 2} keyword? int?] {:age 18})))
+      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18})))
+      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18 :-a-g-e 3})))
+      (is (false? (m/validate [:map-of {:max 1} keyword? int?] {:age 18 :-a-g-e 3}))))
 
     (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
     (is (some? (m/explain [:map-of string? int?] ::invalid)))
@@ -2065,6 +2088,12 @@
             (is (= {:value 42}
                    (m/properties schema)))))))))
 
+(deftest parent-test
+  (testing "registered schemas"
+    (is (= (mr/-schema m/default-registry :string) (m/parent [:string {:min 0}]))))
+  (testing "non-registered schemas"
+    (is (= Over6 (m/parent [Over6 {:json-schema/example 42}])))))
+
 (deftest -regex-min-max-size-test
   (are [s min-max]
     (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))
@@ -2098,13 +2127,38 @@
 
 (defn single-arity
   ([x] x)
-  ([_ _] (miu/-fail! ::arity-error)))
+  ([_ _] (m/-fail! ::arity-error)))
+
+(defn validate-times
+  "Validate value n times while validation returns `true`,
+  and return the final result."
+  [n schema v]
+  {:pre [(pos? n)]}
+  (let [res (m/validate schema v)]
+    (if (or (= 1 n) (not (true? res)))
+      res
+      (recur (dec n) schema v))))
+
+(defn explain-times
+  "Explain value n times while explain returns `nil`,
+  and return the final result."
+  [n schema v]
+  {:pre [(pos? n)]}
+  (let [res (m/explain schema v)]
+    (if (or (= 1 n) (not (nil? res)))
+      res
+      (recur (dec n) schema v))))
+
+(def function-schema-validation-times
+  "Number of times to test a successful generative test involving :=>."
+  1000)
 
 (deftest function-schema-test
   ;; js allows invalid arity
 
   (testing ":=>"
-    (let [valid-f (fn [x y] (- x y))
+    (let [valid-f (fn [x y]
+                    (unchecked-subtract x y))
           ?schema [:=> [:cat int? int?] int?]
           schema1 (m/schema ?schema)
           schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
@@ -2117,10 +2171,10 @@
         (is (false? (m/validate schema2 single-arity)))
         #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         #?(:clj (is (false? (m/validate schema2 #{}))))
-        (is (true? (m/validate schema2 valid-f)))
+        (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (m/explain schema2 (fn [x y] (+ x y)))))
+        (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
         (is (results= {:schema [:=> [:cat int? int?] int?]
                        :value single-arity
                        :errors [{:path []
@@ -2131,20 +2185,21 @@
 
         (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
-        (is (true? (m/validate (over-the-wire schema1) valid-f)))
+        (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
         (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
                (mu/to-map-syntax schema1))))))
 
   (testing ":function"
 
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli.core/non-function-childs"
+          (m/schema
+            [:function
+             :cat])))
+
     (testing "invalid arities"
-      (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/non-function-childs"
-            (m/schema
-              [:function
-               :cat])))
 
       (is (thrown-with-msg?
             #?(:clj Exception, :cljs js/Error)
@@ -2162,7 +2217,7 @@
                [:=> :cat nil?]
                [:=> [:cat [:? nil?]] nil?]]))))
 
-    (let [valid-f (fn ([x] x) ([x y] (- x y)))
+    (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
           invalid-f (fn ([x] x) ([x y] (str x y)))
           ?schema [:function
                    [:=> [:cat int?] int?]
@@ -2181,10 +2236,10 @@
         (is (false? (m/validate schema2 single-arity)))
         #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         #?(:clj (is (false? (m/validate schema2 #{}))))
-        (is (true? (m/validate schema2 valid-f)))
+        (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (m/explain schema2 valid-f)))
+        (is (nil? (explain-times function-schema-validation-times schema2 valid-f)))
 
         (is (results= {:schema schema2
                        :value invalid-f
@@ -2206,7 +2261,7 @@
 
       (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
 
-      (is (= true (m/validate (over-the-wire schema1) valid-f)))
+      (is (true? (m/validate (over-the-wire schema1) valid-f)))
 
       (is (= {:type :function,
               :children [{:type :=>, :children [{:type :cat, :children [{:type 'int?}]} {:type 'int?}]}
@@ -2238,13 +2293,103 @@
     (is (not (m/validate [List :int] [1 2])))))
 
 (deftest function-schema-registry-test
+  (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)
-        new-function-schemas   (m/=> function-schema-registry-test-fn [:=> :cat :nil])
-        this-ns-schemas        (get new-function-schemas 'malli.core-test)
-        fn-schema              (get this-ns-schemas 'function-schema-registry-test-fn)]
+        _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
+        new-function-schemas (m/function-schemas)
+        this-ns-schemas (get new-function-schemas 'malli.core-test)
+        fn-schema (get this-ns-schemas 'function-schema-registry-test-fn)]
     (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))
     (is (map? this-ns-schemas))
     (is (map? fn-schema))))
+
+(deftest -instrument-test
+  (let [int<=6 [:int {:max 6}]]
+
+    (testing "single-arity, with defaults"
+      (let [pow2 (m/-instrument {:schema [:=> [:cat :int] int<=6]} (fn [x] (* x x)))]
+        (is (= 4 (pow2 2)))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-input"
+              (pow2 "2")))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-output"
+              (pow2 4)))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-arity"
+              (pow2 4 2)))))
+
+    (testing "multi-arity, with options"
+      (let [report* (atom [])
+            <-report #(let [report @report*] (reset! report* []) report)
+            pow2 (m/-instrument
+                   {:schema [:function
+                             [:=> [:cat :int] int<=6]
+                             [:=> [:cat :int :int] int<=6]]
+                    :scope #{:input :output}
+                    :report (fn [error _] (swap! report* conj error))}
+                   (fn
+                     ([x] (* x x))
+                     ([x y] (* x y))))]
+        (is (= 4 (pow2 2)))
+
+        (is (= 16 (pow2 4)))
+        (is (= [::m/invalid-output] (<-report)))
+
+        (is (= 0.5 (pow2 5 0.1)))
+        (is (= [::m/invalid-input ::m/invalid-output] (<-report)))))
+
+    (testing "generated function"
+      (let [pow2 (m/-instrument
+                   {:schema [:function
+                             [:=> [:cat :int] int<=6]
+                             [:=> [:cat :int :int] int<=6]]
+                    :gen mg/generate})]
+        (is (m/validate int<=6 (pow2 100)))
+        (is (m/validate int<=6 (pow2 100 100)))
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/invalid-arity"
+              (pow2 100 100 100)))))))
+
+(deftest -safe-pred-test
+  (is (true? ((m/-safe-pred (constantly "true")) ::any)))
+  (is (false? ((m/-safe-pred (constantly nil)) ::any)))
+  (is (true? (m/validate [:fn (constantly "true")] ::any)))
+  (is (false? (m/validate [:fn (constantly nil)] ::any))))
+
+(deftest validate-limits
+  (testing "Upper and lower bound"
+    (let [f (m/-validate-limits 3 7)]
+      (is (false? (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (false? (f (range 8))))))
+  (testing "Upper bound, no lower bound"
+    (let [f (m/-validate-limits nil 7)]
+      (is (true?  (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (false? (f (range 8))))))
+  (testing "Lower bound, no upper bounds"
+    (let [f (m/-validate-limits 3 nil)]
+      (is (false? (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (true?  (f (range 8))))))
+  (testing "No bounds"
+    (let [f (m/-validate-limits nil nil)]
+      (is (true?  (f (range 2))))
+      (is (true?  (f (range 3))))
+      (is (true?  (f (range 4))))
+      (is (true?  (f (range 7))))
+      (is (true?  (f (range 8)))))))
 
 (deftest unreachable-test
   (is (false? (m/-unreachable? (m/schema [:or :nil :never]))))

@@ -7,8 +7,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]
-            [malli.impl.util :as miu]))
+            [malli.core :as m]))
 
 (declare generator generate -create)
 
@@ -29,9 +28,9 @@
 (defn -min-max [schema options]
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
     (when (and min gen-min (< gen-min min))
-      (miu/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
+      (m/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
     (when (and max gen-max (> gen-max max))
-      (miu/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
+      (m/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
     {:min (or gen-min min)
      :max (or gen-max max)}))
 
@@ -89,8 +88,15 @@
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
 (defn -map-of-gen [schema options]
-  (let [[k-gen v-gen] (map #(generator % options) (m/children schema options))]
-    (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen)))))
+  (let [{:keys [min max]} (-min-max schema options)
+        [k-gen v-gen] (map #(generator % options) (m/children schema options))
+        opts (cond
+               (and min (= min max)) {:num-elements min}
+               (and min max) {:min-elements min :max-elements max}
+               min {:min-elements min}
+               max {:max-elements max}
+               :else {})]
+    (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen) opts))))
 
 #?(:clj
    (defn -re-gen [schema options]
@@ -98,42 +104,18 @@
      (if-let [string-from-regex @(dynaload/dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
        (let [re (or (first (m/children schema options)) (m/form schema options))]
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
-       (miu/-fail! :test-chuck-not-available))))
+       (m/-fail! :test-chuck-not-available))))
 
 (defn -ref-gen [schema options]
   (let [gen* (delay (generator (m/deref-all schema) options))]
     (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
 
 (defn -=>-gen [schema options]
-  (let [{:keys [min max input output] :or {max miu/+max-size+}} (m/-function-info schema)
-        validate-input (m/validator input)
-        output-generator (generator output options)]
-    (gen/return
-      (fn [& args]
-        (let [args (vec args), arity (count args)]
-          (when-not (<= min arity max)
-            (miu/-fail! ::invalid-arity {:arity arity, :arities #{{:min min, :max max}}, :args args, :schema schema}))
-          (when-not (validate-input args)
-            (miu/-fail! ::invalid-input {:schema input, :args args}))
-          (generate output-generator options))))))
+  (let [output-generator (generator (:output (m/-function-info schema)) options)]
+    (gen/return (m/-instrument {:schema schema} (fn [& _] (generate output-generator options))))))
 
 (defn -function-gen [schema options]
-  (let [arity->info (->> (for [schema (m/children schema)]
-                           (let [{:keys [arity] :as info} (m/-function-info schema)]
-                             [arity (assoc info :f (generate schema options))]))
-                         (into {}))
-        arities (-> arity->info keys set)
-        varargs-info (arity->info :varargs)]
-    (gen/return
-      (fn [& args]
-        (let [arity (count args)
-              info (arity->info arity)]
-          (cond
-            info (apply (:f info) args)
-            varargs-info (if (< arity (:min varargs-info))
-                           (miu/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})
-                           (apply (:f varargs-info) args))
-            :else (miu/-fail! ::invalid-arity {:arity arity, :arities arities, :args args, :schema schema})))))))
+  (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} options)))
 
 (defn -regex-generator [schema options]
   (if (m/-regex-op? schema)
@@ -278,8 +260,8 @@
         (-create-from-elements props)
         (-create-from-schema props options)
         (-create-from-gen props schema options)
-        (miu/-fail! ::no-generator {:options options
-                                    :schema schema}))))
+        (m/-fail! ::no-generator {:options options
+                                  :schema schema}))))
 
 ;;
 ;; public api
@@ -339,4 +321,10 @@
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]
                    (fn [x] (->> checkers (keep #(% x)) (seq))))
-       (miu/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
+       (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
+
+(defn check
+  ([?schema f] (check ?schema f nil))
+  ([?schema f options]
+   (let [schema (m/schema ?schema options)]
+     (m/explain (m/-update-options schema #(assoc % ::m/function-checker function-checker)) f))))

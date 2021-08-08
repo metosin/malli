@@ -151,10 +151,10 @@
 
 (defn transform-test []
   (let [json {:id "Metosin"
-              :tags #{"clj" "cljs"}
+              :tags ["clj" "cljs"]
               :address {:street "Hämeenkatu 14"
                         :zip 33800
-                        :lonlat [61.4983866 23.7644223]}}]
+                        :lonlat [61 23.7644223]}}]
 
     (let [json->place #(st/coerce ::place % st/json-transformer)]
       (clojure.pprint/pprint (json->place json))
@@ -165,7 +165,7 @@
     (let [json->place (m/decoder Place transform/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
-      ;; 1µs
+      ;; 1µs -> 400ns
       (cc/quick-bench (json->place json)))))
 
 (defn transform-test2 []
@@ -364,6 +364,22 @@
     (cc/quick-bench
       (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]))))
 
+(defn and-map-perf-test []
+
+  ;; 164ns -> 36ns
+  (let [valid? (m/validator (into [:and] (map (fn [x] [:> x]) (range 5))))]
+    (cc/with-progress-reporting
+      (cc/quick-bench (valid? 5))))
+
+  ;; 150ns -> 126n -> 39ns
+  (let [->key #(keyword (str "key_" %))
+        valid? (m/validator (into [:map] (map (fn [x] [(->key x) :any]) (range 5))))
+        value (reduce (fn [acc x] (assoc acc (->key x) x)) {} (range 5))]
+    #_(prof/profile
+        (time (dotimes [_ 40000000] (valid? value))))
+    (cc/with-progress-reporting
+      (cc/quick-bench (valid? value)))))
+
 (defn schema-flames []
 
   ;; "Elapsed time: 10472.153783 msecs"
@@ -437,6 +453,7 @@
   (sequence-perf-test)
   (simple-regex)
   (parsing)
+  (and-map-perf-test)
 
   (prof/serve-files 8080)
   (prof/clear-results)

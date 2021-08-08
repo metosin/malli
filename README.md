@@ -1152,7 +1152,7 @@ For example, here is a recursive schema using `:schema` for singly-linked lists 
 ; => true
 ```
 
-Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow exception is thrown:
+Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow error is thrown:
 
 ```clj
 (m/validate

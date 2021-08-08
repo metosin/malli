@@ -403,7 +403,7 @@
             :scalar-schema [:tuple [:= "ping"] :nil]
             :container-schema [:tuple
                                [:= "ping"]
-                               ^::mg/ref ::pong
+                               ^{::mg/ref ::pong}
                                [:schema
                                 {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                             ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
@@ -418,8 +418,8 @@
                      ::data]
             :scalar-schema :int
             :container-schema [:vector
-                               ^::mg/ref {:ref ::data
-                                          :id (gensym 'data)}
+                               ^{::mg/ref {:ref ::data
+                                           :id (gensym 'data)}}
                                [:schema
                                 {:registry {::data    [:or
                                                        ::int

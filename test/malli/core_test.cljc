@@ -2246,45 +2246,19 @@
     (is (map? this-ns-schemas))
     (is (map? fn-schema))))
 
-(deftest walk-schema-test
-  (is (= [:vector :keyword]
-         (#'m/walk-schema (fn [schema options]
-                            (case schema
-                              :int :double
-                              schema))
-                          (fn [schema]
-                            (case schema
-                              [:vector :double] [:vector :keyword]
-                              schema))
-                          [:vector :int]
-                          {})))
+(deftest unreachable-test
+  (is (false? (m/-unreachable? (m/schema [:or :nil :never]))))
+  (is (true? (m/-unreachable? (m/schema [:and :nil :never]))))
+  (is (true? (m/-unreachable? (m/schema :never))))
+  )
 
-  (let [options-atom (atom [])]
-    (is (= [:or [:map {:foo :bar} [:b :bool]]
-            :bool]
-           (m/prewalk-schema (fn _inner [schema options]
-                               (let [options (-> options
-                                                 (update :depth inc)
-                                                 (update :seen conj schema))]
-                                 (swap! options-atom conj options)
-                                 [(case schema
-                                    :int :bool
-                                    schema)
-                                  options]))
-                             [:or [:map {:foo :bar} [:b :int]]
-                              :int]
-                             {:depth 0
-                              :seen []})))
-    (is (= [{:depth 1
-             :seen [[:or [:map {:foo :bar} [:b :int]] :int]]}
-            {:depth 2
-             :seen [[:or [:map {:foo :bar} [:b :int]] :int]
-                    [:map {:foo :bar} [:b :int]]]}
-            {:depth 3
-             :seen [[:or [:map {:foo :bar} [:b :int]] :int]
-                    [:map {:foo :bar} [:b :int]]
-                    :int]}
-            {:depth 2
-             :seen [[:or [:map {:foo :bar} [:b :int]] :int]
-                    :int]}]
-           @options-atom))))
+(deftest simplify-test
+  ;; TODO remove dead branches
+  (is (= [:or :nil :never]
+         (m/form
+           (m/-simplify (m/schema [:or :nil :never])))))
+  (is (= :never
+         (m/form
+           (m/-simplify (m/schema [:and :nil :never])))))
+  (is (= :never (m/form (m/-simplify (m/schema :never)))))
+  )

@@ -2274,10 +2274,17 @@
                              [:or [:map {:foo :bar} [:b :int]]
                               :int]
                              {:depth 0
-                              :seen #{}})))
-    (is (= [{:depth 1, :seen #{[:or [:map {:foo :bar} [:b :int]] :int]}}
-            {:depth 2, :seen #{[:map {:foo :bar} [:b :int]] [:or [:map {:foo :bar} [:b :int]] :int]}}
-            {:depth 3, :seen #{:int [:map {:foo :bar} [:b :int]] [:or [:map {:foo :bar} [:b :int]] :int]}}
-            {:depth 2, :seen #{:int [:or [:map {:foo :bar} [:b :int]] :int]}}]
-           @options-atom)))
-  )
+                              :seen []})))
+    (is (= [{:depth 1
+             :seen [[:or [:map {:foo :bar} [:b :int]] :int]]}
+            {:depth 2
+             :seen [[:or [:map {:foo :bar} [:b :int]] :int]
+                    [:map {:foo :bar} [:b :int]]]}
+            {:depth 3
+             :seen [[:or [:map {:foo :bar} [:b :int]] :int]
+                    [:map {:foo :bar} [:b :int]]
+                    :int]}
+            {:depth 2
+             :seen [[:or [:map {:foo :bar} [:b :int]] :int]
+                    :int]}]
+           @options-atom))))

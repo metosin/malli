@@ -2245,3 +2245,27 @@
     (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))
     (is (map? this-ns-schemas))
     (is (map? fn-schema))))
+
+(deftest walk-schema-test
+  (is (= [:vector :keyword]
+         (m/walk-schema (fn [schema options]
+                          (case schema
+                            :int :double
+                            schema))
+                        (fn [schema]
+                          (case schema
+                            [:vector :double] [:vector :keyword]
+                            schema))
+                        [:vector :int]
+                        {})))
+
+  (is (= [:or [:map {:foo :bar} [:b :bool]]
+          :bool]
+         (m/postwalk-schema (fn _inner [schema options]
+                              (case schema
+                                :int :bool
+                                schema))
+                            [:or [:map {:foo :bar} [:b :int]]
+                             :int]
+                            {})))
+  )

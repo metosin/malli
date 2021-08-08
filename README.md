@@ -533,13 +533,13 @@ By default, only direct erronous schema properties are used:
 ; => {:foo ["should be an integer"]}
 ```
 
-Looking up humanized errors from parent schemas with custom `:resolve`:
+Looking up humanized errors from parent schemas with custom `:resolve` (BETA, subject to change):
 
 ```clj
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
-    (me/humanize {:resolve me/resolve-root-error}))
+    (me/humanize {:resolve me/-resolve-root-error}))
 ; => {:foo ["entry-failure"]}
 ```
 

@@ -232,10 +232,10 @@
        (and unknown (-message error (errors ::unknown) locale options))
        (and unknown (-message error (errors ::unknown) default-locale options)))))
 
-(defn resolve-direct-error [_ error options]
+(defn -resolve-direct-error [_ error options]
   [(error-path error options) (error-message error options)])
 
-(defn resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
+(defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
   (let [options (assoc options :unknown false)]
     (loop [p path, l nil, mp path, m (error-message error options)]
       (let [[p' m'] (or (when-let [m' (error-message {:schema (mu/get-in schema p)} options)] [p m'])
@@ -302,7 +302,7 @@
    (humanize explanation nil))
   ([{:keys [value errors] :as explanation} {:keys [wrap resolve]
                                             :or {wrap :message
-                                                 resolve resolve-direct-error}
+                                                 resolve -resolve-direct-error}
                                             :as options}]
    (if errors
      (reduce

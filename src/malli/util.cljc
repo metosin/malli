@@ -34,6 +34,60 @@
 ;; public api
 ;;
 
+
+;; pre+post walking with state map
+
+(defn- walk*
+  "Prewalk recursively over the Schema with inner and its children then postwalk with outer.
+  The inner (prewalk) callback is a arity-3 function. It takes schema, path, and options.
+  It returns a vector of [schema options]--the options are passed to.
+  The outer (postwalk) callback is a arity4 function with the following
+  arguments: schema, path, (walked) children, and options. By default, returns its schema
+  argument."
+  ([?schema inner]
+   (walk* ?schema inner nil))
+  ([?schema inner options]
+   (walk* ?schema inner (fn [s _p _c _options] s) options))
+  ([?schema inner outer options]
+   (let [[s options] (inner (m/schema ?schema options) [] options)]
+     (m/-walk
+       s
+       (reify m/Walker
+         (-accept [_ s _ _] s)
+         (-inner [this s p options] (let [[s options] (inner s p options)]
+                                      (m/-walk s this p options)))
+         (-outer [_ s p c options] (outer s p c options)))
+       [] options))))
+
+;; free variables
+
+(defn schema->fvs 
+  "Returns the free variables in the schema."
+  [schema]
+  (let [fvs-atom (atom #{})
+        rec! (fn rec! [schema ref-scope]
+               (walk* schema
+                      (fn [schema _path options]
+                        (let [registry (-> schema m/properties :registry)
+                              registry-rhs-ref-scope (reduce disj (::ref-scope options) (keys registry))
+                              _ (run! (fn [[k s]]
+                                        (rec! s registry-rhs-ref-scope))
+                                      registry)
+                              new-ref-scope (into (::ref-scope options) (keys registry))
+                              frm (m/form schema)
+                              ;;FIXME guessing
+                              is-var-reference? (qualified-keyword? frm)
+                              is-not-in-scope? (not (contains? new-ref-scope frm))
+                              _ (when (and is-var-reference?
+                                           is-not-in-scope?)
+                                  (swap! fvs-atom conj (m/form schema)))]
+                          (prn "class" (class options))
+                          [schema (c/assoc options ::ref-scope new-ref-scope)]))
+                      {::ref-scope ref-scope})
+               nil)]
+    (rec! schema #{})
+    @fvs-atom))
+
 (defn find-first
   "Prewalks the Schema recursively with a 3-arity fn [schema path options], returns with
   and as soon as the function returns non-null value."

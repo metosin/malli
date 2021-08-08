@@ -1736,7 +1736,7 @@
 (defn walk
   "Postwalks recursively over the Schema and its children.
    The walker callback is a arity4 function with the following
-   arguments: schema, path, (walked) children and options."
+   arguments: schema, path, (walked) children, and options."
   ([?schema f]
    (walk ?schema f nil))
   ([?schema f options]
@@ -1747,6 +1747,7 @@
        (-inner [this s p options] (-walk s this p options))
        (-outer [_ s p c options] (f s p c options)))
      [] options)))
+
 
 (defn validator
   "Returns an pure validation function of type `x -> boolean` for a given Schema"

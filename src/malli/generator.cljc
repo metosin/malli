@@ -11,6 +11,17 @@
 
 (declare generator generate -create)
 
+(defn schema->scalar-schema [schema options]
+  (m/walk* schema
+           (fn [schema _path options]
+             (let [registry (into {}
+                                  (map (fn [[k s]]
+                                         (m/walk*)
+                                         ))
+                                  (-> schema m/properties :registry))]
+               [schema (update options ::ref-scope into registry)]))
+           {::find-refs {}}))
+
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
 

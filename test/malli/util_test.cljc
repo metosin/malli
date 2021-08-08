@@ -977,3 +977,19 @@
          (is (true?  ((miu/-some-pred ft) nil)))
          (is (false? ((miu/-some-pred ff) nil)))
          (is (true?  ((miu/-some-pred tt) nil)))))))
+
+(deftest schema->fvs-test
+  (is (= #{} (mu/schema->fvs (m/schema :int))))
+  (is (= #{} (mu/schema->fvs (m/schema ::foo))))
+  (is (= #{}
+         (mu/schema->fvs
+           (m/schema [:schema
+                      {:registry {::foo :int}}
+                      ::foo]))))
+  (is (= [#{::foo}]
+         (mapv mu/schema->fvs
+               (m/children
+                 (m/schema [:schema
+                            {:registry {::foo :int}}
+                            ::foo])))))
+  )

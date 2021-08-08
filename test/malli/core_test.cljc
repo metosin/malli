@@ -2405,5 +2405,4 @@
   (is (= :never
          (m/form
            (m/-simplify (m/schema [:and :nil :never])))))
-  (is (= :never (m/form (m/-simplify (m/schema :never)))))
-  )
+  (is (= :never (m/form (m/-simplify (m/schema :never))))))

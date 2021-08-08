@@ -12,7 +12,7 @@
         :width 100
         :colors v/-dark-colors
         :unknown (fn [x] (cond-> x (m/schema? x) (m/form)))
-        :throwing-fn-name "malli.core$_fail_BANG_"}
+        :throwing-fn-top-level-ns-names ["malli" "clojure"]}
        options))))
 
 (defn -errors [schema value printer]
@@ -61,27 +61,14 @@
   ([] (reporter (-printer)))
   ([printer]
    (fn [type data]
-     (-> (v/-event-doc type data printer)
+     (-> (ex-info (str type) {:type type :data data})
+         (v/-exception-doc printer)
          (v/-print-doc printer)))))
 
 (defn thrower
   ([] (thrower (-printer)))
   ([printer]
-   (fn [type data]
-     (let [exception (ex-info (str type) {:type type :data data})
-           message (-> (v/-exception-doc exception printer)
-                       (v/-print-doc printer)
-                       (with-out-str))]
-       (throw (ex-info message (ex-data exception)))))))
-
-;;
-;; spike
-;;
-
-(def kikka
-  (m/-instrument
-    {:schema [:=> [:cat :int] :string]
-     :report (thrower)}
-    (fn [x] x)))
-
-(kikka "1" "3" "3")
+   (let [report (reporter printer)]
+     (fn [type data]
+       (let [message (with-out-str (report type data))]
+         (throw (ex-info message {:type type :data data})))))))

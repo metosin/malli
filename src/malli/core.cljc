@@ -452,15 +452,10 @@
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
-          (-simplify [this] 
-            (prn "-simplify :and" this (some -unreachable? children)
-                (-unreachable? this))
-            (if (-unreachable? this)
-              (schema :never)
-              this))
-          (-unreachable? [this]
-            (prn "-unreachable? :and" this (some -unreachable? children))
-            (boolean (some -unreachable? children)))
+          (-simplify [this] (if (-unreachable? this)
+                              (schema :never)
+                              this))
+          (-unreachable? [this] (boolean (some -unreachable? children)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)

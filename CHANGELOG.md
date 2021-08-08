@@ -68,19 +68,19 @@ Malli is in [alpha](README.md#alpha).
 * humanized errors for `:boolean` & `:malli.core/tuple-limit`
 * predicate schema for `fn?`
 * `malli.util/transform-entries` passes in options [#340]/(https://github.com/metosin/malli/pull/340)  
-* humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
+* BETA: humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
 
 ```clj
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
-    (me/humanize {:resolve me/resolve-root-error}))
+    (me/humanize {:resolve me/-resolve-root-error}))
 ; => {:foo ["entry-failure"]}
 ```
 
 * New experimental pretty printer for schema errors, using [fipp](https://github.com/brandonbloom/fipp).
 
-<img src="https://user-images.githubusercontent.com/567532/127866349-f41e1f43-d1c2-4200-bdc4-8e5ca473b76e.png">
+<img src="https://github.com/metosin/malli/blob/master/docs/img/defn-schema.png">
 
 ### Extender API
 

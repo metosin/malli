@@ -37,7 +37,7 @@
 
 ;; pre+post walking with state map
 
-(defn- walk*
+(defn walk*
   "Prewalk recursively over the Schema with inner and its children then postwalk with outer.
   The inner (prewalk) callback is a arity-3 function. It takes schema, path, and options.
   It returns a vector of [schema options]--the options are passed to.

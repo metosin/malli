@@ -7,20 +7,48 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.util :as mu]))
 
 (declare generator generate -create)
 
+
+(comment
+  (m/schema
+    [:schema
+     {:registry {::foo [:maybe [:ref ::foo]]}}
+     ::foo])
+  ;=>
+  (comment
+    (schema->scalar-schema :nil {})
+    (schema->scalar-schema [:schema
+                            {:registry {::foo [:maybe [:ref ::foo]]}}
+                            ::foo]
+                           {})
+    )
+  )
 (defn schema->scalar-schema [schema options]
-  (m/walk* schema
-           (fn [schema _path options]
-             (let [registry (into {}
-                                  (map (fn [[k s]]
-                                         (m/walk*)
-                                         ))
-                                  (-> schema m/properties :registry))]
-               [schema (update options ::ref-scope into registry)]))
-           {::find-refs {}}))
+  (mu/walk* schema
+            (fn [schema _path options]
+              (prn "pre" schema)
+              (let [;; TODO
+                    maybe-var-ref (m/form schema)
+                    is-var-ref? (and (= ::m/schema (m/type schema))
+                                     ;; TODO
+                                     (qualified-keyword? maybe-var-ref))]
+                [schema (update options ::ref-scope (fnil into #{}) (when is-var-ref? [maybe-var-ref]))]))
+            (fn [schema _path _children options]
+              (let [bound-vs (into (::ref-scope options)
+                                   ;; refs with generators are in scope
+                                   (-> options ::rec-gen keys))
+                    ;; TODO
+                    in-scope-ref? (bound-vs (m/form schema))]
+                (prn "post" schema in-scope-ref? bound-vs)
+                (if in-scope-ref?
+                  (doto (m/schema :never)
+                    (prn "doto"))
+                  (m/-simplify schema))))
+            options))
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
@@ -120,6 +148,24 @@
 (defn -ref-gen [schema options]
   (let [gen* (delay (generator (m/deref-all schema) options))]
     (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
+#_
+(defn -ref-gen [schema options]
+  (let [ref-name (second (m/form schema))]
+    (assert ref-name (pr-str (m/form schema)))
+    (or 
+      ;; already seen this :ref, the generator is handy and we're done
+      (get-in options [::rec-gen ref-name])
+      ;; otherwise, continue to unroll but save the generator for this ref for later
+      (let [dschema (m/deref-all schema)
+            ;; equivalent to dschema with all recursive :ref occurrences made unreachable
+            scalar-schema (schema->scalar-schema dschema)
+            container-schema (schema->container-schema dschema)]
+        ;; TODO if scalar and container are identical, can probably simplify
+        (gen/recursive-gen
+          (fn [ref-gen]
+            (generator container-schema
+                       (assoc-in options [::rec-gen ref-name] ref-gen)))
+          (generator scalar-schema options))))))
 
 (defn -=>-gen [schema options]
   (let [output-generator (generator (:output (m/-function-info schema)) options)]

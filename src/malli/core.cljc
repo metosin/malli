@@ -1748,6 +1748,27 @@
        (-outer [_ s p c options] (f s p c options)))
      [] options)))
 
+(defn walk*
+  "Prewalk recursively over the Schema with inner and its children then postwalk with outer.
+  The inner (prewalk) callback is a arity-3 function. It takes schema, path, and options.
+  It returns a vector of [schema options]--the options are passed to.
+  The outer (postwalk) callback is a arity4 function with the following
+  arguments: schema, path, (walked) children, and options. By default, returns its schema
+  argument."
+  ([?schema inner]
+   (walk* ?schema inner nil))
+  ([?schema inner options]
+   (walk* ?schema inner (fn [s _p _c _options] s) options))
+  ([?schema inner outer options]
+   (let [[s options] (inner (schema ?schema options) [] options)]
+     (-walk
+       s
+       (reify Walker
+         (-accept [_ s _ _] s)
+         (-inner [this s p options] (let [[s options :as f-ret] (inner s p options)]
+                                      (-walk s this p options)))
+         (-outer [_ s p c options] (outer s p c options)))
+       [] options))))
 
 (defn validator
   "Returns an pure validation function of type `x -> boolean` for a given Schema"

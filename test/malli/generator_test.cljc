@@ -369,6 +369,41 @@
            gen/large-integer)
          100)
        (drop 75))
+
+  [:schema
+   {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
+               ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
+   [:tuple ::ping ::pong]]
+  (->> (gen/sample
+         (gen/tuple
+           (gen/recursive-gen
+             (fn [ping]
+               (gen/tuple (gen/return "ping")
+                          (gen/one-of
+                            [(gen/return nil)
+                             (gen/recursive-gen
+                               (fn [pong]
+                                 (gen/tuple (gen/return "pong")
+                                            ping))
+                               (gen/tuple (gen/return "pong")
+                                          (gen/return nil)))])))
+             (gen/tuple (gen/return "ping")
+                        (gen/return nil)))
+           (gen/recursive-gen
+             (fn [pong]
+               (gen/tuple (gen/return "pong")
+                          (gen/one-of
+                            [(gen/return nil)
+                             (gen/recursive-gen
+                               (fn [ping]
+                                 (gen/tuple (gen/return "ping")
+                                            pong))
+                               (gen/tuple (gen/return "ping")
+                                          (gen/return nil)))])))
+             (gen/tuple (gen/return "pong")
+                        (gen/return nil))))
+         100)
+       (drop 75))
   )
 
 #_

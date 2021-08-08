@@ -133,19 +133,23 @@
        (fipp.engine/pprint-document [:group margin [:group (fipp.visit/visit printer x)]] printer)))))
 
 (defn -print-doc [doc printer]
-  (fipp.engine/pprint-document doc {:width (:width printer)}))
+  (fipp.engine/pprint-document doc printer))
 
 (defn -visit [x printer]
   (fipp.visit/visit printer x))
 
-(defn -location [e n]
-  #?(:clj (let [[target _ file line] (-> (#'clojure.core/elide-top-frames e n) Throwable->map :trace first)]
-            (try (if (not= 1 line)
-                   (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
-                         target-name (name target)
-                         ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
-                     (str ns ":" line)))
-                 (catch Exception _)))))
+#?(:clj
+   (defn -location [e ss]
+     (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
+           [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
+                                  (cond (start-with f s) (recur (rest fs) ss)
+                                        (seq (rest ss)) (recur fs (rest ss))
+                                        :else f))]
+       (try (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
+                  target-name (name target)
+                  ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
+              (str ns ":" line))
+            (catch Exception _)))))
 
 (defn -title [message source {:keys [width] :as printer}]
   (let [between (- width (count message) 8 (count source))]
@@ -188,9 +192,5 @@
 (defn -exception-doc [e printer]
   (let [{:keys [type data]} (ex-data e)
         {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
-        location (-location e (:throwing-fn-name printer))]
+        location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)))]
     (-section title location body printer)))
-
-(defn -event-doc [type data printer]
-  (let [{:keys [title body] :or {title (:title printer)}} (-format type (:message data) data printer)]
-    (-section title nil body printer)))

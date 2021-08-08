@@ -516,7 +516,7 @@ For prettier runtime error messages, we can swap the default error printer / thr
 
 (plus1 "2")
 ; =prints=>
-; -- Schema Error ----------------------------------------------------------------
+; -- Schema Error ----------------------------------- malli.demo:13 --
 ; 
 ; Invalid function arguments:
 ; 
@@ -539,8 +539,8 @@ For prettier runtime error messages, we can swap the default error printer / thr
 ; 
 ;   https://cljdoc.org/d/metosin/malli/LATEST/doc/function-schemas
 ; 
-; --------------------------------------------------------------------------------
-; =throws=> Execution error (ClassCastException) at malli.demo/plus1 (demo.cljc:9).
+; --------------------------------------------------------------------
+; =throws=> Execution error (ClassCastException) at malli.demo/plus1 (demo.cljc:13).
 ;           java.lang.String cannot be cast to java.lang.Number
 ```
 

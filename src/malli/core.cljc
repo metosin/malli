@@ -1972,19 +1972,20 @@
            ns'   `'~(symbol (str *ns*))]
        `(-register-function-schema! ~ns' ~name' ~value))))
 
-(defn walk-schema
-  "Short circuits inner on reduced. outer should not return reduced."
+(defn ^:private walk-schema
+  "Short circuits inner on reduced. inner takes options.
+  outer should not return reduced or take options."
   [inner outer schema options]
   (let [inner #(inner % options)
         schema
         (cond
           (reduced? schema) @schema
-          (vector? schema) 
+          (vector? schema)
           (let [[p c] (-properties-and-children (rest schema))]
             (case (first schema)
               (:and :or :not :orn :map-of :vector
                     :sequential :set :maybe :tuple
-                    :=> :schema ::schema :merge :union
+                    :function :=> :schema ::schema :merge :union
                     :select-keys :cat :catn :alt :altn
                     :? :* :+ :repeat)
               (-> [(first schema)]
@@ -2000,23 +2001,11 @@
           :else schema)]
    (outer schema)))
 
-(defn postwalk-schema [f schema options]
-  (walk-schema (partial postwalk-schema f)
-               (fn [schema]
-                 (f schema options))
-               schema
-               options))
-
-(comment
-  (postwalk-schema (fn _inner [schema options]
-                     schema)
-                   :int
-                   {})
-)
-
-(defn prewalk-schema [f schema options]
+(defn prewalk-schema
+  "f takes options."
+  [f schema options]
   (let [[schema options] (f schema options)]
     (walk-schema (partial prewalk-schema f)
-                 (fn [schema options] schema)
+                 identity
                  schema
                  options)))

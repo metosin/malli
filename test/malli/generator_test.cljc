@@ -369,9 +369,20 @@
            gen/large-integer)
          100)
        (drop 75))
-
   )
 
+(let [id (gensym)]
+ (with-meta
+   [:schema
+    {:registry {::ping [:maybe [:tuple [:= "ping"]
+                                (with-meta [:ref ::pong]
+                                           {::registry-id id})]]
+                ::pong [:maybe [:tuple [:= "pong"]
+                                (with-meta [:ref ::ping]
+                                           {::registry-id id})]]}}
+    ::ping]
+   {::registry-id id}))
+#_
 (deftest schema->scalar-schema-test
   (doseq [{:keys [schema scalar-schema container-schema]}
           [{:schema [:schema
@@ -388,9 +399,10 @@
                      {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                  ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
                      ::ping]
-            :scalar-schema [:tuple [:= "pong"] :nil]
+            :scalar-schema [:tuple [:= "ping"] :nil]
             :container-schema [:tuple
-                               [:= "pong"]
+                               [:= "ping"]
+                               ^::mg/ref ::pong
                                [:schema
                                 {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                             ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
@@ -405,6 +417,8 @@
                      ::data]
             :scalar-schema :int
             :container-schema [:vector
+                               ^::mg/ref {:ref ::data
+                                          :id (gensym 'data)}
                                [:schema
                                 {:registry {::data    [:or
                                                        ::int

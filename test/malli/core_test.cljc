@@ -2248,24 +2248,36 @@
 
 (deftest walk-schema-test
   (is (= [:vector :keyword]
-         (m/walk-schema (fn [schema options]
-                          (case schema
-                            :int :double
-                            schema))
-                        (fn [schema]
-                          (case schema
-                            [:vector :double] [:vector :keyword]
-                            schema))
-                        [:vector :int]
-                        {})))
+         (#'m/walk-schema (fn [schema options]
+                            (case schema
+                              :int :double
+                              schema))
+                          (fn [schema]
+                            (case schema
+                              [:vector :double] [:vector :keyword]
+                              schema))
+                          [:vector :int]
+                          {})))
 
-  (is (= [:or [:map {:foo :bar} [:b :bool]]
-          :bool]
-         (m/postwalk-schema (fn _inner [schema options]
-                              (case schema
-                                :int :bool
-                                schema))
-                            [:or [:map {:foo :bar} [:b :int]]
-                             :int]
-                            {})))
+  (let [options-atom (atom [])]
+    (is (= [:or [:map {:foo :bar} [:b :bool]]
+            :bool]
+           (m/prewalk-schema (fn _inner [schema options]
+                               (let [options (-> options
+                                                 (update :depth inc)
+                                                 (update :seen conj schema))]
+                                 (swap! options-atom conj options)
+                                 [(case schema
+                                    :int :bool
+                                    schema)
+                                  options]))
+                             [:or [:map {:foo :bar} [:b :int]]
+                              :int]
+                             {:depth 0
+                              :seen #{}})))
+    (is (= [{:depth 1, :seen #{[:or [:map {:foo :bar} [:b :int]] :int]}}
+            {:depth 2, :seen #{[:map {:foo :bar} [:b :int]] [:or [:map {:foo :bar} [:b :int]] :int]}}
+            {:depth 3, :seen #{:int [:map {:foo :bar} [:b :int]] [:or [:map {:foo :bar} [:b :int]] :int]}}
+            {:depth 2, :seen #{:int [:or [:map {:foo :bar} [:b :int]] :int]}}]
+           @options-atom)))
   )

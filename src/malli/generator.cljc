@@ -10,6 +10,11 @@
             [malli.core :as m]
             [malli.impl.util :as miu]))
 
+;; helper for using gen/recursive-gen
+
+(defn schema->scalar-schema [schema]
+  (m/prewalk ))
+
 (declare generator generate -create)
 
 (defprotocol Generator
@@ -228,8 +233,15 @@
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
 (defmethod -schema-generator 'ifn? [_ _] gen/keyword)
 (defmethod -schema-generator :ref [schema options] (-ref-gen schema options))
-(defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))
-(defmethod -schema-generator ::m/schema [schema options] (generator (m/deref schema) options))
+
+(defn -schema-schema-generator [schema options]
+  (let [s (m/deref schema)
+        form (m/form s)]
+    (prn `-schema-schema-generator form)
+    (generator (m/deref schema) options)))
+
+(defmethod -schema-generator :schema [schema options] (-schema-schema-generator schema options))
+(defmethod -schema-generator ::m/schema [schema options] (-schema-schema-generator schema options))
 
 (defmethod -schema-generator :merge [schema options] (generator (m/deref schema) options))
 (defmethod -schema-generator :union [schema options] (generator (m/deref schema) options))

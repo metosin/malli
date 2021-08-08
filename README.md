@@ -359,7 +359,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ; => false
 ```
 
-**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be carefull `sci` functions from untrusted sources. You can explictely disable with option `::m/disable-sci` and set the default options with `::m/sci-options`.
+**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
 ```clj
 (m/validate [:fn 'int?] 1 {::m/disable-sci true})
@@ -523,7 +523,7 @@ Errors can be targeted using `:error/path` property:
 ; {:password2 ["passwords don't match"]}
 ```
 
-By default, only direct erronous schema properties are used:
+By default, only direct erroneous schema properties are used:
 
 ```clj
 (-> [:map
@@ -1140,7 +1140,9 @@ Any (serializable) function can be used for `:dispatch`:
 
 ## Recursive Schemas
 
-[Local Registry](#local-registry) allows an easy way to create recursive schemas. To be recursive, the schema refers to another schema of the local registry using two useful keywords `:ref` and `:schema`. First, the schema is defined in the local registry, one of the value refer to another schema with the `:ref` keyword. The top-level schema is defined in the second argument of the `:schema` definition:
+To create a recursive schema, introduce a [local registry](#local-registry) and wrap all recursive positions in the registry with `:ref`. Now you may reference the recursive schemas in the body of the schema.
+
+For example, here is a recursive schema using `:schema` for singly-linked lists of positive integers:
 
 ```clj
 (m/validate
@@ -1150,7 +1152,7 @@ Any (serializable) function can be used for `:dispatch`:
 ; => true
 ```
 
-Without the `:ref` keyword, malli would have tried to expand an infinite schema and would have fallen in a stack overflow exception:
+Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow error is thrown:
 
 ```clj
 (m/validate

@@ -39,7 +39,7 @@
     "returns a function to transform the value for the given schema and method.
     Can also return nil instead of `identity` so that more no-op transforms can be elided.")
   (-walk [this walker path options] "walks the schema and its children, ::m/walk-entry-vals, ::m/walk-refs, ::m/walk-schema-refs options effect how walking is done.")
-  (-simplify [this] "returns a new simplified schema based on this schema's immediate children (does not recursively simplify)")
+  (-simplify [this] "returns a new simplified schema based on eg., whether its children are reachable.")
   (-unreachable? [this] "returns true if this schema never validates or generates values, otherwise false. false-negatives allowed.")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")

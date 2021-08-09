@@ -40,7 +40,7 @@
 (defn walk*
   "Prewalk recursively over the Schema with inner and its children then postwalk with outer.
   The inner (prewalk) callback is a arity-3 function. It takes schema, path, and options.
-  It returns a vector of [schema options]--the options are passed to.
+  It returns a vector of [schema options]--the new options are passed to children prewalks.
   The outer (postwalk) callback is a arity4 function with the following
   arguments: schema, path, (walked) children, and options. By default, returns its schema
   argument."

@@ -993,3 +993,35 @@
                             {:registry {::foo :int}}
                             ::foo])))))
   )
+
+(deftest walk*-test
+  (is (= :boolean
+         (m/form
+           (mu/walk* :int
+                     (fn [schema _path options]
+                       [(m/schema :boolean) options])
+                     {}))))
+  (is (= [:tuple :boolean :nil]
+         (m/form
+           (mu/walk* [:tuple :int :double]
+                     (fn [schema _path options]
+                       (case (m/form schema)
+                         :int [(m/schema :boolean) options]
+                         :double [(m/schema :nil) options]
+                         [schema options]))
+                     {}))))
+  (is (= [:tuple :double :int]
+         (m/form
+           (mu/walk* [:tuple :int :double]
+                     (fn [schema _path options]
+                       (case (m/form schema)
+                         :int [(m/schema :boolean) options]
+                         :double [(m/schema :nil) options]
+                         [schema options]))
+                     (fn [schema _path _children {::keys [subst] :as options}]
+                       (case (m/form schema)
+                         :boolean (m/schema :double)
+                         :nil (m/schema :int)
+                         schema))
+                     {}))))
+)

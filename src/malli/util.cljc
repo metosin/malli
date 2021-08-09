@@ -56,7 +56,7 @@
          (-accept [_ s _ _] s)
          (-inner [this s p options] (let [[s options] (inner s p options)]
                                       (m/-walk s this p options)))
-         (-outer [_ s p c options] (outer s p c options)))
+         (-outer [_ s p c options] (outer (m/-set-children s c) p c options)))
        [] options))))
 
 ;; free variables

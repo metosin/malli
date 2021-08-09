@@ -419,24 +419,23 @@
     ::ping]
    {::registry-id id}))
 
-#_
 (deftest scalar-container-schema-test
   (let [test-cases [{:schema [:schema
                               {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                           ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                               ::ping]
-                     :scalar-schema :nil
-                     :container-schema [:tuple [:= "ping"]
-                                        [:schema
-                                         {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                                                     ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-                                         ::ping]]}
-                    #_
+                     :scalar-schema [:maybe [:tuple [:= "ping"] :nil]]
+                     :container-schema [:maybe
+                                        [:tuple [:= "ping"]
+                                         [:schema
+                                          {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                                                      ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                                          ::ping]]]}
                     {:schema [:schema
                               {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                           ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
                               ::ping]
-                     :scalar-schema [:tuple [:= "ping"] :nil]
+                     :scalar-schema [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] :nil]]]
                      :container-schema [:tuple
                                         [:= "ping"]
                                         ^{::mg/ref ::pong}
@@ -444,7 +443,6 @@
                                          {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                                      ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
                                          ::ping]]}
-                    #_
                     {:schema [:schema
                               {:registry {::data    [:or
                                                      ::int
@@ -466,7 +464,8 @@
                                                                 [:ref ::data]]}}
                                          ::data]]}]]
     (doseq [{:keys [schema scalar-schema container-schema]} test-cases]
-      (is (= scalar-schema (mg/schema->scalar-schema schema
-                                                     {})))
+      (is (= scalar-schema (m/form
+                             (mg/schema->scalar-schema schema
+                                                       {}))))
       #_(is (= container-schema (mg/schema->container-schema schema
                                                              {}))))))

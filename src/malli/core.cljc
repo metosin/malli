@@ -1185,7 +1185,7 @@
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
           (-simplify [this] (if (-unreachable? schema)
-                              (schema :nil) ;; same as simplifying [:or :nil :never]
+                              (malli.core/schema :nil) ;; same as simplifying [:or :nil :never]
                               this))
           (-unreachable? [this] false)
           (-properties [_] properties)

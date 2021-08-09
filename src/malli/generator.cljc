@@ -19,6 +19,15 @@
                                           {:registry {::foo [:maybe [:ref ::foo]]}}
                                           ::foo]
                                          {})))
+  (= [:maybe [:tuple [:= "ping"] :nil]]
+     (m/form
+       (m/deref
+         (schema->scalar-schema
+           [:schema
+            {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                        ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+            ::ping]
+           {}))))
   [:schema
    {:registry {::foo [:maybe [:ref ::foo]]}}
    ::foo]
@@ -60,20 +69,28 @@
   ;=>
   [:tuple :nil :nil]
   )
-(defn schema->scalar-schema [schema options]
+(defn schema->scalar-schema
+  "Replace recursive aliases with :never and simplify."
+  [schema options]
   (mu/walk* schema
-            (fn [schema _path options]
-              (let [;; make registry scalar
-                    registry (into {}
-                                   (map (fn [[k v]]
-                                          [k (schema->scalar-schema v
-                                                                    (update options ::ref-scope conj k))]))
-                                   (-> schema m/properties :registry))]
-                (assert nil 'TODO)
-                [schema options]))
+            (fn inner [schema path {::keys [seen-refs] :as options}]
+              (prn "pre" schema)
+              (cond
+                (and (satisfies? m/RefSchema schema)
+                     (some? (m/-ref schema)))
+                (let [options (update options ::seen-refs (fnil conj #{}) (m/-ref schema))]
+                  ;; FIXME does this handle ref shadowing correctly?
+                  (if (contains? seen-refs (m/-ref schema))
+                    [(m/schema :never) options]
+                    (inner (m/deref schema) path options)))
+
+                :else (let [dschema (m/deref schema)]
+                        (if (= schema dschema)
+                          [schema options]
+                          (inner dschema path options)))))
             (fn [schema _path _children options]
-              (assert nil 'TODO)
-              )
+              (prn "post" schema)
+              (m/-simplify schema))
             options))
 
 (defprotocol Generator
@@ -190,7 +207,9 @@
         (gen/recursive-gen
           (fn [ref-gen]
             (generator container-schema
-                       (assoc-in options [::rec-gen ref-name] ref-gen)))
+                       (-> options
+                           (assoc-in [::rec-gen ref-name] ref-gen)
+                           (update ::seen-refs (fnil conj #{}) ref-name))))
           (generator scalar-schema options))))))
 
 (defn -=>-gen [schema options]

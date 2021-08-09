@@ -322,14 +322,24 @@
   (->> (gen/sample
          (gen/recursive-gen
            (fn [ping]
-             (gen/tuple (gen/return "ping")
-                        (gen/recursive-gen
-                          (fn [pong]
-                            (gen/tuple (gen/return "pong")
-                                       ping))
-                          (gen/return nil))))
-           (gen/return nil))
-         100)
+             (gen/one-of 
+               [(gen/return nil)
+                (gen/tuple (gen/return "ping")
+                           (gen/recursive-gen
+                             (fn [pong]
+                               (gen/one-of
+                                 [(gen/return nil)
+                                  (gen/tuple (gen/return "pong")
+                                             ping)]))
+                             (gen/one-of
+                               [(gen/return nil)
+                                (gen/tuple (gen/return "pong")
+                                           (gen/return nil))])))]))
+           (gen/one-of
+             [(gen/return nil)
+              (gen/tuple (gen/return "ping")
+                         (gen/return nil))]))
+         1000)
        (drop 75))
 
   [:schema
@@ -424,13 +434,34 @@
                               {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                           ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                               ::ping]
+                     #_(comment
+                         (gen/recursive-gen
+                           (fn [ping]
+                             ;; container
+                             (gen/one-of 
+                               [(gen/return nil)
+                                (gen/tuple (gen/return "ping")
+                                           (gen/recursive-gen
+                                             (fn [pong]
+                                               (gen/one-of
+                                                 [(gen/return nil)
+                                                  (gen/tuple (gen/return "pong")
+                                                             ping)]))
+                                             (gen/one-of
+                                               [(gen/return nil)
+                                                (gen/tuple (gen/return "pong")
+                                                           (gen/return nil))])))]))
+                           ;; scalar
+                           (gen/one-of
+                             [(gen/return nil)
+                              (gen/tuple (gen/return "ping")
+                                         (gen/return nil))])))
                      :scalar-schema [:maybe [:tuple [:= "ping"] :nil]]
                      :container-schema [:maybe
                                         [:tuple [:= "ping"]
                                          [:schema
-                                          {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                                                      ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-                                          ::ping]]]}
+                                          {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+                                          ::pong]]]}
                     {:schema [:schema
                               {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                           ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
@@ -438,7 +469,6 @@
                      :scalar-schema [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] :nil]]]
                      :container-schema [:tuple
                                         [:= "ping"]
-                                        ^{::mg/ref ::pong}
                                         [:schema
                                          {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                                      ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
@@ -453,8 +483,6 @@
                               ::data]
                      :scalar-schema :int
                      :container-schema [:vector
-                                        ^{::mg/ref {:ref ::data
-                                                    :id (gensym 'data)}}
                                         [:schema
                                          {:registry {::data    [:or
                                                                 ::int

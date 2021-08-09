@@ -74,7 +74,6 @@
   [schema options]
   (mu/walk* schema
             (fn inner [schema path {::keys [seen-refs] :as options}]
-              (prn "pre" schema)
               (cond
                 (and (satisfies? m/RefSchema schema)
                      (some? (m/-ref schema)))
@@ -89,9 +88,41 @@
                           [schema options]
                           (inner dschema path options)))))
             (fn [schema _path _children options]
-              (prn "post" schema)
               (m/-simplify schema))
             options))
+
+(comment
+  (= [:maybe
+      [:tuple [:= "ping"]
+       [:schema
+        {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+        ::pong]]]
+     (m/form
+       (schema->container-schema
+         [:schema
+          {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                      ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+          ::ping]
+         {})))
+  )
+
+(defn schema->container-schema
+  "Return a schema with free variables for recursive refs."
+  [schema options]
+  (mu/walk* schema
+            (fn inner [schema _path {::keys [subst] :as options}]
+              (prn "inner" schema)
+              [(mu/subst-schema schema subst)
+               (assoc options
+                      ::subst (into subst
+                                    (map (fn [[k v]]
+                                           {k (m/-update-properties schema update :registry dissoc k)}))
+                                    (-> schema m/properties :registry)))])
+            (fn [schema _path _children _options]
+              (prn "outer" schema)
+              (m/-simplify (m/deref schema)))
+            (assoc options ::subst {}))
+  )
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
@@ -199,18 +230,17 @@
       ;; already seen this :ref, the generator is handy and we're done
       (get-in options [::rec-gen ref-name])
       ;; otherwise, continue to unroll but save the generator for this ref for later
-      (let [dschema (m/deref-all schema)
-            ;; equivalent to dschema with all recursive :ref occurrences made unreachable
-            scalar-schema (schema->scalar-schema dschema)
-            container-schema (schema->container-schema dschema)]
-        ;; TODO if scalar and container are identical, can probably simplify
-        (gen/recursive-gen
-          (fn [ref-gen]
-            (generator container-schema
-                       (-> options
-                           (assoc-in [::rec-gen ref-name] ref-gen)
-                           (update ::seen-refs (fnil conj #{}) ref-name))))
-          (generator scalar-schema options))))))
+      (let [schema (m/deref-all schema)
+            container-schema (schema->container-schema schema)]
+        (if (empty? (mu/schema->fvs container-schema))
+          schema
+          (gen/recursive-gen
+            (fn [ref-gen]
+              (generator container-schema
+                         (-> options
+                             (assoc-in [::rec-gen ref-name] ref-gen)
+                             (update ::seen-refs (fnil conj #{}) ref-name))))
+            (generator (schema->scalar-schema schema) options)))))))
 
 (defn -=>-gen [schema options]
   (let [output-generator (generator (:output (m/-function-info schema)) options)]

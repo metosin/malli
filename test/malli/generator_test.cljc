@@ -545,7 +545,84 @@
                               (conj (mapv #(gen/tuple (gen/return %))
                                           [:A :B :C :D])
                                     E
-                                    ;TODO :F :G 
+                                    (gen/recursive-gen
+                                      (fn [F]
+                                        (gen/tuple (gen/return :F)
+                                                   (gen/recursive-gen
+                                                     (fn [item]
+                                                       (gen/one-of
+                                                         (conj (mapv #(gen/tuple (gen/return %))
+                                                                     [:A :B :C :D])
+                                                               E
+                                                               F
+                                                               (gen/recursive-gen
+                                                                 (fn [G]
+                                                                   (gen/tuple (gen/return :G)
+                                                                              (gen/recursive-gen
+                                                                                (fn [item]
+                                                                                  (gen/one-of
+                                                                                    (conj (mapv #(gen/tuple (gen/return %))
+                                                                                                [:A :B :C :D])
+                                                                                          E
+                                                                                          F
+                                                                                          G)))
+                                                                                (gen/one-of
+                                                                                  ;; here we would remove :E, :F, :G because they contain recursive references
+                                                                                  (mapv #(gen/tuple (gen/return %))
+                                                                                        [:A :B :C :D])))))
+                                                                 (gen/tuple (gen/return :E)
+                                                                            (gen/one-of
+                                                                              ;; here we would remove :E, :F, :G because they contain recursive references
+                                                                              (mapv #(gen/tuple (gen/return %))
+                                                                                    [:A :B :C :D])))))))
+                                                     (gen/one-of
+                                                       ;; here we would remove :E, :F, :G because they contain recursive references
+                                                       (mapv #(gen/tuple (gen/return %))
+                                                             [:A :B :C :D])))))
+                                      (gen/tuple (gen/return :E)
+                                                 (gen/one-of
+                                                   ;; here we would remove :E, :F, :G because they contain recursive references
+                                                   (mapv #(gen/tuple (gen/return %))
+                                                         [:A :B :C :D]))))
+                                    (gen/recursive-gen
+                                      (fn [G]
+                                        (gen/tuple (gen/return :G)
+                                                   (gen/recursive-gen
+                                                     (fn [item]
+                                                       (gen/one-of
+                                                         (conj (mapv #(gen/tuple (gen/return %))
+                                                                     [:A :B :C :D])
+                                                               E
+                                                               (gen/recursive-gen
+                                                                 (fn [F]
+                                                                   (gen/tuple (gen/return :F)
+                                                                              (gen/recursive-gen
+                                                                                (fn [item]
+                                                                                  (gen/one-of
+                                                                                    (conj (mapv #(gen/tuple (gen/return %))
+                                                                                                [:A :B :C :D])
+                                                                                          E
+                                                                                          F
+                                                                                          G)))
+                                                                                (gen/one-of
+                                                                                  ;; here we would remove :E, :F, :G because they contain recursive references
+                                                                                  (mapv #(gen/tuple (gen/return %))
+                                                                                        [:A :B :C :D])))))
+                                                                 (gen/tuple (gen/return :E)
+                                                                            (gen/one-of
+                                                                              ;; here we would remove :E, :F, :G because they contain recursive references
+                                                                              (mapv #(gen/tuple (gen/return %))
+                                                                                    [:A :B :C :D]))))
+                                                               G)))
+                                                     (gen/one-of
+                                                       ;; here we would remove :E, :F, :G because they contain recursive references
+                                                       (mapv #(gen/tuple (gen/return %))
+                                                             [:A :B :C :D])))))
+                                      (gen/tuple (gen/return :E)
+                                                 (gen/one-of
+                                                   ;; here we would remove :E, :F, :G because they contain recursive references
+                                                   (mapv #(gen/tuple (gen/return %))
+                                                         [:A :B :C :D]))))
                                     )))
                           (gen/one-of
                             ;; here we would remove :E, :F, :G because they contain recursive references

@@ -496,12 +496,10 @@
                (gen/tuple (gen/return "ping")
                           (gen/one-of
                             [(gen/return nil)
-                             (gen/recursive-gen
-                               (fn [pong]
-                                 (gen/tuple (gen/return "pong")
-                                            ping))
-                               (gen/tuple (gen/return "pong")
-                                          (gen/return nil)))])))
+                             (gen/tuple (gen/return "pong")
+                                        (gen/one-of
+                                          [(gen/return nil)
+                                           ping]))])))
              (gen/tuple (gen/return "ping")
                         (gen/return nil)))
            (gen/recursive-gen
@@ -509,12 +507,10 @@
                (gen/tuple (gen/return "pong")
                           (gen/one-of
                             [(gen/return nil)
-                             (gen/recursive-gen
-                               (fn [ping]
-                                 (gen/tuple (gen/return "ping")
-                                            pong))
-                               (gen/tuple (gen/return "ping")
-                                          (gen/return nil)))])))
+                             (gen/tuple (gen/return "ping")
+                                        (gen/one-of
+                                          [(gen/return nil)
+                                           pong]))])))
              (gen/tuple (gen/return "pong")
                         (gen/return nil))))
          100)

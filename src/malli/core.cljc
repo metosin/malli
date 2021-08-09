@@ -1255,6 +1255,7 @@
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
+           ;; :multi is a disjunction and should be simplified like one
            (-simplify [this] this) ;;TODO
            (-unreachable? [this] false) ;;TODO
            (-properties [_] properties)

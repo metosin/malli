@@ -519,6 +519,45 @@
                         (gen/return nil))))
          100)
        (drop 75))
+    [:schema {:registry {::A [:tuple [:= :A]]
+                         ::B [:tuple [:= :B]]
+                         ::C [:tuple [:= :C]]
+                         ::D [:tuple [:= :D]]
+                         ::E [:tuple [:= :E] [:ref ::item]]
+                         ::F [:tuple [:= :F] [:ref ::item]]
+                         ::G [:tuple [:= :G] [:ref ::item]]
+                         ::item [:multi {:dispatch first}
+                                 [:A ::A]
+                                 [:B ::B]
+                                 [:C ::C]
+                                 [:D ::D]
+                                 [:E ::E]
+                                 [:F ::F]
+                                 [:G ::G]]}}
+     ::E]
+  (->> (gen/sample
+         (gen/recursive-gen
+           (fn [E]
+             (gen/tuple (gen/return :E)
+                        (gen/recursive-gen
+                          (fn [item]
+                            (gen/one-of
+                              (conj (mapv #(gen/tuple (gen/return %))
+                                          [:A :B :C :D])
+                                    E
+                                    ;TODO :F :G 
+                                    )))
+                          (gen/one-of
+                            ;; here we would remove :E, :F, :G because they contain recursive references
+                            (mapv #(gen/tuple (gen/return %))
+                                        [:A :B :C :D])))))
+           (gen/tuple (gen/return :E)
+                      (gen/one-of
+                        ;; here we would remove :E, :F, :G because they contain recursive references
+                        (mapv #(gen/tuple (gen/return %))
+                              [:A :B :C :D]))))
+         100)
+       (drop 75))
   )
 
 #_

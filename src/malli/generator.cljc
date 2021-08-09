@@ -109,10 +109,22 @@
                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
    ::ping]
   ;=>
-  [:schema
-   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-   ::ping]
+  ::ping
+  ;=>
+  [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+  ;=>
+  [:maybe
+   [:tuple [:= "ping"]
+    [:maybe
+     [:schema
+      {:registry {}}
+      [:maybe [:tuple [:= "pong"] [:ref ::ping]]]]]]]
+  ;=>
+  [:maybe
+   [:tuple [:= "ping"]
+    [:maybe
+     [:tuple [:= "pong"]
+      [:ref ::ping]]]]]
   )
 
 (defn schema->container-schema
@@ -121,24 +133,13 @@
   (mu/walk* schema
             (fn inner [schema path {::keys [subst seen-refs] :as options}]
               (let [registry (-> schema m/properties :registry)
-                    options1 (assoc options
-                                    ::seen-refs (conj (or seen-refs #{}))
-                                    ::subst (into {}
-                                                  (map (fn [[k v]]
-                                                         (let [subst (zipmap (remove #{k} (keys registry))
-                                                                             (repeat (m/-update-properties schema update :registry dissoc k)))
-                                                               v (mu/subst-schema v subst options)]
-                                                           {k v})))
-                                                  registry))
-                    schema (cond-> schema
-                             (seq subst) (mu/subst-schema subst options))
-                    dschema (cond-> schema
-                              (seq registry) (m/deref schema))]
-                (if (= dschema schema)
-                  [dschema options1]
-                  (inner dschema path options1))))
+                    ;; registry shadows refs
+                    seen-refs (reduce disj (or seen-refs #{}) (keys registry))
+                    ]
+                ))
             (fn [schema _path _children _options]
-              (m/-simplify schema))
+              (-> schema
+                  m/-simplify))
             (assoc options
                    ::m/allow-invalid-refs true
                    ::subst {})))

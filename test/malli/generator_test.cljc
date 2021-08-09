@@ -364,6 +364,51 @@
        (drop 75))
 
   [:schema
+   {:registry {::A [:tuple [:= "A"] [:maybe [:ref ::B]]]
+               ::B [:tuple [:= "B"] [:maybe [:ref ::C]]]
+               ::C [:tuple [:= "B"] [:maybe [:ref ::A]]]}}
+   [:tuple ::A ::B]]
+  (->> (gen/sample
+         (gen/tuple
+           (gen/recursive-gen
+             (fn [A]
+               (gen/tuple (gen/return "A")
+                          (gen/one-of
+                            [(gen/return nil)
+                             (gen/recursive-gen
+                               (fn [B]
+                                 (gen/tuple (gen/return "B")
+                                            (gen/recursive-gen
+                                              (fn [C]
+                                                (gen/tuple (gen/return "C")
+                                                           A))
+                                              (gen/tuple (gen/return "C")
+                                                         (gen/return nil)))))
+                               (gen/tuple (gen/return "B")
+                                          (gen/return nil)))])))
+             (gen/tuple (gen/return "A")
+                        (gen/return nil)))
+           (gen/recursive-gen
+             (fn [B]
+               (gen/tuple (gen/return "B")
+                          (gen/recursive-gen
+                            (fn [C]
+                              (gen/tuple (gen/return "C")
+                                         (gen/recursive-gen
+                                           (fn [A]
+                                             (gen/tuple (gen/return "A")
+                                                        C))
+                                           (gen/tuple (gen/return "A")
+                                                      (gen/return nil)))))
+                            (gen/tuple (gen/return "C")
+                                       (gen/return nil)))))
+             (gen/tuple (gen/return "B")
+                        (gen/return nil)))
+           )
+         100)
+       (drop 75))
+
+  [:schema
    {:registry {::data    [:or
                           ::int
                           ::vector]
@@ -441,16 +486,10 @@
                              (gen/one-of 
                                [(gen/return nil)
                                 (gen/tuple (gen/return "ping")
-                                           (gen/recursive-gen
-                                             (fn [pong]
-                                               (gen/one-of
-                                                 [(gen/return nil)
-                                                  (gen/tuple (gen/return "pong")
-                                                             ping)]))
-                                             (gen/one-of
-                                               [(gen/return nil)
-                                                (gen/tuple (gen/return "pong")
-                                                           (gen/return nil))])))]))
+                                           (gen/one-of
+                                             [(gen/return nil)
+                                              (gen/tuple (gen/return "pong")
+                                                         ping)]))]))
                            ;; scalar
                            (gen/one-of
                              [(gen/return nil)

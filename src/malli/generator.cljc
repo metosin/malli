@@ -14,40 +14,65 @@
 
 
 (comment
-  (m/schema
-    [:schema
-     {:registry {::foo [:maybe [:ref ::foo]]}}
-     ::foo])
+  (= :nil (m/form (schema->scalar-schema :nil {})))
+  (= :nil (m/form (schema->scalar-schema [:schema
+                                          {:registry {::foo [:maybe [:ref ::foo]]}}
+                                          ::foo]
+                                         {})))
+  [:schema
+   {:registry {::foo [:maybe [:ref ::foo]]}}
+   ::foo]
   ;=>
-  (comment
-    (schema->scalar-schema :nil {})
-    (schema->scalar-schema [:schema
-                            {:registry {::foo [:maybe [:ref ::foo]]}}
-                            ::foo]
-                           {})
-    )
+  [:schema
+   {:registry {::foo [:maybe :never]}}
+   ::foo]
+  ;=>
+  [:schema
+   {:registry {::foo :nil}}
+   ::foo]
+  ;=>
+  :nil
+
+  [:schema
+   {:registry {::foo [:maybe [:ref ::bar]]
+               ::bar [:maybe [:ref ::foo]]}}
+   [:tuple ::foo ::bar]]
+  ;=>
+  [:schema
+   {:registry {::foo [:maybe [:maybe [:ref ::foo]]]
+               ::bar [:maybe [:maybe [:ref ::bar]]]}}
+   [:tuple ::foo ::bar]]
+  ;=>
+  [:schema
+   {:registry {::foo [:maybe [:maybe :never]]
+               ::bar [:maybe [:maybe :never]]}}
+   [:tuple ::foo ::bar]]
+  ;=>
+  [:schema
+   {:registry {::foo [:maybe :never]
+               ::bar [:maybe :never]}}
+   [:tuple ::foo ::bar]]
+  ;=>
+  [:schema
+   {:registry {::foo :nil
+               ::bar :nil}}
+   [:tuple ::foo ::bar]]
+  ;=>
+  [:tuple :nil :nil]
   )
 (defn schema->scalar-schema [schema options]
   (mu/walk* schema
             (fn [schema _path options]
-              (prn "pre" schema)
-              (let [;; TODO
-                    maybe-var-ref (m/form schema)
-                    is-var-ref? (and (= ::m/schema (m/type schema))
-                                     ;; TODO
-                                     (qualified-keyword? maybe-var-ref))]
-                [schema (update options ::ref-scope (fnil into #{}) (when is-var-ref? [maybe-var-ref]))]))
+              (let [registry (into {}
+                                   (map (fn [[k v]]
+                                          [k (schema->scalar-schema v
+                                                                    (update-in options ::ref-scope conj k))]))
+                                   (-> schema m/properties :registry))]
+              (assert nil 'TODO)
+                [schema options]))
             (fn [schema _path _children options]
-              (let [bound-vs (into (::ref-scope options)
-                                   ;; refs with generators are in scope
-                                   (-> options ::rec-gen keys))
-                    ;; TODO
-                    in-scope-ref? (bound-vs (m/form schema))]
-                (prn "post" schema in-scope-ref? bound-vs)
-                (if in-scope-ref?
-                  (doto (m/schema :never)
-                    (prn "doto"))
-                  (m/-simplify schema))))
+              (assert nil 'TODO)
+              )
             options))
 
 (defprotocol Generator

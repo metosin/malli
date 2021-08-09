@@ -90,22 +90,22 @@
 
 (defn subst-schema
   "Substitute free variables in schema."
-  [schema subst]
+  [schema subst options]
   (walk* schema
          (fn [schema _path {::keys [subst] :as options}]
            (let [;; compensate for ref shadowing
                  subst (apply c/dissoc subst (-> schema m/properties :registry keys))
                  options (c/assoc options ::subst subst)]
+             [schema options]))
+         (fn [schema _path _children {::keys [subst] :as _options}]
+           (m/-simplify
              (cond
                (and (satisfies? m/RefSchema schema)
                     (some? (m/-ref schema)))
-               [(subst (m/-ref schema) schema)
-                options]
+               (subst (m/-ref schema) schema)
 
-               :else [schema options])))
-         (fn [schema _path _children options]
-           (m/-simplify schema))
-         {::subst subst}))
+               :else schema)))
+         (c/assoc options ::subst subst)))
 
 (defn find-first
   "Prewalks the Schema recursively with a 3-arity fn [schema path options], returns with

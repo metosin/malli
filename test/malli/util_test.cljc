@@ -1034,7 +1034,8 @@
            (mu/subst-schema [:schema
                              {:registry {::foo [:maybe [:ref ::foo]]}}
                              [:tuple ::foo ::foo]]
-                            {::foo (m/schema :never)}))))
+                            {::foo (m/schema :never)}
+                            {}))))
   (is (= :never
          (m/form
            (mu/subst-schema (first
@@ -1043,5 +1044,6 @@
                                   [:schema
                                    {:registry {::foo [:maybe [:ref ::foo]]}}
                                    [:tuple ::foo ::foo]])))
-                            {::foo (m/schema :never)}))))
+                            {::foo (m/schema :never)}
+                            {}))))
   )

@@ -94,9 +94,9 @@
 (comment
   (= [:maybe
       [:tuple [:= "ping"]
-       [:schema
-        {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-        ::pong]]]
+       [:maybe
+        [:tuple [:= "pong"]
+         [:ref ::ping]]]]]
      (m/form
        (schema->container-schema
          [:schema
@@ -104,25 +104,44 @@
                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
           ::ping]
          {})))
+  [:schema
+   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   ::ping]
+  ;=>
+  [:schema
+   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   ::ping]
   )
 
 (defn schema->container-schema
   "Return a schema with free variables for recursive refs."
   [schema options]
   (mu/walk* schema
-            (fn inner [schema _path {::keys [subst] :as options}]
-              (prn "inner" schema)
-              [(mu/subst-schema schema subst)
-               (assoc options
-                      ::subst (into subst
-                                    (map (fn [[k v]]
-                                           {k (m/-update-properties schema update :registry dissoc k)}))
-                                    (-> schema m/properties :registry)))])
+            (fn inner [schema path {::keys [subst seen-refs] :as options}]
+              (let [registry (-> schema m/properties :registry)
+                    options1 (assoc options
+                                    ::seen-refs (conj (or seen-refs #{}))
+                                    ::subst (into {}
+                                                  (map (fn [[k v]]
+                                                         (let [subst (zipmap (remove #{k} (keys registry))
+                                                                             (repeat (m/-update-properties schema update :registry dissoc k)))
+                                                               v (mu/subst-schema v subst options)]
+                                                           {k v})))
+                                                  registry))
+                    schema (cond-> schema
+                             (seq subst) (mu/subst-schema subst options))
+                    dschema (cond-> schema
+                              (seq registry) (m/deref schema))]
+                (if (= dschema schema)
+                  [dschema options1]
+                  (inner dschema path options1))))
             (fn [schema _path _children _options]
-              (prn "outer" schema)
-              (m/-simplify (m/deref schema)))
-            (assoc options ::subst {}))
-  )
+              (m/-simplify schema))
+            (assoc options
+                   ::m/allow-invalid-refs true
+                   ::subst {})))
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
@@ -224,16 +243,15 @@
     (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
 #_
 (defn -ref-gen [schema options]
-  (let [ref-name (second (m/form schema))]
-    (assert ref-name (pr-str (m/form schema)))
+  (let [ref-name (m/ref schema)]
+    (assert ref-name)
     (or 
       ;; already seen this :ref, the generator is handy and we're done
       (get-in options [::rec-gen ref-name])
       ;; otherwise, continue to unroll but save the generator for this ref for later
-      (let [schema (m/deref-all schema)
-            container-schema (schema->container-schema schema)]
-        (if (empty? (mu/schema->fvs container-schema))
-          (generator schema options)
+      (let [container-schema (schema->container-schema schema)]
+        (if-not (contains? (mu/schema->fvs container-schema) ref-name)
+          (generator (m/deref schema) options)
           (gen/recursive-gen
             (fn [ref-gen]
               (generator container-schema

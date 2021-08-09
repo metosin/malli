@@ -76,38 +76,6 @@
               )
             options))
 
-(comment
-  (subst-schema [:schema
-                 {:registry {::foo [:maybe [:ref ::foo]]}}
-                 [:tuple ::foo ::foo]]
-                {::foo (m/schema :never)})
-  (subst-schema (first
-                  (m/children
-                    (m/schema
-                      [:schema
-                       {:registry {::foo [:maybe [:ref ::foo]]}}
-                       [:tuple ::foo ::foo]])))
-                {::foo (m/schema :never)})
-  )
-(defn subst-schema [schema subst]
-  (mu/walk* schema
-            (fn [schema _path {::keys [subst] :as options}]
-              (prn "pre" schema)
-              (let [;; compensate for ref shadowing
-                    subst (apply dissoc subst (-> schema m/properties :registry keys))
-                    options (assoc options ::subst subst)]
-                (cond
-                  (and (satisfies? m/RefSchema schema)
-                       (some? (m/-ref schema)))
-                  [(subst (m/-ref schema) schema)
-                   options]
-
-                  :else [schema options])))
-            (fn [schema _path _children options]
-              (prn "post" schema)
-              (m/-simplify schema))
-            {::subst subst}))
-
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
 

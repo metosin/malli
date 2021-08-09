@@ -1025,3 +1025,23 @@
                          schema))
                      {}))))
 )
+
+(deftest subst-schema-test
+  (is (= [:schema
+          {:registry {::foo [:maybe [:ref ::foo]]}}
+          [:tuple ::foo ::foo]]
+         (m/form
+           (mu/subst-schema [:schema
+                             {:registry {::foo [:maybe [:ref ::foo]]}}
+                             [:tuple ::foo ::foo]]
+                            {::foo (m/schema :never)}))))
+  (is (= :never
+         (m/form
+           (mu/subst-schema (first
+                              (m/children
+                                (m/schema
+                                  [:schema
+                                   {:registry {::foo [:maybe [:ref ::foo]]}}
+                                   [:tuple ::foo ::foo]])))
+                            {::foo (m/schema :never)}))))
+  )

@@ -88,6 +88,25 @@
     (rec! schema #{})
     @fvs-atom))
 
+(defn subst-schema
+  "Substitute free variables in schema."
+  [schema subst]
+  (walk* schema
+         (fn [schema _path {::keys [subst] :as options}]
+           (let [;; compensate for ref shadowing
+                 subst (apply c/dissoc subst (-> schema m/properties :registry keys))
+                 options (c/assoc options ::subst subst)]
+             (cond
+               (and (satisfies? m/RefSchema schema)
+                    (some? (m/-ref schema)))
+               [(subst (m/-ref schema) schema)
+                options]
+
+               :else [schema options])))
+         (fn [schema _path _children options]
+           (m/-simplify schema))
+         {::subst subst}))
+
 (defn find-first
   "Prewalks the Schema recursively with a 3-arity fn [schema path options], returns with
   and as soon as the function returns non-null value."

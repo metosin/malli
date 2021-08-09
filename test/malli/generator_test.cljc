@@ -366,7 +366,7 @@
   [:schema
    {:registry {::A [:tuple [:= "A"] [:maybe [:ref ::B]]]
                ::B [:tuple [:= "B"] [:maybe [:ref ::C]]]
-               ::C [:tuple [:= "B"] [:maybe [:ref ::A]]]}}
+               ::C [:tuple [:= "C"] [:maybe [:ref ::A]]]}}
    [:tuple ::A ::B]]
   (->> (gen/sample
          (gen/tuple
@@ -405,6 +405,66 @@
              (gen/tuple (gen/return "B")
                         (gen/return nil)))
            )
+         100)
+       (drop 75))
+
+  ;; linked list of ABC that never repeats
+  [:schema
+   {:registry {::A [:tuple [:= "A"] [:maybe [:or [:ref ::B] [:ref ::C]]]]
+               ::B [:tuple [:= "B"] [:maybe [:or [:ref ::C] [:ref ::A]]]]
+               ::C [:tuple [:= "C"] [:maybe [:or [:ref ::A] [:ref ::B]]]]}}
+   [:tuple ::A]]
+  (->> (gen/sample
+         (gen/tuple
+           (gen/recursive-gen
+             (fn [A]
+               (gen/tuple (gen/return "A")
+                          (gen/one-of
+                            [(gen/return nil)
+                             (gen/recursive-gen
+                               (fn [B]
+                                 (gen/tuple (gen/return "B")
+                                            (gen/one-of
+                                              [(gen/return nil)
+                                               (gen/recursive-gen
+                                                 (fn [C]
+                                                   (gen/tuple (gen/return "C")
+                                                              (gen/one-of
+                                                                [(gen/return nil)
+                                                                 A
+                                                                 B])))
+                                                 (gen/tuple (gen/return "C")
+                                                            (gen/return nil)))
+                                               A])))
+                               (gen/tuple (gen/return "B")
+                                          (gen/return nil)))
+                             (gen/recursive-gen
+                               (fn [C]
+                                 (gen/tuple (gen/return "C")
+                                            (gen/one-of
+                                              [(gen/return nil)
+                                               A
+                                               (gen/recursive-gen
+                                                 (fn [B]
+                                                   (gen/tuple (gen/return "B")
+                                                              (gen/one-of
+                                                                [(gen/return nil)
+                                                                 (gen/recursive-gen
+                                                                   (fn [C]
+                                                                     (gen/tuple (gen/return "C")
+                                                                                (gen/one-of
+                                                                                  [(gen/return nil)
+                                                                                   A
+                                                                                   B])))
+                                                                   (gen/tuple (gen/return "C")
+                                                                              (gen/return nil)))
+                                                                 A])))
+                                                 (gen/tuple (gen/return "B")
+                                                            (gen/return nil)))])))
+                               (gen/tuple (gen/return "C")
+                                          (gen/return nil)))])))
+             (gen/tuple (gen/return "A")
+                        (gen/return nil))))
          100)
        (drop 75))
 

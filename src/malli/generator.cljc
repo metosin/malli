@@ -233,7 +233,7 @@
       (let [schema (m/deref-all schema)
             container-schema (schema->container-schema schema)]
         (if (empty? (mu/schema->fvs container-schema))
-          schema
+          (generator schema options)
           (gen/recursive-gen
             (fn [ref-gen]
               (generator container-schema

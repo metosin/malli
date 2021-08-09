@@ -109,22 +109,34 @@
                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
    ::ping]
   ;=>
-  ::ping
-  ;=>
-  [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-  ;=>
   [:maybe
    [:tuple [:= "ping"]
-    [:maybe
-     [:schema
-      {:registry {}}
-      [:maybe [:tuple [:= "pong"] [:ref ::ping]]]]]]]
+    [:schema {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}
+     [:ref ::pong]]]]
   ;=>
   [:maybe
    [:tuple [:= "ping"]
     [:maybe
      [:tuple [:= "pong"]
       [:ref ::ping]]]]]
+
+
+  [:schema
+   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   [:schema
+    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+    ::ping]]
+  ;=>
+  [:schema
+   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+   [:schema
+    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+    ::ping]]
+
   )
 
 (defn schema->container-schema

@@ -992,6 +992,20 @@
                  (m/schema [:schema
                             {:registry {::foo :int}}
                             ::foo])))))
+  (is (= [#{::foo}]
+         (mapv mu/schema->fvs
+               (m/children
+                 (m/schema [:schema
+                            {:registry {::foo :int}}
+                            [:ref ::foo]])))))
+  (is (= [#{::foo}]
+         (mapv mu/schema->fvs
+               (m/children
+                 (m/schema [:schema
+                            {:registry {::foo [:schema
+                                               {:registry {::bar :int}}
+                                               ::bar]}}
+                            ::foo])))))
   )
 
 (deftest walk*-test
@@ -1045,5 +1059,4 @@
                                    {:registry {::foo [:maybe [:ref ::foo]]}}
                                    [:tuple ::foo ::foo]])))
                             {::foo (m/schema :never)}
-                            {}))))
-  )
+                            {})))))

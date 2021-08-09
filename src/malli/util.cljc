@@ -74,20 +74,18 @@
                                         (rec! s registry-rhs-ref-scope))
                                       registry)
                               new-ref-scope (into (::ref-scope options) (keys registry))
-                              frm (m/form schema)
-                              ;;FIXME guessing
-                              is-var-reference? (qualified-keyword? frm)
-                              is-not-in-scope? (not (contains? new-ref-scope frm))
+                              is-var-reference? (satisfies? m/RefSchema schema)
+                              is-not-in-scope? (not (contains? new-ref-scope (m/-ref schema)))
                               _ (when (and is-var-reference?
                                            is-not-in-scope?)
-                                  (swap! fvs-atom conj (m/form schema)))]
-                          (prn "class" (class options))
+                                  (swap! fvs-atom conj (m/-ref schema)))]
                           [schema (c/assoc options ::ref-scope new-ref-scope)]))
                       {::ref-scope ref-scope})
                nil)]
     (rec! schema #{})
     @fvs-atom))
 
+;; FIXME capture-avoidance :)
 (defn subst-schema
   "Substitute free variables in schema."
   [schema subst options]

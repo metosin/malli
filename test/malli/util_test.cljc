@@ -1136,4 +1136,18 @@
                                        ::foo
                                        [:schema {:registry {::foo :int}}
                                         ::foo]]]
+                                     {})))))
+  ;; preserve free vars
+  (is (= [:tuple ::foo
+          [:schema {:registry {::foo__0 :int}}
+           [:ref ::foo__0]]]
+         (undo-gensyms
+           (m/form
+             (mu/alpha-rename-schema (-> [:schema {:registry {::foo :boolean}}
+                                          [:tuple ::foo
+                                           [:schema {:registry {::foo :int}}
+                                            ::foo]]]
+                                         m/schema
+                                         m/children
+                                         first)
                                      {}))))))

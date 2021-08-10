@@ -120,7 +120,9 @@
                     (and (satisfies? m/RefSchema schema)
                          (m/type schema)
                          (not (seen-refs (m/-ref schema))))
-                    [(scs (m/deref schema) (cond-> options
+                    [;; FIXME if there are global variables in schema, we might deref
+                     ;; some non-alpha-renamed schemas from the outer scope
+                     (scs (m/deref schema) (cond-> options
                                              (m/-ref schema) (update ::seen-refs conj (m/-ref schema))))
                      options]
 

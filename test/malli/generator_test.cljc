@@ -688,7 +688,32 @@
                                100)
                              (drop 75)))
                     :scalar-schema [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} :never]]
-                    :container-schema [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref :A]]]}]]
+                    :container-schema [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref :A]]]}
+                   {:schema [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
+                    #_(comment
+                        (->> (gen/sample
+                               (gen/recursive-gen
+                                 (fn [rec]
+                                   rec)
+                                 (gen/return nil))
+                               100)
+                             (drop 75)))
+                    :scalar-schema :nil
+                    :container-schema [:ref ::rec]}
+                   {:schema [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
+                    #_(comment
+                        (->> (gen/sample
+                               (gen/recursive-gen
+                                 (fn [rec]
+                                   (gen/fmap (fn [rec]
+                                               {:rec rec})
+                                             rec))
+                                 (gen/return {}))
+                               100)
+                             (drop 75)))
+                     :scalar-schema [:map [:rec {:optional true} :never]]
+                     :container-schema [:map [:rec [:ref {:optional true} ::rec]]]}
+                   ]]
     (doseq [{:keys [schema scalar-schema container-schema]} test-cases]
       (is (= scalar-schema (m/form
                              (mg/schema->scalar-schema schema

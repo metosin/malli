@@ -12,7 +12,6 @@
 
 (declare generator generate -create)
 
-
 (comment
   (= :nil (m/form (schema->scalar-schema :nil {})))
   (= :nil (m/form (schema->scalar-schema [:schema
@@ -105,20 +104,22 @@
           ::ping]
          {})))
   [:schema
-   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-   ::ping]
+   {:registry {::ping__0 [:maybe [:tuple [:= "ping"] [:ref ::pong__1]]]
+               ::pong__1 [:maybe [:tuple [:= "pong"] [:ref ::ping__0]]]}}
+   ::ping__0]
   ;=>
   [:maybe
    [:tuple [:= "ping"]
-    [:schema {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}
-     [:ref ::pong]]]]
+    [:schema
+     {:registry {::ping__2 [:maybe [:tuple [:= "ping"] [:ref ::pong__3]]]
+                 ::pong__3 [:maybe [:tuple [:= "pong"] [:ref ::ping__0]]]}}
+     [:ref ::pong__3]]]]
   ;=>
   [:maybe
    [:tuple [:= "ping"]
     [:maybe
      [:tuple [:= "pong"]
-      [:ref ::ping]]]]]
+      [:ref ::ping__0]]]]]
 
 
   [:schema
@@ -131,12 +132,11 @@
 (defn schema->container-schema
   "Return a schema with free variables for recursive refs."
   [schema options]
-  (mu/walk* schema
+  (mu/walk* (mu/alpha-rename-schema schema options)
             (fn inner [schema path {::keys [subst seen-refs] :as options}]
               (let [registry (-> schema m/properties :registry)
                     ;; registry shadows refs
-                    seen-refs (reduce disj (or seen-refs #{}) (keys registry))
-                    ]
+                    seen-refs (reduce disj (or seen-refs #{}) (keys registry)) ]
                 ))
             (fn [schema _path _children _options]
               (-> schema

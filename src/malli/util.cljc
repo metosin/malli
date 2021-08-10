@@ -132,11 +132,10 @@
          (c/assoc options
                   ::m/allow-invalid-refs true)))
 
-;; FIXME capture-avoidance :)
 (defn subst-schema
   "Substitute free variables in schema."
   [schema subst options]
-  (walk* schema
+  (walk* (alpha-rename-schema schema options)
          (fn [schema _path {::keys [subst] :as options}]
            (let [;; compensate for ref shadowing
                  subst (apply c/dissoc subst (-> schema m/properties :registry keys))

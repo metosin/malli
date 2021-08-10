@@ -609,38 +609,46 @@
                                           ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                               ::ping]
                      #_(comment
-                         (gen/recursive-gen
-                           (fn [ping]
-                             ;; container
-                             (gen/one-of 
+                         (gen/sample
+                           (gen/recursive-gen
+                             (fn [ping]
+                               ;; container
+                               (gen/tuple (gen/return "ping")
+                                          (gen/tuple (gen/return "pong")
+                                                     ping)))
+                             ;; scalar
+                             (gen/one-of
                                [(gen/return nil)
                                 (gen/tuple (gen/return "ping")
-                                           (gen/one-of
-                                             [(gen/return nil)
-                                              (gen/tuple (gen/return "pong")
-                                                         ping)]))]))
-                           ;; scalar
-                           (gen/one-of
-                             [(gen/return nil)
-                              (gen/tuple (gen/return "ping")
-                                         (gen/return nil))])))
+                                           (gen/return nil))]))
+                           30))
                      :scalar-schema [:maybe [:tuple [:= "ping"] :nil]]
-                     :container-schema [:maybe
-                                        [:tuple [:= "ping"]
-                                         [:schema
-                                          {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-                                          ::pong]]]}
+                     :container-schema [:tuple [:= "ping"]
+                                        [:tuple [:= "pong"]
+                                         [:ref ::ing]]]}
                     {:schema [:schema
                               {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                           ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
                               ::ping]
+                     #_(comment
+                         (gen/sample
+                           (gen/recursive-gen
+                             (fn [ping]
+                               ;; container
+                               (gen/tuple (gen/return "ping")
+                                          (gen/tuple (gen/return "pong")
+                                                     ping)))
+                             ;; scalar
+                             (gen/tuple (gen/return "ping")
+                                        (gen/one-of
+                                          [(gen/return nil)
+                                           (gen/tuple (gen/return "pong")
+                                                      (gen/return nil))])))
+                           100))
                      :scalar-schema [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] :nil]]]
-                     :container-schema [:tuple
-                                        [:= "ping"]
-                                        [:schema
-                                         {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
-                                                     ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
-                                         ::ping]]}
+                     :container-schema [:tuple [:= "ping"]
+                                        [:tuple [:= "pong"]
+                                         [:ref ::ping]]]}
                     {:schema [:schema
                               {:registry {::data    [:or
                                                      ::int
@@ -649,16 +657,17 @@
                                           ::vector  [:vector
                                                      [:ref ::data]]}}
                               ::data]
-                     :scalar-schema :int
-                     :container-schema [:vector
-                                        [:schema
-                                         {:registry {::data    [:or
-                                                                ::int
-                                                                ::vector]
-                                                     ::int     :int
-                                                     ::vector  [:vector
-                                                                [:ref ::data]]}}
-                                         ::data]]}]]
+                     #_(comment
+                         (->> (gen/sample
+                                (gen/recursive-gen
+                                  (fn [data]
+                                    (gen/vector
+                                      data))
+                                  gen/large-integer)
+                                100)
+                              (drop 75)))
+                     :scalar-schema [:or :int [:vector :never]]
+                     :container-schema [:vector [:ref ::data]]}]]
     (doseq [{:keys [schema scalar-schema container-schema]} test-cases]
       (is (= scalar-schema (m/form
                              (mg/schema->scalar-schema schema

@@ -185,8 +185,8 @@
 (defn -set-children [schema children]
   (-into-schema (-parent schema) (-properties schema) children (-options schema)))
 
-(defn -update-options [schema f]
-  (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
+(defn -update-options [schema f & args]
+  (-into-schema (-parent schema) (-properties schema) (-children schema) (apply f (-options schema) args)))
 
 (defn -update-properties [schema f & args]
   (-into-schema (-parent schema) (apply f (-properties schema) args) (-children schema) (-options schema)))
@@ -1255,7 +1255,7 @@
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
-           ;; :multi is a disjunction and should be simplified like one
+           
            (-simplify [this] this) ;;TODO
            (-unreachable? [this] false) ;;TODO
            (-properties [_] properties)

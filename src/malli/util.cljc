@@ -87,28 +87,50 @@
 
 (declare subst-schema)
 
-(defn alpha-rename-schema [schema]
+(comment
+  (alpha-rename-schema [:schema {:registry {::foo :int}}
+                        ::foo]
+                       {})
+  ((requiring-resolve 'clojure.repl/pst) 100)
+  )
+
+(defn alpha-rename-schema [schema options]
   (walk* schema
          (fn [schema _path options]
-           (let [registry (-> schema m/properties :registry)
-                 subst (into {}
-                             (map (fn [k]
-                                    (let [;; TODO if already contains __, append #0, #1, #2...
-                                          genstr #(str (gensym (str % "__")))]
-                                      [k
-                                       (cond
-                                         (keyword? k) (keyword (namespace k)
-                                                               (genstr (name k)))
-                                         (symbol? k) (symbol (namespace k)
-                                                             (genstr (name k)))
-                                         (string? k) (genstr k)
-                                         :else (throw (ex-info (str "Cannot alpha rename: " (pr-str k) " " (class k))
-                                                               {:k k})))])))
-                             (keys registry))]
-             ))
-         (assoc options
-                ::m/allow-invalid-refs true
-                ::alpha-renames {})))
+           (let [registry (-> schema m/properties :registry not-empty)
+                 alpha-renames (into (or (::alpha-renames options) {})
+                                     (map (fn [k]
+                                            (let [genstr #(str (gensym (str % "__")))]
+                                              [k
+                                               (cond
+                                                 (keyword? k) (keyword (namespace k)
+                                                                       (genstr (name k)))
+                                                 (symbol? k) (symbol (namespace k)
+                                                                     (genstr (name k)))
+                                                 (string? k) (genstr k)
+                                                 :else (throw (ex-info (str "Cannot alpha rename: " (pr-str k) " " (class k))
+                                                                       {:k k})))])))
+                                     (keys registry))
+                 options (c/assoc options ::alpha-renames alpha-renames)
+                 schema (cond-> schema
+                          registry (-> (m/-update-options c/assoc ::m/allow-invalid-refs true)
+                                       (m/-update-properties c/assoc :registry
+                                                             (into {}
+                                                                   (map (fn [[k s]]
+                                                                          [(alpha-renames k)
+                                                                           (alpha-rename-schema s options)]))
+                                                                   registry))))]
+             [schema options]))
+         (fn [schema _path _children {::keys [alpha-renames] :as _options}]
+           (prn "post" schema (class schema) (satisfies? m/RefSchema schema))
+           (m/-simplify
+             (cond-> schema 
+               (and (satisfies? m/RefSchema schema)
+                    (alpha-renames (m/-ref schema)))
+               (-> (m/-update-options c/assoc ::m/allow-invalid-refs true)
+                   (m/-set-children [(alpha-renames (m/-ref schema))])))))
+         (c/assoc options
+                  ::m/allow-invalid-refs true)))
 
 ;; FIXME capture-avoidance :)
 (defn subst-schema

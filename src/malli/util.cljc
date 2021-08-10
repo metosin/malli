@@ -131,8 +131,11 @@
                    schema)))
              (c/assoc options
                       ::m/allow-invalid-refs true))
+      #_
       m/form
       ;; FIXME m/deref fails without this, ref seems to lose its meaning
+      ;; ...but this hack destroys resolution of free variables, so no-go
+      #_
       (m/schema (c/assoc options ::m/allow-invalid-refs true))))
 
 (defn subst-schema

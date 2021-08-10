@@ -520,10 +520,11 @@
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
-          (-simplify [this] (if (every? -unreachable? children)
-                              (schema :never)
-                              ;; TODO remove unreachable children
-                              this))
+          (-simplify [this] (let [children (into [] (remove -unreachable?) children)]
+                              (case (count children)
+                                0 (schema :never)
+                                1 (first children)
+                                (-set-children this children))))
           (-unreachable? [this] (every? -unreachable? children))
           (-properties [_] properties)
           (-options [_] options)

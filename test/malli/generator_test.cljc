@@ -713,7 +713,19 @@
                              (drop 75)))
                      :scalar-schema [:map [:rec {:optional true} :never]]
                      :container-schema [:map [:rec [:ref {:optional true} ::rec]]]}
-                   ]]
+                  {:schema [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
+                                                ::or [:or int? ::tuple]}} ::or]
+                    #_(comment
+                        (->> (gen/sample
+                               (gen/recursive-gen
+                                 (fn [OR]
+                                   (gen/tuple gen/boolean
+                                              OR))
+                                 gen/large-integer)
+                               100)
+                             (drop 75)))
+                    :scalar-schema 'int?
+                    :container-schema [:tuple :boolean [:ref ::or]]}]]
     (doseq [{:keys [schema scalar-schema container-schema]} test-cases]
       (is (= scalar-schema (m/form
                              (mg/schema->scalar-schema schema

@@ -85,6 +85,31 @@
     (rec! schema #{})
     @fvs-atom))
 
+(declare subst-schema)
+
+(defn alpha-rename-schema [schema]
+  (walk* schema
+         (fn [schema _path options]
+           (let [registry (-> schema m/properties :registry)
+                 subst (into {}
+                             (map (fn [k]
+                                    (let [;; TODO if already contains __, append #0, #1, #2...
+                                          genstr #(str (gensym (str % "__")))]
+                                      [k
+                                       (cond
+                                         (keyword? k) (keyword (namespace k)
+                                                               (genstr (name k)))
+                                         (symbol? k) (symbol (namespace k)
+                                                             (genstr (name k)))
+                                         (string? k) (genstr k)
+                                         :else (throw (ex-info (str "Cannot alpha rename: " (pr-str k) " " (class k))
+                                                               {:k k})))])))
+                             (keys registry))]
+             ))
+         (assoc options
+                ::m/allow-invalid-refs true
+                ::alpha-renames {})))
+
 ;; FIXME capture-avoidance :)
 (defn subst-schema
   "Substitute free variables in schema."

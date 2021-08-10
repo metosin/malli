@@ -96,41 +96,44 @@
   )
 
 (defn alpha-rename-schema [schema options]
-  (walk* schema
-         (fn [schema _path options]
-           (let [registry (-> schema m/properties :registry not-empty)
-                 alpha-renames (into (or (::alpha-renames options) {})
-                                     (map (fn [k]
-                                            (let [genstr #(str (gensym (str (first (str/split % #"__")) "__")))]
-                                              [k
-                                               (cond
-                                                 (keyword? k) (keyword (namespace k)
-                                                                       (genstr (name k)))
-                                                 (symbol? k) (symbol (namespace k)
-                                                                     (genstr (name k)))
-                                                 (string? k) (genstr k)
-                                                 :else (throw (ex-info (str "Cannot alpha rename: " (pr-str k) " " (class k))
-                                                                       {:k k})))])))
-                                     (keys registry))
-                 options (c/assoc options ::alpha-renames alpha-renames)
-                 schema (cond-> schema
-                          registry (-> (m/-update-options c/assoc ::m/allow-invalid-refs true)
-                                       (m/-update-properties c/assoc :registry
-                                                             (into {}
-                                                                   (map (fn [[k s]]
-                                                                          [(alpha-renames k)
-                                                                           (alpha-rename-schema s options)]))
-                                                                   registry))))]
-             [schema options]))
-         (fn [schema _path _children {::keys [alpha-renames] :as _options}]
-           (m/-simplify
-             (if (and (satisfies? m/RefSchema schema)
-                      (alpha-renames (m/-ref schema)))
-               (m/schema [:ref (alpha-renames (m/-ref schema))]
-                         {::m/allow-invalid-refs true})
-               schema)))
-         (c/assoc options
-                  ::m/allow-invalid-refs true)))
+  (-> (walk* schema
+             (fn [schema _path options]
+               (let [registry (-> schema m/properties :registry not-empty)
+                     alpha-renames (into (or (::alpha-renames options) {})
+                                         (map (fn [k]
+                                                (let [genstr #(str (gensym (str (first (str/split % #"__")) "__")))]
+                                                  [k
+                                                   (cond
+                                                     (keyword? k) (keyword (namespace k)
+                                                                           (genstr (name k)))
+                                                     (symbol? k) (symbol (namespace k)
+                                                                         (genstr (name k)))
+                                                     (string? k) (genstr k)
+                                                     :else (throw (ex-info (str "Cannot alpha rename: " (pr-str k) " " (class k))
+                                                                           {:k k})))])))
+                                         (keys registry))
+                     options (c/assoc options ::alpha-renames alpha-renames)
+                     schema (cond-> schema
+                              registry (-> (m/-update-options c/assoc ::m/allow-invalid-refs true)
+                                           (m/-update-properties c/assoc :registry
+                                                                 (into {}
+                                                                       (map (fn [[k s]]
+                                                                              [(alpha-renames k)
+                                                                               (alpha-rename-schema s options)]))
+                                                                       registry))))]
+                 [schema options]))
+             (fn [schema _path _children {::keys [alpha-renames] :as _options}]
+               (m/-simplify
+                 (if (and (satisfies? m/RefSchema schema)
+                          (alpha-renames (m/-ref schema)))
+                   (m/schema [:ref (alpha-renames (m/-ref schema))]
+                             {::m/allow-invalid-refs true})
+                   schema)))
+             (c/assoc options
+                      ::m/allow-invalid-refs true))
+      m/form
+      ;; FIXME m/deref fails without this, ref seems to lose its meaning
+      (m/schema (c/assoc options ::m/allow-invalid-refs true))))
 
 (defn subst-schema
   "Substitute free variables in schema."

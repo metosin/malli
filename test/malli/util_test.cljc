@@ -1174,4 +1174,12 @@
                                          m/schema
                                          m/children
                                          first)
-                                     {}))))))
+                                     {})))))
+  ;; deref works
+  (is (= :int
+         (m/form
+           (m/deref-all
+             (mu/alpha-rename-schema [:schema {:registry {::foo :int}}
+                                      ::foo]
+                                     {})))))
+  )

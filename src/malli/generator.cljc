@@ -103,6 +103,7 @@
                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
           ::ping]
          {})))
+  ((requiring-resolve 'clojure.repl/pst) 100)
   [:schema
    {:registry {::ping__0 [:maybe [:tuple [:= "ping"] [:ref ::pong__1]]]
                ::pong__1 [:maybe [:tuple [:= "pong"] [:ref ::ping__0]]]}}
@@ -110,10 +111,7 @@
   ;=>
   [:maybe
    [:tuple [:= "ping"]
-    [:schema
-     {:registry {::ping__2 [:maybe [:tuple [:= "ping"] [:ref ::pong__3]]]
-                 ::pong__3 [:maybe [:tuple [:= "pong"] [:ref ::ping__0]]]}}
-     [:ref ::pong__3]]]]
+    [:ref ::pong__1]]]
   ;=>
   [:maybe
    [:tuple [:= "ping"]
@@ -121,29 +119,32 @@
      [:tuple [:= "pong"]
       [:ref ::ping__0]]]]]
 
-
-  [:schema
-   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-   ::ping]
-
   )
 
 (defn schema->container-schema
   "Return a schema with free variables for recursive refs."
   [schema options]
-  (mu/walk* (mu/alpha-rename-schema schema options)
-            (fn inner [schema path {::keys [subst seen-refs] :as options}]
-              (let [registry (-> schema m/properties :registry)
-                    ;; registry shadows refs
-                    seen-refs (reduce disj (or seen-refs #{}) (keys registry)) ]
-                ))
-            (fn [schema _path _children _options]
-              (-> schema
-                  m/-simplify))
-            (assoc options
-                   ::m/allow-invalid-refs true
-                   ::subst {})))
+  (let [scs (fn scs [schema options]
+              (mu/walk*
+                schema
+                (fn _inner [schema _path {::keys [seen-refs] :as options}]
+                  (prn schema seen-refs)
+                  (cond
+                    (and (satisfies? m/RefSchema schema)
+                         (not (seen-refs (m/-ref schema))))
+                    [(scs (m/deref schema) (update options :seen-refs conj (m/-ref schema)))
+                     options]
+
+                    :else [schema options]))
+                (fn _outer [schema _path _children _options]
+                  (-> schema
+                      m/-simplify))
+                options))]
+   (scs (mu/alpha-rename-schema schema options) 
+        (assoc options
+               ;; TODO consider refs already seen before this function was called
+               ::seen-refs #{}
+               ::m/allow-invalid-refs true))))
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))

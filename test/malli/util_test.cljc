@@ -1124,7 +1124,7 @@
 )
 
 
-(deftest alpha-rename-schema
+(deftest alpha-rename-schema-test
   (is (= [:schema
           {:registry {::foo__0 :int}}
           [:ref ::foo__0]]

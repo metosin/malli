@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
+
 ## 0.6.1 (2021-08-08)
 
 * add missing optional dependency to `mvxcvi/arrangement` to make pretty printing work

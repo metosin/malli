@@ -777,3 +777,23 @@
                                                        {}))))
       #_(is (= container-schema (mg/schema->container-schema schema
                                                              {}))))))
+
+(comment
+  ((requiring-resolve 'clojure.repl/pst) 100)
+  )
+
+(deftest schema->container-schema-test
+  ;;FIXME
+  (is (= [:maybe
+          [:tuple [:= "ping"]
+           [:maybe
+            [:tuple [:= "pong"]
+             [:ref ::ping]]]]]
+         (m/form
+           (mg/schema->container-schema
+             [:schema
+              {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                          ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
+              ::ping]
+             {}))))
+  )

@@ -91,19 +91,6 @@
             options))
 
 (comment
-  (= [:maybe
-      [:tuple [:= "ping"]
-       [:maybe
-        [:tuple [:= "pong"]
-         [:ref ::ping]]]]]
-     (m/form
-       (schema->container-schema
-         [:schema
-          {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                      ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-          ::ping]
-         {})))
-  ((requiring-resolve 'clojure.repl/pst) 100)
   [:schema
    {:registry {::ping__0 [:maybe [:tuple [:= "ping"] [:ref ::pong__1]]]
                ::pong__1 [:maybe [:tuple [:= "pong"] [:ref ::ping__0]]]}}
@@ -128,15 +115,18 @@
               (mu/walk*
                 schema
                 (fn _inner [schema _path {::keys [seen-refs] :as options}]
-                  (prn schema seen-refs)
+                  (prn "inner" schema seen-refs)
                   (cond
                     (and (satisfies? m/RefSchema schema)
+                         (m/type schema)
                          (not (seen-refs (m/-ref schema))))
-                    [(scs (m/deref schema) (update options :seen-refs conj (m/-ref schema)))
+                    [(scs (m/deref schema) (cond-> options
+                                             (m/-ref schema) (update ::seen-refs conj (m/-ref schema))))
                      options]
 
                     :else [schema options]))
                 (fn _outer [schema _path _children _options]
+                  (prn "outer" schema)
                   (-> schema
                       m/-simplify))
                 options))]
@@ -144,7 +134,7 @@
         (assoc options
                ;; TODO consider refs already seen before this function was called
                ::seen-refs #{}
-               ::m/allow-invalid-refs true))))
+               ::m/allow-invalid-refs false))))
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))

@@ -124,18 +124,7 @@
   [:schema
    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-   [:schema
-    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-    ::ping]]
-  ;=>
-  [:schema
-   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-               ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-   [:schema
-    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-    ::ping]]
+   ::ping]
 
   )
 

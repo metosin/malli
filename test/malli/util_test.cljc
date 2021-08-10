@@ -1182,4 +1182,15 @@
              (mu/alpha-rename-schema [:schema {:registry {::foo :int}}
                                       ::foo]
                                      {})))))
-  )
+  ;; deref works with free vars
+  (is (= []
+         (m/form
+           (m/deref-all
+             (mu/alpha-rename-schema (-> [:schema
+                                          {:registry {::bar :int}}
+                                          [:schema {:registry {::foo :int}}
+                                           [:tuple ::bar ::foo]]]
+                                         m/schema
+                                         m/children
+                                         first)
+                                     {}))))))

@@ -725,7 +725,51 @@
                                100)
                              (drop 75)))
                     :scalar-schema 'int?
-                    :container-schema [:tuple :boolean [:ref ::or]]}]]
+                    :container-schema [:tuple :boolean [:ref ::or]]}
+                 {:schema [:schema {:registry {::rec [:tuple int? [:vector {:max 2} [:ref ::rec]]]}} ::rec]
+                    #_(comment
+                        (->> (gen/sample
+                               (gen/recursive-gen
+                                 (fn [rec]
+                                   (gen/vector rec 0 2))
+                                 (gen/tuple gen/large-integer (gen/tuple)))
+                               100)
+                             (drop 75)))
+                  :scalar-schema [:tuple 'int? [:vector {:max 2} :never]]
+                  :container-schema [:vector {#_#_:min 1 :max 2} [:ref ::rec]]
+                  }
+                {:schema [:schema {:registry {::rec [:tuple int? [:set {:max 2} [:ref ::rec]]]}} ::rec]
+                    #_(comment
+                        (->> (gen/sample
+                               (gen/recursive-gen
+                                 (fn [rec]
+                                   (gen/fmap set (gen/vector-distinct rec {:max-elements 2 :max-tries 100})))
+                                 (gen/tuple gen/large-integer (gen/return #{})))
+                               100)
+                             (drop 75)))
+                 :scalar-schema [:tuple 'int? [:set {:max 2} :never]]
+                 :container-schema [:tuple 'int? [:set {:max 2} [:ref ::rec]]]}
+                {:schema [:schema {:registry {::multi
+                                              [:multi {:dispatch :type}
+                                               [:int [:map [:type [:= :int]] [:int int?]]]
+                                               [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]}}
+                          ::multi]
+                    #_(comment
+                        (->> (gen/sample
+                               (gen/recursive-gen
+                                 (fn [multi]
+                                   )
+                                 ()
+                                 )
+                               100)
+                             (drop 75)))
+                 :scalar-schema [:multi {:dispatch :type}
+                                 [:int [:map [:type [:= :int]] [:int 'int?]]]
+                                 [:multi [:map [:type [:= :multi]] [:multi {:optional true} :never]]]]
+                 ;;TODO
+                 :container-schema []
+}
+]]
     (doseq [{:keys [schema scalar-schema container-schema]} test-cases]
       (is (= scalar-schema (m/form
                              (mg/schema->scalar-schema schema

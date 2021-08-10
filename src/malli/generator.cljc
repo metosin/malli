@@ -71,7 +71,7 @@
 (defn schema->scalar-schema
   "Replace recursive aliases with :never and simplify."
   [schema options]
-  (mu/walk* schema
+  (mu/walk* schema ;; FIXME alpha renaming needed?
             (fn inner [schema path {::keys [seen-refs] :as options}]
               (cond
                 (and (satisfies? m/RefSchema schema)

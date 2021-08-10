@@ -98,8 +98,9 @@
 (defn alpha-rename-schema [schema options]
   (-> (walk* schema
              (fn [schema _path options]
+               (prn "pre" schema)
                (let [registry (-> schema m/properties :registry not-empty)
-                     alpha-renames (into (or (::alpha-renames options) {})
+                     alpha-renames (into (::alpha-renames options)
                                          (map (fn [k]
                                                 (let [genstr #(str (gensym (str (first (str/split % #"__")) "__")))]
                                                   [k
@@ -112,31 +113,40 @@
                                                      :else (throw (ex-info (str "Cannot alpha rename: " (pr-str k) " " (class k))
                                                                            {:k k})))])))
                                          (keys registry))
-                     options (c/assoc options ::alpha-renames alpha-renames)
+                     _ (assert (map? alpha-renames))
+                     options (c/assoc options
+                                      ::alpha-renames alpha-renames)
+                     new-registry (not-empty (into {}
+                                                   (map (fn [[k s]]
+                                                          (let [kr (alpha-renames k)]
+                                                            (assert kr (str "No rename for " k " in registry of " (m/form schema)
+                                                                            " " alpha-renames))
+                                                            [kr
+                                                             (alpha-rename-schema s options)])))
+                                                   registry))
                      schema (cond-> schema
-                              registry (-> (m/-update-options c/assoc ::m/allow-invalid-refs true)
-                                           (m/-update-properties c/assoc :registry
-                                                                 (into {}
-                                                                       (map (fn [[k s]]
-                                                                              [(alpha-renames k)
-                                                                               (alpha-rename-schema s options)]))
-                                                                       registry))))]
+                              registry (m/-update-properties c/assoc :registry new-registry))
+                     options (cond-> options
+                               new-registry (c/assoc ::new-registry new-registry))]
                  [schema options]))
-             (fn [schema _path _children {::keys [alpha-renames] :as _options}]
+             (fn [schema _path _children {::keys [alpha-renames new-registry] :as options}]
+               (prn "post" schema alpha-renames new-registry)
                (m/-simplify
-                 (if (and (satisfies? m/RefSchema schema)
-                          (alpha-renames (m/-ref schema)))
-                   (m/schema [:ref (alpha-renames (m/-ref schema))]
-                             {::m/allow-invalid-refs true})
-                   schema)))
+                 (cond
+                   (and (satisfies? m/RefSchema schema)
+                        ;; skip free variables
+                        (alpha-renames (m/-ref schema)))
+                   (do (assert (seq new-registry))
+                       (prn "substituting" (m/-ref schema) (alpha-renames (m/-ref schema)))
+                       (m/schema [:ref {:registry new-registry} (alpha-renames (m/-ref schema))]
+                                 ;; this is the critical part--it must correspond to the new scope
+                                 (-> schema
+                                     m/options
+                                     (c/assoc :registry new-registry))))
+
+                   :else schema)))
              (c/assoc options
-                      ::m/allow-invalid-refs true))
-      #_
-      m/form
-      ;; FIXME m/deref fails without this, ref seems to lose its meaning
-      ;; ...but this hack destroys resolution of free variables, so no-go
-      #_
-      (m/schema (c/assoc options ::m/allow-invalid-refs true))))
+                      ::alpha-renames {}))))
 
 (defn subst-schema
   "Substitute free variables in schema."

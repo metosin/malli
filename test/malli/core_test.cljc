@@ -2394,17 +2394,14 @@
 (deftest unreachable-test
   (is (false? (m/-unreachable? (m/schema [:or :nil :never]))))
   (is (true? (m/-unreachable? (m/schema [:and :nil :never]))))
-  (is (true? (m/-unreachable? (m/schema :never))))
-  )
+  (is (true? (m/-unreachable? (m/schema :never)))))
 
 (deftest simplify-test
-  ;; TODO remove dead branches
-  (is (= [:or :nil :never]
+  (is (= :nil
          (m/form
            (m/-simplify (m/schema [:or :nil :never])))))
   (is (= :never
          (m/form
            (m/-simplify (m/schema [:and :nil :never])))))
-
   (is (= :nil (m/form (m/-simplify (m/schema [:maybe :never])))))
   (is (= :never (m/form (m/-simplify (m/schema :never))))))

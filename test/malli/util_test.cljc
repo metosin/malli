@@ -1133,6 +1133,26 @@
              (mu/alpha-rename-schema [:schema {:registry {::foo :int}}
                                       ::foo]
                                      {})))))
+  ;; unreachable ::bar
+  (is (= [:schema
+          {:registry {::foo__0 :int}}
+          [:ref ::foo__0]]
+         (undo-gensyms
+           (m/form
+             (mu/alpha-rename-schema [:schema {:registry {::foo :int
+                                                          ::bar [:ref ::foo]}}
+                                      ::foo]
+                                     {})))))
+  ;;mutual recursion
+  (is (= [:schema {:registry {::foo__1 [:ref ::bar__0]
+                              ::bar__0 [:ref ::foo__1]}}
+          [:tuple [:ref ::foo__1] [:ref ::bar__0]]]
+         (undo-gensyms
+           (m/form
+             (mu/alpha-rename-schema [:schema {:registry {::foo [:ref ::bar]
+                                                          ::bar [:ref ::foo]}}
+                                      [:tuple ::foo [:ref ::bar]]]
+                                     {})))))
   (is (= [:schema {:registry
                    {::foo__1 :boolean
                     ::bar__0 [:ref ::foo__1]}}
@@ -1182,15 +1202,18 @@
              (mu/alpha-rename-schema [:schema {:registry {::foo :int}}
                                       ::foo]
                                      {})))))
+
   ;; deref works with free vars
-  (is (= []
-         (m/form
-           (m/deref-all
-             (mu/alpha-rename-schema (-> [:schema
-                                          {:registry {::bar :int}}
-                                          [:schema {:registry {::foo :int}}
-                                           [:tuple ::bar ::foo]]]
-                                         m/schema
-                                         m/children
-                                         first)
-                                     {}))))))
+  (is (= [[:schema {:registry {::foo__0 :int}}
+           [:tuple ::bar [:ref ::foo__0]]]
+          [:tuple ::bar [:ref ::foo__0]]]
+         (map (comp undo-gensyms m/form)
+              ((juxt identity m/deref-all)
+               (mu/alpha-rename-schema (-> [:schema
+                                            {:registry {::bar :int}}
+                                            [:schema {:registry {::foo :int}}
+                                             [:tuple ::bar ::foo]]]
+                                           m/schema
+                                           m/children
+                                           first)
+                                       {}))))))

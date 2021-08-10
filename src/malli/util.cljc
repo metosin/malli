@@ -1,6 +1,7 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in])
   (:require [clojure.core :as c]
+            [clojure.string :as str]
             [malli.core :as m]))
 
 (declare path->in)
@@ -100,7 +101,7 @@
            (let [registry (-> schema m/properties :registry not-empty)
                  alpha-renames (into (or (::alpha-renames options) {})
                                      (map (fn [k]
-                                            (let [genstr #(str (gensym (str % "__")))]
+                                            (let [genstr #(str (gensym (str (first (str/split % #"__")) "__")))]
                                               [k
                                                (cond
                                                  (keyword? k) (keyword (namespace k)
@@ -122,13 +123,12 @@
                                                                    registry))))]
              [schema options]))
          (fn [schema _path _children {::keys [alpha-renames] :as _options}]
-           (prn "post" schema (class schema) (satisfies? m/RefSchema schema))
            (m/-simplify
-             (cond-> schema 
-               (and (satisfies? m/RefSchema schema)
-                    (alpha-renames (m/-ref schema)))
-               (-> (m/-update-options c/assoc ::m/allow-invalid-refs true)
-                   (m/-set-children [(alpha-renames (m/-ref schema))])))))
+             (if (and (satisfies? m/RefSchema schema)
+                      (alpha-renames (m/-ref schema)))
+               (m/schema [:ref (alpha-renames (m/-ref schema))]
+                         {::m/allow-invalid-refs true})
+               schema)))
          (c/assoc options
                   ::m/allow-invalid-refs true)))
 

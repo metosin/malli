@@ -1,5 +1,7 @@
 (ns malli.util-test
-  (:require [clojure.test :refer [deftest testing is are]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest testing is are]]
+            [clojure.walk :as walk]
             [malli.impl.util :as miu]
             [malli.util :as mu]
             [malli.core :as m]
@@ -1060,3 +1062,78 @@
                                    [:tuple ::foo ::foo]])))
                             {::foo (m/schema :never)}
                             {})))))
+
+(defn undo-gensyms [schema]
+  (let [rewrite (atom {})
+        undo-kw (fn [v]
+                  (cond
+                    (and (qualified-keyword? v)
+                         (= (namespace ::just-to-grab-the-current-ns)
+                            (namespace v))
+                         (str/includes? (name v) "__"))
+                    (let [m (swap! rewrite (fn [m]
+                                             (cond-> m
+                                               (not (m v)) (assoc v (keyword (namespace v)
+                                                                             (str (first (str/split (name v) #"__"))
+                                                                                  "__"
+                                                                                  (count m)))))))] 
+                      (m v))
+                    :else v))
+        ;; make visiting order stable
+        schema (walk/postwalk
+                 (fn [v]
+                   (let [v (cond-> v
+                             ;; make sure something doesn't sneak in that prints
+                             ;; like a keyword but is actually a schema
+                             ;; TODO investigate what happens when this is removed
+                             ;; and fix it
+                             (satisfies? m/Schema v) m/form)]
+                     (cond
+                       (map? v) (into (sorted-map) v)
+                       :else v)))
+                 schema)
+        schema (walk/postwalk
+                 (fn [v]
+                   (cond
+                     (map? v) (into {} v)
+                     :else (undo-kw v)))
+                 schema)]
+    schema))
+
+(deftest alpha-rename-schema
+  (is (= [:schema
+          {:registry {::foo__0 :int}}
+          [:ref ::foo__0]]
+         (undo-gensyms
+           (m/form
+             (mu/alpha-rename-schema [:schema {:registry {::foo :int}}
+                                      ::foo]
+                                     {})))))
+  (is (= [:schema {:registry
+                   {::foo__1 :boolean
+                    ::bar__0 [:ref ::foo__1]}}
+          [:schema {:registry {::foo__2 :int}}
+           [:ref ::foo__2]]]
+         (undo-gensyms
+           (m/form
+             (mu/alpha-rename-schema [:schema
+                                      {:registry {::foo :boolean
+                                                  ::bar [:ref ::foo]}}
+                                      [:schema {:registry {::foo :int}}
+                                       ::foo]]
+                                     {})))))
+  (is (= [:schema {:registry {::foo__1 :boolean
+                              ::bar__0 [:ref ::foo__1]}}
+          [:tuple
+           [:ref ::foo__1]
+           [:schema {:registry {::foo__2 :int}}
+            [:ref ::foo__2]]]]
+         (undo-gensyms
+           (m/form
+             (mu/alpha-rename-schema [:schema {:registry {::foo :boolean
+                                                          ::bar [:ref ::foo]}}
+                                      [:tuple
+                                       ::foo
+                                       [:schema {:registry {::foo :int}}
+                                        ::foo]]]
+                                     {}))))))

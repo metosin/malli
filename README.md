@@ -1173,7 +1173,7 @@ Mutual recursion works too. Thanks to the `:schema` construct, many schemas coul
 ; => true
 ```
 
-Nested registries, last definition wins:
+Nested registries, the last definition wins:
 
 ```clj
 (m/validate
@@ -1683,9 +1683,9 @@ You can also build content-dependent schemas by using a callback function of `pr
 
 ## Schema Registry
 
-Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
+Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema AST, `Schema` or `IntoSchema` instance).
 
-Custom `Registry` can be passed in to all/most malli public apis via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
+Custom `Registry` can be passed into all/most malli public APIs via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
 
 ```clj
 ;; the default registry
@@ -1778,13 +1778,13 @@ See also [Recursive Schemas](#recursive-schemas).
 
 ### Changing the default registry
 
-Using custom registries via `:registry` option is a simple solution, but this needs to be done for all public api calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
+Using custom registries via the `:registry` option is a simple solution, but this needs to be done for all public API calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
 
 Malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
    * cljs: `:closure-defines {malli.registry/type "custom"}`
    * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
 
-It changes the default registry to empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enables DCE for all unused schema implementations.
+It changes the default registry to an empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enables DCE for all unused schema implementations.
 
 Malli supports multiple types of registries.
 
@@ -1834,7 +1834,7 @@ Using a custom registry atom:
 ; => true
 ```
 
-The mutable registry can also passed in as explicit option:
+The mutable registry can also be passed in as an explicit option:
 
 ```clj
 (def registry (mr/mutable-registry registry*))
@@ -2126,13 +2126,13 @@ Coercion:
 
 ## Motivation
 
-We are building dynamic multi-tenant systems where data-models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
+We are building dynamic multi-tenant systems where data models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from a database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
 
 Hasn't the problem been solved (many times) already?
 
-There is [Schema](https://github.com/plumatic/schema), which is awesome, proven and collaborative open source project, and we absolutely love it. We still use it in most of our projects. Sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
+There is [Schema](https://github.com/plumatic/schema), which is an awesome, proven and collaborative open-source project, and we absolutely love it. We still use it in most of our projects. The sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
 
-[Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is based on macros, it has a global registry and it doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [four years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still kinda hack and not fun to maintain.
+[Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is based on macros, it has a global registry and it doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [four years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still a kind of hack and not fun to maintain.
 
 So, we decided to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
 
@@ -2159,15 +2159,15 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Alpha
 
-Public api of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** effect public apis and **most likely** effect the library extenders, e.g. need to implement a new protocol method for custom schemas.
+The public API of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** affect public APIs and **most likely** affect the library extenders, e.g. need to implement a new protocol method for custom schemas.
 
-All changes (breaking or not) will be documented in the [CHANGELOG](CHANGELOG.md) and there will be migration guide and path if needed.
+All changes (breaking or not) will be documented in the [CHANGELOG](CHANGELOG.md) and there will be a migration guide and path if needed.
 
-The api layers and stability:
+The API layers and stability:
 
-* **public api**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. Most stable part of the library, should not change (much) in alpha
-* **extender api**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
-* **private api**: private vars and `malli.impl` namespaces, all bets are off.
+* **public API**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. The most stable part of the library, should not change (much) in alpha
+* **extender API**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
+* **private API**: private vars and `malli.impl` namespaces, all bets are off.
 
 ## Supported Java versions
 

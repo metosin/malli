@@ -58,8 +58,8 @@
 
 (defn lazy-registry [default-registry provider]
   (let [cache* (atom {})
-        registry* (promise)]
-    (deliver
+        registry* (atom default-registry)]
+    (reset!
       registry*
       (composite-registry
         default-registry
@@ -70,8 +70,7 @@
                 (when-let [schema (provider name @registry*)]
                   (swap! cache* assoc name schema)
                   schema)))
-          (-schemas [_] @cache*))))
-    @registry*))
+          (-schemas [_] @cache*))))))
 
 (defn schema
   "finds a schema from a registry"

@@ -98,7 +98,7 @@
 (defn alpha-rename-schema [schema options]
   (-> (walk* schema
              (fn [schema _path options]
-               (prn "pre" schema)
+               ;(prn "pre" schema)
                (let [registry (-> schema m/properties :registry not-empty)
                      alpha-renames (into (::alpha-renames options)
                                          (map (fn [k]
@@ -130,14 +130,14 @@
                                new-registry (c/assoc ::new-registry new-registry))]
                  [schema options]))
              (fn [schema _path _children {::keys [alpha-renames new-registry] :as options}]
-               (prn "post" schema alpha-renames new-registry)
+               ;(prn "post" schema alpha-renames new-registry)
                (m/-simplify
                  (cond
                    (and (satisfies? m/RefSchema schema)
                         ;; skip free variables
                         (alpha-renames (m/-ref schema)))
                    (do (assert (seq new-registry))
-                       (prn "substituting" (m/-ref schema) (alpha-renames (m/-ref schema)))
+                       ;(prn "substituting" (m/-ref schema) (alpha-renames (m/-ref schema)))
                        (m/schema [:ref {:registry new-registry} (alpha-renames (m/-ref schema))]
                                  ;; this is the critical part--it must correspond to the new scope
                                  (-> schema

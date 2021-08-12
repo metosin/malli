@@ -115,7 +115,7 @@
               (mu/walk*
                 schema
                 (fn _inner [schema _path {::keys [seen-refs] :as options}]
-                  (prn "inner" schema seen-refs)
+                  ;(prn "inner" schema seen-refs)
                   (cond
                     (and (satisfies? m/RefSchema schema)
                          (m/type schema)
@@ -128,7 +128,7 @@
 
                     :else [schema options]))
                 (fn _outer [schema _path _children _options]
-                  (prn "outer" schema)
+                  ;(prn "outer" schema)
                   (-> schema
                       m/-simplify))
                 options))]

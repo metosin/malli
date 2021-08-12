@@ -242,12 +242,13 @@
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (m/-fail! :test-chuck-not-available))))
 
+#_
 (defn -ref-gen [schema options]
   (let [gen* (delay (generator (m/deref-all schema) options))]
     (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
-#_
+
 (defn -ref-gen [schema options]
-  (let [ref-name (m/ref schema)]
+  (let [ref-name (m/-ref schema)]
     (assert ref-name)
     (or 
       ;; already seen this :ref, the generator is handy and we're done

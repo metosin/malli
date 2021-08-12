@@ -80,6 +80,7 @@
                   ;; FIXME does this handle ref shadowing correctly?
                   (if (contains? seen-refs (m/-ref schema))
                     [(m/schema :never) options]
+                    ;;FIXME should all these `inner` calls to be to schema->scalar-schema instead?
                     (inner (m/deref schema) path options)))
 
                 :else (let [dschema (m/deref schema)]
@@ -112,31 +113,39 @@
   "Return a schema with free variables for recursive refs."
   [schema options]
   (let [scs (fn scs [schema options]
-              (mu/walk*
-                schema
-                (fn _inner [schema _path {::keys [seen-refs] :as options}]
-                  ;(prn "inner" schema seen-refs)
-                  (cond
-                    (and (satisfies? m/RefSchema schema)
-                         (m/type schema)
-                         (not (seen-refs (m/-ref schema))))
-                    [;; FIXME if there are global variables in schema, we might deref
-                     ;; some non-alpha-renamed schemas from the outer scope
-                     (scs (m/deref schema) (cond-> options
-                                             (m/-ref schema) (update ::seen-refs conj (m/-ref schema))))
-                     options]
+              (prn "scs" schema (::seen-refs options))
+              (doto
+                (mu/walk*
+                  schema
+                  (fn [schema _path {::keys [seen-refs] :as options}]
+                    (cond
+                      (and (satisfies? m/RefSchema schema)
+                           (not (seen-refs (m/-ref schema))))
+                      (let [_ (prn "inner" schema (m/-ref schema) seen-refs (seen-refs (m/-ref schema)))
+                            options (cond-> options
+                                      (m/-ref schema) (update ::seen-refs conj (m/-ref schema)))
+                            dschema (m/deref schema)]
+                        (if (identical? dschema schema)
+                          [dschema options]
+                          [(scs dschema options)
+                           options]))
 
-                    :else [schema options]))
-                (fn _outer [schema _path _children _options]
-                  ;(prn "outer" schema)
-                  (-> schema
-                      m/-simplify))
-                options))]
-   (scs (mu/alpha-rename-schema schema options) 
-        (assoc options
-               ;; TODO consider refs already seen before this function was called
-               ::seen-refs #{}
-               ::m/allow-invalid-refs false))))
+                      :else [schema options]))
+                  #_
+                  (fn [schema _path _children options]
+                    (prn "outer" schema (::seen-refs options))
+                    (-> schema
+                        m/-simplify))
+                  options)
+                (prn "scs result")))]
+   (-> schema
+       ;FIXME
+       ;(mu/alpha-rename-schema options)
+       (scs
+         (assoc options
+                ;; do not expand free variables that have already been identified as recursive
+                ::seen-refs (set (keys (::rec-gen options)))
+                ::m/allow-invalid-refs false)))))
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))

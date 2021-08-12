@@ -1195,6 +1195,8 @@
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
+          ;; TODO [:maybe [:maybe s]] => [:maybe s]
+          ;; TODO [:maybe :nil] => :nil
           (-simplify [this] (if (-unreachable? schema)
                               (malli.core/schema :nil) ;; same as simplifying [:or :nil :never]
                               this))

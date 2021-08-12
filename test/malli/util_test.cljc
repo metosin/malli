@@ -1082,9 +1082,8 @@
                  schema)]
     schema))
 
-;;FIXME
-#_
 (deftest subst-schema-test
+  #_;;FIXME
   (is (= [:schema
           {:registry {::foo__0 [:maybe [:ref ::foo__0]]}}
           [:tuple [:ref ::foo__0] [:ref ::foo__0]]]
@@ -1106,6 +1105,7 @@
                             {::foo (m/schema :never)}
                             {}))))
   ;;capture avoidance
+  #_;;FIXME
   (is (= [:schema
           {:registry {::foo__0 [:maybe [:ref ::foo__0]]}}
           [:tuple ::foo [:ref ::foo__0]]]

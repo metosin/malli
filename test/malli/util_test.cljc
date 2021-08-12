@@ -981,11 +981,7 @@
          (is (true?  ((miu/-some-pred tt) nil)))))))
 
 (deftest schema->fvs-test
-  #_ ;;FIXME
   (is (= #{} (mu/schema->fvs (m/schema :int))))
-  #_ ;;FIXME
-  (is (= #{} (mu/schema->fvs (m/schema ::foo))))
-  #_ ;;FIXME
   (is (= #{}
          (mu/schema->fvs
            (m/schema [:schema
@@ -1010,8 +1006,7 @@
                             {:registry {::foo [:schema
                                                {:registry {::bar :int}}
                                                ::bar]}}
-                            ::foo])))))
-  )
+                            ::foo]))))))
 
 (deftest walk*-test
   (is (= :boolean

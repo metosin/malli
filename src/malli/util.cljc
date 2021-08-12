@@ -75,10 +75,9 @@
                                         (rec! s registry-rhs-ref-scope))
                                       registry)
                               new-ref-scope (into (::ref-scope options) (keys registry))
-                              is-var-reference? (satisfies? m/RefSchema schema)
-                              is-not-in-scope? (not (contains? new-ref-scope (m/-ref schema)))
-                              _ (when (and is-var-reference?
-                                           is-not-in-scope?)
+                              _ (when (and (satisfies? m/RefSchema schema)
+                                           (m/-ref schema)
+                                           (not (contains? new-ref-scope (m/-ref schema))))
                                   (swap! fvs-atom conj (m/-ref schema)))]
                           [schema (c/assoc options ::ref-scope new-ref-scope)]))
                       {::ref-scope ref-scope})

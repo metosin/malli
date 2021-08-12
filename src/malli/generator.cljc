@@ -245,7 +245,7 @@
       (get-in options [::rec-gen ref-name])
       ;; otherwise, continue to unroll but save the generator for this ref for later
       (let [container-schema (schema->container-schema schema options)]
-        (if-not (contains? (mu/schema->fvs container-schema) ref-name)
+        (if-not (contains? (mu/schema-fvs container-schema) ref-name)
           ;; this ref is not recursive, does not need special handling
           (generator (m/deref schema) options)
           (gen/recursive-gen

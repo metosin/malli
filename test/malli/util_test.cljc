@@ -980,27 +980,27 @@
          (is (false? ((miu/-some-pred ff) nil)))
          (is (true?  ((miu/-some-pred tt) nil)))))))
 
-(deftest schema->fvs-test
-  (is (= #{} (mu/schema->fvs (m/schema :int))))
+(deftest schema-fvs-test
+  (is (= #{} (mu/schema-fvs (m/schema :int))))
   (is (= #{}
-         (mu/schema->fvs
+         (mu/schema-fvs
            (m/schema [:schema
                       {:registry {::foo :int}}
                       ::foo]))))
   (is (= [#{::foo}]
-         (mapv mu/schema->fvs
+         (mapv mu/schema-fvs
                (m/children
                  (m/schema [:schema
                             {:registry {::foo :int}}
                             ::foo])))))
   (is (= [#{::foo}]
-         (mapv mu/schema->fvs
+         (mapv mu/schema-fvs
                (m/children
                  (m/schema [:schema
                             {:registry {::foo :int}}
                             [:ref ::foo]])))))
   (is (= [#{::foo}]
-         (mapv mu/schema->fvs
+         (mapv mu/schema-fvs
                (m/children
                  (m/schema [:schema
                             {:registry {::foo [:schema
@@ -1037,8 +1037,7 @@
                          :boolean (m/schema :double)
                          :nil (m/schema :int)
                          schema))
-                     {}))))
-)
+                     {})))))
 
 (defn undo-gensyms [schema]
   (let [rewrite (atom {})

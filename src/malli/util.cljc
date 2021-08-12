@@ -62,7 +62,7 @@
 
 ;; free variables
 
-(defn schema->fvs 
+(defn schema-fvs 
   "Returns the free variables in the schema."
   [schema]
   (let [fvs-atom (atom #{})

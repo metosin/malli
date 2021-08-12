@@ -113,31 +113,21 @@
   "Return a schema with free variables for recursive refs."
   [schema options]
   (let [scs (fn scs [schema options]
-              (prn "scs" schema (::seen-refs options))
-              (doto
-                (mu/walk*
-                  schema
-                  (fn [schema _path {::keys [seen-refs] :as options}]
-                    (cond
-                      (and (satisfies? m/RefSchema schema)
-                           (not (seen-refs (m/-ref schema))))
-                      (let [_ (prn "inner" schema (m/-ref schema) seen-refs (seen-refs (m/-ref schema)))
-                            options (cond-> options
-                                      (m/-ref schema) (update ::seen-refs conj (m/-ref schema)))
-                            dschema (m/deref schema)]
-                        (if (identical? dschema schema)
-                          [dschema options]
-                          [(scs dschema options)
-                           options]))
+              (mu/walk*
+                schema
+                (fn [schema _path {::keys [seen-refs] :as options}]
+                  (cond
+                    (and (satisfies? m/RefSchema schema)
+                         (not (seen-refs (m/-ref schema))))
+                    (let [options (cond-> options
+                                    (m/-ref schema) (update ::seen-refs conj (m/-ref schema)))
+                          dschema (m/deref schema)]
+                      [(cond-> dschema
+                         (not (identical? dschema schema)) (scs options))
+                       options])
 
-                      :else [schema options]))
-                  #_
-                  (fn [schema _path _children options]
-                    (prn "outer" schema (::seen-refs options))
-                    (-> schema
-                        m/-simplify))
-                  options)
-                (prn "scs result")))]
+                    :else [schema options]))
+                options))]
    (-> schema
        ;FIXME
        ;(mu/alpha-rename-schema options)
@@ -254,7 +244,7 @@
       ;; already seen this :ref, the generator is handy and we're done
       (get-in options [::rec-gen ref-name])
       ;; otherwise, continue to unroll but save the generator for this ref for later
-      (let [container-schema (schema->container-schema schema)]
+      (let [container-schema (schema->container-schema schema options)]
         (if-not (contains? (mu/schema->fvs container-schema) ref-name)
           (generator (m/deref schema) options)
           (gen/recursive-gen
@@ -263,7 +253,7 @@
                          (-> options
                              (assoc-in [::rec-gen ref-name] ref-gen)
                              (update ::seen-refs (fnil conj #{}) ref-name))))
-            (generator (schema->scalar-schema schema) options)))))))
+            (generator (schema->scalar-schema schema options) options)))))))
 
 (defn -=>-gen [schema options]
   (let [output-generator (generator (:output (m/-function-info schema)) options)]

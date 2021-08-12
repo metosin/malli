@@ -1082,53 +1082,6 @@
                  schema)]
     schema))
 
-(deftest subst-schema-test
-  #_;;FIXME
-  (is (= [:schema
-          {:registry {::foo__0 [:maybe [:ref ::foo__0]]}}
-          [:tuple [:ref ::foo__0] [:ref ::foo__0]]]
-         (undo-gensyms
-           (m/form
-             (mu/subst-schema [:schema
-                               {:registry {::foo [:maybe [:ref ::foo]]}}
-                               [:tuple ::foo ::foo]]
-                              {::foo (m/schema :never)}
-                              {})))))
-  (is (= :never
-         (m/form
-           (mu/subst-schema (first
-                              (m/children
-                                (m/schema
-                                  [:schema
-                                   {:registry {::foo [:maybe [:ref ::foo]]}}
-                                   [:tuple ::foo ::foo]])))
-                            {::foo (m/schema :never)}
-                            {}))))
-  ;;capture avoidance
-  #_;;FIXME
-  (is (= [:schema
-          {:registry {::foo__0 [:maybe [:ref ::foo__0]]}}
-          [:tuple ::foo [:ref ::foo__0]]]
-         (undo-gensyms
-           (m/form
-             (mu/subst-schema (first
-                                (m/children
-                                  (m/schema
-                                    [:schema
-                                     {:registry {::bar :int}}
-                                     [:schema
-                                      {:registry {::foo [:maybe [:ref ::foo]]}}
-                                      [:tuple ::bar ::foo]]])))
-                              {::bar (first
-                                       (m/children
-                                         (m/schema
-                                           [:schema
-                                            {:registry {::foo [:maybe [:ref ::foo]]}}
-                                            ::foo])))}
-                              {})))))
-)
-
-
 ;;FIXME
 #_
 (deftest alpha-rename-schema-test

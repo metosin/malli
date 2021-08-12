@@ -66,23 +66,24 @@
   "Returns the free variables in the schema."
   [schema]
   (let [fvs-atom (atom #{})
-        rec! (fn rec! [schema ref-scope]
+        rec! (fn rec! [schema options]
                (walk* schema
-                      (fn [schema _path options]
-                        (let [registry (-> schema m/properties :registry)
-                              registry-rhs-ref-scope (reduce disj (::ref-scope options) (keys registry))
-                              _ (run! (fn [[k s]]
-                                        (rec! s registry-rhs-ref-scope))
-                                      registry)
-                              new-ref-scope (into (::ref-scope options) (keys registry))
-                              _ (when (and (satisfies? m/RefSchema schema)
+                      (fn [schema _path {::keys [ref-scope] :as options}]
+                        (assert (set? ref-scope))
+                        (prn "fvs inner" schema ref-scope)
+                        (let [_ (when (and (satisfies? m/RefSchema schema)
                                            (m/-ref schema)
-                                           (not (contains? new-ref-scope (m/-ref schema))))
-                                  (swap! fvs-atom conj (m/-ref schema)))]
-                          [schema (c/assoc options ::ref-scope new-ref-scope)]))
-                      {::ref-scope ref-scope})
+                                           (not (ref-scope (m/-ref schema))))
+                                  (swap! fvs-atom conj (m/-ref schema)))
+                              registry (-> schema m/properties :registry)
+                              ref-scope (into ref-scope (keys registry))
+                              _ (run! #(rec! % ref-scope)
+                                      (vals registry))]
+                          [schema (c/assoc options ::ref-scope ref-scope)]))
+                      options)
                nil)]
-    (rec! schema #{})
+    (rec! schema {::ref-scope #{}
+                  ::m/walk-entry-vals true})
     @fvs-atom))
 
 (comment

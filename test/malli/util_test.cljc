@@ -987,7 +987,6 @@
            (m/schema [:schema
                       {:registry {::foo :int}}
                       ::foo]))))
-  ;;FIXME
   (is (= [[:ref ::foo]
           #{::foo}]
          ((juxt m/form mu/schema-fvs)
@@ -997,34 +996,41 @@
                        [:ref ::foo]])))))
   ;;FIXME
   (is (= [[:schema
-           {:registry {::foo [:schema
-                              {:registry {::bar :int}}
-                              ::bar]}}
-           ::foo]
+           {:registry {::bar :int}}
+           [:tuple [:ref ::foo] ::bar]]
           #{::foo}]
          ((juxt m/form mu/schema-fvs)
           (m/deref
-            (m/schema [:schema
-                       {:registry {::foo :int}}
-                       [:schema
-                        {:registry {::foo [:schema
-                                           {:registry {::bar :int}}
-                                           ::bar]}}
-                        ::foo]])))))
-  ;;FIXME
+            (m/deref
+              (m/schema [:schema
+                         {:registry {::foo [:schema
+                                            {:registry {::bar :int}}
+                                            [:tuple [:ref ::foo] ::bar]]}}
+                         ::foo]))))))
+  (is (= [[:map [:multi [:ref ::multi]]]
+          #{::multi}]
+         ((juxt m/form mu/schema-fvs)
+          (m/deref
+            (m/deref
+              (m/schema
+                [:schema
+                 {:registry {::multi
+                             [:map [:multi [:ref ::multi]]]}}
+                 ::multi]))))))
   (is (= [[:multi {:dispatch :type}
            [:int [:map [:type [:= :int]] [:int 'int?]]]
            [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]
           #{::multi}]
-         ((comp (juxt m/form mu/schema-fvs) m/deref)
+         ((juxt m/form mu/schema-fvs)
           (m/deref
-            (m/schema
-              [:schema
-               {:registry {::multi
-                           [:multi {:dispatch :type}
-                            [:int [:map [:type [:= :int]] [:int 'int?]]]
-                            [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]}}
-               ::multi]))))))
+            (m/deref
+              (m/schema
+                [:schema
+                 {:registry {::multi
+                             [:multi {:dispatch :type}
+                              [:int [:map [:type [:= :int]] [:int 'int?]]]
+                              [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]}}
+                 ::multi])))))))
 
 (deftest walk*-test
   (is (= :boolean

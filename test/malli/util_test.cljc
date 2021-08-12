@@ -980,11 +980,12 @@
          (is (false? ((miu/-some-pred ff) nil)))
          (is (true?  ((miu/-some-pred tt) nil)))))))
 
-;;FIXME
-#_
 (deftest schema->fvs-test
+  #_ ;;FIXME
   (is (= #{} (mu/schema->fvs (m/schema :int))))
+  #_ ;;FIXME
   (is (= #{} (mu/schema->fvs (m/schema ::foo))))
+  #_ ;;FIXME
   (is (= #{}
          (mu/schema->fvs
            (m/schema [:schema

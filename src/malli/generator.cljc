@@ -127,6 +127,8 @@
                        options])
 
                     :else [schema options]))
+                (fn [schema _path _children options]
+                  (m/-simplify schema))
                 options))]
    (-> schema
        ;FIXME

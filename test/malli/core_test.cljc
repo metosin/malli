@@ -2411,4 +2411,11 @@
        [:maybe :int] [:maybe [:maybe :int]]
        :never :never
        [:set {:max 0} :any] [:set :never]
-       :never [:set {:min 1} :never]))
+       :never [:set {:min 1} :never]
+       :map [:map [:rec {:optional true} :never]]
+       [:map [:req :int]] [:map [:req :int] [:rec {:optional true} :never]]
+       [:map {:closed true}] [:map {:closed true} [:rec {:optional true} :never]]
+       [:map {:closed true} [:req :int]] [:map {:closed true} [:req :int] [:rec {:optional true} :never]]
+       :never [:map [:req :never]]
+       :never [:map {:closed true} [:req :never]]
+       ))

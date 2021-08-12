@@ -791,12 +791,17 @@
                (-outer walker this path (-inner-entries walker path entries options) options)))
            (-simplify [this] (if (-unreachable? this)
                                (schema :never)
-                               ;;TODO can remove unreachable optional keys
-                               this))
-           (-unreachable? [this] (and closed
-                                      false
-                                      #_ ;;TODO only unreachable if a required key is unreachable
-                                      (boolean (some -unreachable? children))))
+                               (-> this
+                                   (-set-children (into []
+                                                        (remove (fn [[_ {:keys [optional]} schema]]
+                                                                  (and optional
+                                                                       (-unreachable? schema))))
+                                                        children)))))
+           (-unreachable? [this] (boolean
+                                   (some (fn [[_ {:keys [optional]} schema]]
+                                           (and (not optional)
+                                                (-unreachable? schema)))
+                                         children)))
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] children)

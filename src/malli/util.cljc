@@ -70,7 +70,6 @@
                (walk* schema
                       (fn [schema _path {::keys [ref-scope] :as options}]
                         (assert (set? ref-scope))
-                        (prn "fvs inner" schema ref-scope)
                         (let [_ (when (and (satisfies? m/RefSchema schema)
                                            (m/-ref schema)
                                            (not (ref-scope (m/-ref schema))))

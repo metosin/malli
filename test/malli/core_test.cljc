@@ -2396,12 +2396,19 @@
   (is (true? (m/-unreachable? (m/schema [:and :nil :never]))))
   (is (true? (m/-unreachable? (m/schema :never)))))
 
+(defn do-simp [frm]
+  (m/form
+    (m/-simplify (m/schema frm))))
+
 (deftest simplify-test
-  (is (= :nil
-         (m/form
-           (m/-simplify (m/schema [:or :nil :never])))))
-  (is (= :never
-         (m/form
-           (m/-simplify (m/schema [:and :nil :never])))))
-  (is (= :nil (m/form (m/-simplify (m/schema [:maybe :never])))))
-  (is (= :never (m/form (m/-simplify (m/schema :never))))))
+  (are [simp s] (= simp (do-simp s))
+       :any :any
+       :nil :nil
+       :nil [:or :nil :never]
+       :never [:and :nil :never]
+       :nil [:maybe :never]
+       [:maybe :never] [:maybe [:maybe :never]]
+       [:maybe :int] [:maybe [:maybe :int]]
+       :never :never
+       [:set {:max 0} :any] [:set :never]
+       :never [:set {:min 1} :never]))

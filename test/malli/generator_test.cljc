@@ -896,5 +896,4 @@
                    {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                ::pong [:maybe [:tuple [:= "pong"] [:ref ::flub] [:ref ::ping]]]}}
                    ::ping]]))
-             {::mg/rec-gen {::flub (gen/return nil)}}))))
-  )
+             {::mg/rec-gen {::flub (gen/return nil)}})))))

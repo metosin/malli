@@ -955,7 +955,14 @@
                 (-walk [this walker path options]
                   (if (-accept walker this path options)
                     (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
-                (-simplify [this] this)
+                (-simplify [this]
+                  (if (-unreachable? schema)
+                    (if (some-> min pos?)
+                      (malli.core/schema :never)
+                      (-> this
+                          (-set-children [(malli.core/schema :any)])
+                          (-update-properties assoc :max 0)))
+                    this))
                 (-unreachable? [this] false)
                 (-properties [_] properties)
                 (-options [_] options)
@@ -1195,11 +1202,12 @@
           (-walk [this walker path options]
             (if (-accept walker this path options)
               (-outer walker this path (-inner-indexed walker path children options) options)))
-          ;; TODO [:maybe [:maybe s]] => [:maybe s]
-          ;; TODO [:maybe :nil] => :nil
-          (-simplify [this] (if (-unreachable? schema)
-                              (malli.core/schema :nil) ;; same as simplifying [:or :nil :never]
-                              this))
+          (-simplify [this]
+            (if (-unreachable? schema)
+              (malli.core/schema :nil) ;; same as simplifying [:or :nil :never]
+              (if (= :maybe (type schema))
+                schema ;; [:maybe [:maybe s]] => [:maybe s]
+                this)))
           (-unreachable? [this] false)
           (-properties [_] properties)
           (-options [_] options)

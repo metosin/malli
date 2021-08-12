@@ -685,7 +685,7 @@
                                   gen/large-integer)
                                 100)
                               (drop 75)))
-                     :scalar-schema [:or :int [:vector :never]]
+                     :scalar-schema [:or :int [:vector {:max 0} :any]]
                      :container-schema 
                      ;;FIXME
                      #_[:vector [:ref ::data]]
@@ -709,7 +709,7 @@
                                       (gen/fmap list*)))
                                100)
                              (drop 75)))
-                    :scalar-schema [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} :never]]
+                    :scalar-schema [:cat [:= ::a] [:vector {:max 0} :any]]
                     :container-schema 
                     ;;FIXME
                     #_[:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref :A]]]
@@ -733,7 +733,7 @@
                     :container-schema 
                     ;;FIXME
                     #_[:ref ::rec]
-                    [:maybe [:maybe [:ref ::rec]]]}
+                    [:maybe [:ref ::rec]]}
                    {:schema [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
                     #_(comment
                         (->> (gen/sample
@@ -745,7 +745,7 @@
                                  (gen/return {}))
                                100)
                              (drop 75)))
-                     :scalar-schema [:map [:rec {:optional true} :never]]
+                     :scalar-schema :map
                      :container-schema [:map [:rec [:ref {:optional true} ::rec]]]}
                   {:schema [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
                                                 ::or [:or int? ::tuple]}} ::or]
@@ -772,10 +772,10 @@
                                  (gen/tuple gen/large-integer (gen/tuple)))
                                100)
                              (drop 75)))
-                  :scalar-schema [:tuple 'int? [:vector {:max 2} :never]]
+                  :scalar-schema [:tuple 'int? [:vector {:max 0} :any]]
                   :container-schema 
                   ;;FIXME
-                  #_[:vector {#_#_:min 1 :max 2} [:ref ::rec]]
+                  #_[:vector {:max 2} [:ref ::rec]]
                   [:tuple 'int? [:vector {:max 2} [:tuple 'int? [:vector {:max 2} [:ref ::rec]]]]]
                   }
                 {:schema [:schema {:registry {::rec [:tuple int? [:set {:max 2} [:ref ::rec]]]}} ::rec]
@@ -787,7 +787,7 @@
                                  (gen/tuple gen/large-integer (gen/return #{})))
                                100)
                              (drop 75)))
-                 :scalar-schema [:tuple 'int? [:set {:max 2} :never]]
+                 :scalar-schema [:tuple 'int? [:set {:max 0} :any]]
                  :container-schema
                  ;;FIXME
                  #_[:tuple 'int? [:set {:max 2} [:ref ::rec]]]
@@ -810,7 +810,7 @@
                              (drop 75)))
                  :scalar-schema [:multi {:dispatch :type}
                                  [:int [:map [:type [:= :int]] [:int 'int?]]]
-                                 [:multi [:map [:type [:= :multi]] [:multi {:optional true} :never]]]]
+                                 [:multi [:map [:type [:= :multi]]]]]
                  ;;TODO
                  :container-schema []
 }

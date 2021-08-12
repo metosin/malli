@@ -966,7 +966,7 @@
                       (malli.core/schema :never)
                       (-> this
                           (-set-children [(malli.core/schema :any)])
-                          (-update-properties assoc :max 0)))
+                          (-update-properties (constantly {:max 0}))))
                     this))
                 (-unreachable? [this] false)
                 (-properties [_] properties)

@@ -2418,4 +2418,6 @@
        [:map {:closed true} [:req :int]] [:map {:closed true} [:req :int] [:rec {:optional true} :never]]
        :never [:map [:req :never]]
        :never [:map {:closed true} [:req :never]]
+       [:vector {:max 0} :any] [:vector :never]
+       [:vector {:max 0} :any] [:vector {:gen/max 2, :gen/min 2} :never]
        ))

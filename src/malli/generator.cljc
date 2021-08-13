@@ -12,62 +12,6 @@
 
 (declare generator generate -create)
 
-(comment
-  (= :nil (m/form (schema->scalar-schema :nil {})))
-  (= :nil (m/form (schema->scalar-schema [:schema
-                                          {:registry {::foo [:maybe [:ref ::foo]]}}
-                                          ::foo]
-                                         {})))
-  (= [:maybe [:tuple [:= "ping"] :nil]]
-     (m/form
-       (m/deref
-         (schema->scalar-schema
-           [:schema
-            {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                        ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-            ::ping]
-           {}))))
-  [:schema
-   {:registry {::foo [:maybe [:ref ::foo]]}}
-   ::foo]
-  ;=>
-  [:schema
-   {:registry {::foo [:maybe :never]}}
-   ::foo]
-  ;=>
-  [:schema
-   {:registry {::foo :nil}}
-   ::foo]
-  ;=>
-  :nil
-
-  [:schema
-   {:registry {::foo [:maybe [:ref ::bar]]
-               ::bar [:maybe [:ref ::foo]]}}
-   [:tuple ::foo ::bar]]
-  ;=>
-  [:schema
-   {:registry {::foo [:maybe [:maybe [:ref ::foo]]]
-               ::bar [:maybe [:maybe [:ref ::bar]]]}}
-   [:tuple ::foo ::bar]]
-  ;=>
-  [:schema
-   {:registry {::foo [:maybe [:maybe :never]]
-               ::bar [:maybe [:maybe :never]]}}
-   [:tuple ::foo ::bar]]
-  ;=>
-  [:schema
-   {:registry {::foo [:maybe :never]
-               ::bar [:maybe :never]}}
-   [:tuple ::foo ::bar]]
-  ;=>
-  [:schema
-   {:registry {::foo :nil
-               ::bar :nil}}
-   [:tuple ::foo ::bar]]
-  ;=>
-  [:tuple :nil :nil]
-  )
 (defn schema->scalar-schema
   "Replace recursive aliases with :never and simplify."
   [schema options]
@@ -90,24 +34,6 @@
             (fn [schema _path _children options]
               (m/-simplify schema))
             options))
-
-(comment
-  [:schema
-   {:registry {::ping__0 [:maybe [:tuple [:= "ping"] [:ref ::pong__1]]]
-               ::pong__1 [:maybe [:tuple [:= "pong"] [:ref ::ping__0]]]}}
-   ::ping__0]
-  ;=>
-  [:maybe
-   [:tuple [:= "ping"]
-    [:ref ::pong__1]]]
-  ;=>
-  [:maybe
-   [:tuple [:= "ping"]
-    [:maybe
-     [:tuple [:= "pong"]
-      [:ref ::ping__0]]]]]
-
-  )
 
 (defn schema->container-schema
   "Return a schema with free variables for recursive refs."
@@ -225,11 +151,6 @@
        (let [re (or (first (m/children schema options)) (m/form schema options))]
          (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
        (m/-fail! :test-chuck-not-available))))
-
-#_
-(defn -ref-gen [schema options]
-  (let [gen* (delay (generator (m/deref-all schema) options))]
-    (gen/->Generator (fn [rnd size] ((:gen @gen*) rnd size)))))
 
 (defn -ref-gen [schema options]
   (let [ref-name (m/-ref schema)]

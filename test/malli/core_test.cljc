@@ -2420,4 +2420,5 @@
        :never [:map {:closed true} [:req :never]]
        [:vector {:max 0} :any] [:vector :never]
        [:vector {:max 0} :any] [:vector {:gen/max 2, :gen/min 2} :never]
+       [:multi ]
        ))

@@ -788,6 +788,9 @@
                (-outer walker this path (-inner-entries walker path entries options) options)))
            (-simplify [this] (if (-unreachable? this)
                                (schema :never)
+                               ;;FIXME this is unsound. we need to make the map closed if any
+                               ;; child keys are removed to make sure they are not generated
+                               ;; with bad values
                                (-> this
                                    (-set-children (into []
                                                         (remove (fn [[_ {:keys [optional]} schema]]

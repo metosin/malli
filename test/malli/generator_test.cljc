@@ -629,13 +629,7 @@
                      [:tuple [:= "ping"]
                       [:tuple [:= "pong"]
                        [:ref ::ping]]]
-                     [:maybe
-                      [:tuple
-                       [:= "ping"]
-                       [:maybe
-                        [:tuple
-                         [:= "pong"]
-                         [:maybe [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] [:ref ::ping]]]]]]]]]}
+                     [:maybe [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] [:ref ::ping]]]]]}
                     {:schema [:schema
                               {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                           ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
@@ -661,13 +655,7 @@
                      #_[:tuple [:= "ping"]
                         [:tuple [:= "pong"]
                          [:ref ::ping]]]
-                     [:tuple
-                      [:= "ping"]
-                      [:maybe
-                       [:tuple
-                        [:= "pong"]
-                        [:maybe
-                         [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] [:maybe [:ref ::ping]]]]]]]]]}
+                     [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] [:maybe [:ref ::ping]]]]]}
                     {:schema [:schema
                               {:registry {::data    [:or
                                                      ::int
@@ -689,7 +677,7 @@
                      :container-schema 
                      ;;FIXME
                      #_[:vector [:ref ::data]]
-                     [:or :int [:vector [:or :int [:vector [:ref ::data]]]]]}
+                     [:or :int [:vector [:ref ::data]]]}
 
                     {:schema [:schema {:registry {::A
                                                   [:cat
@@ -711,15 +699,7 @@
                              (drop 75)))
                     :scalar-schema [:cat [:= ::a] [:vector {:max 0} :any]]
                     :container-schema 
-                    ;;FIXME
-                    #_[:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref :A]]]
-                    [:cat
-                     [:= ::a]
-                     [:vector
-                      {:gen/max 2, :gen/min 2}
-                      [:cat
-                       [:= ::a]
-                       [:vector {:gen/max 2, :gen/min 2} [:ref ::A]]]]]}
+                    [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref ::A]]]}
                    {:schema [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
                     #_(comment
                         (->> (gen/sample
@@ -745,8 +725,12 @@
                                  (gen/return {}))
                                100)
                              (drop 75)))
+                     ;;FIXME unsound! this is wrong, schema must disallow :rec key!
                      :scalar-schema :map
-                     :container-schema [:map [:rec [:ref {:optional true} ::rec]]]}
+                     :container-schema 
+                     #_ ;;FIXME
+                     [:map [:rec [:ref ::rec]]]
+                     [:map [:rec {:optional true} [:ref ::rec]]]}
                   {:schema [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
                                                 ::or [:or int? ::tuple]}} ::or]
                     #_(comment
@@ -761,8 +745,8 @@
                     :scalar-schema 'int?
                     :container-schema 
                     ;;FIXME
-                    #_[:tuple :boolean [:ref ::or]]
-                    '[:or int? [:tuple boolean? [:or int? [:tuple boolean? [:ref ::or]]]]]}
+                    #_'[:tuple boolean? [:ref ::or]]
+                    '[:or int? [:tuple boolean? [:ref ::or]]]}
                  {:schema [:schema {:registry {::rec [:tuple int? [:vector {:max 2} [:ref ::rec]]]}} ::rec]
                     #_(comment
                         (->> (gen/sample
@@ -776,8 +760,7 @@
                   :container-schema 
                   ;;FIXME
                   #_[:vector {:max 2} [:ref ::rec]]
-                  [:tuple 'int? [:vector {:max 2} [:tuple 'int? [:vector {:max 2} [:ref ::rec]]]]]
-                  }
+                  [:tuple 'int? [:vector {:max 2} [:ref ::rec]]]}
                 {:schema [:schema {:registry {::rec [:tuple int? [:set {:max 2} [:ref ::rec]]]}} ::rec]
                     #_(comment
                         (->> (gen/sample
@@ -789,10 +772,7 @@
                              (drop 75)))
                  :scalar-schema [:tuple 'int? [:set {:max 0} :any]]
                  :container-schema
-                 ;;FIXME
-                 #_[:tuple 'int? [:set {:max 2} [:ref ::rec]]]
-                 [:tuple 'int? [:set {:max 2} [:tuple 'int? [:set {:max 2} [:ref ::rec]]]]]
-                 }
+                 [:tuple 'int? [:set {:max 2} [:ref ::rec]]]}
                 {:schema [:schema {:registry {::multi
                                               [:multi {:dispatch :type}
                                                [:int [:map [:type [:= :int]] [:int int?]]]
@@ -811,8 +791,15 @@
                  :scalar-schema [:multi {:dispatch :type}
                                  [:int [:map [:type [:= :int]] [:int 'int?]]]
                                  [:multi [:map [:type [:= :multi]]]]]
-                 ;;TODO
-                 :container-schema []
+                 :container-schema 
+                 #_ ;;FIXME
+                 [:multi
+                  {:dispatch :type}
+                  [:multi [:map [:type [:= :multi]] [:multi [:ref :malli.generator-test/multi]]]]]
+                 '[:multi
+                   {:dispatch :type}
+                   [:int [:map [:type [:= :int]] [:int int?]]]
+                   [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref :malli.generator-test/multi]]]]]
 }
 ]]
     (doseq [{:keys [schema scalar-schema container-schema]} test-cases]
@@ -835,6 +822,17 @@
                   ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
       ::ping]))
   )
+
+;;FIXME !!!
+#_
+(deftest schema->scalar-schema-test
+  ;;FIXME unsound!!! currently returns :map, but we need to preserve
+  ;; that :rec is disallowed...
+  (is (= [:map [:rec :never]]
+         (m/form
+           (mg/schema->scalar-schema
+             [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
+             {})))))
 
 (deftest schema->container-schema-test
   (is (= [:maybe

@@ -112,7 +112,7 @@
 (defn schema->container-schema
   "Return a schema with free variables for recursive refs."
   [schema options]
-  (prn "schema->container-schema" schema)
+  ;(prn "schema->container-schema" schema)
   (let [scs (fn scs [schema options]
               (mu/walk*
                 schema
@@ -247,7 +247,7 @@
       ;; otherwise, continue to unroll but save the generator for this ref for later
       (let [container-schema (schema->container-schema schema options)
             fvs (mu/schema-fvs container-schema)]
-        (prn container-schema fvs)
+        ;(prn container-schema fvs)
         (if-not (contains? fvs ref-name)
           ;; this ref is not recursive, does not need special handling
           (generator (m/deref schema) options)

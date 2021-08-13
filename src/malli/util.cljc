@@ -76,7 +76,7 @@
                                   (swap! fvs-atom conj (m/-ref schema)))
                               registry (-> schema m/properties :registry)
                               ref-scope (into ref-scope (keys registry))
-                              _ (run! #(rec! % ref-scope)
+                              _ (run! #(rec! % options)
                                       (vals registry))]
                           [schema (c/assoc options ::ref-scope ref-scope)]))
                       options)

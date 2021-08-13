@@ -994,7 +994,6 @@
             (m/schema [:schema
                        {:registry {::foo :int}}
                        [:ref ::foo]])))))
-  ;;FIXME
   (is (= [[:schema
            {:registry {::bar :int}}
            [:tuple [:ref ::foo] ::bar]]

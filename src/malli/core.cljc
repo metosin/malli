@@ -644,7 +644,7 @@
                               ; [:not :any] => :never
                               (-unreachable? this) (schema :never)
                               ; [:not :never] => :any
-                              (= :never (-type schema)) (schema :any)
+                              (-unreachable? schema) (schema :any)
                               :else this))
           (-unreachable? [this] (= :any (-type schema)))
           (-properties [_] properties)

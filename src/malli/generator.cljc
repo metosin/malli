@@ -112,31 +112,24 @@
 (defn schema->container-schema
   "Return a schema with free variables for recursive refs."
   [schema options]
-  ;(prn "schema->container-schema" schema)
-  (let [scs (fn scs [schema options]
-              (mu/walk*
-                schema
-                (fn inner [schema path {::keys [seen-refs] :as options}]
-                  (cond
-                    (and (satisfies? m/RefSchema schema)
-                         (not (seen-refs (m/-ref schema))))
-                    (let [options (cond-> options
-                                    (m/-ref schema) (update ::seen-refs conj (m/-ref schema)))]
-                      (inner (m/deref schema) path options))
+  (mu/walk*
+    schema
+    (fn inner [schema path {::keys [seen-refs] :as options}]
+      (cond
+        (and (satisfies? m/RefSchema schema)
+             (not (seen-refs (m/-ref schema))))
+        (let [options (cond-> options
+                        (m/-ref schema) (update ::seen-refs conj (m/-ref schema)))]
+          (inner (m/deref schema) path options))
 
-                    :else [schema options]))
-                (fn [schema _path _children options]
-                  (m/-simplify schema))
-                options))]
-   (-> schema
-       ;FIXME
-       ;(mu/alpha-rename-schema options)
-       (scs
-         (assoc options
-                ;; do not expand free variables that have already been identified as recursive
-                ::seen-refs (set (keys (::rec-gen options)))
-                ::m/walk-entry-vals true
-                ::m/allow-invalid-refs false)))))
+        :else [schema options]))
+    (fn [schema _path _children options]
+      (m/-simplify schema))
+    (assoc options
+           ;; do not expand free variables that have already been identified as recursive
+           ::seen-refs (set (keys (::rec-gen options)))
+           ::m/walk-entry-vals true
+           ::m/allow-invalid-refs false)))
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))

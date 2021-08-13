@@ -655,7 +655,7 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value))))))))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -val-schema
   ([schema properties]

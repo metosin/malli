@@ -1238,6 +1238,8 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
+       ;;TODO we probably want to assert children are non-empty like :or,
+       ;;     since :multi is also a disjunction.
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
              {:keys [children entries forms]} (-parse-entries children opts' options)
@@ -1279,16 +1281,16 @@
            (-walk [this walker path options]
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
-           
-           ;; hmm perhaps [:multi] is a good candidate for bottom
-           (-simplify [this] (let [new-children (into []
-                                                      (remove (fn [[_ _ schema]]
-                                                                (-unreachable? schema)))
-                                                      children)]
+           (-simplify [this] (if-some [new-children (not-empty
+                                                  (into []
+                                                        (remove (fn [[_ _ schema]]
+                                                                  (-unreachable? schema)))
+                                                        children))]
                                (cond-> this
                                  (not= (count children) 
                                        (count new-children))
-                                 (-set-children new-children))))
+                                 (-set-children new-children))
+                               (schema :never)))
            (-unreachable? [this]
              (every? (fn [[_ _ schema]]
                        (-unreachable? schema))

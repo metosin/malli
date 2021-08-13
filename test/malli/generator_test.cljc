@@ -782,24 +782,8 @@
                                   (mg/schema->container-schema schema
                                                                {}))))))))
 
-(comment
-  ((requiring-resolve 'clojure.repl/pst) 100)
-  ((juxt m/-ref m/deref (comp (juxt identity class) m/-ref m/deref)
-         m/deref-all
-         mg/schema->container-schema)
-   (m/schema
-     [:schema
-      {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                  ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
-      ::ping]))
-  )
-
-;;FIXME !!!
-#_
 (deftest schema->scalar-schema-test
-  ;;FIXME unsound!!! currently returns :map, but we need to preserve
-  ;; that :rec is disallowed...
-  (is (= [:map [:rec :never]]
+  (is (= [:map {:closed true}]
          (m/form
            (mg/schema->scalar-schema
              [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]

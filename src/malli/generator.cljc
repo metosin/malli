@@ -24,7 +24,6 @@
                   ;; FIXME does this handle ref shadowing correctly?
                   (if (contains? seen-refs (m/-ref schema))
                     [(m/schema :never) options]
-                    ;;FIXME should all these `inner` calls to be to schema->scalar-schema instead?
                     (inner (m/deref schema) path options)))
 
                 :else (let [dschema (m/deref schema)]
@@ -39,7 +38,7 @@
   "Return a schema with free variables for recursive refs."
   [schema options]
   (mu/walk*
-    schema
+    schema ;; FIXME alpha renaming needed?
     (fn inner [schema path {::keys [seen-refs] :as options}]
       (cond
         (and (satisfies? m/RefSchema schema)

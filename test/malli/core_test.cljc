@@ -2425,6 +2425,6 @@
        [:vector {:max 0} :any] [:vector :never]
        [:vector {:max 0} :any] [:vector {:gen/max 2, :gen/min 2} :never]
 
-       [:multi {:dispatch :type}] [:multi {:dispatch :type} [:int :never]]
+       :never [:multi {:dispatch :type} [:int :never]]
        [:multi {:dispatch :type} [:bool :boolean]] [:multi {:dispatch :type} [:bool :boolean] [:int :never]]
        ))

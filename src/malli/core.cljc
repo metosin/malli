@@ -614,51 +614,48 @@
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value)))))))
 
-(defn -not-schema
-  ([schema properties]
-   (-into-schema (-not-schema) properties [schema] (-options schema)))
-  ([]
-   ^{:type ::into-schema}
-   (reify IntoSchema
-     (-type [_] :not)
-     (-type-properties [_])
-     (-properties-schema [_ _])
-     (-children-schema [_ _])
-     (-into-schema [parent properties children options]
-       (-check-children! :not properties children {:min 1 :max 1})
-       (let [[schema :as children] (map #(schema % options) children)
-             validator (complement (-validator schema))
-             form (-create-form :not properties (map -form children))]
-         ^{:type ::schema}
-         (reify
-           Schema
-           (-validator [_] validator)
-           (-explainer [this path]
-             (fn explain [x in acc]
-               (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc)))
-           (-parser [_] (fn [x] (if (validator x) x ::invalid)))
-           (-unparser [this] (-parser this))
-           (-transformer [this transformer method options]
-             (-parent-children-transformer this children transformer method options))
-           (-walk [this walker path options]
-             (if (-accept walker this path options)
-               (-outer walker this path (-inner-indexed walker path children options) options)))
-           (-simplify [this] (cond
-                               ; [:not :any] => :never
-                               (-unreachable? this) (schema :never)
-                               ; [:not :never] => :any
-                               (= :never (-type schema)) (schema :any)
-                               :else this))
-           (-unreachable? [this] (= :any (-type schema)))
-           (-properties [_] properties)
-           (-options [_] options)
-           (-children [_] children)
-           (-parent [_] parent)
-           (-form [_] form)
-           LensSchema
-           (-keep [_])
-           (-get [_ key default] (get children key default))
-           (-set [this key value] (-set-assoc-children this key value))))))))
+(defn -not-schema []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-type [_] :not)
+    (-type-properties [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent properties children options]
+      (-check-children! :not properties children {:min 1 :max 1})
+      (let [[schema :as children] (map #(schema % options) children)
+            validator (complement (-validator schema))
+            form (-create-form :not properties (map -form children))]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-validator [_] validator)
+          (-explainer [this path]
+            (fn explain [x in acc]
+              (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc)))
+          (-parser [_] (fn [x] (if (validator x) x ::invalid)))
+          (-unparser [this] (-parser this))
+          (-transformer [this transformer method options]
+            (-parent-children-transformer this children transformer method options))
+          (-walk [this walker path options]
+            (if (-accept walker this path options)
+              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-simplify [this] (cond
+                              ; [:not :any] => :never
+                              (-unreachable? this) (schema :never)
+                              ; [:not :never] => :any
+                              (= :never (-type schema)) (schema :any)
+                              :else this))
+          (-unreachable? [this] (= :any (-type schema)))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] parent)
+          (-form [_] form)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (get children key default))
+          (-set [this key value] (-set-assoc-children this key value))))))))
 
 (defn -val-schema
   ([schema properties]

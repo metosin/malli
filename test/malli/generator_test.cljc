@@ -837,23 +837,11 @@
   )
 
 (deftest schema->container-schema-test
-  ;;FIXME should be:
-  ;; [:maybe
-  ;;  [:tuple
-  ;;   [:= "ping"]
-  ;;   [:maybe
-  ;;    [:tuple [:= "pong"] [:ref :malli.generator-test/ping]]]]]
   (is (= [:maybe
           [:tuple
            [:= "ping"]
            [:maybe
-            [:tuple
-             [:= "pong"]
-             [:maybe
-              [:tuple
-               [:= "ping"]
-               [:maybe
-                [:tuple [:= "pong"] [:ref :malli.generator-test/ping]]]]]]]]]
+            [:tuple [:= "pong"] [:ref :malli.generator-test/ping]]]]]
          (m/form
            (mg/schema->container-schema
              [:schema
@@ -862,15 +850,6 @@
               ::ping]
              {}))))
   ;;ensure recursive free variables are preserved so recursive generators can be added
-  ;; FIXME should be:
-  ;; [:maybe
-  ;;  [:tuple
-  ;;   [:= "ping"]
-  ;;   [:maybe
-  ;;    [:tuple
-  ;;     [:= "pong"]
-  ;;     [:ref :malli.generator-test/flub]
-  ;;     [:ref :malli.generator-test/ping]]]]]
   (is (= [:maybe
           [:tuple
            [:= "ping"]
@@ -878,22 +857,22 @@
             [:tuple
              [:= "pong"]
              [:ref :malli.generator-test/flub]
-             [:maybe
-              [:tuple
-               [:= "ping"]
-               [:maybe
-                [:tuple
-                 [:= "pong"]
-                 [:ref :malli.generator-test/flub]
-                 [:ref :malli.generator-test/ping]]]]]]]]]
+             [:ref :malli.generator-test/ping]]]]]
          (m/form
            (mg/schema->container-schema
-             (first
-               (m/children
-                 [:schema
-                  {:registry {::flub :int}}
-                  [:schema
-                   {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
-                               ::pong [:maybe [:tuple [:= "pong"] [:ref ::flub] [:ref ::ping]]]}}
-                   ::ping]]))
-             {::mg/rec-gen {::flub (gen/return nil)}})))))
+             (m/deref
+               [:schema
+                {:registry {::flub :int}}
+                [:schema
+                 {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
+                             ::pong [:maybe [:tuple [:= "pong"] [:ref ::flub] [:ref ::ping]]]}}
+                 ::ping]])
+             {::mg/rec-gen {::flub (gen/return nil)}}))))
+  (is (= [:map [:rec {:optional true} [:ref ::rec]]]
+         (m/form
+           (mg/schema->container-schema
+             [:schema {:registry
+                       {::rec [:map 
+                               [:rec {:optional true} [:ref ::rec]]]}}
+              ::rec]
+             {})))))

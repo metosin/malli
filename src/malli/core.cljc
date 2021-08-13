@@ -1280,8 +1280,19 @@
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
            
-           (-simplify [this] this) ;;TODO
-           (-unreachable? [this] false) ;;TODO
+           ;; hmm perhaps [:multi] is a good candidate for bottom
+           (-simplify [this] (let [new-children (into []
+                                                      (remove (fn [[_ _ schema]]
+                                                                (-unreachable? schema)))
+                                                      children)]
+                               (cond-> this
+                                 (not= (count children) 
+                                       (count new-children))
+                                 (-set-children new-children))))
+           (-unreachable? [this]
+             (every? (fn [[_ _ schema]]
+                       (-unreachable? schema))
+                     children))
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] children)

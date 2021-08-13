@@ -608,21 +608,19 @@
                               {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                           ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                               ::ping]
-                     #_(comment
-                         (gen/sample
-                           (gen/recursive-gen
-                             (fn [ping]
-                               ;; container
-                               (gen/tuple (gen/return "ping")
-                                          ;; Note: scalar gen has nilable case
-                                          (gen/tuple (gen/return "pong")
-                                                     ping)))
-                             ;; scalar
-                             (gen/one-of
-                               [(gen/return nil)
-                                (gen/tuple (gen/return "ping")
-                                           (gen/return nil))]))
-                           30))
+                     :generator 
+                     (gen/recursive-gen
+                       (fn [ping]
+                         ;; container
+                         (gen/tuple (gen/return "ping")
+                                    ;; Note: scalar gen has nilable case
+                                    (gen/tuple (gen/return "pong")
+                                               ping)))
+                       ;; scalar
+                       (gen/one-of
+                         [(gen/return nil)
+                          (gen/tuple (gen/return "ping")
+                                     (gen/return nil))]))
                      :scalar-schema [:maybe [:tuple [:= "ping"] :nil]]
                      :container-schema 
                      #_ ;;FIXME
@@ -634,21 +632,19 @@
                               {:registry {::ping [:tuple [:= "ping"] [:maybe [:ref ::pong]]]
                                           ::pong [:tuple [:= "pong"] [:maybe [:ref ::ping]]]}}
                               ::ping]
-                     #_(comment
-                         (gen/sample
-                           (gen/recursive-gen
-                             (fn [ping]
-                               ;; container
-                               (gen/tuple (gen/return "ping")
-                                          (gen/tuple (gen/return "pong")
-                                                     ping)))
-                             ;; scalar
-                             (gen/tuple (gen/return "ping")
-                                        (gen/one-of
-                                          [(gen/return nil)
-                                           (gen/tuple (gen/return "pong")
-                                                      (gen/return nil))])))
-                           100))
+                     :generator
+                     (gen/recursive-gen
+                       (fn [ping]
+                         ;; container
+                         (gen/tuple (gen/return "ping")
+                                    (gen/tuple (gen/return "pong")
+                                               ping)))
+                       ;; scalar
+                       (gen/tuple (gen/return "ping")
+                                  (gen/one-of
+                                    [(gen/return nil)
+                                     (gen/tuple (gen/return "pong")
+                                                (gen/return nil))])))
                      :scalar-schema [:tuple [:= "ping"] [:maybe [:tuple [:= "pong"] :nil]]]
                      :container-schema 
                      ;;FIXME
@@ -664,15 +660,12 @@
                                           ::vector  [:vector
                                                      [:ref ::data]]}}
                               ::data]
-                     #_(comment
-                         (->> (gen/sample
-                                (gen/recursive-gen
-                                  (fn [data]
-                                    (gen/vector
-                                      data))
-                                  gen/large-integer)
-                                100)
-                              (drop 75)))
+                     :generator
+                     (gen/recursive-gen
+                       (fn [data]
+                         (gen/vector
+                           data))
+                       gen/large-integer)
                      :scalar-schema [:or :int [:vector {:max 0} :any]]
                      :container-schema 
                      ;;FIXME
@@ -684,68 +677,51 @@
                                                    [:= ::a]
                                                    [:vector {:gen/min 2, :gen/max 2} [:ref ::A]]]}}
                               ::A]
-                    #_(comment
-                        (->> (gen/sample
-                               (gen/recursive-gen
-                                 (fn [A]
-                                   (->> (gen/tuple (gen/return ::a)
-                                                   (gen/vector A 2 2))
-                                        (gen/fmap list*)))
-                                 (->> (gen/tuple (gen/return ::a)
-                                                 ;; [:vector :never]
-                                                 (gen/tuple))
-                                      (gen/fmap list*)))
-                               100)
-                             (drop 75)))
-                    :scalar-schema [:cat [:= ::a] [:vector {:max 0} :any]]
-                    :container-schema 
-                    [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref ::A]]]}
+                     :generator (gen/recursive-gen
+                                  (fn [A]
+                                    (->> (gen/tuple (gen/return ::a)
+                                                    (gen/vector A 2 2))
+                                         (gen/fmap list*)))
+                                  (->> (gen/tuple (gen/return ::a)
+                                                  ;; [:vector :never]
+                                                  (gen/tuple))
+                                       (gen/fmap list*)))
+                     :scalar-schema [:cat [:= ::a] [:vector {:max 0} :any]]
+                     :container-schema 
+                     [:cat [:= ::a] [:vector {:gen/min 2 :gen/max 2} [:ref ::A]]]}
                    {:schema [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
-                    #_(comment
-                        (->> (gen/sample
-                               (gen/recursive-gen
-                                 (fn [rec]
-                                   rec)
+                    :generator (gen/recursive-gen
+                                 (fn [rec] rec)
                                  (gen/return nil))
-                               100)
-                             (drop 75)))
                     :scalar-schema :nil
                     :container-schema 
                     ;;FIXME
                     #_[:ref ::rec]
                     [:maybe [:ref ::rec]]}
                    {:schema [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
-                    #_(comment
-                        (->> (gen/sample
-                               (gen/recursive-gen
+                    :generator (gen/recursive-gen
                                  (fn [rec]
                                    (gen/fmap (fn [rec]
                                                {:rec rec})
                                              rec))
                                  (gen/return {}))
-                               100)
-                             (drop 75)))
-                     :scalar-schema [:map {:closed true}]
-                     :container-schema 
-                     #_ ;;FIXME
-                     [:map [:rec [:ref ::rec]]]
-                     [:map [:rec {:optional true} [:ref ::rec]]]}
+                    :scalar-schema [:map {:closed true}]
+                    :container-schema 
+                    #_ ;;FIXME
+                    [:map [:rec [:ref ::rec]]]
+                    [:map [:rec {:optional true} [:ref ::rec]]]}
                   {:schema [:schema {:registry {::tuple [:tuple boolean? [:ref ::or]]
                                                 ::or [:or int? ::tuple]}} ::or]
-                    #_(comment
-                        (->> (gen/sample
-                               (gen/recursive-gen
-                                 (fn [OR]
-                                   (gen/tuple gen/boolean
-                                              OR))
-                                 gen/large-integer)
-                               100)
-                             (drop 75)))
-                    :scalar-schema 'int?
-                    :container-schema 
-                    ;;FIXME
-                    #_'[:tuple boolean? [:ref ::or]]
-                    '[:or int? [:tuple boolean? [:ref ::or]]]}
+                   :generator (gen/recursive-gen
+                                (fn [OR]
+                                  (gen/tuple gen/boolean
+                                             OR))
+                                gen/large-integer)
+                   :scalar-schema 'int?
+                   :container-schema 
+                   ;;FIXME
+                   #_'[:tuple boolean? [:ref ::or]]
+                   '[:or int? [:tuple boolean? [:ref ::or]]]}
                  {:schema [:schema {:registry {::rec [:tuple int? [:vector {:max 2} [:ref ::rec]]]}} ::rec]
                     #_(comment
                         (->> (gen/sample
@@ -761,14 +737,10 @@
                   #_[:vector {:max 2} [:ref ::rec]]
                   [:tuple 'int? [:vector {:max 2} [:ref ::rec]]]}
                 {:schema [:schema {:registry {::rec [:tuple int? [:set {:max 2} [:ref ::rec]]]}} ::rec]
-                    #_(comment
-                        (->> (gen/sample
-                               (gen/recursive-gen
-                                 (fn [rec]
-                                   (gen/fmap set (gen/vector-distinct rec {:max-elements 2 :max-tries 100})))
-                                 (gen/tuple gen/large-integer (gen/return #{})))
-                               100)
-                             (drop 75)))
+                 :generator (gen/recursive-gen
+                              (fn [rec]
+                                (gen/fmap set (gen/vector-distinct rec {:max-elements 2 :max-tries 100})))
+                              (gen/tuple gen/large-integer (gen/return #{})))
                  :scalar-schema [:tuple 'int? [:set {:max 0} :any]]
                  :container-schema
                  [:tuple 'int? [:set {:max 2} [:ref ::rec]]]}

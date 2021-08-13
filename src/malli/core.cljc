@@ -1282,10 +1282,10 @@
              (if (-accept walker this path options)
                (-outer walker this path (-inner-entries walker path entries options) options)))
            (-simplify [this] (if-some [new-children (not-empty
-                                                  (into []
-                                                        (remove (fn [[_ _ schema]]
-                                                                  (-unreachable? schema)))
-                                                        children))]
+                                                      (into []
+                                                            (remove (fn [[_ _ schema]]
+                                                                      (-unreachable? schema)))
+                                                            children))]
                                (cond-> this
                                  (not= (count children) 
                                        (count new-children))

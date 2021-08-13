@@ -8,6 +8,36 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
+(comment
+  ;; test sizing
+  (dotimes [size-pow 7]
+    (time
+      (prn
+        (str "10^" size-pow)
+        (into (sorted-map)
+              (frequencies
+                (map
+                  (comp count flatten)
+                  (mg/sample
+                    [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+                     ::cons]
+                    {:size (Math/pow 10 size-pow)})))))))
+  ; (out) "10^0" {3 1}
+  ; (out) "Elapsed time: 2.030981 msecs"
+  ; (out) "10^1" {0 6, 2 3, 3 1}
+  ; (out) "Elapsed time: 1.525037 msecs"
+  ; (out) "10^2" {0 58, 2 28, 3 10, 4 4}
+  ; (out) "Elapsed time: 3.935027 msecs"
+  ; (out) "10^3" {0 497, 2 275, 3 138, 4 70, 5 17, 6 3}
+  ; (out) "Elapsed time: 28.227256 msecs"
+  ; (out) "10^4" {0 4968, 2 2789, 3 1338, 4 636, 5 218, 6 40, 7 9, 8 2}
+  ; (out) "Elapsed time: 288.117389 msecs"
+  ; (out) "10^5" {0 50219, 2 27130, 3 13152, 4 6214, 5 2484, 6 658, 7 121, 8 19, 9 3}
+  ; (out) "Elapsed time: 2909.440828 msecs"
+  ; (out) "10^6" {0 500465, 2 272651, 3 129733, 4 62264, 5 25107, 6 7724, 7 1759, 8 267, 9 29, 10 1}
+  ; (out) "Elapsed time: 28400.642903 msecs"
+  )
+
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
           ;; cljs doesn't have a regex generator :(

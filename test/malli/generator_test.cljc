@@ -725,8 +725,7 @@
                                  (gen/return {}))
                                100)
                              (drop 75)))
-                     ;;FIXME unsound! this is wrong, schema must disallow :rec key!
-                     :scalar-schema :map
+                     :scalar-schema [:map {:closed true}]
                      :container-schema 
                      #_ ;;FIXME
                      [:map [:rec [:ref ::rec]]]
@@ -790,7 +789,7 @@
                              (drop 75)))
                  :scalar-schema [:multi {:dispatch :type}
                                  [:int [:map [:type [:= :int]] [:int 'int?]]]
-                                 [:multi [:map [:type [:= :multi]]]]]
+                                 [:multi [:map {:closed true} [:type [:= :multi]]]]]
                  :container-schema 
                  #_ ;;FIXME
                  [:multi

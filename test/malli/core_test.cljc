@@ -2412,13 +2412,17 @@
        :never :never
        [:set {:max 0} :any] [:set :never]
        :never [:set {:min 1} :never]
-       :map [:map [:rec {:optional true} :never]]
-       [:map [:req :int]] [:map [:req :int] [:rec {:optional true} :never]]
+       :map :map
+       [:map {:closed true}] [:map [:rec {:optional true} :never]]
+       [:map {:closed true} [:req :int]] [:map [:req :int] [:rec {:optional true} :never]]
        [:map {:closed true}] [:map {:closed true} [:rec {:optional true} :never]]
+       [:map {:closed true} [:req :int]] [:map [:req :int] [:rec {:optional true} :never]]
        [:map {:closed true} [:req :int]] [:map {:closed true} [:req :int] [:rec {:optional true} :never]]
        :never [:map [:req :never]]
+       :never [:map [:req :never] [:opt {:optional true} :any]]
        :never [:map {:closed true} [:req :never]]
+       :never [:map {:closed true} [:req :never] [:opt {:optional true} :any]]
        [:vector {:max 0} :any] [:vector :never]
        [:vector {:max 0} :any] [:vector {:gen/max 2, :gen/min 2} :never]
-       [:multi ]
+       ;[:multi ]
        ))

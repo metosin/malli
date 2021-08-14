@@ -103,6 +103,7 @@
                                  (and min max) (str "should be between " min " and " max " characters")
                                  min (str "should be at least " min " characters")
                                  max (str "should be at most " max " characters"))))}}
+   :uuid {:error/message {:en "should be a uuid"}}
    :> {:error/fn {:en (fn [{:keys [schema value]} _]
                         (if (number? value)
                           (str "should be larger than " (first (m/children schema)))

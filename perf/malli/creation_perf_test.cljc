@@ -2,15 +2,14 @@
   (:require [criterium.core :as cc]
             [clj-async-profiler.core :as prof]
             [malli.core :as m]
-            [malli.util :as mu])
-  (:import (java.util.concurrent.atomic AtomicReference AtomicLong)))
+            [malli.util :as mu]))
 
 (defmacro profile [& body]
   `(let [start# (System/currentTimeMillis)]
      (dotimes [_# 100000] ~@body)
      (let [ms# (- (System/currentTimeMillis) start#)
            times# (int (/ 1000000000 ms#))]
-       (printf "invoking %s times\n" times#)
+       (print "invoking" times# "times")
        (time (prof/profile (dotimes [_# times#] ~@body))))))
 
 (comment

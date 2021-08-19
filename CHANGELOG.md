@@ -18,6 +18,7 @@ Malli is in [alpha](README.md#alpha).
 
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
 * fixed arity error in `m/function-schema`
+* add localized error messages for all type-schemas
 
 ## 0.6.1 (2021-08-08)
 

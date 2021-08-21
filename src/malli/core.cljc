@@ -375,7 +375,11 @@
       (-into-schema [parent properties children options]
         (if (fn? ?props)
           (-into-schema (-simple-schema (?props properties children)) properties children options)
-          (let [{:keys [type pred property-pred min max], :or {min 0, max 0}} ?props]
+          (let [type (if ?props (?props :type))
+                pred (if ?props (?props :pred))
+                property-pred (if ?props (?props :property-pred))
+                min (if ?props (?props :min 0) 0)
+                max (if ?props (?props :max 0) 0)]
             (reset! props* ?props)
             (-check-children! type properties children {:min min, :max max})
             (let [pvalidator (if property-pred (property-pred properties))

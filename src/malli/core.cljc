@@ -426,7 +426,11 @@
 
 (defn -and-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :and)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -439,6 +443,9 @@
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (let [validators (distinct (map -validator children))]
@@ -466,7 +473,11 @@
 
 (defn -or-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :or)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -479,6 +490,9 @@
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (let [validators (distinct (map -validator children))]
@@ -527,7 +541,11 @@
 
 (defn -orn-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :orn)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -538,6 +556,9 @@
             form (-create-form :orn properties forms)]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) children))]
@@ -600,7 +621,11 @@
 
 (defn -not-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :not)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -612,6 +637,9 @@
             form (-create-form :not properties (map -form children))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_] validator)
           (-explainer [this path]
@@ -639,7 +667,11 @@
    (-into-schema (-val-schema) properties [schema] (-options schema)))
   ([]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify
+     Schemas
+     (-into-schema? [_] true)
+     (-schema? [_] false)
+     IntoSchema
      (-type [_] ::val)
      (-type-properties [_])
      (-properties-schema [_ _])
@@ -649,7 +681,11 @@
        (let [[schema :as children] (map #(schema % options) children)
              form (-create-form ::val properties (map -form children))]
          ^{:type ::schema}
-         (reify Schema
+         (reify
+           Schemas
+           (-into-schema? [_] false)
+           (-schema? [_] true)
+           Schema
            (-validator [_] (-validator schema))
            (-explainer [_ path] (-explainer schema path))
            (-parser [_] (-parser schema))
@@ -679,7 +715,11 @@
    (-map-schema {:naked-keys true}))
   ([opts] ;; :naked-keys
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify
+     Schemas
+     (-into-schema? [_] true)
+     (-schema? [_] false)
+     IntoSchema
      (-type [_] :map)
      (-type-properties [_])
      (-properties-schema [_ _])
@@ -707,6 +747,9 @@
                                 (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
+           Schemas
+           (-into-schema? [_] false)
+           (-schema? [_] true)
            Schema
            (-validator [_]
              (let [validators (cond-> (mapv
@@ -775,7 +818,11 @@
 
 (defn -map-of-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :map-of)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -800,6 +847,9 @@
                                    ::invalid))))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (let [key-valid? (-validator key-schema)
@@ -855,7 +905,11 @@
 (defn -collection-schema [?props]
   (let [props* (atom (if (map? ?props) ?props))]
     ^{:type ::into-schema}
-    (reify IntoSchema
+    (reify
+      Schemas
+      (-into-schema? [_] true)
+      (-schema? [_] false)
+      IntoSchema
       (-type [_] (:type @props*))
       (-type-properties [_] (:type-properties @props*))
       (-properties-schema [_ _])
@@ -885,6 +939,9 @@
                                                    :else x'))))))]
               ^{:type ::schema}
               (reify
+                Schemas
+                (-into-schema? [_] false)
+                (-schema? [_] true)
                 Schema
                 (-validator [_]
                   (let [validator (-validator schema)]
@@ -929,7 +986,11 @@
 
 (defn -tuple-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :tuple)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -954,6 +1015,9 @@
         (-check-children! :tuple properties children {:min 0})
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
@@ -996,7 +1060,11 @@
 
 (defn -enum-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :enum)
     (-type-properties [_])
     (-into-schema [parent properties children options]
@@ -1006,6 +1074,9 @@
             form (-create-form :enum properties children)]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (fn [x] (contains? schema x)))
@@ -1032,7 +1103,11 @@
 
 (defn -re-schema [class?]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :re)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1044,6 +1119,9 @@
             form (if class? re (-create-form :re properties children))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (-safe-pred #(re-find re %)))
@@ -1076,7 +1154,11 @@
 
 (defn -fn-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :fn)
     (-type-properties [_])
     (-into-schema [parent properties children options]
@@ -1086,6 +1168,9 @@
             form (-create-form :fn properties children)]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_] (-safe-pred f))
           (-explainer [this path]
@@ -1117,7 +1202,11 @@
 
 (defn -maybe-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :maybe)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1130,6 +1219,9 @@
                                (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [_]
             (let [validator' (-validator schema)]
@@ -1162,7 +1254,11 @@
    (-multi-schema {:naked-keys true}))
   ([opts]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify
+     Schemas
+     (-into-schema? [_] true)
+     (-schema? [_] false)
+     IntoSchema
      (-type [_] :multi)
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
@@ -1179,6 +1275,9 @@
            (-fail! ::missing-property {:key :dispatch}))
          ^{:type ::schema}
          (reify
+           Schemas
+           (-into-schema? [_] false)
+           (-schema? [_] true)
            Schema
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map))]
@@ -1226,7 +1325,11 @@
    (-ref-schema nil))
   ([{:keys [lazy type-properties] :as opts}]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify
+     Schemas
+     (-into-schema? [_] true)
+     (-schema? [_] false)
+     IntoSchema
      (-type [_] :ref)
      (-type-properties [_] type-properties)
      (-into-schema [parent properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
@@ -1243,6 +1346,9 @@
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
          (reify
+           Schemas
+           (-into-schema? [_] false)
+           (-schema? [_] true)
            Schema
            (-validator [_]
              (let [validator (-memoize (fn [] (-validator (-ref))))]
@@ -1290,7 +1396,11 @@
   ^{:type ::into-schema}
   (let [internal? (or id raw)
         type (if internal? ::schema :schema)]
-    (reify IntoSchema
+    (reify
+      Schemas
+      (-into-schema? [_] true)
+      (-schema? [_] false)
+      IntoSchema
       (-type [_] type)
       (-type-properties [_])
       (-properties-schema [_ _])
@@ -1302,6 +1412,9 @@
                        (-create-form type properties [(-form child)]))]
           ^{:type ::schema}
           (reify
+            Schemas
+            (-into-schema? [_] false)
+            (-schema? [_] true)
             Schema
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
@@ -1355,7 +1468,11 @@
 
 (defn -=>-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
@@ -1367,6 +1484,9 @@
           (-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]
@@ -1403,7 +1523,11 @@
 
 (defn -function-schema [_]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] :function)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1422,6 +1546,9 @@
             (-fail! ::duplicate-min-arities {:infos infos})))
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]
@@ -1470,7 +1597,11 @@
 (defn -sequence-schema
   [{:keys [type child-bounds re-validator re-explainer re-parser re-unparser re-transformer re-min-max] :as opts}]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] type)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1481,6 +1612,9 @@
             form (-create-form type properties (mapv -form children))]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
@@ -1515,7 +1649,11 @@
 (defn -sequence-entry-schema
   [{:keys [type child-bounds re-validator re-explainer re-parser re-unparser re-transformer re-min-max] :as opts}]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    Schemas
+    (-into-schema? [_] true)
+    (-schema? [_] false)
+    IntoSchema
     (-type [_] type)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1526,6 +1664,9 @@
             form (-create-form type properties forms)]
         ^{:type ::schema}
         (reify
+          Schemas
+          (-into-schema? [_] false)
+          (-schema? [_] true)
           Schema
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))

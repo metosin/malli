@@ -11,7 +11,7 @@
 (defn simple-registry [schemas]
   (reify
     Registry
-    (-schema [_ type] (get schemas type))
+    (-schema [_ type] (schemas type))
     (-schemas [_] schemas)))
 
 (defn registry

@@ -12,6 +12,35 @@
        (print "invoking" times# "times")
        (time (prof/profile (dotimes [_# times#] ~@body))))))
 
+(defmacro profile-for
+  [n & body]
+  `(let [res# (cc/quick-benchmark (do ~@body) {})
+         mean# (first (:mean res#))
+         k# (long (/ ~n mean#))]
+     (println (* 1e9 mean#))
+     (println
+      (with-out-str
+        (cc/quick-bench ~@body)))
+     (println "Profiling for" ~n "seconds" k# "times")
+     (time
+      (prof/profile
+       (dotimes [_# k#]
+         ~@body)))))
+
+(defmacro bench->
+  [data & expr]
+  `(doseq [[name# data#] ~data]
+     (let [mean# (first (:mean (cc/quick-benchmark (-> data# ~expr) {})))
+           [scale# unit#] (cc/scale-time mean#)]
+       (println name# (* mean# scale#) unit#))))
+
+(comment
+
+  (bench->
+   [[:or-2-types [:or :int :string]]
+    [:int :int]]
+   m/schema))
+
 (comment
 
   ;;

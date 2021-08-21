@@ -367,7 +367,11 @@
 (defn -simple-schema [?props]
   (let [props* (atom (if (map? ?props) ?props))]
     ^{:type ::into-schema}
-    (reify IntoSchema
+    (reify
+      Schemas
+      (-into-schema? [_] true)
+      (-schema? [_] false)
+      IntoSchema
       (-type [_] (:type @props*))
       (-type-properties [_] (:type-properties @props*))
       (-properties-schema [_ _])
@@ -383,6 +387,9 @@
                   form (-create-form type properties children)]
               ^{:type ::schema}
               (reify
+                Schemas
+                (-into-schema? [_] false)
+                (-schema? [_] true)
                 Schema
                 (-validator [_] validator)
                 (-explainer [this path]

@@ -1563,13 +1563,22 @@
   "Checks if x is a IntoSchema instance"
   [x] (-into-schema? x))
 
+(defn- -some-map
+  [m]
+  (when m
+    (when (pos? #?(:clj (.count ^Counted m) :cljs (count m)))
+      m)))
+
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (let [[properties options] (-properties-and-options properties options -form)]
-     (-into-schema (-schema type options) (if (seq properties) properties) children options))))
+   (let [properties (-some-map properties)
+         r (when properties (properties :registry))
+         options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
+         properties (if r (assoc properties :registry (-property-registry r options -form)) properties)]
+     (-into-schema (-schema type options) properties children options))))
 
 (defn type
   "Returns the Schema type."

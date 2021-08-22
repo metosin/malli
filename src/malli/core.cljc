@@ -6,7 +6,7 @@
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector)
+                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector RT Counted)
                    (malli.impl.util SchemaError)
                    (java.util.concurrent.atomic AtomicReference)
                    (java.util Collection LinkedList))))
@@ -1611,6 +1611,19 @@
   "Checks if x is a Schema instance"
   [x] (-schema? x))
 
+#?(:clj
+   (let [i0 (int 0) i1 (int 1) i2 (int 2)]
+     (defn- -vec->schema
+       [^IPersistentVector ?schema options]
+       (let [t (.nth ?schema i0)
+             n (.count ?schema)
+             ?p (when (> n 1) (.nth ?schema i1))]
+         (if (or (nil? ?p) (map? ?p))
+           (let [p ?p c (when (< i2 n) (RT/subvec ?schema i2 n))]
+             (into-schema (-schema t options) p c options))
+           (let [p nil c (when (< i1 n) (RT/subvec ?schema i1 n))]
+             (into-schema (-schema t options) p c options)))))))
+
 (defn schema
   "Creates a Schema object from any of the following:
 
@@ -1624,8 +1637,12 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
-                         (into-schema (-schema (first ?schema) options) p c options))
+     (vector? ?schema)
+     #?(:clj (-vec->schema ?schema options)
+        :cljs
+        (let [[p c] (-properties-and-children (rest ?schema))]
+          (into-schema (-schema (first ?schema) options) p c options)))
+
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))

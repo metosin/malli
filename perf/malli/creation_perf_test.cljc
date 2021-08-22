@@ -4,12 +4,15 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
+(defmacro bench [& body]
+  `(cc/quick-bench ~@body))
+
 (defmacro profile [& body]
   `(let [start# (System/currentTimeMillis)]
      (dotimes [_# 100000] ~@body)
      (let [ms# (- (System/currentTimeMillis) start#)
            times# (int (/ 1000000000 ms#))]
-       (print "invoking" times# "times")
+       (println "invoking" times# "times")
        (time (prof/profile (dotimes [_# times#] ~@body))))))
 
 (defmacro profile-for
@@ -48,21 +51,21 @@
   ;;
 
   ;; 5.2µs
-  (cc/quick-bench (m/validate [:or :int :string] 42))
+  (bench (m/validate [:or :int :string] 42))
   (profile (m/validate [:or :int :string] 42))
 
   ;; 3.0µs
-  (cc/quick-bench (m/schema [:or :int :string]))
+  (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
 
   ;; 1.7µs
   (let [schema (m/schema [:or :int :string])]
-    (cc/quick-bench (m/validator schema))
+    (bench (m/validator schema))
     #_(profile (m/validator schema)))
 
   ;; 4ns
   (let [validate (m/validator [:or :int :string])]
-    (cc/quick-bench (validate 42))
+    (bench (validate 42))
     #_(profile (validate 42))))
 
 (def ?schema
@@ -75,6 +78,8 @@
 
 (def schema (m/schema ?schema))
 
+(def leaf-schema (m/schema :int))
+
 (comment
 
   ;;
@@ -82,11 +87,11 @@
   ;;
 
   ;; 480ns
-  (cc/quick-bench (m/schema :int))
+  (bench (m/schema :int))
   (profile (m/schema :int))
 
   ;; 44µs
-  (cc/quick-bench (m/schema ?schema))
+  (bench (m/schema ?schema))
   (profile (m/schema ?schema)))
 
 (comment
@@ -95,12 +100,19 @@
   ;; schema transformation
   ;;
 
+  ;; 271ns
+  ;; 14ns (-set-children, -set-properties)
+  (bench (m/walk leaf-schema (m/schema-walker identity)))
+  (profile (m/walk leaf-schema (m/schema-walker identity)))
+
   ;; 26µs
-  (cc/quick-bench (m/walk schema (m/schema-walker identity)))
+  ;; 1.3µs (-set-children, -set-properties)
+  (bench (m/walk schema (m/schema-walker identity)))
   (profile (m/walk schema (m/schema-walker identity)))
 
   ;; 51µs
-  (cc/quick-bench (mu/closed-schema schema))
+  ;; 44µs (-set-children, -set-properties)
+  (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema)))
 
 (comment

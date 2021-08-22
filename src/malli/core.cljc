@@ -170,6 +170,8 @@
 
 (defn -update [m k f] (assoc m k (f (get m k))))
 
+(defn -equals [x y] (or (identical? x y) (= x y)))
+
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
@@ -181,7 +183,8 @@
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
 (defn -set-children [schema children]
-  (-into-schema (-parent schema) (-properties schema) children (-options schema)))
+  (if (-equals children (-children schema))
+    schema (-into-schema (-parent schema) (-properties schema) children (-options schema))))
 
 (defn -update-options [schema f]
   (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
@@ -398,7 +401,7 @@
                   (-intercepting (-value-transformer transformer this method options)))
                 (-walk [this walker path options]
                   (if (-accept walker this path options)
-                    (-outer walker this path (vec children) options)))
+                    (-outer walker this path children options)))
                 (-properties [_] properties)
                 (-options [_] options)
                 (-children [_] children)

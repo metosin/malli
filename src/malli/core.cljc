@@ -135,11 +135,11 @@
     (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
 
 (defn -create-form [type properties children]
-  (cond
-    (and (seq properties) (seq children)) (into [type properties] children)
-    (seq properties) [type properties]
-    (seq children) (into [type] children)
-    :else type))
+  (let [has-children (seq children), has-properties (seq properties)]
+    (cond (and has-properties has-children) (reduce conj [type properties] children)
+          has-properties [type properties]
+          has-children (reduce conj [type] children)
+          :else type)))
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 

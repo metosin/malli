@@ -116,5 +116,12 @@
   (profile (mu/closed-schema schema)))
 
 (comment
+
+  (let [t ::or, p {:a 1}, c (mapv m/schema [:int :int])]
+    ;; 480ns
+    ;; 221ns (faster impl)
+    (bench (m/-create-form t p c))))
+
+(comment
   (prof/serve-files 8080)
   (prof/clear-results))

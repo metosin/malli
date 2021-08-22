@@ -116,11 +116,7 @@
   "Returns a Schema instance with updated properties."
   [?schema f & args]
   (let [schema (m/schema ?schema)]
-    (m/into-schema
-      (m/-parent schema)
-      (not-empty (apply f (m/-properties schema) args))
-      (m/-children schema)
-      (m/-options schema))))
+    (m/-set-properties schema (not-empty (apply f (m/-properties schema) args)))))
 
 (defn closed-schema
   "Closes recursively all :map schemas by adding `{:closed true}`

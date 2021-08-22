@@ -186,6 +186,10 @@
   (if (-equals children (-children schema))
     schema (-into-schema (-parent schema) (-properties schema) children (-options schema))))
 
+(defn -set-properties [schema properties]
+  (if (-equals properties (-properties schema))
+    schema (-into-schema (-parent schema) properties (-children schema) (-options schema))))
+
 (defn -update-options [schema f]
   (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
 

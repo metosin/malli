@@ -130,16 +130,17 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn -check-children! [type properties children {:keys [min max] :as opts}]
-  (if (or (and min (< (count children) min)) (and max (> (count children) max)))
-    (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
+(defn -check-children! [type properties children opts]
+  (let [size (count children), min (:min opts), max (:max opts)]
+    (when (or (and min (< size min)) (and max (> size max)))
+      (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))
 
 (defn -create-form [type properties children]
-  (cond
-    (and (seq properties) (seq children)) (into [type properties] children)
-    (seq properties) [type properties]
-    (seq children) (into [type] children)
-    :else type))
+  (let [has-children (seq children), has-properties (seq properties)]
+    (cond (and has-properties has-children) (reduce conj [type properties] children)
+          has-properties [type properties]
+          has-children (reduce conj [type] children)
+          :else type)))
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
@@ -170,6 +171,8 @@
 
 (defn -update [m k f] (assoc m k (f (get m k))))
 
+(defn -equals [x y] (or (identical? x y) (= x y)))
+
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
@@ -181,7 +184,12 @@
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
 (defn -set-children [schema children]
-  (-into-schema (-parent schema) (-properties schema) children (-options schema)))
+  (if (-equals children (-children schema))
+    schema (-into-schema (-parent schema) (-properties schema) children (-options schema))))
+
+(defn -set-properties [schema properties]
+  (if (-equals properties (-properties schema))
+    schema (-into-schema (-parent schema) properties (-children schema) (-options schema))))
 
 (defn -update-options [schema f]
   (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
@@ -238,11 +246,6 @@
         child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
-(defn- -properties-and-children [[x :as xs]]
-  (if (or (nil? x) (map? x))
-    [x (rest xs)]
-    [nil xs]))
-
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
         schema (-simple-schema {:type name, :pred @v})]
@@ -253,10 +256,7 @@
 (defn -registry
   {:arglists '([] [{:keys [registry]}])}
   ([] default-registry)
-  ([opts]
-   (or (when opts
-         (mr/registry (opts :registry)))
-       default-registry)))
+  ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
@@ -398,7 +398,7 @@
                   (-intercepting (-value-transformer transformer this method options)))
                 (-walk [this walker path options]
                   (if (-accept walker this path options)
-                    (-outer walker this path (vec children) options)))
+                    (-outer walker this path children options)))
                 (-properties [_] properties)
                 (-options [_] options)
                 (-children [_] children)
@@ -471,7 +471,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :or properties children {:min 1})
       (let [children (mapv #(schema % options) children)
-            form (-create-form :or properties (map -form children))
+            form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
@@ -516,7 +516,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -633,7 +633,7 @@
 
 (defn -val-schema
   ([schema properties]
-   (-into-schema (-val-schema) properties [schema] (-options schema)))
+   (-into-schema (-val-schema) properties (list schema) (-options schema)))
   ([]
    ^{:type ::into-schema}
    (reify IntoSchema
@@ -642,9 +642,9 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
-       (-check-children! ::val properties children {:min 1, :max 1})
-       (let [[schema :as children] (map #(schema % options) children)
-             form (-create-form ::val properties (map -form children))]
+       #_(-check-children! ::val properties children {:min 1, :max 1})
+       (let [schema (schema (first children) options)
+             form (delay (-create-form ::val properties [(-form schema)]))]
          ^{:type ::schema}
          (reify Schema
            (-validator [_] (-validator schema))
@@ -652,17 +652,17 @@
            (-parser [_] (-parser schema))
            (-unparser [_] (-unparser schema))
            (-transformer [this transformer method options]
-             (-parent-children-transformer this children transformer method options))
+             (-parent-children-transformer this (list schema) transformer method options))
            (-walk [this walker path options]
              (if (::walk-entry-vals options)
                (if (-accept walker this path options)
-                 (-outer walker this path [(-inner walker schema path options)] options))
+                 (-outer walker this path (list (-inner walker schema path options)) options))
                (-walk schema walker path options)))
            (-properties [_] properties)
            (-options [_] (-options schema))
-           (-children [_] children)
+           (-children [_] [schema])
            (-parent [_] parent)
-           (-form [_] form)
+           (-form [_] @form)
            LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))
@@ -1572,8 +1572,11 @@
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (let [[properties options] (-properties-and-options properties options -form)]
-     (-into-schema (-schema type options) (if (seq properties) properties) children options))))
+   (let [properties (when properties (when (pos? (count properties)) properties))
+         r (when properties (properties :registry))
+         options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
+         properties (if r (assoc properties :registry (-property-registry r options -form)) properties)]
+     (-into-schema (-schema type options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -1628,8 +1631,13 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
-                         (into-schema (-schema (first ?schema) options) p c options))
+     (vector? ?schema) (let [t (nth ?schema 0)
+                             n (count ?schema)
+                             ?p (when (> n 1) (nth ?schema 1))
+                             s (-schema t options)]
+                         (if (or (nil? ?p) (map? ?p))
+                           (into-schema s ?p (when (< 2 n) (subvec ?schema 2 n)) options)
+                           (into-schema s nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))

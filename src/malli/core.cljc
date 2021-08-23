@@ -246,11 +246,6 @@
         child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
-(defn- -properties-and-children [[x :as xs]]
-  (if (or (nil? x) (map? x))
-    [x (rest xs)]
-    [nil xs]))
-
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
         schema (-simple-schema {:type name, :pred @v})]
@@ -475,8 +470,8 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :or properties children {:min 1})
-      (let [children (mapv #(schema % options) children)
-            form (-create-form :or properties (map -form children))
+      (let [children (map #(schema % options) children)
+            form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
@@ -521,7 +516,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -1577,8 +1572,11 @@
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (let [[properties options] (-properties-and-options properties options -form)]
-     (-into-schema (-schema type options) (if (seq properties) properties) children options))))
+   (let [properties (when properties (when (pos? (count properties)) properties))
+         r (when properties (properties :registry))
+         options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
+         properties (if r (assoc properties :registry (-property-registry r options -form)) properties)]
+     (-into-schema (-schema type options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -1633,8 +1631,14 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [[p c] (-properties-and-children (rest ?schema))]
-                         (into-schema (-schema (first ?schema) options) p c options))
+     (vector? ?schema) (let [t (nth ?schema 0)
+                             n (count ?schema)
+                             ?p (when (> n 1) (nth ?schema 1))]
+                         (if-let [p (when (or (nil? ?p) (map? ?p)) ?p)]
+                           (let [c (when (< 2 n) (subvec ?schema 2 n))]
+                             (into-schema (-schema t options) p c options))
+                           (let [c (when (< 1 n) (subvec ?schema 1 n))]
+                             (into-schema (-schema t options) nil c options))))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))

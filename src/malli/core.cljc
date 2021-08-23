@@ -261,10 +261,7 @@
 (defn -registry
   {:arglists '([] [{:keys [registry]}])}
   ([] default-registry)
-  ([opts]
-   (or (when opts
-         (mr/registry (opts :registry)))
-       default-registry)))
+  ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]

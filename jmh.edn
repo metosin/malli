@@ -1,0 +1,5 @@
+{:benchmarks
+ [{:group :schema-constructor :name :schema :fn malli.core/schema :args [:param/types]}]
+ :states {}
+ :params {:types [:int]}
+ :selectors {}}

@@ -131,7 +131,7 @@
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
 (defn -check-children! [type properties children opts]
-  (let [size (count children), min (:min opts 0), max (:max opts size)]
+  (let [size (count children), min (or (:min opts) 0), max (or (:max opts) size)]
     (when (or (< size min) (> size max))
       (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))
 

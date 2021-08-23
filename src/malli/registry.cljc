@@ -11,12 +11,22 @@
 (defn simple-registry [schemas]
   (reify
     Registry
-    (-schema [_ type] (get schemas type))
+    (-schema [_ type] (schemas type))
     (-schemas [_] schemas)))
 
-(defn registry [?registry]
-  (cond (satisfies? Registry ?registry) ?registry
-        (map? ?registry) (simple-registry ?registry)))
+(defn registry
+  [?registry]
+  #?(:clj
+     (when ?registry
+       (if (instance? malli.registry.Registry ?registry)
+         ?registry
+         (if (map? ?registry)
+           (simple-registry ?registry)
+           (when (satisfies? Registry ?registry)
+             ?registry))))
+     :cljs
+     (cond (satisfies? Registry ?registry) ?registry
+           (map? ?registry) (simple-registry ?registry))))
 
 ;;
 ;; custom

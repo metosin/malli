@@ -86,11 +86,11 @@
   ;; schema creation
   ;;
 
-  ;; 480ns
+  ;; 480ns -> 400ns
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs
+  ;; 44µs -> 31µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema)))
 
@@ -112,6 +112,7 @@
 
   ;; 51µs
   ;; 44µs (-set-children, -set-properties)
+  ;; 29µs (lot's of stuff)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema)))
 

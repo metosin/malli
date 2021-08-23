@@ -123,5 +123,14 @@
     (bench (m/-create-form t p c))))
 
 (comment
+  (let [s (m/schema :int)]
+    ;; 440ns
+    ;; 341ns (-create-form)
+    ;; 150ns (delayed form)
+    ;;  30ns (don't -check-children)
+    (bench (m/-val-schema s nil))
+    (profile (m/-val-schema s nil))))
+
+(comment
   (prof/serve-files 8080)
   (prof/clear-results))

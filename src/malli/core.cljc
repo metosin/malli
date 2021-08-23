@@ -130,9 +130,10 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn -check-children! [type properties children {:keys [min max] :as opts}]
-  (if (or (and min (< (count children) min)) (and max (> (count children) max)))
-    (-fail! ::child-error (merge {:type type, :properties properties, :children children} opts))))
+(defn -check-children! [type properties children opts]
+  (let [size (count children), min (:min opts 0), max (:max opts size)]
+    (when (or (< size min) (> size max))
+      (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))
 
 (defn -create-form [type properties children]
   (let [has-children (seq children), has-properties (seq properties)]
@@ -640,7 +641,7 @@
 
 (defn -val-schema
   ([schema properties]
-   (-into-schema (-val-schema) properties [schema] (-options schema)))
+   (-into-schema (-val-schema) properties (list schema) (-options schema)))
   ([]
    ^{:type ::into-schema}
    (reify IntoSchema
@@ -649,9 +650,9 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
-       (-check-children! ::val properties children {:min 1, :max 1})
-       (let [[schema :as children] (map #(schema % options) children)
-             form (-create-form ::val properties (map -form children))]
+       #_(-check-children! ::val properties children {:min 1, :max 1})
+       (let [schema (schema (first children) options)
+             form (delay (-create-form ::val properties [(-form schema)]))]
          ^{:type ::schema}
          (reify Schema
            (-validator [_] (-validator schema))
@@ -659,17 +660,17 @@
            (-parser [_] (-parser schema))
            (-unparser [_] (-unparser schema))
            (-transformer [this transformer method options]
-             (-parent-children-transformer this children transformer method options))
+             (-parent-children-transformer this (list schema) transformer method options))
            (-walk [this walker path options]
              (if (::walk-entry-vals options)
                (if (-accept walker this path options)
-                 (-outer walker this path [(-inner walker schema path options)] options))
+                 (-outer walker this path (list (-inner walker schema path options)) options))
                (-walk schema walker path options)))
            (-properties [_] properties)
            (-options [_] (-options schema))
-           (-children [_] children)
+           (-children [_] [schema])
            (-parent [_] parent)
-           (-form [_] form)
+           (-form [_] @form)
            LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))

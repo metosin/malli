@@ -51,10 +51,13 @@
   ;;
 
   ;; 5.2µs
+  ;; 3.6µs
   (bench (m/validate [:or :int :string] 42))
   (profile (m/validate [:or :int :string] 42))
 
   ;; 3.0µs
+  ;; 500ns (delayed mapv childs)
+  ;; 1.7µs
   (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
 

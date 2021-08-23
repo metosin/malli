@@ -470,7 +470,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :or properties children {:min 1})
-      (let [children (map #(schema % options) children)
+      (let [children (mapv #(schema % options) children)
             form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
@@ -1633,12 +1633,11 @@
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [t (nth ?schema 0)
                              n (count ?schema)
-                             ?p (when (> n 1) (nth ?schema 1))]
-                         (if-let [p (when (or (nil? ?p) (map? ?p)) ?p)]
-                           (let [c (when (< 2 n) (subvec ?schema 2 n))]
-                             (into-schema (-schema t options) p c options))
-                           (let [c (when (< 1 n) (subvec ?schema 1 n))]
-                             (into-schema (-schema t options) nil c options))))
+                             ?p (when (> n 1) (nth ?schema 1))
+                             s (-schema t options)]
+                         (if (or (nil? ?p) (map? ?p))
+                           (into-schema s ?p (when (< 2 n) (subvec ?schema 2 n)) options)
+                           (into-schema s nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
              (-> ?schema (-schema options) (schema options))))))

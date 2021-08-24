@@ -1435,7 +1435,7 @@
                 (and (= (m/validate s v) (nil? es))
                      (results= (m/explain s v) (and es {:schema s, :value v, :errors es}))
                      (= (m/parse s v) (if (nil? es) (if (= typ :cat) v v*) ::m/invalid))
-                     (or (some? es) (= (m/unparse s (if (= typ :cat) v v*) s) v))))
+                     (or (some? es) (= (m/unparse s (if (= typ :cat) v v*)) v))))
 
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]

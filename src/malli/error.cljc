@@ -302,7 +302,7 @@
 (defn humanize
   "Humanized a explanation. Accepts the following optitons:
 
-  - `:wrap`, a function of `error -> message`, defaulting ot `:message`
+  - `:wrap`, a function of `error -> message`, defaulting to `:message`
   - `:resolve`, a function of `explanation error options -> path message`"
   ([explanation]
    (humanize explanation nil))

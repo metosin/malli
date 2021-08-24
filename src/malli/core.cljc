@@ -215,22 +215,26 @@
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (-set-children schema children)))
 
-(defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
-  (let [-parse (fn [e] (let [[[k ?p ?v] f] (cond
-                                             (not (sequential? e)) (if (and naked-keys (-reference? e)) [[e nil e] e] (-fail! ::invalid-ref {:ref e}))
-                                             (and (= 1 (count e)) (-reference? (first e))) (if naked-keys [[(first e) nil (first e)] e])
-                                             (and (= 2 (count e)) (-reference? (first e)) (map? (last e))) (if naked-keys [(conj e (first e)) e])
-                                             :else [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])
-                             [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
-                             s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
-                             c [k p (schema s options)]]
-                         {:children [c]
-                          :entries [(miu/-tagged k (-val-schema (last c) p))]
-                          :forms [f]}))
-        es (reduce #(merge-with into %1 %2) {} (mapv -parse children))
-        keys (->> es :entries (map first))]
-    (when-not (= keys (distinct keys))
-      (-fail! ::non-distinct-entry-keys {:keys keys}))
+(defn -parse-entries [cs {:keys [naked-keys lazy-refs]} options]
+  (let [-parse (fn [e]
+                 (let [[[k ?p ?v] f]
+                       (if (not (sequential? e))
+                         (if (and naked-keys (-reference? e))
+                           [[e nil e] e]
+                           (-fail! ::invalid-ref {:ref e}))
+                         (let [size (count e), k (nth e 0)]
+                           (or (if (-reference? k)
+                                 (cond (= 1 size) (if naked-keys [[k nil k] e])
+                                       (and (= 2 size) (map? (nth e 1))) (if naked-keys [(conj e k) e])))
+                               [e (->> (-update (vec e) (dec (count e)) (-comp -form #(schema % options))) (keep identity) (vec))])))
+                       [p ?s] (if (or (nil? ?p) (map? ?p)) [?p ?v] [nil ?p])
+                       s (cond-> (or ?s (if (-reference? k) f)) lazy-refs (-lazy options))
+                       c [k p (schema s options)]]
+                   [k c (miu/-tagged k (-val-schema (nth c 2) p)) f]))
+        es (loop [keyset #{}, children [], entries [], forms [], [p & ps] (map -parse cs)]
+             (if p (recur (conj keyset (nth p 0)) (conj children (nth p 1)) (conj entries (nth p 2)) (conj forms (nth p 3)) ps)
+                   {:keyset keyset, :children children, :entries entries, :forms forms}))]
+    (when-not (= (count (:keyset es)) (count cs)) (-fail! ::non-distinct-entry-keys es))
     es))
 
 (defn -guard [pred tf]
@@ -686,9 +690,8 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
-       (let [{:keys [children entries forms]} (-parse-entries children opts options)
+       (let [{:keys [keyset children entries forms]} (-parse-entries children opts options)
              form (-create-form :map properties forms)
-             keyset (->> entries (map first) (set))
              ->parser (fn [f] (let [parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
                                                         (let [parser (f schema)]

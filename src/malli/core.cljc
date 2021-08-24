@@ -130,10 +130,14 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn -check-children! [type properties children opts]
-  (let [size (count children), min (:min opts), max (:max opts)]
-    (when (or (and min (< size min)) (and max (> size max)))
-      (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))
+(defn -check-children!
+  ([type properties children opts]
+   (when (map? opts)
+     (-check-children! type properties children (opts :min) (opts :max))))
+  ([type properties children min max]
+   (let [size (count children)]
+     (when (or (and min (< size min)) (and max (> size max)))
+       (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max})))))
 
 (defn -create-form [type properties children]
   (let [has-children (seq children), has-properties (seq properties)]
@@ -453,7 +457,9 @@
                 min (if ?props (?props :min 0) 0)
                 max (if ?props (?props :max 0) 0)]
             (reset! props* ?props)
-            (-check-children! type properties children {:min min, :max max})
+            (if ?props
+              (-check-children! type properties children min max)
+              (-check-children! type properties children nil))
             (let [pvalidator (if property-pred (property-pred properties))
                   validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
                   form (-create-form type properties children)]

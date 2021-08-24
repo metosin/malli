@@ -272,69 +272,69 @@
         (-fail! ::invalid-ref {:ref e})))))
 
 (defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
-  (letfn [(-arr->vec [^objects arr]
-            #?(:clj (LazilyPersistentVector/createOwning arr)
-               :cljs (vec arr)))
-          (-arange [^objects arr to]
-            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
-               :cljs (.slice arr 0 to)))
-          #?(:clj
-             (-set-wrapper
-               [^java.util.Set s]
-               (reify
-                 Collection
-                 (size [_] (.size s))
-                 (containsAll [_ c] (.containsAll s c))
-                 clojure.lang.IPersistentSet
-                 (disjoin [_ key] (disj (set s) key))
-                 (contains [_ key] (.contains s key))
-                 (get [_ key] (when (.contains s key) key))
-                 clojure.lang.Counted
-                 (count [_] (.size s))
-                 clojure.lang.IPersistentCollection
-                 (cons [_ o] (.cons (set s) o))
-                 (empty [_] #{})
-                 (equiv [_ o]
-                   (if (instance? java.util.Set o)
-                     (if (== (.size s) (.size ^Collection o))
-                       (.containsAll s o)
-                       false)
-                     false))
-                 clojure.lang.Seqable
-                 (seq [_] (seq s))
-                 clojure.lang.IFn
-                 (invoke [_ o] (when (.contains s o) o))
-                 Iterable
-                 (iterator [_] (.iterator s)))))
-          (-keyset []
+  (let [n (count children)]
+    (letfn [(-arr->vec [^objects arr]
+              #?(:clj (LazilyPersistentVector/createOwning arr)
+                 :cljs (vec arr)))
+            (-arange [^objects arr to]
+              #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
+                 :cljs (.slice arr 0 to)))
             #?(:clj
-               (let [data (java.util.HashSet.)]
-                 (fn
-                   ([] (-set-wrapper data))
-                   ([k] (when-not (.add data k)
-                          (-fail! ::non-distinct-entry-keys {:keys (seq data), :key k})))))
-               :cljs
-               (let [data (volatile! #{})]
-                 (fn
-                   ([] @data)
-                   ([k] (let [old @data]
-                          (vswap! data conj k)
-                          (when (= old @data)
-                            (-fail! ::non-distinct-entry-keys {:keys old, :key k}))))))))]
-    (let [n (count children)
-          -children (object-array n)
-          -entries (object-array n)
-          -forms (object-array n)
-          -keyset (-keyset)]
-      (loop [i (int 0), ci (int 0)]
-        (if (== ci n)
-          (let [f (if (== ci i) -arr->vec #(-arr->vec (-arange % i)))]
-            {:children (f -children)
-             :entries (f -entries)
-             :forms (f -forms)
-             :keyset (-keyset)})
-          (recur (-parse-entry (nth children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
-                 (unchecked-inc-int ci)))))))
+               (-set-wrapper
+                [^java.util.Set s]
+                (reify
+                  Collection
+                  (size [_] (.size s))
+                  (containsAll [_ c] (.containsAll s c))
+                  clojure.lang.IPersistentSet
+                  (disjoin [_ key] (disj (set s) key))
+                  (contains [_ key] (.contains s key))
+                  (get [_ key] (when (.contains s key) key))
+                  clojure.lang.Counted
+                  (count [_] (.size s))
+                  clojure.lang.IPersistentCollection
+                  (cons [_ o] (.cons (set s) o))
+                  (empty [_] #{})
+                  (equiv [_ o]
+                    (if (instance? java.util.Set o)
+                      (if (== (.size s) (.size ^Collection o))
+                        (.containsAll s o)
+                        false)
+                      false))
+                  clojure.lang.Seqable
+                  (seq [_] (seq s))
+                  clojure.lang.IFn
+                  (invoke [_ o] (when (.contains s o) o))
+                  Iterable
+                  (iterator [_] (.iterator s)))))
+            (-keyset []
+              #?(:clj
+                 (let [data (java.util.HashSet. (unchecked-multiply-int n 4) 0.25)]
+                   (fn
+                     ([] (-set-wrapper data))
+                     ([k] (when-not (.add data k)
+                            (-fail! ::non-distinct-entry-keys {:keys (seq data), :key k})))))
+                 :cljs
+                 (let [data (volatile! #{})]
+                   (fn
+                     ([] @data)
+                     ([k] (let [old @data]
+                            (vswap! data conj k)
+                            (when (= old @data)
+                              (-fail! ::non-distinct-entry-keys {:keys old, :key k}))))))))]
+      (let [-children (object-array n)
+            -entries (object-array n)
+            -forms (object-array n)
+            -keyset (-keyset)]
+        (loop [i (int 0), ci (int 0)]
+          (if (== ci n)
+            (let [f (if (== ci i) -arr->vec #(-arr->vec (-arange % i)))]
+              {:children (f -children)
+               :entries (f -entries)
+               :forms (f -forms)
+               :keyset (-keyset)})
+            (recur (-parse-entry (nth children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
+                   (unchecked-inc-int ci))))))))
 
 (defn -guard [pred tf]
   (when tf (fn [x] (if (pred x) (tf x) x))))

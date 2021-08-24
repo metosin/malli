@@ -351,11 +351,11 @@
           {:children (arr->vec -children)
            :entries (arr->vec -entries)
            :forms (arr->vec -forms)
-           :keyset (#?(:clj set, :cljs deref) -keyset)}
+           :keyset (#?(:clj set, :cljs clojure.core/deref) -keyset)}
           {:children (arr->vec (arange -children i))
            :entries (arr->vec (arange -entries i))
            :forms (arr->vec (arange -forms i))
-           :keyset (#?(:clj set, :cljs deref) -keyset)})
+           :keyset (#?(:clj set, :cljs clojure.core/deref) -keyset)})
         (recur
          (-parse-entry* (nth children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
          (unchecked-inc-int ci))))))

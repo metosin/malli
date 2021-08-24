@@ -93,7 +93,7 @@
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs
+  ;; 44µs -> 31µs -> 18µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema)))
 
@@ -116,6 +116,7 @@
   ;; 51µs
   ;; 44µs (-set-children, -set-properties)
   ;; 29µs (lot's of stuff)
+  ;; 21µs (faster parsing)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema)))
 

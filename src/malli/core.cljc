@@ -218,28 +218,26 @@
 (defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms -keyset]
   (letfn [(-collect [k c e f i]
             (-keyset k)
-            (aset -children i c)
-            (aset -entries i e)
-            (aset -forms i f)
-            (unchecked-inc-int i))
+            (let [i (int i)]
+              (aset -children i c)
+              (aset -entries i e)
+              (aset -forms i f)
+              (unchecked-inc-int i)))
           (-schema [e] (schema (cond-> (or e (when (-reference? e) e)) lazy-refs (-lazy options)) options))
           (-parse-ref-entry [e]
             (let [s (-schema e)
                   c [e nil s]
-                  e' (miu/-tagged e (-val-schema s nil))
-                  i (int i)]
+                  e' (miu/-tagged e (-val-schema s nil))]
               (-collect e c e' e i)))
           (-parse-ref-vector1 [e e0]
             (let [s (-schema e0)
                   c [e0 nil s]
-                  e' (miu/-tagged e0 (-val-schema s nil))
-                  i (int i)]
+                  e' (miu/-tagged e0 (-val-schema s nil))]
               (-collect e0 c e' e i)))
           (-parse-ref-vector2 [e e0 e1]
             (let [s (-schema e0)
                   c [e0 e1 s]
-                  e' (miu/-tagged e0 (-val-schema s e1))
-                  i (int i)]
+                  e' (miu/-tagged e0 (-val-schema s e1))]
               (-collect e0 c e' e i)))
           (-parse-entry-else2 [e0 e1]
             (let [f [e0 (-form (schema e1 options))]
@@ -253,8 +251,7 @@
                   f (if e1 [e0 e1 f'] [e0 f'])
                   s (-schema e2)
                   c [e0 e1 s]
-                  e' (miu/-tagged e0 (-val-schema s e1))
-                  i (int i)]
+                  e' (miu/-tagged e0 (-val-schema s e1))]
               (-collect e0 c e' f i)))]
     (if (sequential? e)
       (let [n (count e), e0 (nth e 0)]

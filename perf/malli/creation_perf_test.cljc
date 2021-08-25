@@ -52,14 +52,25 @@
 
   ;; 5.2µs
   ;; 3.6µs
+  ;; 3.0µs (map childs)
   (bench (m/validate [:or :int :string] 42))
   (profile (m/validate [:or :int :string] 42))
 
   ;; 3.0µs
   ;; 500ns (delayed mapv childs)
   ;; 1.7µs
+  ;; 510ns (map childs)
+  ;; 310ns (schema)
+  ;; 300ns (simple-schema)
   (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
+
+  ;; 1.7µs
+  ;; 470ns (map childs)
+  ;; 310ns (schema)
+  ;; 300ns (simple-schema)
+  (bench (m/schema [:and :int :string]))
+  (profile (m/schema [:and :int :string]))
 
   ;; 1.7µs
   (let [schema (m/schema [:or :int :string])]
@@ -89,11 +100,11 @@
   ;; schema creation
   ;;
 
-  ;; 480ns -> 400ns
+  ;; 480ns -> 400ns -> 340ns -> 280ns
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema)))
 
@@ -119,6 +130,7 @@
   ;; 21µs (faster parsing)
   ;; 7.5µs (ever faster parsing)
   ;; 7.2µs (compact parsing)
+  ;; 6.5µs (schema)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema)))
 

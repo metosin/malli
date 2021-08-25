@@ -52,16 +52,33 @@
 
   ;; 5.2µs
   ;; 3.6µs
+  ;; 3.0µs (map childs)
+  ;; 3.2µs (mapv childs)
   (bench (m/validate [:or :int :string] 42))
   (profile (m/validate [:or :int :string] 42))
 
   ;; 3.0µs
   ;; 500ns (delayed mapv childs)
   ;; 1.7µs
+  ;; 510ns (map childs)
+  ;; 310ns (schema)
+  ;; 300ns (simple-schema)
+  ;; 180ns (fast parse)
+  ;; 1.1µs (mapv childs)
   (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
 
   ;; 1.7µs
+  ;; 470ns (map childs)
+  ;; 310ns (schema)
+  ;; 300ns (simple-schema)
+  ;; 190ns (fast parse)
+  ;; 1.1µs (mapv childs)
+  (bench (m/schema [:and :int :string]))
+  (profile (m/schema [:and :int :string]))
+
+  ;; 1.7µs
+  ;; 1.5µs (fast parse)
   (let [schema (m/schema [:or :int :string])]
     (bench (m/validator schema))
     #_(profile (m/validator schema)))
@@ -89,11 +106,11 @@
   ;; schema creation
   ;;
 
-  ;; 480ns -> 400ns
+  ;; 480ns -> 400ns -> 340ns -> 280ns
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema)))
 
@@ -119,6 +136,7 @@
   ;; 21µs (faster parsing)
   ;; 7.5µs (ever faster parsing)
   ;; 7.2µs (compact parsing)
+  ;; 6.5µs (schema)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema)))
 

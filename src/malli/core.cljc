@@ -489,8 +489,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :and properties children {:min 1})
-      (let [children (map #(schema % options) children)
-            childrenv (delay (vec children))
+      (let [children (mapv #(schema % options) children)
             form (delay (-create-form :and properties (map -form children)))
             ->parser (fn [f m] (let [parsers (m (mapv f children))]
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
@@ -513,12 +512,12 @@
               (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
-          (-children [_] @childrenv)
+          (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (get @childrenv key default))
+          (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -or-schema []
@@ -530,8 +529,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :or properties children {:min 1})
-      (let [children (map #(schema % options) children)
-            childrenv (delay (vec children))
+      (let [children (mapv #(schema % options) children)
             form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
@@ -575,12 +573,12 @@
               (-outer walker this path (-inner-indexed walker path children options) options)))
           (-properties [_] properties)
           (-options [_] options)
-          (-children [_] @childrenv)
+          (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (get @childrenv key default))
+          (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -orn-schema []

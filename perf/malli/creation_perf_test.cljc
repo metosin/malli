@@ -53,6 +53,7 @@
   ;; 5.2µs
   ;; 3.6µs
   ;; 3.0µs (map childs)
+  ;; 3.2µs (mapv childs)
   (bench (m/validate [:or :int :string] 42))
   (profile (m/validate [:or :int :string] 42))
 
@@ -63,6 +64,7 @@
   ;; 310ns (schema)
   ;; 300ns (simple-schema)
   ;; 180ns (fast parse)
+  ;; 1.1µs (mapv childs)
   (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
 
@@ -71,6 +73,7 @@
   ;; 310ns (schema)
   ;; 300ns (simple-schema)
   ;; 190ns (fast parse)
+  ;; 1.1µs (mapv childs)
   (bench (m/schema [:and :int :string]))
   (profile (m/schema [:and :int :string]))
 

@@ -430,43 +430,44 @@
 ;; Schemas
 ;;
 
-(defn -simple-schema [{:keys [type type-properties pred property-pred min max] :or {min 0, max 0} :as ?props}]
-  ^{:type ::into-schema}
-  (reify IntoSchema
-    (-type [_] type)
-    (-type-properties [_] type-properties)
-    (-properties-schema [_ _])
-    (-children-schema [_ _])
-    (-into-schema [parent properties children options]
-      (if (fn? ?props)
-        (-into-schema (-simple-schema (?props properties children)) properties children options)
-        (let [_ (-check-children! type properties children {:min min, :max max})
-              pvalidator (if property-pred (property-pred properties))
-              validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
-              form (-create-form type properties children)]
-          ^{:type ::schema}
-          (reify
-            Schema
-            (-validator [_] validator)
-            (-explainer [this path]
-              (fn explain [x in acc]
-                (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))
-            (-parser [_] (fn [x] (if (validator x) x ::invalid)))
-            (-unparser [this] (-parser this))
-            (-transformer [this transformer method options]
-              (-intercepting (-value-transformer transformer this method options)))
-            (-walk [this walker path options]
-              (if (-accept walker this path options)
-                (-outer walker this path children options)))
-            (-properties [_] properties)
-            (-options [_] options)
-            (-children [_] children)
-            (-parent [_] parent)
-            (-form [_] form)
-            LensSchema
-            (-keep [_])
-            (-get [_ _ default] default)
-            (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))))))))
+(defn -simple-schema [?props]
+  (let [{:keys [type type-properties pred property-pred min max] :or {min 0, max 0}} (if (map? ?props) ?props)]
+    ^{:type ::into-schema}
+    (reify IntoSchema
+      (-type [_] type)
+      (-type-properties [_] type-properties)
+      (-properties-schema [_ _])
+      (-children-schema [_ _])
+      (-into-schema [parent properties children options]
+        (if (fn? ?props)
+          (-into-schema (-simple-schema (?props properties children)) properties children options)
+          (let [_ (-check-children! type properties children {:min min, :max max})
+                pvalidator (if property-pred (property-pred properties))
+                validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
+                form (-create-form type properties children)]
+            ^{:type ::schema}
+            (reify
+              Schema
+              (-validator [_] validator)
+              (-explainer [this path]
+                (fn explain [x in acc]
+                  (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))
+              (-parser [_] (fn [x] (if (validator x) x ::invalid)))
+              (-unparser [this] (-parser this))
+              (-transformer [this transformer method options]
+                (-intercepting (-value-transformer transformer this method options)))
+              (-walk [this walker path options]
+                (if (-accept walker this path options)
+                  (-outer walker this path children options)))
+              (-properties [_] properties)
+              (-options [_] options)
+              (-children [_] children)
+              (-parent [_] parent)
+              (-form [_] form)
+              LensSchema
+              (-keep [_])
+              (-get [_ _ default] default)
+              (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))))
 
 (defn -nil-schema [] (-simple-schema {:type :nil, :pred nil?}))
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))

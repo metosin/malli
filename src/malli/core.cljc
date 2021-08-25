@@ -6,7 +6,7 @@
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector)
+                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector Keyword)
                    (malli.impl.util SchemaError)
                    (java.util.concurrent.atomic AtomicReference)
                    (java.util Collection LinkedList))))
@@ -144,7 +144,14 @@
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
-(defn -reference? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
+(defn -reference?
+  [?schema]
+  #?(:clj
+     (or (instance? String ?schema)
+         (and (instance? Keyword ?schema)
+              (boolean (.getNamespace ^Keyword ?schema))))
+     :cljs
+     (or (string? ?schema) (qualified-keyword? ?schema))))
 
 (defn -lazy [ref options] (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 

@@ -1,6 +1,7 @@
 (ns malli.transform
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
   (:require #?@(:cljs [[goog.date.UtcDateTime]
+                       [goog.math.Long]
                        [goog.date.Date]])
             [malli.core :as m])
   #?(:clj (:import (java.util Date UUID)
@@ -61,8 +62,8 @@
          :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))]
                  (cond
                    (js/isNaN x') x
-                   (> x' js/Number.MAX_SAFE_INTEGER) x
-                   (< x' js/Number.MIN_SAFE_INTEGER) x
+                   (> x' js/Number.MAX_SAFE_INTEGER) (goog.math.Long/fromString x 10)
+                   (< x' js/Number.MIN_SAFE_INTEGER) (goog.math.Long/fromString x 10)
                    :else x')))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))

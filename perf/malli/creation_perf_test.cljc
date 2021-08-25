@@ -62,6 +62,7 @@
   ;; 510ns (map childs)
   ;; 310ns (schema)
   ;; 300ns (simple-schema)
+  ;; 180ns (fast parse)
   (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
 
@@ -69,10 +70,12 @@
   ;; 470ns (map childs)
   ;; 310ns (schema)
   ;; 300ns (simple-schema)
+  ;; 190ns (fast parse)
   (bench (m/schema [:and :int :string]))
   (profile (m/schema [:and :int :string]))
 
   ;; 1.7µs
+  ;; 1.5µs (fast parse)
   (let [schema (m/schema [:or :int :string])]
     (bench (m/validator schema))
     #_(profile (m/validator schema)))
@@ -104,7 +107,7 @@
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema)))
 

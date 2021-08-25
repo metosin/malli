@@ -1691,9 +1691,10 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [t (nth ?schema 0)
-                             n (count ?schema)
-                             ?p (when (> n 1) (nth ?schema 1))]
+     (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
+                             t #?(:clj (.nth v 0), :cljs (nth v 0))
+                             n #?(:clj (.count v), :cljs (count v))
+                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
                            (into-schema t ?p (when (< 2 n) (subvec ?schema 2 n)) options)
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))

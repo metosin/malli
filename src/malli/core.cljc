@@ -325,7 +325,7 @@
     (or (mr/-schema registry ?schema)
         (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
 
-(defn- -schema [?schema f options]
+(defn- -lookup! [?schema f options]
   (or (and f (f ?schema) ?schema)
       (-lookup ?schema options)
       (-fail! ::invalid-schema {:schema ?schema})))
@@ -1635,7 +1635,7 @@
          r (when properties (properties :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
          properties (if r (assoc properties :registry (-property-registry r options -form)) properties)]
-     (-into-schema (-schema type into-schema? options) properties children options))))
+     (-into-schema (-lookup! type into-schema? options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -1699,7 +1699,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-schema nil options) (schema options))))))
+             (-> ?schema (-lookup! nil options) (schema options))))))
 
 (defn form
   "Returns the Schema form"

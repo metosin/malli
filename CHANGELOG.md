@@ -14,7 +14,31 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.7.0-SNAPSHOT
+
+* massive improvements to schema creation and transformation perfromance, see [#531](https://github.com/metosin/malli/issues/513).
+
+```clj
+;; 3.0µs => 1.1µs
+(bench (m/schema [:or :int :string]))
+
+(def ?schema
+  [:map
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z [:map
+        [:x boolean?]
+        [:y {:optional true} int?]]]])
+
+;; 44µs -> 8.5µs
+(bench (m/schema ?schema))
+
+;; 26µs -> 1.3µs
+(bench (m/walk schema (m/schema-walker identity)))
+
+;; 51µs -> 6.5µs
+(bench (mu/closed-schema schema))
+```
 
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
 * fixed arity error in `m/function-schema`

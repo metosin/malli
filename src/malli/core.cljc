@@ -19,10 +19,6 @@
 ;; protocols and records
 ;;
 
-(defprotocol Schemas
-  (-schema? [this])
-  (-into-schema? [this]))
-
 (defprotocol IntoSchema
   (-type [this] "returns type of the schema")
   (-type-properties [this] "returns schema type properties")
@@ -409,25 +405,6 @@
 (defn -qualified-keyword-pred [properties]
   (when-let [ns-name (some-> properties :namespace name)]
     (fn [x] (= (namespace x) ns-name))))
-
-;;
-;; Protocol Cache
-;;
-
-(let [extend (fn [protocol this]
-               ;; cljs: class clojure.lang.PersistentList cannot be cast to class clojure.lang.Named
-               #?(:clj (let [s? (satisfies? Schema this)
-                             is? (satisfies? IntoSchema this)]
-                         (extend-protocol Schemas (class this)
-                           (-schema? [_] s?)
-                           (-into-schema? [_] is?)))))]
-  (extend-protocol Schemas
-    nil
-    (-schema? [_] false)
-    (-into-schema? [_] false)
-    #?(:clj Object, :cljs default)
-    (-schema? [this] #?(:clj (extend Schema this)) (satisfies? Schema this))
-    (-into-schema? [this] #?(:clj (extend IntoSchema this)) (satisfies? IntoSchema this))))
 
 ;;
 ;; Schemas
@@ -1626,7 +1603,7 @@
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (-into-schema? x))
+  [x] (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
@@ -1677,7 +1654,7 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (-schema? x))
+  [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
 
 (defn schema
   "Creates a Schema object from any of the following:

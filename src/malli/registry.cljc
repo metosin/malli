@@ -10,7 +10,7 @@
   (-schemas [this] "returns all schemas from a registry"))
 
 (defn fast-registry [m]
-  (let [fm #?(:clj (doto (HashMap.) (.putAll ^Map m)), :cljs m)]
+  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
     (reify
       Registry
       (-schema [_ type] (.get fm type))
@@ -24,7 +24,7 @@
 
 (defn registry [?registry]
   (cond (nil? ?registry) nil
-        #?@(:clj [(instance? malli.registry.Registry ?registry) ?registry])
+        (#?(:clj instance?, :cljs implements?) malli.registry.Registry ?registry) ?registry
         (map? ?registry) (simple-registry ?registry)
         (satisfies? Registry ?registry) ?registry))
 

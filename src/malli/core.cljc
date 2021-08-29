@@ -126,13 +126,17 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
+(defn ^:no-doc -check-children? [] true)
+
 (defn -check-children!
   ([type properties children props]
+   (println "DEPRECATED: use (m/-check-children! type properties children min max) instead.")
    (-check-children! type properties children (:min props) (:max props)))
   ([type properties children min max]
-   (let [size (count children)]
-     (when (or (and min (< size min)) (and max (> size max)))
-       (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max})))))
+   (when (-check-children?)
+     (let [size (count children)]
+       (when (or (and min (< size ^long min)) (and max (> size ^long max)))
+         (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))))
 
 (defn -create-form [type properties children]
   (let [has-children (seq children), has-properties (seq properties)]
@@ -214,6 +218,8 @@
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (-set-children schema children)))
 
+(defrecord Parsed [keyset children entries forms])
+
 (defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms -keyset]
   (letfn [(-collect [k c e f i]
             (-keyset k)
@@ -287,10 +293,7 @@
       (loop [i (int 0), ci (int 0)]
         (if (== ci n)
           (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
-            {:children (f -children)
-             :entries (f -entries)
-             :forms (f -forms)
-             :keyset (-keyset)})
+            (->Parsed (-keyset) (f -children) (f -entries) (f -forms)))
           (recur (-parse-entry (nth children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
                  (unchecked-inc-int ci)))))))
 
@@ -424,7 +427,7 @@
           (let [_ (-check-children! type properties children min max)
                 pvalidator (if property-pred (property-pred properties))
                 validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
-                form (-create-form type properties children)]
+                form (delay (-create-form type properties children))]
             ^{:type ::schema}
             (reify
               Schema
@@ -443,7 +446,7 @@
               (-options [_] options)
               (-children [_] children)
               (-parent [_] parent)
-              (-form [_] form)
+              (-form [_] @form)
               LensSchema
               (-keep [_])
               (-get [_ _ default] default)
@@ -470,7 +473,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :and properties children 1 nil)
-      (let [children (mapv #(schema % options) children)
+      (let [children (into [] (map #(schema % options)) children)
             form (delay (-create-form :and properties (map -form children)))
             ->parser (fn [f m] (let [parsers (m (mapv f children))]
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
@@ -510,7 +513,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :or properties children 1 nil)
-      (let [children (mapv #(schema % options) children)
+      (let [children (into [] (map #(schema % options)) children)
             form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
@@ -723,7 +726,7 @@
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
        (let [{:keys [keyset children entries forms]} (-parse-entries children opts options)
-             form (-create-form :map properties forms)
+             form (delay (-create-form :map properties forms))
              ->parser (fn [f] (let [parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
                                                         (let [parser (f schema)]
@@ -801,7 +804,7 @@
            (-options [_] options)
            (-children [_] children)
            (-parent [_] parent)
-           (-form [_] form)
+           (-form [_] @form)
            MapSchema
            (-entries [_] entries)
            LensSchema
@@ -971,7 +974,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (let [children (mapv #(schema % options) children)
+      (let [children (into [] (map #(schema % options)) children)
             size (count children)
             form (-create-form :tuple properties (map -form children))
             ->parser (fn [f] (let [parsers (into {} (comp (map f) (map-indexed vector)) children)]
@@ -1035,7 +1038,7 @@
     (-type [_] :enum)
     (-type-properties [_])
     (-into-schema [parent properties children options]
-      (-check-children! :enum properties children 1 0)
+      (-check-children! :enum properties children 1 nil)
       (let [children (vec children)
             schema (set children)
             form (-create-form :enum properties children)]
@@ -1678,7 +1681,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-lookup! nil options) (schema options))))))
+             (-> ?schema (-lookup! nil options) (recur options))))))
 
 (defn form
   "Returns the Schema form"
@@ -2038,7 +2041,7 @@
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
-  (mr/registry (cond (identical? mr/type "default") (default-schemas)
+  (mr/registry (cond (identical? mr/type "default") (mr/fast-registry (default-schemas))
                      (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (-fail! ::invalid-registry.type {:type mr/type}))))
 

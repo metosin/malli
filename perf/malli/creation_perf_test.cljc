@@ -54,6 +54,7 @@
   ;; 3.6µs
   ;; 3.0µs (map childs)
   ;; 3.2µs (mapv childs)
+  ;; 2.5µs (...)
   (bench (m/validate [:or :int :string] 42))
   (profile (m/validate [:or :int :string] 42))
 
@@ -65,6 +66,7 @@
   ;; 300ns (simple-schema)
   ;; 180ns (fast parse)
   ;; 1.1µs (mapv childs)
+  ;; 750ns (...)
   (bench (m/schema [:or :int :string]))
   (profile (m/schema [:or :int :string]))
 
@@ -106,13 +108,18 @@
   ;; schema creation
   ;;
 
-  ;; 480ns -> 400ns -> 340ns -> 280ns
+  ;; 480ns -> 400ns -> 340ns -> 280ns -> 240ns -> 170ns (registry) -> 160ns (recur)
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
   (bench (m/schema ?schema))
-  (profile (m/schema ?schema)))
+  (profile (m/schema ?schema))
+
+  ;; does not work with direct linking
+  (with-redefs [m/-check-children? (constantly false)]
+    (bench (m/schema ?schema))
+    (profile (m/schema ?schema))))
 
 (comment
 
@@ -127,6 +134,7 @@
 
   ;; 26µs
   ;; 1.3µs (-set-children, -set-properties)
+  ;; 1.2µs (protocols, registry, recur)
   (bench (m/walk schema (m/schema-walker identity)))
   (profile (m/walk schema (m/schema-walker identity)))
 
@@ -137,6 +145,7 @@
   ;; 7.5µs (ever faster parsing)
   ;; 7.2µs (compact parsing)
   ;; 6.5µs (schema)
+  ;; 5.8µs (protocols, registry, recur, parsed)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema)))
 

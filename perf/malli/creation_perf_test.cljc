@@ -168,3 +168,47 @@
 (comment
   (prof/serve-files 8080)
   (prof/clear-results))
+
+(comment
+  "clojurescript perf tests"
+
+  ; shadow-cljs browser-repl
+
+  (require '[malli.core :as m])
+  (require '[malli.util :as mu])
+
+  (def ?schema
+    [:map
+     [:x boolean?]
+     [:y {:optional true} int?]
+     [:z [:map
+          [:x boolean?]
+          [:y {:optional true} int?]]]])
+
+  (def schema (m/schema ?schema))
+
+  ;;
+  ;; benchmarks (0.6.1 vs LATEST)
+  ;;
+
+  (simple-benchmark [] (m/schema :int) 100000)
+  ; [], (m/schema :int), 100000 runs, 181 msecs
+  ; [], (m/schema :int), 100000 runs, 55 msecs (3x)
+
+  (simple-benchmark [] (m/schema [:or :int :string]) 100000)
+  ; [], (m/schema [:or :int :string]), 100000 runs, 654 msecs
+  ; [], (m/schema [:or :int :string]), 100000 runs, 185 msecs (4x)
+
+  (simple-benchmark [] (m/schema ?schema) 10000)
+  ; [], (m/schema ?schema), 10000 runs, 896 msecs
+  ; [], (m/schema ?schema), 10000 runs, 156 msecs (6x)
+
+  (simple-benchmark [] (m/walk schema (m/schema-walker identity)) 10000)
+  ; [], (m/walk schema (m/schema-walker identity)), 10000 runs, 544 msecs
+  ; [], (m/walk schema (m/schema-walker identity)), 10000 runs, 41 msecs (13x)
+
+  (simple-benchmark [] (mu/closed-schema schema) 10000)
+  ; [], (mu/closed-schema schema), 10000 runs, 1046 msecs
+  ; [], (mu/closed-schema schema), 10000 runs, 163 msecs (6x)
+
+  )

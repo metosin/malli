@@ -369,7 +369,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (m/-check-children! type properties children {:min min, :max max})
+      (m/-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
             walkable-childs (if childs (subvec children 0 childs) children)
             form (m/-create-form type properties forms)]

@@ -19,10 +19,6 @@
 ;; protocols and records
 ;;
 
-(defprotocol Schemas
-  (-schema? [this])
-  (-into-schema? [this]))
-
 (defprotocol IntoSchema
   (-type [this] "returns type of the schema")
   (-type-properties [this] "returns schema type properties")
@@ -130,14 +126,17 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
+(defn ^:no-doc -check-children? [] true)
+
 (defn -check-children!
-  ([type properties children opts]
-   (when (map? opts)
-     (-check-children! type properties children (opts :min) (opts :max))))
+  ([type properties children props]
+   (println "DEPRECATED: use (m/-check-children! type properties children min max) instead.")
+   (-check-children! type properties children (:min props) (:max props)))
   ([type properties children min max]
-   (let [size (count children)]
-     (when (or (and min (< size min)) (and max (> size max)))
-       (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max})))))
+   (when (-check-children?)
+     (let [size (count children)]
+       (when (or (and min (< size ^long min)) (and max (> size ^long max)))
+         (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))))
 
 (defn -create-form [type properties children]
   (let [has-children (seq children), has-properties (seq properties)]
@@ -219,6 +218,8 @@
                          :always (->> (filter (fn [e] (-> e last some?)))))]
     (-set-children schema children)))
 
+(defrecord Parsed [keyset children entries forms])
+
 (defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms -keyset]
   (letfn [(-collect [k c e f i]
             (-keyset k)
@@ -292,10 +293,7 @@
       (loop [i (int 0), ci (int 0)]
         (if (== ci n)
           (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
-            {:children (f -children)
-             :entries (f -entries)
-             :forms (f -forms)
-             :keyset (-keyset)})
+            (->Parsed (-keyset) (f -children) (f -entries) (f -forms)))
           (recur (-parse-entry (nth children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
                  (unchecked-inc-int ci)))))))
 
@@ -412,25 +410,6 @@
     (fn [x] (= (namespace x) ns-name))))
 
 ;;
-;; Protocol Cache
-;;
-
-(let [extend (fn [protocol this]
-               ;; cljs: class clojure.lang.PersistentList cannot be cast to class clojure.lang.Named
-               #?(:clj (let [s? (satisfies? Schema this)
-                             is? (satisfies? IntoSchema this)]
-                         (extend-protocol Schemas (class this)
-                           (-schema? [_] s?)
-                           (-into-schema? [_] is?)))))]
-  (extend-protocol Schemas
-    nil
-    (-schema? [_] false)
-    (-into-schema? [_] false)
-    #?(:clj Object, :cljs default)
-    (-schema? [this] #?(:clj (extend Schema this)) (satisfies? Schema this))
-    (-into-schema? [this] #?(:clj (extend IntoSchema this)) (satisfies? IntoSchema this))))
-
-;;
 ;; Schemas
 ;;
 
@@ -448,7 +427,7 @@
           (let [_ (-check-children! type properties children min max)
                 pvalidator (if property-pred (property-pred properties))
                 validator (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)
-                form (-create-form type properties children)]
+                form (delay (-create-form type properties children))]
             ^{:type ::schema}
             (reify
               Schema
@@ -467,7 +446,7 @@
               (-options [_] options)
               (-children [_] children)
               (-parent [_] parent)
-              (-form [_] form)
+              (-form [_] @form)
               LensSchema
               (-keep [_])
               (-get [_ _ default] default)
@@ -493,8 +472,8 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :and properties children {:min 1})
-      (let [children (mapv #(schema % options) children)
+      (-check-children! :and properties children 1 nil)
+      (let [children (into [] (map #(schema % options)) children)
             form (delay (-create-form :and properties (map -form children)))
             ->parser (fn [f m] (let [parsers (m (mapv f children))]
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
@@ -533,8 +512,8 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :or properties children {:min 1})
-      (let [children (mapv #(schema % options) children)
+      (-check-children! :or properties children 1 nil)
+      (let [children (into [] (map #(schema % options)) children)
             form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
@@ -594,7 +573,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :orn properties children {:min 1})
+      (-check-children! :orn properties children 1 nil)
       (let [{:keys [children entries forms]} (-parse-entries children {:naked-keys true} options)
             form (-create-form :orn properties forms)]
         ^{:type ::schema}
@@ -667,7 +646,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :not properties children {:min 1 :max 1})
+      (-check-children! :not properties children 1 1)
       (let [[schema :as children] (map #(schema % options) children)
             validator (complement (-validator schema))
             form (-create-form :not properties (map -form children))]
@@ -706,7 +685,7 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
-       #_(-check-children! ::val properties children {:min 1, :max 1})
+       #_(-check-children! ::val properties children 1 1)
        (let [schema (schema (first children) options)
              form (delay (-create-form ::val properties [(-form schema)]))]
          ^{:type ::schema}
@@ -747,7 +726,7 @@
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
        (let [{:keys [keyset children entries forms]} (-parse-entries children opts options)
-             form (-create-form :map properties forms)
+             form (delay (-create-form :map properties forms))
              ->parser (fn [f] (let [parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
                                                         (let [parser (f schema)]
@@ -825,7 +804,7 @@
            (-options [_] options)
            (-children [_] children)
            (-parent [_] parent)
-           (-form [_] form)
+           (-form [_] @form)
            MapSchema
            (-entries [_] entries)
            LensSchema
@@ -841,7 +820,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent {:keys [min max] :as properties} children options]
-      (-check-children! :map-of properties children {:min 2 :max 2})
+      (-check-children! :map-of properties children 2 2)
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
             form (-create-form :map-of properties (mapv -form children))
             validate-limits (-validate-limits min max)
@@ -925,7 +904,7 @@
           (-into-schema (-collection-schema (?props properties children)) properties children options)
           (let [{type :type fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
             (reset! props* ?props)
-            (-check-children! type properties children {:min 1 :max 1})
+            (-check-children! type properties children 1 1)
             (let [[schema :as children] (mapv #(schema % options) children)
                   form (-create-form type properties (map -form children))
                   validate-limits (-validate-limits min max)
@@ -995,7 +974,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (let [children (mapv #(schema % options) children)
+      (let [children (into [] (map #(schema % options)) children)
             size (count children)
             form (-create-form :tuple properties (map -form children))
             ->parser (fn [f] (let [parsers (into {} (comp (map f) (map-indexed vector)) children)]
@@ -1011,7 +990,6 @@
                                                           (identical? v* v) x
                                                           :else (assoc x i v*))))
                                                     x parsers)))))]
-        (-check-children! :tuple properties children {:min 0})
         ^{:type ::schema}
         (reify
           Schema
@@ -1060,7 +1038,7 @@
     (-type [_] :enum)
     (-type-properties [_])
     (-into-schema [parent properties children options]
-      (-check-children! :enum properties children {:min 1})
+      (-check-children! :enum properties children 1 nil)
       (let [children (vec children)
             schema (set children)
             form (-create-form :enum properties children)]
@@ -1098,7 +1076,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties [child :as children] options]
-      (-check-children! :re properties children {:min 1, :max 1})
+      (-check-children! :re properties children 1 1)
       (let [children (vec children)
             re (re-pattern child)
             form (if class? re (-create-form :re properties children))]
@@ -1140,7 +1118,7 @@
     (-type [_] :fn)
     (-type-properties [_])
     (-into-schema [parent properties children options]
-      (-check-children! :fn properties children {:min 1, :max 1})
+      (-check-children! :fn properties children 1 1)
       (let [children (vec children)
             f (eval (first children) options)
             form (-create-form :fn properties children)]
@@ -1183,7 +1161,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :maybe properties children {:min 1, :max 1})
+      (-check-children! :maybe properties children 1 1)
       (let [[schema :as children] (map #(schema % options) children)
             form (-create-form :maybe properties (map -form children))
             ->parser (fn [f] (let [parser (f schema)]
@@ -1290,7 +1268,7 @@
      (-type [_] :ref)
      (-type-properties [_] type-properties)
      (-into-schema [parent properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
-       (-check-children! :ref properties children {:min 1, :max 1})
+       (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
        (let [-ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
@@ -1356,7 +1334,7 @@
       (-properties-schema [_ _])
       (-children-schema [_ _])
       (-into-schema [parent properties children options]
-        (-check-children! type properties children {:min 1, :max 1})
+        (-check-children! type properties children 1 1)
         (let [[child :as children] (map #(schema % options) children)
               form (or (and (empty? properties) (or id (and raw (-form child))))
                        (-create-form type properties [(-form child)]))]
@@ -1419,7 +1397,7 @@
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
-      (-check-children! :=> properties children {:min 2, :max 2})
+      (-check-children! :=> properties children 2 2)
       (let [[input :as children] (map #(schema % options) children)
             form (-create-form :=> properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
@@ -1469,7 +1447,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
-      (-check-children! :function properties children {:min 1})
+      (-check-children! :function properties children 1 nil)
       (let [children (map #(schema % options) children)
             form (-create-form :function properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
@@ -1528,7 +1506,7 @@
     (-intercepting this-transformer ->children)))
 
 (defn -sequence-schema
-  [{:keys [type child-bounds re-validator re-explainer re-parser re-unparser re-transformer re-min-max] :as opts}]
+  [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-type [_] type)
@@ -1536,7 +1514,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! type properties children child-bounds)
+      (-check-children! type properties children min max)
       (let [children (mapv #(schema % options) children)
             form (-create-form type properties (mapv -form children))]
         ^{:type ::schema}
@@ -1573,7 +1551,7 @@
           (-regex-min-max [_] (re-min-max properties children)))))))
 
 (defn -sequence-entry-schema
-  [{:keys [type child-bounds re-validator re-explainer re-parser re-unparser re-transformer re-min-max] :as opts}]
+  [{:keys [type child-bounds re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-type [_] type)
@@ -1581,7 +1559,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! type properties children child-bounds)
+      (-check-children! type properties children min max)
       (let [{:keys [children entries forms]} (-parse-entries children opts options)
             form (-create-form type properties forms)]
         ^{:type ::schema}
@@ -1628,7 +1606,7 @@
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (-into-schema? x))
+  [x] (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
@@ -1679,7 +1657,7 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (-schema? x))
+  [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
 
 (defn schema
   "Creates a Schema object from any of the following:
@@ -1703,7 +1681,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-lookup! nil options) (schema options))))))
+             (-> ?schema (-lookup! nil options) (recur options))))))
 
 (defn form
   "Returns the Schema form"
@@ -2063,7 +2041,7 @@
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
-  (mr/registry (cond (identical? mr/type "default") (default-schemas)
+  (mr/registry (cond (identical? mr/type "default") (mr/fast-registry (default-schemas))
                      (identical? mr/type "custom") (mr/custom-default-registry)
                      :else (-fail! ::invalid-registry.type {:type mr/type}))))
 

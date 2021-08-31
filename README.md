@@ -188,6 +188,13 @@ You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for ve
 ;; => false
 ```
 
+A `:tuple` describes a fixed length Clojure vector of heterogeneous elements:
+
+```clj
+(m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
+;; => true
+```
+
 Malli also supports sequence regexes like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
 The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
@@ -330,6 +337,21 @@ Using regular expressions:
 (m/validate [:re #"^\d{4}$"] "1234567")
 ;; => false
 
+```
+
+## Maybe schemas
+
+Use `:maybe` to express that an element should match some schema OR be `nil`:
+
+```clj
+(m/validate [:maybe string?] "bingo")
+;; => true
+
+(m/validate [:maybe string?] nil)
+;; => true
+
+(m/validate [:maybe string?] :bingo)
+;; => false
 ```
 
 ## Fn schemas

@@ -18,6 +18,9 @@
      [:nested [:merge
                [:map [:id ::id]]
                [:map [:price ::price]]]]
+     [:string-type-enum  [:maybe [:enum "b" "c"]]]
+     [:keyword-type-enum [:enum :a :b]]
+     [:any-type-enum [:enum :a "b" "c"]]
      [:z [:vector [:map-of int? int?]]]]
     {:registry (merge (m/default-schemas) (mu/schemas))}))
 
@@ -43,6 +46,9 @@
                 :description :nilable/string,
                 :select-keys {:op :keys, :req {:x :int}},
                 :nested {:op :keys, :req {:id :string, :price :double}},
+                :string-type-enum :nilable/string
+                :keyword-type-enum :keyword
+                :any-type-enum :any
                 :z :vector}}
          (clj-kondo/transform Schema)))
 

@@ -6,7 +6,7 @@
 
 (defn -lift [?schema]
   (let [schema (m/schema ?schema)]
-    (if (and (satisfies? m/RefSchema schema) (-> schema m/deref m/type (= ::m/schema)))
+    (if (and (m/-ref-schema? schema) (-> schema m/deref m/type (= ::m/schema)))
       ?schema [:schema {:registry {::schema ?schema}} ?schema])))
 
 (defn -collect [schema]
@@ -43,7 +43,7 @@
       (m/walk
         schema
         (fn [schema _ _ _]
-          (when-let [to (if (satisfies? m/RefSchema schema) (m/-ref schema))]
+          (when-let [to (if (m/-ref-schema? schema) (m/-ref schema))]
             (swap! links update from (fnil conj #{}) to)))))
     @links))
 

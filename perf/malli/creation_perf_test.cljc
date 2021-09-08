@@ -121,6 +121,18 @@
     (bench (m/schema ?schema))
     (profile (m/schema ?schema))))
 
+(def ref-schema (m/schema [:schema :int]))
+
+(comment
+
+  ;; 14ns -> 5ns
+  (bench (m/deref ref-schema))
+  (profile (m/deref ref-schema))
+
+  ;; 5µs -> 28ns
+  (bench (m/deref-all ref-schema))
+  (profile (m/deref-all ref-schema)))
+
 (comment
 
   ;;
@@ -147,7 +159,15 @@
   ;; 6.5µs (schema)
   ;; 5.8µs (protocols, registry, recur, parsed)
   (bench (mu/closed-schema schema))
-  (profile (mu/closed-schema schema)))
+  (profile (mu/closed-schema schema))
+
+  ;; 13µs
+  ;; 2.4µs (satisfies?)
+  (bench (mu/required-keys schema))
+
+  ;; 134µs
+  ;; 15µs (satisfies?)
+  (bench (mu/merge schema schema)))
 
 (comment
 
@@ -187,6 +207,8 @@
 
   (def schema (m/schema ?schema))
 
+  (def ref-schema (m/schema [:schema :int]))
+
   ;;
   ;; benchmarks (0.6.1 vs LATEST)
   ;;
@@ -211,4 +233,11 @@
   ; [], (mu/closed-schema schema), 10000 runs, 1046 msecs
   ; [], (mu/closed-schema schema), 10000 runs, 163 msecs (6x)
 
+  (simple-benchmark [] (m/deref ref-schema) 1000000)
+  ; [], (m/deref ref-schema), 1000000 runs, 53 msecs
+  ; [], (m/deref ref-schema), 1000000 runs, 53 msecs
+
+  (simple-benchmark [] (m/deref-all ref-schema) 1000000)
+  ; [], (m/deref-all ref-schema), 1000000 runs, 104 msecs
+  ; [], (m/deref-all ref-schema), 1000000 runs, 55 msecs
   )

@@ -62,32 +62,34 @@
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
   (-regex-min-max [this] "returns size of the sequence as [min max] vector. nil max means unbuond."))
 
+(defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
+
 (extend-type #?(:clj Object, :cljs default)
   RegexSchema
   (-regex-op? [_] false)
 
   (-regex-validator [this]
-    (if (satisfies? RefSchema this)
+    (if (-ref-schema? this)
       (-regex-validator (-deref this))
       (re/item-validator (-validator this))))
 
   (-regex-explainer [this path]
-    (if (satisfies? RefSchema this)
+    (if (-ref-schema? this)
       (-regex-explainer (-deref this) path)
       (re/item-explainer path this (-explainer this path))))
 
   (-regex-parser [this]
-    (if (satisfies? RefSchema this)
+    (if (-ref-schema? this)
       (-regex-parser (-deref this))
       (re/item-parser (parser this))))
 
   (-regex-unparser [this]
-    (if (satisfies? RefSchema this)
+    (if (-ref-schema? this)
       (-regex-unparser (-deref this))
       (re/item-unparser (unparser this))))
 
   (-regex-transformer [this transformer method options]
-    (if (satisfies? RefSchema this)
+    (if (-ref-schema? this)
       (-regex-transformer (-deref this) transformer method options)
       (re/item-transformer method (-validator this) (or (-transformer this transformer method options) identity))))
 
@@ -1365,7 +1367,6 @@
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
-
             RegexSchema
             (-regex-op? [_] false)
             (-regex-validator [_]
@@ -1874,7 +1875,7 @@
    (deref ?schema nil))
   ([?schema options]
    (let [schema (schema ?schema options)]
-     (cond-> schema (satisfies? RefSchema schema) (-deref)))))
+     (cond-> schema (-ref-schema? schema) (-deref)))))
 
 (defn deref-all
   "Derefs top-level `RefSchema`s recursively or returns original Schema."
@@ -1882,7 +1883,7 @@
    (deref-all ?schema nil))
   ([?schema options]
    (let [schema (deref ?schema options)]
-     (cond-> schema (satisfies? RefSchema schema) (recur options)))))
+     (cond-> schema (-ref-schema? schema) (recur options)))))
 
 ;;
 ;; eval

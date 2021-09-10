@@ -112,6 +112,8 @@
 ;; impl
 ;;
 
+(defn -deprecated! [x] (println "DEPRECATED:" x))
+
 (defn -fail!
   ([type] (-fail! type nil))
   ([type data] (throw (ex-info (str type " " (pr-str data)) {:type type, :message type, :data data}))))
@@ -132,7 +134,7 @@
 
 (defn -check-children!
   ([type properties children props]
-   (println "DEPRECATED: use (m/-check-children! type properties children min max) instead.")
+   (-deprecated! "use (m/-check-children! type properties children min max) instead.")
    (-check-children! type properties children (:min props) (:max props)))
   ([type properties children min max]
    (when (-check-children?)
@@ -204,33 +206,56 @@
 
 (defn -get-entries [schema key default]
   (or (some (if (and (vector? key) (= ::find (nth key 0)))
-              (fn [[k :as e]] (when (= k (nth key 1)) e))
-              (fn [[k _ s]] (when (= k key) s)))
+              (fn [e] (when (= (nth e 0) (nth key 1)) e))
+              (fn [e] (when (= (nth e 0) key) (nth e 2))))
             (-children schema)) default))
 
-(defn -set-entries [schema ?key value]
-  (let [found (atom nil)
-        [key props override] (if (vector? ?key) [(first ?key) (second ?key) true] [?key])
-        children (cond-> (mapv (fn [[k p :as entry]]
-                                 (if (= key k)
-                                   (do (reset! found true) [key (if override props p) value])
-                                   entry))
-                               (-children schema))
-                         (not @found) (conj (if key [key props value] (-fail! ::key-missing)))
-                         :always (->> (filter (fn [e] (-> e last some?)))))]
-    (-set-children schema children)))
+(defrecord Parsed [size keyset children entries forms])
 
-(defrecord Parsed [keyset children entries forms])
+(defn- -update-parsed [{:keys [size keyset children entries forms]} ?key value options]
+  (let [[k p override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
+        s (when value (schema value options))
+        i (keyset k)]
+    (if (nil? s)
+      ;; remove
+      (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
+        (->Parsed (dec size) (dissoc keyset k) (cut children) (cut entries) (cut forms)))
+      (let [c [k p s]
+            e (miu/-tagged k (-val-schema s p))
+            p (if i (if override p (nth (children i) 1)) p)
+            f (if (seq p) [k p (-form s)] [k (-form s)])]
+        (if i
+          ;; update
+          (->Parsed size keyset (assoc children i c) (assoc entries i e) (assoc forms i f))
+          ;; assoc
+          (let [size (inc size)]
+            (->Parsed size (assoc keyset k size) (conj children c) (conj entries e) (conj forms f))))))))
+
+(defn -set-entries
+  ([schema ?key value]
+   (-deprecated! "use `(m/-set-entries schema parsed ?key value) instead.")
+   (let [found (atom nil)
+         [key props override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
+         children (cond-> (mapv (fn [[k p :as entry]]
+                                  (if (= key k)
+                                    (do (reset! found true) [key (if override props p) value])
+                                    entry))
+                                (-children schema))
+                    (not @found) (conj (if key [key props value] (-fail! ::key-missing)))
+                    :always (->> (filter (fn [e] (-> e last some?)))))]
+     (-set-children schema children)))
+  ([schema parsed ?key value]
+   (-set-children schema (-update-parsed parsed ?key value (-options schema)))))
 
 (defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms -keyset]
   (letfn [(-collect [k c e f i]
-            (-keyset k)
             (let [i (int i)]
+              (-keyset k i)
               (aset -children i c)
               (aset -entries i e)
               (aset -forms i f)
               (unchecked-inc-int i)))
-          (-schema [e] (schema (cond-> (or e (when (-reference? e) e)) lazy-refs (-lazy options)) options))
+          (-schema [e] (schema (cond-> e lazy-refs (-lazy options)) options))
           (-parse-ref-entry [e]
             (let [s (-schema e)
                   c [e nil s]
@@ -274,30 +299,33 @@
         (-parse-ref-entry e)
         (-fail! ::invalid-ref {:ref e})))))
 
-(defn -parse-entries [children {:keys [naked-keys lazy-refs]} options]
-  (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
-          (-arange [^objects arr to]
-            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
-               :cljs (.slice arr 0 to)))
-          (-keyset []
-            (let [data (volatile! #{})]
-              (fn
-                ([] @data)
-                ([k] (let [old @data]
-                       (vswap! data conj k)
-                       (when (= old @data)
-                         (-fail! ::non-distinct-entry-keys {:keys old, :key k})))))))]
-    (let [n (count children)
-          -children (object-array n)
-          -entries (object-array n)
-          -forms (object-array n)
-          -keyset (-keyset)]
-      (loop [i (int 0), ci (int 0)]
-        (if (== ci n)
-          (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
-            (->Parsed (-keyset) (f -children) (f -entries) (f -forms)))
-          (recur (-parse-entry (nth children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
-                 (unchecked-inc-int ci)))))))
+(defn -parse-entries [?children props options]
+  (if (instance? Parsed ?children)
+    ?children
+    (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
+            (-arange [^objects arr to]
+             #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
+                :cljs (.slice arr 0 to)))
+            (-keyset []
+              (let [data (volatile! {})]
+                (fn
+                  ([] @data)
+                  ([k v] (vswap! data assoc k v)))))]
+      (let [{:keys [naked-keys lazy-refs]} props
+            n (count ?children)
+            -children (object-array n)
+            -entries (object-array n)
+            -forms (object-array n)
+            -keyset (-keyset)]
+        (loop [i (int 0), ci (int 0)]
+          (if (== ci n)
+            (let [f (if (== ci i) -vec #(-vec (-arange % i)))
+                  ks (-keyset)]
+              (when-not (= n (count ks))
+                (-fail! ::non-distinct-entry-keys {:children ?children}))
+              (->Parsed n ks (f -children) (f -entries) (f -forms)))
+            (recur (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
+                   (unchecked-inc-int ci))))))))
 
 (defn -guard [pred tf]
   (when tf (fn [x] (if (pred x) (tf x) x))))
@@ -576,7 +604,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children 1 nil)
-      (let [{:keys [children entries forms]} (-parse-entries children {:naked-keys true} options)
+      (let [{:keys [children entries forms] :as parsed} (-parse-entries children {:naked-keys true} options)
             form (-create-form :orn properties forms)]
         ^{:type ::schema}
         (reify
@@ -638,7 +666,7 @@
           LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this key value)))))))
+          (-set [this key value] (-set-entries this parsed key value)))))))
 
 (defn -not-schema []
   ^{:type ::into-schema}
@@ -727,7 +755,7 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
-       (let [{:keys [keyset children entries forms]} (-parse-entries children opts options)
+       (let [{:keys [keyset children entries forms] :as parsed} (-parse-entries children opts options)
              form (delay (-create-form :map properties forms))
              ->parser (fn [f] (let [parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
@@ -812,7 +840,7 @@
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this key value))))))))
+           (-set [this key value] (-set-entries this parsed key value))))))))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}
@@ -1210,7 +1238,7 @@
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
-             {:keys [children entries forms]} (-parse-entries children opts' options)
+             {:keys [children entries forms] :as parsed} (-parse-entries children opts' options)
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))
@@ -1259,7 +1287,7 @@
            LensSchema
            (-keep [_])
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this key value))))))))
+           (-set [this key value] (-set-entries this parsed key value))))))))
 
 (defn -ref-schema
   ([]
@@ -1449,8 +1477,8 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :function properties children 1 nil)
-      (let [children (map #(schema % options) children)
-            form (-create-form :function properties (map -form children))
+      (let [children (into [] (map #(schema % options)) children)
+            form (delay (-create-form :function properties (map -form children)))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (type %)) children)
           (-fail! ::non-function-childs {:children children}))
@@ -1489,11 +1517,11 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
-          (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this key value)))))))
+          (-get [this key default] (get children key default))
+          (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 
@@ -1552,7 +1580,7 @@
           (-regex-min-max [_] (re-min-max properties children)))))))
 
 (defn -sequence-entry-schema
-  [{:keys [type child-bounds re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
+  [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-type [_] type)
@@ -1561,7 +1589,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
-      (let [{:keys [children entries forms]} (-parse-entries children opts options)
+      (let [{:keys [children entries forms] :as parsed} (-parse-entries children opts options)
             form (-create-form type properties forms)]
         ^{:type ::schema}
         (reify
@@ -1579,12 +1607,10 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-
           LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this key value))
-
+          (-set [this key value] (-set-entries this parsed key value))
           RegexSchema
           (-regex-op? [_] true)
           (-regex-validator [_] (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
@@ -1593,8 +1619,7 @@
           (-regex-parser [_] (re-parser properties (map (fn [[k _ s]] [k (-regex-parser s)]) children)))
           (-regex-unparser [_] (re-unparser properties (map (fn [[k _ s]] [k (-regex-unparser s)]) children)))
           (-regex-transformer [_ transformer method options]
-            (re-transformer properties (map (fn [[k _ s]] [k (-regex-transformer s transformer method options)])
-                                            children)))
+            (re-transformer properties (map (fn [[k _ s]] [k (-regex-transformer s transformer method options)]) children)))
           (-regex-min-max [_] (re-min-max properties children)))))))
 
 ;;

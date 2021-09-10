@@ -76,6 +76,7 @@
   ;; 300ns (simple-schema)
   ;; 190ns (fast parse)
   ;; 1.1µs (mapv childs)
+  ;; 750ns (...)
   (bench (m/schema [:and :int :string]))
   (profile (m/schema [:and :int :string]))
 
@@ -160,6 +161,24 @@
   ;; 5.8µs (protocols, registry, recur, parsed)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema))
+
+  ;; 3.8µs
+  ;; 3.4µs (satisfies?)
+  ;; 2.2µs (-set-entries)
+  ;; 830ns (-update-parsed)
+  (bench (mu/assoc schema :y :string))
+  (profile (mu/assoc schema :y :string))
+
+  ;; 4.2µs
+  ;; 3.8µs (satisfies?)
+  ;; 820ns (-update-parsed)
+  (bench (mu/assoc schema :w :string))
+  (profile (mu/assoc schema :w :string))
+
+  ;; 205ns
+  ;; 195ns
+  (bench (mu/get schema :y))
+  (profile (mu/get schema :y))
 
   ;; 13µs
   ;; 2.4µs (satisfies?)

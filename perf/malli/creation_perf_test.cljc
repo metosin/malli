@@ -252,6 +252,7 @@
   (simple-benchmark [] (mu/closed-schema schema) 10000)
   ; [], (mu/closed-schema schema), 10000 runs, 1046 msecs
   ; [], (mu/closed-schema schema), 10000 runs, 163 msecs (6x)
+  ; [], (mu/closed-schema schema), 10000 runs, 104 msecs (10x)
 
   (simple-benchmark [] (m/deref ref-schema) 1000000)
   ; [], (m/deref ref-schema), 1000000 runs, 53 msecs

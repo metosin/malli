@@ -190,16 +190,18 @@
 (defn -inner-entries [walker path entries options]
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
+(defn -parsed [s] (-> s meta ::parsed))
+
 (defn -set-children [schema children]
   (if (-equals children (-children schema))
     schema (-into-schema (-parent schema) (-properties schema) children (-options schema))))
 
 (defn -set-properties [schema properties]
   (if (-equals properties (-properties schema))
-    schema (-into-schema (-parent schema) properties (-children schema) (-options schema))))
+    schema (-into-schema (-parent schema) properties (or (-parsed schema) (-children schema)) (-options schema))))
 
 (defn -update-options [schema f]
-  (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
+  (-into-schema (-parent schema) (-properties schema) (or (-parsed schema) (-children schema)) (f (-options schema))))
 
 (defn -set-assoc-children [schema key value]
   (-set-children schema (assoc (-children schema) key value)))
@@ -233,19 +235,18 @@
 
 (defn -set-entries
   ([schema ?key value]
-   (-deprecated! "use `(m/-set-entries schema parsed ?key value) instead.")
-   (let [found (atom nil)
-         [key props override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
-         children (cond-> (mapv (fn [[k p :as entry]]
-                                  (if (= key k)
-                                    (do (reset! found true) [key (if override props p) value])
-                                    entry))
-                                (-children schema))
-                    (not @found) (conj (if key [key props value] (-fail! ::key-missing)))
-                    :always (->> (filter (fn [e] (-> e last some?)))))]
-     (-set-children schema children)))
-  ([schema parsed ?key value]
-   (-set-children schema (-update-parsed parsed ?key value (-options schema)))))
+   (if-let [parsed (-parsed schema)]
+     (-set-children schema (-update-parsed parsed ?key value (-options schema)))
+     (let [found (atom nil)
+           [key props override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
+           children (cond-> (mapv (fn [[k p :as entry]]
+                                    (if (= key k)
+                                      (do (reset! found true) [key (if override props p) value])
+                                      entry))
+                                  (-children schema))
+                      (not @found) (conj (if key [key props value] (-fail! ::key-missing)))
+                      :always (->> (filter (fn [e] (-> e last some?)))))]
+       (-set-children schema children)))))
 
 (defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms -keyset]
   (letfn [(-collect [k c e f i]
@@ -606,7 +607,8 @@
       (-check-children! :orn properties children 1 nil)
       (let [{:keys [children entries forms] :as parsed} (-parse-entries children {:naked-keys true} options)
             form (-create-form :orn properties forms)]
-        ^{:type ::schema}
+        ^{:type ::schema
+          ::parsed parsed}
         (reify
           Schema
           (-validator [_]
@@ -662,11 +664,10 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-
           LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this parsed key value)))))))
+          (-set [this key value] (-set-entries this key value)))))))
 
 (defn -not-schema []
   ^{:type ::into-schema}
@@ -774,7 +775,8 @@
                                                                       (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                                       m (keys m)))]))]
                                 (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
-         ^{:type ::schema}
+         ^{:type ::schema
+           ::parsed parsed}
          (reify
            Schema
            (-validator [_]
@@ -840,7 +842,7 @@
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this parsed key value))))))))
+           (-set [this key value] (-set-entries this key value))))))))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}
@@ -1245,7 +1247,8 @@
              finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]
          (when-not dispatch
            (-fail! ::missing-property {:key :dispatch}))
-         ^{:type ::schema}
+         ^{:type ::schema
+           ::parsed parsed}
          (reify
            Schema
            (-validator [_]
@@ -1287,7 +1290,7 @@
            LensSchema
            (-keep [_])
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this parsed key value))))))))
+           (-set [this key value] (-set-entries this key value))))))))
 
 (defn -ref-schema
   ([]
@@ -1591,7 +1594,8 @@
       (-check-children! type properties children min max)
       (let [{:keys [children entries forms] :as parsed} (-parse-entries children opts options)
             form (-create-form type properties forms)]
-        ^{:type ::schema}
+        ^{:type ::schema
+          ::parsed parsed}
         (reify
           Schema
           (-validator [this] (regex-validator this))
@@ -1610,7 +1614,7 @@
           LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this parsed key value))
+          (-set [this key value] (-set-entries this key value))
           RegexSchema
           (-regex-op? [_] true)
           (-regex-validator [_] (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))

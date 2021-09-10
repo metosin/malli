@@ -159,6 +159,7 @@
   ;; 7.2µs (compact parsing)
   ;; 6.5µs (schema)
   ;; 5.8µs (protocols, registry, recur, parsed)
+  ;; 3.9µs (-parsed)
   (bench (mu/closed-schema schema))
   (profile (mu/closed-schema schema))
 

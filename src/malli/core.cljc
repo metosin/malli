@@ -365,7 +365,7 @@
 
 (defn -into-transformer [x]
   (cond
-    (satisfies? Transformer x) x
+    (#?(:clj instance?, :cljs implements?) malli.core.Transformer x) x
     (fn? x) (-into-transformer (x))
     :else (-fail! ::invalid-transformer {:value x})))
 
@@ -1895,7 +1895,7 @@
    (entries ?schema nil))
   ([?schema options]
    (if-let [schema (schema ?schema options)]
-     (if (satisfies? MapSchema schema)
+     (if (#?(:clj instance?, :cljs implements?) malli.core.MapSchema schema)
        (-entries schema)))))
 
 (defn deref

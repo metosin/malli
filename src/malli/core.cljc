@@ -256,7 +256,7 @@
               (aset -entries i e)
               (aset -forms i f)
               (unchecked-inc-int i)))
-          (-schema [e] (schema (cond-> e lazy-refs (-lazy options)) options))
+          (-schema [e] (schema (cond-> e (and (-reference? e) lazy-refs) (-lazy options)) options))
           (-parse-ref-entry [e]
             (let [s (-schema e)
                   c [e nil s]

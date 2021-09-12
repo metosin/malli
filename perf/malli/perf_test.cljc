@@ -17,7 +17,7 @@
 
   (let [valid {:x true, :y 1, :z "kikka"}]
 
-    ;; 18ns
+    ;; 28ns
     (let [valid? (fn [m]
                    (and (if-let [v (:x m)] (boolean? v) false)
                         (if-let [v (:y m)] (int? v) true)
@@ -26,7 +26,7 @@
       (cc/quick-bench
         (valid? valid)))
 
-    ;; 37ns
+    ;; 30ns
     (let [valid? (m/validator [:map
                                [:x boolean?]
                                [:y {:optional true} int?]

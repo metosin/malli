@@ -6,7 +6,7 @@
             [malli.impl.regex :as re]
             [malli.registry :as mr])
   #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector)
+                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
                    (malli.impl.util SchemaError)
                    (java.util.concurrent.atomic AtomicReference)
                    (java.util Collection LinkedList))))
@@ -201,7 +201,7 @@
     schema (-into-schema (-parent schema) properties (or (-parsed schema) (-children schema)) (-options schema))))
 
 (defn -update-options [schema f]
-  (-into-schema (-parent schema) (-properties schema) (or (-parsed schema) (-children schema)) (f (-options schema))))
+  (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
 
 (defn -set-assoc-children [schema key value]
   (-set-children schema (assoc (-children schema) key value)))
@@ -248,10 +248,11 @@
                       :always (->> (filter (fn [e] (-> e last some?)))))]
        (-set-children schema children)))))
 
-(defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms -keyset]
+(defn- -parse-entry [e naked-keys lazy-refs options i ^objects -children ^objects -entries ^objects -forms ^objects -keyset]
   (letfn [(-collect [k c e f i]
             (let [i (int i)]
-              (-keyset k i)
+              (aset -keyset (* 2 i) k)
+              (aset -keyset (inc (* 2 i)) #?(:clj (Long. i), :cljs i))
               (aset -children i c)
               (aset -entries i e)
               (aset -forms i f)
@@ -273,15 +274,15 @@
                   e' (miu/-tagged e0 (-val-schema s e1))]
               (-collect e0 c e' e i)))
           (-parse-entry-else2 [e0 e1]
-            (let [f [e0 (-form (schema e1 options))]
-                  s (-schema e1)
+            (let [s (-schema e1)
+                  f [e0 (-form s)]
                   c [e0 nil s]
                   e' (miu/-tagged e0 (-val-schema s nil))]
               (-collect e0 c e' f i)))
           (-parse-entry-else3 [e0 e1 e2]
-            (let [f' (-form (schema e2 options))
+            (let [s (-schema e2)
+                  f' (-form s)
                   f (if e1 [e0 e1 f'] [e0 f'])
-                  s (-schema e2)
                   c [e0 e1 s]
                   e' (miu/-tagged e0 (-val-schema s e1))]
               (-collect e0 c e' f i)))]
@@ -304,28 +305,21 @@
   (if (instance? Parsed ?children)
     ?children
     (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
+            (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr), :cljs (apply array-map arr)))
             (-arange [^objects arr to]
              #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
-                :cljs (.slice arr 0 to)))
-            (-keyset []
-              (let [data (volatile! {})]
-                (fn
-                  ([] @data)
-                  ([k v] (vswap! data assoc k v)))))]
+                :cljs (.slice arr 0 to)))]
       (let [{:keys [naked-keys lazy-refs]} props
             n (count ?children)
             -children (object-array n)
             -entries (object-array n)
             -forms (object-array n)
-            -keyset (-keyset)]
+            -keyset (object-array (* 2 n))]
         (loop [i (int 0), ci (int 0)]
           (if (== ci n)
-            (let [f (if (== ci i) -vec #(-vec (-arange % i)))
-                  ks (-keyset)]
-              (when-not (= n (count ks))
-                (-fail! ::non-distinct-entry-keys {:children ?children}))
-              (->Parsed n ks (f -children) (f -entries) (f -forms)))
-            (recur (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset)
+            (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
+              (->Parsed n (-map -keyset) (f -children) (f -entries) (f -forms)))
+            (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
                    (unchecked-inc-int ci))))))))
 
 (defn -guard [pred tf]

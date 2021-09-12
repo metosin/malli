@@ -113,7 +113,7 @@
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs -> 3.4µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema))
 
@@ -244,6 +244,7 @@
   (simple-benchmark [] (m/schema ?schema) 10000)
   ; [], (m/schema ?schema), 10000 runs, 896 msecs
   ; [], (m/schema ?schema), 10000 runs, 156 msecs (6x)
+  ; [], (m/schema ?schema), 10000 runs, 94 msecs (9.5x)
 
   (simple-benchmark [] (m/walk schema (m/schema-walker identity)) 10000)
   ; [], (m/walk schema (m/schema-walker identity)), 10000 runs, 544 msecs

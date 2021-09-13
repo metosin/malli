@@ -187,6 +187,7 @@
 
   ;; 134µs
   ;; 15µs (satisfies?)
+  ;;  9µs (fast merge)
   (bench (mu/merge schema schema)))
 
 (comment

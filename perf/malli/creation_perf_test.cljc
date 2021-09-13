@@ -76,6 +76,7 @@
   ;; 300ns (simple-schema)
   ;; 190ns (fast parse)
   ;; 1.1µs (mapv childs)
+  ;; 750ns (...)
   (bench (m/schema [:and :int :string]))
   (profile (m/schema [:and :int :string]))
 
@@ -112,7 +113,7 @@
   (bench (m/schema :int))
   (profile (m/schema :int))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs -> 3.4µs
   (bench (m/schema ?schema))
   (profile (m/schema ?schema))
 
@@ -120,6 +121,18 @@
   (with-redefs [m/-check-children? (constantly false)]
     (bench (m/schema ?schema))
     (profile (m/schema ?schema))))
+
+(def ref-schema (m/schema [:schema :int]))
+
+(comment
+
+  ;; 14ns -> 5ns
+  (bench (m/deref ref-schema))
+  (profile (m/deref ref-schema))
+
+  ;; 5µs -> 28ns
+  (bench (m/deref-all ref-schema))
+  (profile (m/deref-all ref-schema)))
 
 (comment
 
@@ -146,8 +159,35 @@
   ;; 7.2µs (compact parsing)
   ;; 6.5µs (schema)
   ;; 5.8µs (protocols, registry, recur, parsed)
+  ;; 3.9µs (-parsed)
   (bench (mu/closed-schema schema))
-  (profile (mu/closed-schema schema)))
+  (profile (mu/closed-schema schema))
+
+  ;; 3.8µs
+  ;; 3.4µs (satisfies?)
+  ;; 2.2µs (-set-entries)
+  ;; 830ns (-update-parsed)
+  (bench (mu/assoc schema :y :string))
+  (profile (mu/assoc schema :y :string))
+
+  ;; 4.2µs
+  ;; 3.8µs (satisfies?)
+  ;; 820ns (-update-parsed)
+  (bench (mu/assoc schema :w :string))
+  (profile (mu/assoc schema :w :string))
+
+  ;; 205ns
+  ;; 195ns
+  (bench (mu/get schema :y))
+  (profile (mu/get schema :y))
+
+  ;; 13µs
+  ;; 2.4µs (satisfies?)
+  (bench (mu/required-keys schema))
+
+  ;; 134µs
+  ;; 15µs (satisfies?)
+  (bench (mu/merge schema schema)))
 
 (comment
 
@@ -187,6 +227,8 @@
 
   (def schema (m/schema ?schema))
 
+  (def ref-schema (m/schema [:schema :int]))
+
   ;;
   ;; benchmarks (0.6.1 vs LATEST)
   ;;
@@ -202,6 +244,7 @@
   (simple-benchmark [] (m/schema ?schema) 10000)
   ; [], (m/schema ?schema), 10000 runs, 896 msecs
   ; [], (m/schema ?schema), 10000 runs, 156 msecs (6x)
+  ; [], (m/schema ?schema), 10000 runs, 94 msecs (9.5x)
 
   (simple-benchmark [] (m/walk schema (m/schema-walker identity)) 10000)
   ; [], (m/walk schema (m/schema-walker identity)), 10000 runs, 544 msecs
@@ -210,5 +253,13 @@
   (simple-benchmark [] (mu/closed-schema schema) 10000)
   ; [], (mu/closed-schema schema), 10000 runs, 1046 msecs
   ; [], (mu/closed-schema schema), 10000 runs, 163 msecs (6x)
+  ; [], (mu/closed-schema schema), 10000 runs, 104 msecs (10x)
 
+  (simple-benchmark [] (m/deref ref-schema) 1000000)
+  ; [], (m/deref ref-schema), 1000000 runs, 53 msecs
+  ; [], (m/deref ref-schema), 1000000 runs, 53 msecs
+
+  (simple-benchmark [] (m/deref-all ref-schema) 1000000)
+  ; [], (m/deref-all ref-schema), 1000000 runs, 104 msecs
+  ; [], (m/deref-all ref-schema), 1000000 runs, 55 msecs
   )

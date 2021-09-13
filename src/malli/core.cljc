@@ -305,7 +305,10 @@
   (if (instance? Parsed ?children)
     ?children
     (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
-            (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr), :cljs (apply array-map arr)))
+            (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr)
+                                    :cljs (let [m (apply array-map arr)]
+                                            (when-not (= (* 2 (count m)) (count arr))
+                                              (-fail! ::duplicate-keys)) m)))
             (-arange [^objects arr to]
              #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
                 :cljs (.slice arr 0 to)))]
@@ -1351,7 +1354,7 @@
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))
            (-regex-min-max [this] (-fail! ::potentially-recursive-seqex this))))))))
 
-(defn -schema-schema [{:keys [id raw] :as opts}]
+(defn -schema-schema [{:keys [id raw]}]
   ^{:type ::into-schema}
   (let [internal? (or id raw)
         type (if internal? ::schema :schema)]
@@ -1362,9 +1365,10 @@
       (-children-schema [_ _])
       (-into-schema [parent properties children options]
         (-check-children! type properties children 1 1)
-        (let [[child :as children] (map #(schema % options) children)
-              form (or (and (empty? properties) (or id (and raw (-form child))))
-                       (-create-form type properties [(-form child)]))]
+        (let [children (into [] (map #(schema % options)) children)
+              child (nth children 0)
+              form (delay (or (and (empty? properties) (or id (and raw (-form child))))
+                              (-create-form type properties [(-form child)])))]
           ^{:type ::schema}
           (reify
             Schema
@@ -1383,7 +1387,7 @@
             (-options [_] options)
             (-children [_] children)
             (-parent [_] parent)
-            (-form [_] form)
+            (-form [_] @form)
             LensSchema
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))

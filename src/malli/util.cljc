@@ -68,15 +68,15 @@
   ([?schema1 ?schema2 options]
    (let [s1 (if ?schema1 (m/deref-all (m/schema ?schema1 options)))
          s2 (if ?schema2 (m/deref-all (m/schema ?schema2 options)))
-         t1 (m/type s1)
-         t2 (m/type s2)
+         t1 (if s1 (m/type s1))
+         t2 (if s2 (m/type s2))
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
          bear (fn [p1 p2] (if (and p1 p2) (c/merge p1 p2) (or p1 p2)))
          tear (fn [s] (if (= :map t1) [nil s] (into [(m/properties s)] (m/children s))))
          join (fn [[p1 c1 & cs1] [p2 c2 & cs2]]
-                (m/into-schema :and (bear p1 p2) (concat [(merge c1 c2 options)] cs1 cs2) options))]
+                (m/into-schema :and (bear p1 p2) (into [(merge c1 c2 options)] cs1 cs2) options))]
      (cond
        (nil? s1) s2
        (nil? s2) s1

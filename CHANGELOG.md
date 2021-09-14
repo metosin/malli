@@ -16,12 +16,9 @@ Malli is in [alpha](README.md#alpha).
 
 ## 0.7.0-SNAPSHOT
 
-* massive improvements to schema creation and transformation perfromance, see [#531](https://github.com/metosin/malli/issues/513).
+* big improvements to schema creation and transformation perfromance, see [#531](https://github.com/metosin/malli/issues/513).
 
 ```clj
-;; 3.0µs => 1.1µs
-(bench (m/schema [:or :int :string]))
-
 (def ?schema
   [:map
    [:x boolean?]
@@ -30,17 +27,23 @@ Malli is in [alpha](README.md#alpha).
         [:x boolean?]
         [:y {:optional true} int?]]]])
 
-;; 44µs -> 8.5µs
+(def schema (m/schema ?schema))
+
+;; 44µs -> 3.6µs (12x)
 (bench (m/schema ?schema))
 
-;; 26µs -> 1.3µs
+;; 26µs -> 1.3µs (20x)
 (bench (m/walk schema (m/schema-walker identity)))
 
-;; 51µs -> 6.5µs
+;; 4.2µs -> 0.8µs (5x)
+(bench (mu/assoc schema :w :string))
+
+;; 51µs -> 3.7µs (14x)
 (bench (mu/closed-schema schema))
 ```
 
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
+* fixed `:function` lenses
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
 

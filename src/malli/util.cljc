@@ -74,14 +74,14 @@
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
          bear (fn [p1 p2] (if (and p1 p2) (c/merge p1 p2) (or p1 p2)))
-         tear (fn [s] (if (= :map t1) [nil s] (into [(m/properties s)] (m/children s))))
+         tear (fn [t s] (if (= :map t) [nil s] (concat [(m/properties s)] (m/children s))))
          join (fn [[p1 c1 & cs1] [p2 c2 & cs2]]
-                (m/into-schema :and (bear p1 p2) (into [(merge c1 c2 options)] cs1 cs2) options))]
+                (m/into-schema :and (bear p1 p2) (concat [(merge c1 c2 options)] cs1 cs2) options))]
      (cond
        (nil? s1) s2
        (nil? s2) s1
        (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
-       (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear s1) (tear s2))
+       (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))
        :else (let [p (bear (m/-properties s1) (m/-properties s2))
                    ks (atom #{})
                    children (reduce (fn [form [k2 :as e2]]

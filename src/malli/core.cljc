@@ -212,26 +212,26 @@
               (fn [e] (when (= (nth e 0) key) (nth e 2))))
             (-children schema)) default))
 
-(defrecord Parsed [size keyset children entries forms])
+(defrecord Parsed [keyset children entries forms])
 
-(defn- -update-parsed [{:keys [size keyset children entries forms]} ?key value options]
+(defn- -update-parsed [{:keys [keyset children entries forms]} ?key value options]
   (let [[k p override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
         s (when value (schema value options))
         i (keyset k)]
     (if (nil? s)
       ;; remove
       (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
-        (->Parsed (dec size) (dissoc keyset k) (cut children) (cut entries) (cut forms)))
+        (->Parsed (dissoc keyset k) (cut children) (cut entries) (cut forms)))
       (let [c [k p s]
             e (miu/-tagged k (-val-schema s p))
             p (if i (if override p (nth (children i) 1)) p)
             f (if (seq p) [k p (-form s)] [k (-form s)])]
         (if i
           ;; update
-          (->Parsed size keyset (assoc children i c) (assoc entries i e) (assoc forms i f))
+          (->Parsed keyset (assoc children i c) (assoc entries i e) (assoc forms i f))
           ;; assoc
-          (let [size (inc size)]
-            (->Parsed size (assoc keyset k size) (conj children c) (conj entries e) (conj forms f))))))))
+          (let [size (inc (count keyset))]
+            (->Parsed (assoc keyset k size) (conj children c) (conj entries e) (conj forms f))))))))
 
 (defn -set-entries
   ([schema ?key value]
@@ -321,7 +321,7 @@
         (loop [i (int 0), ci (int 0)]
           (if (== ci n)
             (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
-              (->Parsed n (-map -keyset) (f -children) (f -entries) (f -forms)))
+              (->Parsed (-map -keyset) (f -children) (f -entries) (f -forms)))
             (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
                    (unchecked-inc-int ci))))))))
 

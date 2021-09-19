@@ -49,6 +49,7 @@
                                   borkdude/sci {:mvn/version "0.2.6"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
+                               org.clojure/clojure {:mvn/version "1.11.0-alpha2"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

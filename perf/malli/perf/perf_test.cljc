@@ -1,12 +1,15 @@
-(ns malli.perf-test
+(ns malli.perf.perf-test
   (:require [clojure.spec.alpha :as s]
-            [criterium.core :as cc]
+            [malli.perf.core :as p]
             [clj-async-profiler.core :as prof]
             [minimallist.helper :as mh]
             [minimallist.core :as mc]
             [net.cgrand.seqexp :as se]
             [malli.core :as m]
             [spec-tools.core :as st]
+            [schema.core :as sc]
+            [schema.coerce :as scc]
+            [clojure.pprint]
             [malli.transform :as transform]))
 
 (s/def ::x boolean?)
@@ -17,49 +20,55 @@
 
   (let [valid {:x true, :y 1, :z "kikka"}]
 
-    ;; 28ns
+    ;; 30ns
     (let [valid? (fn [m]
                    (and (if-let [v (:x m)] (boolean? v) false)
                         (if-let [v (:y m)] (int? v) true)
                         (if-let [v (:z m)] (string? v) false)))]
       (assert (valid? valid))
-      (cc/quick-bench
-        (valid? valid)))
+      (p/bench (valid? valid)))
 
-    ;; 30ns
+    ;; 40ns
     (let [valid? (m/validator [:map
                                [:x boolean?]
                                [:y {:optional true} int?]
                                [:z string?]])]
       (assert (valid? valid))
-      (cc/quick-bench
-        (valid? valid)))
+      (p/bench (valid? valid)))
 
-    ;; 400ns
+    ;; 450ns
     (let [spec (s/keys :req-un [::x ::z] :opt-un [::y])]
       (assert (s/valid? spec valid))
-      (cc/quick-bench
-        (s/valid? spec valid)))))
+      (p/bench (s/valid? spec valid)))
+
+    ;; 650ns
+    (let [valid? (sc/checker {:x sc/Bool
+                              (sc/optional-key :y) sc/Int
+                              :z sc/Str })]
+      (assert (not (valid? valid)))
+      (p/bench (valid? valid)))))
 
 (defn composite-perf []
 
-  ;; 3ns
+  ;; 7ns
   (let [valid? (fn [x] (and (int? x) (or (pos-int? x) (neg-int? x))))]
     (assert (= [true false true] (map valid? [-1 0 1])))
-    (cc/quick-bench
-      (valid? 0)))
+    (p/bench (valid? 0)))
 
-  ;; 5ns
+  ;; 9ns
   (let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
     (assert (= [true false true] (map valid? [-1 0 1])))
-    (cc/quick-bench
-      (valid? 0)))
+    (p/bench (valid? 0)))
 
-  ;; 40ns
+  ;; 60ns
   (let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))]
     (assert (= [true false true] (map (partial s/valid? spec) [-1 0 1])))
-    (cc/quick-bench
-      (s/valid? spec 0))))
+    (p/bench (s/valid? spec 0)))
+
+  ;; 130ns
+  (let [valid? (sc/checker (sc/both sc/Int (sc/conditional pos-int? (sc/pred pos-int?) :else (sc/pred neg-int?))))]
+    (assert (= [true false true] (map (comp boolean not valid?) [-1 0 1])))
+    (p/bench (valid? 0))))
 
 (defn composite-perf2 []
   (let [assert! (fn [f]
@@ -75,26 +84,23 @@
                         (<= (count x) 3)
                         (every? #(and (int? %) (or (pos-int? %) (neg-int? %))) x)))]
       (assert! valid?)
-      (cc/quick-bench
-        (valid? [-1 1 2])))
+      (p/bench (valid? [-1 1 2])))
 
-    ;; 27ns
+    ;; 29ns
     (let [valid? (m/validator
                    [:vector {:max 3}
                     [:and int? [:or pos-int? neg-int?]]])]
       (assert! valid?)
-      (cc/quick-bench
-        (valid? [-1 1 2])))
+      (p/bench (valid? [-1 1 2])))
 
-    ;; 506ns
+    ;; 560ns
     (let [spec (s/coll-of
                  (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
                  :kind vector?
                  :max-count 3)
           valid? (partial s/valid? spec)]
       (assert! valid?)
-      (cc/quick-bench
-        (valid? [-1 1 2])))))
+      (p/bench (valid? [-1 1 2])))))
 
 (s/def ::id string?)
 (s/def ::tags (s/coll-of keyword? :kind set? :into #{}))
@@ -134,20 +140,20 @@
     (let [explain #(s/explain-data ::place %)]
 
       ;; 5.0µs
-      (cc/quick-bench (explain valid))
+      (p/bench (explain valid))
 
       ;; 19µs
-      (cc/quick-bench (explain invalid)))
+      (p/bench (explain invalid)))
 
     (let [explain (m/explainer Place)]
       (assert (not (explain valid)))
       (assert (explain invalid))
 
       ;; 1.2µs
-      (cc/quick-bench (explain valid))
+      (p/bench (explain valid))
 
       ;; 1.4µs
-      (cc/quick-bench (explain invalid)))))
+      (p/bench (explain invalid)))))
 
 (defn transform-test []
   (let [json {:id "Metosin"
@@ -159,14 +165,14 @@
     (let [json->place #(st/coerce ::place % st/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
-      ;; 74µs
-      (cc/quick-bench (json->place json)))
+      ;; 74µs (wrong result!)
+      (p/bench (json->place json)))
 
     (let [json->place (m/decoder Place transform/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
-      ;; 1µs -> 400ns
-      (cc/quick-bench (json->place json)))))
+      ;; 1µs -> 800ns
+      (p/bench (json->place json)))))
 
 (defn transform-test2 []
 
@@ -179,16 +185,14 @@
     (assert (= 1
                (string->edn "1")
                (string->edn 1)))
-    (cc/quick-bench
-      (string->edn "1")))
+    (p/bench (string->edn "1")))
 
   ;; 4ns
   (let [string->edn (m/decoder int? transform/string-transformer)]
     (assert (= 1
                (string->edn "1")
                (string->edn 1)))
-    (cc/quick-bench
-      (string->edn "1")))
+    (p/bench (string->edn "1")))
 
   ;;
   ;; simple map coercion
@@ -203,17 +207,30 @@
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})
                (string->edn {:id "1", :name "kikka"})))
-    (cc/quick-bench
-      (string->edn {:id "1", :name "kikka"})))
+    (p/bench (string->edn {:id "1", :name "kikka"})))
 
-  ;; 140ns
+  ;; 44ns
   (let [schema [:map [:id int?] [:name string?]]
         string->edn (m/decoder schema transform/string-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})
                (string->edn {:id "1", :name "kikka"})))
-    (cc/quick-bench
-      (string->edn {:id "1", :name "kikka"})))
+    (p/bench (string->edn {:id "1", :name "kikka"})))
+
+  ;; 46ns
+  (let [string->edn (fn [x] (update x :id (fn [id] (if (string? id) (Long/parseLong id) id))))]
+    (assert (= {:id 1, :name "kikka"}
+               (string->edn {:id 1, :name "kikka"})
+               (string->edn {:id "1", :name "kikka"})))
+    (p/bench (string->edn {:id "1", :name "kikka"})))
+
+  ;; 1.4µs
+  (let [schema {:id sc/Int, :name sc/Str}
+        string->edn (scc/coercer schema scc/string-coercion-matcher)]
+    (assert (= {:id 1, :name "kikka"}
+               (string->edn {:id 1, :name "kikka"})
+               (string->edn {:id "1", :name "kikka"})))
+    (p/bench (string->edn {:id "1", :name "kikka"})))
 
   ;;
   ;; no-op coercion
@@ -224,25 +241,24 @@
         string->edn #(st/coerce spec % st/json-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})))
-    (cc/quick-bench
-      (string->edn {:id 1, :name "kikka"})))
+    (p/bench (string->edn {:id 1, :name "kikka"})))
 
   ;; 3.0ns
   (let [schema [:map [:id int?] [:name string?]]
         string->edn (m/decoder schema transform/json-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})))
-    (cc/quick-bench
-      (string->edn {:id 1, :name "kikka"}))))
+    (p/bench (string->edn {:id 1, :name "kikka"}))))
+
 
 (def tests
-  [;; 1.7ns
+  [;; 1.7ns -> 4.5ns
    [int? 1]
-   ;; 5.8ns
+   ;; 5.8ns -> 11ns
    [[:and int? [:> 2]] 3]
-   ;; 107ns
+   ;; 107ns -> 122ns
    [[:vector int?] [1 2 3]]
-   ;; 17ns
+   ;; 17ns -> 34ns
    [[:map [:x int?] [:y boolean?]] {:x 1, :y true}]])
 
 (defn basic-perf []
@@ -251,7 +267,7 @@
     (println)
     (println (m/form schema))
     (println "-------------")
-    (cc/quick-bench (validator value))))
+    (p/bench (validator value))))
 
 (defn fn-test []
   (let [f (fn [x] (> x 10))
@@ -259,13 +275,13 @@
         f3 (m/eval '(fn [x] (> x 10)))]
 
     ;; 4ns
-    (cc/quick-bench (f 12))
+    (p/bench (f 12))
 
     ;; 8ns
-    (cc/quick-bench (f2 12))
+    (p/bench (f2 12))
 
-    ;; 7000ns
-    (cc/quick-bench (f3 12))))
+    ;; 7000ns -> 73ns
+    (p/bench (f3 12))))
 
 (defn map-transform-test []
   (doseq [transformer [transform/json-transformer
@@ -276,7 +292,7 @@
     ;; 3ns -> 3ns
     ;; 520ns -> 130ns
     (let [>> (m/decoder [:map [:x string?] [:y int?]] transformer)]
-      (cc/quick-bench (>> {:x "1", :y 1})))))
+      (p/bench (>> {:x "1", :y 1})))))
 
 (defn select-keys-perf-test []
   (let [ks #{:a :b}
@@ -287,21 +303,21 @@
     (assert (= {:a 1, :b 2} (quick-select-keys {:a 1, :b 2, :c 3})))
 
     ;; 370ns
-    (cc/quick-bench (normal-select-keys {:a 1, :b 2}))
-    (cc/quick-bench (normal-select-keys {:a 1, :b 2, :c 3, :d 4}))
+    (p/bench (normal-select-keys {:a 1, :b 2}))
+    (p/bench (normal-select-keys {:a 1, :b 2, :c 3, :d 4}))
 
     ;; 110ns
-    (cc/quick-bench (quick-select-keys {:a 1, :b 2}))
-    (cc/quick-bench (quick-select-keys {:a 1, :b 2, :c 3, :d 4}))))
+    (p/bench (quick-select-keys {:a 1, :b 2}))
+    (p/bench (quick-select-keys {:a 1, :b 2, :c 3, :d 4}))))
 
 (defn sequence-perf-test []
   ;; 27µs
   (let [valid? (partial s/valid? (s/* int?))]
-    (cc/quick-bench (valid? (range 10))))
+    (p/bench (valid? (range 10))))
 
   ;; 2.7µs
   (let [valid? (m/validator [:* int?])]
-    (cc/quick-bench (valid? (range 10)))))
+    (p/bench (valid? (range 10)))))
 
 (defn simple-regex []
   (let [data ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]
@@ -333,16 +349,16 @@
         valid-malli? (m/validator malli)]
 
     ;; 90µs
-    (cc/quick-bench (valid-seqxp? data))
+    (p/bench (valid-seqxp? data))
 
     ;; 40µs
-    (cc/quick-bench (valid-spec? data))
+    (p/bench (valid-spec? data))
 
     ;; 12µs
-    (cc/quick-bench (valid-minimallist? data))
+    (p/bench (valid-minimallist? data))
 
     ;; 1.5µs
-    (cc/quick-bench (valid-malli? data))))
+    (p/bench (valid-malli? data))))
 
 (defn parsing []
 
@@ -351,7 +367,7 @@
                          :val (s/alt :s string?
                                      :b boolean?)))
         parse (partial s/conform spec)]
-    (cc/quick-bench
+    (p/bench
       (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 
   ;; 2.5µs
@@ -361,24 +377,20 @@
                            [:s string?]
                            [:b boolean?]]]]]
         parse (m/parser schema)]
-    (cc/quick-bench
+    (p/bench
       (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"]))))
 
 (defn and-map-perf-test []
 
   ;; 164ns -> 36ns
   (let [valid? (m/validator (into [:and] (map (fn [x] [:> x]) (range 5))))]
-    (cc/with-progress-reporting
-      (cc/quick-bench (valid? 5))))
+    (p/bench (valid? 5)))
 
-  ;; 150ns -> 126n -> 39ns
+  ;; 150ns -> 126n -> 39ns -> 32ns
   (let [->key #(keyword (str "key_" %))
         valid? (m/validator (into [:map] (map (fn [x] [(->key x) :any]) (range 5))))
         value (reduce (fn [acc x] (assoc acc (->key x) x)) {} (range 5))]
-    #_(prof/profile
-        (time (dotimes [_ 40000000] (valid? value))))
-    (cc/with-progress-reporting
-      (cc/quick-bench (valid? value)))))
+    (p/bench (valid? value))))
 
 (defn schema-flames []
 

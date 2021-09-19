@@ -340,6 +340,9 @@
         forms (->> children (map (fn [[k p v]] (if p [k p (-form v)] [k (-form v)]))))]
     (->Parsed keyset children entries forms)))
 
+(defn -from-entry-ast [parent ast options]
+  (-into-schema parent (:properties ast) (-parse-entry-ast ast options) options))
+
 (defn -entry-ast [schema keyset]
   (let [properties (-properties schema)]
     (cond-> {:type (type schema)
@@ -618,18 +621,23 @@
 
 (defn -orn-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    AST
+    (-from-ast [parent ast options] (-from-entry-ast parent ast options))
+    IntoSchema
     (-type [_] :orn)
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children 1 nil)
-      (let [{:keys [children entries forms] :as parsed} (-parse-entries children {:naked-keys true} options)
+      (let [{:keys [keyset children entries forms] :as parsed} (-parse-entries children {:naked-keys true} options)
             form (-create-form :orn properties forms)]
         ^{:type ::schema
           ::parsed parsed}
         (reify
+          AST
+          (-to-ast [this _] (-entry-ast this keyset))
           Schema
           (-validator [_]
             (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) children))]
@@ -772,7 +780,7 @@
    ^{:type ::into-schema}
    (reify
      AST
-     (-from-ast [parent ast options] (-into-schema parent (:properties ast) (-parse-entry-ast ast options) options))
+     (-from-ast [parent ast options] (-from-entry-ast parent ast options))
      IntoSchema
      (-type [_] :map)
      (-type-properties [_])
@@ -1257,7 +1265,10 @@
    (-multi-schema {:naked-keys true}))
   ([opts]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify
+     AST
+     (-from-ast [parent ast options] (-from-entry-ast parent ast options))
+     IntoSchema
      (-type [_] :multi)
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
@@ -1265,7 +1276,7 @@
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
-             {:keys [children entries forms] :as parsed} (-parse-entries children opts' options)
+             {:keys [keyset children entries forms] :as parsed} (-parse-entries children opts' options)
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))
@@ -1275,6 +1286,8 @@
          ^{:type ::schema
            ::parsed parsed}
          (reify
+           AST
+           (-to-ast [this _] (-entry-ast this keyset))
            Schema
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map))]
@@ -1611,18 +1624,23 @@
 (defn -sequence-entry-schema
   [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    AST
+    (-from-ast [parent ast options] (-from-entry-ast parent ast options))
+    IntoSchema
     (-type [_] type)
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
-      (let [{:keys [children entries forms] :as parsed} (-parse-entries children opts options)
+      (let [{:keys [keyset children entries forms] :as parsed} (-parse-entries children opts options)
             form (-create-form type properties forms)]
         ^{:type ::schema
           ::parsed parsed}
         (reify
+          AST
+          (-to-ast [this _] (-entry-ast this keyset))
           Schema
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))

@@ -13,7 +13,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser)
+         parser unparser ast from-ast)
 
 ;;
 ;; protocols and records
@@ -40,6 +40,10 @@
   (-children [this] "returns schema children")
   (-parent [this] "returns the IntoSchema instance")
   (-form [this] "returns original form of the schema"))
+
+(defprotocol AST
+  (-to-ast [this options] "schema to ast")
+  (-from-ast [this ast options] "ast to schema"))
 
 (defprotocol MapSchema
   (-entries [this] "returns sequence of `key -val-schema` MapEntries"))
@@ -324,6 +328,25 @@
               (->Parsed (-map -keyset) (f -children) (f -entries) (f -forms)))
             (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
                    (unchecked-inc-int ci))))))))
+
+(defn -parse-entry-ast [ast options]
+  (let [->child (fn [[k v]] [k (:properties v) (from-ast (:value v) options)])
+        ast-entry-order (::ast-entry-order options)
+        keyset (:keys ast)
+        children (if ast-entry-order
+                   (->> keyset (sort-by (fn [e] (:order (val e)))) (map ->child))
+                   (->> keyset (map ->child)))
+        entries (->> children (map (fn [[k p v]] (miu/-tagged k (-val-schema v p)))))
+        forms (->> children (map (fn [[k p v]] (if p [k p (-form v)] [k (-form v)]))))]
+    (->Parsed keyset children entries forms)))
+
+(defn -entry-ast [schema keyset]
+  (let [properties (-properties schema)]
+    (cond-> {:type (type schema)
+             :keys (into {} (map (fn [[k i]]
+                                   (let [c (nth (-children schema) i), p (nth c 1), s (nth c 2)]
+                                     [k (cond-> {:order i, :value (ast s)} p (assoc :properties p))]))) keyset)}
+      properties (assoc :properties properties))))
 
 (defn -guard [pred tf]
   (when tf (fn [x] (if (pred x) (tf x) x))))
@@ -747,7 +770,10 @@
    (-map-schema {:naked-keys true}))
   ([opts] ;; :naked-keys
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify
+     AST
+     (-from-ast [parent ast options] (-into-schema parent (:properties ast) (-parse-entry-ast ast options) options))
+     IntoSchema
      (-type [_] :map)
      (-type-properties [_])
      (-properties-schema [_ _])
@@ -775,6 +801,8 @@
          ^{:type ::schema
            ::parsed parsed}
          (reify
+           AST
+           (-to-ast [this _] (-entry-ast this keyset))
            Schema
            (-validator [_]
              (let [validators (cond-> (mapv
@@ -1700,6 +1728,7 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
+     (map? ?schema) (from-ast ?schema options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t #?(:clj (.nth v 0), :cljs (nth v 0))
                              n #?(:clj (.count v), :cljs (count v))
@@ -1912,6 +1941,29 @@
    (let [schema (deref ?schema options)]
      (cond-> schema (-ref-schema? schema) (recur options)))))
 
+(defn from-ast
+  "Creates a Schema from AST"
+  ([ast] (from-ast ast nil))
+  ([ast options]
+   (let [type (:type ast)]
+     (if-let [s (-lookup type options)]
+       (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
+         (-from-ast s ast options)
+         (-into-schema s (:properties ast) (:children ast) options))
+       (-fail! ::invalid-ast {:type type, :ast ast})))))
+
+(defn ast
+  "Returns the Schema AST"
+  ([?schema] (ast ?schema nil))
+  ([?schema options]
+   (let [s (schema ?schema options)]
+     (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
+       (-to-ast s options)
+       (let [c (-children s)
+             p (-properties s)]
+         (cond-> {:type (type s)}
+           p (assoc :properties p)
+           c (assoc :children c)))))))
 ;;
 ;; eval
 ;;

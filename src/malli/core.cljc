@@ -346,9 +346,9 @@
 (defn -entry-ast [schema keyset]
   (let [properties (-properties schema)]
     (cond-> {:type (type schema)
-             :keys (into {} (map (fn [[k i]]
-                                   (let [c (nth (-children schema) i), p (nth c 1), s (nth c 2)]
-                                     [k (cond-> {:order i, :value (ast s)} p (assoc :properties p))]))) keyset)}
+             :keys (reduce (fn [acc [k p s]] (assoc acc k (cond-> {:order (-> keyset (get k) :order),
+                                                                   :value (ast s)} p (assoc :properties p))))
+                           {} (-children schema))}
       properties (assoc :properties properties))))
 
 (defn -guard [pred tf]
@@ -1275,11 +1275,12 @@
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
-             opts' (merge opts (select-keys properties [:lazy-refs]))
-             {:keys [keyset children entries forms] :as parsed} (-parse-entries children opts' options)
-             form (-create-form type properties forms)
+             lazy-refs (:lazy-refs properties)
+             opts (when lazy-refs (assoc opts :lazy-refs lazy-refs))
+             {:keys [keyset children entries forms] :as parsed} (-parse-entries children opts options)
+             form (delay (-create-form type properties forms))
              dispatch (eval (:dispatch properties) options)
-             dispatch-map (->> (for [[k s] entries] [k s]) (into {}))
+             dispatch-map (delay (into {} entries))
              finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]
          (when-not dispatch
            (-fail! ::missing-property {:key :dispatch}))
@@ -1290,7 +1291,7 @@
            (-to-ast [this _] (-entry-ast this keyset))
            Schema
            (-validator [_]
-             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map))]
+             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} @dispatch-map))]
                (fn [x] (if-let [validator (find (dispatch x))] (validator x) false))))
            (-explainer [this path]
              (let [find (finder (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} entries))
@@ -1301,17 +1302,17 @@
                    (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
            (-parser [_]
              (let [parse (fn [k s] (let [p (-parser s)] (fn [x] (miu/-map-valid #(miu/-tagged k %) (p x)))))
-                   find (finder (reduce-kv (fn [acc k s] (assoc acc k (parse k s))) {} dispatch-map))]
+                   find (finder (reduce-kv (fn [acc k s] (assoc acc k (parse k s))) {} @dispatch-map))]
                (fn [x] (if-some [parser (find (dispatch x))] (parser x) ::invalid))))
            (-unparser [_]
-             (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} dispatch-map)]
+             (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} @dispatch-map)]
                (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (key x))] (f (val x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
              ;; FIXME: Probably should not use `dispatch`
              ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s] (let [t (-transformer s transformer method options)]
-                                                         (cond-> acc t (assoc k t)))) {} dispatch-map)
+                                                         (cond-> acc t (assoc k t)))) {} @dispatch-map)
                    find (finder ->children)
                    child-transformer (if (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
                (-intercepting this-transformer child-transformer)))
@@ -1322,7 +1323,7 @@
            (-options [_] options)
            (-children [_] children)
            (-parent [_] parent)
-           (-form [_] form)
+           (-form [_] @form)
            MapSchema
            (-entries [_] entries)
            LensSchema

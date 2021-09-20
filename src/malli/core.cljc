@@ -1464,18 +1464,26 @@
 
 (defn -=>-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    AST
+    (-from-ast [parent {:keys [input output properties]} options]
+      (-into-schema parent properties [input output] options))
+    IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children 2 2)
-      (let [[input :as children] (map #(schema % options) children)
+      (let [[input output :as children] (map #(schema % options) children)
             form (-create-form :=> properties (map -form children))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
           (-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify
+          AST
+          (-to-ast [_ _]
+            (cond-> {:type :=>, :input input, :output output}
+              properties (assoc :properties properties)))
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]

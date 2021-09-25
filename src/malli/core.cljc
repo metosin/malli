@@ -221,7 +221,7 @@
 (defn- -update-parsed [{:keys [keyset children entries forms]} ?key value options]
   (let [[k p override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
         s (when value (schema value options))
-        i (keyset k)]
+        i (:order (keyset k))]
     (if (nil? s)
       ;; remove
       (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
@@ -343,25 +343,25 @@
 (defn -from-entry-ast [parent ast options]
   (-into-schema parent (:properties ast) (-parse-entry-ast ast options) options))
 
-(defn -ast-proprties [acc properties]
-  (let [registry (if-let [registry (:registry properties)]
-                   (into {} (map (fn [[k v]] [k (ast v)])) registry))
-        properties (cond-> properties registry (assoc :registry registry))]
-    (cond-> acc properties (assoc :properties properties))))
+(defn -ast [acc properties options]
+  (let [registry (when-let [registry (:registry properties)]
+                   (into {} (map (fn [[k v]] [k (ast v options)])) registry))
+        properties (not-empty (cond-> properties registry (dissoc :registry)))]
+    (cond-> acc properties (assoc :properties properties) registry (assoc :registry registry))))
 
 (defn -entry-ast [schema keyset]
-  (-ast-proprties
-    {:type (type schema)
-     :keys (reduce (fn [acc [k p s]] (assoc acc k (cond-> {:order (-> keyset (get k) :order),
-                                                           :value (ast s)} p (assoc :properties p))))
-                   {} (-children schema))}
-    (-properties schema)))
+  (-ast {:type (type schema)
+         :keys (reduce (fn [acc [k p s]] (assoc acc k (cond-> {:order (-> keyset (get k) :order),
+                                                               :value (ast s)} p (assoc :properties p))))
+                       {} (-children schema))}
+        (-properties schema)
+        (-options schema)))
 
 (defn -from-child-ast [parent ast options]
   (-into-schema parent (:properties ast) [(:child ast)] options))
 
 (defn -child-ast [schema]
-  (-ast-proprties {:type (type schema), :child (ast (nth (-children schema) 0))} (-properties schema)))
+  (-ast {:type (type schema), :child (ast (nth (-children schema) 0))} (-properties schema) (-options schema)))
 
 (defn -guard [pred tf]
   (when tf (fn [x] (if (pred x) (tf x) x))))
@@ -906,7 +906,7 @@
   (reify
     AST
     (-from-ast [parent ast options]
-      (-into-schema parent (:properties ast) [(:key ast) (:value ast)] options))
+      (-into-schema parent (:properties ast) [(from-ast (:key ast) options) (from-ast (:value ast)) options] options))
     IntoSchema
     (-type [_] :map-of)
     (-type-properties [_])
@@ -934,7 +934,7 @@
         (reify
           AST
           (-to-ast [this _]
-            (-ast-proprties {:type :map-of, :key (ast key-schema), :value (ast value-schema)} (-properties this)))
+            (-ast {:type :map-of, :key (ast key-schema), :value (ast value-schema)} properties options))
           Schema
           (-validator [_]
             (let [key-valid? (-validator key-schema)
@@ -1135,7 +1135,10 @@
 
 (defn -enum-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    AST
+    (-from-ast [parent ast options] (-into-schema parent (:properties ast) (:values ast) options))
+    IntoSchema
     (-type [_] :enum)
     (-type-properties [_])
     (-into-schema [parent properties children options]
@@ -1145,6 +1148,8 @@
             form (-create-form :enum properties children)]
         ^{:type ::schema}
         (reify
+          AST
+          (-to-ast [_ _] {:type :enum, :values children})
           Schema
           (-validator [_]
             (fn [x] (contains? schema x)))
@@ -1403,7 +1408,7 @@
          ^{:type ::schema}
          (reify
            AST
-           (-to-ast [_ _] (-ast-proprties {:type :ref, :child ref} properties))
+           (-to-ast [_ _] (-ast {:type :ref, :child ref} properties options))
            Schema
            (-validator [_]
              (let [validator (-memoize (fn [] (-validator (-ref))))]
@@ -1524,7 +1529,7 @@
   (reify
     AST
     (-from-ast [parent {:keys [input output properties]} options]
-      (-into-schema parent properties [input output] options))
+      (-into-schema parent properties [(from-ast input options) (from-ast output options)] options))
     IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
@@ -1539,7 +1544,7 @@
         (reify
           AST
           (-to-ast [_ _]
-            (cond-> {:type :=>, :input input, :output output}
+            (cond-> {:type :=>, :input (ast input), :output (ast output)}
               properties (assoc :properties properties)))
           Schema
           (-validator [this]
@@ -2030,9 +2035,14 @@
   ([ast options]
    (let [type (:type ast)]
      (if-let [s (-lookup type options)]
-       (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
-         (-from-ast s ast options)
-         (-into-schema s (:properties ast) (:children ast) options))
+       (let [r (:registry ast)
+             p (:properties ast)
+             options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
+             p' (if r (assoc p :registry (-property-registry r options -form)))
+             ast (cond-> ast p' (assoc :properties p'))]
+         (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
+           (-from-ast s ast options)
+           (-into-schema s (:properties ast) (:children ast) options)))
        (-fail! ::invalid-ast {:type type, :ast ast})))))
 
 (defn ast
@@ -2043,10 +2053,10 @@
      (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
        (-to-ast s options)
        (let [c (-children s)]
-         (-ast-proprties
-           (cond-> {:type (type s)}
-             c (assoc :children (map ast c)))
-           (-properties s)))))))
+         (-ast (cond-> {:type (type s)}
+                 c (assoc :children (into [] (map #(ast % options)) c)))
+               (-properties s)
+               (-options s)))))))
 ;;
 ;; eval
 ;;

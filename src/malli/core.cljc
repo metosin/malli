@@ -252,6 +252,95 @@
                       :always (->> (filter (fn [e] (-> e last some?)))))]
        (-set-children schema children)))))
 
+(defn -guard [pred tf]
+  (when tf (fn [x] (if (pred x) (tf x) x))))
+
+(defn -intercepting
+  ([interceptor] (-intercepting interceptor nil))
+  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
+
+(defn -parent-children-transformer [parent children transformer method options]
+  (let [parent-transformer (-value-transformer transformer parent method options)
+        child-transformers (into [] (keep #(-transformer % transformer method options)) children)
+        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
+    (-intercepting parent-transformer child-transformer)))
+
+(defn- -register-var [registry v]
+  (let [name (-> v meta :name)
+        schema (-simple-schema {:type name, :pred @v})]
+    (-> registry
+        (assoc name schema)
+        (assoc @v schema))))
+
+(defn -registry
+  {:arglists '([] [{:keys [registry]}])}
+  ([] default-registry)
+  ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
+
+(defn- -lookup [?schema options]
+  (let [registry (-registry options)]
+    (or (mr/-schema registry ?schema)
+        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+
+(defn- -lookup! [?schema f options]
+  (or (and f (f ?schema) ?schema)
+      (-lookup ?schema options)
+      (-fail! ::invalid-schema {:schema ?schema})))
+
+(defn -into-transformer [x]
+  (cond
+    (#?(:clj instance?, :cljs implements?) malli.core.Transformer x) x
+    (fn? x) (-into-transformer (x))
+    :else (-fail! ::invalid-transformer {:value x})))
+
+(defn- -property-registry [m options f]
+  (let [options (assoc options ::allow-invalid-refs true)]
+    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
+
+(defn -properties-and-options [properties options f]
+  (if-let [r (some-> properties :registry)]
+    (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
+      [(assoc properties :registry (-property-registry r options f)) options])
+    [properties options]))
+
+(defn -function-info [schema]
+  (if (= (type schema) :=>)
+    (let [[input output] (-children schema)
+          {:keys [min max]} (-regex-min-max input)]
+      (cond-> {:min min
+               :arity (if (= min max) min :varargs)
+               :input input
+               :output output}
+        max (assoc :max max)))))
+
+(defn -map-transformer [ts]
+  #?(:clj  (apply -comp (map (fn child-transformer [[k t]]
+                               (fn [^Associative x]
+                                 (if-let [e ^MapEntry (.entryAt x k)]
+                                   (.assoc x k (t (.val e))) x))) (rseq ts)))
+     :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
+                             (if-let [entry (find m k)]
+                               (assoc m k (t (val entry)))
+                               m)) x ts))))
+
+(defn -tuple-transformer [ts]
+  #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
+             (fn [x] (let [i (.iterator ^Iterable tl)]
+                       (loop [x ^IPersistentVector x]
+                         (if (.hasNext i)
+                           (let [e ^MapEntry (.next i), k (.key e)]
+                             (recur (.assoc x k ((.val e) (.nth x k)))))
+                           x)))))
+     :cljs (fn [x] (reduce-kv -update x ts))))
+
+(defn -collection-transformer [t empty]
+  #?(:clj  (fn [x] (let [i (.iterator ^Iterable x)]
+                     (loop [x ^IPersistentCollection empty]
+                       (if (.hasNext i)
+                         (recur (.cons x (t (.next i))))
+                         x))))
+     :cljs (fn [x] (into (if x empty) (map t) x))))
+
 ;;
 ;; parsing entry schemas
 ;;
@@ -372,7 +461,7 @@
   (-ast {:type (type schema), :child (ast (nth (-children schema) 0))} (-properties schema) (-options schema)))
 
 (defn -from-value-ast [parent ast options]
-  (-into-schema parent (:properties ast) [(:value ast)] options))
+  (-into-schema parent (:properties ast) (if-let [value (:value ast)] [value]) options))
 
 (defn -to-value-ast [schema]
   (-ast {:type (type schema), :value (nth (-children schema) 0)} (-properties schema) (-options schema)))
@@ -382,99 +471,6 @@
 
 (defn -to-type-ast [schema]
   (-ast {:type (type schema)} (-properties schema) (-options schema)))
-
-;;
-;; utils
-;;
-
-(defn -guard [pred tf]
-  (when tf (fn [x] (if (pred x) (tf x) x))))
-
-(defn -intercepting
-  ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
-
-(defn -parent-children-transformer [parent children transformer method options]
-  (let [parent-transformer (-value-transformer transformer parent method options)
-        child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
-    (-intercepting parent-transformer child-transformer)))
-
-(defn- -register-var [registry v]
-  (let [name (-> v meta :name)
-        schema (-simple-schema {:type name, :pred @v})]
-    (-> registry
-        (assoc name schema)
-        (assoc @v schema))))
-
-(defn -registry
-  {:arglists '([] [{:keys [registry]}])}
-  ([] default-registry)
-  ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
-
-(defn- -lookup [?schema options]
-  (let [registry (-registry options)]
-    (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
-
-(defn- -lookup! [?schema f options]
-  (or (and f (f ?schema) ?schema)
-      (-lookup ?schema options)
-      (-fail! ::invalid-schema {:schema ?schema})))
-
-(defn -into-transformer [x]
-  (cond
-    (#?(:clj instance?, :cljs implements?) malli.core.Transformer x) x
-    (fn? x) (-into-transformer (x))
-    :else (-fail! ::invalid-transformer {:value x})))
-
-(defn- -property-registry [m options f]
-  (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
-
-(defn -properties-and-options [properties options f]
-  (if-let [r (some-> properties :registry)]
-    (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
-      [(assoc properties :registry (-property-registry r options f)) options])
-    [properties options]))
-
-(defn -function-info [schema]
-  (if (= (type schema) :=>)
-    (let [[input output] (-children schema)
-          {:keys [min max]} (-regex-min-max input)]
-      (cond-> {:min min
-               :arity (if (= min max) min :varargs)
-               :input input
-               :output output}
-              max (assoc :max max)))))
-
-(defn -map-transformer [ts]
-  #?(:clj  (apply -comp (map (fn child-transformer [[k t]]
-                               (fn [^Associative x]
-                                 (if-let [e ^MapEntry (.entryAt x k)]
-                                   (.assoc x k (t (.val e))) x))) (rseq ts)))
-     :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
-                             (if-let [entry (find m k)]
-                               (assoc m k (t (val entry)))
-                               m)) x ts))))
-
-(defn -tuple-transformer [ts]
-  #?(:clj  (let [tl (LinkedList. ^Collection (mapv (fn [[k v]] (MapEntry/create k v)) ts))]
-             (fn [x] (let [i (.iterator ^Iterable tl)]
-                       (loop [x ^IPersistentVector x]
-                         (if (.hasNext i)
-                           (let [e ^MapEntry (.next i), k (.key e)]
-                             (recur (.assoc x k ((.val e) (.nth x k)))))
-                           x)))))
-     :cljs (fn [x] (reduce-kv -update x ts))))
-
-(defn -collection-transformer [t empty]
-  #?(:clj  (fn [x] (let [i (.iterator ^Iterable x)]
-                     (loop [x ^IPersistentCollection empty]
-                       (if (.hasNext i)
-                         (recur (.cons x (t (.next i))))
-                         x))))
-     :cljs (fn [x] (into (if x empty) (map t) x))))
 
 ;;
 ;; simple schema helpers
@@ -505,7 +501,7 @@
 
 (defn -simple-schema [?props]
   (let [{:keys [type type-properties pred property-pred min max from-ast to-ast]
-         :or {min 0, max 0, from-ast -from-type-ast, to-ast -to-type-ast}} (if (map? ?props) ?props)]
+         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (if (map? ?props) ?props)]
     ^{:type ::into-schema}
     (reify
       AST
@@ -1483,11 +1479,11 @@
 
 (defn -schema-schema [{:keys [id raw]}]
   ^{:type ::into-schema}
-  (let [internal? (or id raw)
-        type (if internal? ::schema :schema)]
+  (let [internal (or id raw)
+        type (if internal ::schema :schema)]
     (reify
       AST
-      (-from-ast [parent ast options] (-from-child-ast parent ast options))
+      (-from-ast [parent ast options] ((if internal -from-value-ast -from-child-ast) parent ast options))
       IntoSchema
       (-type [_] type)
       (-type-properties [_])
@@ -1502,7 +1498,8 @@
           ^{:type ::schema}
           (reify
             AST
-            (-to-ast [this _] (-to-child-ast this))
+            (-to-ast [this _]
+              (if id (-ast {:type type, :value id} (-properties this) (-options this)) (-to-child-ast this)))
             Schema
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
@@ -1531,23 +1528,23 @@
             RegexSchema
             (-regex-op? [_] false)
             (-regex-validator [_]
-              (if internal?
+              (if internal
                 (-regex-validator child)
                 (re/item-validator (-validator child))))
             (-regex-explainer [_ path]
-              (if internal?
+              (if internal
                 (-regex-explainer child path)
                 (re/item-explainer path child (-explainer child path))))
             (-regex-parser [_]
-              (if internal?
+              (if internal
                 (-regex-parser child)
                 (re/item-parser (parser child))))
             (-regex-unparser [_]
-              (if internal?
+              (if internal
                 (-regex-unparser child)
                 (re/item-unparser (unparser child))))
             (-regex-transformer [_ transformer method options]
-              (if internal?
+              (if internal
                 (-regex-transformer child transformer method options)
                 (re/item-transformer method (-validator child)
                                      (or (-transformer child transformer method options) identity))))

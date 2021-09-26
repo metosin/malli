@@ -175,6 +175,10 @@
       (is (= {:type 'int?}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type 'int?} (m/ast schema)))
+        (is (true? (m/validate (m/ast schema) 1))))
+
       (is (= 'int? (m/form schema)))))
 
   (testing "composite schemas"
@@ -240,6 +244,22 @@
                           :children [[:pos nil {:type 'pos-int?}]
                                      [:neg nil {:type 'neg-int?}]]}]}
              (mu/to-map-syntax schema*)))
+
+      (testing "ast"
+        (is (= {:type :and
+                :children [{:type 'int?}
+                           {:type :or
+                            :children [{:type 'pos-int?}
+                                       {:type 'neg-int?}]}]} (m/ast schema)))
+        (is (= {:type :and,
+                :children [{:type 'int?}
+                           {:type :orn
+                            :keys {:pos {:order 0
+                                         :value {:type 'pos-int?}}
+                                   :neg {:order 1
+                                         :value {:type 'neg-int?}}}}]} (m/ast schema*)))
+        (is (true? (m/validate (m/ast schema) -1)))
+        (is (true? (m/validate (m/ast schema) 1))))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))
       (is (= [:and 'int? [:orn [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
@@ -443,6 +463,11 @@
       (is (= {:type :>, :children [0]}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :>, :value 0}
+               (m/ast schema)))
+        (is (true? (m/validate (m/schema (m/ast schema)) 1))))
+
       (is (= [:> 0] (m/form schema)))))
 
   (testing "enum schemas"
@@ -475,6 +500,11 @@
       (is (= {:type :enum, :children [1 2]}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :enum, :values [1 2]}
+               (m/ast schema)))
+        (is (true? (m/validate (m/schema (m/ast schema)) 1))))
+
       (is (= [:enum 1 2] (m/form schema)))))
 
   (testing "maybe schemas"
@@ -506,6 +536,12 @@
 
       (is (= {:type :maybe, :children [{:type 'int?}]}
              (mu/to-map-syntax schema)))
+
+      (testing "ast"
+        (is (= {:type :maybe, :child {:type 'int?}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/schema (m/ast schema)) 1)))
+        (is (true? (m/validate (m/schema (m/ast schema)) nil))))
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
@@ -555,6 +591,18 @@
                 :properties {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 :children [{:type :malli.core/schema, :children [::cons]}]}
                (mu/to-map-syntax ConsCell)))
+
+        (testing "ast"
+          (is (= {:type :schema
+                  :child {:type :malli.core/schema
+                          :value ::cons}
+                  :registry {::cons {:type :maybe
+                                     :child {:type :tuple
+                                             :children [{:type 'int?}
+                                                        {:type :ref
+                                                         :value ::cons}]}}}}
+                 (m/ast ConsCell)))
+          (is (true? (m/validate (m/schema (m/ast ConsCell)) [1 [2 nil]]))))
 
         (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 ::cons]

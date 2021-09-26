@@ -1216,6 +1216,13 @@
     (is (= {:type :map-of, :children [{:type 'int?} {:type 'pos-int?}]}
            (mu/to-map-syntax [:map-of int? pos-int?])))
 
+    (testing "ast"
+      (is (= {:type :map-of,
+              :key {:type 'int?}
+              :value {:type 'pos-int?}}
+             (m/ast [:map-of int? pos-int?])))
+      (is (true? (m/validate (m/ast [:map-of int? pos-int?]) {1 1}))))
+
     (testing "keyword keys are transformed via strings"
       (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} mt/string-transformer)))))
 
@@ -1479,7 +1486,16 @@
         (is (= {:type name, :children [{:type 'int?}]}
                (mu/to-map-syntax [name int?]))))
       (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
-             (mu/to-map-syntax [:tuple int? int?])))))
+             (mu/to-map-syntax [:tuple int? int?]))))
+
+    (testing "ast"
+      (doseq [[name x] [[:vector [1 2 3]] [:sequential [1 2 3]] [:set #{1 2 3}]]]
+        (is (= {:type name, :child {:type 'int?}}
+               (m/ast [name int?])))
+        (is (true? (m/validate (m/ast [name int?]) x))))
+      (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
+             (m/ast [:tuple int? int?])))
+      (is (true? (m/validate (m/ast [:tuple int? int?]) [1 2])))))
 
   (testing "seqex schemas"
     (doseq [typ [:cat :catn]]

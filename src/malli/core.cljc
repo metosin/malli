@@ -1203,7 +1203,7 @@
   ^{:type ::into-schema}
   (reify
     AST
-    (-from-ast [parent ast options] (-from-child-ast parent ast options))
+    (-from-ast [parent ast options] (-from-value-ast parent ast options))
     IntoSchema
     (-type [_] :re)
     (-type-properties [_])
@@ -1217,7 +1217,7 @@
         ^{:type ::schema}
         (reify
           AST
-          (-to-ast [this _] (-to-child-ast this))
+          (-to-ast [this _] (-to-value-ast this))
           Schema
           (-validator [_]
             (-safe-pred #(re-find re %)))
@@ -1250,7 +1250,10 @@
 
 (defn -fn-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify
+    AST
+    (-from-ast [parent ast options] (-from-value-ast parent ast options))
+    IntoSchema
     (-type [_] :fn)
     (-type-properties [_])
     (-into-schema [parent properties children options]
@@ -1260,6 +1263,8 @@
             form (-create-form :fn properties children)]
         ^{:type ::schema}
         (reify
+          AST
+          (-to-ast [this _] (-to-value-ast this))
           Schema
           (-validator [_] (-safe-pred f))
           (-explainer [this path]

@@ -9,7 +9,8 @@
             [clojure.walk :as walk]
             [malli.generator :as mg]
             [clojure.test.check.generators :as gen]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:import (clojure.lang IFn)))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -757,6 +758,11 @@
         (is (= {:type :re, :children [re]}
                (mu/to-map-syntax schema)))
 
+        (testing "ast"
+          (is (= {:type :re, :value re}
+                 (m/ast schema)))
+          (is (true? (m/validate (m/ast schema) "a.b"))))
+
         (is (= form (m/form schema))))))
 
   (testing "ifn schemas"
@@ -764,7 +770,7 @@
       (is (true? (m/validate schema (fn []))))
       (is (true? (m/validate schema (constantly 1))))
       (is (true? (m/validate schema :keyword)))
-      (is (true? (m/validate schema #?(:clj  (reify clojure.lang.IFn
+      (is (true? (m/validate schema #?(:clj  (reify IFn
                                                (invoke [_] "Invoked!"))
                                        :cljs (reify IFn
                                                (-invoke [_] "Invoked!"))))))))
@@ -802,6 +808,13 @@
                 :children [fn]
                 :properties {:description "number between 10 and 18"}}
                (mu/to-map-syntax schema)))
+
+        (testing "ast"
+          (is (= {:type :fn
+                  :value fn
+                  :properties {:description "number between 10 and 18"}}
+                 (m/ast schema)))
+          (is (true? (m/validate (m/ast schema) 12))))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
@@ -931,6 +944,19 @@
                          [:y {:optional true} {:type 'int?}]
                          [:z {:optional false} {:type 'string?}]]}
              (mu/to-map-syntax schema)))
+
+      (testing "ast"
+        (is (= {:type :map,
+                :keys {:x {:order 0
+                           :value {:type 'boolean?}},
+                       :y {:order 1
+                           :value {:type 'int?}
+                           :properties {:optional true}},
+                       :z {:order 2
+                           :value {:type 'string?}
+                           :properties {:optional false}}}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/ast schema) valid))))
 
       (is (= [:map
               [:x 'boolean?]
@@ -1073,6 +1099,28 @@
                                                  [:address nil {:type :map
                                                                 :children [[:country nil {:type 'keyword?}]]}]]}]]}
              (mu/to-map-syntax schema)))
+
+      (testing "ast"
+        (is (= {:type :multi,
+                :keys {:sized {:order 0,
+                               :value {:type :map,
+                                       :keys {:type {:order 0
+                                                     :value {:type 'keyword?}}
+                                              :size {:order 1
+                                                     :value {:type 'int?}}}}},
+                       :human {:order 1,
+                               :value {:type :map,
+                                       :keys {:type {:order 0
+                                                     :value {:type 'keyword?}},
+                                              :name {:order 1
+                                                     :value {:type 'string?}}
+                                              :address {:order 2
+                                                        :value {:type :map
+                                                                :keys {:country {:order 0
+                                                                                 :value {:type 'keyword?}}}}}}}}}
+                :properties {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/ast schema) valid1))))
 
       (is (schema= [[:sized nil [:map [:type 'keyword?] [:size 'int?]]]
                     [:human nil [:map [:type 'keyword?] [:name 'string?] [:address [:map [:country 'keyword?]]]]]]

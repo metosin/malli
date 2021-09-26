@@ -2,6 +2,7 @@
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
   (:require #?@(:cljs [[goog.date.UtcDateTime]
                        [goog.date.Date]])
+            [malli.protocols :as p]
             [malli.core :as m])
   #?(:clj (:import (java.util Date UUID)
                    (java.time Instant ZoneId)
@@ -315,14 +316,14 @@
                                           :default default
                                           :key (if name (keyword (str key "/" name)))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
-        ->chain (m/-comp m/-transformer-chain m/-into-transformer)
+        ->chain (m/-comp p/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
     (if (seq chain)
       (reify
-        m/Transformer
+        p/Transformer
         (-transformer-chain [_] chain)
         (-value-transformer [_ schema method options]
           (reduce

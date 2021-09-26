@@ -1,5 +1,6 @@
 (ns malli.transform-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.protocols :as p]
             [malli.core :as m]
             [malli.transform :as mt]
             [malli.core-test]
@@ -379,7 +380,7 @@
                                   {:opts {:random :opts}})]
 
     (testing "transformer chain has 4 transformers"
-      (is (= 3 (count (m/-transformer-chain strict-json-transformer)))))
+      (is (= 3 (count (p/-transformer-chain strict-json-transformer)))))
 
     (testing "decode"
       (is (= :kikka (m/decode keyword? "kikka" strict-json-transformer)))

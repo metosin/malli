@@ -1,5 +1,6 @@
 (ns malli.core-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [malli.protocols :as p]
             [malli.core :as m]
             [malli.edn :as edn]
             [malli.transform :as mt]
@@ -2096,7 +2097,7 @@
 
 (deftest -regex-min-max-size-test
   (are [s min-max]
-    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))
+    (= min-max ((juxt :min :max) (p/-regex-min-max (m/schema s))))
 
     int? [1 1]
     [:cat] [0 0]
@@ -2121,7 +2122,7 @@
     [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30])
 
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
-                        (m/-regex-min-max
+                        (p/-regex-min-max
                           (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
                                      ::ints])))))
 

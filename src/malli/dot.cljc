@@ -1,5 +1,6 @@
 (ns malli.dot
   (:require [malli.core :as m]
+            [malli.protocols :as p]
             [malli.util :as mu]
             [malli.registry :as mr]
             [clojure.string :as str]))
@@ -43,7 +44,7 @@
       (m/walk
         schema
         (fn [schema _ _ _]
-          (when-let [to (if (m/-ref-schema? schema) (m/-ref schema))]
+          (when-let [to (if (m/-ref-schema? schema) (p/-ref schema))]
             (swap! links update from (fnil conj #{}) to)))))
     @links))
 

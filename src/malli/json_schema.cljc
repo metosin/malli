@@ -1,5 +1,6 @@
 (ns malli.json-schema
   (:require [malli.core :as m]
+            [malli.protocols :as p]
             [clojure.set :as set]))
 
 (defprotocol JsonSchema
@@ -9,7 +10,7 @@
 
 (defn -schema [schema {::keys [transform definitions] :as options}]
   (let [result (transform (m/deref schema) options)]
-    (if-let [ref (m/-ref schema)]
+    (if-let [ref (p/-ref schema)]
       (do (swap! definitions assoc ref result) (-ref ref))
       result)))
 
@@ -154,7 +155,7 @@
 
 (defmethod accept :=> [_ _ _ _] {})
 (defmethod accept :function [_ _ _ _] {})
-(defmethod accept :ref [_ schema _ _] (-ref (m/-ref schema)))
+(defmethod accept :ref [_ schema _ _] (-ref (p/-ref schema)))
 (defmethod accept :schema [_ schema _ options] (-schema schema options))
 (defmethod accept ::m/schema [_ schema _ options] (-schema schema options))
 

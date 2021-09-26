@@ -1,6 +1,7 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in])
   (:require [clojure.core :as c]
+            [malli.protocols :as p]
             [malli.core :as m]))
 
 (declare path->in)
@@ -41,11 +42,11 @@
    (find-first ?schema f nil))
   ([?schema f options]
    (let [result (atom nil)]
-     (m/-walk
+     (p/-walk
        (m/schema ?schema options)
-       (reify m/Walker
+       (reify p/Walker
          (-accept [_ s path options] (not (or @result (reset! result (f s path options)))))
-         (-inner [this s path options] (if-not @result (m/-walk s this path options)))
+         (-inner [this s path options] (if-not @result (p/-walk s this path options)))
          (-outer [_ _ _ _ _]))
        [] options)
      @result)))
@@ -82,7 +83,7 @@
        (nil? s2) s1
        (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
        (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))
-       :else (let [p (bear (m/-properties s1) (m/-properties s2))
+       :else (let [p (bear (p/-properties s1) (p/-properties s2))
                    ks (atom #{})
                    children (reduce (fn [form [k2 :as e2]]
                                       (if (@ks k2)
@@ -91,7 +92,7 @@
                                                                (-entry e1 e2 merge-required merge options)
                                                                e1))) [] form)
                                         (do (swap! ks conj k2) (conj form e2))))
-                                    [] (into (m/-children s1) (m/-children s2)))]
+                                    [] (into (p/-children s1) (p/-children s2)))]
                (m/into-schema :map p children options))))))
 
 (defn union
@@ -109,7 +110,7 @@
   "Returns a Schema instance with updated properties."
   [?schema f & args]
   (let [schema (m/schema ?schema)]
-    (m/-set-properties schema (not-empty (apply f (m/-properties schema) args)))))
+    (m/-set-properties schema (not-empty (apply f (p/-properties schema) args)))))
 
 (defn closed-schema
   "Closes recursively all :map schemas by adding `{:closed true}`
@@ -148,7 +149,7 @@
    (subschemas ?schema nil))
   ([?schema options]
    (let [schema (m/schema ?schema options)
-         options (let [ref (and (= :ref (m/type schema)) (m/-ref schema))]
+         options (let [ref (and (= :ref (m/type schema)) (p/-ref schema))]
                    (-> options
                        (clojure.core/update ::m/walk-schema-refs (fnil identity true))
                        (clojure.core/update ::m/walk-refs (fn [f] #(or (= ref %) ((m/-boolean-fn f) %))))))
@@ -167,7 +168,7 @@
   [schema path]
   (loop [i 0, s schema, acc []]
     (or (and (>= i (count path)) acc)
-        (recur (inc i) (m/-get s (path i) nil) (cond-> acc (m/-keep s) (conj (path i)))))))
+        (recur (inc i) (p/-get s (path i) nil) (cond-> acc (p/-keep s) (conj (path i)))))))
 
 (defn in->paths
   "Returns a vector of schema paths for a given Schema and value path"
@@ -192,7 +193,7 @@
    (transform-entries ?schema f nil))
   ([?schema f options]
    (let [schema (m/deref-all (m/schema ?schema options))]
-     (m/into-schema (m/-parent schema) (m/-properties schema) (f (m/-children schema)) (or (m/options schema) options)))))
+     (m/into-schema (p/-parent schema) (p/-properties schema) (f (p/-children schema)) (or (m/options schema) options)))))
 
 (defn optional-keys
   "Makes map keys optional."
@@ -255,7 +256,7 @@
    (find ?schema k nil))
   ([?schema k options]
    (let [schema (m/schema (or ?schema :map) options)]
-     (if schema (m/-get schema [::m/find k] nil)))))
+     (if schema (p/-get schema [::m/find k] nil)))))
 
 ;;
 ;; LensSchemas
@@ -269,19 +270,19 @@
    (get ?schema k default nil))
   ([?schema k default options]
    (let [schema (m/schema (or ?schema :map) options)]
-     (if schema (m/-get schema k default)))))
+     (if schema (p/-get schema k default)))))
 
 (defn assoc
   "Like [[clojure.core/assoc]], but for LensSchemas."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
-   (m/-set (m/schema ?schema options) key value)))
+   (p/-set (m/schema ?schema options) key value)))
 
 (defn update
   "Like [[clojure.core/update]], but for LensSchema instances."
   [schema key f & args]
-  (m/-set (m/schema schema) key (apply f (get schema key) args)))
+  (p/-set (m/schema schema) key (apply f (get schema key) args)))
 
 (defn get-in
   "Like [[clojure.core/get-in]], but for LensSchemas."
@@ -335,7 +336,7 @@
   ([{:keys [type properties children] :as m} options]
    (if (map? m)
      (let [<-child (if (-> children first vector?) (fn [f] #(clojure.core/update % 2 f)) identity)
-           [properties options] (m/-properties-and-options properties options m/-form)]
+           [properties options] (m/-properties-and-options properties options p/-form)]
        (m/into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
      m)))
 
@@ -355,8 +356,8 @@
      (apply f (conj children options))]))
 
 (defn -util-schema [{:keys [type min max childs type-properties fn]}]
-  ^{:type ::m/into-schema}
-  (reify m/IntoSchema
+  ^{:type ::p/into-schema}
+  (reify p/IntoSchema
     (-type [_] type)
     (-type-properties [_] type-properties)
     (-properties-schema [_ _])
@@ -366,26 +367,26 @@
       (let [[children forms schema] (fn properties (vec children) options)
             walkable-childs (if childs (subvec children 0 childs) children)
             form (m/-create-form type properties forms)]
-        ^{:type ::m/schema}
+        ^{:type ::p/schema}
         (reify
-          m/Schema
-          (-validator [_] (m/-validator schema))
-          (-explainer [_ path] (m/-explainer schema path))
+          p/Schema
+          (-validator [_] (p/-validator schema))
+          (-explainer [_ path] (p/-explainer schema path))
           (-transformer [this transformer method options]
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]
-            (if (m/-accept walker this path options)
-              (m/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
+            (if (p/-accept walker this path options)
+              (p/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          m/LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (clojure.core/get children key default))
           (-set [_ key value] (m/into-schema type properties (clojure.core/assoc children key value)))
-          m/RefSchema
+          p/RefSchema
           (-ref [_])
           (-deref [_] schema))))))
 

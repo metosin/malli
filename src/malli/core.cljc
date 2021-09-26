@@ -1,71 +1,42 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   #?(:cljs (:require-macros malli.core))
-  (:require [malli.sci :as ms]
-            [malli.impl.util :as miu]
-            [malli.impl.regex :as re]
-            [malli.registry :as mr])
-  #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
-                   (malli.impl.util SchemaError)
-                   (java.util.concurrent.atomic AtomicReference)
-                   (java.util Collection LinkedList))))
+  (:require
+   [malli.protocols
+    :as p
+    :refer [-type -type-properties -properties-schema -children-schema
+    -into-schema -validator -explainer -parser -unparser -transformer
+    -walk -properties -options -children -parent -form -entries -keep
+    -get -set -ref -deref -regex-op? -regex-validator -regex-explainer
+    -regex-unparser -regex-parser -regex-transformer -regex-min-max
+    -accept -inner -outer -value-transformer]]
+   [malli.sci :as ms]
+   [malli.impl.util :as miu]
+   [malli.impl.regex :as re]
+   [malli.registry :as mr])
+  #?(:clj
+     (:import
+      (java.util.regex Pattern)
+      (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
+      (malli.impl.util SchemaError)
+      (malli.protocols Schema IntoSchema LensSchema RegexSchema MapSchema RefSchema)
+      (java.util.concurrent.atomic AtomicReference)
+      (java.util Collection LinkedList))))
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
          parser unparser)
 
 ;;
-;; protocols and records
+;; impl
 ;;
 
-(defprotocol IntoSchema
-  (-type [this] "returns type of the schema")
-  (-type-properties [this] "returns schema type properties")
-  (-properties-schema [this options] "maybe returns :map schema describing schema properties")
-  (-children-schema [this options] "maybe returns sequence schema describing schema children")
-  (-into-schema [this properties children options] "creates a new schema instance"))
-
-(defprotocol Schema
-  (-validator [this] "returns a predicate function that checks if the schema is valid")
-  (-explainer [this path] "returns a function of `x in acc -> maybe errors` to explain the errors for invalid values")
-  (-parser [this] "return a function of `x -> parsed-x | ::m/invalid` to explain how schema is valid.")
-  (-unparser [this] "return the inverse (partial) function wrt. `-parser`; `parsed-x -> x | ::m/invalid`")
-  (-transformer [this transformer method options]
-    "returns a function to transform the value for the given schema and method.
-    Can also return nil instead of `identity` so that more no-op transforms can be elided.")
-  (-walk [this walker path options] "walks the schema and it's children, ::m/walk-entry-vals, ::m/walk-refs, ::m/walk-schema-refs options effect how walking is done.")
-  (-properties [this] "returns original schema properties")
-  (-options [this] "returns original options")
-  (-children [this] "returns schema children")
-  (-parent [this] "returns the IntoSchema instance")
-  (-form [this] "returns original form of the schema"))
-
-(defprotocol MapSchema
-  (-entries [this] "returns sequence of `key -val-schema` MapEntries"))
-
-(defprotocol LensSchema
-  (-keep [this] "returns truthy if schema contributes to value path")
-  (-get [this key default] "returns schema at key")
-  (-set [this key value] "returns a copy with key having new value"))
-
-(defprotocol RefSchema
-  (-ref [this] "returns the reference name")
-  (-deref [this] "returns the referenced schema"))
-
-(defprotocol RegexSchema
-  (-regex-op? [this] "is this a regex operator (e.g. :cat, :*...)")
-  (-regex-validator [this] "returns the raw internal regex validator implementation")
-  (-regex-explainer [this path] "returns the raw internal regex explainer implementation")
-  (-regex-unparser [this] "returns the raw internal regex unparser implementation")
-  (-regex-parser [this] "returns the raw internal regex parser implementation")
-  (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
-  (-regex-min-max [this] "returns size of the sequence as [min max] vector. nil max means unbuond."))
-
-(defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
+(defn -map-schema? [x] (#?(:clj instance?, :cljs implements?) malli.protocols.MapSchema x))
+(defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.protocols.Transformer x))
+(defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.protocols.RefSchema x))
 
 (extend-type #?(:clj Object, :cljs default)
-  RegexSchema
+  p/RegexSchema
   (-regex-op? [_] false)
 
   (-regex-validator [this]
@@ -81,12 +52,12 @@
   (-regex-parser [this]
     (if (-ref-schema? this)
       (-regex-parser (-deref this))
-      (re/item-parser (parser this))))
+      (re/item-parser (-parser this))))
 
   (-regex-unparser [this]
     (if (-ref-schema? this)
       (-regex-unparser (-deref this))
-      (re/item-unparser (unparser this))))
+      (re/item-unparser (-unparser this))))
 
   (-regex-transformer [this transformer method options]
     (if (-ref-schema? this)
@@ -95,22 +66,9 @@
 
   (-regex-min-max [_] {:min 1, :max 1}))
 
-(defprotocol Walker
-  (-accept [this schema path options])
-  (-inner [this schema path options])
-  (-outer [this schema path children options]))
-
-(defprotocol Transformer
-  (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
-  (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
-
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
-
-;;
-;; impl
-;;
 
 (defn -deprecated! [x] (println "DEPRECATED:" x))
 
@@ -362,7 +320,7 @@
 
 (defn -into-transformer [x]
   (cond
-    (#?(:clj instance?, :cljs implements?) malli.core.Transformer x) x
+    (-transformer? x) x
     (fn? x) (-into-transformer (x))
     :else (-fail! ::invalid-transformer {:value x})))
 
@@ -444,7 +402,7 @@
 (defn -simple-schema [?props]
   (let [{:keys [type type-properties pred property-pred min max] :or {min 0, max 0}} (if (map? ?props) ?props)]
     ^{:type ::into-schema}
-    (reify IntoSchema
+    (reify p/IntoSchema
       (-type [_] type)
       (-type-properties [_] type-properties)
       (-properties-schema [_ _])
@@ -458,7 +416,7 @@
                 form (delay (-create-form type properties children))]
             ^{:type ::schema}
             (reify
-              Schema
+              p/Schema
               (-validator [_] validator)
               (-explainer [this path]
                 (fn explain [x in acc]
@@ -475,7 +433,7 @@
               (-children [_] children)
               (-parent [_] parent)
               (-form [_] @form)
-              LensSchema
+              p/LensSchema
               (-keep [_])
               (-get [_ _ default] default)
               (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))))
@@ -494,7 +452,7 @@
 
 (defn -and-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :and)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -507,7 +465,7 @@
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (let [validators (distinct (map -validator children))]
               #?(:clj  (miu/-every-pred validators)
@@ -527,14 +485,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -or-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :or)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -547,7 +505,7 @@
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (let [validators (distinct (map -validator children))]
               #?(:clj  (miu/-some-pred validators)
@@ -588,14 +546,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -orn-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :orn)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -607,7 +565,7 @@
         ^{:type ::schema
           ::parsed parsed}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) children))]
               #?(:clj  (miu/-some-pred validators)
@@ -661,14 +619,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value)))))))
 
 (defn -not-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :not)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -680,7 +638,7 @@
             form (-create-form :not properties (map -form children))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_] validator)
           (-explainer [this path]
             (fn explain [x in acc]
@@ -697,7 +655,7 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
@@ -707,7 +665,7 @@
    (-into-schema (-val-schema) properties (list schema) (-options schema)))
   ([]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify p/IntoSchema
      (-type [_] ::val)
      (-type-properties [_])
      (-properties-schema [_ _])
@@ -717,7 +675,7 @@
        (let [schema (schema (first children) options)
              form (delay (-create-form ::val properties [(-form schema)]))]
          ^{:type ::schema}
-         (reify Schema
+         (reify p/Schema
            (-validator [_] (-validator schema))
            (-explainer [_ path] (-explainer schema path))
            (-parser [_] (-parser schema))
@@ -734,11 +692,11 @@
            (-children [_] [schema])
            (-parent [_] parent)
            (-form [_] @form)
-           LensSchema
+           p/LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))
            (-set [_ key value] (if (= 0 key) (-val-schema value properties)))
-           RefSchema
+           p/RefSchema
            (-ref [_])
            (-deref [_] schema)))))))
 
@@ -747,7 +705,7 @@
    (-map-schema {:naked-keys true}))
   ([opts] ;; :naked-keys
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify p/IntoSchema
      (-type [_] :map)
      (-type-properties [_])
      (-properties-schema [_ _])
@@ -775,7 +733,7 @@
          ^{:type ::schema
            ::parsed parsed}
          (reify
-           Schema
+           p/Schema
            (-validator [_]
              (let [validators (cond-> (mapv
                                         (fn [[key {:keys [optional]} value]]
@@ -834,16 +792,16 @@
            (-children [_] children)
            (-parent [_] parent)
            (-form [_] @form)
-           MapSchema
+           p/MapSchema
            (-entries [_] entries)
-           LensSchema
+           p/LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))))))))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :map-of)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -868,7 +826,7 @@
                                    ::invalid))))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (let [key-valid? (-validator key-schema)
                   value-valid? (-validator value-schema)]
@@ -915,7 +873,7 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
@@ -923,7 +881,7 @@
 (defn -collection-schema [?props]
   (let [props* (atom (if (map? ?props) ?props))]
     ^{:type ::into-schema}
-    (reify IntoSchema
+    (reify p/IntoSchema
       (-type [_] (:type @props*))
       (-type-properties [_] (:type-properties @props*))
       (-properties-schema [_ _])
@@ -953,7 +911,7 @@
                                                    :else x'))))))]
               ^{:type ::schema}
               (reify
-                Schema
+                p/Schema
                 (-validator [_]
                   (let [validator (-validator schema)]
                     (fn [x] (and (fpred x)
@@ -990,14 +948,14 @@
                 (-children [_] children)
                 (-parent [_] parent)
                 (-form [_] form)
-                LensSchema
+                p/LensSchema
                 (-keep [_] true)
                 (-get [_ _ _] schema)
                 (-set [this _ value] (-set-children this [value]))))))))))
 
 (defn -tuple-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :tuple)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1021,7 +979,7 @@
                                                     x parsers)))))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
               (fn [x] (and (vector? x)
@@ -1056,14 +1014,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :enum)
     (-type-properties [_])
     (-into-schema [parent properties children options]
@@ -1073,7 +1031,7 @@
             form (-create-form :enum properties children)]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (fn [x] (contains? schema x)))
           (-explainer [this path]
@@ -1092,14 +1050,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -re-schema [class?]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :re)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1111,7 +1069,7 @@
             form (if class? re (-create-form :re properties children))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (-safe-pred #(re-find re %)))
           (-explainer [this path]
@@ -1136,14 +1094,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -fn-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :fn)
     (-type-properties [_])
     (-into-schema [parent properties children options]
@@ -1153,7 +1111,7 @@
             form (-create-form :fn properties children)]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_] (-safe-pred f))
           (-explainer [this path]
             (fn explain [x in acc]
@@ -1177,14 +1135,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -maybe-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :maybe)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1197,7 +1155,7 @@
                                (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [_]
             (let [validator' (-validator schema)]
               (fn [x] (or (nil? x) (validator' x)))))
@@ -1217,7 +1175,7 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [this key value] (if (= 0 key)
@@ -1229,7 +1187,7 @@
    (-multi-schema {:naked-keys true}))
   ([opts]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify p/IntoSchema
      (-type [_] :multi)
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
@@ -1247,7 +1205,7 @@
          ^{:type ::schema
            ::parsed parsed}
          (reify
-           Schema
+           p/Schema
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} dispatch-map))]
                (fn [x] (if-let [validator (find (dispatch x))] (validator x) false))))
@@ -1282,9 +1240,9 @@
            (-children [_] children)
            (-parent [_] parent)
            (-form [_] form)
-           MapSchema
+           p/MapSchema
            (-entries [_] entries)
-           LensSchema
+           p/LensSchema
            (-keep [_])
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))))))))
@@ -1294,7 +1252,7 @@
    (-ref-schema nil))
   ([{:keys [lazy type-properties] :as opts}]
    ^{:type ::into-schema}
-   (reify IntoSchema
+   (reify p/IntoSchema
      (-type [_] :ref)
      (-type-properties [_] type-properties)
      (-into-schema [parent properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
@@ -1311,7 +1269,7 @@
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
          (reify
-           Schema
+           p/Schema
            (-validator [_]
              (let [validator (-memoize (fn [] (-validator (-ref))))]
                (fn [x] ((validator) x))))
@@ -1337,15 +1295,15 @@
            (-children [_] children)
            (-parent [_] parent)
            (-form [_] form)
-           LensSchema
+           p/LensSchema
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
-           RefSchema
+           p/RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))
-           RegexSchema
+           p/RegexSchema
            (-regex-op? [_] false)
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-explainer [this _] (-fail! ::potentially-recursive-seqex this))
@@ -1358,7 +1316,7 @@
   ^{:type ::into-schema}
   (let [internal? (or id raw)
         type (if internal? ::schema :schema)]
-    (reify IntoSchema
+    (reify p/IntoSchema
       (-type [_] type)
       (-type-properties [_])
       (-properties-schema [_ _])
@@ -1371,7 +1329,7 @@
                               (-create-form type properties [(-form child)])))]
           ^{:type ::schema}
           (reify
-            Schema
+            p/Schema
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child path))
             (-parser [_] (-parser child))
@@ -1388,15 +1346,15 @@
             (-children [_] children)
             (-parent [_] parent)
             (-form [_] @form)
-            LensSchema
+            p/LensSchema
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
             (-set [this key value] (if (= key 0) (-set-children this [value])
                                                  (-fail! ::index-out-of-bounds {:schema this, :key key})))
-            RefSchema
+            p/RefSchema
             (-ref [_] id)
             (-deref [_] child)
-            RegexSchema
+            p/RegexSchema
             (-regex-op? [_] false)
             (-regex-validator [_]
               (if internal?
@@ -1423,7 +1381,7 @@
 
 (defn -=>-schema []
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
@@ -1435,7 +1393,7 @@
           (-fail! ::invalid-input-schema {:input input}))
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [this]
             (if-let [checker (->checker this)]
               (let [validator (fn [x] (nil? (checker x)))]
@@ -1464,14 +1422,14 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -function-schema [_]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] :function)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1490,7 +1448,7 @@
             (-fail! ::duplicate-min-arities {:infos infos})))
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [this]
             (if-let [checker (->checker this)]
               (let [validator (fn [x] (nil? (checker x)))]
@@ -1519,7 +1477,7 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
-          LensSchema
+          p/LensSchema
           (-keep [_])
           (-get [this key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
@@ -1538,7 +1496,7 @@
 (defn -sequence-schema
   [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] type)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1549,7 +1507,7 @@
             form (-create-form type properties (mapv -form children))]
         ^{:type ::schema}
         (reify
-          Schema
+          p/Schema
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
           (-parser [this] (regex-parser this))
@@ -1564,12 +1522,12 @@
           (-parent [_] parent)
           (-form [_] form)
 
-          LensSchema
+          p/LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
 
-          RegexSchema
+          p/RegexSchema
           (-regex-op? [_] true)
           (-regex-validator [_] (re-validator properties (map -regex-validator children)))
           (-regex-explainer [_ path]
@@ -1583,7 +1541,7 @@
 (defn -sequence-entry-schema
   [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
   ^{:type ::into-schema}
-  (reify IntoSchema
+  (reify p/IntoSchema
     (-type [_] type)
     (-type-properties [_])
     (-properties-schema [_ _])
@@ -1595,7 +1553,7 @@
         ^{:type ::schema
           ::parsed parsed}
         (reify
-          Schema
+          p/Schema
           (-validator [this] (regex-validator this))
           (-explainer [this path] (regex-explainer this path))
           (-parser [this] (regex-parser this))
@@ -1609,11 +1567,11 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] form)
-          LensSchema
+          p/LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value))
-          RegexSchema
+          p/RegexSchema
           (-regex-op? [_] true)
           (-regex-validator [_] (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) children)))
           (-regex-explainer [_ path]
@@ -1634,7 +1592,7 @@
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x))
+  [x] (#?(:clj instance?, :cljs implements?) malli.protocols.IntoSchema x))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
@@ -1685,7 +1643,7 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
+  [x] (#?(:clj instance?, :cljs implements?) malli.protocols.Schema x))
 
 (defn schema
   "Creates a Schema object from any of the following:
@@ -1757,7 +1715,7 @@
   ([?schema f options]
    (-walk
      (schema ?schema options)
-     (reify Walker
+     (reify p/Walker
        (-accept [_ s _ _] s)
        (-inner [this s p options] (-walk s this p options))
        (-outer [_ s p c options] (f s p c options)))
@@ -1893,7 +1851,7 @@
    (entries ?schema nil))
   ([?schema options]
    (if-let [schema (schema ?schema options)]
-     (if (#?(:clj instance?, :cljs implements?) malli.core.MapSchema schema)
+     (if (-map-schema? schema)
        (-entries schema)))))
 
 (defn deref

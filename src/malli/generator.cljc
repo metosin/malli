@@ -7,6 +7,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.spec.gen.alpha :as ga]
+            [malli.protocols :as p]
             [malli.core :as m]))
 
 (declare generator generate -create)
@@ -118,7 +119,7 @@
   (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} options)))
 
 (defn -regex-generator [schema options]
-  (if (m/-regex-op? schema)
+  (if (p/-regex-op? schema)
     (generator schema options)
     (gen/tuple (generator schema options))))
 
@@ -137,20 +138,20 @@
                     (m/children schema options))))
 
 (defn -?-gen [schema options]
-  (let [child (m/-get schema 0 nil)]
-    (if (m/-regex-op? child)
+  (let [child (p/-get schema 0 nil)]
+    (if (p/-regex-op? child)
       (gen/one-of [(generator child options) (gen/return ())])
       (gen/vector (generator child options) 0 1))))
 
 (defn -*-gen [schema options]
-  (let [child (m/-get schema 0 nil)]
-    (if (m/-regex-op? child)
+  (let [child (p/-get schema 0 nil)]
+    (if (p/-regex-op? child)
       (gen/fmap #(apply concat %) (gen/vector (generator child options)))
       (gen/vector (generator child options)))))
 
 (defn -repeat-gen [schema options]
-  (let [child (m/-get schema 0 nil)]
-    (if (m/-regex-op? child)
+  (let [child (p/-get schema 0 nil)]
+    (if (p/-regex-op? child)
       (gen/fmap #(apply concat %) (-coll-gen schema identity options))
       (-coll-gen schema identity options))))
 
@@ -319,9 +320,9 @@
                                                            (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)
-       :function (let [checkers (map #(function-checker % options) (m/-children schema))]
+       :function (let [checkers (map #(function-checker % options) (p/-children schema))]
                    (fn [x] (->> checkers (keep #(% x)) (seq))))
-       (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
+       (m/-fail! ::invalid-function-schema {:type (p/-type schema)})))))
 
 (defn check
   ([?schema f] (check ?schema f nil))

@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [malli.core-test]
             [malli.json-schema :as json-schema]
+            [malli.protocols :as p]
             [malli.core :as m]
             [malli.util :as mu]))
 
@@ -81,12 +82,12 @@
        :cljs [])
    ;; protocols
    [(reify
-      m/Schema
+      p/Schema
       (-properties [_])
-      (-parent [_] (reify m/IntoSchema (-type [_]) (-type-properties [_])))
+      (-parent [_] (reify p/IntoSchema (-type [_]) (-type-properties [_])))
       (-form [_])
       (-validator [_] int?)
-      (-walk [t w p o] (m/-outer w t p nil o))
+      (-walk [t w p o] (p/-outer w t p nil o))
       json-schema/JsonSchema
       (-accept [_ _ _] {:type "custom"})) {:type "custom"}]
    ;; type-properties

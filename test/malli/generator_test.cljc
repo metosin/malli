@@ -4,6 +4,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [malli.json-schema-test :as json-schema-test]
+            [malli.protocols :as p]
             [malli.generator :as mg]
             [malli.core :as m]
             [malli.util :as mu]))
@@ -243,8 +244,8 @@
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}
         schema (reify
-                 m/Schema
-                 (-parent [_] (reify m/IntoSchema (-type-properties [_])))
+                 p/Schema
+                 (-parent [_] (reify p/IntoSchema (-type-properties [_])))
                  (-properties [_])
                  mg/Generator
                  (-generator [_ _] (gen/elements values)))]

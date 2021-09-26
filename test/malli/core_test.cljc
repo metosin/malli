@@ -704,6 +704,18 @@
                                       ::c [:schema 'pos-int?]}}}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :and,
+                :children [{:type :and
+                            :children [{:type ::m/schema, :value ::a}
+                                       {:type ::m/schema, :value ::b}
+                                       {:type ::m/schema, :value ::c}]}]
+                :registry {::a {:type ::m/schema, :value ::b}
+                           ::b {:type ::m/schema, :value ::c}
+                           ::c {:type :schema, :child {:type 'pos-int?}}}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/ast schema) 1))))
+
       (is (= [:and
               {:registry {::a ::b
                           ::b ::c

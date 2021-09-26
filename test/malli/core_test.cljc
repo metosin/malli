@@ -10,7 +10,7 @@
             [malli.generator :as mg]
             [clojure.test.check.generators :as gen]
             [clojure.string :as str])
-  (:import (clojure.lang IFn)))
+  #?(:clj (:import (clojure.lang IFn))))
 
 (defn with-schema-forms [result]
   (some-> result

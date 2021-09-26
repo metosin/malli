@@ -1924,14 +1924,16 @@
 
 (deftest simple-schemas
   (testing "simple schemas"
-    (doseq [[type {:keys [schema validate explain decode encode map-syntax form]}]
+    (doseq [[type {:keys [schema validate explain decode encode map-syntax ast form]}]
             {:any {:schema :any
                    :validate {:success [nil 1 "kikka"]}
                    :map-syntax {:type :any}
+                   :ast {:type :any}
                    :form :any}
              :nil {:schema :nil
                    :validate {:success [nil], :failure [1 "kikka"]}
                    :map-syntax {:type :nil}
+                   :ast {:type :nil}
                    :form :nil}
              :string {:schema [:string {:min 1, :max 4}]
                       :validate {:success ["abba" "a"]
@@ -1950,6 +1952,7 @@
                                ["1" "1" mt/json-transformer]
                                ["--" "<-->" mt/string-transformer [:string {:encode/string {:enter #(str "<" %), :leave #(str % ">")}}]]]
                       :map-syntax {:type :string, :properties {:min 1, :max 4}}
+                      :ast {:type :string, :properties {:min 1, :max 4}}
                       :form [:string {:min 1, :max 4}]}
              :int {:schema [:int {:min 1, :max 4}]
                    :validate {:success [1 4]
@@ -1968,6 +1971,7 @@
                             [1 1 mt/json-transformer]
                             [1 3 mt/string-transformer [:int {:encode/string {:enter inc, :leave inc}}]]]
                    :map-syntax {:type :int, :properties {:min 1, :max 4}}
+                   :ast {:type :int, :properties {:min 1, :max 4}}
                    :form [:int {:min 1, :max 4}]}
              :double {:schema [:double {:min 1.0, :max 4.0}]
                       :validate {:success [1.0 2.2 4.0]
@@ -1986,6 +1990,7 @@
                                [1.1 1.1 mt/json-transformer]
                                [1.1 3.1 mt/string-transformer [:double {:encode/string {:enter inc, :leave inc}}]]]
                       :map-syntax {:type :double, :properties {:min 1.0, :max 4.0}}
+                      :ast {:type :double, :properties {:min 1.0, :max 4.0}}
                       :form [:double {:min 1.0, :max 4.0}]}
              :keyword {:schema :keyword
                        :validate {:success [:abba :user/abba]
@@ -2008,6 +2013,7 @@
                                 [:user/abba "user/abba" mt/json-transformer]
                                 [:user/abba "abba" mt/string-transformer [:keyword {:encode/string {:enter name, :leave str}}]]]
                        :map-syntax {:type :keyword}
+                       :ast {:type :keyword}
                        :form :keyword}
              :qualified-keyword {:schema [:qualified-keyword {:namespace :user}]
                                  :validate {:success [:user/abba]
@@ -2030,6 +2036,7 @@
                                           [:user/abba "user/abba" mt/json-transformer]
                                           [:user/abba "abba" mt/string-transformer [:qualified-keyword {:encode/string {:enter name, :leave str}}]]]
                                  :map-syntax {:type :qualified-keyword, :properties {:namespace :user}}
+                                 :ast {:type :qualified-keyword, :properties {:namespace :user}}
                                  :form [:qualified-keyword {:namespace :user}]}
              :symbol {:schema :symbol
                       :validate {:success ['abba 'user/abba]
@@ -2052,6 +2059,7 @@
                                ['user/abba "user/abba" mt/json-transformer]
                                ['user/abba "abba" mt/string-transformer [:symbol {:encode/string {:enter name, :leave str}}]]]
                       :map-syntax {:type :symbol}
+                      :ast {:type :symbol}
                       :form :symbol}
              :qualified-symbol {:schema :qualified-symbol
                                 :validate {:success ['user/abba]
@@ -2074,6 +2082,7 @@
                                          ['user/abba "user/abba" mt/json-transformer]
                                          ['user/abba "abba" mt/string-transformer [:qualified-symbol {:encode/string {:enter name, :leave str}}]]]
                                 :map-syntax {:type :qualified-symbol}
+                                :ast {:type :qualified-symbol}
                                 :form :qualified-symbol}
              :uuid {:schema :uuid
                     :validate {:success [#uuid"72b9bf3d-398c-472f-9360-c1a997c22240"]
@@ -2096,6 +2105,7 @@
                              [123 "123" mt/json-transformer]
                              [#uuid"72b9bf3d-398c-472f-9360-c1a997c22240" "72b9bf3d-398c-472f-9360-c1a997c22240" mt/string-transformer [:uuid {:decode/string {:enter (partial str "72b9bf3d-398c-472f-"), :leave mt/-string->uuid}}]]]
                     :map-syntax {:type :uuid}
+                    :ast {:type :uuid}
                     :form :uuid}}]
 
       (testing (str "simple-schema: " type)
@@ -2128,7 +2138,10 @@
           (is (= form (m/form schema))))
 
         (testing "map-syntax"
-          (is (= map-syntax (mu/to-map-syntax schema))))))))
+          (is (= map-syntax (mu/to-map-syntax schema))))
+
+        (testing "ast"
+          (is (= ast (m/ast schema))))))))
 
 (def generate-over6 (gen/large-integer* {:min 7}))
 
@@ -2312,7 +2325,13 @@
         (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
         (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
-               (mu/to-map-syntax schema1))))))
+               (mu/to-map-syntax schema1)))
+
+        (is {:type :=>
+             :input {:type :cat
+                     :children [{:type 'int?} {:type 'int?}]}
+             :output {:type 'int?}}
+            (= (m/ast schema1))))))
 
   (testing ":function"
 

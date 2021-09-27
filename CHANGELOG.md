@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.6.2 (2021-09-27)
 
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
 * fixed arity error in `m/function-schema`

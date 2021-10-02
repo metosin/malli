@@ -134,6 +134,10 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
+(defn- -property-registry [m options f]
+  (let [options (assoc options ::allow-invalid-refs true)]
+    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
+
 (defn ^:no-doc -check-children? [] true)
 
 (defn -check-children!
@@ -2070,17 +2074,16 @@
   "Creates a Schema from AST"
   ([ast] (from-ast ast nil))
   ([ast options]
-   (let [type (:type ast)]
-     (if-let [s (-lookup type options)]
-       (let [r (:registry ast)
-             p (:properties ast)
-             options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-             p' (if r (assoc p :registry (-property-registry r options identity)))
-             ast (cond-> ast p' (assoc :properties p'))]
-         (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
-           (-from-ast s ast options)
-           (-into-schema s (:properties ast) (:children ast) options)))
-       (-fail! ::invalid-ast {:type type, :ast ast})))))
+   (if-let [s (-lookup (:type ast) options)]
+     (let [r (:registry ast)
+           p (:properties ast)
+           options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
+           p' (if r (assoc p :registry (-property-registry r options identity)))
+           ast (cond-> ast p' (assoc :properties p'))]
+       (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
+         (-from-ast s ast options)
+         (-into-schema s (:properties ast) (:children ast) options)))
+     (-fail! ::invalid-ast {:ast ast}))))
 
 (defn ast
   "Returns the Schema AST"

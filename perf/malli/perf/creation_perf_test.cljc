@@ -14,8 +14,11 @@
   ;; 3.0µs (map childs)
   ;; 3.2µs (mapv childs)
   ;; 2.5µs (...)
+  ;; 2.3µs (-vmap, don't check children)
   (p/bench (m/validate [:or :int :string] 42))
-  (p/profile (m/validate [:or :int :string] 42))
+
+  ;; 2.6µs
+  (p/bench (m/validate {:type :or, :children [{:type :int} {:type :string}]} 42))
 
   ;; 3.0µs
   ;; 500ns (delayed mapv childs)
@@ -26,8 +29,11 @@
   ;; 180ns (fast parse)
   ;; 1.1µs (mapv childs)
   ;; 750ns (...)
+  ;; 680ns (-vmap, don't check children)
   (p/bench (m/schema [:or :int :string]))
-  (p/profile (m/schema [:or :int :string]))
+
+  ;; 730ns
+  (p/bench (m/schema {:type :or, :children [{:type :int} {:type :string}]}))
 
   ;; 1.7µs
   ;; 470ns (map childs)
@@ -36,19 +42,20 @@
   ;; 190ns (fast parse)
   ;; 1.1µs (mapv childs)
   ;; 750ns (...)
+  ;; 680ns (-vmap, don't check children)
   (p/bench (m/schema [:and :int :string]))
-  (p/profile (m/schema [:and :int :string]))
+
+  ;; 730ns
+  (p/bench (m/schema {:type :and, :children [{:type :int} {:type :string}]}))
 
   ;; 1.7µs
-  ;; 1.5µs (fast parse)
+  ;; 540ns (non-distinct)
   (let [schema (m/schema [:or :int :string])]
-    (p/bench (m/validator schema))
-    #_(p/profile (m/validator schema)))
+    (p/bench (m/validator schema)))
 
   ;; 4ns
   (let [validate (m/validator [:or :int :string])]
-    (p/bench (validate 42))
-    #_(p/profile (validate 42))))
+    (p/bench (validate 42))))
 
 (def ?schema
   [:map
@@ -60,6 +67,8 @@
 
 (def schema (m/schema ?schema))
 
+(def ast (m/ast ?schema))
+
 (def leaf-schema (m/schema :int))
 
 (comment
@@ -70,16 +79,19 @@
 
   ;; 480ns -> 400ns -> 340ns -> 280ns -> 240ns -> 170ns (registry) -> 160ns (recur)
   (p/bench (m/schema :int))
-  (p/profile (m/schema :int))
+
+  ;; 200ns
+  (p/bench (m/schema {:type :int}))
 
   ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs -> 3.4µs
   (p/bench (m/schema ?schema))
-  (p/profile (m/schema ?schema))
+
+  ;; 267ns
+  (p/bench (m/schema ast))
 
   ;; does not work with direct linking
   (with-redefs [m/-check-children? (constantly false)]
-    (p/bench (m/schema ?schema))
-    (p/profile (m/schema ?schema))))
+    (p/bench (m/schema ?schema))))
 
 (def ref-schema (m/schema [:schema :int]))
 
@@ -87,11 +99,9 @@
 
   ;; 14ns -> 5ns
   (p/bench (m/deref ref-schema))
-  (p/profile (m/deref ref-schema))
 
   ;; 5µs -> 28ns
-  (p/bench (m/deref-all ref-schema))
-  (p/profile (m/deref-all ref-schema)))
+  (p/bench (m/deref-all ref-schema)))
 
 (comment
 
@@ -102,13 +112,11 @@
   ;; 271ns
   ;; 14ns (-set-children, -set-properties)
   (p/bench (m/walk leaf-schema (m/schema-walker identity)))
-  (p/profile (m/walk leaf-schema (m/schema-walker identity)))
 
   ;; 26µs
   ;; 1.3µs (-set-children, -set-properties)
   ;; 1.2µs (protocols, registry, recur)
   (p/bench (m/walk schema (m/schema-walker identity)))
-  (p/profile (m/walk schema (m/schema-walker identity)))
 
   ;; 51µs
   ;; 44µs (-set-children, -set-properties)
@@ -120,25 +128,21 @@
   ;; 5.8µs (protocols, registry, recur, parsed)
   ;; 3.9µs (-parsed)
   (p/bench (mu/closed-schema schema))
-  (p/profile (mu/closed-schema schema))
 
   ;; 3.8µs
   ;; 3.4µs (satisfies?)
   ;; 2.2µs (-set-entries)
   ;; 830ns (-update-parsed)
   (p/bench (mu/assoc schema :y :string))
-  (p/profile (mu/assoc schema :y :string))
 
   ;; 4.2µs
   ;; 3.8µs (satisfies?)
   ;; 820ns (-update-parsed)
   (p/bench (mu/assoc schema :w :string))
-  (p/profile (mu/assoc schema :w :string))
 
   ;; 205ns
   ;; 195ns
   (p/bench (mu/get schema :y))
-  (p/profile (mu/get schema :y))
 
   ;; 13µs
   ;; 2.4µs (satisfies?)

@@ -184,6 +184,14 @@
 
 (defn -equals [x y] (or (identical? x y) (= x y)))
 
+(defn -vmap [f os]
+  (let [oa (object-array (count os))
+        iter #?(:clj (.iterator ^Iterable os), :cljs (iter os))
+        n (volatile! -1)]
+    (while (.hasNext iter)
+      (aset oa (vreset! n (inc ^int @n)) (f (.next iter))))
+    #?(:clj (LazilyPersistentVector/createOwning oa), (vec os))))
+
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
@@ -221,7 +229,7 @@
 (defn- -update-parsed [{:keys [keyset children entries forms]} ?key value options]
   (let [[k p override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
         s (when value (schema value options))
-        i (:order (keyset k))]
+        i (int (:order (keyset k)))]
     (if (nil? s)
       ;; remove
       (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
@@ -564,8 +572,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :and properties children 1 nil)
-      (let [children (into [] (map #(schema % options)) children)
+      (let [children (-vmap #(schema % options) children)
             form (delay (-create-form :and properties (map -form children)))
             ->parser (fn [f m] (let [parsers (m (mapv f children))]
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
@@ -573,9 +580,9 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (distinct (map -validator children))]
+            (let [validators (-vmap -validator children)]
               #?(:clj  (miu/-every-pred validators)
-                 :cljs (if (second validators) (apply every-pred validators) (first validators)))))
+                 :cljs (if (nth validators 1) (apply every-pred validators) (nth validators 0)))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -604,8 +611,7 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (-check-children! :or properties children 1 nil)
-      (let [children (into [] (map #(schema % options)) children)
+      (let [children (-vmap #(schema % options) children)
             form (delay (-create-form :or properties (map -form children)))
             ->parser (fn [f] (let [parsers (mapv f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
@@ -613,7 +619,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (distinct (map -validator children))]
+            (let [validators (-vmap -validator children)]
               #?(:clj  (miu/-some-pred validators)
                  :cljs (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
           (-explainer [_ path]

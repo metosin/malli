@@ -1167,10 +1167,10 @@
     (is (false? (m/validate [:map-of string? int?] 1)))
 
     (testing "limits"
-      (is (true?  (m/validate [:map-of {:min 1} keyword? int?] {:age 18})))
+      (is (true? (m/validate [:map-of {:min 1} keyword? int?] {:age 18})))
       (is (false? (m/validate [:map-of {:min 2} keyword? int?] {:age 18})))
-      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18})))
-      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18 :-a-g-e 3})))
+      (is (true? (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18})))
+      (is (true? (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18 :-a-g-e 3})))
       (is (false? (m/validate [:map-of {:max 1} keyword? int?] {:age 18 :-a-g-e 3}))))
 
     (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
@@ -2508,28 +2508,90 @@
   (testing "Upper and lower bound"
     (let [f (m/-validate-limits 3 7)]
       (is (false? (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
       (is (false? (f (range 8))))))
   (testing "Upper bound, no lower bound"
     (let [f (m/-validate-limits nil 7)]
-      (is (true?  (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
+      (is (true? (f (range 2))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
       (is (false? (f (range 8))))))
   (testing "Lower bound, no upper bounds"
     (let [f (m/-validate-limits 3 nil)]
       (is (false? (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
-      (is (true?  (f (range 8))))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
+      (is (true? (f (range 8))))))
   (testing "No bounds"
     (let [f (m/-validate-limits nil nil)]
-      (is (true?  (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
-      (is (true?  (f (range 8)))))))
+      (is (true? (f (range 2))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
+      (is (true? (f (range 8)))))))
+
+(deftest ast-test
+  (doseq [{:keys [name hiccup ast]}
+          [{:name "recursion"
+            :hiccup [:ref {:registry {"ConsCell" [:maybe [:tuple :int [:ref "ConsCell"]]]}}
+                     "ConsCell"]
+            :ast {:type :ref
+                  :value "ConsCell"
+                  :registry {"ConsCell" {:type :maybe
+                                         :child {:type :tuple
+                                                 :children [{:type :int}
+                                                            {:type :ref
+                                                             :value "ConsCell"}]}}}}}
+           {:name "hiccup"
+            :hiccup [:schema
+                     {:registry {"hiccup" [:orn
+                                           [:node
+                                            [:catn
+                                             [:name 'keyword?]
+                                             [:props [:? [:map-of 'keyword? 'any?]]]
+                                             [:children [:* [:schema [:ref "hiccup"]]]]]]
+                                           [:primitive
+                                            [:orn
+                                             [:nil 'nil?]
+                                             [:boolean 'boolean?]
+                                             [:number 'number?]
+                                             [:text 'string?]]]]}}
+                     "hiccup"]
+            :ast {:type :schema
+                  :child {:type ::m/schema
+                          :value "hiccup"}
+                  :registry {"hiccup" {:type :orn
+                                       :keys {:node {:order 0
+                                                     :value {:type :catn
+                                                             :keys {:name {:order 0
+                                                                           :value {:type 'keyword?}}
+                                                                    :props {:order 1
+                                                                            :value {:type :?
+                                                                                    :children [{:type :map-of
+                                                                                                :key {:type 'keyword?}
+                                                                                                :value {:type 'any?}}]}}
+                                                                    :children {:order 2
+                                                                               :value {:type :*
+                                                                                       :children [{:type :schema
+                                                                                                   :child {:type :ref
+                                                                                                           :value "hiccup"}}]}}}}}
+                                              :primitive {:order 1
+                                                          :value {:type :orn
+                                                                  :keys {:nil {:order 0
+                                                                               :value {:type 'nil?}}
+                                                                         :boolean {:order 1
+                                                                                   :value {:type 'boolean?}}
+                                                                         :number {:order 2
+                                                                                  :value {:type 'number?}}
+                                                                         :text {:order 3
+                                                                                :value {:type 'string?}}}}}}}}}}]]
+    (testing "ast for"
+      (testing (pr-str name)
+        (testing "ast"
+          (is (= ast (m/ast hiccup))))
+        (testing "form"
+          (is (= hiccup (m/form ast))))))))

@@ -2086,6 +2086,8 @@ Visualized with [Graphviz](https://graphviz.org/):
 
 ### PlantUML
 
+Added in version 0.6.
+
 Transforming Schemas into [PlantUML](https://plantuml.com/):
 
 ```clj

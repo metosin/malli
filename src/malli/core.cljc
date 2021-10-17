@@ -1112,7 +1112,7 @@
     (-into-schema [parent properties children options]
       (let [children (into [] (map #(schema % options)) children)
             size (count children)
-            form (-create-form :tuple properties (map -form children))
+            form (delay (-create-form :tuple properties (map -form children)))
             ->parser (fn [f] (let [parsers (into {} (comp (map f) (map-indexed vector)) children)]
                                (fn [x]
                                  (cond
@@ -1162,7 +1162,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
@@ -1317,7 +1317,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :maybe properties children 1 1)
       (let [[schema :as children] (map #(schema % options) children)
-            form (-create-form :maybe properties (map -form children))
+            form (delay (-create-form :maybe properties (map -form children)))
             ->parser (fn [f] (let [parser (f schema)]
                                (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
@@ -1343,7 +1343,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (if (= 0 key) schema default))

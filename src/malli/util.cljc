@@ -321,7 +321,10 @@
 ;;
 
 (defn -map-syntax-walker [schema _ children _]
-  (let [properties (m/properties schema)]
+  (let [properties (m/properties schema)
+        options (m/options schema)
+        r (when properties (properties :registry))
+        properties (if r (c/assoc properties :registry (m/-property-registry r options m/-form)) properties)]
     (cond-> {:type (m/type schema)}
             (seq properties) (clojure.core/assoc :properties properties)
             (seq children) (clojure.core/assoc :children children))))

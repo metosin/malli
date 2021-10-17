@@ -134,7 +134,7 @@
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
-(defn- -property-registry [m options f]
+(defn -property-registry [m options f]
   (let [options (assoc options ::allow-invalid-refs true)]
     (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
 
@@ -151,7 +151,10 @@
          (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))))
 
 (defn -create-form [type properties children]
-  (let [has-children (seq children), has-properties (seq properties)]
+  (let [has-children (seq children), has-properties (seq properties)
+        properties (when has-properties
+                     (let [registry (:registry properties)]
+                       (cond-> properties registry (assoc :registry (-property-registry registry nil -form)))))]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
           has-children (reduce conj [type] children)
@@ -233,7 +236,7 @@
 (defn- -update-parsed [{:keys [keyset children entries forms]} ?key value options]
   (let [[k p override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
         s (when value (schema value options))
-        i (int (:order (keyset k)))]
+        i (:order (keyset k))]
     (if (nil? s)
       ;; remove
       (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
@@ -304,10 +307,6 @@
     (#?(:clj instance?, :cljs implements?) malli.core.Transformer x) x
     (fn? x) (-into-transformer (x))
     :else (-fail! ::invalid-transformer {:value x})))
-
-(defn- -property-registry [m options f]
-  (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (some-> properties :registry)]

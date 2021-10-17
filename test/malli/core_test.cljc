@@ -193,10 +193,6 @@
         (is (false? (m/validate schema "1")))
         (is (false? (m/validate schema [1]))))
 
-      (is (= pos-int? (m/validator [:and pos-int? pos-int? pos-int?])))
-      (is (= pos-int? (m/validator [:or pos-int? pos-int? pos-int?])))
-      (is (= pos-int? (m/validator [:orn [:a pos-int?] [:b pos-int?] [:c pos-int?]])))
-
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema,
                      :value 0,

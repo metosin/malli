@@ -158,7 +158,7 @@
   (let [t ::or, p {:a 1}, c (mapv m/schema [:int :int])]
     ;; 480ns
     ;; 221ns (faster impl)
-    (p/bench (m/-create-form t p c))))
+    (p/bench (m/-create-form t p c nil))))
 
 (comment
   (let [s (m/schema :int)]

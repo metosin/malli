@@ -2591,3 +2591,9 @@
           (is (= ast (m/ast hiccup))))
         (testing "form"
           (is (= hiccup (m/form ast))))))))
+
+(deftest -vmap-test
+  (is (nil? (m/-vmap str nil)))
+  (is (nil? (m/-vmap str [])))
+  (is (= ["1"] (m/-vmap str [1])))
+  (is (= ["1" "2"] (m/-vmap str [1 2]))))

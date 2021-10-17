@@ -368,7 +368,7 @@
       (m/-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
             walkable-childs (if childs (subvec children 0 childs) children)
-            form (m/-create-form type properties forms)]
+            form (m/-create-form type properties forms options)]
         ^{:type ::m/schema}
         (reify
           m/Schema

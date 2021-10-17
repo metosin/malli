@@ -2,14 +2,15 @@
   (:require [malli.core :as m]
             [malli.registry :as mr]))
 
-(def preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean?]
-                     (reverse) (zipmap (range)) (assoc 'any? -10 'some? -9)))
+(def preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean? 'uuid?]
+                     (reverse) (zipmap (drop 1 (range))) (assoc :any -13, :or -12, :and -11, 'any? -10, 'some? -9)))
 
 (defn- -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
 (defn- ->inferrer [options]
-  (let [schemas (->> options (m/-registry) (mr/-schemas) (vals) (keep #(-safe? m/schema %)) (vec))
-        infer-value (fn [x] (-> schemas (->> (filter #(-safe? m/validate % x)) (map m/type)) (zipmap (repeat 1))))
+  (let [schemas (->> options (m/-registry) (mr/-schemas) (vals) (filter #(-safe? m/schema %)))
+        form->validator (into {} (mapv (juxt m/form m/validator) schemas))
+        infer-value (fn [x] (-> (reduce-kv (fn [acc f v] (cond-> acc (-safe? v x) (assoc f 1))) {} form->validator)))
         infer-map (fn [infer] (fn [acc x] (reduce-kv (fn [acc k v] (update-in acc [:keys k] infer v)) acc x)))
         infer-seq (fn [infer] (fn [acc x] (reduce infer acc x)))
         merge+ (fnil #(merge-with + %1 %2) {})]

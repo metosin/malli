@@ -190,7 +190,7 @@
 (defn -inner-entries [walker path entries options]
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
-(defn -parsed [s] (-> s meta ::parsed))
+(defn -parsed [s] (-> s meta ::entry-parser))
 
 (defn -set-children [schema children]
   (if (-equals children (-children schema))
@@ -212,7 +212,20 @@
               (fn [e] (when (= (nth e 0) key) (nth e 2))))
             (-children schema)) default))
 
-(defrecord Parsed [keyset children entries forms])
+(defprotocol EntryParser
+  (-entry-keyset [this])
+  (-entry-children [this])
+  (-entry-entries [this])
+  (-entry-forms [this]))
+
+(defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
+
+(defn -simple-entry-parser [keyset children entries forms]
+  (reify EntryParser
+    (-entry-keyset [_] keyset)
+    (-entry-children [_] children)
+    (-entry-entries [_] entries)
+    (-entry-forms [_] forms)))
 
 (defn- -update-parsed [{:keys [keyset children entries forms]} ?key value options]
   (let [[k p override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
@@ -221,17 +234,17 @@
     (if (nil? s)
       ;; remove
       (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
-        (->Parsed (dissoc keyset k) (cut children) (cut entries) (cut forms)))
+        (-simple-entry-parser (dissoc keyset k) (cut children) (cut entries) (cut forms)))
       (let [c [k p s]
             e (miu/-tagged k (-val-schema s p))
             p (if i (if override p (nth (children i) 1)) p)
             f (if (seq p) [k p (-form s)] [k (-form s)])]
         (if i
           ;; update
-          (->Parsed keyset (assoc children i c) (assoc entries i e) (assoc forms i f))
+          (-simple-entry-parser keyset (assoc children i c) (assoc entries i e) (assoc forms i f))
           ;; assoc
           (let [size (inc (count keyset))]
-            (->Parsed (assoc keyset k size) (conj children c) (conj entries e) (conj forms f))))))))
+            (-simple-entry-parser (assoc keyset k size) (conj children c) (conj entries e) (conj forms f))))))))
 
 (defn -set-entries
   ([schema ?key value]
@@ -301,8 +314,8 @@
         (-parse-ref-entry e)
         (-fail! ::invalid-ref {:ref e})))))
 
-(defn -parse-entries [?children props options]
-  (if (instance? Parsed ?children)
+(defn -entry-parser [?children props options]
+  (if (-entry-parser? ?children)
     ?children
     (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
             (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr)
@@ -321,9 +334,16 @@
         (loop [i (int 0), ci (int 0)]
           (if (== ci n)
             (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
-              (->Parsed (-map -keyset) (f -children) (f -entries) (f -forms)))
+              (-simple-entry-parser (-map -keyset) (f -children) (f -entries) (f -forms)))
             (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
                    (unchecked-inc-int ci))))))))
+
+(defn -parse-entries [?children props options]
+  (let [entry-parser (-entry-parser ?children props options)]
+    {:keyset (-entry-keyset entry-parser)
+     :children (-entry-children entry-parser)
+     :entries (-entry-entries entry-parser)
+     :forms (-entry-forms entry-parser)}))
 
 (defn -guard [pred tf]
   (when tf (fn [x] (if (pred x) (tf x) x))))
@@ -602,10 +622,10 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children 1 nil)
-      (let [{:keys [children entries forms] :as parsed} (-parse-entries children {:naked-keys true} options)
+      (let [{:keys [children entries forms entry-parser]} (-parse-entries children {:naked-keys true} options)
             form (-create-form :orn properties forms)]
         ^{:type ::schema
-          ::parsed parsed}
+          ::entry-parser entry-parser}
         (reify
           Schema
           (-validator [_]
@@ -753,7 +773,7 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
-       (let [{:keys [keyset children entries forms] :as parsed} (-parse-entries children opts options)
+       (let [{:keys [keyset children entries forms entry-parser]} (-parse-entries children opts options)
              form (delay (-create-form :map properties forms))
              ->parser (fn [f] (let [parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
@@ -773,7 +793,7 @@
                                                                       m (keys m)))]))]
                                 (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema
-           ::parsed parsed}
+           ::entry-parser entry-parser}
          (reify
            Schema
            (-validator [_]
@@ -1237,7 +1257,7 @@
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
-             {:keys [children entries forms] :as parsed} (-parse-entries children opts' options)
+             {:keys [children entries forms entry-parser]} (-parse-entries children opts' options)
              form (-create-form type properties forms)
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] entries] [k s]) (into {}))
@@ -1245,7 +1265,7 @@
          (when-not dispatch
            (-fail! ::missing-property {:key :dispatch}))
          ^{:type ::schema
-           ::parsed parsed}
+           ::entry-parser entry-parser}
          (reify
            Schema
            (-validator [_]
@@ -1590,10 +1610,10 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
-      (let [{:keys [children entries forms] :as parsed} (-parse-entries children opts options)
+      (let [{:keys [children entries forms entry-parser]} (-parse-entries children opts options)
             form (-create-form type properties forms)]
         ^{:type ::schema
-          ::parsed parsed}
+          ::entry-parser entry-parser}
         (reify
           Schema
           (-validator [this] (regex-validator this))

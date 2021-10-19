@@ -707,7 +707,7 @@
       (-check-children! :not properties children 1 1)
       (let [[schema :as children] (map #(schema % options) children)
             validator (complement (-validator schema))
-            form (-create-form :not properties (map -form children))]
+            form (delay (-create-form :not properties (map -form children)))]
         ^{:type ::schema}
         (reify
           Schema
@@ -726,7 +726,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -883,7 +883,7 @@
     (-into-schema [parent {:keys [min max] :as properties} children options]
       (-check-children! :map-of properties children 2 2)
       (let [[key-schema value-schema :as children] (mapv #(schema % options) children)
-            form (-create-form :map-of properties (mapv -form children))
+            form (delay (-create-form :map-of properties (mapv -form children)))
             validate-limits (-validate-limits min max)
             ->parser (fn [f] (let [key-parser (f key-schema)
                                    value-parser (f value-schema)]
@@ -946,7 +946,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -967,7 +967,7 @@
             (reset! props* ?props)
             (-check-children! type properties children 1 1)
             (let [[schema :as children] (mapv #(schema % options) children)
-                  form (-create-form type properties (map -form children))
+                  form (delay (-create-form type properties (map -form children)))
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f] (let [child-parser (f schema)]
                                      (fn [x]
@@ -1021,7 +1021,7 @@
                 (-options [_] options)
                 (-children [_] children)
                 (-parent [_] parent)
-                (-form [_] form)
+                (-form [_] @form)
                 LensSchema
                 (-keep [_] true)
                 (-get [_ _ _] schema)
@@ -1037,7 +1037,7 @@
     (-into-schema [parent properties children options]
       (let [children (into [] (map #(schema % options)) children)
             size (count children)
-            form (-create-form :tuple properties (map -form children))
+            form (delay (-create-form :tuple properties (map -form children)))
             ->parser (fn [f] (let [parsers (into {} (comp (map f) (map-indexed vector)) children)]
                                (fn [x]
                                  (cond
@@ -1087,7 +1087,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
@@ -1102,7 +1102,7 @@
       (-check-children! :enum properties children 1 nil)
       (let [children (vec children)
             schema (set children)
-            form (-create-form :enum properties children)]
+            form (delay (-create-form :enum properties children))]
         ^{:type ::schema}
         (reify
           Schema
@@ -1123,7 +1123,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -1140,7 +1140,7 @@
       (-check-children! :re properties children 1 1)
       (let [children (vec children)
             re (re-pattern child)
-            form (if class? re (-create-form :re properties children))]
+            form (delay (if class? re (-create-form :re properties children)))]
         ^{:type ::schema}
         (reify
           Schema
@@ -1167,7 +1167,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -1182,7 +1182,7 @@
       (-check-children! :fn properties children 1 1)
       (let [children (vec children)
             f (eval (first children) options)
-            form (-create-form :fn properties children)]
+            form (delay (-create-form :fn properties children))]
         ^{:type ::schema}
         (reify
           Schema
@@ -1208,7 +1208,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -1224,7 +1224,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :maybe properties children 1 1)
       (let [[schema :as children] (map #(schema % options) children)
-            form (-create-form :maybe properties (map -form children))
+            form (delay (-create-form :maybe properties (map -form children)))
             ->parser (fn [f] (let [parser (f schema)]
                                (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
@@ -1248,7 +1248,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (if (= 0 key) schema default))
@@ -1339,7 +1339,7 @@
                       (when-not allow-invalid-refs
                         (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
-             form (-create-form :ref properties children)
+             form (delay (-create-form :ref properties children))
              ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
@@ -1369,7 +1369,7 @@
            (-options [_] options)
            (-children [_] children)
            (-parent [_] parent)
-           (-form [_] form)
+           (-form [_] @form)
            LensSchema
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
            (-keep [_])
@@ -1462,7 +1462,7 @@
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children 2 2)
       (let [[input :as children] (map #(schema % options) children)
-            form (-create-form :=> properties (map -form children))
+            form (delay (-create-form :=> properties (map -form children)))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
           (-fail! ::invalid-input-schema {:input input}))
@@ -1496,7 +1496,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
@@ -1579,7 +1579,7 @@
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
       (let [children (mapv #(schema % options) children)
-            form (-create-form type properties (mapv -form children))]
+            form (delay (-create-form type properties (mapv -form children)))]
         ^{:type ::schema}
         (reify
           Schema
@@ -1595,13 +1595,11 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
-
+          (-form [_] @form)
           LensSchema
           (-keep [_] true)
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
-
           RegexSchema
           (-regex-op? [_] true)
           (-regex-validator [_] (re-validator properties (map -regex-validator children)))

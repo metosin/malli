@@ -70,16 +70,13 @@
 
   ;; 480ns -> 400ns -> 340ns -> 280ns -> 240ns -> 170ns (registry) -> 160ns (recur)
   (p/bench (m/schema :int))
-  (p/profile (m/schema :int))
 
   ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs -> 3.4µs
   (p/bench (m/schema ?schema))
-  (p/profile (m/schema ?schema))
 
   ;; does not work with direct linking
   (with-redefs [m/-check-children? (constantly false)]
-    (p/bench (m/schema ?schema))
-    (p/profile (m/schema ?schema))))
+    (p/bench (m/schema ?schema))))
 
 (def ref-schema (m/schema [:schema :int]))
 

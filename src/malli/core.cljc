@@ -47,8 +47,7 @@
   (-keyset [this]))
 
 (defprotocol Cached
-  (-get-cache [this k])
-  (-set-cache [this k v]))
+  (-cache [this]))
 
 (defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 
@@ -371,7 +370,7 @@
         child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
-(defn -cached [s k f] (if (-cached? s) (or (-get-cache s k) (-set-cache s k (f s))) (f s)))
+(defn -cached [s k f] (if (-cached? s) (let [c (-cache s)] (or (@c k) ((swap! c assoc k (f s)) k))) (f s)))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -878,18 +877,11 @@
            (-entries [_] (-entry-entries entry-parser))
            (-keyset [_] (-entry-keyset entry-parser))
            Cached
-           (-get-cache [_ k] (@cache k))
-           (-set-cache [_ k v] ((swap! cache assoc k v) k))
+           (-cache [_] cache)
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))))))))
-
-(defn -memory [] (let [state (atom {})] (fn [k d] @(or (get @state k) ((swap! state assoc k d) k)))))
-
-(let [memory (-memory)]
-  (memory :form (delay "kikka"))
-  (memory :form (delay "kikka")))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}

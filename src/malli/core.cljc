@@ -1836,7 +1836,7 @@
    (explainer ?schema nil))
   ([?schema options]
    (let [schema' (schema ?schema options)
-         explainer' (-explainer schema' [])]
+         explainer' (-cached schema' :explainer #(-explainer % []))]
      (fn explainer
        ([value]
         (explainer value [] []))

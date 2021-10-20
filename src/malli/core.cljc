@@ -329,7 +329,7 @@
         (-parse-ref-entry e)
         (-fail! ::invalid-ref {:ref e})))))
 
-(defn -entry-parser [?children props options]
+(defn -eager-entry-parser [?children props options]
   (if (-entry-parser? ?children)
     ?children
     (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
@@ -352,6 +352,19 @@
               (-simple-entry-parser (-map -keyset) (f -children) (f -entries) (f -forms)))
             (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
                    (unchecked-inc-int ci))))))))
+
+(defn -lazy-entry-parser [?children props options]
+  (let [parser (delay (-eager-entry-parser ?children props options))]
+    (reify EntryParser
+      (-entry-keyset [_] (-entry-keyset @parser))
+      (-entry-children [_] (-entry-children @parser))
+      (-entry-entries [_] (-entry-entries @parser))
+      (-entry-forms [_] (-entry-forms @parser)))))
+
+(defn -entry-parser [?children props options]
+  (cond (-entry-parser? ?children) ?children
+        (or (:lazy props) (::lazy-entries options)) (-lazy-entry-parser ?children props options)
+        :else (-eager-entry-parser ?children props options)))
 
 ;;
 ;; helpers

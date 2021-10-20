@@ -4,7 +4,8 @@
   (:require [malli.sci :as ms]
             [malli.impl.util :as miu]
             [malli.impl.regex :as re]
-            [malli.registry :as mr])
+            [malli.registry :as mr]
+            [clojure.core :as c])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
                    (malli.impl.util SchemaError)
@@ -44,6 +45,12 @@
 (defprotocol MapSchema
   (-entries [this] "returns sequence of `key -val-schema` MapEntries")
   (-keyset [this]))
+
+(defprotocol Cached
+  (-get-cache [this k])
+  (-set-cache [this k v]))
+
+(defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 
 (defprotocol LensSchema
   (-keep [this] "returns truthy if schema contributes to value path")
@@ -364,6 +371,8 @@
         child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
+(defn -cached [s k f] (if (-cached? s) (or (-get-cache s k) (-set-cache s k (f s))) (f s)))
+
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
         schema (-simple-schema {:type name, :pred @v})]
@@ -379,7 +388,7 @@
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (clojure.core/type ?schema)) (-into-schema nil [?schema] options)))))
+        (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
 
 (defn- -lookup! [?schema f options]
   (or (and f (f ?schema) ?schema)
@@ -784,7 +793,7 @@
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
        (let [entry-parser (-entry-parser children opts options)
-             form (delay (-create-form :map properties (-entry-forms entry-parser)))
+             cache (atom {})
              ->parser (fn [this f] (let [keyset (-keyset this)
                                          parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
@@ -864,14 +873,23 @@
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
-           (-form [_] @form)
+           (-form [_] (-create-form :map properties (-entry-forms entry-parser)))
            MapSchema
            (-entries [_] (-entry-entries entry-parser))
            (-keyset [_] (-entry-keyset entry-parser))
+           Cached
+           (-get-cache [_ k] (@cache k))
+           (-set-cache [_ k v] ((swap! cache assoc k v) k))
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))))))))
+
+(defn -memory [] (let [state (atom {})] (fn [k d] @(or (get @state k) ((swap! state assoc k d) k)))))
+
+(let [memory (-memory)]
+  (memory :form (delay "kikka"))
+  (memory :form (delay "kikka")))
 
 (defn -map-of-schema []
   ^{:type ::into-schema}
@@ -1750,7 +1768,7 @@
   ([?schema]
    (form ?schema nil))
   ([?schema options]
-   (-form (schema ?schema options))))
+   (-cached (schema ?schema options) :form -form)))
 
 (defn properties
   "Returns the Schema properties"
@@ -1802,7 +1820,7 @@
   ([?schema]
    (validator ?schema nil))
   ([?schema options]
-   (-validator (schema ?schema options))))
+   (-cached (schema ?schema options) :validator -validator)))
 
 (defn validate
   "Validates a value againsta a given schema. Creates the `validator` for every call.

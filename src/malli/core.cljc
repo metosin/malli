@@ -42,14 +42,18 @@
   (-parent [this] "returns the IntoSchema instance")
   (-form [this] "returns original form of the schema"))
 
-(defprotocol MapSchema
-  (-entries [this] "returns sequence of `key -val-schema` MapEntries")
-  (-keyset [this]))
+(defprotocol EntryParser
+  (-entry-keyset [this])
+  (-entry-children [this])
+  (-entry-entries [this])
+  (-entry-forms [this]))
+
+(defprotocol EntrySchema
+  (-entries [this] "returns sequence of `key -val-schema` entries")
+  (-entry-parser [this]))
 
 (defprotocol Cached
   (-cache [this]))
-
-(defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 
 (defprotocol LensSchema
   (-keep [this] "returns truthy if schema contributes to value path")
@@ -59,6 +63,15 @@
 (defprotocol RefSchema
   (-ref [this] "returns the reference name")
   (-deref [this] "returns the referenced schema"))
+
+(defprotocol Walker
+  (-accept [this schema path options])
+  (-inner [this schema path options])
+  (-outer [this schema path children options]))
+
+(defprotocol Transformer
+  (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
+  (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
 (defprotocol RegexSchema
   (-regex-op? [this] "is this a regex operator (e.g. :cat, :*...)")
@@ -70,6 +83,8 @@
   (-regex-min-max [this] "returns size of the sequence as [min max] vector. nil max means unbuond."))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
+(defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
+(defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 
 (extend-type #?(:clj Object, :cljs default)
   RegexSchema
@@ -101,15 +116,6 @@
       (re/item-transformer method (-validator this) (or (-transformer this transformer method options) identity))))
 
   (-regex-min-max [_] {:min 1, :max 1}))
-
-(defprotocol Walker
-  (-accept [this schema path options])
-  (-inner [this schema path options])
-  (-outer [this schema path children options]))
-
-(defprotocol Transformer
-  (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
-  (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
 
 #?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
@@ -223,14 +229,6 @@
 ;; entries
 ;;
 
-(defprotocol EntryParser
-  (-entry-keyset [this])
-  (-entry-children [this])
-  (-entry-entries [this])
-  (-entry-forms [this]))
-
-(defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
-
 (defn -simple-entry-parser [keyset children entries forms]
   (reify EntryParser
     (-entry-keyset [_] keyset)
@@ -330,28 +328,26 @@
         (-fail! ::invalid-ref {:ref e})))))
 
 (defn -eager-entry-parser [?children props options]
-  (if (-entry-parser? ?children)
-    ?children
-    (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
-            (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr)
-                                    :cljs (let [m (apply array-map arr)]
-                                            (when-not (= (* 2 (count m)) (count arr))
-                                              (-fail! ::duplicate-keys)) m)))
-            (-arange [^objects arr to]
-             #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
-                :cljs (.slice arr 0 to)))]
-      (let [{:keys [naked-keys lazy-refs]} props
-            n (count ?children)
-            -children (object-array n)
-            -entries (object-array n)
-            -forms (object-array n)
-            -keyset (object-array (* 2 n))]
-        (loop [i (int 0), ci (int 0)]
-          (if (== ci n)
-            (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
-              (-simple-entry-parser (-map -keyset) (f -children) (f -entries) (f -forms)))
-            (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
-                   (unchecked-inc-int ci))))))))
+  (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
+          (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr)
+                                  :cljs (let [m (apply array-map arr)]
+                                          (when-not (= (* 2 (count m)) (count arr))
+                                            (-fail! ::duplicate-keys)) m)))
+          (-arange [^objects arr to]
+           #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
+              :cljs (.slice arr 0 to)))]
+    (let [{:keys [naked-keys lazy-refs]} props
+          n (count ?children)
+          -children (object-array n)
+          -entries (object-array n)
+          -forms (object-array n)
+          -keyset (object-array (* 2 n))]
+      (loop [i (int 0), ci (int 0)]
+        (if (== ci n)
+          (let [f (if (== ci i) -vec #(-vec (-arange % i)))]
+            (-simple-entry-parser (-map -keyset) (f -children) (f -entries) (f -forms)))
+          (recur (int (-parse-entry (nth ?children i) naked-keys lazy-refs options i -children -entries -forms -keyset))
+                 (unchecked-inc-int ci)))))))
 
 (defn -lazy-entry-parser [?children props options]
   (let [parser (delay (-eager-entry-parser ?children props options))]
@@ -361,7 +357,7 @@
       (-entry-entries [_] (-entry-entries @parser))
       (-entry-forms [_] (-entry-forms @parser)))))
 
-(defn -entry-parser [?children props options]
+(defn -create-entry-parser [?children props options]
   (cond (-entry-parser? ?children) ?children
         (or (:lazy props) (::lazy-entries options)) (-lazy-entry-parser ?children props options)
         :else (-eager-entry-parser ?children props options)))
@@ -649,7 +645,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children 1 nil)
-      (let [entry-parser (-entry-parser children {:naked-keys true} options)
+      (let [entry-parser (-create-entry-parser children {:naked-keys true} options)
             form (delay (-create-form :orn properties (-entry-forms entry-parser)))]
         ^{:type ::schema
           ::entry-parser entry-parser}
@@ -709,9 +705,9 @@
           (-children [_] (-entry-children entry-parser))
           (-parent [_] parent)
           (-form [_] @form)
-          MapSchema
+          EntrySchema
           (-entries [_] (-entry-entries entry-parser))
-          (-keyset [_] (-entry-keyset entry-parser))
+          (-entry-parser [_] entry-parser)
           LensSchema
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
@@ -804,9 +800,9 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
-       (let [entry-parser (-entry-parser children opts options)
+       (let [entry-parser (-create-entry-parser children opts options)
              cache (atom {})
-             ->parser (fn [this f] (let [keyset (-keyset this)
+             ->parser (fn [this f] (let [keyset (-entry-keyset (-entry-parser this))
                                          parsers (cond-> (mapv
                                                       (fn [[key {:keys [optional]} schema]]
                                                         (let [parser (f schema)]
@@ -829,7 +825,8 @@
          (reify
            Schema
            (-validator [this]
-             (let [validators (cond-> (mapv
+             (let [keyset (-entry-keyset (-entry-parser this))
+                   validators (cond-> (mapv
                                         (fn [[key {:keys [optional]} value]]
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
@@ -838,13 +835,14 @@
                                         (-children this))
                                       closed (into [(fn [m]
                                                       (reduce
-                                                        (fn [acc k] (if (contains? (-keyset this) k) acc (reduced false)))
+                                                        (fn [acc k] (if (contains? keyset k) acc (reduced false)))
                                                         true (keys m)))]))
                    validate #?(:clj (miu/-every-pred validators)
                                :cljs (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true validators))))]
                (fn [m] (and (map? m) (validate m)))))
            (-explainer [this path]
-             (let [explainers (cond-> (mapv
+             (let [keyset (-entry-keyset (-entry-parser this))
+                   explainers (cond-> (mapv
                                         (fn [[key {:keys [optional]} schema]]
                                           (let [explainer (-explainer schema (conj path key))]
                                             (fn [x in acc]
@@ -857,7 +855,7 @@
                                       closed (into [(fn [x in acc]
                                                       (reduce
                                                         (fn [acc k]
-                                                          (if (contains? (-keyset this) k)
+                                                          (if (contains? keyset k)
                                                             acc
                                                             (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
                                                         acc (keys x)))]))]
@@ -886,9 +884,9 @@
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
            (-form [_] (-create-form :map properties (-entry-forms entry-parser)))
-           MapSchema
+           EntrySchema
            (-entries [_] (-entry-entries entry-parser))
-           (-keyset [_] (-entry-keyset entry-parser))
+           (-entry-parser [_] entry-parser)
            Cached
            (-cache [_] cache)
            LensSchema
@@ -1292,7 +1290,7 @@
      (-into-schema [parent properties children options]
        (let [type (or (:type opts) :multi)
              opts' (merge opts (select-keys properties [:lazy-refs]))
-             entry-parser (-entry-parser children opts' options)
+             entry-parser (-create-entry-parser children opts' options)
              form (delay (-create-form type properties (-entry-forms entry-parser)))
              dispatch (eval (:dispatch properties) options)
              dispatch-map (->> (for [[k s] (-entry-entries entry-parser)] [k s]) (into {}))
@@ -1337,9 +1335,9 @@
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
            (-form [_] @form)
-           MapSchema
+           EntrySchema
            (-entries [_] (-entry-entries entry-parser))
-           (-keyset [_] (-entry-keyset entry-parser))
+           (-entry-parser [_] entry-parser)
            LensSchema
            (-keep [_])
            (-get [this key default] (-get-entries this key default))
@@ -1644,7 +1642,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
-      (let [entry-parser (-entry-parser children opts options)
+      (let [entry-parser (-create-entry-parser children opts options)
             form (delay (-create-form type properties (-entry-forms entry-parser)))]
         ^{:type ::schema
           ::entry-parser entry-parser}
@@ -1667,9 +1665,9 @@
           (-keep [_] true)
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value))
-          MapSchema
+          EntrySchema
           (-entries [_] (-entry-entries entry-parser))
-          (-keyset [_] (-entry-keyset entry-parser))
+          (-entry-parser [_] entry-parser)
           RegexSchema
           (-regex-op? [_] true)
           (-regex-validator [this] (re-validator properties (map (fn [[k _ s]] [k (-regex-validator s)]) (-children this))))
@@ -1924,7 +1922,7 @@
      value)))
 
 (defn entries
-  "Returns `MapSchema` children as a sequence of `clojure.lang/MapEntry`s
+  "Returns `EntrySchema` children as a sequence of `clojure.lang/MapEntry`s
    where the values child schemas wrapped in `:malli.core/val` Schemas,
    with the entry properties as properties.
 
@@ -1950,7 +1948,7 @@
    (entries ?schema nil))
   ([?schema options]
    (if-let [schema (schema ?schema options)]
-     (if (#?(:clj instance?, :cljs implements?) malli.core.MapSchema schema)
+     (if (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema schema)
        (-entries schema)))))
 
 (defn deref

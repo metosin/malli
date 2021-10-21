@@ -183,7 +183,7 @@
     @state))
 
 ;;
-;; MapSchemas
+;; EntrySchemas
 ;;
 
 (defn transform-entries
@@ -220,7 +220,7 @@
      (transform-entries ?schema #(map mapper %) options))))
 
 (defn select-keys
-  "Like [[clojure.core/select-keys]], but for MapSchemas."
+  "Like [[clojure.core/select-keys]], but for EntrySchemas."
   ([?schema keys]
    (select-keys ?schema keys nil))
   ([?schema keys options]
@@ -228,7 +228,7 @@
      (transform-entries ?schema #(filter (fn [[k]] (key-set k)) %) options))))
 
 (defn rename-keys
-  "Like [[clojure.set/rename-keys]], but for MapSchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
+  "Like [[clojure.set/rename-keys]], but for EntrySchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
   ([?schema kmap]
    (rename-keys ?schema kmap nil))
   ([?schema kmap options]
@@ -243,14 +243,14 @@
      options)))
 
 (defn dissoc
-  "Like [[clojure.core/dissoc]], but for MapSchemas."
+  "Like [[clojure.core/dissoc]], but for EntrySchemas."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
    (transform-entries ?schema #(remove (fn [[k]] (= key k)) %) options)))
 
 (defn find
-  "Like [[clojure.core/find]], but for MapSchemas."
+  "Like [[clojure.core/find]], but for EntrySchemas."
   ([?schema k]
    (find ?schema k nil))
   ([?schema k options]

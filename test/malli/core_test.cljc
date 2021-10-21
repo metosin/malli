@@ -40,7 +40,7 @@
   (is (= "abba" (m/-keyword->string "abba"))))
 
 (deftest parse-entries-test
-  (let [entry-parser (m/-entry-parser
+  (let [entry-parser (m/-create-entry-parser
                       [[:x int?]
                        ::x
                        "x"
@@ -71,12 +71,12 @@
              (map #(update % 2 m/form) (m/-entry-children entry-parser))))))
   (testing "duplicate keys"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
-                 (m/-entry-parser
+                 (m/-create-entry-parser
                    [[:x int?]
                     [:x boolean?]] {:naked-keys true} nil))))
   (testing "naked keys fails when not supported"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
-                 (m/-entry-parser
+                 (m/-create-entry-parser
                    [::x] nil nil)))))
 
 (deftest eval-test

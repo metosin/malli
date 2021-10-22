@@ -84,6 +84,7 @@
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
+(defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
 (defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 
 (extend-type #?(:clj Object, :cljs default)
@@ -203,15 +204,13 @@
 (defn -inner-entries [walker path entries options]
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
-(defn -parsed [s] (-> s meta ::entry-parser))
-
 (defn -set-children [schema children]
   (if (-equals children (-children schema))
     schema (-into-schema (-parent schema) (-properties schema) children (-options schema))))
 
 (defn -set-properties [schema properties]
   (if (-equals properties (-properties schema))
-    schema (-into-schema (-parent schema) properties (or (-parsed schema) (-children schema)) (-options schema))))
+    schema (-into-schema (-parent schema) properties (or (and (-entry-schema? schema) (-entry-parser schema)) (-children schema)) (-options schema))))
 
 (defn -update-options [schema f]
   (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
@@ -261,7 +260,7 @@
 
 (defn -set-entries
   ([schema ?key value]
-   (if-let [entry-parser (-parsed schema)]
+   (if-let [entry-parser (-entry-parser schema)]
      (-set-children schema (-update-parsed entry-parser ?key value (-options schema)))
      (let [found (atom nil)
            [key props override] (if (vector? ?key) [(nth ?key 0) (second ?key) true] [?key])
@@ -647,8 +646,7 @@
       (-check-children! :orn properties children 1 nil)
       (let [entry-parser (-create-entry-parser children {:naked-keys true} options)
             form (delay (-create-form :orn properties (-entry-forms entry-parser)))]
-        ^{:type ::schema
-          ::entry-parser entry-parser}
+        ^{:type ::schema}
         (reify
           Schema
           (-validator [this]
@@ -820,8 +818,7 @@
                                                                       (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                                       m (keys m)))]))]
                                 (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
-         ^{:type ::schema
-           ::entry-parser entry-parser}
+         ^{:type ::schema}
          (reify
            Schema
            (-validator [this]
@@ -1297,8 +1294,7 @@
              finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]
          (when-not dispatch
            (-fail! ::missing-property {:key :dispatch}))
-         ^{:type ::schema
-           ::entry-parser entry-parser}
+         ^{:type ::schema}
          (reify
            Schema
            (-validator [_]
@@ -1346,7 +1342,7 @@
 (defn -ref-schema
   ([]
    (-ref-schema nil))
-  ([{:keys [lazy type-properties] :as opts}]
+  ([{:keys [lazy type-properties]}]
    ^{:type ::into-schema}
    (reify IntoSchema
      (-type [_] :ref)
@@ -1644,8 +1640,7 @@
       (-check-children! type properties children min max)
       (let [entry-parser (-create-entry-parser children opts options)
             form (delay (-create-form type properties (-entry-forms entry-parser)))]
-        ^{:type ::schema
-          ::entry-parser entry-parser}
+        ^{:type ::schema}
         (reify
           Schema
           (-validator [this] (regex-validator this))
@@ -1948,8 +1943,7 @@
    (entries ?schema nil))
   ([?schema options]
    (if-let [schema (schema ?schema options)]
-     (if (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema schema)
-       (-entries schema)))))
+     (if (-entry-schema? schema) (-entries schema)))))
 
 (defn deref
   "Derefs top-level `RefSchema`s or returns original Schema."

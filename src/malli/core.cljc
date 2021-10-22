@@ -195,14 +195,15 @@
 (defn -equals [x y] (or (identical? x y) (= x y)))
 
 (defn -vmap [f os]
-  (let [c (count os)]
-    (when (pos? c)
-      (let [oa (object-array c)
-            iter #?(:clj (.iterator ^Iterable os), :cljs (iter os))
-            n (volatile! -1)]
-        (while (.hasNext iter)
-          (aset oa (vreset! n (inc ^int @n)) (f (.next iter))))
-        #?(:clj (LazilyPersistentVector/createOwning oa), :cljs (vec os))))))
+  #?(:clj (let [c (count os)]
+            (when (pos? c)
+              (let [oa (object-array c)
+                    iter (.iterator ^Iterable os)
+                    n (volatile! -1)]
+                (while (.hasNext iter)
+                  (aset oa (vreset! n (inc ^int @n)) (f (.next iter))))
+                (LazilyPersistentVector/createOwning oa))))
+     :cljs (into [] (map f) os)))
 
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]

@@ -2389,8 +2389,8 @@
       (is (true?  (f (range 8)))))))
 
 (deftest -vmap-test
-  (is (nil? (m/-vmap str nil)))
-  (is (nil? (m/-vmap str [])))
+  (is (= [] (m/-vmap str nil)))
+  (is (= [] (m/-vmap str [])))
   (is (= ["1"] (m/-vmap str [1])))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))
 

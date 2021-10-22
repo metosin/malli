@@ -196,13 +196,13 @@
 
 (defn -vmap [f os]
   #?(:clj (let [c (count os)]
-            (when (pos? c)
+            (if (pos? c)
               (let [oa (object-array c)
                     iter (.iterator ^Iterable os)
                     n (volatile! -1)]
                 (while (.hasNext iter)
                   (aset oa (vreset! n (inc ^int @n)) (f (.next iter))))
-                (LazilyPersistentVector/createOwning oa))))
+                (LazilyPersistentVector/createOwning oa)) []))
      :cljs (into [] (map f) os)))
 
 (defn -memoize [f]

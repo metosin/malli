@@ -202,7 +202,7 @@
             n (volatile! -1)]
         (while (.hasNext iter)
           (aset oa (vreset! n (inc ^int @n)) (f (.next iter))))
-        #?(:clj (LazilyPersistentVector/createOwning oa), (vec os))))))
+        #?(:clj (LazilyPersistentVector/createOwning oa), :cljs (vec os))))))
 
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]

@@ -1916,7 +1916,7 @@
   ([?schema]
    (parser ?schema nil))
   ([?schema options]
-   (-parser (schema ?schema options))))
+   (-cached (schema ?schema options) :parser -parser)))
 
 (defn parse
   "parses a value against a given schema. Creates the `parser` for every call.
@@ -1931,7 +1931,7 @@
   ([?schema]
    (unparser ?schema nil))
   ([?schema options]
-   (-unparser (schema ?schema options))))
+   (-cached (schema ?schema options) :unparser -unparser)))
 
 (defn unparse
   "Unparses a value against a given schema. Creates the `unparser` for every call.

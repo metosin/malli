@@ -194,6 +194,16 @@
 
 (defn -equals [x y] (or (identical? x y) (= x y)))
 
+(defn -vmap [f os]
+  (let [c (count os)]
+    (when (pos? c)
+      (let [oa (object-array c)
+            iter #?(:clj (.iterator ^Iterable os), :cljs (iter os))
+            n (volatile! -1)]
+        (while (.hasNext iter)
+          (aset oa (vreset! n (inc ^int @n)) (f (.next iter))))
+        #?(:clj (LazilyPersistentVector/createOwning oa), (vec os))))))
+
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
@@ -380,7 +390,11 @@
         child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
-(defn -cached [s k f] (if (-cached? s) (let [c (-cache s)] (or (@c k) ((swap! c assoc k (f s)) k))) (f s)))
+(defn -cached [s k f]
+  (if (-cached? s)
+    (let [c (-cache s)]
+      (or (@c k) ((swap! c assoc k (f s)) k)))
+    (f s)))
 
 (defn- -register-var [registry v]
   (let [name (-> v meta :name)
@@ -556,7 +570,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (distinct (map -validator children))]
+            (let [validators (-vmap -validator children)]
               #?(:clj  (miu/-every-pred validators)
                  :cljs (if (second validators) (apply every-pred validators) (first validators)))))
           (-explainer [_ path]
@@ -598,7 +612,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (distinct (map -validator children))]
+            (let [validators (-vmap -validator children)]
               #?(:clj  (miu/-some-pred validators)
                  :cljs (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
           (-explainer [_ path]

@@ -188,10 +188,6 @@
         (is (false? (m/validate schema "1")))
         (is (false? (m/validate schema [1]))))
 
-      (is (= pos-int? (m/validator [:and pos-int? pos-int? pos-int?])))
-      (is (= pos-int? (m/validator [:or pos-int? pos-int? pos-int?])))
-      (is (= pos-int? (m/validator [:orn [:a pos-int?] [:b pos-int?] [:c pos-int?]])))
-
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema,
                      :value 0,
@@ -2391,3 +2387,10 @@
       (is (true?  (f (range 4))))
       (is (true?  (f (range 7))))
       (is (true?  (f (range 8)))))))
+
+(deftest -vmap-test
+  (is (nil? (m/-vmap str nil)))
+  (is (nil? (m/-vmap str [])))
+  (is (= ["1"] (m/-vmap str [1])))
+  (is (= ["1" "2"] (m/-vmap str [1 2]))))
+

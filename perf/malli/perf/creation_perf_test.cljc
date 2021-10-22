@@ -14,7 +14,13 @@
   ;; 3.0µs (map childs)
   ;; 3.2µs (mapv childs)
   ;; 2.5µs (...)
+  ;; 2.1µs (non-distinct)
+  ;; 1.4µs (-vmap)
   (p/bench (m/validate [:or :int :string] 42))
+
+  ;; 15ns
+  (let [schema (m/schema [:or :int :string])]
+    (p/bench (m/validate schema 42)))
 
   ;; 3.0µs
   ;; 500ns (delayed mapv childs)
@@ -38,10 +44,15 @@
 
   ;; 1.7µs
   ;; 1.5µs (fast parse)
+  ;; 13ns (-cache)
   (let [schema (m/schema [:or :int :string])]
     (p/bench (m/validator schema)))
 
-  ;; 4ns
+  ;; 16ns
+  (let [schema (m/schema [:or :int :string])]
+    (p/bench (m/validate schema 42)))
+
+  ;; 3ns
   (let [validate (m/validator [:or :int :string])]
     (p/bench (validate 42))))
 

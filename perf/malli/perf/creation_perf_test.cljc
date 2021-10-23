@@ -15,7 +15,7 @@
   ;; 3.2µs (mapv childs)
   ;; 2.5µs (...)
   ;; 2.1µs (non-distinct)
-  ;; 1.4µs (-vmap)
+  ;; 1.3µs (-vmap)
   (p/bench (m/validate [:or :int :string] 42))
 
   ;; 15ns

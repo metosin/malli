@@ -81,11 +81,13 @@ Malli is in [alpha](README.md#alpha).
 
 ### Extender API
 
-* `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
-* new `m/Cached` protocol Schema can support for memoization of `-form`, `-validator`, `-explainer` and `-parser`
 * **BREAKING**: `m/EntrySchema` replaces `m/MapSchema` with new `-entry-parser` method
 * **BREAKING**: (eager) `m/-parse-entries` is removed, use (pluggable) `m/-entry-parser` instead
-* new `m/EntryParser` protocol
+* `m/EntryParser` protocol
+* `m/-create-form` has 2-arity for easier form creation
+* `m/-entry-forms` helper
+* `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
+* `m/Cached` protocol and `m/-create-cache` for memoization of `-form`, `-validator`, `-explainer` and `-parser` when using `m/form`, `m/validator`, `m/explain` and `m/parser`
 
 ## 0.6.1 (2021-08-08)
 

@@ -156,12 +156,18 @@
        (when (or (and min (< size ^long min)) (and max (> size ^long max)))
          (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))))
 
-(defn -create-form [type properties children]
-  (let [has-children (seq children), has-properties (seq properties)]
-    (cond (and has-properties has-children) (reduce conj [type properties] children)
-          has-properties [type properties]
-          has-children (reduce conj [type] children)
-          :else type)))
+(defn -create-form
+  ([schema f]
+   (-create-form (type schema) (-properties schema) (map f (-children schema))))
+  ([type properties children]
+   (let [has-children (seq children), has-properties (seq properties)]
+     (cond (and has-properties has-children) (reduce conj [type properties] children)
+           has-properties [type properties]
+           has-children (reduce conj [type] children)
+           :else type))))
+
+(defn -create-entry-form [schema]
+  (-create-form (type schema) (-properties schema) (-entry-forms (-entry-parser schema))))
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
@@ -544,7 +550,7 @@
               (-options [_] options)
               (-children [_] children)
               (-parent [_] parent)
-              (-form [_] (-create-form type properties children))
+              (-form [this] (-create-form this identity))
               Cached
               (-cache [_] cache)
               LensSchema
@@ -596,7 +602,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :and properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -657,7 +663,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :or properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -730,7 +736,7 @@
           (-options [_] options)
           (-children [_] (-entry-children entry-parser))
           (-parent [_] parent)
-          (-form [_] (-create-form :orn properties (-entry-forms entry-parser)))
+          (-form [this] (-create-entry-form this))
           EntrySchema
           (-entries [_] (-entry-entries entry-parser))
           (-entry-parser [_] entry-parser)
@@ -771,7 +777,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :not properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -791,7 +797,8 @@
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
        #_(-check-children! ::val properties children 1 1)
-       (let [schema (schema (first children) options)
+       (let [children (map #(schema % options) children)
+             schema (first children)
              cache (-create-cache options)]
          ^{:type ::schema}
          (reify Schema
@@ -810,7 +817,7 @@
            (-options [_] (-options schema))
            (-children [_] [schema])
            (-parent [_] parent)
-           (-form [_] (-create-form ::val properties [(-form schema)]))
+           (-form [this] (-create-form this -form))
            Cached
            (-cache [_] cache)
            LensSchema
@@ -912,7 +919,7 @@
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
-           (-form [_] (-create-form :map properties (-entry-forms entry-parser)))
+           (-form [this] (-create-entry-form this))
            EntrySchema
            (-entries [_] (-entry-entries entry-parser))
            (-entry-parser [_] entry-parser)
@@ -994,7 +1001,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :map-of properties (mapv -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1071,7 +1078,7 @@
                 (-options [_] options)
                 (-children [_] children)
                 (-parent [_] parent)
-                (-form [_] (-create-form type properties (map -form children)))
+                (-form [this] (-create-form this -form))
                 Cached
                 (-cache [_] cache)
                 LensSchema
@@ -1137,7 +1144,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :tuple properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1174,7 +1181,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :enum properties children))
+          (-form [this] (-create-form this identity))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1218,7 +1225,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (if class? re (-create-form :re properties children)))
+          (-form [this] (if class? re (-create-form this identity)))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1259,7 +1266,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :fn properties children))
+          (-form [this] (-create-form this identity))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1298,7 +1305,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :maybe properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1362,7 +1369,7 @@
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
-           (-form [_] (-create-form type properties (-entry-forms entry-parser)))
+           (-form [this] (-create-entry-form this))
            EntrySchema
            (-entries [_] (-entry-entries entry-parser))
            (-entry-parser [_] entry-parser)
@@ -1420,7 +1427,7 @@
            (-options [_] options)
            (-children [_] children)
            (-parent [_] parent)
-           (-form [_] (-create-form :ref properties children))
+           (-form [this] (-create-form this identity))
            Cached
            (-cache [_] cache)
            LensSchema
@@ -1472,8 +1479,7 @@
             (-options [_] options)
             (-children [_] children)
             (-parent [_] parent)
-            (-form [_] (or (and (empty? properties) (or id (and raw (-form child))))
-                           (-create-form type properties [(-form child)])))
+            (-form [this] (or (and (empty? properties) (or id (and raw (-form child)))) (-create-form this -form)))
             Cached
             (-cache [_] cache)
             LensSchema
@@ -1549,7 +1555,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :=> properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1604,7 +1610,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form :function properties (map -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1648,7 +1654,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (-create-form type properties (mapv -form children)))
+          (-form [this] (-create-form this -form))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1691,7 +1697,7 @@
           (-options [_] options)
           (-children [_] (-entry-children entry-parser))
           (-parent [_] parent)
-          (-form [_] (-create-form type properties (-entry-forms entry-parser)))
+          (-form [this] (-create-entry-form this))
           Cached
           (-cache [_] cache)
           LensSchema

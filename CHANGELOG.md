@@ -47,6 +47,10 @@ Malli is in [alpha](README.md#alpha).
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
 
+### Extender API
+
+* `m/-walk-entries` & `m/-walk-indexed` helpers
+
 ## 0.6.1 (2021-08-08)
 
 * add missing optional dependency to `mvxcvi/arrangement` to make pretty printing work

@@ -212,6 +212,14 @@
 (defn -inner-entries [walker path entries options]
   (mapv (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
 
+(defn -walk-entries [schema walker path options]
+  (when (-accept walker schema path options)
+    (-outer walker schema path (-inner-entries walker path (-entries schema) options) options)))
+
+(defn -walk-indexed [schema walker path options]
+  (when (-accept walker schema path options)
+    (-outer walker schema path (-inner-indexed walker path (-children schema) options) options)))
+
 (defn -set-children [schema children]
   (if (-equals children (-children schema))
     schema (-into-schema (-parent schema) (-properties schema) children (-options schema))))
@@ -573,9 +581,7 @@
           (-unparser [_] (->parser -unparser rseq))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -636,9 +642,7 @@
                                        (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
                                        x validators)))))
                 (-intercepting this-transformer))))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -711,9 +715,7 @@
                                        (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
                                        x validators)))))
                 (-intercepting this-transformer))))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-entries walker path (-entries this) options) options)))
+          (-walk [this walker path options] (-walk-entries this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] (-entry-children entry-parser))
@@ -754,9 +756,7 @@
           (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -897,9 +897,7 @@
                    apply->children (when (seq ->children) (-map-transformer ->children))
                    apply->children (-guard map? apply->children)]
                (-intercepting this-transformer apply->children)))
-           (-walk [this walker path options]
-             (if (-accept walker this path options)
-               (-outer walker this path (-inner-entries walker path (-entries this) options) options)))
+           (-walk [this walker path options] (-walk-entries this walker path options))
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
@@ -981,9 +979,7 @@
                   apply->key-child (when ->key-child #(reduce-kv ->key-child (empty %) %))
                   apply->key-child (-guard map? apply->key-child)]
               (-intercepting this-transformer apply->key-child)))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1126,9 +1122,7 @@
                   apply->children (when (seq ->children) (-tuple-transformer ->children))
                   apply->children (-guard vector? apply->children)]
               (-intercepting this-transformer apply->children)))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1295,9 +1289,7 @@
           (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1361,9 +1353,7 @@
                    find (finder ->children)
                    child-transformer (if (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
                (-intercepting this-transformer child-transformer)))
-           (-walk [this walker path options]
-             (if (-accept walker this path options)
-               (-outer walker this path (-inner-entries walker path (-entries this) options) options)))
+           (-walk [this walker path options] (-walk-entries this walker path options))
            (-properties [_] properties)
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
@@ -1550,9 +1540,7 @@
               (fn [x] (if (validator x) x ::invalid))))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1607,9 +1595,7 @@
               (fn [x] (if (validator x) x ::invalid))))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1653,9 +1639,7 @@
           (-parser [this] (regex-parser this))
           (-unparser [this] (-regex-unparser this))
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-indexed walker path children options) options)))
+          (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1698,9 +1682,7 @@
           (-parser [this] (regex-parser this))
           (-unparser [this] (-regex-unparser this))
           (-transformer [this transformer method options] (regex-transformer this transformer method options))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path (-inner-entries walker path (-entries this) options) options)))
+          (-walk [this walker path options] (-walk-entries this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] (-entry-children entry-parser))

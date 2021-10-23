@@ -80,6 +80,7 @@
   ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
   ;; 3.4µs
   ;; 2.9µs (-entry-parser)
+  ;; 2.5µs (no entries, object-arraus)
   (p/bench (m/schema ?schema))
 
   ;; 240ns
@@ -125,6 +126,7 @@
   ;; 5.8µs (protocols, registry, recur, parsed)
   ;; 3.9µs (-parsed)
   ;; 3.6µs (-entry-parser)
+  ;; 3.5µs (object-array)
   (p/bench (mu/closed-schema schema))
 
   ;; 3.8µs

@@ -1321,13 +1321,12 @@
   ([opts]
    ^{:type ::into-schema}
    (reify IntoSchema
-     (-type [_] :multi)
+     (-type [_] (or (:type opts) :multi))
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
-       (let [type (or (:type opts) :multi)
-             opts' (merge opts (select-keys properties [:lazy-refs]))
+       (let [opts' (merge opts (select-keys properties [:lazy-refs]))
              entry-parser (-create-entry-parser children opts' options)
              cache (-create-cache options)
              dispatch (eval (:dispatch properties) options)

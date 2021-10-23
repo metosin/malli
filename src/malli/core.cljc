@@ -206,6 +206,10 @@
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
 
+;;
+;; walkers
+;;
+
 (defn -inner-indexed [walker path children options]
   (mapv (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
@@ -219,6 +223,14 @@
 (defn -walk-indexed [schema walker path options]
   (when (-accept walker schema path options)
     (-outer walker schema path (-inner-indexed walker path (-children schema) options) options)))
+
+(defn -walk-leaf [schema walker path options]
+  (when (-accept walker schema path options)
+    (-outer walker schema path (-children schema) options)))
+
+;;
+;; lenses
+;;
 
 (defn -set-children [schema children]
   (if (-equals children (-children schema))
@@ -527,9 +539,7 @@
               (-unparser [this] (-parser this))
               (-transformer [this transformer method options]
                 (-intercepting (-value-transformer transformer this method options)))
-              (-walk [this walker path options]
-                (if (-accept walker this path options)
-                  (-outer walker this path children options)))
+              (-walk [this walker path options] (-walk-leaf this walker path options))
               (-properties [_] properties)
               (-options [_] options)
               (-children [_] children)
@@ -1151,16 +1161,15 @@
           (-validator [_]
             (fn [x] (contains? schema x)))
           (-explainer [this path]
-            (fn explain [x in acc]
-              (if-not (contains? schema x) (conj acc (miu/-error (conj path 0) in this x)) acc)))
+            (let [validator (-validator this)]
+              (fn explain [x in acc]
+                (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc))))
           (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
           (-unparser [this] (-parser this))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path children options)))
+          (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1200,13 +1209,11 @@
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
-          (-parser [_]
-            (let [find (-safe-pred #(re-find re %))]
-              (fn [x] (if (find x) x ::invalid))))
+          (-parser [this]
+            (let [valid? (-validator this)]
+              (fn [x] (if (valid? x) x ::invalid))))
           (-unparser [this] (-parser this))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path children options)))
+          (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1247,9 +1254,7 @@
           (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
-          (-walk [this walker path options]
-            (if (-accept walker this path options)
-              (-outer walker this path children options)))
+          (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
@@ -1273,8 +1278,7 @@
       (-check-children! :maybe properties children 1 1)
       (let [[schema :as children] (map #(schema % options) children)
             cache (-create-cache options)
-            ->parser (fn [f] (let [parser (f schema)]
-                               (fn [x] (if (nil? x) x (parser x)))))]
+            ->parser (fn [f] (let [parser (f schema)] (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
         (reify
           Schema

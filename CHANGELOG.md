@@ -49,7 +49,7 @@ Malli is in [alpha](README.md#alpha).
 
 ### Extender API
 
-* `m/-walk-entries` & `m/-walk-indexed` helpers
+* `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
 
 ## 0.6.1 (2021-08-08)
 

@@ -1,14 +1,15 @@
 (ns malli.provider-test
   (:require [clojure.test :refer [deftest testing is]]
             [malli.provider :as mp]
-            [malli.core :as m]))
+            [malli.core :as m])
+  #?(:clj (:import (java.util UUID Date))))
 
 (def expectations
   [[int? [1 2 3]]
    [keyword? [:kikka :kukka]]
    [qualified-keyword? [::kikka ::kukka]]
-   [uuid? [#?(:clj (java.util.UUID/randomUUID) :cljs (random-uuid))]]
-   [inst? [#?(:clj (java.util.Date.) :cljs (js/Date.))]]
+   [uuid? [#?(:clj (UUID/randomUUID) :cljs (random-uuid))]]
+   [inst? [#?(:clj (Date.) :cljs (js/Date.))]]
    [any? []]
 
    [[:vector keyword?] [[:kikka] [:kukka :kakka]]]

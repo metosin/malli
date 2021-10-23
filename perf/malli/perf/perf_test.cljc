@@ -10,7 +10,8 @@
             [schema.core :as sc]
             [schema.coerce :as scc]
             [clojure.pprint]
-            [malli.transform :as transform]))
+            [malli.transform :as mt]
+            [malli.provider :as mp]))
 
 (s/def ::x boolean?)
 (s/def ::y int?)
@@ -44,7 +45,7 @@
     ;; 650ns
     (let [valid? (sc/checker {:x sc/Bool
                               (sc/optional-key :y) sc/Int
-                              :z sc/Str })]
+                              :z sc/Str})]
       (assert (not (valid? valid)))
       (p/bench (valid? valid)))))
 
@@ -168,7 +169,7 @@
       ;; 74µs (wrong result!)
       (p/bench (json->place json)))
 
-    (let [json->place (m/decoder Place transform/json-transformer)]
+    (let [json->place (m/decoder Place mt/json-transformer)]
       (clojure.pprint/pprint (json->place json))
 
       ;; 1µs -> 800ns
@@ -188,7 +189,7 @@
     (p/bench (string->edn "1")))
 
   ;; 4ns
-  (let [string->edn (m/decoder int? transform/string-transformer)]
+  (let [string->edn (m/decoder int? mt/string-transformer)]
     (assert (= 1
                (string->edn "1")
                (string->edn 1)))
@@ -211,7 +212,7 @@
 
   ;; 44ns
   (let [schema [:map [:id int?] [:name string?]]
-        string->edn (m/decoder schema transform/string-transformer)]
+        string->edn (m/decoder schema mt/string-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})
                (string->edn {:id "1", :name "kikka"})))
@@ -245,7 +246,7 @@
 
   ;; 3.0ns
   (let [schema [:map [:id int?] [:name string?]]
-        string->edn (m/decoder schema transform/json-transformer)]
+        string->edn (m/decoder schema mt/json-transformer)]
     (assert (= {:id 1, :name "kikka"}
                (string->edn {:id 1, :name "kikka"})))
     (p/bench (string->edn {:id 1, :name "kikka"}))))
@@ -284,10 +285,10 @@
     (p/bench (f3 12))))
 
 (defn map-transform-test []
-  (doseq [transformer [transform/json-transformer
-                       (transform/transformer
-                         transform/strip-extra-keys-transformer
-                         transform/json-transformer)]]
+  (doseq [transformer [mt/json-transformer
+                       (mt/transformer
+                         mt/strip-extra-keys-transformer
+                         mt/json-transformer)]]
 
     ;; 3ns -> 3ns
     ;; 520ns -> 130ns
@@ -450,6 +451,16 @@
                                     [:country "Country"]]]]]]}}
            "Order"])))))
 
+(defn provider-test []
+
+  ;; 3.6ms
+  ;; 2.1ms (1.7x)
+  (p/bench (mp/provide [1 2 3]))
+
+  ;; 2.5ms
+  ;;  82µs (30x)
+  (let [provider (mp/provider)]
+    (p/bench (provider [1 2 3]))))
 
 (comment
   (map-perf)
@@ -466,6 +477,7 @@
   (simple-regex)
   (parsing)
   (and-map-perf-test)
+  (provider-test)
 
   (prof/serve-files 8080)
   (prof/clear-results)

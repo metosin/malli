@@ -141,6 +141,8 @@
       (name x))
     x))
 
+(defn -guard [pred tf] (when tf (fn [x] (if (pred x) (tf x) x))))
+
 (defn -unlift-keys [m prefix]
   (reduce-kv #(if (= (name prefix) (namespace %2)) (assoc %1 (keyword (name %2)) %3) %1) {} m))
 
@@ -155,19 +157,6 @@
      (let [size (count children)]
        (when (or (and min (< size ^long min)) (and max (> size ^long max)))
          (-fail! ::child-error {:type type, :properties properties, :children children, :min min, :max max}))))))
-
-(defn -create-form
-  ([schema f]
-   (-create-form (type schema) (-properties schema) (map f (-children schema))))
-  ([type properties children]
-   (let [has-children (seq children), has-properties (seq properties)]
-     (cond (and has-properties has-children) (reduce conj [type properties] children)
-           has-properties [type properties]
-           has-children (reduce conj [type] children)
-           :else type))))
-
-(defn -create-entry-form [schema]
-  (-create-form (type schema) (-properties schema) (-entry-forms (-entry-parser schema))))
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
@@ -211,6 +200,33 @@
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
+
+(defn -function-info [schema]
+  (if (= (type schema) :=>)
+    (let [[input output] (-children schema)
+          {:keys [min max]} (-regex-min-max input)]
+      (cond-> {:min min
+               :arity (if (= min max) min :varargs)
+               :input input
+               :output output}
+        max (assoc :max max)))))
+
+;;
+;; forms
+;;
+
+(defn -create-form
+  ([schema f]
+   (-create-form (type schema) (-properties schema) (map f (-children schema))))
+  ([type properties children]
+   (let [has-children (seq children), has-properties (seq properties)]
+     (cond (and has-properties has-children) (reduce conj [type properties] children)
+           has-properties [type properties]
+           has-children (reduce conj [type] children)
+           :else type))))
+
+(defn -create-entry-form [schema]
+  (-create-form (type schema) (-properties schema) (-entry-forms (-entry-parser schema))))
 
 ;;
 ;; walkers
@@ -391,23 +407,10 @@
         :else (-eager-entry-parser ?children props options)))
 
 ;;
-;; helpers
+;; cache
 ;;
 
 (defn -create-cache [_options] (atom {}))
-
-(defn -guard [pred tf]
-  (when tf (fn [x] (if (pred x) (tf x) x))))
-
-(defn -intercepting
-  ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
-
-(defn -parent-children-transformer [parent children transformer method options]
-  (let [parent-transformer (-value-transformer transformer parent method options)
-        child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
-    (-intercepting parent-transformer child-transformer)))
 
 (defn -cached [s k f]
   (if (-cached? s)
@@ -415,27 +418,13 @@
       (or (@c k) ((swap! c assoc k (f s)) k)))
     (f s)))
 
-(defn- -register-var [registry v]
-  (let [name (-> v meta :name)
-        schema (-simple-schema {:type name, :pred @v})]
-    (-> registry
-        (assoc name schema)
-        (assoc @v schema))))
+;;
+;; transformers
+;;
 
-(defn -registry
-  {:arglists '([] [{:keys [registry]}])}
-  ([] default-registry)
-  ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
-
-(defn- -lookup [?schema options]
-  (let [registry (-registry options)]
-    (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
-
-(defn- -lookup! [?schema f options]
-  (or (and f (f ?schema) ?schema)
-      (-lookup ?schema options)
-      (-fail! ::invalid-schema {:schema ?schema})))
+(defn -intercepting
+  ([interceptor] (-intercepting interceptor nil))
+  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
 
 (defn -into-transformer [x]
   (cond
@@ -443,25 +432,11 @@
     (fn? x) (-into-transformer (x))
     :else (-fail! ::invalid-transformer {:value x})))
 
-(defn- -property-registry [m options f]
-  (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
-
-(defn -properties-and-options [properties options f]
-  (if-let [r (some-> properties :registry)]
-    (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
-      [(assoc properties :registry (-property-registry r options f)) options])
-    [properties options]))
-
-(defn -function-info [schema]
-  (if (= (type schema) :=>)
-    (let [[input output] (-children schema)
-          {:keys [min max]} (-regex-min-max input)]
-      (cond-> {:min min
-               :arity (if (= min max) min :varargs)
-               :input input
-               :output output}
-              max (assoc :max max)))))
+(defn -parent-children-transformer [parent children transformer method options]
+  (let [parent-transformer (-value-transformer transformer parent method options)
+        child-transformers (into [] (keep #(-transformer % transformer method options)) children)
+        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
+    (-intercepting parent-transformer child-transformer)))
 
 (defn -map-transformer [ts]
   #?(:clj  (apply -comp (map (fn child-transformer [[k t]]
@@ -490,6 +465,42 @@
                          (recur (.cons x (t (.next i))))
                          x))))
      :cljs (fn [x] (into (if x empty) (map t) x))))
+
+;;
+;; registry
+;;
+
+(defn- -register-var [registry v]
+  (let [name (-> v meta :name)
+        schema (-simple-schema {:type name, :pred @v})]
+    (-> registry
+        (assoc name schema)
+        (assoc @v schema))))
+
+(defn -registry
+  {:arglists '([] [{:keys [registry]}])}
+  ([] default-registry)
+  ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
+
+(defn- -lookup [?schema options]
+  (let [registry (-registry options)]
+    (or (mr/-schema registry ?schema)
+        (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
+
+(defn- -lookup! [?schema f options]
+  (or (and f (f ?schema) ?schema)
+      (-lookup ?schema options)
+      (-fail! ::invalid-schema {:schema ?schema})))
+
+(defn- -property-registry [m options f]
+  (let [options (assoc options ::allow-invalid-refs true)]
+    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
+
+(defn -properties-and-options [properties options f]
+  (if-let [r (some-> properties :registry)]
+    (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
+      [(assoc properties :registry (-property-registry r options f)) options])
+    [properties options]))
 
 ;;
 ;; simple schema helpers

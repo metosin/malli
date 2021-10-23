@@ -16,7 +16,11 @@ Malli is in [alpha](README.md#alpha).
 
 ## 0.7.0-SNAPSHOT
 
-* big improvements to schema creation and transformation perfromance, see [#531](https://github.com/metosin/malli/issues/513).
+### Performance
+
+* big improvements to schema creation and transformation perfromance, see [#531](https://github.com/metosin/malli/issues/513) and [#550](https://github.com/metosin/malli/pull/550).
+
+#### Schema Creation
 
 ```clj
 (def ?schema
@@ -29,27 +33,59 @@ Malli is in [alpha](README.md#alpha).
 
 (def schema (m/schema ?schema))
 
-;; 44µs -> 3.6µs (12x)
+;; 44µs -> 2.5µs (18x)
 (bench (m/schema ?schema))
 
-;; 26µs -> 1.3µs (20x)
+;; 44µs -> 240ns (180x, not realized)
+(p/bench (m/schema ?schema {::m/lazy-entries true}))
+```
+
+#### Schema Transformation
+
+```clj
+;; 26µs -> 1.2µs (21x)
 (bench (m/walk schema (m/schema-walker identity)))
 
-;; 4.2µs -> 0.8µs (5x)
+;; 4.2µs -> 0.54µs (7x)
 (bench (mu/assoc schema :w :string))
 
-;; 51µs -> 3.7µs (14x)
+;; 51µs -> 3.4µs (15x)
 (bench (mu/closed-schema schema))
+
+;; 5µs -> 28ns (180x)
+(p/bench (m/deref-all ref-schema))
+
+;; 134µs -> 9µs (15x)
+(p/bench (mu/merge schema schema))
 ```
+
+#### Schema Workers
+
+```clj
+(def schema (m/schema ?schema))
+
+;; 1.6µs -> 64ns (25x)
+(p/bench (m/validate schema {:x true, :z {:x true}}))
+
+;; 1.6µs -> 450ns (3x)
+(p/bench (m/explain schema {:x true, :z {:x true}}))
+```
+
+### Public API
 
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
 * fixed `:function` lenses
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
+* support for Lazy EntrySchema parsing
 
 ### Extender API
 
 * `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
+* new `m/Cached` protocol Schema can support for memoization of `-form`, `-validator`, `-explainer` and `-parser`
+* **BREAKING**: `m/EntrySchema` replaces `m/MapSchema` with new `-entry-parser` method
+* **BREAKING**: (eager) `m/-parse-entries` is removed, use (pluggable) `m/-entry-parser` instead
+* new `m/EntryParser` protocol
 
 ## 0.6.1 (2021-08-08)
 

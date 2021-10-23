@@ -83,8 +83,14 @@
   ;; 2.5µs (no entries, object-arraus)
   (p/bench (m/schema ?schema))
 
-  ;; 240ns
+  ;; 44µs -> 240ns
   (p/bench (m/schema ?schema {::m/lazy-entries true}))
+
+  ;; 1.6µs -> 64ns
+  (p/bench (m/validate schema {:x true, :z {:x true}}))
+
+  ;; 1.6µs -> 450ns
+  (p/bench (m/explain schema {:x true, :z {:x true}}))
 
   ;; does not work with direct linking
   (with-redefs [m/-check-children? (constantly false)]
@@ -126,7 +132,7 @@
   ;; 5.8µs (protocols, registry, recur, parsed)
   ;; 3.9µs (-parsed)
   ;; 3.6µs (-entry-parser)
-  ;; 3.5µs (object-array)
+  ;; 3.4µs (object-array)
   (p/bench (mu/closed-schema schema))
 
   ;; 3.8µs
@@ -139,7 +145,7 @@
   ;; 4.2µs
   ;; 3.8µs (satisfies?)
   ;; 820ns (-update-parsed)
-  ;; 580ns (-entry-parser)
+  ;; 540ns (-entry-parser)
   (p/bench (mu/assoc schema :w :string))
 
   ;; 205ns

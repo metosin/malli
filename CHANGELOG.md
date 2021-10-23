@@ -18,7 +18,7 @@ Malli is in [alpha](README.md#alpha).
 
 ### Performance
 
-* big improvements to schema creation and transformation perfromance, see [#531](https://github.com/metosin/malli/issues/513) and [#550](https://github.com/metosin/malli/pull/550).
+* big improvements to schema creation, transformation and inferring perfromance, see [#531](https://github.com/metosin/malli/issues/513) and [#550](https://github.com/metosin/malli/pull/550).
 
 #### Schema Creation
 
@@ -71,6 +71,17 @@ Malli is in [alpha](README.md#alpha).
 (p/bench (m/explain schema {:x true, :z {:x true}}))
 ```
 
+#### Schema Inferring
+
+```clj
+;; 3.6ms -> 2.2ms (1.7x)
+(p/bench (mp/provide [1 2 3]))
+
+;; 2.5ms -> 82µs (30x)
+(let [provider (mp/provider)]
+  (p/bench (provider [1 2 3])))
+```
+
 ### Public API
 
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
@@ -78,6 +89,7 @@ Malli is in [alpha](README.md#alpha).
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
 * support for Lazy EntrySchema parsing
+* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
 
 ### Extender API
 

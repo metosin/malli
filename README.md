@@ -1363,6 +1363,19 @@ All samples are valid against the inferred schema:
 ; => true
 ```
 
+For order of magnitude better performance, use `mp/provider` instead:
+
+```clj
+;; 3.6ms -> 2.1ms (1.7x)
+(p/bench (mp/provide [1 2 3]))
+
+;; 2.5ms -> 82µs (30x)
+(let [provider (mp/provider)]
+  (p/bench (provider [1 2 3])))
+```
+
+Infferring is [still kinda slow](https://github.com/metosin/malli/issues/191).
+
 ## Parsing values
 
 Schemas can be used to parse values using `m/parse` and `m/parser`:

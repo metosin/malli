@@ -480,12 +480,17 @@
                             :zip 33200
                             :lonlat [61.4963599 23.7604916]}}]]
 
-    ;; 126ms
+    ;; 126ms -> 2.5ms
     (p/bench (mp/provide samples))
 
     ;; 26ms
-    ;; 380µs no exceptions, (330x)
+    ;; 380µs, no exceptions, (330x)
     (let [provide (mp/provider)]
+      (p/bench (provide samples)))
+
+    ;; 270µs, no exceptions, no inst? (460x)
+    (let [registry (dissoc (m/default-schemas) inst? 'inst?)
+          provide (mp/provider {:registry registry})]
       (p/bench (provide samples)))))
 
 (comment

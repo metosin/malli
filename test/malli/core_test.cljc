@@ -182,6 +182,10 @@
 
       (is (= 'int? (m/form schema)))))
 
+  (testing "empty? does not throw in validation"
+    (is (thrown? #?(:clj Exception, :cljs js/Error) (empty? 1)))
+    (is (false? (m/validate empty? 1))))
+
   (testing "composite schemas"
     (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])
           schema* (m/schema [:and int? [:orn [:pos pos-int?] [:neg neg-int?]]])]

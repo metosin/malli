@@ -457,10 +457,36 @@
   ;; 2.1ms (1.7x)
   (p/bench (mp/provide [1 2 3]))
 
+  ;; 2.6ms
+  (p/bench (mp/provider))
+
   ;; 2.5ms
-  ;;  82µs (30x)
+  ;;  54µs (46x)
   (let [provider (mp/provider)]
     (p/bench (provider [1 2 3]))))
+
+(defn provider-test2 []
+  (let [samples [{:id "Lillan"
+                  :tags #{:artesan :coffee :hotel}
+                  :address {:street "Ahlmanintie 29"
+                            :city "Tampere"
+                            :zip 33100
+                            :lonlat [61.4858322, 23.7854658]}}
+                 {:id "Huber",
+                  :description "Beefy place"
+                  :tags #{:beef :wine :beer}
+                  :address {:street "Aleksis Kiven katu 13"
+                            :city "Tampere"
+                            :zip 33200
+                            :lonlat [61.4963599 23.7604916]}}]]
+
+    ;; 126ms
+    (p/bench (mp/provide samples))
+
+    ;; 26ms
+    ;; 380µs no exceptions, (330x)
+    (let [provide (mp/provider)]
+      (p/bench (provide samples)))))
 
 (comment
   (map-perf)
@@ -478,9 +504,9 @@
   (parsing)
   (and-map-perf-test)
   (provider-test)
+  (provider-test2)
 
-  (prof/serve-files 8080)
-  (prof/clear-results)
+  (p/clear!)
 
   (address-flame)
   (schema-flames))

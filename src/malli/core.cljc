@@ -220,9 +220,10 @@
 ;; registry
 ;;
 
-(defn- -register-var [registry v]
-  (let [name (-> v meta :name)
-        schema (-simple-schema {:type name, :pred @v})]
+(defn- -register-var [registry ?v]
+  (let [[v pred] (if (vector? ?v) ?v [?v @?v])
+        name (-> v meta :name)
+        schema (-simple-schema {:type name, :pred pred})]
     (-> registry
         (assoc name schema)
         (assoc @v schema))))
@@ -2224,13 +2225,14 @@
 ;;
 
 (defn predicate-schemas []
-  (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'pos? #'neg? #'float? #'double?
-        #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
-        #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
-        #'inst? #'seqable? #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
-        #'zero? #?(:clj #'rational?) #'coll? #'empty? #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)
-        #'ifn? #'fn?]
-       (reduce -register-var {})))
+  (let [-safe-empty? (fn [x] (and (seqable? x) (empty? x)))]
+    (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'pos? #'neg? #'float? #'double?
+          #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
+          #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
+          #'inst? #'seqable? #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
+          #'zero? #?(:clj #'rational?) #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)
+          #'ifn? #'fn?]
+         (reduce -register-var {}))))
 
 (defn class-schemas []
   {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})

@@ -20,6 +20,14 @@
   ;; 2.6µs
   (p/bench (m/validate {:type :or, :children [{:type :int} {:type :string}]} 42))
 
+  ;; 2.1µs (non-distinct)
+  ;; 1.3µs (-vmap)
+  (p/bench (m/validate [:or :int :string] 42))
+
+  ;; 15ns
+  (let [schema (m/schema [:or :int :string])]
+    (p/bench (m/validate schema 42)))
+
   ;; 3.0µs
   ;; 500ns (delayed mapv childs)
   ;; 1.7µs
@@ -53,7 +61,17 @@
   (let [schema (m/schema [:or :int :string])]
     (p/bench (m/validator schema)))
 
-  ;; 4ns
+  ;; 1.7µs
+  ;; 1.5µs (fast parse)
+  ;; 13ns (-cache)
+  (let [schema (m/schema [:or :int :string])]
+    (p/bench (m/validator schema)))
+
+  ;; 16ns
+  (let [schema (m/schema [:or :int :string])]
+    (p/bench (m/validate schema 42)))
+
+  ;; 3ns
   (let [validate (m/validator [:or :int :string])]
     (p/bench (validate 42))))
 
@@ -83,11 +101,23 @@
   ;; 200ns
   (p/bench (m/schema {:type :int}))
 
-  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs -> 3.4µs
+  ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
+  ;; 3.4µs
+  ;; 2.9µs (-entry-parser)
+  ;; 2.5µs (no entries, object-arraus)
   (p/bench (m/schema ?schema))
 
   ;; 267ns
   (p/bench (m/schema ast))
+
+  ;; 44µs -> 240ns
+  (p/bench (m/schema ?schema {::m/lazy-entries true}))
+
+  ;; 1.6µs -> 64ns
+  (p/bench (m/validate schema {:x true, :z {:x true}}))
+
+  ;; 1.6µs -> 450ns
+  (p/bench (m/explain schema {:x true, :z {:x true}}))
 
   ;; does not work with direct linking
   (with-redefs [m/-check-children? (constantly false)]
@@ -111,6 +141,7 @@
 
   ;; 271ns
   ;; 14ns (-set-children, -set-properties)
+  ;; 12ns (-entry-parser)
   (p/bench (m/walk leaf-schema (m/schema-walker identity)))
 
   ;; 26µs
@@ -127,17 +158,21 @@
   ;; 6.5µs (schema)
   ;; 5.8µs (protocols, registry, recur, parsed)
   ;; 3.9µs (-parsed)
+  ;; 3.6µs (-entry-parser)
+  ;; 3.4µs (object-array)
   (p/bench (mu/closed-schema schema))
 
   ;; 3.8µs
   ;; 3.4µs (satisfies?)
   ;; 2.2µs (-set-entries)
   ;; 830ns (-update-parsed)
+  ;; 560ns (-entry-parser)
   (p/bench (mu/assoc schema :y :string))
 
   ;; 4.2µs
   ;; 3.8µs (satisfies?)
   ;; 820ns (-update-parsed)
+  ;; 540ns (-entry-parser)
   (p/bench (mu/assoc schema :w :string))
 
   ;; 205ns
@@ -166,8 +201,7 @@
     ;; 341ns (-create-form)
     ;; 150ns (delayed form)
     ;;  30ns (don't -check-children)
-    (p/bench (m/-val-schema s nil))
-    (p/profile (m/-val-schema s nil))))
+    (p/bench (m/-val-schema s nil))))
 
 (comment
   "clojurescript perf tests"

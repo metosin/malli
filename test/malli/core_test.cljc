@@ -41,43 +41,43 @@
   (is (= "abba" (m/-keyword->string "abba"))))
 
 (deftest parse-entries-test
-  (let [{:keys [children entries forms]} (m/-parse-entries
-                                           [[:x int?]
-                                            ::x
-                                            "x"
-                                            [::y {:optional true}]
-                                            [:y {:optional true, :title "boolean"} boolean?]]
-                                           {:naked-keys true}
-                                           {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
+  (let [entry-parser (m/-create-entry-parser
+                      [[:x int?]
+                       ::x
+                       "x"
+                       [::y {:optional true}]
+                       [:y {:optional true, :title "boolean"} boolean?]]
+                      {:naked-keys true}
+                      {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
     (testing "forms"
       (is (= [[:x 'int?]
               ::x
               "x"
               [::y {:optional true}]
               [:y {:optional true, :title "boolean"} 'boolean?]]
-             forms)))
+             (m/-entry-forms entry-parser))))
     (testing "entries"
       (is (schema= [[:x [::m/val 'int?]]
                     [::x [::m/val ::x]]
                     ["x" [::m/val "x"]]
                     [::y [::m/val {:optional true} ::y]]
                     [:y [::m/val {:optional true :title "boolean"} 'boolean?]]]
-                   entries)))
+                   (m/-entry-entries entry-parser))))
     (testing "children"
       (is (= [[:x nil 'int?]
               [::x nil ::x]
               ["x" nil "x"]
               [::y {:optional true} ::y]
               [:y {:optional true, :title "boolean"} 'boolean?]]
-             (map #(update % 2 m/form) children)))))
+             (map #(update % 2 m/form) (m/-entry-children entry-parser))))))
   (testing "duplicate keys"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
-                 (m/-parse-entries
+                 (m/-create-entry-parser
                    [[:x int?]
                     [:x boolean?]] {:naked-keys true} nil))))
   (testing "naked keys fails when not supported"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
-                 (m/-parse-entries
+                 (m/-create-entry-parser
                    [::x] nil nil)))))
 
 (deftest eval-test
@@ -218,8 +218,9 @@
       (is (= ::m/invalid (m/unparse schema* (miu/-tagged :pos 0))))
 
       (doseq [schema [schema schema*]]
-        (is (= 1 (m/decode schema "1" mt/string-transformer)))
-        (is (= "1" (m/decode schema "1" mt/json-transformer))))
+        (testing (m/form schema)
+          (is (= 1 (m/decode schema "1" mt/string-transformer)))
+          (is (= "1" (m/decode schema "1" mt/json-transformer)))))
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
@@ -2593,7 +2594,7 @@
           (is (= hiccup (m/form ast))))))))
 
 (deftest -vmap-test
-  (is (nil? (m/-vmap str nil)))
-  (is (nil? (m/-vmap str [])))
+  (is (= [] (m/-vmap str nil)))
+  (is (= [] (m/-vmap str [])))
   (is (= ["1"] (m/-vmap str [1])))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))

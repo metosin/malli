@@ -183,7 +183,7 @@
     @state))
 
 ;;
-;; MapSchemas
+;; EntrySchemas
 ;;
 
 (defn transform-entries
@@ -220,7 +220,7 @@
      (transform-entries ?schema #(map mapper %) options))))
 
 (defn select-keys
-  "Like [[clojure.core/select-keys]], but for MapSchemas."
+  "Like [[clojure.core/select-keys]], but for EntrySchemas."
   ([?schema keys]
    (select-keys ?schema keys nil))
   ([?schema keys options]
@@ -228,7 +228,7 @@
      (transform-entries ?schema #(filter (fn [[k]] (key-set k)) %) options))))
 
 (defn rename-keys
-  "Like [[clojure.set/rename-keys]], but for MapSchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
+  "Like [[clojure.set/rename-keys]], but for EntrySchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
   ([?schema kmap]
    (rename-keys ?schema kmap nil))
   ([?schema kmap options]
@@ -243,14 +243,14 @@
      options)))
 
 (defn dissoc
-  "Like [[clojure.core/dissoc]], but for MapSchemas."
+  "Like [[clojure.core/dissoc]], but for EntrySchemas."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
    (transform-entries ?schema #(remove (fn [[k]] (= key k)) %) options)))
 
 (defn find
-  "Like [[clojure.core/find]], but for MapSchemas."
+  "Like [[clojure.core/find]], but for EntrySchemas."
   ([?schema k]
    (find ?schema k nil))
   ([?schema k options]
@@ -367,8 +367,7 @@
     (-into-schema [parent properties children options]
       (m/-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
-            walkable-childs (if childs (subvec children 0 childs) children)
-            form (m/-create-form type properties forms options)]
+            cache (m/-create-cache options)]
         ^{:type ::m/schema}
         (reify
           m/Schema
@@ -377,13 +376,16 @@
           (-transformer [this transformer method options]
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]
-            (if (m/-accept walker this path options)
-              (m/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
+            (let [children (if childs (subvec children 0 childs) children)]
+              (if (m/-accept walker this path options)
+                (m/-outer walker this path (m/-inner-indexed walker path children options) options))))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] (m/-create-form type properties forms options))
+          m/Cached
+          (-cache [_] cache)
           m/LensSchema
           (-keep [_])
           (-get [_ key default] (clojure.core/get children key default))

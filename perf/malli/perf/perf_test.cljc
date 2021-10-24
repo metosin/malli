@@ -45,7 +45,7 @@
     ;; 650ns
     (let [valid? (sc/checker {:x sc/Bool
                               (sc/optional-key :y) sc/Int
-                              :z sc/Str })]
+                              :z sc/Str})]
       (assert (not (valid? valid)))
       (p/bench (valid? valid)))))
 
@@ -287,8 +287,8 @@
 (defn map-transform-test []
   (doseq [transformer [mt/json-transformer
                        (mt/transformer
-                        mt/strip-extra-keys-transformer
-                        mt/json-transformer)]]
+                         mt/strip-extra-keys-transformer
+                         mt/json-transformer)]]
 
     ;; 3ns -> 3ns
     ;; 520ns -> 130ns
@@ -454,11 +454,11 @@
 (defn provider-test []
 
   ;; 3.6ms
-  ;; 1.2ms (3x)
+  ;; 2.1ms (1.7x)
   (p/bench (mp/provide [1 2 3]))
 
   ;; 2.5ms
-  ;; 114µs (22x)
+  ;;  82µs (30x)
   (let [provider (mp/provider)]
     (p/bench (provider [1 2 3]))))
 

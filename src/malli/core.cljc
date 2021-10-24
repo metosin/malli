@@ -228,8 +228,7 @@
         (assoc name schema)
         (assoc @v schema))))
 
-(defn -registry
-  {:arglists '([] [{:keys [registry]}])}
+(defn -registry {:arglists '([] [{:keys [registry]}])}
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
@@ -2228,10 +2227,10 @@
   (let [-safe-empty? (fn [x] (and (seqable? x) (empty? x)))]
     (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'pos? #'neg? #'float? #'double?
           #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
-          #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #?(:clj #'decimal?)
-          #'inst? #'seqable? #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
-          #'zero? #?(:clj #'rational?) #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #?(:clj #'ratio?) #?(:clj #'bytes?)
-          #'ifn? #'fn?]
+          #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #'inst? #'seqable?
+          #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
+          #'zero? #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #'ifn? #'fn?
+          #?@(:clj [#'rational? #'rational? #'ratio? #'bytes?])]
          (reduce -register-var {}))))
 
 (defn class-schemas []

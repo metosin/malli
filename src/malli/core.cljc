@@ -90,6 +90,8 @@
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
 (defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
+(defn -ast? [x] (#?(:clj instance?, :cljs implements?) malli.core.AST x))
+(defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
 
 (extend-type #?(:clj Object, :cljs default)
   RegexSchema
@@ -193,13 +195,7 @@
 
 (defn -equals [x y] (or (identical? x y) (= x y)))
 
-(defn -vmap [f os]
-  #?(:clj  (let [c (count os)]
-             (if-not (zero? c)
-               (let [oa (object-array c), iter (.iterator ^Iterable os)]
-                 (loop [n 0] (when (.hasNext iter) (aset oa n (f (.next iter))) (recur (unchecked-inc n))))
-                 (LazilyPersistentVector/createOwning oa)) []))
-     :cljs (into [] (map f) os)))
+(defn -vmap ([os] (miu/-vmap identity os)) ([f os] (miu/-vmap f os)))
 
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
@@ -214,7 +210,6 @@
                :input input
                :output output}
         max (assoc :max max)))))
-
 
 ;;
 ;; registry
@@ -232,9 +227,10 @@
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
-(defn -property-registry [m options f]
-  (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
+(defn -property-registry
+  ([m options f] (-property-registry m options f schema))
+  ([m options f g] (let [options (assoc options ::allow-invalid-refs true)]
+                     (reduce-kv (fn [acc k v] (assoc acc k (f (g v options)))) {} m))))
 
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
@@ -473,7 +469,7 @@
 
 (defn -into-transformer [x]
   (cond
-    (#?(:clj instance?, :cljs implements?) malli.core.Transformer x) x
+    (-transformer? x) x
     (fn? x) (-into-transformer (x))
     :else (-fail! ::invalid-transformer {:value x})))
 
@@ -516,14 +512,15 @@
 ;;
 
 (defn -parse-entry-ast [ast options]
-  (let [->child (fn [[k v]] [k (:properties v) (from-ast (:value v) options)])
-        ast-entry-order (::ast-entry-order options)
+  (let [ast-entry-order (::ast-entry-order options)
         keyset (:keys ast)
-        children (if ast-entry-order
-                   (->> keyset (sort-by (fn [e] (:order (val e)))) (map ->child))
-                   (->> keyset (map ->child)))
-        forms (->> children (map (fn [[k p v]] (if p [k p (-form v)] [k (-form v)]))))]
-    (-simple-entry-parser keyset children forms)))
+        ->child (fn [[k v]] [k (:properties v) (from-ast (:value v) options)])
+        children (delay (-vmap ->child (cond->> keyset ast-entry-order (sort-by #(:order (val %)) keyset))))]
+    (reify EntryParser
+      (-entry-keyset [_] keyset)
+      (-entry-children [_] @children)
+      (-entry-entries [_] (map (fn [[k p s]] (miu/-tagged k (-val-schema s p))) @children))
+      (-entry-forms [_] (->> @children (map (fn [[k p v]] (if p [k p (-form v)] [k (-form v)]))))))))
 
 (defn -from-entry-ast [parent ast options]
   (-into-schema parent (:properties ast) (-parse-entry-ast ast options) options))
@@ -549,7 +546,7 @@
   (-ast {:type (type schema), :child (ast (nth (-children schema) 0))} (-properties schema) (-options schema)))
 
 (defn -from-value-ast [parent ast options]
-  (-into-schema parent (:properties ast) (if-let [value (:value ast)] [value]) options))
+  (-into-schema parent (:properties ast) (when-let [value (:value ast)] [value]) options))
 
 (defn -to-value-ast [schema]
   (-ast {:type (type schema), :value (nth (-children schema) 0)} (-properties schema) (-options schema)))
@@ -935,22 +932,22 @@
        (let [entry-parser (-create-entry-parser children opts options)
              cache (-create-cache options)
              ->parser (fn [this f] (let [keyset (-entry-keyset (-entry-parser this))
-                                         parsers (cond-> (mapv
-                                                           (fn [[key {:keys [optional]} schema]]
-                                                             (let [parser (f schema)]
-                                                               (fn [m]
-                                                                 (if-let [e (find m key)]
-                                                                   (let [v (val e)
-                                                                         v* (parser v)]
-                                                                     (cond (miu/-invalid? v*) (reduced v*)
-                                                                           (identical? v* v) m
-                                                                           :else (assoc m key v*)))
-                                                                   (if optional m (reduced ::invalid))))))
-                                                           (-children this))
-                                                   closed (into [(fn [m]
-                                                                   (reduce
-                                                                     (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                                     m (keys m)))]))]
+                                         parsers (cond->> (-vmap
+                                                            (fn [[key {:keys [optional]} schema]]
+                                                              (let [parser (f schema)]
+                                                                (fn [m]
+                                                                  (if-let [e (find m key)]
+                                                                    (let [v (val e)
+                                                                          v* (parser v)]
+                                                                      (cond (miu/-invalid? v*) (reduced v*)
+                                                                            (identical? v* v) m
+                                                                            :else (assoc m key v*)))
+                                                                    (if optional m (reduced ::invalid))))))
+                                                            (-children this))
+                                                   closed (cons (fn [m]
+                                                                  (reduce
+                                                                    (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
+                                                                    m (keys m)))))]
                                      (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
@@ -959,23 +956,20 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   validators (cond-> (mapv
+                   validators (cond-> (-vmap
                                         (fn [[key {:keys [optional]} value]]
                                           (let [valid? (-validator value)
                                                 default (boolean optional)]
                                             #?(:clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                                :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                         (-children this))
-                                closed (into [(fn [m]
-                                                (reduce
-                                                  (fn [acc k] (if (contains? keyset k) acc (reduced false)))
-                                                  true (keys m)))]))
+                                closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
                    validate #?(:clj (miu/-every-pred validators)
                                :cljs (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true validators))))]
                (fn [m] (and (map? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   explainers (cond-> (mapv
+                   explainers (cond-> (-vmap
                                         (fn [[key {:keys [optional]} schema]]
                                           (let [explainer (-explainer schema (conj path key))]
                                             (fn [x in acc]
@@ -985,13 +979,13 @@
                                                   (conj acc (miu/-error (conj path key) (conj in key) this nil ::missing-key))
                                                   acc)))))
                                         (-children this))
-                                closed (into [(fn [x in acc]
-                                                (reduce
-                                                  (fn [acc k]
-                                                    (if (contains? keyset k)
-                                                      acc
-                                                      (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
-                                                  acc (keys x)))]))]
+                                closed (conj (fn [x in acc]
+                                               (reduce
+                                                 (fn [acc k]
+                                                   (if (contains? keyset k)
+                                                     acc
+                                                     (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
+                                                 acc (keys x)))))]
                (fn [x in acc]
                  (if-not (map? x)
                    (conj acc (miu/-error path in this x ::invalid-type))
@@ -1527,7 +1521,7 @@
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
        (let [-ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
-                      (if-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+                      (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
                       (when-not allow-invalid-refs
                         (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
@@ -1949,7 +1943,6 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (map? ?schema) (from-ast ?schema options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t #?(:clj (.nth v 0), :cljs (nth v 0))
                              n #?(:clj (.count v), :cljs (count v))
@@ -2163,25 +2156,28 @@
 
 (defn from-ast
   "Creates a Schema from AST"
-  ([ast] (from-ast ast nil))
-  ([ast options]
-   (if-let [s (-lookup (:type ast) options)]
-     (let [r (:registry ast)
-           p (:properties ast)
-           options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-           p' (if r (assoc p :registry (-property-registry r options identity)))
-           ast (cond-> ast p' (assoc :properties p'))]
-       (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
-         (-from-ast s ast options)
-         (-into-schema s (:properties ast) (:children ast) options)))
-     (-fail! ::invalid-ast {:ast ast}))))
+  ([?ast] (from-ast ?ast nil))
+  ([?ast options]
+   (cond
+     (schema? ?ast) ?ast
+     (map? ?ast) (if-let [s (-lookup (:type ?ast) options)]
+                   (let [r (:registry ?ast)
+                         p (:properties ?ast)
+                         options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
+                         p' (when r (assoc p :registry (-property-registry r options identity from-ast)))
+                         ast (cond-> ?ast p' (assoc :properties p'))]
+                     (if (-ast? s)
+                       (-from-ast s ast options)
+                       (-into-schema s (:properties ast) (map #(from-ast % options) (:children ast)) options)))
+                   (-fail! ::invalid-ast {:ast ?ast}))
+     :else (-fail! ::invalid-ast {:ast ?ast}))))
 
 (defn ast
   "Returns the Schema AST"
   ([?schema] (ast ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options)]
-     (if (#?(:clj instance?, :cljs implements?) malli.core.AST s)
+     (if (-ast? s)
        (-to-ast s options)
        (let [c (-children s)]
          (-ast (cond-> {:type (type s)}

@@ -107,11 +107,17 @@
   ;; 2.5µs (no entries, object-arraus)
   (p/bench (m/schema ?schema))
 
-  ;; 267ns
-  (p/bench (m/schema ast))
-
   ;; 44µs -> 240ns
   (p/bench (m/schema ?schema {::m/lazy-entries true}))
+
+  ;; 147ns
+  (p/bench (m/from-ast ast))
+
+  ;; 3.7µs
+  (p/bench (m/validator (m/schema ?schema)))
+
+  ;; 2.5µs
+  (p/bench (m/validator (m/from-ast ast)))
 
   ;; 1.6µs -> 64ns
   (p/bench (m/validate schema {:x true, :z {:x true}}))

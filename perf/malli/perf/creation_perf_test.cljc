@@ -98,8 +98,8 @@
   ;; 480ns -> 400ns -> 340ns -> 280ns -> 240ns -> 170ns (registry) -> 160ns (recur)
   (p/bench (m/schema :int))
 
-  ;; 200ns
-  (p/bench (m/schema {:type :int}))
+  ;; 180ns
+  (p/bench (m/from-ast {:type :int}))
 
   ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
   ;; 3.4µs

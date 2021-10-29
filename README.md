@@ -1956,8 +1956,6 @@ and a provider function of `type registry -> schema` as arguments:
 ; => true
 ```
 
-Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/).
-
 ### Composite Registry
 
 Registries can be composed:

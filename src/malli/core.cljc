@@ -2166,7 +2166,7 @@
      (map? ?ast) (if-let [s (-lookup (:type ?ast) options)]
                    (let [r (when-let [r (:registry ?ast)] (-delayed-registry r from-ast))
                          options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-                         ast (cond-> ?ast r (update :properties assoc :registry (-property-registry r options identity schema)))]
+                         ast (cond-> ?ast r (-update :properties #(assoc % :registry (-property-registry r options identity schema))))]
                      (if (-ast? s)
                        (-from-ast s ast options)
                        (-into-schema s (:properties ast) (map #(from-ast % options) (:children ast)) options)))

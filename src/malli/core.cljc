@@ -227,10 +227,9 @@
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
-(defn -property-registry
-  ([m options f] (-property-registry m options f schema))
-  ([m options f g] (let [options (assoc options ::allow-invalid-refs true)]
-                     (reduce-kv (fn [acc k v] (assoc acc k (f (g v options)))) {} m))))
+(defn -property-registry [m options f]
+  (let [options (assoc options ::allow-invalid-refs true)]
+    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
 
 (defn -delayed-registry [m f]
   (reduce-kv (fn [acc k v] (assoc acc k (reify IntoSchema (-into-schema [_ _ _ options] (f v options))))) {} m))
@@ -246,7 +245,7 @@
       (-fail! ::invalid-schema {:schema ?schema})))
 
 (defn -properties-and-options [properties options f]
-  (if-let [r (some-> properties :registry)]
+  (if-let [r (:registry properties)]
     (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
       [(assoc properties :registry (-property-registry r options f)) options])
     [properties options]))
@@ -608,8 +607,8 @@
               (-to-ast [this _] (to-ast this))
               Schema
               (-validator [_]
-                (let [pvalidator (if property-pred (property-pred properties))]
-                  (if pvalidator (fn [x] (and (pred x) (pvalidator x))) pred)))
+                (if-let [pvalidator (when property-pred (property-pred properties))]
+                  (fn [x] (and (pred x) (pvalidator x))) pred))
               (-explainer [this path]
                 (let [validator (-validator this)]
                   (fn explain [x in acc]
@@ -664,7 +663,7 @@
           (-validator [_]
             (let [validators (-vmap -validator children)]
               #?(:clj  (miu/-every-pred validators)
-                 :cljs (if (nth validators 1) (apply every-pred validators) (nth validators 0)))))
+                 :cljs (apply every-pred validators))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -704,7 +703,7 @@
           (-validator [_]
             (let [validators (-vmap -validator children)]
               #?(:clj  (miu/-some-pred validators)
-                 :cljs (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
+                 :cljs (fn [x] (boolean (some #(% x) validators))))))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
@@ -2166,7 +2165,7 @@
      (map? ?ast) (if-let [s (-lookup (:type ?ast) options)]
                    (let [r (when-let [r (:registry ?ast)] (-delayed-registry r from-ast))
                          options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-                         ast (cond-> ?ast r (-update :properties #(assoc % :registry (-property-registry r options identity schema))))]
+                         ast (cond-> ?ast r (-update :properties #(assoc % :registry (-property-registry r options identity))))]
                      (if (-ast? s)
                        (-from-ast s ast options)
                        (-into-schema s (:properties ast) (map #(from-ast % options) (:children ast)) options)))

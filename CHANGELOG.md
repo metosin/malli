@@ -90,6 +90,7 @@ Malli is in [alpha](README.md#alpha).
 * add localized error messages for all type-schemas
 * support for Lazy EntrySchema parsing
 * **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
+* **BREAKING**: strings generate alphanumeric chars by default
 
 ### Extender API
 

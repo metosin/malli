@@ -232,6 +232,9 @@
   ([m options f g] (let [options (assoc options ::allow-invalid-refs true)]
                      (reduce-kv (fn [acc k v] (assoc acc k (f (g v options)))) {} m))))
 
+(defn -delayed-registry [m f]
+  (reduce-kv (fn [acc k v] (assoc acc k (reify IntoSchema (-into-schema [_ _ _ options] (f v options))))) {} m))
+
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
@@ -2161,11 +2164,9 @@
    (cond
      (schema? ?ast) ?ast
      (map? ?ast) (if-let [s (-lookup (:type ?ast) options)]
-                   (let [r (:registry ?ast)
-                         p (:properties ?ast)
+                   (let [r (when-let [r (:registry ?ast)] (-delayed-registry r from-ast))
                          options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-                         p' (when r (assoc p :registry (-property-registry r options identity from-ast)))
-                         ast (cond-> ?ast p' (assoc :properties p'))]
+                         ast (cond-> ?ast r (update :properties assoc :registry (-property-registry r options identity schema)))]
                      (if (-ast? s)
                        (-from-ast s ast options)
                        (-into-schema s (:properties ast) (map #(from-ast % options) (:children ast)) options)))

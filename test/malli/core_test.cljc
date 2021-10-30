@@ -594,7 +594,7 @@
                 :children [{:type :malli.core/schema, :children [::cons]}]}
                (mu/to-map-syntax ConsCell)))
 
-        #_(testing "ast"
+        (testing "ast"
           (is (= {:type :schema
                   :child {:type :malli.core/schema
                           :value ::cons}
@@ -706,7 +706,7 @@
                                       ::c [:schema 'pos-int?]}}}
              (mu/to-map-syntax schema)))
 
-      #_(testing "ast"
+      (testing "ast"
         (is (= {:type :and,
                 :children [{:type :and
                             :children [{:type ::m/schema, :value ::a}
@@ -2535,7 +2535,7 @@
       (is (true? (f (range 7))))
       (is (true? (f (range 8)))))))
 
-#_(deftest ast-test
+(deftest ast-test
   (doseq [{:keys [name hiccup ast]}
           [{:name "recursion"
             :hiccup [:ref {:registry {"ConsCell" [:maybe [:tuple :int [:ref "ConsCell"]]]}}

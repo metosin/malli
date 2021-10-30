@@ -60,5 +60,10 @@
             ~@cases
             ~else)))))
 
-#?(:clj (def ^{:arglists '([[& preds]])} -every-pred (-pred-composer and 16)))
-#?(:clj (def ^{:arglists '([[& preds]])} -some-pred (-pred-composer or 16)))
+(def ^{:arglists '([[& preds]])} -every-pred
+  #?(:clj (-pred-composer and 16)
+     :cljs (fn [preds] (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true preds))))))
+
+(def ^{:arglists '([[& preds]])} -some-pred
+  #?(:clj (-pred-composer or 16)
+     :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))

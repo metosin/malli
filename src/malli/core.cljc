@@ -661,9 +661,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (-vmap -validator children)]
-              #?(:clj  (miu/-every-pred validators)
-                 :cljs (apply every-pred validators))))
+            (let [validators (-vmap -validator children)] (miu/-every-pred validators)))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -701,9 +699,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (-vmap -validator children)]
-              #?(:clj  (miu/-some-pred validators)
-                 :cljs (fn [x] (boolean (some #(% x) validators))))))
+            (let [validators (-vmap -validator children)] (miu/-some-pred validators)))
           (-explainer [_ path]
             (let [explainers (mapv (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
@@ -764,10 +760,7 @@
           AST
           (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
           Schema
-          (-validator [this]
-            (let [validators (distinct (map (fn [[_ _ c]] (-validator c)) (-children this)))]
-              #?(:clj  (miu/-some-pred validators)
-                 :cljs (if (second validators) (fn [x] (boolean (some #(% x) validators))) (first validators)))))
+          (-validator [this] (miu/-some-pred (map #(-validator %3) (-children this))))
           (-explainer [this path]
             (let [explainers (mapv (fn [[k _ c]] (-explainer c (conj path k))) (-children this))]
               (fn explain [x in acc]
@@ -966,8 +959,7 @@
                                                :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                         (-children this))
                                 closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
-                   validate #?(:clj (miu/-every-pred validators)
-                               :cljs (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true validators))))]
+                   validate (miu/-every-pred validators)]
                (fn [m] (and (map? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))

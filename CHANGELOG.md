@@ -146,7 +146,7 @@ Will fully replace the old map-syntax at some point.
 * `m/EntryParser` protocol
 * `m/-entry-forms` helper
 * `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
-* `m/Cached` protocol and `m/-create-cache` for memoization of `-validator`, `-explainer` and `-parser` when using `m/validator`, `m/explain` and `m/parser`
+* `m/Cached` protocol and `m/-create-cache` for memoization of `-validator`, `-explainer`, `-parser` and `-unparser` when using `m/validator`, `m/explain`, `m/parser` and `m/unparser`.
 
 ## 0.6.1 (2021-08-08)
 

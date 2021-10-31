@@ -367,6 +367,7 @@
     (-into-schema [parent properties children options]
       (m/-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
+            form (delay (m/-create-form type properties forms options))
             cache (m/-create-cache options)]
         ^{:type ::m/schema}
         (reify
@@ -383,7 +384,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] (m/-create-form type properties forms options))
+          (-form [_] @form)
           m/Cached
           (-cache [_] cache)
           m/LensSchema

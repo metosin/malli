@@ -135,17 +135,18 @@ Will fully replace the old map-syntax at some point.
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
 * support for Lazy EntrySchema parsing
+* `empty?` Schema does not throw exceptions
 * **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
 
 ### Extender API
 
 * **BREAKING**: `m/EntrySchema` replaces `m/MapSchema` with new `-entry-parser` method
 * **BREAKING**: (eager) `m/-parse-entries` is removed, use `m/-entry-parser` instead
+* **BREAKING**: `m/-create-form` supports 2 & 4 arities (was: 3)
 * `m/EntryParser` protocol
-* `m/-create-form` has 2-arity for easier form creation
 * `m/-entry-forms` helper
 * `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
-* `m/Cached` protocol and `m/-create-cache` for memoization of `-form`, `-validator`, `-explainer` and `-parser` when using `m/validator`, `m/explain` and `m/parser`
+* `m/Cached` protocol and `m/-create-cache` for memoization of `-validator`, `-explainer` and `-parser` when using `m/validator`, `m/explain` and `m/parser`
 
 ## 0.6.1 (2021-08-08)
 

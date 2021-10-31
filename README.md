@@ -1427,8 +1427,6 @@ For order of magnitude better performance, use `mp/provider` instead:
   (p/bench (provider [1 2 3])))
 ```
 
-Infferring is [still kinda slow](https://github.com/metosin/malli/issues/191).
-
 ## Parsing values
 
 Schemas can be used to parse values using `m/parse` and `m/parser`:

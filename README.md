@@ -2207,28 +2207,139 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 ## Performance
 
-Validation:
+Malli tries to really, really fast.
+
+### Validation Perfomance
+
+Usually as fast (or faster) than idiomatic Clojure. 
 
 ```clj
-(require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
-;; 40ns
-(let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
-      valid? (partial s/valid? spec)]
-  (cc/quick-bench
-    (valid? 0)))
+;; idomatic clojure (54ns)
+(let [valid? (fn [{:keys [x y z]}]
+               (and (boolean? x)
+                    (if y (int? y) true)
+                    (string? z)))]
+  (assert (valid? valid))
+  (cc/quick-bench (valid? valid)))
 
-;; 5ns
-(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-  (cc/quick-bench
-    (valid? 0)))
+;; malli (39ns)
+(let [valid? (m/validator
+               [:map
+                [:x :boolean]
+                [:y {:optional true} int?]
+                [:z string?]])]
+  (assert (valid? valid))
+  (cc/quick-bench (valid? valid)))
 ```
 
-Parsing:
+With Clojure Spec and Plumatic Schema:
 
 ```clj
-;; 44µs
+(require '[clojure.spec.alpha :as spec])
+(require '[schema.core :as schema])
+
+(spec/def ::x boolean?)
+(spec/def ::y int?)
+(spec/def ::z string?)
+
+;; clojure.spec (450ns)
+(let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])]
+  (assert (spec/valid? spec valid))
+  (cc/quick-bench (spec/valid? spec valid)))
+
+;; plumatic schema (660ns)
+(let [valid? (schema/checker
+               {:x schema/Bool
+                (schema/optional-key :y) schema/Int
+                :z schema/Str})]
+  (assert (not (valid? valid)))
+  (cc/quick-bench (valid? valid)))
+```
+
+### Transformation Performance
+
+Usually much faster than idiomatic Clojure.
+
+```clj
+(def data {:x "true", :y "1", :z "kikka"})
+(def expexted {:x true, :y 1, :z "kikka"})
+
+;; idiomatic clojure (290ns)
+(let [transform (fn [{:keys [x y] :as m}]
+                  (cond-> m
+                    (string? x) (update :x #(Boolean/parseBoolean %))
+                    (string? y) (update :y #(Long/parseLong %))))]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+
+;; malli (72ns)
+(let [schema [:map
+              [:x :boolean]
+              [:y {:optional true} int?]
+              [:z string?]]
+      transform (m/decoder schema (mt/string-transformer))]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+```
+
+With Clojure Spec and Plumatic Schema:
+
+```clj
+(require '[spec-tools.core :as st])
+(require '[schema.coerce :as sc])
+
+(spec/def ::x boolean?)
+(spec/def ::y int?)
+(spec/def ::z string?)
+
+;; clojure.spec (19µs)
+(let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
+      transform #(st/coerce spec % st/string-transformer)]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+
+;; plumatic schema (2.2µs)
+(let [schema {:x schema/Bool
+              (schema/optional-key :y) schema/Int
+              :z schema/Str}
+      transform (sc/coercer schema sc/string-coercion-matcher)]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+```
+
+The transformation engine is smart enough to just transform parts of the schema that need to be transformed. If there is nothing to transform, `identity` function is returned.
+
+```clj
+(def json->user
+  (m/decoder
+    [:map
+     [:id :int]
+     [:name :string]
+     [:address [:map
+                [:street :string]
+                [:rural :boolean]
+                [:country [:enum "finland" "poland"]]]]]
+    (mt/json-transformer)))
+
+;; 5ns
+(cc/quick-bench 
+  (json->user 
+    {:id 1
+     :name "tiina"
+     :address {:street "kotikatu"
+               :rural true
+               :country "poland"}}))
+
+(= identity json->user)
+; => true
+```
+
+### Parsing performance
+
+```clj
+;; 37µs
 (let [spec (s/* (s/cat :prop string?,
                        :val (s/alt :s string?
                                    :b boolean?)))
@@ -2236,7 +2347,7 @@ Parsing:
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 
-;; 2.5µs
+;; 2.4µs
 (let [schema [:* [:catn
                   [:prop string?]
                   [:val [:altn
@@ -2245,27 +2356,6 @@ Parsing:
       parse (m/parser schema)]
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
-```
-
-Coercion:
-
-```clj
-(require '[spec-tools.core :as st])
-
-(s/def ::id int?)
-(s/def ::name string?)
-
-;; 14µs
-(let [spec (s/keys :req-un [::id ::name])
-      transform #(st/coerce spec % st/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
-
-;; 140ns
-(let [schema [:map [:id int?] [:name string?]]
-      transform (m/decoder schema transform/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
 ```
 
 ## Links (and thanks)

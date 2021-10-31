@@ -1536,33 +1536,45 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 ## Map-syntax
 
-Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
+Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
 
 ```clj
-(def Schema
+(def ?schema
   [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:map
-     [:street string?]
-     [:lonlat [:tuple double? double?]]]]])
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z [:map
+        [:x boolean?]
+        [:y {:optional true} int?]]]])
 
-(mu/to-map-syntax Schema)
+(m/form ?schema)
+;[:map
+; [:x boolean?]
+; [:y {:optional true} int?]
+; [:z [:map
+;      [:x boolean?]
+;      [:y {:optional true} int?]]]]
+
+(m/ast ?schema)
 ;{:type :map,
-; :children [[:id nil {:type string?}]
-;            [:tags nil {:type :set
-;                        :children [{:type keyword?}]}]
-;            [:address nil {:type :map,
-;                           :children [[:street nil {:type string?}]
-;                                      [:lonlat nil {:type :tuple
-;                                                    :children [{:type double?} {:type double?}]}]]}]]}
-```
+; :keys {:x {:order 0
+;            :value {:type boolean?}},
+;        :y {:order 1, :value {:type int?}
+;            :properties {:optional true}},
+;        :z {:order 2,
+;            :value {:type :map,
+;                    :keys {:x {:order 0
+;                               :value {:type boolean?}},
+;                           :y {:order 1
+;                               :value {:type int?}
+;                               :properties {:optional true}}}}}}}
 
-... and back:
-
-```clj
-(-> Schema (mu/to-map-syntax) (mu/from-map-syntax) (mu/equals Schema))
+(-> ?schema
+    (m/schema) ;; 3.4µs
+    (m/ast)
+    (m/from-ast) ;; 180ns (18x, lazy)
+    (m/form)
+    (= (m/form ?schema)))
 ; => true
 ```
 

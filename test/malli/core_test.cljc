@@ -9,7 +9,8 @@
             [clojure.walk :as walk]
             [malli.generator :as mg]
             [clojure.test.check.generators :as gen]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  #?(:clj (:import (clojure.lang IFn))))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -175,7 +176,15 @@
       (is (= {:type 'int?}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type 'int?} (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) 1))))
+
       (is (= 'int? (m/form schema)))))
+
+  (testing "empty? does not throw in validation"
+    (is (thrown? #?(:clj Exception, :cljs js/Error) (empty? 1)))
+    (is (false? (m/validate empty? 1))))
 
   (testing "composite schemas"
     (let [schema (m/schema [:and int? [:or pos-int? neg-int?]])
@@ -237,6 +246,22 @@
                           :children [[:pos nil {:type 'pos-int?}]
                                      [:neg nil {:type 'neg-int?}]]}]}
              (mu/to-map-syntax schema*)))
+
+      (testing "ast"
+        (is (= {:type :and
+                :children [{:type 'int?}
+                           {:type :or
+                            :children [{:type 'pos-int?}
+                                       {:type 'neg-int?}]}]} (m/ast schema)))
+        (is (= {:type :and,
+                :children [{:type 'int?}
+                           {:type :orn
+                            :keys {:pos {:order 0
+                                         :value {:type 'pos-int?}}
+                                   :neg {:order 1
+                                         :value {:type 'neg-int?}}}}]} (m/ast schema*)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) -1)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) 1))))
 
       (is (= [:and 'int? [:or 'pos-int? 'neg-int?]] (m/form schema)))
       (is (= [:and 'int? [:orn [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
@@ -440,6 +465,11 @@
       (is (= {:type :>, :children [0]}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :>, :value 0}
+               (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) 1))))
+
       (is (= [:> 0] (m/form schema)))))
 
   (testing "enum schemas"
@@ -472,6 +502,11 @@
       (is (= {:type :enum, :children [1 2]}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :enum, :values [1 2]}
+               (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) 1))))
+
       (is (= [:enum 1 2] (m/form schema)))))
 
   (testing "maybe schemas"
@@ -503,6 +538,12 @@
 
       (is (= {:type :maybe, :children [{:type 'int?}]}
              (mu/to-map-syntax schema)))
+
+      (testing "ast"
+        (is (= {:type :maybe, :child {:type 'int?}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) 1)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) nil))))
 
       (is (= [:maybe 'int?] (m/form schema)))))
 
@@ -552,6 +593,18 @@
                 :properties {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 :children [{:type :malli.core/schema, :children [::cons]}]}
                (mu/to-map-syntax ConsCell)))
+
+        (testing "ast"
+          (is (= {:type :schema
+                  :child {:type :malli.core/schema
+                          :value ::cons}
+                  :registry {::cons {:type :maybe
+                                     :child {:type :tuple
+                                             :children [{:type 'int?}
+                                                        {:type :ref
+                                                         :value ::cons}]}}}}
+                 (m/ast ConsCell)))
+          (is (true? (m/validate (m/from-ast (m/ast ConsCell)) [1 [2 nil]]))))
 
         (is (= [:schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
                 ::cons]
@@ -653,6 +706,18 @@
                                       ::c [:schema 'pos-int?]}}}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :and,
+                :children [{:type :and
+                            :children [{:type ::m/schema, :value ::a}
+                                       {:type ::m/schema, :value ::b}
+                                       {:type ::m/schema, :value ::c}]}]
+                :registry {::a {:type ::m/schema, :value ::b}
+                           ::b {:type ::m/schema, :value ::c}
+                           ::c {:type :schema, :child {:type 'pos-int?}}}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) 1))))
+
       (is (= [:and
               {:registry {::a ::b
                           ::b ::c
@@ -694,6 +759,11 @@
         (is (= {:type :re, :children [re]}
                (mu/to-map-syntax schema)))
 
+        (testing "ast"
+          (is (= {:type :re, :value re}
+                 (m/ast schema)))
+          (is (true? (m/validate (m/from-ast (m/ast schema)) "a.b"))))
+
         (is (= form (m/form schema))))))
 
   (testing "ifn schemas"
@@ -701,7 +771,7 @@
       (is (true? (m/validate schema (fn []))))
       (is (true? (m/validate schema (constantly 1))))
       (is (true? (m/validate schema :keyword)))
-      (is (true? (m/validate schema #?(:clj  (reify clojure.lang.IFn
+      (is (true? (m/validate schema #?(:clj  (reify IFn
                                                (invoke [_] "Invoked!"))
                                        :cljs (reify IFn
                                                (-invoke [_] "Invoked!"))))))))
@@ -739,6 +809,13 @@
                 :children [fn]
                 :properties {:description "number between 10 and 18"}}
                (mu/to-map-syntax schema)))
+
+        (testing "ast"
+          (is (= {:type :fn
+                  :value fn
+                  :properties {:description "number between 10 and 18"}}
+                 (m/ast schema)))
+          (is (true? (m/validate (m/from-ast (m/ast schema)) 12))))
 
         (is (= [:fn {:description "number between 10 and 18"} fn]
                (m/form schema)))))
@@ -868,6 +945,19 @@
                          [:y {:optional true} {:type 'int?}]
                          [:z {:optional false} {:type 'string?}]]}
              (mu/to-map-syntax schema)))
+
+      (testing "ast"
+        (is (= {:type :map,
+                :keys {:x {:order 0
+                           :value {:type 'boolean?}},
+                       :y {:order 1
+                           :value {:type 'int?}
+                           :properties {:optional true}},
+                       :z {:order 2
+                           :value {:type 'string?}
+                           :properties {:optional false}}}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) valid))))
 
       (is (= [:map
               [:x 'boolean?]
@@ -1011,6 +1101,28 @@
                                                                 :children [[:country nil {:type 'keyword?}]]}]]}]]}
              (mu/to-map-syntax schema)))
 
+      (testing "ast"
+        (is (= {:type :multi,
+                :keys {:sized {:order 0,
+                               :value {:type :map,
+                                       :keys {:type {:order 0
+                                                     :value {:type 'keyword?}}
+                                              :size {:order 1
+                                                     :value {:type 'int?}}}}},
+                       :human {:order 1,
+                               :value {:type :map,
+                                       :keys {:type {:order 0
+                                                     :value {:type 'keyword?}},
+                                              :name {:order 1
+                                                     :value {:type 'string?}}
+                                              :address {:order 2
+                                                        :value {:type :map
+                                                                :keys {:country {:order 0
+                                                                                 :value {:type 'keyword?}}}}}}}}}
+                :properties {:dispatch :type, :decode/string '(fn [x] (update x :type keyword))}}
+               (m/ast schema)))
+        (is (true? (m/validate (m/from-ast (m/ast schema)) valid1))))
+
       (is (schema= [[:sized nil [:map [:type 'keyword?] [:size 'int?]]]
                     [:human nil [:map [:type 'keyword?] [:name 'string?] [:address [:map [:country 'keyword?]]]]]]
                    (m/children schema)))
@@ -1056,10 +1168,10 @@
     (is (false? (m/validate [:map-of string? int?] 1)))
 
     (testing "limits"
-      (is (true?  (m/validate [:map-of {:min 1} keyword? int?] {:age 18})))
+      (is (true? (m/validate [:map-of {:min 1} keyword? int?] {:age 18})))
       (is (false? (m/validate [:map-of {:min 2} keyword? int?] {:age 18})))
-      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18})))
-      (is (true?  (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18 :-a-g-e 3})))
+      (is (true? (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18})))
+      (is (true? (m/validate [:map-of {:min 1 :max 3} keyword? int?] {:age 18 :-a-g-e 3})))
       (is (false? (m/validate [:map-of {:max 1} keyword? int?] {:age 18 :-a-g-e 3}))))
 
     (is (nil? (m/explain [:map-of string? int?] {"age" 18})))
@@ -1104,6 +1216,13 @@
 
     (is (= {:type :map-of, :children [{:type 'int?} {:type 'pos-int?}]}
            (mu/to-map-syntax [:map-of int? pos-int?])))
+
+    (testing "ast"
+      (is (= {:type :map-of,
+              :key {:type 'int?}
+              :value {:type 'pos-int?}}
+             (m/ast [:map-of int? pos-int?])))
+      (is (true? (m/validate (m/from-ast (m/ast [:map-of int? pos-int?])) {1 1}))))
 
     (testing "keyword keys are transformed via strings"
       (is (= {1 1} (m/decode [:map-of int? pos-int?] {:1 "1"} mt/string-transformer)))))
@@ -1368,7 +1487,16 @@
         (is (= {:type name, :children [{:type 'int?}]}
                (mu/to-map-syntax [name int?]))))
       (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
-             (mu/to-map-syntax [:tuple int? int?])))))
+             (mu/to-map-syntax [:tuple int? int?]))))
+
+    (testing "ast"
+      (doseq [[name x] [[:vector [1 2 3]] [:sequential [1 2 3]] [:set #{1 2 3}]]]
+        (is (= {:type name, :child {:type 'int?}}
+               (m/ast [name int?])))
+        (is (true? (m/validate (m/from-ast (m/ast [name int?])) x))))
+      (is (= {:type :tuple, :children [{:type 'int?} {:type 'int?}]}
+             (m/ast [:tuple int? int?])))
+      (is (true? (m/validate (m/from-ast (m/ast [:tuple int? int?])) [1 2])))))
 
   (testing "seqex schemas"
     (doseq [typ [:cat :catn]]
@@ -1797,14 +1925,16 @@
 
 (deftest simple-schemas
   (testing "simple schemas"
-    (doseq [[type {:keys [schema validate explain decode encode map-syntax form]}]
+    (doseq [[type {:keys [schema validate explain decode encode map-syntax ast form]}]
             {:any {:schema :any
                    :validate {:success [nil 1 "kikka"]}
                    :map-syntax {:type :any}
+                   :ast {:type :any}
                    :form :any}
              :nil {:schema :nil
                    :validate {:success [nil], :failure [1 "kikka"]}
                    :map-syntax {:type :nil}
+                   :ast {:type :nil}
                    :form :nil}
              :string {:schema [:string {:min 1, :max 4}]
                       :validate {:success ["abba" "a"]
@@ -1823,6 +1953,7 @@
                                ["1" "1" mt/json-transformer]
                                ["--" "<-->" mt/string-transformer [:string {:encode/string {:enter #(str "<" %), :leave #(str % ">")}}]]]
                       :map-syntax {:type :string, :properties {:min 1, :max 4}}
+                      :ast {:type :string, :properties {:min 1, :max 4}}
                       :form [:string {:min 1, :max 4}]}
              :int {:schema [:int {:min 1, :max 4}]
                    :validate {:success [1 4]
@@ -1841,6 +1972,7 @@
                             [1 1 mt/json-transformer]
                             [1 3 mt/string-transformer [:int {:encode/string {:enter inc, :leave inc}}]]]
                    :map-syntax {:type :int, :properties {:min 1, :max 4}}
+                   :ast {:type :int, :properties {:min 1, :max 4}}
                    :form [:int {:min 1, :max 4}]}
              :double {:schema [:double {:min 1.0, :max 4.0}]
                       :validate {:success [1.0 2.2 4.0]
@@ -1859,6 +1991,7 @@
                                [1.1 1.1 mt/json-transformer]
                                [1.1 3.1 mt/string-transformer [:double {:encode/string {:enter inc, :leave inc}}]]]
                       :map-syntax {:type :double, :properties {:min 1.0, :max 4.0}}
+                      :ast {:type :double, :properties {:min 1.0, :max 4.0}}
                       :form [:double {:min 1.0, :max 4.0}]}
              :keyword {:schema :keyword
                        :validate {:success [:abba :user/abba]
@@ -1881,6 +2014,7 @@
                                 [:user/abba "user/abba" mt/json-transformer]
                                 [:user/abba "abba" mt/string-transformer [:keyword {:encode/string {:enter name, :leave str}}]]]
                        :map-syntax {:type :keyword}
+                       :ast {:type :keyword}
                        :form :keyword}
              :qualified-keyword {:schema [:qualified-keyword {:namespace :user}]
                                  :validate {:success [:user/abba]
@@ -1903,6 +2037,7 @@
                                           [:user/abba "user/abba" mt/json-transformer]
                                           [:user/abba "abba" mt/string-transformer [:qualified-keyword {:encode/string {:enter name, :leave str}}]]]
                                  :map-syntax {:type :qualified-keyword, :properties {:namespace :user}}
+                                 :ast {:type :qualified-keyword, :properties {:namespace :user}}
                                  :form [:qualified-keyword {:namespace :user}]}
              :symbol {:schema :symbol
                       :validate {:success ['abba 'user/abba]
@@ -1925,6 +2060,7 @@
                                ['user/abba "user/abba" mt/json-transformer]
                                ['user/abba "abba" mt/string-transformer [:symbol {:encode/string {:enter name, :leave str}}]]]
                       :map-syntax {:type :symbol}
+                      :ast {:type :symbol}
                       :form :symbol}
              :qualified-symbol {:schema :qualified-symbol
                                 :validate {:success ['user/abba]
@@ -1947,6 +2083,7 @@
                                          ['user/abba "user/abba" mt/json-transformer]
                                          ['user/abba "abba" mt/string-transformer [:qualified-symbol {:encode/string {:enter name, :leave str}}]]]
                                 :map-syntax {:type :qualified-symbol}
+                                :ast {:type :qualified-symbol}
                                 :form :qualified-symbol}
              :uuid {:schema :uuid
                     :validate {:success [#uuid"72b9bf3d-398c-472f-9360-c1a997c22240"]
@@ -1969,6 +2106,7 @@
                              [123 "123" mt/json-transformer]
                              [#uuid"72b9bf3d-398c-472f-9360-c1a997c22240" "72b9bf3d-398c-472f-9360-c1a997c22240" mt/string-transformer [:uuid {:decode/string {:enter (partial str "72b9bf3d-398c-472f-"), :leave mt/-string->uuid}}]]]
                     :map-syntax {:type :uuid}
+                    :ast {:type :uuid}
                     :form :uuid}}]
 
       (testing (str "simple-schema: " type)
@@ -2001,7 +2139,10 @@
           (is (= form (m/form schema))))
 
         (testing "map-syntax"
-          (is (= map-syntax (mu/to-map-syntax schema))))))))
+          (is (= map-syntax (mu/to-map-syntax schema))))
+
+        (testing "ast"
+          (is (= ast (m/ast schema))))))))
 
 (def generate-over6 (gen/large-integer* {:min 7}))
 
@@ -2185,7 +2326,13 @@
         (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
         (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
-               (mu/to-map-syntax schema1))))))
+               (mu/to-map-syntax schema1)))
+
+        (is {:type :=>
+             :input {:type :cat
+                     :children [{:type 'int?} {:type 'int?}]}
+             :output {:type 'int?}}
+            (= (m/ast schema1))))))
 
   (testing ":function"
 
@@ -2362,34 +2509,99 @@
   (testing "Upper and lower bound"
     (let [f (m/-validate-limits 3 7)]
       (is (false? (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
       (is (false? (f (range 8))))))
   (testing "Upper bound, no lower bound"
     (let [f (m/-validate-limits nil 7)]
-      (is (true?  (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
+      (is (true? (f (range 2))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
       (is (false? (f (range 8))))))
   (testing "Lower bound, no upper bounds"
     (let [f (m/-validate-limits 3 nil)]
       (is (false? (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
-      (is (true?  (f (range 8))))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
+      (is (true? (f (range 8))))))
   (testing "No bounds"
     (let [f (m/-validate-limits nil nil)]
-      (is (true?  (f (range 2))))
-      (is (true?  (f (range 3))))
-      (is (true?  (f (range 4))))
-      (is (true?  (f (range 7))))
-      (is (true?  (f (range 8)))))))
+      (is (true? (f (range 2))))
+      (is (true? (f (range 3))))
+      (is (true? (f (range 4))))
+      (is (true? (f (range 7))))
+      (is (true? (f (range 8)))))))
+
+(deftest ast-test
+  (doseq [{:keys [name hiccup ast]}
+          [{:name "recursion"
+            :hiccup [:ref {:registry {"ConsCell" [:maybe [:tuple :int [:ref "ConsCell"]]]}}
+                     "ConsCell"]
+            :ast {:type :ref
+                  :value "ConsCell"
+                  :registry {"ConsCell" {:type :maybe
+                                         :child {:type :tuple
+                                                 :children [{:type :int}
+                                                            {:type :ref
+                                                             :value "ConsCell"}]}}}}}
+           {:name "hiccup"
+            :hiccup [:schema
+                     {:registry {"hiccup" [:orn
+                                           [:node
+                                            [:catn
+                                             [:name 'keyword?]
+                                             [:props [:? [:map-of 'keyword? 'any?]]]
+                                             [:children [:* [:schema [:ref "hiccup"]]]]]]
+                                           [:primitive
+                                            [:orn
+                                             [:nil 'nil?]
+                                             [:boolean 'boolean?]
+                                             [:number 'number?]
+                                             [:text 'string?]]]]}}
+                     "hiccup"]
+            :ast {:type :schema
+                  :child {:type ::m/schema
+                          :value "hiccup"}
+                  :registry {"hiccup" {:type :orn
+                                       :keys {:node {:order 0
+                                                     :value {:type :catn
+                                                             :keys {:name {:order 0
+                                                                           :value {:type 'keyword?}}
+                                                                    :props {:order 1
+                                                                            :value {:type :?
+                                                                                    :children [{:type :map-of
+                                                                                                :key {:type 'keyword?}
+                                                                                                :value {:type 'any?}}]}}
+                                                                    :children {:order 2
+                                                                               :value {:type :*
+                                                                                       :children [{:type :schema
+                                                                                                   :child {:type :ref
+                                                                                                           :value "hiccup"}}]}}}}}
+                                              :primitive {:order 1
+                                                          :value {:type :orn
+                                                                  :keys {:nil {:order 0
+                                                                               :value {:type 'nil?}}
+                                                                         :boolean {:order 1
+                                                                                   :value {:type 'boolean?}}
+                                                                         :number {:order 2
+                                                                                  :value {:type 'number?}}
+                                                                         :text {:order 3
+                                                                                :value {:type 'string?}}}}}}}}}}]]
+    (testing "ast for"
+      (testing (pr-str name)
+        (testing "ast"
+          (is (= ast (m/ast hiccup))))
+        (testing "form"
+          (is (= hiccup (m/form (m/from-ast ast)))))))))
 
 (deftest -vmap-test
   (is (= [] (m/-vmap str nil)))
   (is (= [] (m/-vmap str [])))
   (is (= ["1"] (m/-vmap str [1])))
+  (is (= ["1"] (m/-vmap str '(1))))
+  (is (= ["1"] (m/-vmap str (subvec [1 2] 0 1))))
+  (is (= ["1"] (m/-vmap str (lazy-seq [1]))))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))

@@ -321,7 +321,10 @@
 ;;
 
 (defn -map-syntax-walker [schema _ children _]
-  (let [properties (m/properties schema)]
+  (let [properties (m/properties schema)
+        options (m/options schema)
+        r (when properties (properties :registry))
+        properties (if r (c/assoc properties :registry (m/-property-registry r options m/-form)) properties)]
     (cond-> {:type (m/type schema)}
             (seq properties) (clojure.core/assoc :properties properties)
             (seq children) (clojure.core/assoc :children children))))
@@ -364,8 +367,8 @@
     (-into-schema [parent properties children options]
       (m/-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
-            walkable-childs (if childs (subvec children 0 childs) children)
-            form (m/-create-form type properties forms)]
+            form (delay (m/-create-form type properties forms options))
+            cache (m/-create-cache options)]
         ^{:type ::m/schema}
         (reify
           m/Schema
@@ -374,13 +377,16 @@
           (-transformer [this transformer method options]
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]
-            (if (m/-accept walker this path options)
-              (m/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
+            (let [children (if childs (subvec children 0 childs) children)]
+              (if (m/-accept walker this path options)
+                (m/-outer walker this path (m/-inner-indexed walker path children options) options))))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
+          m/Cached
+          (-cache [_] cache)
           m/LensSchema
           (-keep [_])
           (-get [_ key default] (clojure.core/get children key default))

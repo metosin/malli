@@ -12,13 +12,14 @@ Data-driven Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schema definitions as data
+- Both [Vector](#examples) and [Map](#examples) -syntax
 - [Validation](#examples) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
-- [Serializable function schemas](#serializable-functions)
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
+- [Serializable function schemas](#serializable-functions)
 - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
@@ -54,9 +55,9 @@ We are building dynamic multi-tenant systems where data models should be first-c
 
 Hasn't the problem been solved (many times) already?
 
-There is [Schema](https://github.com/plumatic/schema), which is an awesome, proven and collaborative open-source project, and we absolutely love it. We still use it in most of our projects. The sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
+There is [Schema](https://github.com/plumatic/schema), which is an awesome, proven and collaborative open-source project, and we absolutely love it. We still use it in many of our projects. The sad part: serializing & de-serializing schemas is non-trivial and there is not proper support on branching.
 
-[Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is based on macros, it has a global registry and it doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [four years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still a kind of hack and not fun to maintain.
+[Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is opinionated with macros, global registry and it doesn't have any support for runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [five years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still a kind of hack and not fun to maintain.
 
 So, we decided to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
 
@@ -64,31 +65,106 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 - Rich Hickey, [Open Source is Not About You](https://gist.github.com/richhickey/1563cddea1002958f96e7ba9519972d9)
 
-## Examples
+## The library
+
+[![Clojars Project](http://clojars.org/metosin/malli/latest-version.svg)](http://clojars.org/metosin/malli)
+
+## Syntax
+
+Malli supports both [Vector](#vector-syntax) and [Map](#map-syntax) syntaxes.
+
+### Vector Syntax
+
+The default syntax uses vectors, inspired by [hiccup](https://github.com/weavejester/hiccup):
+
+```clj
+type
+[type & children]
+[type properties & children]
+```
+Examples:
+
+```clj
+;; just a type (String)
+:string
+
+;; type with properties
+[:string {:min 1, :max 10}]
+
+;; type with properties and children
+[:tuple {:title "location"} :double :double]
+
+;; a function schema of :int -> :int
+[:=> [:cat :int] :int]
+```
+
+Schema intances can be created from vector syntax using `malli.core/schema` and written to it with `malli.core/form`.
+
+### Map Syntax
+
+Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/cljfx/cljfx):
+
+```clj
+;; just a type (String)
+{:type :string}
+
+;; type with properties
+{:type :string
+ :properties {:min 1, :max 10}
+ 
+;; type with properties and children
+{:type :tuple
+ :properties {:title "location"}
+ :children [{:type :double}
+            {:type :double}]}
+ 
+;; a function schema of :int -> :int
+{:type :=>
+ :input {:type :cat, :children [{:type :int}]}
+ :output :int}           
+```
+
+Schema intances can be created from map syntax using `malli.core/from-ast` and written to it with `malli.core/to-ast`.
+
+### Why Two Syntaxes?
+
+We have found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Instantiating schemas using the Schema AST can be orders of magnitude faster.
+
+In future, there might be even more syntaxes.
+
+## Usage
 
 Defining and validating Schemas:
 
 ```clj
 (require '[malli.core :as m])
 
-(m/validate int? "1")
-; => false
-
-(m/validate int? 1)
+(m/schema? (m/schema :int))
 ; => true
 
-(m/validate [:and int? [:> 6]] 7)
+(m/validate (m/schema :int) 1)
+; => true
+
+;; coerced automatically into schema
+(m/validate :int 1)
+; => true
+
+(m/validate :int "1")
+; => false
+
+(m/validate [:and :int [:> 6]] 7)
 ; => true
 
 (m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
 ; => true
 
+;; optimized (pure) validation function
 (def valid?
   (m/validator
     [:map
-     [:x boolean?]
-     [:y {:optional true} int?]
-     [:z string?]]))
+     [:x :boolean]
+     [:y {:optional true} :int]
+     [:z :string]]))
 
 (valid? {:x true, :z "kikka"})
 ; => true
@@ -102,7 +178,7 @@ Schemas can have properties:
    {:title "Age"
     :description "It's an age"
     :json-schema/example 20}
-   int? [:> 18]])
+   :int [:> 18]])
    
 (m/properties Age)
 ; => {:title "Age"
@@ -114,7 +190,7 @@ Maps are open by default:
 
 ```clj
 (m/validate
-  [:map [:x int?]]
+  [:map [:x :int]]
   {:x 1, :extra "key"})
 ; => true
 ```
@@ -123,7 +199,7 @@ Maps can be closed with `:closed` property:
 
 ```clj
 (m/validate
-  [:map {:closed true} [:x int?]]
+  [:map {:closed true} [:x :int]]
   {:x 1, :extra "key"})
 ; => false
 ``` 
@@ -134,15 +210,24 @@ Maps keys are not limited to keywords:
 (m/validate
   [:map
    ["status" [:enum "ok"]]
-   [1 any?]
-   [nil any?]
-   [::a string?]]
+   [1 :any]
+   [nil :any]
+   [::a :string]]
   {"status" "ok"
    1 'number
    nil :yay
    ::a "properly awesome"})
 ; => true
 ```
+
+Most core-predicates are mapped to Schemas:
+
+```clj
+(m/validate string? "kikka")
+; => true
+```
+
+See [the full list of default schemas](#schema-registry).
 
 ## Qualified keys in a map
 
@@ -371,38 +456,6 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 
 (m/validate my-schema {:x 1, :y 2})
 ; => false
-```
-
-## Serializable Functions
-
-Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
-it is not present, the malli function evaluator throws `:sci-not-available` exception.
-
-For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
-
-For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
-
-```clj
-(def my-schema
-  [:and
-   [:map
-    [:x int?]
-    [:y int?]]
-   [:fn '(fn [{:keys [x y]}] (> x y))]])
-
-(m/validate my-schema {:x 1, :y 0})
-; => true
-
-(m/validate my-schema {:x 1, :y 2})
-; => false
-```
-
-**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
-
-```clj
-(m/validate [:fn 'int?] 1 {::m/disable-sci true})
-; Execution error
-; :malli.core/sci-not-available {:code int?}
 ```
 
 ## Error Messages
@@ -1453,35 +1506,79 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 ; [:p "Hello, world of data"]]
 ```
 
-## Map-syntax
+## Serializable Functions
 
-Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
+Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
+it is not present, the malli function evaluator throws `:sci-not-available` exception.
+
+For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
+
+For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
 
 ```clj
-(def Schema
-  [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:map
-     [:street string?]
-     [:lonlat [:tuple double? double?]]]]])
+(def my-schema
+  [:and
+   [:map
+    [:x int?]
+    [:y int?]]
+   [:fn '(fn [{:keys [x y]}] (> x y))]])
 
-(mu/to-map-syntax Schema)
-;{:type :map,
-; :children [[:id nil {:type string?}]
-;            [:tags nil {:type :set
-;                        :children [{:type keyword?}]}]
-;            [:address nil {:type :map,
-;                           :children [[:street nil {:type string?}]
-;                                      [:lonlat nil {:type :tuple
-;                                                    :children [{:type double?} {:type double?}]}]]}]]}
+(m/validate my-schema {:x 1, :y 0})
+; => true
+
+(m/validate my-schema {:x 1, :y 2})
+; => false
 ```
 
-... and back:
+**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
 ```clj
-(-> Schema (mu/to-map-syntax) (mu/from-map-syntax) (mu/equals Schema))
+(m/validate [:fn 'int?] 1 {::m/disable-sci true})
+; Execution error
+; :malli.core/sci-not-available {:code int?}
+```
+
+## Map-syntax
+
+Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
+
+```clj
+(def ?schema
+  [:map
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z [:map
+        [:x boolean?]
+        [:y {:optional true} int?]]]])
+
+(m/form ?schema)
+;[:map
+; [:x boolean?]
+; [:y {:optional true} int?]
+; [:z [:map
+;      [:x boolean?]
+;      [:y {:optional true} int?]]]]
+
+(m/ast ?schema)
+;{:type :map,
+; :keys {:x {:order 0
+;            :value {:type boolean?}},
+;        :y {:order 1, :value {:type int?}
+;            :properties {:optional true}},
+;        :z {:order 2,
+;            :value {:type :map,
+;                    :keys {:x {:order 0
+;                               :value {:type boolean?}},
+;                           :y {:order 1
+;                               :value {:type int?}
+;                               :properties {:optional true}}}}}}}
+
+(-> ?schema
+    (m/schema) ;; 3.4µs
+    (m/ast)
+    (m/from-ast) ;; 180ns (18x, lazy)
+    (m/form)
+    (= (m/form ?schema)))
 ; => true
 ```
 
@@ -2112,28 +2209,139 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 ## Performance
 
-Validation:
+Malli tries to really, really fast.
+
+### Validation Perfomance
+
+Usually as fast (or faster) than idiomatic Clojure. 
 
 ```clj
-(require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
-;; 40ns
-(let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
-      valid? (partial s/valid? spec)]
-  (cc/quick-bench
-    (valid? 0)))
+;; idomatic clojure (54ns)
+(let [valid? (fn [{:keys [x y z]}]
+               (and (boolean? x)
+                    (if y (int? y) true)
+                    (string? z)))]
+  (assert (valid? valid))
+  (cc/quick-bench (valid? valid)))
 
-;; 5ns
-(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-  (cc/quick-bench
-    (valid? 0)))
+;; malli (39ns)
+(let [valid? (m/validator
+               [:map
+                [:x :boolean]
+                [:y {:optional true} int?]
+                [:z string?]])]
+  (assert (valid? valid))
+  (cc/quick-bench (valid? valid)))
 ```
 
-Parsing:
+With Clojure Spec and Plumatic Schema:
 
 ```clj
-;; 44µs
+(require '[clojure.spec.alpha :as spec])
+(require '[schema.core :as schema])
+
+(spec/def ::x boolean?)
+(spec/def ::y int?)
+(spec/def ::z string?)
+
+;; clojure.spec (450ns)
+(let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])]
+  (assert (spec/valid? spec valid))
+  (cc/quick-bench (spec/valid? spec valid)))
+
+;; plumatic schema (660ns)
+(let [valid? (schema/checker
+               {:x schema/Bool
+                (schema/optional-key :y) schema/Int
+                :z schema/Str})]
+  (assert (not (valid? valid)))
+  (cc/quick-bench (valid? valid)))
+```
+
+### Transformation Performance
+
+Usually much faster than idiomatic Clojure.
+
+```clj
+(def data {:x "true", :y "1", :z "kikka"})
+(def expexted {:x true, :y 1, :z "kikka"})
+
+;; idiomatic clojure (290ns)
+(let [transform (fn [{:keys [x y] :as m}]
+                  (cond-> m
+                    (string? x) (update :x #(Boolean/parseBoolean %))
+                    (string? y) (update :y #(Long/parseLong %))))]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+
+;; malli (72ns)
+(let [schema [:map
+              [:x :boolean]
+              [:y {:optional true} int?]
+              [:z string?]]
+      transform (m/decoder schema (mt/string-transformer))]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+```
+
+With Clojure Spec and Plumatic Schema:
+
+```clj
+(require '[spec-tools.core :as st])
+(require '[schema.coerce :as sc])
+
+(spec/def ::x boolean?)
+(spec/def ::y int?)
+(spec/def ::z string?)
+
+;; clojure.spec (19µs)
+(let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
+      transform #(st/coerce spec % st/string-transformer)]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+
+;; plumatic schema (2.2µs)
+(let [schema {:x schema/Bool
+              (schema/optional-key :y) schema/Int
+              :z schema/Str}
+      transform (sc/coercer schema sc/string-coercion-matcher)]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+```
+
+The transformation engine is smart enough to just transform parts of the schema that need to be transformed. If there is nothing to transform, `identity` function is returned.
+
+```clj
+(def json->user
+  (m/decoder
+    [:map
+     [:id :int]
+     [:name :string]
+     [:address [:map
+                [:street :string]
+                [:rural :boolean]
+                [:country [:enum "finland" "poland"]]]]]
+    (mt/json-transformer)))
+
+;; 5ns
+(cc/quick-bench 
+  (json->user 
+    {:id 1
+     :name "tiina"
+     :address {:street "kotikatu"
+               :rural true
+               :country "poland"}}))
+
+(= identity json->user)
+; => true
+```
+
+### Parsing performance
+
+```clj
+;; 37µs
 (let [spec (s/* (s/cat :prop string?,
                        :val (s/alt :s string?
                                    :b boolean?)))
@@ -2141,7 +2349,7 @@ Parsing:
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 
-;; 2.5µs
+;; 2.4µs
 (let [schema [:* [:catn
                   [:prop string?]
                   [:val [:altn
@@ -2150,27 +2358,6 @@ Parsing:
       parse (m/parser schema)]
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
-```
-
-Coercion:
-
-```clj
-(require '[spec-tools.core :as st])
-
-(s/def ::id int?)
-(s/def ::name string?)
-
-;; 14µs
-(let [spec (s/keys :req-un [::id ::name])
-      transform #(st/coerce spec % st/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
-
-;; 140ns
-(let [schema [:map [:id int?] [:name string?]]
-      transform (m/decoder schema transform/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
 ```
 
 ## Links (and thanks)

@@ -74,13 +74,59 @@ Malli is in [alpha](README.md#alpha).
 #### Schema Inferring
 
 ```clj
-;; 3.6ms -> 2.2ms (1.7x)
-(p/bench (mp/provide [1 2 3]))
+(def samples
+  [{:id "Lillan"
+    :tags #{:artesan :coffee :hotel}
+    :address {:street "Ahlmanintie 29"
+              :city "Tampere"
+              :zip 33100
+              :lonlat [61.4858322, 23.7854658]}}
+   {:id "Huber",
+    :description "Beefy place"
+    :tags #{:beef :wine :beer}
+    :address {:street "Aleksis Kiven katu 13"
+              :city "Tampere"
+              :zip 33200
+              :lonlat [61.4963599 23.7604916]}}])
 
-;; 2.5ms -> 82µs (30x)
-(let [provider (mp/provider)]
-  (p/bench (provider [1 2 3])))
+;; 126ms -> 2.5ms (50x)
+(p/bench (mp/provide samples))
+
+;; 380µs (330x)
+(let [provide (mp/provider)]
+  (p/bench (provide samples)))
 ```
+### Schema AST
+
+New optimized map-syntax to super-fast schema creation, see [README](README.md#map-syntax).
+
+```clj
+(def ast (m/ast ?schema))
+;{:type :map,
+; :keys {:x {:order 0, :value {:type boolean?}},
+;        :y {:order 1, :value {:type int?}
+;            :properties {:optional true}},
+;        :z {:order 2,
+;            :value {:type :map,
+;                    :keys {:x {:order 0
+;                               :value {:type boolean?}},
+;                           :y {:order 1 
+;                               :value {:type int?}
+;                               :properties {:optional true}}}}}}}
+
+;; 150ns (16x)
+(p/bench (m/from-ast ast))
+
+(-> ?schema
+    (m/schema)
+    (m/ast)
+    (m/from-ast)
+    (m/form)
+    (= ?schema))
+; => true
+```
+
+Will fully replace the old map-syntax at some point.
 
 ### Public API
 
@@ -89,18 +135,19 @@ Malli is in [alpha](README.md#alpha).
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
 * support for Lazy EntrySchema parsing
+* `empty?` Schema does not throw exceptions
 * **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
 * **BREAKING**: strings generate alphanumeric chars by default
 
 ### Extender API
 
 * **BREAKING**: `m/EntrySchema` replaces `m/MapSchema` with new `-entry-parser` method
-* **BREAKING**: (eager) `m/-parse-entries` is removed, use (pluggable) `m/-entry-parser` instead
+* **BREAKING**: (eager) `m/-parse-entries` is removed, use `m/-entry-parser` instead
+* **BREAKING**: `m/-create-form` supports 2 & 4 arities (was: 3)
 * `m/EntryParser` protocol
-* `m/-create-form` has 2-arity for easier form creation
 * `m/-entry-forms` helper
 * `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
-* `m/Cached` protocol and `m/-create-cache` for memoization of `-form`, `-validator`, `-explainer` and `-parser` when using `m/form`, `m/validator`, `m/explain` and `m/parser`
+* `m/Cached` protocol and `m/-create-cache` for memoization of `-validator`, `-explainer`, `-parser` and `-unparser` when using `m/validator`, `m/explain`, `m/parser` and `m/unparser`.
 
 ## 0.6.1 (2021-08-08)
 

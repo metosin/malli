@@ -14,9 +14,9 @@
 
 (defmacro profile [& body]
   `(let [start# (System/currentTimeMillis)]
-     (dotimes [_# 1000] ~@body)
+     (dotimes [_# 10000] ~@body)
      (let [ms# (- (System/currentTimeMillis) start#)
-           times# (int (/ 10000000 ms#))]
+           times# (int (/ 100000000 ms#))]
        (println "invoking" times# "times")
        (time (prof/profile (dotimes [_# times#] ~@body))))))
 

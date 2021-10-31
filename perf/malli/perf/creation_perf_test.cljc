@@ -14,9 +14,13 @@
   ;; 3.0µs (map childs)
   ;; 3.2µs (mapv childs)
   ;; 2.5µs (...)
-  ;; 2.1µs (non-distinct)
-  ;; 1.3µs (-vmap)
+  ;; 2.3µs (-vmap, don't check children)
+  ;; 1.1µs
   (p/bench (m/validate [:or :int :string] 42))
+
+  ;; 2.6µs
+  ;; 1.3µs
+  (p/bench (m/validate (m/from-ast {:type :or, :children [{:type :int} {:type :string}]}) 42))
 
   ;; 15ns
   (let [schema (m/schema [:or :int :string])]
@@ -31,7 +35,11 @@
   ;; 180ns (fast parse)
   ;; 1.1µs (mapv childs)
   ;; 750ns (...)
+  ;; 680ns (-vmap, don't check children)
   (p/bench (m/schema [:or :int :string]))
+
+  ;; 730ns
+  (p/bench (m/from-ast {:type :or, :children [{:type :int} {:type :string}]}))
 
   ;; 1.7µs
   ;; 470ns (map childs)
@@ -40,10 +48,15 @@
   ;; 190ns (fast parse)
   ;; 1.1µs (mapv childs)
   ;; 750ns (...)
+  ;; 680ns (-vmap, don't check children)
   (p/bench (m/schema [:and :int :string]))
+
+  ;; 730ns
+  (p/bench (m/from-ast {:type :and, :children [{:type :int} {:type :string}]}))
 
   ;; 1.7µs
   ;; 1.5µs (fast parse)
+  ;; 540ns (non-distinct)
   ;; 13ns (-cache)
   (let [schema (m/schema [:or :int :string])]
     (p/bench (m/validator schema)))
@@ -66,6 +79,8 @@
 
 (def schema (m/schema ?schema))
 
+(def ast (m/ast ?schema))
+
 (def leaf-schema (m/schema :int))
 
 (comment
@@ -77,6 +92,9 @@
   ;; 480ns -> 400ns -> 340ns -> 280ns -> 240ns -> 170ns (registry) -> 160ns (recur)
   (p/bench (m/schema :int))
 
+  ;; 180ns
+  (p/bench (m/from-ast {:type :int}))
+
   ;; 44µs -> 31µs -> 18µs -> 11µs -> 9.4µs -> 9.0µs -> 8.5µs -> 7.0µs -> 6.4µs (registry) -> 5.7µs
   ;; 3.4µs
   ;; 2.9µs (-entry-parser)
@@ -85,6 +103,15 @@
 
   ;; 44µs -> 240ns
   (p/bench (m/schema ?schema {::m/lazy-entries true}))
+
+  ;; 147ns
+  (p/bench (m/from-ast ast))
+
+  ;; 3.7µs
+  (p/bench (m/validator (m/schema ?schema)))
+
+  ;; 2.5µs
+  (p/bench (m/validator (m/from-ast ast)))
 
   ;; 1.6µs -> 64ns
   (p/bench (m/validate schema {:x true, :z {:x true}}))
@@ -154,6 +181,7 @@
 
   ;; 13µs
   ;; 2.4µs (satisfies?)
+  ;; 1.8µs
   (p/bench (mu/required-keys schema))
 
   ;; 134µs
@@ -166,7 +194,7 @@
   (let [t ::or, p {:a 1}, c (mapv m/schema [:int :int])]
     ;; 480ns
     ;; 221ns (faster impl)
-    (p/bench (m/-create-form t p c))))
+    (p/bench (m/-create-form t p c nil))))
 
 (comment
   (let [s (m/schema :int)]

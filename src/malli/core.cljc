@@ -266,10 +266,7 @@
 ;; forms
 ;;
 
-(defn -create-form
-  ([schema f]
-   (-create-form (type schema) (-properties schema) (-vmap f (-children schema)) (-options schema)))
-  ([type properties children options]
+(defn -create-form [type properties children options]
    (let [has-children (seq children)
          has-properties (seq properties)
          properties (when has-properties
@@ -278,10 +275,13 @@
      (cond (and has-properties has-children) (reduce conj [type properties] children)
            has-properties [type properties]
            has-children (reduce conj [type] children)
-           :else type))))
+           :else type)))
 
-(defn -create-entry-form [schema]
-  (-create-form (type schema) (-properties schema) (-entry-forms (-entry-parser schema)) (-options schema)))
+(defn -simple-form [parent properties children f options]
+  (-create-form (-type parent) properties (-vmap f children) options))
+
+(defn -create-entry-form [parent properties entry-parser options]
+  (-create-form (-type parent) properties (-entry-forms entry-parser) options))
 
 ;;
 ;; walkers
@@ -342,7 +342,7 @@
       (-entry-forms [_] forms))))
 
 (defn- -update-parsed [entry-parser ?key value options]
-  (let [[override k p] (if (vector? ?key) (cons true ?key) [false ?key])
+  (let [[override k p] (if (and (vector? ?key) (nth ?key 0)) (cons true ?key) [false ?key])
         keyset (-entry-keyset entry-parser)
         children (-entry-children entry-parser)
         forms (-entry-forms entry-parser)
@@ -599,7 +599,8 @@
       (-into-schema [parent properties children options]
         (if (fn? ?props)
           (-into-schema (-simple-schema (?props properties children)) properties children options)
-          (let [cache (-create-cache options)]
+          (let [form (delay (-simple-form parent properties children identity options))
+                cache (-create-cache options)]
             (-check-children! type properties children min max)
             ^{:type ::schema}
             (reify
@@ -624,7 +625,7 @@
               (-options [_] options)
               (-children [_] children)
               (-parent [_] parent)
-              (-form [this] (-create-form this identity))
+              (-form [_] @form)
               Cached
               (-cache [_] cache)
               LensSchema
@@ -654,6 +655,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :and properties children 1 nil)
       (let [children (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->parser (fn [f m] (let [parsers (m (-vmap f children))]
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
@@ -674,7 +676,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -692,6 +694,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :or properties children 1 nil)
       (let [children (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->parser (fn [f] (let [parsers (-vmap f children)]
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
@@ -733,7 +736,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -754,6 +757,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :orn properties children 1 nil)
       (let [entry-parser (-create-entry-parser children {:naked-keys true} options)
+            form (delay (-create-entry-form parent properties entry-parser options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -807,7 +811,7 @@
           (-options [_] options)
           (-children [_] (-entry-children entry-parser))
           (-parent [_] parent)
-          (-form [this] (-create-entry-form this))
+          (-form [_] @form)
           EntrySchema
           (-entries [_] (-entry-entries entry-parser))
           (-entry-parser [_] entry-parser)
@@ -831,6 +835,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :not properties children 1 1)
       (let [[schema :as children] (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -853,7 +858,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -877,6 +882,7 @@
      (-into-schema [parent properties children options]
        #_(-check-children! ::val properties children 1 1)
        (let [children (-vmap #(schema % options) children)
+             form (delay (-simple-form parent properties children -form options))
              schema (first children)
              cache (-create-cache options)]
          ^{:type ::schema}
@@ -899,7 +905,7 @@
            (-options [_] (-options schema))
            (-children [_] [schema])
            (-parent [_] parent)
-           (-form [this] (-create-form this -form))
+           (-form [_] @form)
            Cached
            (-cache [_] cache)
            LensSchema
@@ -925,6 +931,7 @@
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
        (let [entry-parser (-create-entry-parser children opts options)
+             form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
@@ -1003,7 +1010,7 @@
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
-           (-form [this] (-create-entry-form this))
+           (-form [this] @form)
            EntrySchema
            (-entries [_] (-entry-entries entry-parser))
            (-entry-parser [_] entry-parser)
@@ -1028,6 +1035,7 @@
     (-into-schema [parent {:keys [min max] :as properties} children options]
       (-check-children! :map-of properties children 2 2)
       (let [[key-schema value-schema :as children] (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             validate-limits (-validate-limits min max)
             ->parser (fn [f] (let [key-parser (f key-schema)
@@ -1092,7 +1100,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1118,6 +1126,7 @@
             (reset! props* ?props)
             (-check-children! type properties children 1 1)
             (let [[schema :as children] (-vmap #(schema % options) children)
+                  form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f] (let [child-parser (f schema)]
@@ -1174,7 +1183,7 @@
                 (-options [_] options)
                 (-children [_] children)
                 (-parent [_] parent)
-                (-form [this] (-create-form this -form))
+                (-form [_] @form)
                 Cached
                 (-cache [_] cache)
                 LensSchema
@@ -1191,6 +1200,7 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (let [children (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             size (count children)
             cache (-create-cache options)
             ->parser (fn [f] (let [parsers (into {} (comp (map f) (map-indexed vector)) children)]
@@ -1240,7 +1250,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1260,6 +1270,7 @@
       (-check-children! :enum properties children 1 nil)
       (let [children (vec children)
             schema (set children)
+            form (delay (-simple-form parent properties children identity options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -1282,7 +1293,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this identity))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1304,6 +1315,7 @@
       (-check-children! :re properties children 1 1)
       (let [children (vec children)
             re (re-pattern child)
+            form (delay (if class? re (-simple-form parent properties children identity options)))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -1331,7 +1343,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (if class? re (-create-form this identity)))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1351,6 +1363,7 @@
       (-check-children! :fn properties children 1 1)
       (let [children (vec children)
             f (eval (first children) options)
+            form (delay (-simple-form parent properties children identity options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -1377,7 +1390,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this identity))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1398,6 +1411,7 @@
     (-into-schema [parent properties children options]
       (-check-children! :maybe properties children 1 1)
       (let [[schema :as children] (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->parser (fn [f] (let [parser (f schema)] (fn [x] (if (nil? x) x (parser x)))))]
         ^{:type ::schema}
@@ -1421,7 +1435,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1447,6 +1461,7 @@
      (-into-schema [parent properties children options]
        (let [opts' (merge opts (select-keys properties [:lazy-refs]))
              entry-parser (-create-entry-parser children opts' options)
+             form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
              dispatch (eval (:dispatch properties) options)
              dispatch-map (delay (into {} (-entry-entries entry-parser)))
@@ -1489,7 +1504,7 @@
            (-options [_] options)
            (-children [_] (-entry-children entry-parser))
            (-parent [_] parent)
-           (-form [this] (-create-entry-form this))
+           (-form [_] @form)
            EntrySchema
            (-entries [_] (-entry-entries entry-parser))
            (-entry-parser [_] entry-parser)
@@ -1520,6 +1535,7 @@
                       (when-not allow-invalid-refs
                         (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
+             form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
              ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
                                 (fn [x] ((parser) x))))]
@@ -1552,7 +1568,7 @@
            (-options [_] options)
            (-children [_] children)
            (-parent [_] parent)
-           (-form [this] (-create-form this identity))
+           (-form [_] @form)
            Cached
            (-cache [_] cache)
            LensSchema
@@ -1588,6 +1604,8 @@
         (-check-children! type properties children 1 1)
         (let [children (-vmap #(schema % options) children)
               child (nth children 0)
+              form (delay (or (and (empty? properties) (or id (and raw (-form child))))
+                              (-simple-form parent properties children -form options)))
               cache (-create-cache options)]
           ^{:type ::schema}
           (reify
@@ -1610,7 +1628,7 @@
             (-options [_] options)
             (-children [_] children)
             (-parent [_] parent)
-            (-form [this] (or (and (empty? properties) (or id (and raw (-form child)))) (-create-form this -form)))
+            (-form [_] @form)
             Cached
             (-cache [_] cache)
             LensSchema
@@ -1658,6 +1676,7 @@
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children 2 2)
       (let [[input output :as children] (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
@@ -1694,7 +1713,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1712,6 +1731,7 @@
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :function properties children 1 nil)
       (let [children (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (type %)) children)
@@ -1749,7 +1769,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1779,6 +1799,7 @@
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
       (let [children (-vmap #(schema % options) children)
+            form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -1793,7 +1814,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [this] (-create-form this -form))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1825,6 +1846,7 @@
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
       (let [entry-parser (-create-entry-parser children opts options)
+            form (delay (-create-entry-form parent properties entry-parser options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -1841,7 +1863,7 @@
           (-options [_] options)
           (-children [_] (-entry-children entry-parser))
           (-parent [_] parent)
-          (-form [this] (-create-entry-form this))
+          (-form [_] @form)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1954,7 +1976,7 @@
   ([?schema]
    (form ?schema nil))
   ([?schema options]
-   (-cached (schema ?schema options) :form -form)))
+   (-form (schema ?schema options))))
 
 (defn properties
   "Returns the Schema properties"

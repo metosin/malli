@@ -15,14 +15,12 @@
   ;; 3.2µs (mapv childs)
   ;; 2.5µs (...)
   ;; 2.3µs (-vmap, don't check children)
+  ;; 1.1µs
   (p/bench (m/validate [:or :int :string] 42))
 
   ;; 2.6µs
-  (p/bench (m/validate {:type :or, :children [{:type :int} {:type :string}]} 42))
-
-  ;; 2.1µs (non-distinct)
-  ;; 1.3µs (-vmap)
-  (p/bench (m/validate [:or :int :string] 42))
+  ;; 1.3µs
+  (p/bench (m/validate (m/from-ast {:type :or, :children [{:type :int} {:type :string}]}) 42))
 
   ;; 15ns
   (let [schema (m/schema [:or :int :string])]
@@ -41,7 +39,7 @@
   (p/bench (m/schema [:or :int :string]))
 
   ;; 730ns
-  (p/bench (m/schema {:type :or, :children [{:type :int} {:type :string}]}))
+  (p/bench (m/from-ast {:type :or, :children [{:type :int} {:type :string}]}))
 
   ;; 1.7µs
   ;; 470ns (map childs)
@@ -54,15 +52,11 @@
   (p/bench (m/schema [:and :int :string]))
 
   ;; 730ns
-  (p/bench (m/schema {:type :and, :children [{:type :int} {:type :string}]}))
-
-  ;; 1.7µs
-  ;; 540ns (non-distinct)
-  (let [schema (m/schema [:or :int :string])]
-    (p/bench (m/validator schema)))
+  (p/bench (m/from-ast {:type :and, :children [{:type :int} {:type :string}]}))
 
   ;; 1.7µs
   ;; 1.5µs (fast parse)
+  ;; 540ns (non-distinct)
   ;; 13ns (-cache)
   (let [schema (m/schema [:or :int :string])]
     (p/bench (m/validator schema)))
@@ -187,6 +181,7 @@
 
   ;; 13µs
   ;; 2.4µs (satisfies?)
+  ;; 1.8µs
   (p/bench (mu/required-keys schema))
 
   ;; 134µs

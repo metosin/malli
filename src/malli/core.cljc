@@ -2024,7 +2024,8 @@
      [] options)))
 
 (defn validator
-  "Returns an pure validation function of type `x -> boolean` for a given Schema"
+  "Returns an pure validation function of type `x -> boolean` for a given Schema.
+   Caches the result for [[Cached]] Schemas with key `:validator`."
   ([?schema]
    (validator ?schema nil))
   ([?schema options]
@@ -2039,7 +2040,8 @@
    ((validator ?schema options) value)))
 
 (defn explainer
-  "Returns an pure explainer function of type `x -> explanation` for a given Schema"
+  "Returns an pure explainer function of type `x -> explanation` for a given Schema.
+   Caches the result for [[Cached]] Schemas with key `:explainer`."
   ([?schema]
    (explainer ?schema nil))
   ([?schema options]
@@ -2063,7 +2065,8 @@
    ((explainer ?schema options) value [] [])))
 
 (defn parser
-  "Returns an pure parser function of type `x -> either parsed-x ::invalid` for a given Schema"
+  "Returns an pure parser function of type `x -> either parsed-x ::invalid` for a given Schema.
+   Caches the result for [[Cached]] Schemas with key `:parser`."
   ([?schema]
    (parser ?schema nil))
   ([?schema options]
@@ -2078,7 +2081,8 @@
    ((parser ?schema options) value)))
 
 (defn unparser
-  "Returns an pure unparser function of type `parsed-x -> either x ::invalid` for a given Schema"
+  "Returns an pure unparser function of type `parsed-x -> either x ::invalid` for a given Schema.
+   Caches the result for [[Cached]] Schemas with key `:unparser`."
   ([?schema]
    (unparser ?schema nil))
   ([?schema options]

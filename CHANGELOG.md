@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## 0.7.0-SNAPSHOT
+## 0.7.0-20211031.202317-3 (2021-10-31)
 
 ### Performance
 
@@ -96,6 +96,7 @@ Malli is in [alpha](README.md#alpha).
 (let [provide (mp/provider)]
   (p/bench (provide samples)))
 ```
+
 ### Schema AST
 
 New optimized map-syntax to super-fast schema creation, see [README](README.md#map-syntax).

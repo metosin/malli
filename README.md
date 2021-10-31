@@ -98,6 +98,8 @@ Examples:
 [:=> [:cat :int] :int]
 ```
 
+Schema intances can be created from vector syntax using `malli.core/schema` and written to it with `malli.core/form`.
+
 ### Map Syntax
 
 Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/cljfx/cljfx):
@@ -121,6 +123,8 @@ Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/c
  :input {:type :cat, :children [{:type :int}]}
  :output :int}           
 ```
+
+Schema intances can be created from map syntax using `malli.core/from-ast` and written to it with `malli.core/to-ast`.
 
 ### Why Two Syntaxes?
 

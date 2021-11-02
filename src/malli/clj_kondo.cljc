@@ -173,7 +173,7 @@
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
         (select-keys data [:args :ret :min-arity])))
-    {} xs))
+    {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

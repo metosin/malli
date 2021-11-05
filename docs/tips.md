@@ -372,3 +372,23 @@ In action:
             [:user/id :string]]]])
 ; =throws=> :user/ambiguous-references {:data {:string #{[:child :user/id]}, :int #{[:user/id]}}}
 ```
+
+## Getting error-values into humanized result
+
+```clj
+(-> [:map
+     [:x :int]
+     [:y [:set :keyword]]
+     [:z [:map
+          [:a [:tuple :int :int]]]]]
+    (m/explain {:x "1"
+                :y #{:a "b" :c}
+                :z {:a [1 "2"]}})
+    (me/humanize {:wrap #(select-keys % [:value :message])}))
+;{:x [{:value "1"
+;      :message "should be an integer"}],
+; :y #{[{:value "b"
+;        :message "should be a keyword"}]},
+; :z {:a [nil [{:value "2"
+;               :message "should be an integer"}]]}}
+```

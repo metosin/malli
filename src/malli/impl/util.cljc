@@ -1,6 +1,6 @@
 (ns malli.impl.util
   #?(:clj (:import (java.util.concurrent TimeoutException TimeUnit FutureTask)
-                   (clojure.lang MapEntry))))
+                   (clojure.lang MapEntry LazilyPersistentVector))))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 
@@ -16,6 +16,15 @@
 (defn -error
   ([path in schema value] (->SchemaError path in schema value nil nil))
   ([path in schema value type] (->SchemaError path in schema value type nil)))
+
+(defn -vmap
+  ([os] (-vmap identity os))
+  ([f os] #?(:clj  (let [c (count os)]
+                     (if-not (zero? c)
+                       (let [oa (object-array c), iter (.iterator ^Iterable os)]
+                         (loop [n 0] (when (.hasNext iter) (aset oa n (f (.next iter))) (recur (unchecked-inc n))))
+                         (LazilyPersistentVector/createOwning oa)) []))
+             :cljs (into [] (map f) os))))
 
 #?(:clj
    (defn ^:no-doc -run [^Runnable f ms]
@@ -33,7 +42,7 @@
            bs (interleave syms (map (fn [n] `(nth ~g ~n)) (range n)))
            arg (gensym "arg__")
            body `(~c ~@(map (fn [sym] `(~sym ~arg)) syms))]
-       `(let [~g (into [] ~xs) ~@bs]
+       `(let [~g (-vmap ~xs) ~@bs]
           (fn [~arg] ~body)))))
 
 #?(:clj
@@ -51,5 +60,10 @@
             ~@cases
             ~else)))))
 
-#?(:clj (def ^{:arglists '([[& preds]])} -every-pred (-pred-composer and 16)))
-#?(:clj (def ^{:arglists '([[& preds]])} -some-pred (-pred-composer or 16)))
+(def ^{:arglists '([[& preds]])} -every-pred
+  #?(:clj (-pred-composer and 16)
+     :cljs (fn [preds] (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true preds))))))
+
+(def ^{:arglists '([[& preds]])} -some-pred
+  #?(:clj (-pred-composer or 16)
+     :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))

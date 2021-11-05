@@ -78,7 +78,20 @@
 (defmethod accept :vector [_ _ _ _] :vector)
 (defmethod accept :sequential [_ _ _ _] :sequential)
 (defmethod accept :set [_ _ _ _] :set)
-(defmethod accept :enum [_ _ _ _])
+(defmethod accept :enum [_ _ children _]
+  (let [types (->> children (map type) (set))]
+    (if (< 1 (count types))
+      :any
+      (let [child (first children)]
+        (cond
+          (string? child) :string
+          (keyword? child) :keyword
+          (integer? child) :int
+          (char? child) :char
+          (number? child) :number
+          (symbol? child) :symbol
+          :else :any)))))
+
 (defmethod accept :maybe [_ _ [child] _] (if (keyword? child) (keyword "nilable" (name child)) child))
 (defmethod accept :tuple [_ _ children _] children)
 (defmethod accept :re [_ _ _ _] :regex)
@@ -160,7 +173,7 @@
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
         (select-keys data [:args :ret :min-arity])))
-    {} xs))
+    {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

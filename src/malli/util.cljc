@@ -177,40 +177,33 @@
   ([?schema1 ?schema2]
    (merge ?schema1 ?schema2 nil))
   ([?schema1 ?schema2 options]
-   (let [[schema1 schema2 :as schemas] [(if ?schema1 (m/deref-all (m/schema ?schema1 options)))
-                                        (if ?schema2 (m/deref-all (m/schema ?schema2 options)))]
+   (let [s1 (if ?schema1 (m/deref-all (m/schema ?schema1 options)))
+         s2 (if ?schema2 (m/deref-all (m/schema ?schema2 options)))
+         t1 (if s1 (m/type s1))
+         t2 (if s2 (m/type s2))
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
-         tear (fn [s] (if (= :map (m/type s)) [nil s] (concat [(m/properties s)] (m/children s))))
+         bear (fn [p1 p2] (if (and p1 p2) (c/merge p1 p2) (or p1 p2)))
+         tear (fn [t s] (if (= :map t) [nil s] (concat [(m/properties s)] (m/children s))))
          join (fn [[p1 c1 & cs1] [p2 c2 & cs2]]
-                (m/into-schema :and (c/merge p1 p2) (concat [(merge c1 c2)] cs1 cs2) options))]
+                (m/into-schema :and (bear p1 p2) (concat [(merge c1 c2 options)] cs1 cs2) options))]
      (cond
-       (not schema1) schema2
-       (not schema2) schema1
-       (not (every? (comp #{:map :and} m/type) schemas)) (merge-default schema1 schema2 options)
-       (not (every? (comp #{:map} m/type) schemas)) (join (tear schema1) (tear schema2))
-       :else (let [p (c/merge (m/properties schema1) (m/properties schema2))]
-               (-> [:map]
-                   (cond-> p (conj p))
-                   (into (:form
-                           (reduce
-                             (fn [{:keys [keys] :as acc} [k2 :as e2]]
-                               (if (keys k2)
-                                 (->> (reduce
-                                        (fn [acc' [k1 :as e1]]
-                                          (conj acc'
-                                                (if (= k1 k2)
-                                                  (-entry e1 e2 merge-required merge options)
-                                                  e1)))
-                                        [] (:form acc))
-                                      (c/assoc acc :form))
-                                 (-> acc
-                                     (c/update :form conj e2)
-                                     (c/update :keys conj k2))))
-                             {:keys #{}, :form []}
-                             (mapcat m/children schemas))))
-                   (m/schema options)))))))
+       (nil? s1) s2
+       (nil? s2) s1
+       (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
+       (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))
+       :else (let [p (bear (m/-properties s1) (m/-properties s2))
+                   ks (atom #{})
+                   children (reduce (fn [form [k2 :as e2]]
+                                      (if (@ks k2)
+                                        (reduce (fn [acc' [k1 :as e1]]
+                                                  (conj acc' (if (= k1 k2)
+                                                               (-entry e1 e2 merge-required merge options)
+                                                               e1))) [] form)
+                                        (do (swap! ks conj k2) (conj form e2))))
+                                    [] (into (m/-children s1) (m/-children s2)))]
+               (m/into-schema :map p children options))))))
 
 (defn union
   "Union of two schemas. See [[merge]] for more details."
@@ -227,11 +220,7 @@
   "Returns a Schema instance with updated properties."
   [?schema f & args]
   (let [schema (m/schema ?schema)]
-    (m/into-schema
-      (m/-parent schema)
-      (not-empty (apply f (m/-properties schema) args))
-      (m/-children schema)
-      (m/-options schema))))
+    (m/-set-properties schema (not-empty (apply f (m/-properties schema) args)))))
 
 (defn closed-schema
   "Closes recursively all :map schemas by adding `{:closed true}`
@@ -305,7 +294,7 @@
     @state))
 
 ;;
-;; MapSchemas
+;; EntrySchemas
 ;;
 
 (defn transform-entries
@@ -342,7 +331,7 @@
      (transform-entries ?schema #(map mapper %) options))))
 
 (defn select-keys
-  "Like [[clojure.core/select-keys]], but for MapSchemas."
+  "Like [[clojure.core/select-keys]], but for EntrySchemas."
   ([?schema keys]
    (select-keys ?schema keys nil))
   ([?schema keys options]
@@ -350,7 +339,7 @@
      (transform-entries ?schema #(filter (fn [[k]] (key-set k)) %) options))))
 
 (defn rename-keys
-  "Like [[clojure.set/rename-keys]], but for MapSchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
+  "Like [[clojure.set/rename-keys]], but for EntrySchemas. Collisions are resolved in favor of the renamed key, like `assoc`-ing."
   ([?schema kmap]
    (rename-keys ?schema kmap nil))
   ([?schema kmap options]
@@ -365,14 +354,14 @@
      options)))
 
 (defn dissoc
-  "Like [[clojure.core/dissoc]], but for MapSchemas."
+  "Like [[clojure.core/dissoc]], but for EntrySchemas."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
    (transform-entries ?schema #(remove (fn [[k]] (= key k)) %) options)))
 
 (defn find
-  "Like [[clojure.core/find]], but for MapSchemas."
+  "Like [[clojure.core/find]], but for EntrySchemas."
   ([?schema k]
    (find ?schema k nil))
   ([?schema k options]
@@ -443,7 +432,10 @@
 ;;
 
 (defn -map-syntax-walker [schema _ children _]
-  (let [properties (m/properties schema)]
+  (let [properties (m/properties schema)
+        options (m/options schema)
+        r (when properties (properties :registry))
+        properties (if r (c/assoc properties :registry (m/-property-registry r options m/-form)) properties)]
     (cond-> {:type (m/type schema)}
             (seq properties) (clojure.core/assoc :properties properties)
             (seq children) (clojure.core/assoc :children children))))
@@ -484,10 +476,10 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (m/-check-children! type properties children {:min min, :max max})
+      (m/-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
-            walkable-childs (if childs (subvec children 0 childs) children)
-            form (m/-create-form type properties forms)]
+            form (delay (m/-create-form type properties forms options))
+            cache (m/-create-cache options)]
         ^{:type ::m/schema}
         (reify
           m/Schema
@@ -496,13 +488,16 @@
           (-transformer [this transformer method options]
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]
-            (if (m/-accept walker this path options)
-              (m/-outer walker this path (m/-inner-indexed walker path walkable-childs options) options)))
+            (let [children (if childs (subvec children 0 childs) children)]
+              (if (m/-accept walker this path options)
+                (m/-outer walker this path (m/-inner-indexed walker path children options) options))))
           (-properties [_] properties)
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] form)
+          (-form [_] @form)
+          m/Cached
+          (-cache [_] cache)
           m/LensSchema
           (-keep [_])
           (-get [_ key default] (clojure.core/get children key default))

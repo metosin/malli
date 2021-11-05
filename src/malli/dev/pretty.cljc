@@ -11,7 +11,7 @@
        {:title "Schema Error"
         :width 100
         :colors v/-dark-colors
-        :unknown (fn [x] (cond-> x (m/schema? x) (m/form)))
+        :unknown (fn [x] (if (m/schema? x) (m/form x)))
         :throwing-fn-top-level-ns-names ["malli" "clojure"]}
        options))))
 
@@ -36,7 +36,7 @@
     (-block "Invalid function arguments:" (v/-visit args printer) printer) :break :break
     (-block "Input Schema:" (v/-visit input printer) printer) :break :break
     (-block "Errors:" (-errors input args printer) printer) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/LATEST/doc/function-schemas" printer) printer)]})
+    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-output [_ _ {:keys [value output]} printer]
   {:body
@@ -44,14 +44,14 @@
     (-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
     (-block "Output Schema:" (v/-visit output printer) printer) :break :break
     (-block "Errors:" (-errors output value printer) printer) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/LATEST/doc/function-schemas" printer) printer)]})
+    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-arity [_ _ {:keys [args arity schema]} printer]
   {:body
    [:group
     (-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
     (-block "Function Schema:" (v/-visit schema printer) printer) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/LATEST/doc/function-schemas" printer) printer)]})
+    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 ;;
 ;; public api

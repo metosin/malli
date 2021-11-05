@@ -58,7 +58,7 @@ Enter, function schemas.
 
 ## Function Schemas
 
-Function values can be described with `:=>` and `:function` schemas. They allows description of both function arguments (as [sequence schemas](README.md#sequence-schemas)) and function return values.
+Function values can be described with `:=>` and `:function` schemas. They allows description of both function arguments (as [sequence schemas](https://github.com/metosin/malli#sequence-schemas)) and function return values.
 
 Examples of function definitions:
 
@@ -494,7 +494,7 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 
 ### Static Type Checking
 
-Running `malli.dev` instrumentation also emits [clj-kondo](README.md#clj-kondo) type configs for all `defn`s, enabling basic static type checking/linting for the instrumented functions.
+Running `malli.dev` instrumentation also emits [clj-kondo](https://github.com/metosin/malli#clj-kondo) type configs for all `defn`s, enabling basic static type checking/linting for the instrumented functions.
 
 Here's the above code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo](https://github.com/clj-kondo/clj-kondo) enabled:
 

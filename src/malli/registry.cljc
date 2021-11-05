@@ -1,5 +1,6 @@
 (ns malli.registry
-  (:refer-clojure :exclude [type]))
+  (:refer-clojure :exclude [type])
+  #?(:clj (:import (java.util HashMap Map))))
 
 #?(:cljs (goog-define type "default")
    :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
@@ -8,15 +9,24 @@
   (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
-(defn simple-registry [schemas]
+(defn fast-registry [m]
+  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
+    (reify
+      Registry
+      (-schema [_ type] (.get fm type))
+      (-schemas [_] m))))
+
+(defn simple-registry [m]
   (reify
     Registry
-    (-schema [_ type] (get schemas type))
-    (-schemas [_] schemas)))
+    (-schema [_ type] (m type))
+    (-schemas [_] m)))
 
 (defn registry [?registry]
-  (cond (satisfies? Registry ?registry) ?registry
-        (map? ?registry) (simple-registry ?registry)))
+  (cond (nil? ?registry) nil
+        (#?(:clj instance?, :cljs implements?) malli.registry.Registry ?registry) ?registry
+        (map? ?registry) (simple-registry ?registry)
+        (satisfies? Registry ?registry) ?registry))
 
 ;;
 ;; custom

@@ -14,6 +14,142 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## 0.7.0-20211031.202317-3 (2021-10-31)
+
+### Performance
+
+* big improvements to schema creation, transformation and inferring perfromance, see [#531](https://github.com/metosin/malli/issues/513) and [#550](https://github.com/metosin/malli/pull/550).
+
+#### Schema Creation
+
+```clj
+(def ?schema
+  [:map
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z [:map
+        [:x boolean?]
+        [:y {:optional true} int?]]]])
+
+(def schema (m/schema ?schema))
+
+;; 44µs -> 2.5µs (18x)
+(bench (m/schema ?schema))
+
+;; 44µs -> 240ns (180x, not realized)
+(p/bench (m/schema ?schema {::m/lazy-entries true}))
+```
+
+#### Schema Transformation
+
+```clj
+;; 26µs -> 1.2µs (21x)
+(bench (m/walk schema (m/schema-walker identity)))
+
+;; 4.2µs -> 0.54µs (7x)
+(bench (mu/assoc schema :w :string))
+
+;; 51µs -> 3.4µs (15x)
+(bench (mu/closed-schema schema))
+
+;; 5µs -> 28ns (180x)
+(p/bench (m/deref-all ref-schema))
+
+;; 134µs -> 9µs (15x)
+(p/bench (mu/merge schema schema))
+```
+
+#### Schema Workers
+
+```clj
+(def schema (m/schema ?schema))
+
+;; 1.6µs -> 64ns (25x)
+(p/bench (m/validate schema {:x true, :z {:x true}}))
+
+;; 1.6µs -> 450ns (3x)
+(p/bench (m/explain schema {:x true, :z {:x true}}))
+```
+
+#### Schema Inferring
+
+```clj
+(def samples
+  [{:id "Lillan"
+    :tags #{:artesan :coffee :hotel}
+    :address {:street "Ahlmanintie 29"
+              :city "Tampere"
+              :zip 33100
+              :lonlat [61.4858322, 23.7854658]}}
+   {:id "Huber",
+    :description "Beefy place"
+    :tags #{:beef :wine :beer}
+    :address {:street "Aleksis Kiven katu 13"
+              :city "Tampere"
+              :zip 33200
+              :lonlat [61.4963599 23.7604916]}}])
+
+;; 126ms -> 2.5ms (50x)
+(p/bench (mp/provide samples))
+
+;; 380µs (330x)
+(let [provide (mp/provider)]
+  (p/bench (provide samples)))
+```
+
+### Schema AST
+
+New optimized map-syntax to super-fast schema creation, see [README](README.md#map-syntax).
+
+```clj
+(def ast (m/ast ?schema))
+;{:type :map,
+; :keys {:x {:order 0, :value {:type boolean?}},
+;        :y {:order 1, :value {:type int?}
+;            :properties {:optional true}},
+;        :z {:order 2,
+;            :value {:type :map,
+;                    :keys {:x {:order 0
+;                               :value {:type boolean?}},
+;                           :y {:order 1 
+;                               :value {:type int?}
+;                               :properties {:optional true}}}}}}}
+
+;; 150ns (16x)
+(p/bench (m/from-ast ast))
+
+(-> ?schema
+    (m/schema)
+    (m/ast)
+    (m/from-ast)
+    (m/form)
+    (= ?schema))
+; => true
+```
+
+Will fully replace the old map-syntax at some point.
+
+### Public API
+
+* fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
+* fixed `:function` lenses
+* fixed arity error in `m/function-schema`
+* add localized error messages for all type-schemas
+* support for Lazy EntrySchema parsing
+* `empty?` Schema does not throw exceptions
+* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
+* **BREAKING**: strings generate alphanumeric chars by default
+
+### Extender API
+
+* **BREAKING**: `m/EntrySchema` replaces `m/MapSchema` with new `-entry-parser` method
+* **BREAKING**: (eager) `m/-parse-entries` is removed, use `m/-entry-parser` instead
+* **BREAKING**: `m/-create-form` supports 2 & 4 arities (was: 3)
+* `m/EntryParser` protocol
+* `m/-entry-forms` helper
+* `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
+* `m/Cached` protocol and `m/-create-cache` for memoization of `-validator`, `-explainer`, `-parser` and `-unparser` when using `m/validator`, `m/explain`, `m/parser` and `m/unparser`.
+
 ## 0.6.1 (2021-08-08)
 
 * add missing optional dependency to `mvxcvi/arrangement` to make pretty printing work

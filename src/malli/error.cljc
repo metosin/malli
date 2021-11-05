@@ -91,10 +91,8 @@
                                   (first (m/children schema))
                                   (str "either " (->> (m/children schema) butlast (str/join ", "))
                                        " or " (last (m/children schema))))))}}
+   :any {:error/message {:en "should be any"}}
    :nil {:error/message {:en "should be nil"}}
-   :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
-   :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
-   :boolean {:error/message {:en "should be a boolean"}}
    :string {:error/fn {:en (fn [{:keys [schema value]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond
@@ -103,6 +101,14 @@
                                  (and min max) (str "should be between " min " and " max " characters")
                                  min (str "should be at least " min " characters")
                                  max (str "should be at most " max " characters"))))}}
+   :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
+   :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
+   :boolean {:error/message {:en "should be a boolean"}}
+   :keyword {:error/message {:en "should be a keyword"}}
+   :symbol {:error/message {:en "should be a symbol"}}
+   :qualified-keyword {:error/message {:en "should be a qualified keyword"}}
+   :qualified-symbol {:error/message {:en "should be a qualified symbol"}}
+   :uuid {:error/message {:en "should be a uuid"}}
    :> {:error/fn {:en (fn [{:keys [schema value]} _]
                         (if (number? value)
                           (str "should be larger than " (first (m/children schema)))
@@ -296,7 +302,7 @@
 (defn humanize
   "Humanized a explanation. Accepts the following optitons:
 
-  - `:wrap`, a function of `error -> message`, defaulting ot `:message`
+  - `:wrap`, a function of `error -> message`, defaulting to `:message`
   - `:resolve`, a function of `explanation error options -> path message`"
   ([explanation]
    (humanize explanation nil))

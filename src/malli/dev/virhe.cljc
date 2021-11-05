@@ -37,12 +37,9 @@
   fipp.visit/IVisitor
 
   (visit-unknown [this x]
-    (fipp.visit/visit this (if unknown
-                             (try
-                               (unknown x)
-                               (catch #?(:clj Exception, :cljs js/Error) _
-                                 (fipp.ednize/edn x)))
-                             (fipp.ednize/edn x))))
+    (or (and unknown (try (some->> (unknown x) (fipp.visit/visit this))
+                          (catch #?(:clj Exception, :cljs js/Error) _)))
+        (fipp.visit/visit this (fipp.ednize/edn x))))
 
   (visit-nil [this]
     (-color :text "nil" this))
@@ -87,15 +84,9 @@
     (let [object? (= 'object tag)
           tag-f (if (map? form) #(-color :type % this) identity)]
       [:group "#" (tag-f (pr-str tag))
-       (when (or (and print-meta (meta form)) (not (coll? form)))
-         " ")
+       (when (or (and print-meta (meta form)) (not (coll? form))) " ")
        (if object?
-         [:group
-          [:align
-           "["
-           (-color :type (first form) this) :line
-           (-color :text (second form) this) :line
-           (fipp.visit/visit this (last form))] "]"]
+         [:group [:align "[" (fipp.visit/visit this (last form))] "]"]
          (fipp.visit/visit this form))]))
 
   (visit-meta [this m x]
@@ -138,8 +129,8 @@
 (defn -visit [x printer]
   (fipp.visit/visit printer x))
 
-#?(:clj
-   (defn -location [e ss]
+(defn -location [e ss]
+  #?(:clj
      (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
            [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
                                   (cond (start-with f s) (recur (rest fs) ss)
@@ -192,5 +183,5 @@
 (defn -exception-doc [e printer]
   (let [{:keys [type data]} (ex-data e)
         {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
-        location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)))]
+        location (-location e (:throwing-fn-top-level-ns-names printer))]
     (-section title location body printer)))

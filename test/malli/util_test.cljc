@@ -364,6 +364,11 @@
         [:ref {:registry {::a int?, ::b string?}} ::a] 0 "invalid" ::throws
         [:ref {:registry {::a int?, ::b string?}} ::a] 1 ::b ::throws
 
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 0 [:=> [:cat :int] :int] ::throws
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 3 [:=> [:cat :int :int] :int] ::throws
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 1 [:=> [:cat :int :int] :int] [:function [:=> :cat :int] [:=> [:cat :int :int] :int]]
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 2 [:=> [:cat :int :int] :int] [:function [:=> :cat :int] [:=> [:cat :int] :int] [:=> [:cat :int :int] :int]]
+
         [:schema string?] 0 int? [:schema 'int?]
         [:schema string?] 0 "invalid" ::throws
         [:schema string?] 1 int? ::throws))))

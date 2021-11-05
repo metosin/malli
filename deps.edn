@@ -21,6 +21,12 @@
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
            :sci {:extra-deps {borkdude/sci {:mvn/version "0.2.6"}}}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.1.9" :git/sha "6736c83"}}
+                   :ns-default build}
+           :jmh {:paths ["target/uber.jar" "classes"]
+                 :deps {jmh-clojure/jmh-clojure {:mvn/version "0.4.0"}
+                        jmh-clojure/task {:mvn/version "0.1.0"}}
+                 :main-opts ["-m" "jmh.main"]}
            :shadow {:extra-paths ["app"]
                     :extra-deps {thheller/shadow-cljs {:mvn/version "2.15.2"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
@@ -43,6 +49,7 @@
                                   borkdude/sci {:mvn/version "0.2.6"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
+                               org.clojure/clojure {:mvn/version "1.11.0-alpha2"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

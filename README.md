@@ -12,13 +12,14 @@ Data-driven Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schema definitions as data
-- [Validation](#examples) and [Value Transformation](#value-transformation)
+- Both [Vector](#vector-syntax) and [Map](#map-syntax) -syntax
+- [Validation](#usage) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
-- [Serializable function schemas](#serializable-functions)
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
+- [Serializable function schemas](#serializable-functions)
 - [Persisting schemas](#persisting-schemas) and the alternative [Map-syntax](#map-syntax)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
@@ -48,31 +49,122 @@ Try the [online demo](https://malli.io). Libraries using or supporting malli:
 - [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
 - [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
 
-## Examples
+## Motivation
+
+We are building dynamic multi-tenant systems where data models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from a database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
+
+Hasn't the problem been solved (many times) already?
+
+There is [Schema](https://github.com/plumatic/schema), which is an awesome, proven and collaborative open-source project, and we absolutely love it. We still use it in many of our projects. The sad part: serializing & de-serializing schemas is non-trivial and there is not proper support on branching.
+
+[Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is opinionated with macros, global registry and it doesn't have any support for runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [five years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still a kind of hack and not fun to maintain.
+
+So, we decided to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
+
+> If you have expectations (of others) that aren't being met, those expectations are your own responsibility. You are responsible for your own needs. If you want things, make them.
+
+- Rich Hickey, [Open Source is Not About You](https://gist.github.com/richhickey/1563cddea1002958f96e7ba9519972d9)
+
+## The library
+
+[![Clojars Project](http://clojars.org/metosin/malli/latest-version.svg)](http://clojars.org/metosin/malli)
+
+## Syntax
+
+Malli supports both [Vector](#vector-syntax) and [Map](#map-syntax) syntaxes.
+
+### Vector Syntax
+
+The default syntax uses vectors, inspired by [hiccup](https://github.com/weavejester/hiccup):
+
+```clj
+type
+[type & children]
+[type properties & children]
+```
+Examples:
+
+```clj
+;; just a type (String)
+:string
+
+;; type with properties
+[:string {:min 1, :max 10}]
+
+;; type with properties and children
+[:tuple {:title "location"} :double :double]
+
+;; a function schema of :int -> :int
+[:=> [:cat :int] :int]
+```
+
+Schema intances can be created from vector syntax using `malli.core/schema` and written to it with `malli.core/form`.
+
+### Map Syntax
+
+Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/cljfx/cljfx):
+
+```clj
+;; just a type (String)
+{:type :string}
+
+;; type with properties
+{:type :string
+ :properties {:min 1, :max 10}
+ 
+;; type with properties and children
+{:type :tuple
+ :properties {:title "location"}
+ :children [{:type :double}
+            {:type :double}]}
+ 
+;; a function schema of :int -> :int
+{:type :=>
+ :input {:type :cat, :children [{:type :int}]}
+ :output :int}           
+```
+
+Schema intances can be created from map syntax using `malli.core/from-ast` and written to it with `malli.core/to-ast`.
+
+### Why Two Syntaxes?
+
+We have found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Instantiating schemas using the Schema AST can be orders of magnitude faster.
+
+In future, there might be even more syntaxes.
+
+## Usage
 
 Defining and validating Schemas:
 
 ```clj
 (require '[malli.core :as m])
 
-(m/validate int? "1")
-; => false
-
-(m/validate int? 1)
+(m/schema? (m/schema :int))
 ; => true
 
-(m/validate [:and int? [:> 6]] 7)
+(m/validate (m/schema :int) 1)
+; => true
+
+;; coerced automatically into schema
+(m/validate :int 1)
+; => true
+
+(m/validate :int "1")
+; => false
+
+(m/validate [:and :int [:> 6]] 7)
 ; => true
 
 (m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
 ; => true
 
+;; optimized (pure) validation function
 (def valid?
   (m/validator
     [:map
-     [:x boolean?]
-     [:y {:optional true} int?]
-     [:z string?]]))
+     [:x :boolean]
+     [:y {:optional true} :int]
+     [:z :string]]))
 
 (valid? {:x true, :z "kikka"})
 ; => true
@@ -86,7 +178,7 @@ Schemas can have properties:
    {:title "Age"
     :description "It's an age"
     :json-schema/example 20}
-   int? [:> 18]])
+   :int [:> 18]])
    
 (m/properties Age)
 ; => {:title "Age"
@@ -98,7 +190,7 @@ Maps are open by default:
 
 ```clj
 (m/validate
-  [:map [:x int?]]
+  [:map [:x :int]]
   {:x 1, :extra "key"})
 ; => true
 ```
@@ -107,7 +199,7 @@ Maps can be closed with `:closed` property:
 
 ```clj
 (m/validate
-  [:map {:closed true} [:x int?]]
+  [:map {:closed true} [:x :int]]
   {:x 1, :extra "key"})
 ; => false
 ``` 
@@ -118,15 +210,24 @@ Maps keys are not limited to keywords:
 (m/validate
   [:map
    ["status" [:enum "ok"]]
-   [1 any?]
-   [nil any?]
-   [::a string?]]
+   [1 :any]
+   [nil :any]
+   [::a :string]]
   {"status" "ok"
    1 'number
    nil :yay
    ::a "properly awesome"})
 ; => true
 ```
+
+Most core-predicates are mapped to Schemas:
+
+```clj
+(m/validate string? "kikka")
+; => true
+```
+
+See [the full list of default schemas](#schema-registry).
 
 ## Qualified keys in a map
 
@@ -170,6 +271,13 @@ You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for ve
 
 (m/validate [:vector int?] (list 1 2 3))
 ;; => false
+```
+
+A `:tuple` describes a fixed length Clojure vector of heterogeneous elements:
+
+```clj
+(m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
+;; => true
 ```
 
 Malli also supports sequence regexes like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
@@ -316,6 +424,21 @@ Using regular expressions:
 
 ```
 
+## Maybe schemas
+
+Use `:maybe` to express that an element should match some schema OR be `nil`:
+
+```clj
+(m/validate [:maybe string?] "bingo")
+;; => true
+
+(m/validate [:maybe string?] nil)
+;; => true
+
+(m/validate [:maybe string?] :bingo)
+;; => false
+```
+
 ## Fn schemas
 
 `:fn` allows any predicate function to be used:
@@ -333,38 +456,6 @@ Using regular expressions:
 
 (m/validate my-schema {:x 1, :y 2})
 ; => false
-```
-
-## Serializable Functions
-
-Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
-it is not present, the malli function evaluator throws `:sci-not-available` exception.
-
-For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
-
-For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
-
-```clj
-(def my-schema
-  [:and
-   [:map
-    [:x int?]
-    [:y int?]]
-   [:fn '(fn [{:keys [x y]}] (> x y))]])
-
-(m/validate my-schema {:x 1, :y 0})
-; => true
-
-(m/validate my-schema {:x 1, :y 2})
-; => false
-```
-
-**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
-
-```clj
-(m/validate [:fn 'int?] 1 {::m/disable-sci true})
-; Execution error
-; :malli.core/sci-not-available {:code int?}
 ```
 
 ## Error Messages
@@ -1173,7 +1264,7 @@ Mutual recursion works too. Thanks to the `:schema` construct, many schemas coul
 ; => true
 ```
 
-Nested registries, last definition wins:
+Nested registries, the last definition wins:
 
 ```clj
 (m/validate
@@ -1325,6 +1416,17 @@ All samples are valid against the inferred schema:
 ; => true
 ```
 
+For order of magnitude better performance, use `mp/provider` instead:
+
+```clj
+;; 3.6ms -> 2.1ms (1.7x)
+(p/bench (mp/provide [1 2 3]))
+
+;; 2.5ms -> 82µs (30x)
+(let [provider (mp/provider)]
+  (p/bench (provider [1 2 3])))
+```
+
 ## Parsing values
 
 Schemas can be used to parse values using `m/parse` and `m/parser`:
@@ -1402,35 +1504,79 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 ; [:p "Hello, world of data"]]
 ```
 
-## Map-syntax
+## Serializable Functions
 
-Schemas can converted into map-syntax (with keys `:type` and optionally `:properties` and `:children`):
+Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
+it is not present, the malli function evaluator throws `:sci-not-available` exception.
+
+For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
+
+For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
 
 ```clj
-(def Schema
-  [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:map
-     [:street string?]
-     [:lonlat [:tuple double? double?]]]]])
+(def my-schema
+  [:and
+   [:map
+    [:x int?]
+    [:y int?]]
+   [:fn '(fn [{:keys [x y]}] (> x y))]])
 
-(mu/to-map-syntax Schema)
-;{:type :map,
-; :children [[:id nil {:type string?}]
-;            [:tags nil {:type :set
-;                        :children [{:type keyword?}]}]
-;            [:address nil {:type :map,
-;                           :children [[:street nil {:type string?}]
-;                                      [:lonlat nil {:type :tuple
-;                                                    :children [{:type double?} {:type double?}]}]]}]]}
+(m/validate my-schema {:x 1, :y 0})
+; => true
+
+(m/validate my-schema {:x 1, :y 2})
+; => false
 ```
 
-... and back:
+**NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
 ```clj
-(-> Schema (mu/to-map-syntax) (mu/from-map-syntax) (mu/equals Schema))
+(m/validate [:fn 'int?] 1 {::m/disable-sci true})
+; Execution error
+; :malli.core/sci-not-available {:code int?}
+```
+
+## Map-syntax
+
+Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
+
+```clj
+(def ?schema
+  [:map
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z [:map
+        [:x boolean?]
+        [:y {:optional true} int?]]]])
+
+(m/form ?schema)
+;[:map
+; [:x boolean?]
+; [:y {:optional true} int?]
+; [:z [:map
+;      [:x boolean?]
+;      [:y {:optional true} int?]]]]
+
+(m/ast ?schema)
+;{:type :map,
+; :keys {:x {:order 0
+;            :value {:type boolean?}},
+;        :y {:order 1, :value {:type int?}
+;            :properties {:optional true}},
+;        :z {:order 2,
+;            :value {:type :map,
+;                    :keys {:x {:order 0
+;                               :value {:type boolean?}},
+;                           :y {:order 1
+;                               :value {:type int?}
+;                               :properties {:optional true}}}}}}}
+
+(-> ?schema
+    (m/schema) ;; 3.4µs
+    (m/ast)
+    (m/from-ast) ;; 180ns (18x, lazy)
+    (m/form)
+    (= (m/form ?schema)))
 ; => true
 ```
 
@@ -1683,9 +1829,9 @@ You can also build content-dependent schemas by using a callback function of `pr
 
 ## Schema Registry
 
-Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema ast, `Schema` or `IntoSchema` instance).
+Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema AST, `Schema` or `IntoSchema` instance).
 
-Custom `Registry` can be passed in to all/most malli public apis via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
+Custom `Registry` can be passed into all/most malli public APIs via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
 
 ```clj
 ;; the default registry
@@ -1778,13 +1924,13 @@ See also [Recursive Schemas](#recursive-schemas).
 
 ### Changing the default registry
 
-Using custom registries via `:registry` option is a simple solution, but this needs to be done for all public api calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
+Using custom registries via the `:registry` option is a simple solution, but this needs to be done for all public API calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
 
 Malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
    * cljs: `:closure-defines {malli.registry/type "custom"}`
    * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
 
-It changes the default registry to empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enables DCE for all unused schema implementations.
+It changes the default registry to an empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enables DCE for all unused schema implementations.
 
 Malli supports multiple types of registries.
 
@@ -1834,7 +1980,7 @@ Using a custom registry atom:
 ; => true
 ```
 
-The mutable registry can also passed in as explicit option:
+The mutable registry can also be passed in as an explicit option:
 
 ```clj
 (def registry (mr/mutable-registry registry*))
@@ -1904,8 +2050,6 @@ and a provider function of `type registry -> schema` as arguments:
    :Description "laiskanlinna"})
 ; => true
 ```
-
-Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/).
 
 ### Composite Registry
 
@@ -2063,28 +2207,139 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 ## Performance
 
-Validation:
+Malli tries to really, really fast.
+
+### Validation Perfomance
+
+Usually as fast (or faster) than idiomatic Clojure. 
 
 ```clj
-(require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
-;; 40ns
-(let [spec (s/and int? (s/or :pos-int pos-int? :neg-int neg-int?))
-      valid? (partial s/valid? spec)]
-  (cc/quick-bench
-    (valid? 0)))
+;; idomatic clojure (54ns)
+(let [valid? (fn [{:keys [x y z]}]
+               (and (boolean? x)
+                    (if y (int? y) true)
+                    (string? z)))]
+  (assert (valid? valid))
+  (cc/quick-bench (valid? valid)))
 
-;; 5ns
-(let [valid? (m/validator [:and int? [:or pos-int? neg-int?]])]
-  (cc/quick-bench
-    (valid? 0)))
+;; malli (39ns)
+(let [valid? (m/validator
+               [:map
+                [:x :boolean]
+                [:y {:optional true} int?]
+                [:z string?]])]
+  (assert (valid? valid))
+  (cc/quick-bench (valid? valid)))
 ```
 
-Parsing:
+With Clojure Spec and Plumatic Schema:
 
 ```clj
-;; 44µs
+(require '[clojure.spec.alpha :as spec])
+(require '[schema.core :as schema])
+
+(spec/def ::x boolean?)
+(spec/def ::y int?)
+(spec/def ::z string?)
+
+;; clojure.spec (450ns)
+(let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])]
+  (assert (spec/valid? spec valid))
+  (cc/quick-bench (spec/valid? spec valid)))
+
+;; plumatic schema (660ns)
+(let [valid? (schema/checker
+               {:x schema/Bool
+                (schema/optional-key :y) schema/Int
+                :z schema/Str})]
+  (assert (not (valid? valid)))
+  (cc/quick-bench (valid? valid)))
+```
+
+### Transformation Performance
+
+Usually much faster than idiomatic Clojure.
+
+```clj
+(def data {:x "true", :y "1", :z "kikka"})
+(def expexted {:x true, :y 1, :z "kikka"})
+
+;; idiomatic clojure (290ns)
+(let [transform (fn [{:keys [x y] :as m}]
+                  (cond-> m
+                    (string? x) (update :x #(Boolean/parseBoolean %))
+                    (string? y) (update :y #(Long/parseLong %))))]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+
+;; malli (72ns)
+(let [schema [:map
+              [:x :boolean]
+              [:y {:optional true} int?]
+              [:z string?]]
+      transform (m/decoder schema (mt/string-transformer))]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+```
+
+With Clojure Spec and Plumatic Schema:
+
+```clj
+(require '[spec-tools.core :as st])
+(require '[schema.coerce :as sc])
+
+(spec/def ::x boolean?)
+(spec/def ::y int?)
+(spec/def ::z string?)
+
+;; clojure.spec (19µs)
+(let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
+      transform #(st/coerce spec % st/string-transformer)]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+
+;; plumatic schema (2.2µs)
+(let [schema {:x schema/Bool
+              (schema/optional-key :y) schema/Int
+              :z schema/Str}
+      transform (sc/coercer schema sc/string-coercion-matcher)]
+  (assert (= expexted (transform data)))
+  (cc/quick-bench (transform data)))
+```
+
+The transformation engine is smart enough to just transform parts of the schema that need to be transformed. If there is nothing to transform, `identity` function is returned.
+
+```clj
+(def json->user
+  (m/decoder
+    [:map
+     [:id :int]
+     [:name :string]
+     [:address [:map
+                [:street :string]
+                [:rural :boolean]
+                [:country [:enum "finland" "poland"]]]]]
+    (mt/json-transformer)))
+
+;; 5ns
+(cc/quick-bench 
+  (json->user 
+    {:id 1
+     :name "tiina"
+     :address {:street "kotikatu"
+               :rural true
+               :country "poland"}}))
+
+(= identity json->user)
+; => true
+```
+
+### Parsing performance
+
+```clj
+;; 37µs
 (let [spec (s/* (s/cat :prop string?,
                        :val (s/alt :s string?
                                    :b boolean?)))
@@ -2092,7 +2347,7 @@ Parsing:
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 
-;; 2.5µs
+;; 2.4µs
 (let [schema [:* [:catn
                   [:prop string?]
                   [:val [:altn
@@ -2102,43 +2357,6 @@ Parsing:
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 ```
-
-Coercion:
-
-```clj
-(require '[spec-tools.core :as st])
-
-(s/def ::id int?)
-(s/def ::name string?)
-
-;; 14µs
-(let [spec (s/keys :req-un [::id ::name])
-      transform #(st/coerce spec % st/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
-
-;; 140ns
-(let [schema [:map [:id int?] [:name string?]]
-      transform (m/decoder schema transform/string-transformer)]
-  (cc/quick-bench
-    (transform {:id "1", :name "kikka"})))
-```
-
-## Motivation
-
-We are building dynamic multi-tenant systems where data-models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.
-
-Hasn't the problem been solved (many times) already?
-
-There is [Schema](https://github.com/plumatic/schema), which is awesome, proven and collaborative open source project, and we absolutely love it. We still use it in most of our projects. Sad part: serializing & de-serializing schemas is non-trivial and there is no back-tracking on branching.
-
-[Spec](https://clojure.org/guides/spec) is the de facto data specification library for Clojure. It has many great ideas, but it is based on macros, it has a global registry and it doesn't support runtime transformations. [Spec-tools](https://github.com/metosin/spec-tools) was created to "fix" some of the things, but after [four years](https://github.com/metosin/spec-tools/commit/18aeb78db7886c985b2881fd87fde6039128b3fb) of developing it, it's still kinda hack and not fun to maintain.
-
-So, we decided to spin out our own library, which would do all the things we feel is important for dynamic system development. It's based on the best parts of the existing libraries and several project-specific tools we have done over the years.
-
-> If you have expectations (of others) that aren't being met, those expectations are your own responsibility. You are responsible for your own needs. If you want things, make them.
-
-- Rich Hickey, [Open Source is Not About You](https://gist.github.com/richhickey/1563cddea1002958f96e7ba9519972d9)
 
 ## Links (and thanks)
 
@@ -2159,15 +2377,15 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 ## Alpha
 
-Public api of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** effect public apis and **most likely** effect the library extenders, e.g. need to implement a new protocol method for custom schemas.
+The public API of Malli has been quite stable already in [pre-alpha](https://github.com/metosin/malli/issues/207) and in alpha, we try not to break things. Still, the library is evolving and things like [value destructuring](https://github.com/metosin/malli/issues/241) **could** affect public APIs and **most likely** affect the library extenders, e.g. need to implement a new protocol method for custom schemas.
 
-All changes (breaking or not) will be documented in the [CHANGELOG](CHANGELOG.md) and there will be migration guide and path if needed.
+All changes (breaking or not) will be documented in the [CHANGELOG](CHANGELOG.md) and there will be a migration guide and path if needed.
 
-The api layers and stability:
+The API layers and stability:
 
-* **public api**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. Most stable part of the library, should not change (much) in alpha
-* **extender api**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
-* **private api**: private vars and `malli.impl` namespaces, all bets are off.
+* **public API**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. The most stable part of the library, should not change (much) in alpha
+* **extender API**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
+* **private API**: private vars and `malli.impl` namespaces, all bets are off.
 
 ## Supported Java versions
 

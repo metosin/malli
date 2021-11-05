@@ -859,3 +859,10 @@
                                [:rec {:optional true} [:ref ::rec]]]}}
               ::rec]
              {})))))
+
+(mg/schema->container-schema
+  [:schema {:registry
+            {::rec [:map
+                    [:rec {:optional true} [:ref ::rec]]]}}
+   ::rec]
+  {})

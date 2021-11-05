@@ -41,7 +41,7 @@
     schema ;; FIXME alpha renaming needed?
     (fn inner [schema path {::keys [seen-refs] :as options}]
       (cond
-        (and (satisfies? m/RefSchema schema)
+        (and (m/-ref-schema? schema)
              (not (seen-refs (m/-ref schema))))
         (let [options (cond-> options
                         (m/-ref schema) (update ::seen-refs conj (m/-ref schema)))]
@@ -88,7 +88,7 @@
       (and min max) (gen/fmap str/join (gen/vector gen/char min max))
       min (gen/fmap str/join (gen/vector gen/char min (* 2 min)))
       max (gen/fmap str/join (gen/vector gen/char 0 max))
-      :else gen/string)))
+      :else gen/string-alphanumeric)))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)

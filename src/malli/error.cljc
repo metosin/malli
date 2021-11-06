@@ -249,7 +249,7 @@
                           (let [schema (mu/update-properties schema merge props)]
                             (when-let [m' (error-message {:schema schema} options)] [(conj p l) m'])))
                         (when m [mp m]))]
-        (if (seq p) (recur (pop p) (last p) p' m') (when m [p' m']))))))
+        (if (seq p) (recur (pop p) (last p) p' m') (when m [(mu/path->in schema p') m']))))))
 
 (defn with-error-message
   ([error]

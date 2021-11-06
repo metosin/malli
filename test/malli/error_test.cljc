@@ -528,7 +528,16 @@
            (-> [:map
                 [:a [:enum "a" "b"]]]
                (m/explain {:a nil})
-               (me/humanize {:resolve me/-resolve-root-error}))))))
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
+  (testing "correct paths"
+    (is (= ["should be an integer" "should be an integer" "should be an integer"]
+           (me/humanize
+             (m/explain [:and [:and :int :int :int]] "2")
+             {:resolve me/-resolve-direct-error})
+           (me/humanize
+             (m/explain [:and [:and :int :int :int]] "2")
+             {:resolve me/-resolve-root-error})))))
 
 (deftest limits
   (is (= {:a [["should be an int"]]

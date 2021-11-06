@@ -131,6 +131,7 @@ Will fully replace the old map-syntax at some point.
 
 ### Public API
 
+* fixed `:enum` explain path, [#553](https://github.com/metosin/malli/issues/553)
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
 * fixed `:function` lenses
 * fixed arity error in `m/function-schema`

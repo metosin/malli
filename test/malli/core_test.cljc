@@ -480,7 +480,7 @@
       (is (false? (m/validate schema "abba")))
 
       (is (nil? (m/explain schema 1)))
-      (is (results= {:schema [:enum 1 2], :value 0, :errors [{:path [0], :in [], :schema [:enum 1 2], :value 0}]}
+      (is (results= {:schema [:enum 1 2], :value 0, :errors [{:path [], :in [], :schema [:enum 1 2], :value 0}]}
                     (m/explain [:enum 1 2] 0)))
 
       (is (= 1 (m/parse schema 1)))
@@ -1463,18 +1463,18 @@
                                         [schema {:x "non-x" :y "y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "y"}
-                                          :errors [{:path [:x 0], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
+                                          :errors [{:path [:x], :in [:x], :schema [:enum "x"], :value "non-x"}]}]
 
                                         [schema {:x "x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "x" :y "non-y"}
-                                          :errors [{:path [:y 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
+                                          :errors [{:path [:y], :in [:y], :schema [:enum "y"], :value "non-y"}]}]
 
                                         [schema {:x "non-x" :y "non-y"}
                                          {:schema schema
                                           :value {:x "non-x" :y "non-y"}
-                                          :errors [{:path [:x 0], :in [:x], :schema [:enum "x"], :value "non-x"}
-                                                   {:path [:y 0], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
+                                          :errors [{:path [:x], :in [:x], :schema [:enum "x"], :value "non-x"}
+                                                   {:path [:y], :in [:y], :schema [:enum "y"], :value "non-y"}]}]])}
             expectations (assoc expectations "sequential" (concat (get expectations "list") (get expectations "vector")))]
 
         (doseq [[name data] expectations

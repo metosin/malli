@@ -521,6 +521,13 @@
                 [:foo {:error/fn (fn [{:keys [schema]} _]
                                    (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
                (m/explain {:foo "1"})
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
+  (testing "enum #553"
+    (is (= {:a ["should be either a or b"]}
+           (-> [:map
+                [:a [:enum "a" "b"]]]
+               (m/explain {:a nil})
                (me/humanize {:resolve me/-resolve-root-error}))))))
 
 (deftest limits

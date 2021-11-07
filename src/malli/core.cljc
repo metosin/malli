@@ -202,7 +202,7 @@
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
 
 (defn -function-info [schema]
-  (if (= (type schema) :=>)
+  (when (= (type schema) :=>)
     (let [[input output] (-children schema)
           {:keys [min max]} (-regex-min-max input)]
       (cond-> {:min min
@@ -267,15 +267,15 @@
 ;;
 
 (defn -create-form [type properties children options]
-   (let [has-children (seq children)
-         has-properties (seq properties)
-         properties (when has-properties
-                      (let [registry (:registry properties)]
-                        (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
-     (cond (and has-properties has-children) (reduce conj [type properties] children)
-           has-properties [type properties]
-           has-children (reduce conj [type] children)
-           :else type)))
+  (let [has-children (seq children)
+        has-properties (seq properties)
+        properties (when has-properties
+                     (let [registry (:registry properties)]
+                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+    (cond (and has-properties has-children) (reduce conj [type properties] children)
+          has-properties [type properties]
+          has-children (reduce conj [type] children)
+          :else type)))
 
 (defn -simple-form [parent properties children f options]
   (-create-form (-type parent) properties (-vmap f children) options))
@@ -478,7 +478,7 @@
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
         child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
+        child-transformer (when (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
 (defn -map-transformer [ts]
@@ -507,7 +507,7 @@
                        (if (.hasNext i)
                          (recur (.cons x (t (.next i))))
                          x))))
-     :cljs (fn [x] (into (if x empty) (map t) x))))
+     :cljs (fn [x] (into (when x empty) (map t) x))))
 
 ;;
 ;; ast
@@ -586,7 +586,7 @@
 
 (defn -simple-schema [?props]
   (let [{:keys [type type-properties pred property-pred min max from-ast to-ast]
-         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (if (map? ?props) ?props)]
+         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (when (map? ?props) ?props)]
     ^{:type ::into-schema}
     (reify
       AST
@@ -898,7 +898,7 @@
              (-parent-children-transformer this (list schema) transformer method options))
            (-walk [this walker path options]
              (if (::walk-entry-vals options)
-               (if (-accept walker this path options)
+               (when (-accept walker this path options)
                  (-outer walker this path (list (-inner walker schema path options)) options))
                (-walk schema walker path options)))
            (-properties [_] properties)
@@ -911,7 +911,7 @@
            LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))
-           (-set [_ key value] (if (= 0 key) (-val-schema value properties)))
+           (-set [_ key value] (when (= 0 key) (-val-schema value properties)))
            RefSchema
            (-ref [_])
            (-deref [_] schema)))))))
@@ -1109,7 +1109,7 @@
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -collection-schema [?props]
-  (let [props* (atom (if (map? ?props) ?props))]
+  (let [props* (atom (when (map? ?props) ?props))]
     ^{:type ::into-schema}
     (reify
       AST
@@ -1177,7 +1177,7 @@
                         ->child (-guard collection? ->child)]
                     (-intercepting this-transformer ->child)))
                 (-walk [this walker path options]
-                  (if (-accept walker this path options)
+                  (when (-accept walker this path options)
                     (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
                 (-properties [_] properties)
                 (-options [_] options)
@@ -1497,7 +1497,7 @@
                    ->children (reduce-kv (fn [acc k s] (let [t (-transformer s transformer method options)]
                                                          (cond-> acc t (assoc k t)))) {} @dispatch-map)
                    find (finder ->children)
-                   child-transformer (if (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
+                   child-transformer (when (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
                (-intercepting this-transformer child-transformer)))
            (-walk [this walker path options] (-walk-entries this walker path options))
            (-properties [_] properties)
@@ -1559,7 +1559,7 @@
            (-walk [this walker path options]
              (let [accept (fn [] (-inner walker (-ref) (into path [0 0])
                                          (-update options ::walked-refs #(conj (or % #{}) ref))))]
-               (if (-accept walker this path options)
+               (when (-accept walker this path options)
                  (if (or (not ((-boolean-fn (::walk-refs options false)) ref))
                          (contains? (::walked-refs options) ref))
                    (-outer walker this path [ref] options)
@@ -1620,7 +1620,7 @@
             (-transformer [this transformer method options]
               (-parent-children-transformer this children transformer method options))
             (-walk [this walker path options]
-              (if (-accept walker this path options)
+              (when (-accept walker this path options)
                 (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
                   (-outer walker this path (-inner-indexed walker path children options) options)
                   (-outer walker this path [id] options))))
@@ -2051,7 +2051,7 @@
        ([value]
         (explainer value [] []))
        ([value in acc]
-        (if-let [errors (seq (explainer' value in acc))]
+        (when-let [errors (seq (explainer' value in acc))]
           {:schema schema'
            :value value
            :errors errors}))))))
@@ -2156,8 +2156,8 @@
   ([?schema]
    (entries ?schema nil))
   ([?schema options]
-   (if-let [schema (schema ?schema options)]
-     (if (-entry-schema? schema) (-entries schema)))))
+   (when-let [schema (schema ?schema options)]
+     (when (-entry-schema? schema) (-entries schema)))))
 
 (defn deref
   "Derefs top-level `RefSchema`s or returns original Schema."

@@ -135,7 +135,7 @@
 
 (defn- -message [error props locale options]
   (let [options (or options (m/options (:schema error)))]
-    (if props (or (if-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
+    (when props (or (when-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
                   (-maybe-localized (:error/message props) locale)))))
 
 (defn -error [e] ^::error [e])
@@ -272,7 +272,7 @@
      (let [!likely-misspelling-of (atom #{})
            handle-invalid-value (fn [schema _ value]
                                   (let [dispatch (:dispatch (m/properties schema))]
-                                    (if (keyword? dispatch)
+                                    (when (keyword? dispatch)
                                       (let [value (dispatch value)]
                                         [::misspelled-value value #{value}]))))
            types {::m/extra-key (fn [_ path value] [::misspelled-key (last path) (-> value keys set (or #{}))])
@@ -310,7 +310,7 @@
                                             :or {wrap :message
                                                  resolve -resolve-direct-error}
                                             :as options}]
-   (if errors
+   (when errors
      (reduce
        (fn [acc error]
          (let [[path message] (resolve explanation error options)]

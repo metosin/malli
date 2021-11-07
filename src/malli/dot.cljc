@@ -43,7 +43,7 @@
       (m/walk
         schema
         (fn [schema _ _ _]
-          (when-let [to (if (m/-ref-schema? schema) (m/-ref schema))]
+          (when-let [to (when (m/-ref-schema? schema) (m/-ref schema))]
             (swap! links update from (fnil conj #{}) to)))))
     @links))
 

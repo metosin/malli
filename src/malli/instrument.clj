@@ -14,8 +14,8 @@
   ([] (-strument! nil))
   ([{:keys [mode data filters gen] :or {mode :instrument, data (m/function-schemas)} :as options}]
    (doseq [[n d] data, [s d] d]
-     (if (or (not filters) (some #(% n s d) filters))
-       (if-let [v (-find-var n s)]
+     (when (or (not filters) (some #(% n s d) filters))
+       (when-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (-original v) (deref v))
                              dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $

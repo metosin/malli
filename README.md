@@ -100,7 +100,7 @@ Examples:
 
 Schema intances can be created from vector syntax using `malli.core/schema` and written to it with `malli.core/form`.
 
-### Map Syntax
+### Map Syntax (unreleased)
 
 Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/cljfx/cljfx):
 

@@ -100,7 +100,9 @@ Examples:
 
 Schema intances can be created from vector syntax using `malli.core/schema` and written to it with `malli.core/form`.
 
-### Map Syntax (unreleased)
+### Map Syntax
+
+**NOTE**: will be released with malli 0.7.0
 
 Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/cljfx/cljfx):
 
@@ -1536,7 +1538,9 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ; :malli.core/sci-not-available {:code int?}
 ```
 
-## Map-syntax (unreleased)
+## Schema AST
+
+**NOTE**: will be released with malli 0.7.0
 
 Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
 

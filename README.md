@@ -1536,7 +1536,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ; :malli.core/sci-not-available {:code int?}
 ```
 
-## Map-syntax
+## Map-syntax (unreleased)
 
 Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
 

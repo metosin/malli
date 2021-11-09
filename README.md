@@ -2211,7 +2211,7 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 ## Performance
 
-Malli tries to really, really fast.
+Malli tries to be really, really fast.
 
 ### Validation Perfomance
 

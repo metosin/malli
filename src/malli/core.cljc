@@ -1312,9 +1312,11 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties [child :as children] options]
-      (-check-children! :re properties children 1 1)
+      (when-not class?
+        (-check-children! :re properties children 1 1))
       (let [children (vec children)
-            re (re-pattern child)
+            re (when-not class?
+                 (re-pattern child))
             form (delay (if class? re (-simple-form parent properties children identity options)))
             cache (-create-cache options)]
         ^{:type ::schema}
@@ -1323,7 +1325,11 @@
           (-to-ast [this _] (-to-value-ast this))
           Schema
           (-validator [_]
-            (-safe-pred #(re-find re %)))
+            (-safe-pred (if class?
+                          (fn [v]
+                            (instance? #?(:clj Pattern, :cljs js/RegExp) v))
+                          (fn [v]
+                            (re-find re v)))))
           (-explainer [this path]
             (fn explain [x in acc]
               (try

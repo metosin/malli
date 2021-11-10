@@ -2605,3 +2605,8 @@
   (is (= ["1"] (m/-vmap str (subvec [1 2] 0 1))))
   (is (= ["1"] (m/-vmap str (lazy-seq [1]))))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))
+
+(deftest regexp-class-test
+  (is (nil? (m/schema #?(:clj java.util.regex.Pattern, :cljs js/RegExp))))
+  (is (true? (m/validate #?(:clj java.util.regex.Pattern, :cljs js/RegExp) #"foo")))
+  (is (false? (m/validate #?(:clj java.util.regex.Pattern, :cljs js/RegExp) "foo"))))

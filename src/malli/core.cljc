@@ -1301,7 +1301,7 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn -re-schema [class?]
+(defn -re-schema []
   ^{:type ::into-schema}
   (reify
     AST
@@ -1312,12 +1312,10 @@
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties [child :as children] options]
-      (when-not class?
-        (-check-children! :re properties children 1 1))
+      (-check-children! :re properties children 1 1)
       (let [children (vec children)
-            re (when-not class?
-                 (re-pattern child))
-            form (delay (if class? re (-simple-form parent properties children identity options)))
+            re (re-pattern child)
+            form (delay (-simple-form parent properties children identity options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -1325,11 +1323,7 @@
           (-to-ast [this _] (-to-value-ast this))
           Schema
           (-validator [_]
-            (-safe-pred (if class?
-                          (fn [v]
-                            (instance? #?(:clj Pattern, :cljs js/RegExp) v))
-                          (fn [v]
-                            (re-find re v)))))
+            (-safe-pred #(re-find re %)))
           (-explainer [this path]
             (fn explain [x in acc]
               (try
@@ -2255,7 +2249,7 @@
          (reduce -register-var {}))))
 
 (defn class-schemas []
-  {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})
+  {#?(:clj Pattern, :cljs js/RegExp) (-simple-schema {:pred (-safe-pred #(instance? #?(:clj Pattern, :cljs js/RegExp) %))})})
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
@@ -2361,7 +2355,7 @@
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)
    :multi (-multi-schema)
-   :re (-re-schema false)
+   :re (-re-schema)
    :fn (-fn-schema)
    :ref (-ref-schema)
    :=> (-=>-schema)

@@ -598,6 +598,7 @@
       ;; tuple sizes
       [:map [:x [:tuple :int :int :int]]] {} => {:x ["missing required key"]}
       [:map [:x [:tuple :int :int :int]]] {:x []} => {:x ["invalid tuple size 0, expected 3"]}
+      [:map [:x [:tuple :int :int :int]]] {:x [1, 2]} => {:x ["invalid tuple size 2, expected 3"]}
       [:map [:x [:tuple :int :int :int]]] {:x [1 "2" 3]} => {:x [nil ["should be an integer"]]}
       [:map [:x [:tuple :int :int :int]]] {:x [1 "2" "3"]} => {:x [nil ["should be an integer"] ["should be an integer"]]}
       [:map [:x [:tuple :int [:and :int (f "fails")] :int]]] {:x [1 "2" "3"]} => {:x [nil ["should be an integer" "fails"] ["should be an integer"]]}

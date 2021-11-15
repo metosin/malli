@@ -23,9 +23,9 @@
                                     (and min max) (str "should have between " min " and " max " elements")
                                     min (str "should have at least " min " elements")
                                     max (str "should have at most " max " elements"))))}}
-   ::m/tuple-size {:error/fn {:en (fn [{:keys [schema _value]} _]
+   ::m/tuple-size {:error/fn {:en (fn [{:keys [schema value]} _]
                                     (let [size (count (m/children schema))]
-                                      (str "invalid tuple size " (count _value) ", expected " size)))}}
+                                      (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}

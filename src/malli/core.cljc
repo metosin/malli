@@ -1614,7 +1614,7 @@
               (if id (-ast {:type type, :value id} (-properties this) (-options this)) (-to-child-ast this)))
             Schema
             (-validator [_] (-validator child))
-            (-explainer [_ path] (-explainer child path))
+            (-explainer [_ path] (-explainer child (conj path 0)))
             (-parser [_] (-parser child))
             (-unparser [_] (-unparser child))
             (-transformer [this transformer method options]

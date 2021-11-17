@@ -378,8 +378,8 @@
                               [:x [:vector
                                    [:set
                                     [:sequential
-                                     [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]])
-                   [:x 0 0 0 1 :y 0])))
+                                     [:tuple int? [:map [:y [:maybe [:schema [::m/schema boolean?]]]]]]]]]]])
+                   [:x 0 0 0 1 :y 0 0 0])))
   (is (mu/equals (mu/get-in
                    [:map
                     [:x [:vector

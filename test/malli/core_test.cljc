@@ -42,13 +42,13 @@
 
 (deftest parse-entries-test
   (let [entry-parser (m/-create-entry-parser
-                      [[:x int?]
-                       ::x
-                       "x"
-                       [::y {:optional true}]
-                       [:y {:optional true, :title "boolean"} boolean?]]
-                      {:naked-keys true}
-                      {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
+                       [[:x int?]
+                        ::x
+                        "x"
+                        [::y {:optional true}]
+                        [:y {:optional true, :title "boolean"} boolean?]]
+                       {:naked-keys true}
+                       {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
     (testing "forms"
       (is (= [[:x 'int?]
               ::x
@@ -565,7 +565,7 @@
         (is (results= {:schema ConsCell
                        :value [1 [2]]
                        :errors [{:in [1]
-                                 :path [0 1 0 0]
+                                 :path [0 0 0 1 0 0]
                                  :schema (mu/get-in ConsCell [0 0 0])
                                  :type :malli.core/tuple-size
                                  :value [2]}]}
@@ -634,6 +634,13 @@
                ::ping]
               ["ping" ["ping" nil]])))))
 
+  (testing "schema"
+    (is (form= :int
+               (as-> [:schema :int] $
+                     (m/explain $ "1")
+                     (let [{:keys [schema] [{:keys [path]}] :errors} $]
+                       (mu/get-in schema path))))))
+
   (testing "malli.core/schema"
     (is (= [::m/schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
             ::cons]
@@ -662,9 +669,9 @@
       (is (nil? (m/explain schema 1)))
       (is (results= {:schema schema
                      :value -1
-                     :errors [{:path [0 0] :in [] :schema pos-int?, :value -1}
-                              {:path [0 1], :in [], :schema pos-int?, :value -1}
-                              {:path [0 2], :in [], :schema pos-int?, :value -1}]}
+                     :errors [{:path [0 0 0 0 0 0] :in [] :schema pos-int?, :value -1}
+                              {:path [0 1 0 0 0], :in [], :schema pos-int?, :value -1}
+                              {:path [0 2 0 0], :in [], :schema pos-int?, :value -1}]}
 
                     (m/explain schema -1)))
 

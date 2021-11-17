@@ -530,6 +530,12 @@
                (m/explain {:a nil})
                (me/humanize {:resolve me/-resolve-root-error})))))
 
+  (testing "find over non-maps"
+    (is (= [["should be an integer"]]
+           (-> [:sequential [:and :int]]
+               (m/explain [1 "2"])
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
   (testing "correct paths"
     (is (= ["should be an integer" "should be an integer" "should be an integer"]
            (me/humanize

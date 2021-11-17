@@ -245,9 +245,12 @@
   (let [options (assoc options :unknown false)]
     (loop [p path, l nil, mp path, m (error-message error options)]
       (let [[p' m'] (or (when-let [m' (error-message {:schema (mu/get-in schema p)} options)] [p m'])
-                        (when-let [[_ props schema] (and l (mu/find (mu/get-in schema p) l))]
-                          (let [schema (mu/update-properties schema merge props)]
-                            (when-let [m' (error-message {:schema schema} options)] [(conj p l) m'])))
+                        (let [res (and l (mu/find (mu/get-in schema p) l))]
+                          (when (vector? res)
+                            (let [[_ props schema] res
+                                  schema (mu/update-properties schema merge props)
+                                  message (error-message {:schema schema} options)]
+                              (when message [(conj p l) message]))))
                         (when m [mp m]))]
         (if (seq p) (recur (pop p) (last p) p' m') (when m [(mu/path->in schema p') m']))))))
 

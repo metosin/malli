@@ -271,7 +271,7 @@
   ([?schema]
    (generator ?schema nil))
   ([?schema options]
-   (-create (m/schema ?schema options) options)))
+   (m/-cached (m/schema ?schema options) :generator #(-create % options))))
 
 (defn generate
   ([?gen-or-schema]

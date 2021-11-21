@@ -131,6 +131,7 @@ Will fully replace the old map-syntax at some point.
 
 ### Public API
 
+* `nil` is a valid default with `mt/default-value-transformer` [#576](https://github.com/metosin/malli/issues/576)
 * fixed `:schema` explain path, [#573](https://github.com/metosin/malli/issues/573)
 * fixed `:enum` explain path, [#553](https://github.com/metosin/malli/issues/553)
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)

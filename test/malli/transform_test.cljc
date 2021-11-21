@@ -793,7 +793,7 @@
             :name ""
             :weight nil
             :address {:street ""
-                      :lonlat [nil nil]}}
+                      :lonlat nil}}
            (m/decode
              [:map
               [:age int?]
@@ -805,7 +805,7 @@
              nil
              (mt/default-value-transformer
                {:defaults {:map (constantly {})
-                           :tuple (constantly [])
+                           :tuple (constantly nil)
                            'string? (constantly "")
                            'int? (constantly nil)
                            'double? (constantly nil)}}))))))

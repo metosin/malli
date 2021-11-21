@@ -13,7 +13,7 @@ Data-driven Schemas for Clojure/Script.
 
 - Schema definitions as data
 - Both [Vector](#vector-syntax) and [Map](#map-syntax) -syntax
-- [Validation](#usage) and [Value Transformation](#value-transformation)
+- [Validation](#validation) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values
@@ -98,7 +98,26 @@ Examples:
 [:=> [:cat :int] :int]
 ```
 
-Schema intances can be created from vector syntax using `malli.core/schema` and written to it with `malli.core/form`.
+Usage:
+
+```clj
+(require '[malli.core :as m])
+
+(def non-empty-string
+  (m/schema [:string {:min 1}]))
+
+(m/schema? non-empty-string)
+; => true
+
+(m/validate non-empty-string "")
+; => false
+
+(m/validate non-empty-string "kikka")
+; => true
+
+(m/form non-empty-string)
+; => [:string {:min 1}]
+```
 
 ### Map Syntax
 
@@ -126,28 +145,43 @@ Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/c
  :output :int}           
 ```
 
-Schema intances can be created from map syntax using `malli.core/from-ast` and written to it with `malli.core/to-ast`.
+Usage:
+
+```clj
+(def non-empty-string
+  (m/from-ast {:type :string
+               :properties {:min 1}}))
+
+(m/schema? non-empty-string)
+; => true
+
+(m/validate non-empty-string "")
+; => false
+
+(m/validate non-empty-string "kikka")
+; => true
+
+(m/ast non-empty-string)
+; => {:type :string,
+;     :properties {:min 1}}
+```
+
+Map-syntax is also called the [Schema AST](#schema-ast).
 
 ### Why Two Syntaxes?
 
-We have found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Instantiating schemas using the Schema AST can be orders of magnitude faster.
+We have found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Instantiating schemas using the Schema AST can be much faster.
 
-In future, there might be even more syntaxes.
+## Validation
 
-## Usage
-
-Defining and validating Schemas:
+Validating values against a schema:
 
 ```clj
-(require '[malli.core :as m])
-
-(m/schema? (m/schema :int))
-; => true
-
+;; with schema instances
 (m/validate (m/schema :int) 1)
 ; => true
 
-;; coerced automatically into schema
+;; with vector syntax
 (m/validate :int 1)
 ; => true
 
@@ -160,7 +194,7 @@ Defining and validating Schemas:
 (m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
 ; => true
 
-;; optimized (pure) validation function
+;; optimized (pure) validation function for best performance
 (def valid?
   (m/validator
     [:map
@@ -1542,7 +1576,9 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 **NOTE**: will be released with malli 0.7.0
 
-Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
+Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. 
+
+**NOTE**: For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
 
 ```clj
 (def ?schema

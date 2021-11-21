@@ -191,7 +191,7 @@
                 (apply -comp fs)
                 (fn [x] (-> x f3 f2 f1))))]))
 
-(defn -update [m k f] (assoc m k (f (get m k))))
+(defn -update [x k f] (assoc x k (f (get x k))))
 
 (defn -equals [x y] (or (identical? x y) (= x y)))
 
@@ -491,15 +491,7 @@
                                (assoc m k (t (val entry)))
                                m)) x ts))))
 
-(defn -tuple-transformer [ts]
-  #?(:clj  (let [tl (LinkedList. ^Collection (-vmap (fn [[k v]] (MapEntry/create k v)) ts))]
-             (fn [x] (let [i (.iterator ^Iterable tl)]
-                       (loop [x ^IPersistentVector x]
-                         (if (.hasNext i)
-                           (let [e ^MapEntry (.next i), k (.key e)]
-                             (recur (.assoc x k ((.val e) (.nth x k)))))
-                           x)))))
-     :cljs (fn [x] (reduce-kv -update x ts))))
+(defn -tuple-transformer [ts] (fn [x] (reduce-kv -update x ts)))
 
 (defn -collection-transformer [t empty]
   #?(:clj  (fn [x] (let [i (.iterator ^Iterable x)]

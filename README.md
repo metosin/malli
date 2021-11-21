@@ -2250,7 +2250,7 @@ Malli tries to be really, really fast.
 
 ### Validation Perfomance
 
-Usually as fast (or faster) than idiomatic Clojure. 
+Usually as fast (or faster) as idiomatic Clojure. 
 
 ```clj
 (require '[criterium.core :as cc])
@@ -2273,7 +2273,7 @@ Usually as fast (or faster) than idiomatic Clojure.
   (cc/quick-bench (valid? valid)))
 ```
 
-With Clojure Spec and Plumatic Schema:
+Same with Clojure Spec and Plumatic Schema:
 
 ```clj
 (require '[clojure.spec.alpha :as spec])
@@ -2299,7 +2299,7 @@ With Clojure Spec and Plumatic Schema:
 
 ### Transformation Performance
 
-Usually much faster than idiomatic Clojure.
+Usually faster than idiomatic Clojure.
 
 ```clj
 (def data {:x "true", :y "1", :z "kikka"})
@@ -2323,7 +2323,7 @@ Usually much faster than idiomatic Clojure.
   (cc/quick-bench (transform data)))
 ```
 
-With Clojure Spec and Plumatic Schema:
+Same with Clojure Spec and Plumatic Schema:
 
 ```clj
 (require '[spec-tools.core :as st])
@@ -2362,6 +2362,9 @@ The transformation engine is smart enough to just transform parts of the schema 
                 [:country [:enum "finland" "poland"]]]]]
     (mt/json-transformer)))
 
+(= identity json->user)
+; => true
+
 ;; 5ns
 (cc/quick-bench 
   (json->user 
@@ -2370,9 +2373,6 @@ The transformation engine is smart enough to just transform parts of the schema 
      :address {:street "kotikatu"
                :rural true
                :country "poland"}}))
-
-(= identity json->user)
-; => true
 ```
 
 ### Parsing performance

@@ -7,7 +7,7 @@
 
 Data-driven Schemas for Clojure/Script.
 
-**STATUS**: [*alpha*](#alpha)
+**STATUS**: well matured [*alpha*](#alpha)
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 

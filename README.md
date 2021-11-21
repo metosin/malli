@@ -122,7 +122,7 @@ Usage:
 
 **NOTE**: will be released with malli 0.7.0
 
-Alternative map-syntax, the Schema AST, similar to [clj-fx](https://github.com/cljfx/cljfx):
+Alternative map-syntax, similar to [clj-fx](https://github.com/cljfx/cljfx):
 
 ```clj
 ;; just a type (String)

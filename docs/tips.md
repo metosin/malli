@@ -418,7 +418,7 @@ Here are a few examples of valid and invalid data:
 ;; includes transformation guide to and from a string domain
 (def schema [:multi {:dispatch first
                      :decode/string #(str/split % #"/")
-                     :encode/string #(str/join % "/")}
+                     :encode/string #(str/join "/" %)}
              ["domain" [:tuple [:= "domain"] domain]]
              ["ip" [:tuple [:= "ip"] ipv4]]])
 

@@ -393,7 +393,7 @@ In action:
 ;               :message "should be an integer"}]]}}
 ```
 
-## Parsing strings
+## Dependent String Schemas
 
 A schema for a string made of two components `a` and `b` separated by a `/` where the schema of `b` 
 depends on the value of `a`. The valid values of a are known in advance.

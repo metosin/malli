@@ -392,3 +392,52 @@ In action:
 ; :z {:a [nil [{:value "2"
 ;               :message "should be an integer"}]]}}
 ```
+
+## Parsing strings
+
+A schema for a string made of two components `a` and `b` separated by a `/` where the schema of `b` 
+depends on the value of `a`. The valid values of a are known in advance.
+
+For instance:
+* When `a` is "ip" , `b` should be a valid ip
+* When `a` is "domain", `b` should be a valid domain
+
+Here are a few examples of valid and invalid data:
+* `"ip/127.0.0.1"` is valid
+* `"ip/111"` is not valid
+* `"domain/cnn.com"` is valid
+* `"domain/aa"` is not valid
+* `"kika/aaa"` is not valid
+
+```clj
+(def domain #"[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+")
+
+(def ipv4 #"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+
+;; a multi schema describing the values as a tuple
+;; includes transformation guide to and from a string domain
+(def schema [:multi {:dispatch first
+                     :decode/string #(str/split % #"/")
+                     :encode/string #(str/join % "/")}
+             ["domain" [:tuple [:= "domain"] domain]]
+             ["ip" [:tuple [:= "ip"] ipv4]]])
+
+;; define workers
+(def validate (m/validator schema))
+(def decode (m/decoder schema mt/string-transformer))
+(def encode (m/encoder schema mt/string-transformer))
+
+(decode "ip/127.0.0.1")
+; => ["ip" "127.0.0.1"]
+
+(-> "ip/127.0.0.1" (decode) (encode))
+; => "ip/127.0.0.1"
+
+(map (comp validate decode)
+     ["ip/127.0.0.1"
+      "ip/111"
+      "domain/cnn.com"
+      "domain/aa"
+      "kika/aaa"])
+; => (true false true false false)
+```

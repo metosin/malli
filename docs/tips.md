@@ -441,3 +441,18 @@ Here are a few examples of valid and invalid data:
       "kika/aaa"])
 ; => (true false true false false)
 ```
+
+It is also possible to use a custom transformer instead of `string-transformer` (for example, in order to avoid `string-transformer` to perform additional encoding and decoding):
+
+```
+(def schema [:multi {:dispatch first
+                     :decode/my-custom #(str/split % #"/")
+                     :encode/my-custom #(str/join "/" %)}
+             ["domain" [:tuple [:= "domain"] domain]]
+             ["ip" [:tuple [:= "ip"] ipv4]]])
+
+(def decode (m/decoder schema (mt/transformer {:name :my-custom}))
+
+(decode "ip/127.0.0.1")
+; => ["ip" "127.0.0.1"]
+

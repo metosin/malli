@@ -634,6 +634,14 @@
                ::ping]
               ["ping" ["ping" nil]])))))
 
+  (testing "::m/schema ast"
+    (is (= :int
+           (-> [::m/schema :int]
+               (m/schema)
+               (m/ast)
+               (m/from-ast)
+               (m/form)))))
+
   (testing "schema"
     (is (form= :int
                (as-> [:schema :int] $

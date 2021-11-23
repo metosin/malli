@@ -543,7 +543,30 @@
              {:resolve me/-resolve-direct-error})
            (me/humanize
              (m/explain [:and [:and :int :int :int]] "2")
-             {:resolve me/-resolve-root-error})))))
+             {:resolve me/-resolve-root-error}))))
+
+  (testing "collecting all properties"
+    (are [schema expected]
+      (let [{:keys [errors] :as error} (m/explain schema {:foo "1"})]
+        (is (= expected (me/-resolve-root-error error errors nil))))
+
+      ;; direct
+      [:map [:foo [:int {:error/message "entry-failure" ::level :warn}]]]
+      [[:foo]
+       "entry-failure"
+       {:error/message "entry-failure", ::level :warn}]
+
+      ;; entry
+      [:map [:foo {:error/message "entry-failure" ::level :warn} :int]]
+      [[:foo]
+       "entry-failure"
+       {:error/message "entry-failure", ::level :warn}]
+
+      ;; one up
+      [:map {:error/message "entry-failure" ::level :warn} [:foo :int]]
+      [[]
+       "entry-failure"
+       {:error/message "entry-failure", ::level :warn}])))
 
 (deftest limits
   (is (= {:a [["should be an int"]]

@@ -1603,7 +1603,10 @@
           (reify
             AST
             (-to-ast [this _]
-              (if id (-ast {:type type, :value id} (-properties this) (-options this)) (-to-child-ast this)))
+              (cond
+                id (-ast {:type type, :value id} (-properties this) (-options this))
+                raw (-to-value-ast this)
+                :else (-to-child-ast this)))
             Schema
             (-validator [_] (-validator child))
             (-explainer [_ path] (-explainer child (conj path 0)))

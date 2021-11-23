@@ -548,13 +548,13 @@
   (testing "collecting all properties"
     (are [schema expected]
       (let [{:keys [errors] :as error} (m/explain schema {:foo "1"})]
-        (is (= expected (me/-resolve-root-error error errors nil))))
+        (is (= [expected] (map #(me/-resolve-root-error error % nil) errors))))
 
       ;; direct
-      [:map [:foo [:int {:error/message "entry-failure" ::level :warn}]]]
+      [:map [:foo [:int {:error/message "direct-failure" ::level :warn}]]]
       [[:foo]
-       "entry-failure"
-       {:error/message "entry-failure", ::level :warn}]
+       "direct-failure"
+       {:error/message "direct-failure", ::level :warn}]
 
       ;; entry
       [:map [:foo {:error/message "entry-failure" ::level :warn} :int]]
@@ -563,10 +563,10 @@
        {:error/message "entry-failure", ::level :warn}]
 
       ;; one up
-      [:map {:error/message "entry-failure" ::level :warn} [:foo :int]]
+      [:map {:error/message "map-failure" ::level :warn} [:foo :int]]
       [[]
-       "entry-failure"
-       {:error/message "entry-failure", ::level :warn}])))
+       "map-failure"
+       {:error/message "map-failure", ::level :warn}])))
 
 (deftest limits
   (is (= {:a [["should be an int"]]

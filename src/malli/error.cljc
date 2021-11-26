@@ -136,7 +136,7 @@
 (defn- -message [error props locale options]
   (let [options (or options (m/options (:schema error)))]
     (when props (or (when-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
-                  (-maybe-localized (:error/message props) locale)))))
+                    (-maybe-localized (:error/message props) locale)))))
 
 (defn -error [e] ^::error [e])
 (defn -error? [x] (-> x meta ::error))
@@ -243,16 +243,17 @@
 
 (defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
   (let [options (assoc options :unknown false)]
-    (loop [p path, l nil, mp path, m (error-message error options)]
-      (let [[p' m'] (or (when-let [m' (error-message {:schema (mu/get-in schema p)} options)] [p m'])
-                        (let [res (and l (mu/find (mu/get-in schema p) l))]
-                          (when (vector? res)
-                            (let [[_ props schema] res
-                                  schema (mu/update-properties schema merge props)
-                                  message (error-message {:schema schema} options)]
-                              (when message [(conj p l) message]))))
-                        (when m [mp m]))]
-        (if (seq p) (recur (pop p) (last p) p' m') (when m [(mu/path->in schema p') m']))))))
+    (loop [path path, l nil, mp path, p (m/properties (:schema error)), m (error-message error options)]
+      (let [[path' m' p'] (or (let [schema (mu/get-in schema path)]
+                                (when-let [m' (error-message {:schema schema} options)] [path m' (m/properties schema)]))
+                              (let [res (and l (mu/find (mu/get-in schema path) l))]
+                                (when (vector? res)
+                                  (let [[_ props schema] res
+                                        schema (mu/update-properties schema merge props)
+                                        message (error-message {:schema schema} options)]
+                                    (when message [(conj path l) message (m/properties schema)]))))
+                              (when m [mp m p]))]
+        (if (seq path) (recur (pop path) (last path) path' p' m') (when m [(mu/path->in schema path') m' p']))))))
 
 (defn with-error-message
   ([error]

@@ -131,6 +131,9 @@ Will fully replace the old map-syntax at some point.
 
 ### Public API
 
+* **BREAKING**: `m/explain` `:errors` are plain maps, not `Error` records.
+* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
+* **BREAKING**: strings generate alphanumeric chars by default
 * `nil` is a valid default with `mt/default-value-transformer` [#576](https://github.com/metosin/malli/issues/576)
 * fixed `:schema` explain path, [#573](https://github.com/metosin/malli/issues/573)
 * fixed `:enum` explain path, [#553](https://github.com/metosin/malli/issues/553)
@@ -140,8 +143,6 @@ Will fully replace the old map-syntax at some point.
 * add localized error messages for all type-schemas
 * support for Lazy EntrySchema parsing
 * `empty?` Schema does not throw exceptions
-* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
-* **BREAKING**: strings generate alphanumeric chars by default
 
 ### Extender API
 

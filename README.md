@@ -1868,7 +1868,7 @@ You can also build content-dependent schemas by using a callback function of `pr
 
 ## Schema Registry
 
-Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (schema AST, `Schema` or `IntoSchema` instance).
+Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (`Schema`, `IntoSchema` or vector-syntax schema). `Map`s can also be used as a registry.
 
 Custom `Registry` can be passed into all/most malli public APIs via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
 
@@ -1882,35 +1882,11 @@ Custom `Registry` can be passed into all/most malli public APIs via the optional
 ; => true
 ```
 
-The default immutable registry is merged from the following parts, enabling easy re-composition of custom schema sets:
-
-#### `malli.core/predicate-schemas`
-
-Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?`, `bytes?`, `ifn?` and `fn?`.
-
-#### `malli.core/class-schemas`
-
-Class-based schemas, contains `java.util.regex.Pattern` & `js/RegExp`.
-
-#### `malli.core/comparator-schemas`
-
-Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
-
-#### `malli.core/type-schemas`
-
-Type-like schemas: `:any`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
-
-### `malli.core/sequence-schemas`
-
-Sequence/regex-schemas: `:+`, `:*`, `:?`, `:repeat`, `:cat`, `:alt`, `:catn`, `:altn`.
-
-#### `malli.core/base-schemas`
-
-Contains `:and`, `:or`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:tuple`, `:enum`, `:maybe`, `:multi`, `:re` and `:fn`.
+The default immutable registry is merged from multiple parts, enabling easy re-composition of custom schema sets. See [built-in schemas](#built-in-schemas) for list of all Schemas.
 
 ### Custom registry
 
-Example to create a custom registry without the default core predicates and with `:bool` and `:pos-int` Schemas:
+Here's an example to create a custom registry without the default core predicates and with `:neg-int` and `:pos-int` Schemas:
 
 ```clj
 (def registry
@@ -1918,17 +1894,17 @@ Example to create a custom registry without the default core predicates and with
     (m/class-schemas)
     (m/comparator-schemas)
     (m/base-schemas)
-    {:bool (m/-simple-schema {:type :bool, :pred boolean?})
+    {:neg-int (m/-simple-schema {:type :neg-int, :pred neg-int?})
      :pos-int (m/-simple-schema {:type :pos-int, :pred pos-int?})}))
 
-(m/validate [:or :bool :pos-int] 'kikka {:registry registry})
+(m/validate [:or :pos-int :neg-int] 'kikka {:registry registry})
 ; => false
 
-(m/validate [:or :bool :pos-int] 123 {:registry registry})
+(m/validate [:or :pos-int :neg-int] 123 {:registry registry})
 ; => true
 ```
 
-Predicate Schemas don't work anymore:
+We did not register normal predicate schemas:
 
 ```clj
 (m/validate pos-int? 123 {:registry registry})
@@ -1963,23 +1939,66 @@ See also [Recursive Schemas](#recursive-schemas).
 
 ### Changing the default registry
 
-Using custom registries via the `:registry` option is a simple solution, but this needs to be done for all public API calls. Also, with ClojureScript, the large (100+ schemas) default registry is not subject to any Dead Code Elimination (DCE), even if the schemas are not used in the application.
+Passing in custom options to all public methods is a lot of boilerplate. For the lazy, there is an easier way - we can swap the (global) default registry:
 
-Malli allows the default registry to be replaced, with the following compiler/jvm bootstrap:
+```clj
+(require '[malli.registy :as mr])
+
+;; the default registry
+(-> m/default-registry (mr/schemas) (count)) 
+;=> 140
+
+;; global side-effects! free since 0.7.0!
+(mr/set-default-registry!
+  {:string (m/-string-schema)
+   :maybe (m/-maybe-schema)
+   :map (m/-map-schema)})
+   
+(-> m/default-registry (mr/schemas) (count))
+; => 3
+   
+(m/validate
+  [:map [:maybe [:maybe :string]]]
+  {:maybe "sheep"})
+; => true
+
+(m/validate :int 42)
+; =throws=> :malli.core/invalid-schema {:schema :int}
+```
+
+**NOTE**: `mr/set-default-registry!` is an imperative api with global side-effects. Easy, but not simple. If you want to disable the api, you can define the following compiler/jvm bootstrap:
+* cljs: `:closure-defines {malli.registry/mode "strict"}`
+* clj: `:jvm-opts ["-Dmalli.registry/mode=strict"]`
+
+### DCE and Schemas
+
+The default schema registry is defined as a Var, so all Schema implementation (100+) are dragged in. For ClojureScript, this means the schemas implementations are not removed via Dead Code Elimination (DCE), resulting a large (37KB, zipped) js-bundle.
+
+Malli allows the default registry to initialized with empty schemas, using the following compiler/jvm bootstrap:
    * cljs: `:closure-defines {malli.registry/type "custom"}`
    * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
 
-It changes the default registry to an empty one, which can be changed using `malli.registry/set-default-registy!`. Empty default registry enables DCE for all unused schema implementations.
+```clj
+;; with the flag set on
+(-> m/default-registry (mr/schemas) (count))
+; => 0
+```
 
-Malli supports multiple types of registries.
+With this, you can register just what you need and rest are DCE'd. The previous example results in just a 3KB gzip bundle.
+
+## Registry implemenations
+
+Malli supports multiple type of registries.
+
+Since 0.7.0, one can set up the default re
 
 ### Immutable registry
+
+Just just a `Map`.
 
 ```clj
 (require '[malli.registry :as mr])
 
-;; - cljs: :closure-defines {malli.registry/type "custom"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   {:string (m/-string-schema)
    :maybe (m/-maybe-schema)
@@ -1989,8 +2008,6 @@ Malli supports multiple types of registries.
   [:map [:maybe [:maybe :string]]]
   {:maybe "sheep"})
 ; => true
-
-;; gzipped malli.core size as js down from 12Kb -> 1.2Kb
 ```
 
 ### Mutable registry
@@ -2008,8 +2025,6 @@ Using a custom registry atom:
 (defn register! [type ?schema]
   (swap! registry* assoc type ?schema))
 
-;; - cljs: :closure-defines {malli.registry/type "custom"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   (mr/mutable-registry registry*))
 
@@ -2033,8 +2048,6 @@ The mutable registry can also be passed in as an explicit option:
 If you know what you are doing, you can also use [dynamic scope](https://stuartsierra.com/2013/03/29/perils-of-dynamic-scope) to pass in default schema registry:
 
 ```clj
-;; - cljs: :closure-defines {malli.registry/type "custom"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   (mr/dynamic-registry))
 
@@ -2048,8 +2061,7 @@ If you know what you are doing, you can also use [dynamic scope](https://stuarts
 
 ### Lazy Registries
 
-You can provide schemas at runtime using `mr/lazy-registry` - it takes a local registry
-and a provider function of `type registry -> schema` as arguments:
+You can provide schemas at runtime using `mr/lazy-registry` - it takes a local registry and a provider function of `type registry -> schema` as arguments:
 
 ```clj
 (def registry
@@ -2092,20 +2104,17 @@ and a provider function of `type registry -> schema` as arguments:
 
 ### Composite Registry
 
-Registries can be composed:
+Registries can be composed, a full example:
 
 ```clj
 (require '[malli.core :as m])
 (require '[malli.registry :as mr])
 
-;; bring your own evil
 (def registry (atom {}))
 
 (defn register! [type schema]
   (swap! registry assoc type schema))
 
-;; - cljs: :closure-defines {malli.registry/type "custom"}
-;; -  clj: :jvm-opts ["-Dmalli.registry/type=custom"]
 (mr/set-default-registry!
   ;; linear search
   (mr/composite-registry
@@ -2396,6 +2405,36 @@ The transformation engine is smart enough to just transform parts of the schema 
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 ```
+
+## Built-in Schemas
+
+#### `malli.core/predicate-schemas`
+
+Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?`, `bytes?`, `ifn?` and `fn?`.
+
+#### `malli.core/class-schemas`
+
+Class-based schemas, contains `java.util.regex.Pattern` & `js/RegExp`.
+
+#### `malli.core/comparator-schemas`
+
+Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
+
+#### `malli.core/type-schemas`
+
+Type-like schemas: `:any`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:symbol`, `:qualified-symbol`, `:qualified-keyword` and `:uuid`.
+
+### `malli.core/sequence-schemas`
+
+Sequence/regex-schemas: `:+`, `:*`, `:?`, `:repeat`, `:cat`, `:alt`, `:catn`, `:altn`.
+
+### `malli.core/base-schemas`
+
+Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:enum`, `:maybe`, `:tuple`, `:multi`, `:re`, `:fn`, `:ref`, `:=>`, `:function` and `:schema`.
+
+### `malli.util/schemas`
+
+`:merge`, `:union` and `:select-keys`.
 
 ## Links (and thanks)
 

@@ -2360,12 +2360,13 @@
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
-  (mr/registry (cond (identical? mr/type "default") (mr/fast-registry (default-schemas))
-                     (identical? mr/type "custom") (mr/custom-default-registry)
-                     :else (-fail! ::invalid-registry.type {:type mr/type}))))
+  (let [strict (identical? mr/mode "strict")
+        registry (mr/fast-registry (if (identical? mr/type "custom") {} (default-schemas)))]
+    (when-not strict (mr/set-default-registry! registry))
+    (mr/registry (if strict registry (mr/custom-default-registry)))))
 
 ;;
-;; function schemas (alpha, subject to change)
+;; function schemas
 ;;
 
 (defonce ^:private -function-schemas* (atom {}))

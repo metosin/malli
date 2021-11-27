@@ -1990,8 +1990,6 @@ With this, you can register just what you need and rest are DCE'd. The previous 
 
 Malli supports multiple type of registries.
 
-Since 0.7.0, one can set up the default re
-
 ### Immutable registry
 
 Just just a `Map`.

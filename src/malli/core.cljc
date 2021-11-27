@@ -8,7 +8,6 @@
             [clojure.core :as c])
   #?(:clj (:import (java.util.regex Pattern)
                    (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
-                   (malli.impl.util SchemaError)
                    (java.util.concurrent.atomic AtomicReference)
                    (java.util Collection LinkedList))))
 
@@ -124,7 +123,6 @@
 
   (-regex-min-max [_] {:min 1, :max 1}))
 
-#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
 

@@ -20,8 +20,7 @@
                                              (update :schema m/form)
                                              (update :type (fnil identity nil))
                                              (update :message (fnil identity nil))
-                                             (dissoc :check)
-                                             (miu/map->SchemaError)))))))
+                                             (dissoc :check)))))))
 
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
@@ -893,7 +892,7 @@
       (is (results= {:schema schema
                      :value {:y "invalid" :z "kikka"}
                      :errors
-                     [{:path [:x], :in [:x], :schema schema, :type ::m/missing-key}
+                     [{:path [:x], :in [:x], :schema schema, :value nil, :type ::m/missing-key}
                       {:path [:y], :in [:y], :schema int?, :value "invalid"}]}
                     (m/explain schema {:y "invalid" :z "kikka"})))
 
@@ -903,6 +902,7 @@
                               {:path [:z],
                                :in [:z],
                                :schema schema,
+                               :value nil,
                                :type :malli.core/missing-key}]}
                     (m/explain schema {:x "invalid"})))
 
@@ -1043,10 +1043,12 @@
                      :errors [{:path [:human :name]
                                :in [:name]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
+                               :value nil
                                :type :malli.core/missing-key}
                               {:path [:human :address]
                                :in [:address]
                                :schema [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]
+                               :value nil
                                :type :malli.core/missing-key}]}
                     (m/explain schema invalid2)))
 

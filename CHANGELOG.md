@@ -129,11 +129,35 @@ New optimized map-syntax to super-fast schema creation, see [README](README.md#m
 
 Will fully replace the old map-syntax at some point.
 
+## Swappable default registry
+
+No need to play with Compiler options or JVM properties to swap the default registry (only if you want to get DCE on CLJS with small set of schemas). Can be disabled with new `malli.registry/mode=strict` option.
+
+```clj
+(require '[malli.core :as m]
+         '[malli.util :as mu]
+         '[malli.registry :as mr]
+         '[malli.generator :as mg])
+
+;; look ma, just works
+(mr/set-default-registry!
+  (mr/composite-registry
+    (m/default-schemas)
+    (mu/schemas)))
+
+(mg/generate
+  [:merge
+   [:map [:x :int]]
+   [:map [:y :int]]])
+; => {:x 0, :y 92}
+```
+
 ### Public API
 
 * **BREAKING**: `m/explain` `:errors` are plain maps, not `Error` records.
 * **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
 * **BREAKING**: strings generate alphanumeric chars by default
+* configure default registry in less invasive manner, [#488](https://github.com/metosin/malli/issues/488)
 * `nil` is a valid default with `mt/default-value-transformer` [#576](https://github.com/metosin/malli/issues/576)
 * fixed `:schema` explain path, [#573](https://github.com/metosin/malli/issues/573)
 * fixed `:enum` explain path, [#553](https://github.com/metosin/malli/issues/553)

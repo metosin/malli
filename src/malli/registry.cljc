@@ -42,13 +42,13 @@
 (defn set-default-registry! [?registry]
   (if-not (identical? mode "strict")
     (reset! registry* (registry ?registry))
-    (throw (ex-info "can't set default registry, invalid mode" {:mode mode, :type type})))
+    (throw (ex-info "can't set default registry, invalid mode" {:mode mode, :type type}))))
 
-  (defn ^:no-doc custom-default-registry []
-    (reify
-      Registry
-      (-schema [_ type] (-schema @registry* type))
-      (-schemas [_] (-schemas @registry*)))))
+(defn ^:no-doc custom-default-registry []
+  (reify
+    Registry
+    (-schema [_ type] (-schema @registry* type))
+    (-schemas [_] (-schemas @registry*))))
 
 (defn composite-registry [& ?registries]
   (let [registries (mapv registry ?registries)]

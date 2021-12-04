@@ -2262,6 +2262,8 @@ Usually as fast (or faster) as idiomatic Clojure.
 ```clj
 (require '[criterium.core :as cc])
 
+(def valid {:x true, :y 1, :z "zorro"})
+
 ;; idomatic clojure (54ns)
 (let [valid? (fn [{:keys [x y z]}]
                (and (boolean? x)
@@ -2270,12 +2272,14 @@ Usually as fast (or faster) as idiomatic Clojure.
   (assert (valid? valid))
   (cc/quick-bench (valid? valid)))
 
+(require '[malli.core :as m])
+
 ;; malli (39ns)
 (let [valid? (m/validator
                [:map
                 [:x :boolean]
-                [:y {:optional true} int?]
-                [:z string?]])]
+                [:y {:optional true} :int]
+                [:z :string]])]
   (assert (valid? valid))
   (cc/quick-bench (valid? valid)))
 ```

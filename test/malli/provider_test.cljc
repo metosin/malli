@@ -18,6 +18,10 @@
    [[:vector [:sequential [:set int?]]] [[(list #{1})]]]
    [[:vector any?] [[]]]
 
+   [[:maybe int?] [1 nil 2 3]]
+   [[:maybe some?] [1 nil 2 "3"]]
+   [[:or [:map [:x int?]] :nil string?] [{:x 1} nil "1"]]
+
    [[:map
      [:id string?]
      [:tags [:set keyword?]]

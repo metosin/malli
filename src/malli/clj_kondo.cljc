@@ -114,9 +114,15 @@
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))
 
-(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec (transform child)})
-(defmethod accept :* [_ _ [child] _] {:op :rest, :spec (transform child)})
-(defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defn rest-transform [child]
+  (cond
+    (vector? child) :any
+    (map? child) :any
+    :else (transform child)))
+
+(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec (rest-transform child)})
+(defmethod accept :* [_ _ [child] _] {:op :rest, :spec (rest-transform child)})
+(defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec (rest-transform child)})
 (defmethod accept :cat [_ _ children _] children)
 (defmethod accept :catn [_ _ children _] (mapv last children))
 

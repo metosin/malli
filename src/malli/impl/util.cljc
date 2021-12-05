@@ -65,3 +65,10 @@
 (def ^{:arglists '([[& preds]])} -some-pred
   #?(:clj (-pred-composer or 16)
      :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+
+(defn -maybe-and
+  [f g]
+  (cond
+    (and f g) #(and (f %) (g %))
+    f f
+    g g))

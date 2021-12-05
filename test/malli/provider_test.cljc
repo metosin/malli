@@ -19,7 +19,7 @@
    [[:vector any?] [[]]]
 
    [[:maybe int?] [1 nil 2 3]]
-   [[:maybe some?] [1 nil 2 "3"]]
+   [[:maybe some?] [1 nil 2 "some"]]
    [[:maybe [:map [:x int?]]] [{:x 1} nil]]
    [[:maybe [:or [:map [:x int?]] string?]] [{:x 1} nil "1"]]
 

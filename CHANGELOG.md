@@ -157,6 +157,7 @@ No need to play with Compiler options or JVM properties to swap the default regi
 * **BREAKING**: `m/explain` `:errors` are plain maps, not `Error` records.
 * **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
 * **BREAKING**: strings generate alphanumeric chars by default
+* `malli.provider` supports inferring of `:maybe` and `:map-of`
 * configure default registry in less invasive manner, [#488](https://github.com/metosin/malli/issues/488)
 * `nil` is a valid default with `mt/default-value-transformer` [#576](https://github.com/metosin/malli/issues/576)
 * fixed `:schema` explain path, [#573](https://github.com/metosin/malli/issues/573)

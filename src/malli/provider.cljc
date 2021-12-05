@@ -57,10 +57,11 @@
                                         :map (-map-schema (type types) -schema options)))
          (nil? types) (m/schema any?)
          :else (let [children (map (fn [[type]] (-schema (update stats :types select-keys [type]) options)) types)
-                     without-nils (remove #(= % :nil) children)]
-                 (if (= 1 (count without-nils))
-                   (into [:maybe] without-nils)
-                   (into [:or] children))))))
+                     without-nils (remove #(= % :nil) children)
+                     [c1 c2] (map count [children without-nils])]
+                 (cond (= 1 c2) (into [:maybe] without-nils)
+                       (not= c1 c2) [:maybe (into [:or] without-nils)]
+                       :else (into [:or] children))))))
 
 ;;
 ;; public api

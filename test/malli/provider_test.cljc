@@ -20,7 +20,8 @@
 
    [[:maybe int?] [1 nil 2 3]]
    [[:maybe some?] [1 nil 2 "3"]]
-   [[:or [:map [:x int?]] :nil string?] [{:x 1} nil "1"]]
+   [[:maybe [:map [:x int?]]] [{:x 1} nil]]
+   [[:maybe [:or [:map [:x int?]] string?]] [{:x 1} nil "1"]]
 
    [[:map
      [:id string?]

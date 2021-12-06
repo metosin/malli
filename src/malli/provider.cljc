@@ -11,7 +11,7 @@
   (let [schemas (->> options (m/-registry) (mr/-schemas) (vals) (filter #(-safe? m/schema %)))
         form->validator (into {} (mapv (juxt m/form m/validator) schemas))
         infer-value (fn [x] (-> (reduce-kv (fn [acc f v] (cond-> acc (-safe? v x) (assoc f 1))) {} form->validator)))
-        entry-inferrer (fn [infer] (fn [acc k v] (-> acc (update-in [:keys k :key] infer k) (update-in [:keys k :value] infer v))))
+        entry-inferrer (fn [infer] (fn [acc k v] (update acc :keys update k infer v)))
         infer-map (fn [infer] (fn [acc x] (reduce-kv (entry-inferrer infer) acc x)))
         infer-seq (fn [infer] (fn [acc x] (reduce infer acc x)))
         merge+ (fnil #(merge-with + %1 %2) {})]
@@ -31,17 +31,13 @@
               (= :map type) (update-in [:types type] (fnil (infer-map infer) {}) x)
               (#{:set :vector :sequential} type) (update-in [:types type :values] (fnil (infer-seq infer) {}) x)))))))
 
-(defn -map-schema [{tc :count :as stats} schema {::keys [map-of-threshold] :or {map-of-threshold 3} :as options}]
-  (let [schemafy (fn [acc k {:keys [key value]}]
-                   (conj acc {:key k, :ks (schema key options), :vs (schema value options), :vc (:count value)}))
-        entries (reduce-kv schemafy [] (:keys stats))
-        kschemas (map :ks entries)
+(defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
+  (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
         vschemas (map :vs entries)]
-    (if (and (>= (count entries) map-of-threshold) (= 1 (count (distinct kschemas)) (count (distinct vschemas))))
-      [:map-of (first kschemas) (first vschemas)]
-      (->> entries
-           (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])))
-           (into [:map])))))
+    (if (and (>= (count entries) map-of-threshold) (= 1 (count (distinct vschemas))))
+      (let [kschemas (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
+        (when (= 1 (count (distinct kschemas))) [:map-of (first kschemas) (first vschemas)]))
+      (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
 (defn -value-schema [{:keys [schemas]}]
   (let [max (->> schemas vals (apply max))]
@@ -78,8 +74,8 @@
 
   - `:malli.provider/map-of-threshold (default 3), how many entries need for :map-of"
   ([] (provider nil))
-  ([options] (let [inferrer (-inferrer options)]
-               (fn [xs] (-> (reduce inferrer {} xs) (-schema options))))))
+  ([options] (let [infer (-inferrer options)]
+               (fn [xs] (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))
 
 (defn provide
   "Given an sequence of example values, returms a Schema that can all values are valid against.

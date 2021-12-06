@@ -36,14 +36,45 @@
 
 (defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
-(defn- -string-gen [schema options]
-  (let [{:keys [min max]} (-min-max schema options)]
+(def ^:private char-numeric (gen/fmap char (gen/choose 48 57)))
+
+(defn- -char-gen
+  [k]
+  (case k
+    :digit char-numeric
+    :letter gen/char-alpha
+    (:alphanumeric :letter-or-digit) gen/char-alphanumeric
     (cond
-      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char min))
-      (and min max) (gen/fmap str/join (gen/vector gen/char min max))
-      min (gen/fmap str/join (gen/vector gen/char min (* 2 min)))
-      max (gen/fmap str/join (gen/vector gen/char 0 max))
-      :else gen/string-alphanumeric)))
+      (set? k)
+      (let [chars (into [] (filter char? k))
+            chars (gen/fmap chars (gen/choose 0 (dec (count chars))))
+            gens (into [] (comp (remove char?) (map -char-gen)) k)]
+        (gen/one-of (conj gens chars))))))
+
+#?(:clj
+   (defn- -string-from-regex [re]
+     (if-let [string-from-regex @(dynaload/dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
+       (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1")))
+       (m/-fail! :test-chuck-not-available))))
+
+(defn- -string-gen [schema options]
+  (let [{:keys [min max]} (-min-max schema options)
+        {:keys [charset pattern non-blank]
+         :or {charset :alphanumeric}} (m/properties schema options)
+        min (cond
+              (and min non-blank) (clojure.core/max min non-blank)
+              non-blank 1
+              min min)]
+    (if pattern
+      #?(:clj (-string-from-regex pattern) :cljs (m/-fail! ::unsupported-generator))
+      (let [seed (-char-gen charset)
+            gen (cond
+                  (and min (= min max)) (gen/vector seed min)
+                  (and min max) (gen/vector seed min max)
+                  min (gen/vector seed min (* 2 min))
+                  max (gen/vector seed 0 max)
+                  :else (gen/vector seed))]
+        (gen/fmap str/join gen)))))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
@@ -101,10 +132,8 @@
 #?(:clj
    (defn -re-gen [schema options]
      ;; [com.gfredericks/test.chuck "0.2.10"+]
-     (if-let [string-from-regex @(dynaload/dynaload 'com.gfredericks.test.chuck.generators/string-from-regex {:default nil})]
-       (let [re (or (first (m/children schema options)) (m/form schema options))]
-         (string-from-regex (re-pattern (str/replace (str re) #"^\^?(.*?)(\$?)$" "$1"))))
-       (m/-fail! :test-chuck-not-available))))
+     (let [re (or (first (m/children schema options)) (m/form schema options))]
+       (-string-from-regex re))))
 
 (defn -ref-gen [schema options]
   (let [gen* (delay (generator (m/deref-all schema) options))]

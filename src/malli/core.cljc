@@ -585,8 +585,7 @@
   (case o
     :digit #?(:clj #(Character/isDigit ^char %) :cljs -numeric-char?)
     :letter #?(:clj #(Character/isLetter ^char %) :cljs -letter?)
-    :letter-or-digit #?(:clj #(Character/isLetterOrDigit ^char %) :cljs -alphanumeric?)
-    :alphanumeric #?(:clj #(Character/isLetterOrDigit ^char %) :cljs -alphanumeric?)
+    (:alphanumeric :letter-or-digit) #?(:clj #(Character/isLetterOrDigit ^char %) :cljs -alphanumeric?)
     :alphabetic #?(:clj #(Character/isAlphabetic (int %)) :cljs -letter?)
     (cond
       (set? o) (miu/-some-pred (mapv -charset-predicate o))

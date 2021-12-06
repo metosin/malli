@@ -593,7 +593,7 @@
       (char? o) #?(:clj #(= ^char o %) :cljs (let [i (.charCodeAt o 0)] #(= i %)))
       (fn? o) o
       (nil? o) nil
-      :else (throw (ex-info "Invalid string predicate" {:pred o})))))
+      :else (-fail! ::invalid-char-predicate {:pred o}))))
 
 (defn string-char-predicate
   [p]

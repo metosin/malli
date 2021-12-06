@@ -18,6 +18,25 @@
    [[:vector [:sequential [:set int?]]] [[(list #{1})]]]
    [[:vector any?] [[]]]
 
+   [[:maybe int?] [1 nil 2 3]]
+   [[:maybe some?] [1 nil 2 "some"]]
+   [[:maybe [:map [:x int?]]] [{:x 1} nil]]
+   [[:maybe [:or [:map [:x int?]] string?]] [{:x 1} nil "1"]]
+
+   [[:map
+     ["kikka" [:map [:name string?]]]
+     ["kakka" [:map [:name string?]]]]
+    [{"kikka" {:name "kikka"}
+      "kakka" {:name "kakka"}}]]
+   [[:map-of string? [:map [:name string?]]]
+    [{"kikka" {:name "kikka"}
+      "kukka" {:name "kukka"}}]
+    {::mp/map-of-threshold 2}]
+   [[:map-of string? [:map [:name string?]]]
+    [{"kikka" {:name "kikka"}
+      "kukka" {:name "kukka"}
+      "kakka" {:name "kakka"}}]]
+
    [[:map
      [:id string?]
      [:tags [:set keyword?]]
@@ -42,5 +61,5 @@
                                                           :lonlat [61.4963599 23.7604916]}}]]])
 
 (deftest provider-test
-  (doseq [[schema samples] expectations]
-    (is (= (m/form schema) (m/form (mp/provide samples))))))
+  (doseq [[schema samples options] expectations]
+    (is (= (m/form schema) (m/form (mp/provide samples options))))))

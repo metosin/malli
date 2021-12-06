@@ -136,7 +136,18 @@
 (defmethod accept :nil [_ _ _ _] {:type "null"})
 
 (defmethod accept :string [_ schema _ _]
-  (merge {:type "string"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minLength, :max :maxLength}))))
+  (let [props (-> schema m/properties)
+        pattern (case (:charset props)
+                  :digit "^[0-9]*$"
+                  :letter "^[a-zA-Z]*$"
+                  (:alphanumeric :letter-or-digit) "^[a-zA-Z0-9]*$"
+                  nil)
+        props (cond-> props pattern (assoc :pattern pattern))]
+    (merge
+     {:type "string"}
+     (-> props
+         (select-keys [:min :max :pattern])
+         (set/rename-keys {:min :minLength, :max :maxLength})))))
 
 (defmethod accept :int [_ schema _ _]
   (merge {:type "integer"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))

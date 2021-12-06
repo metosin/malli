@@ -591,9 +591,7 @@
     (cond
       (set? o) (miu/-some-pred (mapv -charset-predicate o))
       (char? o) #?(:clj #(= ^char o %) :cljs (let [i (.charCodeAt o 0)] #(= i %)))
-      (fn? o) o
-      (nil? o) nil
-      :else (-fail! ::invalid-char-predicate {:pred o}))))
+      :else (eval o))))
 
 (defn string-char-predicate
   [p]

@@ -129,7 +129,7 @@ New optimized map-syntax to super-fast schema creation, see [README](README.md#m
 
 Currently in alpha, will fully replace the old map-syntax at some point.
 
-## Swappable default registry
+### Swappable default registry
 
 No need to play with Compiler options or JVM properties to swap the default registry (only if you want to get DCE on CLJS with small set of schemas). Can be disabled with new `malli.registry/mode=strict` option.
 

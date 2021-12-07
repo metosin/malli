@@ -120,9 +120,9 @@ Usage:
 
 ### Map Syntax
 
-**NOTE**: will be released with malli 0.7.0
+**NOTE**: Map Syntax / SchemaAST is considered as alpha and subject to change.
 
-Alternative map-syntax, similar to [clj-fx](https://github.com/cljfx/cljfx):
+Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 
 ```clj
 ;; just a type (String)
@@ -1573,7 +1573,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 ## Schema AST
 
-**NOTE**: will be released with malli 0.7.0
+**NOTE**: Map Syntax / SchemaAST is considered as alpha and subject to change.
 
 Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. 
 

@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
-## 0.7.0-20211031.202317-3 (2021-10-31)
+## 0.7.0 (2021-12-07)
 
 ### Performance
 
@@ -127,7 +127,7 @@ New optimized map-syntax to super-fast schema creation, see [README](README.md#m
 ; => true
 ```
 
-Will fully replace the old map-syntax at some point.
+Currently in alpha, will fully replace the old map-syntax at some point.
 
 ## Swappable default registry
 

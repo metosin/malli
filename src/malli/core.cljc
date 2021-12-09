@@ -2238,7 +2238,7 @@
           #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #'inst? #'seqable?
           #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
           #'zero? #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #'ifn? #'fn?
-          #?@(:clj [#'rational? #'rational? #'ratio? #'bytes?])]
+          #?@(:clj [#'rational? #'rational? #'ratio? #'bytes? #'decimal?])]
          (reduce -register-var {}))))
 
 (defn class-schemas []

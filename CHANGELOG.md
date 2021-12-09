@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `:map-of` provider understands `:maybe` and optional keys
+
 ## 0.7.2 (2021-12-12)
 
 * FIX Function with Sequential return value cannot define as function schema [#585](https://github.com/metosin/malli/issues/585)

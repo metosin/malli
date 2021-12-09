@@ -23,6 +23,26 @@
    [[:maybe [:map [:x int?]]] [{:x 1} nil]]
    [[:maybe [:or [:map [:x int?]] string?]] [{:x 1} nil "1"]]
 
+   ;; :maybe and optional keys with :map-of
+   [[:map-of keyword? [:maybe [:map [:b int?] [:c {:optional true} int?]]]]
+    [{:a {:b 1, :c 2}
+      :b {:b 2, :c 1}
+      :c {:b 3}
+      :d nil}]]
+   [[:map [:a [:map
+               [:b int?]
+               [:c int?]]]
+     [:b [:map
+          [:b int?]
+          [:c int?]]]
+     [:c [:map
+          [:b int?]]]
+     [:d string?]]
+    [{:a {:b 1, :c 2}
+           :b {:b 2, :c 1}
+           :c {:b 3}
+           :d "whatever"}]]
+
    [[:map
      ["kikka" [:map [:name string?]]]
      ["kakka" [:map [:name string?]]]]

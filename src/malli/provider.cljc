@@ -12,7 +12,7 @@
         form->validator (into {} (mapv (juxt m/form m/validator) schemas))
         infer-value (fn [x] (-> (reduce-kv (fn [acc f v] (cond-> acc (-safe? v x) (assoc f 1))) {} form->validator)))
         entry-inferrer (fn [infer] (fn [acc k v] (update acc :keys update k infer v)))
-        infer-map (fn [infer] (fn [acc x] (reduce-kv (entry-inferrer infer) acc x)))
+        infer-map (fn [infer] (fn [acc x] (assoc (reduce-kv (entry-inferrer infer) acc x) :value x)))
         infer-seq (fn [infer] (fn [acc x] (reduce infer acc x)))
         merge+ (fnil #(merge-with + %1 %2) {})]
     (fn infer [acc x]
@@ -33,11 +33,14 @@
 
 (defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
+        kschema* (delay (let [kschemas (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
+                          (when (apply = kschemas) (first kschemas))))
+        vschema* (delay (let [vschema (schema (reduce infer {} (->> stats :value (vals))) options)]
+                          (when (#{:map :maybe} (first vschema)) vschema)))
         vschemas (map :vs entries)]
-    (if (and (>= (count entries) map-of-threshold) (= 1 (count (distinct vschemas))))
-      (let [kschemas (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
-        (when (= 1 (count (distinct kschemas))) [:map-of (first kschemas) (first vschemas)]))
-      (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
+    (or (when (and (>= (count entries) map-of-threshold) @kschema*)
+          (when-let [vschema (if (apply = vschemas) (first vschemas) @vschema*)] [:map-of @kschema* vschema]))
+        (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
 (defn -value-schema [{:keys [schemas]}]
   (let [max (->> schemas vals (apply max))]

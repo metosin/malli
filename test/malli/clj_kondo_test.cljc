@@ -69,7 +69,7 @@
   (testing "sequential elements"
     (is (= {:op :rest :spec :int}
            (clj-kondo/transform [:repeat :int])))
-    (is (= {:op :rest :spec :any}
+    (is (= {:op :rest :spec {:op :keys :req {:price :int}}}
            (clj-kondo/transform [:repeat [:map [:price :int]]])))
-    (is (= {:op :rest :spec :any}
+    (is (= {:op :rest :spec [:int]}
            (clj-kondo/transform [:repeat [:tuple :int]])))))

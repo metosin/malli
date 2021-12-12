@@ -68,6 +68,38 @@
       "2" {:name "2"}
       "3" {:name "3"}}]]
 
+   ;; tuple-like with too few elements
+   [[:vector some?]
+    [[1 "2" true]
+     [2 "2" true]]]
+
+   ;; tuple-like with enough samples
+   [[:tuple int? string? boolean?]
+    [[1 "2" true]
+     [2 "2" true]
+     [3 "3" true]]]
+
+   ;; tuple-like with non-coherent data
+   [[:vector some?]
+    [[1 "2" true]
+     [2 "2" true]
+     [3 "3" "true"]]]
+
+   ;; a homogenous hinted tuple
+   [[:tuple int? string? boolean?]
+    [^{::mp/hint :tuple} [1 "2" true]
+     [2 "2" true]]]
+
+   ;; a hererogenous hinted tuple
+   [[:tuple int? string? some?]
+    [^{::mp/hint :tuple} [1 "2" true]
+     [2 "2" "true"]]]
+
+   ;; invalid hinted tuple
+   [[:vector some?]
+    [^{::mp/hint :tuple} [1 "2" true]
+     [2 "2" true "invalid tuple"]]]
+
    [[:map
      [:id string?]
      [:tags [:set keyword?]]

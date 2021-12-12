@@ -35,14 +35,13 @@
 
 (defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
-        kschema* (delay (schema (reduce infer {} (map :key entries)) options))
-        ?kschema* (delay (let [kschemas (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
-                           (when (apply = kschemas) (first kschemas))))
-        vschema* (delay (schema (reduce infer {} (->> stats :values (mapcat vals))) options))
-        vschemas (map :vs entries)]
-    (or (when (some-> stats :hints (= #{:map-of})) [:map-of @kschema* @vschema*])
-        (when (and (>= (count entries) map-of-threshold) @?kschema*)
-          (when-let [vschema (if (apply = vschemas) (first vschemas))] [:map-of @?kschema* vschema]))
+        ks* (delay (schema (reduce infer {} (map :key entries)) options))
+        ?ks* (delay (let [kss (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
+                      (when (apply = kss) (first kss))))
+        vs* (delay (schema (reduce infer {} (->> stats :values (mapcat vals))) options))
+        vss (map :vs entries)]
+    (or (when (some-> stats :hints (= #{:map-of})) [:map-of @ks* @vs*])
+        (when (and (>= (count entries) map-of-threshold) @?ks* (apply = vss)) [:map-of @?ks* (first vss)])
         (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
 (defn -value-schema [{:keys [schemas]}]

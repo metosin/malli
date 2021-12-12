@@ -36,8 +36,7 @@
 (defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
         ks* (delay (schema (reduce infer {} (map :key entries)) options))
-        ?ks* (delay (let [kss (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
-                      (when (apply = kss) (first kss))))
+        ?ks* (delay (let [kss (map #(schema (infer {} (:key %)) options) entries)] (when (apply = kss) (first kss))))
         vs* (delay (schema (reduce infer {} (->> stats :values (mapcat vals))) options))
         vss (map :vs entries)]
     (or (when (some-> stats :hints (= #{:map-of})) [:map-of @ks* @vs*])

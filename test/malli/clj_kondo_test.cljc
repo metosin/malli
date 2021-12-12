@@ -1,5 +1,5 @@
 (ns malli.clj-kondo-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [malli.clj-kondo :as clj-kondo]
             [malli.core :as m]
             [malli.util :as mu]))
@@ -65,4 +65,11 @@
             (-> 'malli.clj-kondo-test
                 (clj-kondo/collect)
                 (clj-kondo/linter-config)
-                (get-in [:linters :type-mismatch :namespaces]))))))
+                (get-in [:linters :type-mismatch :namespaces])))))
+  (testing "sequential elements"
+    (is (= {:op :rest :spec :int}
+           (clj-kondo/transform [:repeat :int])))
+    (is (= {:op :rest :spec {:op :keys :req {:price :int}}}
+           (clj-kondo/transform [:repeat [:map [:price :int]]])))
+    (is (= {:op :rest :spec [:int]}
+           (clj-kondo/transform [:repeat [:tuple :int]])))))

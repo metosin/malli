@@ -23,39 +23,55 @@
    [[:maybe [:map [:x int?]]] [{:x 1} nil]]
    [[:maybe [:or [:map [:x int?]] string?]] [{:x 1} nil "1"]]
 
-   ;; :maybe and optional keys with :map-of
-   [[:map-of keyword? [:maybe [:map [:b int?] [:c {:optional true} int?]]]]
-    [{:a {:b 1, :c 2}
-      :b {:b 2, :c 1}
-      :c {:b 3}
-      :d nil}]]
-   [[:map [:a [:map
-               [:b int?]
-               [:c int?]]]
+   ;; normal maps without type-hint
+   [[:map
+     [:a [:map
+          [:b int?]
+          [:c int?]]]
      [:b [:map
           [:b int?]
           [:c int?]]]
      [:c [:map
           [:b int?]]]
-     [:d string?]]
+     [:d :nil]]
     [{:a {:b 1, :c 2}
-           :b {:b 2, :c 1}
-           :c {:b 3}
-           :d "whatever"}]]
+      :b {:b 2, :c 1}
+      :c {:b 3}
+      :d nil}]]
 
+   ;; :map-of type-hint
+   [[:map-of keyword? [:maybe [:map
+                               [:b int?]
+                               [:c {:optional true} int?]]]]
+    [^{::mp/hint :map-of}
+     {:a {:b 1, :c 2}
+      :b {:b 2, :c 1}
+      :c {:b 3}
+      :d nil}]]
+
+   ;; too few samples for :map-of
    [[:map
      ["kikka" [:map [:name string?]]]
      ["kakka" [:map [:name string?]]]]
     [{"kikka" {:name "kikka"}
       "kakka" {:name "kakka"}}]]
+
+   ;; explicit sample count for :map-of
    [[:map-of string? [:map [:name string?]]]
     [{"kikka" {:name "kikka"}
       "kukka" {:name "kukka"}}]
     {::mp/map-of-threshold 2}]
+
+   ;; implicit sample count for :map-of
    [[:map-of string? [:map [:name string?]]]
-    [{"kikka" {:name "kikka"}
-      "kukka" {:name "kukka"}
-      "kakka" {:name "kakka"}}]]
+    [{"1" {:name "1"}
+      "2" {:name "2"}
+      "3" {:name "3"}
+      "4" {:name "4"}
+      "5" {:name "5"}
+      "6" {:name "6"}
+      "7" {:name "7"}
+      "8" {:name "8"}}]]
 
    [[:map
      [:id string?]

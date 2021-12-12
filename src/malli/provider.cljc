@@ -33,7 +33,7 @@
               (#{:set :vector :sequential} type) (update-in [:types type :values] (fnil (infer-seq infer) {}) x))
             (cond-> hint (update-in [:types type :hints] (fnil conj #{}) hint)))))))
 
-(defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 8} :as options}]
+(defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
         kschema* (delay (schema (reduce infer {} (map :key entries)) options))
         ?kschema* (delay (let [kschemas (map (fn [{:keys [key]}] (schema (infer {} key) options)) entries)]
@@ -78,7 +78,7 @@
 (defn provider
   "Returns a inferring function of `values -> schema`. Supports the following options:
 
-  - `:malli.provider/map-of-threshold, how many identical value schemas need for :map-of"
+  - `:malli.provider/map-of-threshold (default 3), how many identical value schemas need for :map-of"
   ([] (provider nil))
   ([options] (let [infer (-inferrer options)]
                (fn [xs] (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))

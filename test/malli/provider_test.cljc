@@ -51,27 +51,22 @@
 
    ;; too few samples for :map-of
    [[:map
-     ["kikka" [:map [:name string?]]]
-     ["kakka" [:map [:name string?]]]]
-    [{"kikka" {:name "kikka"}
-      "kakka" {:name "kakka"}}]]
+     ["1" [:map [:name string?]]]
+     ["2" [:map [:name string?]]]]
+    [{"1" {:name "1"}
+      "2" {:name "2"}}]]
 
    ;; explicit sample count for :map-of
    [[:map-of string? [:map [:name string?]]]
-    [{"kikka" {:name "kikka"}
-      "kukka" {:name "kukka"}}]
+    [{"1" {:name "1"}
+      "2" {:name "2"}}]
     {::mp/map-of-threshold 2}]
 
    ;; implicit sample count for :map-of
    [[:map-of string? [:map [:name string?]]]
     [{"1" {:name "1"}
       "2" {:name "2"}
-      "3" {:name "3"}
-      "4" {:name "4"}
-      "5" {:name "5"}
-      "6" {:name "6"}
-      "7" {:name "7"}
-      "8" {:name "8"}}]]
+      "3" {:name "3"}}]]
 
    [[:map
      [:id string?]

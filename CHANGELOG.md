@@ -16,7 +16,23 @@ Malli is in [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* `:map-of` provider understands `:maybe` and optional keys
+* `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:
+
+```clj
+(require '[malli.provider :as mp])
+
+(mp/provide
+  [^{::mp/hint :map-of}
+   {:a {:b 1, :c 2}
+    :b {:b 2, :c 1}
+    :c {:b 3}
+    :d nil}])
+;[:map-of
+; keyword?
+; [:maybe [:map
+;          [:b int?]
+;          [:c {:optional true} int?]]]]
+```
 
 ## 0.7.2 (2021-12-12)
 

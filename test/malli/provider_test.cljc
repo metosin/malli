@@ -76,6 +76,12 @@
    ;; tuple-like with enough samples
    [[:tuple int? string? boolean?]
     [[1 "2" true]
+     [2 "2" true]]
+    {::mp/tuple-threshold 2}]
+
+   ;; tuple-like with enough samples
+   [[:tuple int? string? boolean?]
+    [[1 "2" true]
      [2 "2" true]
      [3 "3" true]]]
 

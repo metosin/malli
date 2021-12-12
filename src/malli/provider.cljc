@@ -48,7 +48,7 @@
         tuple?* (delay (apply = (map count @vs*)))]
     (or (and (= :vector type)
              (or (when (and (some-> @vstats* :hints (= #{:tuple})) @tuple?*)
-                   (let [ss (map #(schema (reduce infer {} %) options) (apply map vector @data*))] (into [:tuple] ss)))
+                   (into [:tuple] (map #(schema (reduce infer {} %) options) (apply map vector @data*))))
                  (when-let [tuple-threshold (when (= tc (:count @vstats*)) (or tuple-threshold 3))]
                    (when (and (>= tc tuple-threshold) @tuple?*)
                      (when (apply = @vs*) (into [:tuple] (first @vs*)))))))

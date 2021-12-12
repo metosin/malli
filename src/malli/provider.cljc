@@ -41,12 +41,18 @@
          (sort-by second >)
          (ffirst))))
 
-(defn -sequential-schema [{tc :count} {{data :data} :values :as stats} type schema {::keys [infer] :as options}]
-  (or (when-let [tuple-threshold (when (and (= :vector type) (= tc (:count stats))) (::tuple-threshold options 3))]
-        (when (and (>= tc tuple-threshold) (apply = (map count data)))
-          (let [vs (for [ds data] (map #(schema (infer {} %)) ds))]
-            (when (apply = vs) (into [:tuple] (first vs))))))
-      [type (-> stats :values (schema options))]))
+(defn -sequential-schema [{tc :count :as stats} type schema {::keys [infer tuple-threshold] :as options}]
+  (let [vstats* (delay (-> stats :types type))
+        data* (delay (-> @vstats* :values :data))
+        vs* (delay (map (fn [x] (map #(schema (infer {} %)) x)) @data*))
+        tuple?* (delay (apply = (map count @vs*)))]
+    (or (and (= :vector type)
+             (or (when (and (some-> @vstats* :hints (= #{:tuple})) @tuple?*)
+                   (let [ss (map #(schema (reduce infer {} %) options) (apply map vector @data*))] (into [:tuple] ss)))
+                 (when-let [tuple-threshold (when (= tc (:count @vstats*)) (or tuple-threshold 3))]
+                   (when (and (>= tc tuple-threshold) @tuple?*)
+                     (when (apply = @vs*) (into [:tuple] (first @vs*)))))))
+        [type (-> @vstats* :values (schema options))])))
 
 (defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
@@ -65,7 +71,7 @@
                                       (case type
                                         :nil :nil
                                         :value (-value-schema (type types))
-                                        (:set :vector :sequential) (-sequential-schema stats (type types) type -schema options)
+                                        (:set :vector :sequential) (-sequential-schema stats type -schema options)
                                         :map (-map-schema (type types) -schema options)))
          (nil? types) (m/schema any?)
          :else (let [children (map (fn [[type]] (-schema (update stats :types select-keys [type]) options)) types)

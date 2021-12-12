@@ -14,6 +14,26 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:
+
+```clj
+(require '[malli.provider :as mp])
+
+(mp/provide
+  [^{::mp/hint :map-of}
+   {:a {:b 1, :c 2}
+    :b {:b 2, :c 1}
+    :c {:b 3}
+    :d nil}])
+;[:map-of
+; keyword?
+; [:maybe [:map
+;          [:b int?]
+;          [:c {:optional true} int?]]]]
+```
+
 ## 0.7.2 (2021-12-12)
 
 * FIX Function with Sequential return value cannot define as function schema [#585](https://github.com/metosin/malli/issues/585)

@@ -1463,6 +1463,49 @@ For order of magnitude better performance, use `mp/provider` instead:
   (p/bench (provider [1 2 3])))
 ```
 
+Inferring `:map-of` required 3 identical key & value schemas:
+
+```clj
+(mp/provide
+  [{:a [1]
+    :b [1 2]}])
+;[:map 
+; [:a [:vector int?]] 
+; [:b [:vector int?]]]
+
+(mp/provide
+  [{:a [1]
+    :b [1 2]
+    :c [1 2 3]}])
+; [:map-of keyword? [:vector int?]]
+```
+
+This can be configured via `::mp/map-of-threshold` options:
+
+```clj
+(mp/provide
+  [{:a [1]
+    :b [1 2]}]
+  {::mp/map-of-threshold 2})
+; [:map-of keyword? [:vector int?]]
+```
+
+Sample-data can be type-hinted with `::mp/hint`:
+
+```clj
+(mp/provide
+  [^{::mp/hint :map-of}
+   {:a {:b 1, :c 2}
+    :b {:b 2, :c 1}
+    :c {:b 3}
+    :d nil}])
+;[:map-of
+; keyword?
+; [:maybe [:map
+;          [:b int?]
+;          [:c {:optional true} int?]]]]
+```
+
 ## Parsing values
 
 Schemas can be used to parse values using `m/parse` and `m/parser`:

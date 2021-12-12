@@ -12,8 +12,8 @@
         form->validator (into {} (mapv (juxt m/form m/validator) schemas))
         infer-value (fn [x] (-> (reduce-kv (fn [acc f v] (cond-> acc (-safe? v x) (assoc f 1))) {} form->validator)))
         entry-inferrer (fn [infer] (fn [acc k v] (update acc :keys update k infer v)))
-        infer-map (fn [infer] (fn [acc x] (update (reduce-kv (entry-inferrer infer) acc x) :values (fnil conj []) x)))
-        infer-seq (fn [infer] (fn [acc x] (reduce infer acc x)))
+        infer-map (fn [infer] (fn [acc x] (update (reduce-kv (entry-inferrer infer) acc x) :data (fnil conj []) x)))
+        infer-seq (fn [infer] (fn [acc x] (update (reduce infer acc x) :data (fnil conj []) x)))
         merge+ (fnil #(merge-with + %1 %2) {})]
     (fn infer [acc x]
       (let [hint (some-> x meta ::hint)
@@ -33,16 +33,6 @@
               (#{:set :vector :sequential} type) (update-in [:types type :values] (fnil (infer-seq infer) {}) x))
             (cond-> hint (update-in [:types type :hints] (fnil conj #{}) hint)))))))
 
-(defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
-  (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
-        ks* (delay (schema (reduce infer {} (map :key entries)) options))
-        ?ks* (delay (let [kss (map #(schema (infer {} (:key %)) options) entries)] (when (apply = kss) (first kss))))
-        vs* (delay (schema (reduce infer {} (->> stats :values (mapcat vals))) options))
-        vss (map :vs entries)]
-    (or (when (some-> stats :hints (= #{:map-of})) [:map-of @ks* @vs*])
-        (when (and (>= (count entries) map-of-threshold) @?ks* (apply = vss)) [:map-of @?ks* (first vss)])
-        (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
-
 (defn -value-schema [{:keys [schemas]}]
   (let [max (->> schemas vals (apply max))]
     (->> schemas
@@ -51,15 +41,31 @@
          (sort-by second >)
          (ffirst))))
 
+(defn -sequential-schema [{tc :count} {{data :data} :values :as stats} type schema {::keys [infer] :as options}]
+  (or (when-let [tuple-threshold (when (and (= :vector type) (= tc (:count stats))) (::tuple-threshold options 3))]
+        (when (and (>= tc tuple-threshold) (apply = (map count data)))
+          (let [vs (for [ds data] (map #(schema (infer {} %)) ds))]
+            (when (apply = vs) (into [:tuple] (first vs))))))
+      [type (-> stats :values (schema options))]))
+
+(defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
+  (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
+        ks* (delay (schema (reduce infer {} (map :key entries)) options))
+        ?ks* (delay (let [kss (map #(schema (infer {} (:key %)) options) entries)] (when (apply = kss) (first kss))))
+        vs* (delay (schema (reduce infer {} (->> stats :data (mapcat vals))) options))
+        vss (map :vs entries)]
+    (or (when (some-> stats :hints (= #{:map-of})) [:map-of @ks* @vs*])
+        (when (and (>= (count entries) map-of-threshold) @?ks* (apply = vss)) [:map-of @?ks* (first vss)])
+        (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
+
 (defn -schema
-  ([stats]
-   (-schema stats nil))
+  ([stats] (-schema stats nil))
   ([{:keys [types] :as stats} options]
    (cond (= 1 (count (keys types))) (let [type (-> types keys first)]
                                       (case type
                                         :nil :nil
                                         :value (-value-schema (type types))
-                                        (:set :vector :sequential) [type (-> types type :values (-schema options))]
+                                        (:set :vector :sequential) (-sequential-schema stats (type types) type -schema options)
                                         :map (-map-schema (type types) -schema options)))
          (nil? types) (m/schema any?)
          :else (let [children (map (fn [[type]] (-schema (update stats :types select-keys [type]) options)) types)
@@ -76,10 +82,13 @@
 (defn provider
   "Returns a inferring function of `values -> schema`. Supports the following options:
 
-  - `:malli.provider/map-of-threshold (default 3), how many identical value schemas need for :map-of"
+  - `:malli.provider/map-of-threshold (default 3), how many identical value schemas need for :map-of
+  - `:malli.provider/tuple-threshold (default 3), how many identical value schemas need for :tuple"
   ([] (provider nil))
   ([options] (let [infer (-inferrer options)]
-               (fn [xs] (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))
+               (fn [xs]
+                 (def DATA (reduce infer {} xs))
+                 (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))
 
 (defn provide
   "Given an sequence of example values, returms a Schema that can all values are valid against.

@@ -92,9 +92,7 @@
   - `:malli.provider/tuple-threshold (default 3), how many identical value schemas need for :tuple"
   ([] (provider nil))
   ([options] (let [infer (-inferrer options)]
-               (fn [xs]
-                 (def DATA (reduce infer {} xs))
-                 (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))
+               (fn [xs] (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))
 
 (defn provide
   "Given an sequence of example values, returms a Schema that can all values are valid against.

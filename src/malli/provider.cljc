@@ -35,11 +35,7 @@
 
 (defn -value-schema [{:keys [schemas]}]
   (let [max (->> schemas vals (apply max))]
-    (->> schemas
-         (filter #(= max (val %)))
-         (map (fn [[k]] [k (-preferences k -1)]))
-         (sort-by second >)
-         (ffirst))))
+    (->> schemas (filter #(= max (val %))) (map (fn [[k]] [k (-preferences k -1)])) (sort-by second >) (ffirst))))
 
 (defn -sequential-schema [{tc :count :as stats} type schema {::keys [infer tuple-threshold] :as options}]
   (let [vstats* (delay (-> stats :types type))

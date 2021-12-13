@@ -68,6 +68,44 @@
       "2" {:name "2"}
       "3" {:name "3"}}]]
 
+   ;; tuple-like with too few elements
+   [[:vector some?]
+    [[1 "kikka" true]
+     [2 "kukka" true]]]
+
+   ;; tuple-like with enough samples
+   [[:tuple int? string? boolean?]
+    [[1 "kikka" true]
+     [2 "kukka" true]]
+    {::mp/tuple-threshold 2}]
+
+   ;; tuple-like with enough samples
+   [[:tuple int? string? boolean?]
+    [[1 "kikka" true]
+     [2 "kukka" true]
+     [3 "kakka" true]]]
+
+   ;; tuple-like with non-coherent data
+   [[:vector some?]
+    [[1 "kikka" true]
+     [2 "kukka" true]
+     [3 "kakka" "true"]]]
+
+   ;; a homogenous hinted tuple
+   [[:tuple int? string? boolean?]
+    [^{::mp/hint :tuple} [1 "kikka" true]
+     [2 "kukka" true]]]
+
+   ;; a hererogenous hinted tuple
+   [[:tuple int? string? some?]
+    [^{::mp/hint :tuple} [1 "kikka" true]
+     [2 "kukka" "true"]]]
+
+   ;; invalid hinted tuple
+   [[:vector some?]
+    [^{::mp/hint :tuple} [1 "kikka" true]
+     [2 "kukka" true "invalid tuple"]]]
+
    [[:map
      [:id string?]
      [:tags [:set keyword?]]

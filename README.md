@@ -1463,16 +1463,11 @@ For order of magnitude better performance, use `mp/provider` instead:
   (p/bench (provider [1 2 3])))
 ```
 
-Inferring `:map-of` required 3 identical key & value schemas:
+### :map-of inferring
+
+Inferring `:map-of` requires 3 identical key & value schemas:
 
 ```clj
-(mp/provide
-  [{:a [1]
-    :b [1 2]}])
-;[:map 
-; [:a [:vector int?]] 
-; [:b [:vector int?]]]
-
 (mp/provide
   [{:a [1]
     :b [1 2]
@@ -1504,6 +1499,38 @@ Sample-data can be type-hinted with `::mp/hint`:
 ; [:maybe [:map
 ;          [:b int?]
 ;          [:c {:optional true} int?]]]]
+```
+
+### :tuple inferring
+
+Inferring `:tuple` requires 3 samples with same size and types:
+
+```clj
+(mp/provide
+  [[1 "kikka" true]
+   [2 "kukka" true]
+   [3 "kakka" true]])
+; [:tuple int? string? boolean?]
+```
+
+This can be configured via `::mp/tuple-threshold` options:
+
+```clj
+(mp/provide
+  [[1 "kikka" true]
+   [2 "kukka" true]]
+  {::mp/tuple-threshold 2})
+; [:tuple int? string? boolean?]
+```
+
+Sample-data can be type-hinted with `::mp/hint`:
+
+```clj
+(mp/provide
+  [^{::mp/hint :tuple}
+   [1 "kikka" true]
+   ["2" "kukka" true]])
+; [:tuple some? string? boolean?]
 ```
 
 ## Parsing values

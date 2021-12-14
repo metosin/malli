@@ -12,7 +12,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 [breakver]: https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md
 
-Malli is in [alpha](README.md#alpha).
+Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
@@ -32,6 +32,17 @@ Malli is in [alpha](README.md#alpha).
 ; [:maybe [:map
 ;          [:b int?]
 ;          [:c {:optional true} int?]]]]
+```
+
+* `:tuple` inferring (supports type-hints and threshold options)
+
+```clj
+(mp/provide
+  [[1 "kikka" true]
+   [2 "kukka" true]
+   [3 "kakka" true]]
+  {::mp/tuple-threshold 3})
+; [:tuple int? string? boolean?]
 ```
 
 ## 0.7.2 (2021-12-12)

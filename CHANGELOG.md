@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.7.3 (2021-12-15)
 
 * `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:
 

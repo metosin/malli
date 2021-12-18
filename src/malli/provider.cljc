@@ -64,11 +64,11 @@
 
 (defn -schema
   ([stats] (-schema stats nil))
-  ([{:keys [types] :as stats} {::keys [value-providers] :as options}]
+  ([{:keys [types] :as stats} {::keys [value-decoders] :as options}]
    (cond (= 1 (count (keys types))) (let [type (-> types keys first)]
                                       (case type
                                         :nil :nil
-                                        :value (let [t (type types), vs (-value-schema t), vp (get value-providers vs)]
+                                        :value (let [t (type types), vs (-value-schema t), vp (get value-decoders vs)]
                                                  (cond->> vs vp (-decoded t vp)))
                                         (:set :vector :sequential) (-sequential-schema stats type -schema options)
                                         :map (-map-schema (type types) -schema options)))
@@ -88,7 +88,8 @@
   "Returns a inferring function of `values -> schema`. Supports the following options:
 
   - `:malli.provider/map-of-threshold (default 3), how many identical value schemas need for :map-of
-  - `:malli.provider/tuple-threshold (default 3), how many identical value schemas need for :tuple"
+  - `:malli.provider/tuple-threshold (default 3), how many identical value schemas need for :tuple
+  - `:malli.provider/value-decoders, function of `type -> target-type -> value -> decoded-value`"
   ([] (provider nil))
   ([options] (let [infer (-inferrer options)]
                (fn [xs] (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))

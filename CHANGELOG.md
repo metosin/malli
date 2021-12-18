@@ -14,6 +14,18 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* schema inferring supports value decoding via options
+
+```clj
+(mp/provide
+ [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
+  {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
+ {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}})
+; => [:map [:id :uuid]]
+```
+
 ## 0.7.3 (2021-12-15)
 
 * `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:

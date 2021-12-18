@@ -107,19 +107,19 @@
     [^{::mp/hint :tuple} [1 "kikka" true]
      [2 "kukka" true "invalid tuple"]]]
 
-   ;; value-providers
+   ;; value-decoders
    [[:map [:id string?]]
     [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
      {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]]
    [[:map [:id :uuid]]
     [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
      {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
-    {::mp/value-providers {'string? {:uuid mt/-string->uuid}}}]
+    {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}}]
    [[:map-of :uuid [:map [:id :uuid]]]
     [{"0423191a-5fee-11ec-bf63-0242ac130002" {:id "0423191a-5fee-11ec-bf63-0242ac130002"}
       "09e59de6-5fee-11ec-bf63-0242ac130002" {:id "09e59de6-5fee-11ec-bf63-0242ac130002"}
       "15511020-5fee-11ec-bf63-0242ac130002" {:id "15511020-5fee-11ec-bf63-0242ac130002"}}]
-    {::mp/value-providers {'string? {:uuid mt/-string->uuid}}}]
+    {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}}]
 
    [[:map
      [:id string?]

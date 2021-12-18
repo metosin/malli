@@ -73,3 +73,9 @@
            (clj-kondo/transform [:repeat [:map [:price :int]]])))
     (is (= {:op :rest :spec [:int]}
            (clj-kondo/transform [:repeat [:tuple :int]])))))
+
+(clj-kondo/emit!)
+
+(comment
+ (kikka "1"))
+

@@ -23,9 +23,9 @@
                                     (and min max) (str "should have between " min " and " max " elements")
                                     min (str "should have at least " min " elements")
                                     max (str "should have at most " max " elements"))))}}
-   ::m/tuple-size {:error/fn {:en (fn [{:keys [schema _value]} _]
+   ::m/tuple-size {:error/fn {:en (fn [{:keys [schema value]} _]
                                     (let [size (count (m/children schema))]
-                                      (str "invalid tuple size " (count _value) ", expected " size)))}}
+                                      (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
@@ -135,8 +135,8 @@
 
 (defn- -message [error props locale options]
   (let [options (or options (m/options (:schema error)))]
-    (if props (or (if-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
-                  (-maybe-localized (:error/message props) locale)))))
+    (when props (or (when-let [fn (-maybe-localized (:error/fn props) locale)] ((m/eval fn options) error options))
+                    (-maybe-localized (:error/message props) locale)))))
 
 (defn -error [e] ^::error [e])
 (defn -error? [x] (-> x meta ::error))
@@ -243,13 +243,17 @@
 
 (defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
   (let [options (assoc options :unknown false)]
-    (loop [p path, l nil, mp path, m (error-message error options)]
-      (let [[p' m'] (or (when-let [m' (error-message {:schema (mu/get-in schema p)} options)] [p m'])
-                        (when-let [[_ props schema] (and l (mu/find (mu/get-in schema p) l))]
-                          (let [schema (mu/update-properties schema merge props)]
-                            (when-let [m' (error-message {:schema schema} options)] [(conj p l) m'])))
-                        (when m [mp m]))]
-        (if (seq p) (recur (pop p) (last p) p' m') (when m [p' m']))))))
+    (loop [path path, l nil, mp path, p (m/properties (:schema error)), m (error-message error options)]
+      (let [[path' m' p'] (or (let [schema (mu/get-in schema path)]
+                                (when-let [m' (error-message {:schema schema} options)] [path m' (m/properties schema)]))
+                              (let [res (and l (mu/find (mu/get-in schema path) l))]
+                                (when (vector? res)
+                                  (let [[_ props schema] res
+                                        schema (mu/update-properties schema merge props)
+                                        message (error-message {:schema schema} options)]
+                                    (when message [(conj path l) message (m/properties schema)]))))
+                              (when m [mp m p]))]
+        (if (seq path) (recur (pop path) (last path) path' p' m') (when m [(mu/path->in schema path') m' p']))))))
 
 (defn with-error-message
   ([error]
@@ -272,7 +276,7 @@
      (let [!likely-misspelling-of (atom #{})
            handle-invalid-value (fn [schema _ value]
                                   (let [dispatch (:dispatch (m/properties schema))]
-                                    (if (keyword? dispatch)
+                                    (when (keyword? dispatch)
                                       (let [value (dispatch value)]
                                         [::misspelled-value value #{value}]))))
            types {::m/extra-key (fn [_ path value] [::misspelled-key (last path) (-> value keys set (or #{}))])
@@ -310,7 +314,7 @@
                                             :or {wrap :message
                                                  resolve -resolve-direct-error}
                                             :as options}]
-   (if errors
+   (when errors
      (reduce
        (fn [acc error]
          (let [[path message] (resolve explanation error options)]

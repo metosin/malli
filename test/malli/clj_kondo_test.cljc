@@ -1,5 +1,5 @@
 (ns malli.clj-kondo-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [malli.clj-kondo :as clj-kondo]
             [malli.core :as m]
             [malli.util :as mu]))
@@ -18,6 +18,9 @@
      [:nested [:merge
                [:map [:id ::id]]
                [:map [:price ::price]]]]
+     [:string-type-enum  [:maybe [:enum "b" "c"]]]
+     [:keyword-type-enum [:enum :a :b]]
+     [:any-type-enum [:enum :a "b" "c"]]
      [:z [:vector [:map-of int? int?]]]]
     {:registry (merge (m/default-schemas) (mu/schemas))}))
 
@@ -43,6 +46,9 @@
                 :description :nilable/string,
                 :select-keys {:op :keys, :req {:x :int}},
                 :nested {:op :keys, :req {:id :string, :price :double}},
+                :string-type-enum :nilable/string
+                :keyword-type-enum :keyword
+                :any-type-enum :any
                 :z :vector}}
          (clj-kondo/transform Schema)))
 
@@ -59,4 +65,11 @@
             (-> 'malli.clj-kondo-test
                 (clj-kondo/collect)
                 (clj-kondo/linter-config)
-                (get-in [:linters :type-mismatch :namespaces]))))))
+                (get-in [:linters :type-mismatch :namespaces])))))
+  (testing "sequential elements"
+    (is (= {:op :rest :spec :int}
+           (clj-kondo/transform [:repeat :int])))
+    (is (= {:op :rest :spec {:op :keys :req {:price :int}}}
+           (clj-kondo/transform [:repeat [:map [:price :int]]])))
+    (is (= {:op :rest :spec [:int]}
+           (clj-kondo/transform [:repeat [:tuple :int]])))))

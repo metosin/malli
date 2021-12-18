@@ -12,13 +12,211 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 [breakver]: https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md
 
-Malli is in [alpha](README.md#alpha).
+Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.7.3 (2021-12-15)
 
+* `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:
+
+```clj
+(require '[malli.provider :as mp])
+
+(mp/provide
+  [^{::mp/hint :map-of}
+   {:a {:b 1, :c 2}
+    :b {:b 2, :c 1}
+    :c {:b 3}
+    :d nil}])
+;[:map-of
+; keyword?
+; [:maybe [:map
+;          [:b int?]
+;          [:c {:optional true} int?]]]]
+```
+
+* `:tuple` inferring (supports type-hints and threshold options)
+
+```clj
+(mp/provide
+  [[1 "kikka" true]
+   [2 "kukka" true]
+   [3 "kakka" true]]
+  {::mp/tuple-threshold 3})
+; [:tuple int? string? boolean?]
+```
+
+## 0.7.2 (2021-12-12)
+
+* FIX Function with Sequential return value cannot define as function schema [#585](https://github.com/metosin/malli/issues/585)
+
+## 0.7.1 (2021-12-11)
+
+* FIX `decimal?` predicate schema was removed in 0.7.0, [#590](https://github.com/metosin/malli/issues/590)
+
+## 0.7.0 (2021-12-07)
+
+### Performance
+
+* big improvements to schema creation, transformation and inferring perfromance, see [#531](https://github.com/metosin/malli/issues/513) and [#550](https://github.com/metosin/malli/pull/550).
+
+#### Schema Creation
+
+```clj
+(def ?schema
+  [:map
+   [:x boolean?]
+   [:y {:optional true} int?]
+   [:z [:map
+        [:x boolean?]
+        [:y {:optional true} int?]]]])
+
+(def schema (m/schema ?schema))
+
+;; 44µs -> 2.5µs (18x)
+(bench (m/schema ?schema))
+
+;; 44µs -> 240ns (180x, not realized)
+(p/bench (m/schema ?schema {::m/lazy-entries true}))
+```
+
+#### Schema Transformation
+
+```clj
+;; 26µs -> 1.2µs (21x)
+(bench (m/walk schema (m/schema-walker identity)))
+
+;; 4.2µs -> 0.54µs (7x)
+(bench (mu/assoc schema :w :string))
+
+;; 51µs -> 3.4µs (15x)
+(bench (mu/closed-schema schema))
+
+;; 5µs -> 28ns (180x)
+(p/bench (m/deref-all ref-schema))
+
+;; 134µs -> 9µs (15x)
+(p/bench (mu/merge schema schema))
+```
+
+#### Schema Workers
+
+```clj
+(def schema (m/schema ?schema))
+
+;; 1.6µs -> 64ns (25x)
+(p/bench (m/validate schema {:x true, :z {:x true}}))
+
+;; 1.6µs -> 450ns (3x)
+(p/bench (m/explain schema {:x true, :z {:x true}}))
+```
+
+#### Schema Inferring
+
+```clj
+(def samples
+  [{:id "Lillan"
+    :tags #{:artesan :coffee :hotel}
+    :address {:street "Ahlmanintie 29"
+              :city "Tampere"
+              :zip 33100
+              :lonlat [61.4858322, 23.7854658]}}
+   {:id "Huber",
+    :description "Beefy place"
+    :tags #{:beef :wine :beer}
+    :address {:street "Aleksis Kiven katu 13"
+              :city "Tampere"
+              :zip 33200
+              :lonlat [61.4963599 23.7604916]}}])
+
+;; 126ms -> 2.5ms (50x)
+(p/bench (mp/provide samples))
+
+;; 380µs (330x)
+(let [provide (mp/provider)]
+  (p/bench (provide samples)))
+```
+
+### Schema AST
+
+New optimized map-syntax to super-fast schema creation, see [README](README.md#map-syntax).
+
+```clj
+(def ast (m/ast ?schema))
+;{:type :map,
+; :keys {:x {:order 0, :value {:type boolean?}},
+;        :y {:order 1, :value {:type int?}
+;            :properties {:optional true}},
+;        :z {:order 2,
+;            :value {:type :map,
+;                    :keys {:x {:order 0
+;                               :value {:type boolean?}},
+;                           :y {:order 1 
+;                               :value {:type int?}
+;                               :properties {:optional true}}}}}}}
+
+;; 150ns (16x)
+(p/bench (m/from-ast ast))
+
+(-> ?schema
+    (m/schema)
+    (m/ast)
+    (m/from-ast)
+    (m/form)
+    (= ?schema))
+; => true
+```
+
+Currently in alpha, will fully replace the old map-syntax at some point.
+
+### Swappable default registry
+
+No need to play with Compiler options or JVM properties to swap the default registry (only if you want to get DCE on CLJS with small set of schemas). Can be disabled with new `malli.registry/mode=strict` option.
+
+```clj
+(require '[malli.core :as m]
+         '[malli.util :as mu]
+         '[malli.registry :as mr]
+         '[malli.generator :as mg])
+
+;; look ma, just works
+(mr/set-default-registry!
+  (mr/composite-registry
+    (m/default-schemas)
+    (mu/schemas)))
+
+(mg/generate
+  [:merge
+   [:map [:x :int]]
+   [:map [:y :int]]])
+; => {:x 0, :y 92}
+```
+
+### Public API
+
+* **BREAKING**: `m/explain` `:errors` are plain maps, not `Error` records.
+* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
+* **BREAKING**: strings generate alphanumeric chars by default
+* `malli.provider` supports inferring of `:maybe` and `:map-of`
+* configure default registry in less invasive manner, [#488](https://github.com/metosin/malli/issues/488)
+* `nil` is a valid default with `mt/default-value-transformer` [#576](https://github.com/metosin/malli/issues/576)
+* fixed `:schema` explain path, [#573](https://github.com/metosin/malli/issues/573)
+* fixed `:enum` explain path, [#553](https://github.com/metosin/malli/issues/553)
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
+* fixed `:function` lenses
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
+* support for Lazy EntrySchema parsing
+* `empty?` Schema does not throw exceptions
+
+### Extender API
+
+* **BREAKING**: `m/EntrySchema` replaces `m/MapSchema` with new `-entry-parser` method
+* **BREAKING**: (eager) `m/-parse-entries` is removed, use `m/-entry-parser` instead
+* **BREAKING**: `m/-create-form` supports 2 & 4 arities (was: 3)
+* `m/EntryParser` protocol
+* `m/-entry-forms` helper
+* `m/walk-leaf`, `m/-walk-entries` & `m/-walk-indexed` helpers
+* `m/Cached` protocol and `m/-create-cache` for memoization of `-validator`, `-explainer`, `-parser` and `-unparser` when using `m/validator`, `m/explain`, `m/parser` and `m/unparser`.
 
 ## 0.6.1 (2021-08-08)
 

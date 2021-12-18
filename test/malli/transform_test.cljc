@@ -786,7 +786,29 @@
                               [:last-name :string]]]]
                      nil
                      (mt/default-value-transformer {:defaults {:map (constantly {})
-                                                               :string (constantly "")}}))))))
+                                                               :string (constantly "")}})))))
+
+  (testing "nil as default value, #576"
+    (is (= {:age nil
+            :name ""
+            :weight nil
+            :address {:street ""
+                      :lonlat nil}}
+           (m/decode
+             [:map
+              [:age int?]
+              [:name string?]
+              [:weight double?]
+              [:address [:map
+                         [:street string?]
+                         [:lonlat [:tuple double? double?]]]]]
+             nil
+             (mt/default-value-transformer
+               {:defaults {:map (constantly {})
+                           :tuple (constantly nil)
+                           'string? (constantly "")
+                           'int? (constantly nil)
+                           'double? (constantly nil)}}))))))
 
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))

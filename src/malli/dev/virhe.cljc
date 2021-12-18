@@ -129,8 +129,8 @@
 (defn -visit [x printer]
   (fipp.visit/visit printer x))
 
-(defn -location [e ss]
-  #?(:clj
+#?(:clj
+   (defn -location [e ss]
      (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
            [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
                                   (cond (start-with f s) (recur (rest fs) ss)
@@ -174,7 +174,7 @@
 (defmulti -format (fn [type _ _ _] type) :default ::default)
 
 (defmethod -format ::default [_ message data printer]
-  {:body (into [:group (-text (or (:message data) message) printer)] (if data [:break :break (-visit data printer)]))})
+  {:body (into [:group (-text (or (:message data) message) printer)] (when data [:break :break (-visit data printer)]))})
 
 ;;
 ;; documents
@@ -183,5 +183,5 @@
 (defn -exception-doc [e printer]
   (let [{:keys [type data]} (ex-data e)
         {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
-        location (-location e (:throwing-fn-top-level-ns-names printer))]
+        location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)), :cljs nil)]
     (-section title location body printer)))

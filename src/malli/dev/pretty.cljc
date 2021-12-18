@@ -11,7 +11,7 @@
        {:title "Schema Error"
         :width 100
         :colors v/-dark-colors
-        :unknown (fn [x] (if (m/schema? x) (m/form x)))
+        :unknown (fn [x] (when (m/schema? x) (m/form x)))
         :throwing-fn-top-level-ns-names ["malli" "clojure"]}
        options))))
 

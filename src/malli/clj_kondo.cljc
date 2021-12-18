@@ -15,10 +15,11 @@
 (defmethod accept 'pos-int? [_ _ _ _] :pos-int)
 (defmethod accept 'neg-int? [_ _ _ _] :neg-int)
 (defmethod accept 'nat-int? [_ _ _ _] :nat-int)
-(defmethod accept 'float? [_ _ _ _] :double)
-(defmethod accept 'double? [_ _ _ _] :double)
+(defmethod accept 'nat-int? [_ _ _ _] :nat-int)
 (defmethod accept 'pos? [_ _ _ _] :pos-int)
 (defmethod accept 'neg? [_ _ _ _] :neg-int)
+(defmethod accept 'float? [_ _ _ _] :double)
+(defmethod accept 'double? [_ _ _ _] :double)
 (defmethod accept 'boolean? [_ _ _ _] :boolean)
 (defmethod accept 'string? [_ _ _ _] :string)
 (defmethod accept 'ident? [_ _ _ _] :symbol) ;;??
@@ -65,29 +66,51 @@
 
 (defmethod accept :and [_ _ _ _] :any) ;;??
 (defmethod accept :or [_ _ _ _] :any) ;;??
+(defmethod accept :orn [_ _ _ _] :any) ;;??
+(defmethod accept :not [_ _ _ _] :any) ;;??
 
-(defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept :map [_ _ children _]
   (let [{req true opt false} (->> children (group-by (m/-comp not :optional second)))
         opt (apply array-map (mapcat (fn [[k _ s]] [k s]) opt))
         req (apply array-map (mapcat (fn [[k _ s]] [k s]) req))]
     (cond-> {:op :keys}, (seq opt) (assoc :opt opt), (seq req) (assoc :req req))))
 
-(defmethod accept :multi [_ _ _ _] :any) ;;??
 (defmethod accept :map-of [_ _ _ _] :map) ;;??
 (defmethod accept :vector [_ _ _ _] :vector)
 (defmethod accept :sequential [_ _ _ _] :sequential)
 (defmethod accept :set [_ _ _ _] :set)
-(defmethod accept :enum [_ _ _ _])
+(defmethod accept :enum [_ _ children _]
+  (let [types (->> children (map type) (set))]
+    (if (< 1 (count types))
+      :any
+      (let [child (first children)]
+        (cond
+          (string? child) :string
+          (keyword? child) :keyword
+          (integer? child) :int
+          (char? child) :char
+          (number? child) :number
+          (symbol? child) :symbol
+          :else :any)))))
+
 (defmethod accept :maybe [_ _ [child] _] (if (keyword? child) (keyword "nilable" (name child)) child))
 (defmethod accept :tuple [_ _ children _] children)
+(defmethod accept :multi [_ _ _ _] :any) ;;??
 (defmethod accept :re [_ _ _ _] :regex)
 (defmethod accept :fn [_ _ _ _] :fn)
+(defmethod accept :ref [_ _ _ _] :any) ;;??
+(defmethod accept :=> [_ _ _ _] :fn)
+(defmethod accept :function [_ _ _ _] :fn)
+(defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 
+(defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))
+(defmethod accept ::m/val [_ _ children _] (first children))
+
+(defmethod accept :any [_ _ _ _] :any)
+(defmethod accept :nil [_ _ _ _] :nil)
 (defmethod accept :string [_ _ _ _] :string)
 (defmethod accept :int [_ _ _ _] :int)
 (defmethod accept :double [_ _ _ _] :double)
-
 (defmethod accept :boolean [_ _ _ _] :boolean)
 (defmethod accept :keyword [_ _ _ _] :keyword)
 (defmethod accept :qualified-keyword [_ _ _ _] :keyword)
@@ -95,17 +118,14 @@
 (defmethod accept :qualified-symbol [_ _ _ _] :symbol)
 (defmethod accept :uuid [_ _ _ _] :any) ;;??
 
-(defmethod accept :=> [_ _ _ _] :fn)
-(defmethod accept :function [_ _ _ _] :fn)
-(defmethod accept :ref [_ _ _ _] :any) ;;??
-(defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
-(defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))
-
-(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec (transform child)})
-(defmethod accept :* [_ _ [child] _] {:op :rest, :spec (transform child)})
-(defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec (transform child)})
+(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec child})
+(defmethod accept :* [_ _ [child] _] {:op :rest, :spec child})
+(defmethod accept :? [_ _ [child] _] {:op :rest, :spec child})
+(defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec child})
 (defmethod accept :cat [_ _ children _] children)
 (defmethod accept :catn [_ _ children _] (mapv last children))
+(defmethod accept :alt [_ _ _ _] :any) ;;??
+(defmethod accept :altn [_ _ _ _] :any) ;??
 
 (defmethod accept :merge [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept :union [_ schema _ options] (transform (m/deref schema) options))
@@ -160,7 +180,7 @@
       (assoc-in
         acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
         (select-keys data [:args :ret :min-arity])))
-    {} xs))
+    {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))

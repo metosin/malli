@@ -1,6 +1,6 @@
 (ns malli.generator
   (:require [clojure.test.check.generators :as gen]
-            [borkdude.dynaload :as dynaload]
+            #?(:clj [borkdude.dynaload :as dynaload])
             [clojure.string :as str]
             [clojure.test.check :as check]
             [clojure.test.check.random :as random]
@@ -23,7 +23,7 @@
 
 (defn -maybe-recur [schema options]
   (let [[recur options] (-recur schema options)]
-    (if recur options)))
+    (when recur options)))
 
 (defn -min-max [schema options]
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
@@ -43,7 +43,7 @@
       (and min max) (gen/fmap str/join (gen/vector gen/char min max))
       min (gen/fmap str/join (gen/vector gen/char min (* 2 min)))
       max (gen/fmap str/join (gen/vector gen/char 0 max))
-      :else gen/string)))
+      :else gen/string-alphanumeric)))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
@@ -83,7 +83,7 @@
                      (apply gen/tuple))
         gen-opt (->> entries
                      (filter #(-> % last m/properties :optional))
-                     (map (fn [[k s]] (gen/one-of (into [(gen/return nil)] (if continue [(value-gen k s)])))))
+                     (map (fn [[k s]] (gen/one-of (into [(gen/return nil)] (when continue [(value-gen k s)])))))
                      (apply gen/tuple))]
     (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple gen-req gen-opt))))
 
@@ -186,7 +186,7 @@
 
 (defmethod -schema-generator :maybe [schema options]
   (let [[continue options] (-recur schema options)]
-    (gen/one-of (into [(gen/return nil)] (if continue [(-> schema (m/children options) first (generator options))])))))
+    (gen/one-of (into [(gen/return nil)] (when continue [(-> schema (m/children options) first (generator options))])))))
 
 (defmethod -schema-generator :tuple [schema options] (apply gen/tuple (mapv #(generator % options) (m/children schema options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
@@ -271,7 +271,7 @@
   ([?schema]
    (generator ?schema nil))
   ([?schema options]
-   (-create (m/schema ?schema options) options)))
+   (m/-cached (m/schema ?schema options) :generator #(-create % options))))
 
 (defn generate
   ([?gen-or-schema]
@@ -307,11 +307,11 @@
                      (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
                                                         (check/quick-check =>iterations))
                            smallest (-> shrunk :smallest first)]
-                       (if-not (true? result)
+                       (when-not (true? result)
                          (let [explain-input (m/explain input smallest)
-                               response (if-not explain-input
+                               response (when-not explain-input
                                           (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
-                               explain-output (if-not explain-input (m/explain output response))]
+                               explain-output (when-not explain-input (m/explain output response))]
                            (cond-> shrunk
                                    explain-input (assoc ::explain-input explain-input)
                                    explain-output (assoc ::explain-output explain-output)

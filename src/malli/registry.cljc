@@ -1,5 +1,9 @@
 (ns malli.registry
-  (:refer-clojure :exclude [type]))
+  (:refer-clojure :exclude [type])
+  #?(:clj (:import (java.util HashMap Map))))
+
+#?(:cljs (goog-define mode "default")
+   :clj  (def mode (as-> (or (System/getProperty "malli.registry/mode") "default") $ (.intern $))))
 
 #?(:cljs (goog-define type "default")
    :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
@@ -8,15 +12,24 @@
   (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
-(defn simple-registry [schemas]
+(defn registry? [x] (#?(:clj instance?, :cljs implements?) malli.registry.Registry x))
+
+(defn fast-registry [m]
+  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
+    (reify
+      Registry
+      (-schema [_ type] (.get fm type))
+      (-schemas [_] m))))
+
+(defn simple-registry [m]
   (reify
     Registry
-    (-schema [_ type] (schemas type))
-    (-schemas [_] schemas)))
+    (-schema [_ type] (m type))
+    (-schemas [_] m)))
 
 (defn registry [?registry]
   (cond (nil? ?registry) nil
-        #?@(:clj [(instance? malli.registry.Registry ?registry) ?registry])
+        (registry? ?registry) ?registry
         (map? ?registry) (simple-registry ?registry)
         (satisfies? Registry ?registry) ?registry))
 
@@ -24,12 +37,12 @@
 ;; custom
 ;;
 
-(def ^:private registry* (atom (registry {})))
+(def ^:private registry* (atom (simple-registry {})))
 
 (defn set-default-registry! [?registry]
-  (if (identical? type "custom")
+  (if-not (identical? mode "strict")
     (reset! registry* (registry ?registry))
-    (throw (ex-info "can't set default registry" {:type type}))))
+    (throw (ex-info "can't set default registry, invalid mode" {:mode mode, :type type}))))
 
 (defn ^:no-doc custom-default-registry []
   (reify

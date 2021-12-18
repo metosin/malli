@@ -521,7 +521,52 @@
                 [:foo {:error/fn (fn [{:keys [schema]} _]
                                    (-> schema m/properties :reason))} [:int {:reason "failure"}]]]
                (m/explain {:foo "1"})
-               (me/humanize {:resolve me/-resolve-root-error}))))))
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
+  (testing "enum #553"
+    (is (= {:a ["should be either a or b"]}
+           (-> [:map
+                [:a [:enum "a" "b"]]]
+               (m/explain {:a nil})
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
+  (testing "find over non-maps"
+    (is (= [["should be an integer"]]
+           (-> [:sequential [:and :int]]
+               (m/explain [1 "2"])
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
+  (testing "correct paths"
+    (is (= ["should be an integer" "should be an integer" "should be an integer"]
+           (me/humanize
+             (m/explain [:and [:and :int :int :int]] "2")
+             {:resolve me/-resolve-direct-error})
+           (me/humanize
+             (m/explain [:and [:and :int :int :int]] "2")
+             {:resolve me/-resolve-root-error}))))
+
+  (testing "collecting all properties"
+    (are [schema expected]
+      (let [{:keys [errors] :as error} (m/explain schema {:foo "1"})]
+        (is (= [expected] (map #(me/-resolve-root-error error % nil) errors))))
+
+      ;; direct
+      [:map [:foo [:int {:error/message "direct-failure" ::level :warn}]]]
+      [[:foo]
+       "direct-failure"
+       {:error/message "direct-failure", ::level :warn}]
+
+      ;; entry
+      [:map [:foo {:error/message "entry-failure" ::level :warn} :int]]
+      [[:foo]
+       "entry-failure"
+       {:error/message "entry-failure", ::level :warn}]
+
+      ;; one up
+      [:map {:error/message "map-failure" ::level :warn} [:foo :int]]
+      [[]
+       "map-failure"
+       {:error/message "map-failure", ::level :warn}])))
 
 (deftest limits
   (is (= {:a [["should be an int"]]
@@ -582,6 +627,7 @@
       ;; tuple sizes
       [:map [:x [:tuple :int :int :int]]] {} => {:x ["missing required key"]}
       [:map [:x [:tuple :int :int :int]]] {:x []} => {:x ["invalid tuple size 0, expected 3"]}
+      [:map [:x [:tuple :int :int :int]]] {:x [1, 2]} => {:x ["invalid tuple size 2, expected 3"]}
       [:map [:x [:tuple :int :int :int]]] {:x [1 "2" 3]} => {:x [nil ["should be an integer"]]}
       [:map [:x [:tuple :int :int :int]]] {:x [1 "2" "3"]} => {:x [nil ["should be an integer"] ["should be an integer"]]}
       [:map [:x [:tuple :int [:and :int (f "fails")] :int]]] {:x [1 "2" "3"]} => {:x [nil ["should be an integer" "fails"] ["should be an integer"]]}

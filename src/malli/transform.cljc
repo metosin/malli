@@ -24,7 +24,7 @@
           options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
         (m/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
-      (if-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
+      (when-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
           (dissoc ?interceptor :compile)
           interceptor)))
@@ -121,7 +121,7 @@
   (if (string? x)
     (try
       #?(:clj  (Date/from (Instant/from (.parse +string->date-format+ x)))
-         :cljs (js/Date. (.getTime (goog.date.UtcDateTime.fromIsoString x))))
+         :cljs (js/Date. (.getTime (goog.date.UtcDateTime/fromIsoString x))))
       (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
@@ -144,7 +144,7 @@
 ;;
 
 (defn -any->string [x]
-  (if-not (nil? x) (str x)))
+  (when-not (nil? x) (str x)))
 
 (defn -any->any [x] x)
 
@@ -313,14 +313,14 @@
 (defn transformer [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
-                                          :key (if name (keyword (str key "/" name)))})
+                                          :key (when name (keyword (str key "/" name)))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
         ->chain (m/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
         chain' (->> chain (mapv #(let [name (some-> % :name name)]
                                    {:decode (->data (:decoders %) (:default-decoder %) name "decode")
                                     :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
-    (if (seq chain)
+    (when (seq chain)
       (reify
         m/Transformer
         (-transformer-chain [_] chain)
@@ -361,15 +361,15 @@
    (strip-extra-keys-transformer nil))
   ([{:keys [accept] :or {accept (m/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
    (let [transform {:compile (fn [schema _]
-                               (if (accept schema)
-                                 (if-let [ks (some->> schema m/entries (map first) seq set)]
+                               (when (accept schema)
+                                 (when-let [ks (some->> schema m/entries (map first) seq set)]
                                    (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x))))))}]
      (transformer
        {:decoders {:map transform}
         :encoders {:map transform}}))))
 
 (defn key-transformer [{:keys [decode encode types] :or {types #{:map}}}]
-  (let [transform (fn [f stage] (if f {stage (-transform-map-keys f)}))]
+  (let [transform (fn [f stage] (when f {stage (-transform-map-keys f)}))]
     (transformer (cond (set? types) {:decoders (zipmap types (repeat (transform decode :enter)))
                                      :encoders (zipmap types (repeat (transform encode :leave)))}
                        (= :default types) {:default-decoder (transform decode :enter)
@@ -380,28 +380,29 @@
    (default-value-transformer nil))
   ([{:keys [key defaults] :or {key :default}}]
    (let [get-default (fn [schema]
-                       (if-some [default (some-> schema m/properties key)]
-                         default
-                         (some->> schema m/type (get defaults) (#(% schema)))))
+                       (if-some [e (some-> schema m/properties (find key))]
+                         (constantly (val e))
+                         (some->> schema m/type (get defaults) (#(constantly (% schema))))))
          set-default {:compile (fn [schema _]
-                                 (when-some [default (get-default schema)]
-                                   (fn [x] (if (nil? x) default x))))}
+                                 (when-some [f (get-default schema)]
+                                   (fn [x] (if (nil? x) (f) x))))}
          add-defaults {:compile (fn [schema _]
                                   (let [defaults (into {}
-                                                       (keep (fn [[k {default key :keys [optional]} v]]
+                                                       (keep (fn [[k {:keys [optional] :as p} v]]
                                                                (when-not optional
-                                                                 (when-some [default (if (some? default)
-                                                                                       default
-                                                                                       (get-default v))]
-                                                                   [k default]))))
+                                                                 (let [e (find p key)]
+                                                                   (when-some [f (if e
+                                                                                   (constantly (val e))
+                                                                                   (get-default v))]
+                                                                     [k f])))))
                                                        (m/children schema))]
                                     (when (seq defaults)
                                       (fn [x]
                                         (if (map? x)
                                           (reduce-kv
-                                            (fn [acc k v]
+                                            (fn [acc k f]
                                               (if-not (contains? x k)
-                                                (assoc acc k v)
+                                                (assoc acc k (f))
                                                 acc))
                                             x defaults)
                                           x)))))}]

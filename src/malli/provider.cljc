@@ -58,13 +58,18 @@
         (when (and (>= (count entries) map-of-threshold) @?ks* (apply = vss)) [:map-of @?ks* (first vss)])
         (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
+(defn -decoded [{:keys [values]} vp t]
+  (let [vs (keys values), -decode (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) vs))]
+    (reduce-kv (fn [acc s f] (if (-decode f) (reduced s) acc)) t vp)))
+
 (defn -schema
   ([stats] (-schema stats nil))
-  ([{:keys [types] :as stats} options]
+  ([{:keys [types] :as stats} {::keys [value-providers] :as options}]
    (cond (= 1 (count (keys types))) (let [type (-> types keys first)]
                                       (case type
                                         :nil :nil
-                                        :value (-value-schema (type types))
+                                        :value (let [t (type types), vs (-value-schema t), vp (get value-providers vs)]
+                                                 (cond->> vs vp (-decoded t vp)))
                                         (:set :vector :sequential) (-sequential-schema stats type -schema options)
                                         :map (-map-schema (type types) -schema options)))
          (nil? types) 'any?

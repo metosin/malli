@@ -1,5 +1,6 @@
 (ns malli.clj-kondo
   (:require #?(:clj [clojure.java.io :as io])
+            [fipp.edn :as fipp]
             [malli.core :as m]))
 
 (declare transform)
@@ -151,7 +152,7 @@
        ;; delete the old file if exists (does not throw)
        (.delete (io/file ".clj-kondo" "configs" "malli" "config.edn"))
        (io/make-parents cfg-file)
-       (spit cfg-file config)
+       (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
        config)))
 
 (defn from [{:keys [schema ns name]}]

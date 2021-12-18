@@ -14,6 +14,17 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* [clj-kondo 2021.12.16+](https://github.com/clj-kondo/clj-kondo/blob/master/CHANGELOG.md#20211216) can load malli type configs automatically from new location (`.clj-kondo/metosin/malli-types/config.edn`)
+* updated dependencies:
+
+```clj
+mvxcvi/arrangement 1.2.0 -> 2.0.0
+borkdude/edamame 0.0.11 -> 0.0.18
+org.clojure/test.check 1.1.0 -> 1.1.1 
+```
+
 ## 0.7.4 (2021-12-18)
 
 * schema inferring supports value decoding via options

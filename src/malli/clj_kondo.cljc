@@ -147,7 +147,9 @@
 
 #?(:clj
    (defn save! [config]
-     (let [cfg-file (io/file ".clj-kondo" "configs" "malli" "config.edn")]
+     (let [cfg-file (io/file ".clj-kondo" "metosin" "malli-types" "config.edn")]
+       ;; delete the old file if exists (does not throw)
+       (.delete (io/file ".clj-kondo" "configs" "malli" "config.edn"))
        (io/make-parents cfg-file)
        (spit cfg-file config)
        config)))

@@ -1533,7 +1533,7 @@ Sample-data can be type-hinted with `::mp/hint`:
 ; [:tuple some? string? boolean?]
 ```
 
-### decoding in value inffering
+### value decoding in inferring
 
 By default, no decoding is applied for (leaf) values:
 

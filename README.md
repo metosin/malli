@@ -1533,6 +1533,27 @@ Sample-data can be type-hinted with `::mp/hint`:
 ; [:tuple some? string? boolean?]
 ```
 
+### value decoding in inferring
+
+By default, no decoding is applied for (leaf) values:
+
+```clj
+(mp/provide
+ [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
+  {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}])
+; => [:map [:id string?]]
+```
+
+Adding custom decoding via `::mp/value-decoders` option:
+
+```clj
+(mp/provide
+ [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
+  {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
+ {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}})
+; => [:map [:id :uuid]]
+```
+
 ## Parsing values
 
 Schemas can be used to parse values using `m/parse` and `m/parser`:

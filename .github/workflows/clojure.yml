@@ -13,8 +13,9 @@ jobs:
       matrix:
         # Supported Java versions: LTS releases 8 and 11 and the latest release
         jdk: [8, 11, 15]
+        clojure: [10, 11]
 
-    name: Clojure (Java ${{ matrix.jdk }})
+    name: Clojure ${{ matrix.clojure }} (Java ${{ matrix.jdk }})
 
     runs-on: ubuntu-latest
 
@@ -29,7 +30,7 @@ jobs:
         with:
           cli: latest
       - name: Run tests
-        run: bin/kaocha
+        run: CLOJURE_ALIAS=clojure-${{ matrix.clojure }} bin/kaocha
 
   build-cljs:
     name: ClojureScript

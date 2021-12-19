@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-clojure -M:test -m kaocha.runner "$@"
+# Should work if the env var is empty
+clojure -A:$CLOJURE -M:test -m kaocha.runner "$@"

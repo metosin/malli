@@ -54,7 +54,9 @@
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.1"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"
-                             "-Dclojure.compiler.direct-linking=true"]}}
+                             "-Dclojure.compiler.direct-linking=true"]}
+           :clojure-10 {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
+           :clojure-11 {}}
  :deps {org.clojure/clojure {:mvn/version "1.11.0-alpha3"}
         borkdude/dynaload {:mvn/version "0.2.2"}
         borkdude/edamame {:mvn/version "0.0.18"}

@@ -11,8 +11,9 @@ jobs:
   build-clj:
     strategy:
       matrix:
-        # Supported Java versions: LTS releases 8 and 11 and the latest release
-        jdk: [8, 11, 15]
+        # Supported Java versions: LTS releases and latest
+        # TODO: Add 18 when available
+        jdk: [8, 11, 17]
         clojure: [10, 11]
 
     name: Clojure ${{ matrix.clojure }} (Java ${{ matrix.jdk }})
@@ -24,6 +25,7 @@ jobs:
       - name: Setup Java ${{ matrix.jdk }}
         uses: actions/setup-java@v2.4.0
         with:
+          distribution: zulu
           java-version: ${{ matrix.jdk }}
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master
@@ -41,6 +43,7 @@ jobs:
       - name: Setup Java 11
         uses: actions/setup-java@v2.4.0
         with:
+          distribution: zulu
           java-version: 11
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master

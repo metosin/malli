@@ -18,17 +18,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Java ${{ matrix.jdk }}
-      uses: actions/setup-java@v2.4.0
-      with:
-        java-version: ${{ matrix.jdk }}
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        cli: latest
-    - name: Run tests
-      run: bin/kaocha
+      - uses: actions/checkout@v2
+      - name: Setup Java ${{ matrix.jdk }}
+        uses: actions/setup-java@v2.4.0
+        with:
+          java-version: ${{ matrix.jdk }}
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          cli: latest
+      - name: Run tests
+        run: bin/kaocha
 
   build-cljs:
     name: ClojureScript

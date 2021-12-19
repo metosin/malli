@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.7.4</version>
+  <version>0.7.5</version>
   <name>malli</name>
 
   <licenses>
@@ -18,7 +18,7 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.7.4</tag>
+    <tag>0.7.5</tag>
   </scm>
 
   <dependencies>
@@ -30,12 +30,12 @@
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>0.0.11</version>
+      <version>0.0.18</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>test.check</artifactId>
-      <version>1.1.0</version>
+      <version>1.1.1</version>
     </dependency>
     <dependency>
       <groupId>fipp</groupId>
@@ -45,7 +45,7 @@
     <dependency>
       <groupId>mvxcvi</groupId>
       <artifactId>arrangement</artifactId>
-      <version>1.2.0</version>
+      <version>2.0.0</version>
     </dependency>
   </dependencies>
 

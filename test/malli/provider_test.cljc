@@ -122,9 +122,9 @@
     {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}}]
 
    ;; value-hints
-   [[:map [:name string?] [:gender [:enum "male" "female"]]]
+   [[:map [:name :string] [:gender [:enum "male" "female"]]]
     [{:name "Tommi", :gender (mp/-hinted "male" :enum)}
-     {:name "Tiina", :gender "female"}]]
+     {:name (mp/-hinted "Tiina" :string), :gender "female"}]]
 
    [[:map
      [:id string?]

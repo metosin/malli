@@ -215,10 +215,13 @@
                         (is (not= ::m/invalid arglist)))))))]
 
     (testing "schematized syntax"
-      (testing "fails by default"
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse '[x :- :int]))))
-      (testing "succeeds with schematized clojure"
-        (is (= [:cat :int] (:schema (md/parse '[x :- :int] {::md/schema md/SchematizedBinding}))))))
+      (let [syntax '[x :- :int]]
+
+        (testing "fails by default"
+          (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse syntax))))
+
+        (testing "succeeds with schematized clojure"
+          (is (= [:cat :int] (:schema (md/parse syntax {::md/schema md/SchematizedBinding})))))))
 
     (testing "vanilla clojure"
       (test-all expectations nil))

@@ -9,12 +9,21 @@
    {:name "1 arg"
     :bind '[a]
     :schema [:cat :any]}
+   {:name "1 arg, schematized"
+    :bind '[a :- :int]
+    :schema [:cat :int]}
    {:name "2 args"
     :bind '[a b]
     :schema [:cat :any :any]}
+   {:name "2 args, schematized"
+    :bind '[a :- :int, b :- :boolean]
+    :schema [:cat :int :boolean]}
    {:name "2 + varargs"
     :bind '[a b & cs]
     :schema [:cat :any :any [:* :any]]}
+   {:name "2 + varargs, schematize"
+    :bind '[a, b :- :int & cs :- [:* :boolean]]
+    :schema [:cat :any :int [:* :boolean]]}
    {:name "sequence destructuring"
     :bind '[a [b1 [b2] & bs :as bss] & [c1 c2 & cs :as css]]
     :schema [:cat
@@ -25,6 +34,23 @@
                [:maybe
                 [:cat
                  [:? :any]
+                 [:* :any]]]
+               [:* :any]]]
+             [:maybe
+              [:cat
+               [:? :any]
+               [:? :any]
+               [:* :any]]]]}
+   {:name "Sequence destructuring, schematized"
+    :bind '[a :- :int [b1 :- :int [b2 :- :int] & bs :as bss :- [:vector :int]] & [c1 c2 & cs :as css]]
+    :schema [:cat
+             :int
+             [:maybe
+              [:cat
+               [:? :int]
+               [:maybe
+                [:cat
+                 [:? :int]
                  [:* :any]]]
                [:* :any]]]
              [:maybe

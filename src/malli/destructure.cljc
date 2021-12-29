@@ -2,7 +2,40 @@
   (:require [malli.core :as m]
             [clojure.walk :as walk]))
 
-(def Bind
+(def Binding
+  (m/schema
+   [:schema
+    {:registry {"Schema" any?
+                "Amp" [:= '&]
+                "As" [:= :as]
+                "Local" [:and symbol? [:not "Amp"]]
+                "Map" [:map
+                       [:keys {:optional true} [:vector ident?]]
+                       [:strs {:optional true} [:vector ident?]]
+                       [:syms {:optional true} [:vector ident?]]
+                       [:or {:optional true} [:map-of simple-symbol? any?]]
+                       [:as {:optional true} "Local"]]
+                "Vector" [:catn
+                          [:elems [:* "Argument"]]
+                          [:rest [:? [:catn
+                                      [:amp "Amp"]
+                                      [:arg "Argument"]]]]
+                          [:as [:? [:catn
+                                    [:as "As"]
+                                    [:sym "Local"]]]]]
+                "Arg" [:alt
+                       [:catn [:sym "Local"]]
+                       [:catn [:map "Map"]]
+                       [:catn [:vec [:schema [:ref "Vector"]]]]]
+                "Argument" [:catn [:arg "Arg"]]
+                "Bind" [:catn
+                        [:elems [:* "Argument"]]
+                        [:rest [:? [:catn
+                                    [:amp "Amp"]
+                                    [:arg "Argument"]]]]]}}
+    "Bind"]))
+
+(def SchematizedBinding
   (m/schema
    [:schema
     {:registry {"Schema" any?
@@ -17,32 +50,32 @@
                        [:or {:optional true} [:map-of simple-symbol? any?]]
                        [:as {:optional true} "Local"]]
                 "Vector" [:catn
-                          [:elems [:* "SchematizedArgument"]]
+                          [:elems [:* "Argument"]]
                           [:rest [:? [:catn
                                       [:amp "Amp"]
-                                      [:arg "SchematizedArgument"]]]]
+                                      [:arg "Argument"]]]]
                           [:as [:? [:catn
                                     [:as "As"]
                                     [:sym "Local"]
                                     [:schema [:? [:catn
                                                   [:- "Separator"]
                                                   [:schema "Schema"]]]]]]]]
+                "Arg" [:alt
+                       [:catn [:sym "Local"]]
+                       [:catn [:map "Map"]]
+                       [:catn [:vec [:schema [:ref "Vector"]]]]]
                 "Argument" [:alt
-                            [:catn [:sym "Local"]]
-                            [:catn [:map "Map"]]
-                            [:catn [:vec [:schema [:ref "Vector"]]]]]
-                "SchematizedArgument" [:alt
-                                       [:catn
-                                        [:arg "Argument"]]
-                                       [:catn
-                                        [:arg "Argument"]
-                                        [:- "Separator"]
-                                        [:schema "Schema"]]]
+                            [:catn
+                             [:arg "Arg"]]
+                            [:catn
+                             [:arg "Arg"]
+                             [:- "Separator"]
+                             [:schema "Schema"]]]
                 "Bind" [:catn
-                        [:elems [:* "SchematizedArgument"]]
+                        [:elems [:* "Argument"]]
                         [:rest [:? [:catn
                                     [:amp "Amp"]
-                                    [:arg "SchematizedArgument"]]]]]}}
+                                    [:arg "Argument"]]]]]}}
     "Bind"]))
 
 (declare -transform)
@@ -81,13 +114,13 @@
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))
 
 (defn parse
-  ([bind] (parse bind nil))
-  ([bind options]
-   (let [{:keys [elems rest] :as parsed} (m/parse Bind bind)]
-     {:bind bind
-      :parsed parsed
-      :schema (cond-> :cat
-                (or (seq elems) rest) (vector)
-                (seq elems) (into (map #(-transform % options false) elems))
-                rest (conj (-transform (:arg rest) options true)))
-      :arglist (->> parsed -unschematize (m/unparse Bind))})))
+  ([arglist] (parse arglist nil))
+  ([arglist {::keys [schema] :or {schema Binding} :as options}]
+   (let [{:keys [elems rest] :as parsed} (m/parse schema arglist)
+         arglist' (->> parsed (-unschematize) (m/unparse Binding))
+         schema' (cond-> :cat
+                   (or (seq elems) rest) (vector)
+                   (seq elems) (into (map #(-transform % options false) elems))
+                   rest (conj (-transform (:arg rest) options true)))]
+     (when (= ::m/invalid arglist') (m/-fail! ::invalid-arglist {:arglist arglist}))
+     {:raw-arglist arglist, :parsed parsed, :arglist arglist', :schema schema'})))

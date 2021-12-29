@@ -1,6 +1,7 @@
 (ns malli.destructure-test
   (:require [clojure.test :refer [deftest testing is]]
-            [malli.destructure :as md]))
+            [malli.destructure :as md]
+            [malli.core :as m]))
 
 (def expectations
   [{:name "empty"
@@ -204,13 +205,23 @@
               [:b :int]]]}])
 
 (deftest parse-test
+  (let [test-all (fn [expectations options]
+                (doseq [{:keys [name bind] expected :schema} expectations]
+                  (testing (str "- " name " -")
+                    (let [{:keys [arglist schema]} (md/parse bind options)]
+                      (testing "has expected schema"
+                        (is (= expected schema)))
+                      (testing "has valid arglist"
+                        (is (not= ::m/invalid arglist)))))))]
 
-  (testing "vanilla clojure"
-    (doseq [{:keys [name bind schema]} expectations]
-      (testing name
-        (is (= schema (:schema (md/parse bind)))))))
+    (testing "schematized syntax"
+      (testing "fails by default"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse '[x :- :int]))))
+      (testing "succeeds with schematized clojure"
+        (is (= [:cat :int] (:schema (md/parse '[x :- :int] {::md/schema md/SchematizedBinding}))))))
 
-  (testing "schematized clojure"
-    (doseq [{:keys [name bind schema]} schematized-expectations]
-      (testing name
-        (is (= schema (:schema (md/parse bind))))))))
+    (testing "vanilla clojure"
+      (test-all expectations nil))
+
+    (testing "schematized clojure"
+      (test-all schematized-expectations {::md/schema md/SchematizedBinding}))))

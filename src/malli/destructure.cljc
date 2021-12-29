@@ -28,12 +28,12 @@
                        [:catn [:map "Map"]]
                        [:catn [:vec [:schema [:ref "Vector"]]]]]
                 "Argument" [:catn [:arg "Arg"]]
-                "Bind" [:catn
-                        [:elems [:* "Argument"]]
-                        [:rest [:? [:catn
-                                    [:amp "Amp"]
-                                    [:arg "Argument"]]]]]}}
-    "Bind"]))
+                "Binding" [:catn
+                           [:elems [:* "Argument"]]
+                           [:rest [:? [:catn
+                                       [:amp "Amp"]
+                                       [:arg "Argument"]]]]]}}
+    "Binding"]))
 
 (def SchematizedBinding
   (m/schema
@@ -71,12 +71,12 @@
                              [:arg "Arg"]
                              [:- "Separator"]
                              [:schema "Schema"]]]
-                "Bind" [:catn
-                        [:elems [:* "Argument"]]
-                        [:rest [:? [:catn
-                                    [:amp "Amp"]
-                                    [:arg "Argument"]]]]]}}
-    "Bind"]))
+                "Binding" [:catn
+                           [:elems [:* "Argument"]]
+                           [:rest [:? [:catn
+                                       [:amp "Amp"]
+                                       [:arg "Argument"]]]]]}}
+    "Binding"]))
 
 (declare -transform)
 

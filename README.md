@@ -1671,7 +1671,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. 
 
-**NOTE**: For now, the AST syntax in concidered as internal, e.g. don't use it as a database persistency model.
+**NOTE**: For now, the AST syntax in considered as internal, e.g. don't use it as a database persistency model.
 
 ```clj
 (def ?schema

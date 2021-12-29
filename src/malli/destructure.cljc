@@ -50,10 +50,11 @@
 (defn -any? [x] (= :any x))
 (defn -maybe? [x] (and (vector? x) (= :maybe (first x))))
 
-(defn -vector [{:keys [elems rest]} options]
-  (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
-        rs (if rest (-transform (:arg rest) options true) [:* :any])]
-    [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)]))
+(defn -vector [{:keys [as elems rest]} options]
+  (or (some->> as :schema :schema (conj [:schema]))
+      (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
+            rs (if rest (-transform (:arg rest) options true) [:* :any])]
+        [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)])))
 
 (defn -args [{:keys [keys strs syms]}]
   (let [entry (fn [f] (fn [x] [:cat [:= (f x)] :any]))
@@ -69,7 +70,7 @@
   [:altn [:map (-map arg)] [:args (cond->> (-args arg) (not rest) (conj [:schema]))]])
 
 (defn -transform [{{:keys [vec map]} :arg schema :schema :as all} options rest]
-  (cond (and schema rest) (let [s (-transform (dissoc all :schema) options false)] (if (-any? s) schema [:and schema s]))
+  (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
         schema schema
         vec (-vector vec options)
         map (-map-args map rest)

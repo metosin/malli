@@ -47,6 +47,7 @@
 
 (declare -transform)
 
+(defn -any? [x] (= :any x))
 (defn -maybe? [x] (and (vector? x) (= :maybe (first x))))
 
 (defn -vector [{:keys [elems rest]}]
@@ -56,23 +57,23 @@
 
 (defn -args [{:keys [keys strs syms]}]
   (let [entry (fn [f] (fn [x] [:cat [:= (f x)] :any]))
-        with (fn [ks f acc] (cond-> acc ks (into (map (entry f) ks))))]
-    (->> [:alt] (with keys keyword) (with strs str) (with syms identity) (conj [:*]))))
+        with (fn [acc ks f] (cond-> acc ks (into (map (entry f) ks))))]
+    (-> [:alt] (with keys keyword) (with strs str) (with syms identity) (conj [:cat :any :any]) (->> (conj [:*])))))
 
 (defn -map [{:keys [keys strs syms]}]
   (let [entry (fn [f] (fn [x] [(f x) {:optional true} :any]))
         with (fn [ks f acc] (cond-> acc ks (into (map (entry f) ks))))]
     (->> [:map] (with keys keyword) (with strs str) (with syms identity))))
 
-(defn -map-args [arg] [:altn [:map (-map arg)] [:args (-args arg)]])
+(defn -map-args [arg rest] [:altn [:map (-map arg)] [:args (cond->> (-args arg) (not rest) (conj [:schema]))]])
 
 (defn -transform
   ([x] (-transform x false))
   ([{{:keys [vec map]} :arg schema :schema :as all} rest]
-   (cond (and schema rest) [:and schema (-transform (dissoc all :schema))]
+   (cond (and schema rest) (let [s (-transform (dissoc all :schema))] (if (-any? s) schema [:and schema s]))
          schema schema
          vec (-vector vec)
-         map (if rest (-map-args map) (-map map))
+         map (-map-args map rest)
          rest [:* :any]
          :else :any)))
 

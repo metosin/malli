@@ -34,56 +34,70 @@
                [:* :any]]]]}
    {:name "map destructuring"
     :bind '[a {:keys [b c]
-               :strs [e f]
-               :syms [g h]
-               :or {b 0, e 0, g 0} :as bc}]
+               :strs [d e]
+               :syms [f g]
+               :or {b 0, d 0, f 0} :as map}]
     :schema [:cat
              :any
-             [:map
-              [:b {:optional true} :any]
-              [:c {:optional true} :any]
-              ["e" {:optional true} :any]
-              ["f" {:optional true} :any]
-              ['g {:optional true} :any]
-              ['h {:optional true} :any]]]}
-   {:name "Keyword argument functions now also accept maps"
-    :bind '[& {:keys [a b], :strs [c d], :syms [e f] :as opts}]
-    :schema [:cat
              [:altn
               [:map [:map
-                     [:a {:optional true} :any]
                      [:b {:optional true} :any]
-                     ["c" {:optional true} :any]
+                     [:c {:optional true} :any]
                      ["d" {:optional true} :any]
-                     ['e {:optional true} :any]
-                     ['f {:optional true} :any]]]
-              [:args [:*
-                      [:alt
-                       [:cat [:= :a] :any]
-                       [:cat [:= :b] :any]
-                       [:cat [:= "c"] :any]
-                       [:cat [:= "d"] :any]
-                       [:cat [:= 'e] :any]
-                       [:cat [:= 'f] :any]]]]]]}
+                     ["e" {:optional true} :any]
+                     ['f {:optional true} :any]
+                     ['g {:optional true} :any]]]
+              [:args [:schema
+                      [:*
+                       [:alt
+                        [:cat [:= :b] :any]
+                        [:cat [:= :c] :any]
+                        [:cat [:= "d"] :any]
+                        [:cat [:= "e"] :any]
+                        [:cat [:= 'f] :any]
+                        [:cat [:= 'g] :any]
+                        [:cat :any :any]]]]]]]}
+   {:name "Keyword argument functions now also accept maps"
+      :bind '[& {:keys [a b], :strs [c d], :syms [e f] :as opts}]
+      :schema [:cat
+               [:altn
+                [:map [:map
+                       [:a {:optional true} :any]
+                       [:b {:optional true} :any]
+                       ["c" {:optional true} :any]
+                       ["d" {:optional true} :any]
+                       ['e {:optional true} :any]
+                       ['f {:optional true} :any]]]
+                [:args [:*
+                        [:alt
+                         [:cat [:= :a] :any]
+                         [:cat [:= :b] :any]
+                         [:cat [:= "c"] :any]
+                         [:cat [:= "d"] :any]
+                         [:cat [:= 'e] :any]
+                         [:cat [:= 'f] :any]
+                         [:cat :any :any]]]]]]}
    {:name "Nested Keyword argument"
-    :bind '[[& {:keys [a b] :as opts}]
-            & {:keys [a b] :as opts}]
-    :schema [:cat
-             [:maybe
-              [:altn
-               [:map [:map
-                      [:a {:optional true} :any]
-                      [:b {:optional true} :any]]]
-               [:args [:* [:alt
-                           [:cat [:= :a] :any]
-                           [:cat [:= :b] :any]]]]]]
-             [:altn
-              [:map [:map
-                     [:a {:optional true} :any]
-                     [:b {:optional true} :any]]]
-              [:args [:* [:alt
-                          [:cat [:= :a] :any]
-                          [:cat [:= :b] :any]]]]]]}])
+      :bind '[[& {:keys [a b] :as opts}]
+              & {:keys [a b] :as opts}]
+      :schema [:cat
+               [:maybe
+                [:altn
+                 [:map [:map
+                        [:a {:optional true} :any]
+                        [:b {:optional true} :any]]]
+                 [:args [:* [:alt
+                             [:cat [:= :a] :any]
+                             [:cat [:= :b] :any]
+                             [:cat :any :any]]]]]]
+               [:altn
+                [:map [:map
+                       [:a {:optional true} :any]
+                       [:b {:optional true} :any]]]
+                [:args [:* [:alt
+                            [:cat [:= :a] :any]
+                            [:cat [:= :b] :any]
+                            [:cat :any :any]]]]]]}])
 
 (deftest parse-test
   (doseq [{:keys [name bind schema]} expectations]

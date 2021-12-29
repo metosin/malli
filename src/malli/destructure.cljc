@@ -50,9 +50,9 @@
 (defn -any? [x] (= :any x))
 (defn -maybe? [x] (and (vector? x) (= :maybe (first x))))
 
-(defn -vector [{:keys [elems rest]}]
-  (let [ess (map #(let [s (-transform %)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
-        rs (if rest (-transform (:arg rest) true) [:* :any])]
+(defn -vector [{:keys [elems rest]} options]
+  (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
+        rs (if rest (-transform (:arg rest) options true) [:* :any])]
     [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)]))
 
 (defn -args [{:keys [keys strs syms]}]
@@ -65,27 +65,28 @@
         with (fn [ks f acc] (cond-> acc ks (into (map (entry f) ks))))]
     (->> [:map] (with keys keyword) (with strs str) (with syms identity))))
 
-(defn -map-args [arg rest] [:altn [:map (-map arg)] [:args (cond->> (-args arg) (not rest) (conj [:schema]))]])
+(defn -map-args [arg rest]
+  [:altn [:map (-map arg)] [:args (cond->> (-args arg) (not rest) (conj [:schema]))]])
 
-(defn -transform
-  ([x] (-transform x false))
-  ([{{:keys [vec map]} :arg schema :schema :as all} rest]
-   (cond (and schema rest) (let [s (-transform (dissoc all :schema))] (if (-any? s) schema [:and schema s]))
-         schema schema
-         vec (-vector vec)
-         map (-map-args map rest)
-         rest [:* :any]
-         :else :any)))
+(defn -transform [{{:keys [vec map]} :arg schema :schema :as all} options rest]
+  (cond (and schema rest) (let [s (-transform (dissoc all :schema) options false)] (if (-any? s) schema [:and schema s]))
+        schema schema
+        vec (-vector vec options)
+        map (-map-args map rest)
+        rest [:* :any]
+        :else :any))
 
 (defn -unschematize [x]
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))
 
-(defn parse [bind]
-  (let [{:keys [elems rest] :as parsed} (m/parse Bind bind)]
-    {:bind bind
-     :parsed parsed
-     :schema (cond-> :cat
-               (or (seq elems) rest) (vector)
-               (seq elems) (into (map -transform elems))
-               rest (conj (-transform (:arg rest) true)))
-     :arglist (->> parsed -unschematize (m/unparse Bind))}))
+(defn parse
+  ([bind] (parse bind nil))
+  ([bind options]
+   (let [{:keys [elems rest] :as parsed} (m/parse Bind bind)]
+     {:bind bind
+      :parsed parsed
+      :schema (cond-> :cat
+                (or (seq elems) rest) (vector)
+                (seq elems) (into (map #(-transform % options false) elems))
+                rest (conj (-transform (:arg rest) options true)))
+      :arglist (->> parsed -unschematize (m/unparse Bind))})))

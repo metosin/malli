@@ -219,9 +219,7 @@
                   (testing (str "- " name " -")
                     (let [{:keys [arglist schema]} (md/parse bind options)]
                       (testing "has expected schema"
-                        (when-not (is (= expected schema))
-                          (prn "?" expected)
-                          (prn ">" schema)))
+                        (is (= expected schema)))
                       (testing "has valid arglist"
                         (is (not= ::m/invalid arglist)))
                       (testing "errors"

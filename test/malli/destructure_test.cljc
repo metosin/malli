@@ -57,7 +57,9 @@
                         [:cat [:= "e"] :any]
                         [:cat [:= 'f] :any]
                         [:cat [:= 'g] :any]
-                        [:cat :any :any]]]]]]]}
+                        [:cat :any :any]]]]]]]
+    :errors '[[{::keysz [z]}]
+              [{:kikka/keyz [z]}]]}
    {:name "Keyword argument functions now also accept maps"
     :bind '[& {:keys [a b], :strs [c d], :syms [e f] :as opts}]
     :schema [:cat
@@ -206,13 +208,16 @@
 
 (deftest parse-test
   (let [test-all (fn [expectations options]
-                (doseq [{:keys [name bind] expected :schema} expectations]
+                (doseq [{:keys [name bind errors] expected :schema} expectations]
                   (testing (str "- " name " -")
                     (let [{:keys [arglist schema]} (md/parse bind options)]
                       (testing "has expected schema"
                         (is (= expected schema)))
                       (testing "has valid arglist"
-                        (is (not= ::m/invalid arglist)))))))]
+                        (is (not= ::m/invalid arglist)))
+                      (testing "errors"
+                        (doseq [error errors]
+                          (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse error)))))))))]
 
     (testing "schematized syntax"
       (let [syntax '[x :- :int]]

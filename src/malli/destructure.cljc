@@ -2,6 +2,9 @@
   (:require [malli.core :as m]
             [clojure.walk :as walk]))
 
+(defn -ns-keys [m]
+  (->> (dissoc m :keys :strs :syms :or :as) (keys) (every? #(and (qualified-keyword? %) (-> % name #{"keys" "syms"})))))
+
 (def Binding
   (m/schema
    [:schema
@@ -9,12 +12,14 @@
                 "Amp" [:= '&]
                 "As" [:= :as]
                 "Local" [:and symbol? [:not "Amp"]]
-                "Map" [:map
-                       [:keys {:optional true} [:vector ident?]]
-                       [:strs {:optional true} [:vector ident?]]
-                       [:syms {:optional true} [:vector ident?]]
-                       [:or {:optional true} [:map-of simple-symbol? any?]]
-                       [:as {:optional true} "Local"]]
+                "Map" [:and
+                       [:map
+                        [:keys {:optional true} [:vector ident?]]
+                        [:strs {:optional true} [:vector ident?]]
+                        [:syms {:optional true} [:vector ident?]]
+                        [:or {:optional true} [:map-of simple-symbol? any?]]
+                        [:as {:optional true} "Local"]]
+                       [:fn -ns-keys]]
                 "Vector" [:catn
                           [:elems [:* "Argument"]]
                           [:rest [:? [:catn
@@ -43,12 +48,14 @@
                 "As" [:= :as]
                 "Local" [:and symbol? [:not "Amp"]]
                 "Separator" [:= :-]
-                "Map" [:map
-                       [:keys {:optional true} [:vector ident?]]
-                       [:strs {:optional true} [:vector ident?]]
-                       [:syms {:optional true} [:vector ident?]]
-                       [:or {:optional true} [:map-of simple-symbol? any?]]
-                       [:as {:optional true} "Local"]]
+                "Map" [:and
+                       [:map
+                        [:keys {:optional true} [:vector ident?]]
+                        [:strs {:optional true} [:vector ident?]]
+                        [:syms {:optional true} [:vector ident?]]
+                        [:or {:optional true} [:map-of simple-symbol? any?]]
+                        [:as {:optional true} "Local"]]
+                       [:fn -ns-keys]]
                 "Vector" [:catn
                           [:elems [:* "Argument"]]
                           [:rest [:? [:catn

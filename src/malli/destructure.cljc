@@ -101,7 +101,7 @@
         :let [f ({"keys" keyword, "syms" symbol} (name k))], :when f, v vs] (f (namespace k) (str v))))
 
 (defn -keys [{:keys [keys strs syms] :as arg}]
-  (->> (distinct (-qualified arg)) (concat (map keyword keys) (map str strs) syms)))
+  (->> (-qualified arg) (concat (map keyword keys) (map str strs) syms) (distinct)))
 
 (defn -map-args [arg rest]
   (let [keys (-keys arg)]

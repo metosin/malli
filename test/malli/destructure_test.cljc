@@ -34,51 +34,55 @@
                [:? :any]
                [:* :any]]]]}
    {:name "map destructuring"
-    :bind '[a {:keys [b c]
-               :strs [d e]
-               :syms [f g]
+    :bind '[a {:keys [b]
+               :strs [c]
+               :syms [d]
+               :demo/keys [e]
+               :demo/syms [f]
                :or {b 0, d 0, f 0} :as map}]
     :schema [:cat
              :any
              [:altn
               [:map [:map
                      [:b {:optional true} :any]
-                     [:c {:optional true} :any]
-                     ["d" {:optional true} :any]
-                     ["e" {:optional true} :any]
-                     ['f {:optional true} :any]
-                     ['g {:optional true} :any]]]
+                     ["c" {:optional true} :any]
+                     ['d {:optional true} :any]
+                     [:demo/e {:optional true} :any]
+                     ['demo/f {:optional true} :any]]]
               [:args [:schema
                       [:*
                        [:alt
                         [:cat [:= :b] :any]
-                        [:cat [:= :c] :any]
-                        [:cat [:= "d"] :any]
-                        [:cat [:= "e"] :any]
-                        [:cat [:= 'f] :any]
-                        [:cat [:= 'g] :any]
+                        [:cat [:= "c"] :any]
+                        [:cat [:= 'd] :any]
+                        [:cat [:= :demo/e] :any]
+                        [:cat [:= 'demo/f] :any]
                         [:cat :any :any]]]]]]]
     :errors '[[{::keysz [z]}]
               [{:kikka/keyz [z]}]]}
    {:name "Keyword argument functions now also accept maps"
-    :bind '[& {:keys [a b], :strs [c d], :syms [e f] :as opts}]
+    :bind '[a & {:keys [b]
+                 :strs [c]
+                 :syms [d]
+                 :demo/keys [e]
+                 :demo/syms [f]
+                 :or {b 0, d 0, f 0} :as map}]
     :schema [:cat
+             :any
              [:altn
               [:map [:map
-                     [:a {:optional true} :any]
                      [:b {:optional true} :any]
                      ["c" {:optional true} :any]
-                     ["d" {:optional true} :any]
-                     ['e {:optional true} :any]
-                     ['f {:optional true} :any]]]
+                     ['d {:optional true} :any]
+                     [:demo/e {:optional true} :any]
+                     ['demo/f {:optional true} :any]]]
               [:args [:*
                       [:alt
-                       [:cat [:= :a] :any]
                        [:cat [:= :b] :any]
                        [:cat [:= "c"] :any]
-                       [:cat [:= "d"] :any]
-                       [:cat [:= 'e] :any]
-                       [:cat [:= 'f] :any]
+                       [:cat [:= 'd] :any]
+                       [:cat [:= :demo/e] :any]
+                       [:cat [:= 'demo/f] :any]
                        [:cat :any :any]]]]]]}
    {:name "Nested Keyword argument"
     :bind '[[& {:keys [a b] :as opts}]
@@ -157,43 +161,46 @@
                  [:* :any]]]
                [:* :int]]]]}
    {:name "map destructuring"
-    :bind '[a :- :int, {:keys [b c]
-                        :strs [d e]
-                        :syms [f g]
+    :bind '[a :- :int, {:keys [b]
+                        :strs [c]
+                        :syms [d]
+                        :demo/keys [e]
+                        :demo/syms [f]
                         :or {b 0, d 0, f 0} :as map}
             :- [:map
                 [:b :int]
-                [:c :int]
-                ["d" :string]
-                ["e" :string]
-                [f :symbol]
-                [g :symbol]]]
+                ["c" :int]
+                [d :string]
+                [:demo/e :string]
+                [demo/f :symbol]]]
     :schema [:cat
              :int
              [:map
               [:b :int]
-              [:c :int]
-              ["d" :string]
-              ["e" :string]
-              ['f :symbol]
-              ['g :symbol]]]}
+              ["c" :int]
+              ['d :string]
+              [:demo/e :string]
+              ['demo/f :symbol]]]}
    {:name "Keyword argument functions now also accept maps"
-    :bind '[& {:keys [a b], :strs [c d], :syms [e f] :as opts}
+    :bind '[& {:keys [b]
+               :strs [c]
+               :syms [d]
+               :demo/keys [e]
+               :demo/syms [f]
+               :or {b 0, d 0, f 0} :as map}
             :- [:map
                 [:b :int]
-                [:c :int]
-                ["d" :string]
-                ["e" :string]
-                [f :symbol]
-                [g :symbol]]]
+                ["c" :int]
+                [d :string]
+                [:demo/e :string]
+                [demo/f :symbol]]]
     :schema [:cat
              [:map
               [:b :int]
-              [:c :int]
-              ["d" :string]
-              ["e" :string]
-              ['f :symbol]
-              ['g :symbol]]]}
+              ["c" :int]
+              ['d :string]
+              [:demo/e :string]
+              ['demo/f :symbol]]]}
    {:name "Nested Keyword argument"
     :bind '[[& {:keys [a b] :as opts} :- [:map [:a :int] [:b :int]]]
             & {:keys [a b] :as opts} :- [:map [:a :int] [:b :int]]]
@@ -212,7 +219,9 @@
                   (testing (str "- " name " -")
                     (let [{:keys [arglist schema]} (md/parse bind options)]
                       (testing "has expected schema"
-                        (is (= expected schema)))
+                        (when-not (is (= expected schema))
+                          (prn "?" expected)
+                          (prn ">" schema)))
                       (testing "has valid arglist"
                         (is (not= ::m/invalid arglist)))
                       (testing "errors"

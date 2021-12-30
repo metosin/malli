@@ -96,18 +96,20 @@
             rs (if rest (-transform (:arg rest) options true) [:* :any])]
         [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)])))
 
-(defn -args [{:keys [keys strs syms]}]
-  (let [entry (fn [f] (fn [x] [:cat [:= (f x)] :any]))
-        with (fn [acc ks f] (cond-> acc ks (into (map (entry f) ks))))]
-    (-> [:alt] (with keys keyword) (with strs str) (with syms identity) (conj [:cat :any :any]) (->> (conj [:*])))))
+(defn -qualified [m]
+  (for [[k vs] m, :when (and (qualified-keyword? k) (-> k name #{"keys" "syms"}) (vector? vs) (every? ident? vs))
+        :let [f ({"keys" keyword, "syms" symbol} (name k))], :when f, v vs] (f (namespace k) (str v))))
 
-(defn -map [{:keys [keys strs syms]}]
-  (let [entry (fn [f] (fn [x] [(f x) {:optional true} :any]))
-        with (fn [ks f acc] (cond-> acc ks (into (map (entry f) ks))))]
-    (->> [:map] (with keys keyword) (with strs str) (with syms identity))))
+(defn -keys [{:keys [keys strs syms] :as arg}]
+  (->> (distinct (-qualified arg)) (concat (map keyword keys) (map str strs) syms)))
 
 (defn -map-args [arg rest]
-  [:altn [:map (-map arg)] [:args (cond->> (-args arg) (not rest) (conj [:schema]))]])
+  (let [keys (-keys arg)]
+    [:altn
+     [:map (into [:map] (map (fn [k] [k {:optional true} :any]) keys))]
+     [:args (-> (into [:alt] (map (fn [k] [:cat [:= k] :any]) keys))
+                (conj [:cat :any :any]) (->> (conj [:*]))
+                (cond->> (not rest) (conj [:schema])))]]))
 
 (defn -transform [{{:keys [vec map]} :arg schema :schema :as all} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))

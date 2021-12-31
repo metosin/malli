@@ -85,12 +85,10 @@
                                        [:arg "Argument"]]]]]}}
     "Binding"]))
 
-(declare -transform)
-
 (defn -any? [x] (= :any x))
 (defn -maybe? [x] (and (vector? x) (= :maybe (first x))))
 
-(defn -vector [{:keys [as elems rest]} options]
+(defn -vector [{:keys [as elems rest]} options -transform]
   (or (some->> as :schema :schema (conj [:schema]))
       (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
             rs (if rest (-transform (:arg rest) options true) [:* :any])]
@@ -103,29 +101,68 @@
 (defn -keys [{:keys [keys strs syms] :as arg}]
   (->> (-qualified arg) (concat (map keyword keys) (map str strs) syms) (distinct)))
 
-(defn -map-args [arg rest]
-  (let [keys (-keys arg)]
-    [:altn
-     [:map (into [:map] (map (fn [k] [k {:optional true} :any]) keys))]
-     [:args (-> (into [:alt] (map (fn [k] [:cat [:= k] :any]) keys))
-                (conj [:cat :any :any]) (->> (conj [:*]))
-                (cond->> (not rest) (conj [:schema])))]]))
+(defn -map [arg {:keys [::references ::required-keys ::closed-maps ::sequential-maps] :or {sequential-maps true}} rest]
+  (let [keys (-keys arg)
+        ->entry (fn [k] (let [ref (and references (qualified-keyword? k))]
+                          (cond (and ref required-keys) k
+                                required-keys [k :any]
+                                :else (cond-> [k {:optional true}] (not ref) (conj :any)))))
+        ->arg (fn [k] [:cat [:= k] (if (and references (qualified-keyword? k)) k :any)])]
+    (cond-> [:altn]
+      :always (conj [:map (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))])
+      (or rest sequential-maps) (conj [:args (-> (into [:alt] (map ->arg keys))
+                                                 (cond-> (not closed-maps) (conj [:cat :any :any]))
+                                                 (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]))))
 
 (defn -transform [{{:keys [vec map]} :arg schema :schema :as all} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
         schema schema
-        vec (-vector vec options)
-        map (-map-args map rest)
+        vec (-vector vec options -transform)
+        map (-map map options rest)
         rest [:* :any]
         :else :any))
 
 (defn -unschematize [x]
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))
 
+;;
+;; public api
+;;
+
 (defn parse
+  "Takes a destructuring bindings vector (arglist)
+   and returns a map with keys:
+
+   | key            | description |
+   | ---------------|-------------|
+   | `:raw-arglist` | the original arglist (can have type-hints)
+   | `:arglist`     | simplified clojure arglist (no type-hints)
+   | `:schema`      | extracted malli schema
+   | `:parsed`      | full parse results
+
+   Parsing can be configured using the following options:
+
+   | key                    | description |
+   | -----------------------|-------------|
+   | `::md/inline-schemas`  | support plumatic-style inline schemas (true)
+   | `::md/sequential-maps` | support sequential maps in non-rest position (true)
+   | `::md/required-keys`   | are destructured keys required (false)
+   | `::md/closed-maps`     | are destructured maps closed (false)
+   | `::md/references`      | are schema references used (false)
+
+   Examples:
+
+      (require '[malli.destructure :as md])
+
+      (-> '[a b & cs] (md/parse) :schema)
+      ; => [:cat :any :any [:* :any]]
+
+      (-> '[a :- :string, b & cs :- [:* :int]] (md/parse) :schema)
+      ; => [:cat :string :any [:* :int]]"
   ([arglist] (parse arglist nil))
-  ([arglist {::keys [schema] :or {schema Binding} :as options}]
-   (let [{:keys [elems rest] :as parsed} (m/parse schema arglist)
+  ([arglist {:keys [::inline-schemas] :or {inline-schemas true} :as options}]
+   (let [parse-scheme (if inline-schemas SchematizedBinding Binding)
+         {:keys [elems rest] :as parsed} (m/parse parse-scheme arglist)
          arglist' (->> parsed (-unschematize) (m/unparse Binding))
          schema' (cond-> :cat
                    (or (seq elems) rest) (vector)

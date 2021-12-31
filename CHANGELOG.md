@@ -14,6 +14,20 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes
+
+```clj
+(require '[malli.destructure :as md])
+
+(-> '[a b & cs] (md/parse) :schema)
+; => [:cat :any :any [:* :any]]
+
+(-> '[a :- :string, b & cs :- [:* :int]] (md/parse) :schema)
+; => [:cat :string :any [:* :int]]
+```
+
 ## 0.7.5 (2021-12-19)
 
 * [clj-kondo 2021.12.16+](https://github.com/clj-kondo/clj-kondo/blob/master/CHANGELOG.md#20211216) can load malli type configs automatically from new location (`.clj-kondo/metosin/malli-types/config.edn`)

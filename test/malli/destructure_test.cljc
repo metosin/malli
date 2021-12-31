@@ -60,6 +60,61 @@
                         [:cat :any :any]]]]]]]
     :errors '[[{::keysz [z]}]
               [{:kikka/keyz [z]}]]}
+   {:name "map destructuring with required-keys"
+    :bind '[{:keys [a :demo/b] :demo/keys [c]}]
+    :options {::md/required-keys true}
+    :schema [:cat
+             [:altn
+              [:map [:map
+                     [:a :any]
+                     [:demo/b :any]
+                     [:demo/c :any]]]
+              [:args [:schema [:* [:alt
+                                   [:cat [:= :a] :any]
+                                   [:cat [:= :demo/b] :any]
+                                   [:cat [:= :demo/c] :any]
+                                   [:cat :any :any]]]]]]]}
+   {:name "map destructuring with required-keys and closed-maps"
+    :bind '[{:keys [a :demo/b] :demo/keys [c]}]
+    :options {::md/required-keys true
+              ::md/closed-maps true}
+    :schema [:cat
+             [:altn
+              [:map [:map {:closed true}
+                     [:a :any]
+                     [:demo/b :any]
+                     [:demo/c :any]]]
+              [:args [:schema [:* [:alt
+                                   [:cat [:= :a] :any]
+                                   [:cat [:= :demo/b] :any]
+                                   [:cat [:= :demo/c] :any]]]]]]]}
+   {:name "map destructuring with required-keys, closed-maps and references"
+    :bind '[{:keys [a :demo/b] :demo/keys [c]}]
+    :options {::md/required-keys true
+              ::md/closed-maps true
+              ::md/references true}
+    :schema [:cat
+             [:altn
+              [:map [:map {:closed true}
+                     [:a :any]
+                     :demo/b
+                     :demo/c]]
+              [:args [:schema [:* [:alt
+                                   [:cat [:= :a] :any]
+                                   [:cat [:= :demo/b] :demo/b]
+                                   [:cat [:= :demo/c] :demo/c]]]]]]]}
+   {:name "map destructuring with required-keys, closed-maps, references and no sequential-maps"
+    :bind '[{:keys [a :demo/b] :demo/keys [c]}]
+    :options {::md/required-keys true
+              ::md/closed-maps true
+              ::md/references true
+              ::md/sequential-maps false}
+    :schema [:cat
+             [:altn
+              [:map [:map {:closed true}
+                     [:a :any]
+                     :demo/b
+                     :demo/c]]]]}
    {:name "Keyword argument functions now also accept maps"
     :bind '[a & {:keys [b]
                  :strs [c]
@@ -67,6 +122,7 @@
                  :demo/keys [e]
                  :demo/syms [f]
                  :or {b 0, d 0, f 0} :as map}]
+    :options {::md/sequential-maps false} ;; no effect here
     :schema [:cat
              :any
              [:altn
@@ -214,29 +270,31 @@
               [:b :int]]]}])
 
 (deftest parse-test
-  (let [test-all (fn [expectations options]
-                (doseq [{:keys [name bind errors] expected :schema} expectations]
-                  (testing (str "- " name " -")
-                    (let [{:keys [arglist schema]} (md/parse bind options)]
-                      (testing "has expected schema"
-                        (is (= expected schema)))
-                      (testing "has valid arglist"
-                        (is (not= ::m/invalid arglist)))
-                      (testing "errors"
-                        (doseq [error errors]
-                          (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse error)))))))))]
+  (let [test-all (fn [expectations]
+                   (doseq [{:keys [name bind errors options] expected :schema} expectations]
+                     (testing (str "- " name " -")
+                       (let [{:keys [arglist schema]} (md/parse bind options)]
+                         (testing "has expected schema"
+                           (when-not (is (= expected schema))
+                             (prn "?" expected)
+                             (prn ">" schema)))
+                         (testing "has valid arglist"
+                           (is (not= ::m/invalid arglist)))
+                         (testing "errors"
+                           (doseq [error errors]
+                             (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse error)))))))))]
 
-    (testing "schematized syntax"
+    (testing "parsing schematized syntax"
       (let [syntax '[x :- :int]]
 
-        (testing "fails by default"
-          (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse syntax))))
+        (testing "succeeds by default"
+          (is (= [:cat :int] (:schema (md/parse syntax)))))
 
-        (testing "succeeds with schematized clojure"
-          (is (= [:cat :int] (:schema (md/parse syntax {::md/schema md/SchematizedBinding})))))))
+        (testing "fails if inline-schemas is disables"
+          (is (thrown? #?(:clj Exception, :cljs js/Error) (md/parse syntax {::md/inline-schemas false}))))))
 
     (testing "vanilla clojure"
-      (test-all expectations nil))
+      (test-all expectations))
 
     (testing "schematized clojure"
-      (test-all schematized-expectations {::md/schema md/SchematizedBinding}))))
+      (test-all schematized-expectations))))

@@ -2,8 +2,9 @@
   (:require [malli.core :as m]
             [clojure.walk :as walk]))
 
-(defn -ns-keys [m]
-  (->> (dissoc m :keys :strs :syms :or :as) (keys) (every? #(and (qualified-keyword? %) (-> % name #{"keys" "syms"})))))
+(defn -map-like [x] (or (map? x) (and (seqable? x) (every? (fn [e] (and (vector? e) (= 2 (count e)))) x))))
+(defn -keys-syms-key [k] (and (qualified-keyword? k) (-> k name #{"keys" "syms"})))
+(def MapLike (m/-collection-schema {:type :map-like :empty {} :pred -map-like}))
 
 (def Binding
   (m/schema
@@ -12,14 +13,15 @@
                 "Amp" [:= '&]
                 "As" [:= :as]
                 "Local" [:and symbol? [:not "Amp"]]
-                "Map" [:and
-                       [:map
-                        [:keys {:optional true} [:vector ident?]]
-                        [:strs {:optional true} [:vector ident?]]
-                        [:syms {:optional true} [:vector ident?]]
-                        [:or {:optional true} [:map-of simple-symbol? any?]]
-                        [:as {:optional true} "Local"]]
-                       [:fn -ns-keys]]
+                "Map" [MapLike
+                       [:or
+                        [:tuple [:= :keys] [:vector ident?]]
+                        [:tuple [:= :strs] [:vector ident?]]
+                        [:tuple [:= :syms] [:vector ident?]]
+                        [:tuple [:= :or] [:map-of simple-symbol? any?]]
+                        [:tuple [:= :as] "Local"]
+                        [:tuple [:fn -keys-syms-key] [:vector ident?]]
+                        [:tuple [:ref "Arg"] any?]]]
                 "Vector" [:catn
                           [:elems [:* "Argument"]]
                           [:rest [:? [:catn
@@ -28,10 +30,10 @@
                           [:as [:? [:catn
                                     [:as "As"]
                                     [:sym "Local"]]]]]
-                "Arg" [:alt
-                       [:catn [:sym "Local"]]
-                       [:catn [:map "Map"]]
-                       [:catn [:vec [:schema [:ref "Vector"]]]]]
+                "Arg" [:orn
+                       [:sym "Local"]
+                       [:map "Map"]
+                       [:vec [:schema [:ref "Vector"]]]]
                 "Argument" [:catn [:arg "Arg"]]
                 "Binding" [:catn
                            [:elems [:* "Argument"]]
@@ -48,14 +50,15 @@
                 "As" [:= :as]
                 "Local" [:and symbol? [:not "Amp"]]
                 "Separator" [:= :-]
-                "Map" [:and
-                       [:map
-                        [:keys {:optional true} [:vector ident?]]
-                        [:strs {:optional true} [:vector ident?]]
-                        [:syms {:optional true} [:vector ident?]]
-                        [:or {:optional true} [:map-of simple-symbol? any?]]
-                        [:as {:optional true} "Local"]]
-                       [:fn -ns-keys]]
+                "Map" [MapLike
+                       [:or
+                        [:tuple [:= :keys] [:vector ident?]]
+                        [:tuple [:= :strs] [:vector ident?]]
+                        [:tuple [:= :syms] [:vector ident?]]
+                        [:tuple [:= :or] [:map-of simple-symbol? any?]]
+                        [:tuple [:= :as] "Local"]
+                        [:tuple [:fn -keys-syms-key] [:vector ident?]]
+                        [:tuple [:ref "Arg"] any?]]]
                 "Vector" [:catn
                           [:elems [:* "Argument"]]
                           [:rest [:? [:catn
@@ -67,10 +70,10 @@
                                     [:schema [:? [:catn
                                                   [:- "Separator"]
                                                   [:schema "Schema"]]]]]]]]
-                "Arg" [:alt
-                       [:catn [:sym "Local"]]
-                       [:catn [:map "Map"]]
-                       [:catn [:vec [:schema [:ref "Vector"]]]]]
+                "Arg" [:orn
+                       [:sym "Local"]
+                       [:map "Map"]
+                       [:vec [:schema [:ref "Vector"]]]]
                 "Argument" [:alt
                             [:catn
                              [:arg "Arg"]]
@@ -95,14 +98,21 @@
         [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)])))
 
 (defn -qualified [m]
-  (for [[k vs] m, :when (and (qualified-keyword? k) (-> k name #{"keys" "syms"}) (vector? vs) (every? ident? vs))
-        :let [f ({"keys" keyword, "syms" symbol} (name k))], :when f, v vs] (f (namespace k) (str v))))
+  (for [[k vs] m
+        :when (and (qualified-keyword? k) (-> k name #{"keys" "syms"}) (vector? vs) (every? ident? vs))
+        :let [f ({"keys" keyword, "syms" symbol} (name k))]
+        :when f
+        v vs] (f (namespace k) (str v))))
 
-(defn -keys [{:keys [keys strs syms] :as arg}]
-  (->> (-qualified arg) (concat (map keyword keys) (map str strs) syms) (distinct)))
+(defn -keys [{:keys [keys strs syms] :as arg} {:keys [::references] :or {references true}}]
+  (let [any (fn [f ks] (map (fn [k] [(f k) :any]) ks))]
+    (->> (concat (any keyword keys) (any str strs) (any identity syms)
+                 (map (fn [k] [k (if references k :any)]) (-qualified arg)))
+         (distinct)
+         (map first))))
 
-(defn -map [arg {:keys [::references ::required-keys ::closed-maps ::sequential-maps] :or {sequential-maps true}} rest]
-  (let [keys (-keys arg)
+(defn -map [arg {:keys [::references ::required-keys ::closed-maps ::sequential-maps] :or {sequential-maps true} :as options} rest]
+  (let [keys (-keys arg options)
         ->entry (fn [k] (let [ref (and references (qualified-keyword? k))]
                           (cond (and ref required-keys) k
                                 required-keys [k :any]
@@ -114,11 +124,11 @@
                                                  (cond-> (not closed-maps) (conj [:cat :any :any]))
                                                  (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]))))
 
-(defn -transform [{{:keys [vec map]} :arg schema :schema :as all} options rest]
+(defn -transform [{[k v] :arg schema :schema :as all} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
         schema schema
-        vec (-vector vec options -transform)
-        map (-map map options rest)
+        (= :vec k) (-vector v options -transform)
+        (= :map k) (-map v options rest)
         rest [:* :any]
         :else :any))
 

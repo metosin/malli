@@ -1112,27 +1112,28 @@
       (-into-schema [parent {:keys [min max] :as properties} children options]
         (if (fn? ?props)
           (-into-schema (-collection-schema (?props properties children)) properties children options)
-          (let [{type :type fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
+          (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
             (reset! props* ?props)
             (-check-children! type properties children 1 1)
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
                   validate-limits (-validate-limits min max)
-                  ->parser (fn [f] (let [child-parser (f schema)]
-                                     (fn [x]
-                                       (cond
-                                         (not (fpred x)) ::invalid
-                                         (not (validate-limits x)) ::invalid
-                                         :else (let [x' (reduce
-                                                          (fn [acc v]
-                                                            (let [v' (child-parser v)]
-                                                              (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                          [] x)]
-                                                 (cond
-                                                   (miu/-invalid? x') x'
-                                                   fempty (into fempty x')
-                                                   :else x'))))))]
+                  ->parser (fn [f g] (let [child-parser (f schema)]
+                                       (fn [x]
+                                         (cond
+                                           (not (fpred x)) ::invalid
+                                           (not (validate-limits x)) ::invalid
+                                           :else (let [x' (reduce
+                                                           (fn [acc v]
+                                                             (let [v' (child-parser v)]
+                                                               (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                           [] x)]
+                                                   (cond
+                                                     (miu/-invalid? x') x'
+                                                     g (g x')
+                                                     fempty (into fempty x')
+                                                     :else x'))))))]
               ^{:type ::schema}
               (reify
                 AST
@@ -1154,8 +1155,8 @@
                                   (if (< i size)
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
-                (-parser [_] (->parser -parser))
-                (-unparser [_] (->parser -unparser))
+                (-parser [_] (->parser -parser parse))
+                (-unparser [_] (->parser -unparser unparse))
                 (-transformer [this transformer method options]
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)

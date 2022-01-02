@@ -16,7 +16,7 @@ Data-driven Schemas for Clojure/Script.
 - [Validation](#validation) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Generating values](#value-generation) from Schemas
-- [Inferring Schemas](#inferring-schemas) from sample values
+- [Inferring Schemas](#inferring-schemas) from sample values and [destructuring syntax](#destructuring).
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
@@ -1554,6 +1554,85 @@ Adding custom decoding via `::mp/value-decoders` option:
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
  {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}})
 ; => [:map [:id :uuid]]
+```
+
+## Destructuring
+
+Schemas can also be inferred from [Clojure Destructuring Syntax](https://clojure.org/guides/destructuring).
+
+```clj
+(require '[malli.destructure :as md])
+
+(def infer (comp :schema md/parse))
+
+(infer '[a b & cs])
+; => [:cat :any :any [:* :any]]
+```
+Malli also supports [Plumatic Schema style](https://github.com/plumatic/schema#beyond-type-hints):
+
+```clj
+(infer '[a :- :int, b :- :string & cs :- [:* :boolean]])
+; => [:cat :int :string [:* :boolean]]
+```
+
+Example to pull out function argument schemas:
+
+```clj
+(defn kikka
+  ([a] [a])
+  ([a b & cs] [a b cs]))
+
+(->> #'kikka
+     meta
+     :arglists
+     (map infer)
+     (map (fn [s] [:=> s :any]))
+     (into [:function]))
+;[:function
+; [:=> [:cat :any] :any] 
+; [:=> [:cat :any :any [:* :any]] :any]]
+```
+
+`md/parse` uses the following options:
+
+| key                    | description |
+| -----------------------|-------------|
+| `::md/inline-schemas`  | support plumatic-style inline schemas (true)
+| `::md/sequential-maps` | support sequential maps in non-rest position (true)
+| `::md/references`      | qualified schema references used (true)
+| `::md/required-keys`   | destructured keys are required (false)
+| `::md/closed-maps`     | destructured maps are closed (false)
+
+A more complete example:
+
+```clj
+(infer '[a [b c & rest :as bc]
+         & {:keys [d e]
+            :demo/keys [f]
+            g :demo/g
+            :or {d 0}
+            :as opts}])
+;[:cat
+; :any
+; [:maybe [:cat 
+;          [:? :any] 
+;          [:? :any] 
+;          [:* :any]]]
+; [:altn
+;  [:map
+;   [:map
+;    [:d {:optional true} :any]
+;    [:e {:optional true} :any]
+;    [:demo/f {:optional true}]
+;    [:demo/g {:optional true}]]]
+;  [:args
+;   [:*
+;    [:alt
+;     [:cat [:= :d] :any]
+;     [:cat [:= :e] :any]
+;     [:cat [:= :demo/f] :demo/f]
+;     [:cat [:= :demo/g] :demo/g]
+;     [:cat :any :any]]]]]]
 ```
 
 ## Parsing values

@@ -5,8 +5,8 @@
 
 (defn -map-like? [x] (or (map? x) (and (seqable? x) (every? (fn [e] (and (vector? e) (= 2 (count e)))) x))))
 (defn -qualified-key? [k] (and (qualified-keyword? k) (-> k name #{"keys" "syms"})))
-(def MapLike (m/-collection-schema {:type :map-like, :empty {}, :pred -map-like?}))
-(def Never (m/-simple-schema {:type :never, :pred (fn [_] false)}))
+(def MapLike (m/-collection-schema {:type 'MapLike, :empty {}, :pred -map-like?}))
+(def Never (m/-simple-schema {:type 'Never, :pred (fn [_] false)}))
 
 (defn -schema [inline-schemas]
   (m/schema

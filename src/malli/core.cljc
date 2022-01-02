@@ -1898,7 +1898,7 @@
    (let [properties (when properties (when (pos? (count properties)) properties))
          r (when properties (properties :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties :registry (-property-registry r options -form)) properties)]
+         properties (if r (assoc properties :registry (-property-registry r options identity)) properties)]
      (-into-schema (-lookup! type into-schema? options) properties children options))))
 
 (defn type

@@ -314,3 +314,6 @@
 
     (testing "schematized clojure"
       (test-all schematized-expectations))))
+
+(deftest binding-schema
+  (is (m/form md/Binding)))

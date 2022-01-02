@@ -16,7 +16,7 @@ Data-driven Schemas for Clojure/Script.
 - [Validation](#validation) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Generating values](#value-generation) from Schemas
-- [Inferring Schemas](#inferring-schemas) from sample values and [destructuring syntax](#destructuring).
+- [Inferring Schemas](#inferring-schemas) from sample values and [Destructuring](#destructuring).
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
@@ -1568,7 +1568,7 @@ Schemas can also be inferred from [Clojure Destructuring Syntax](https://clojure
 (infer '[a b & cs])
 ; => [:cat :any :any [:* :any]]
 ```
-Malli also supports [Plumatic Schema style](https://github.com/plumatic/schema#beyond-type-hints):
+Malli also supports adding type hints as an extension to the normal Clojure syntax (enabled by default), inspired by [Plumatic Schema](https://github.com/plumatic/schema#beyond-type-hints).
 
 ```clj
 (infer '[a :- :int, b :- :string & cs :- [:* :boolean]])
@@ -1610,13 +1610,14 @@ A more complete example:
          & {:keys [d e]
             :demo/keys [f]
             g :demo/g
+            [h] :h
             :or {d 0}
             :as opts}])
 ;[:cat
 ; :any
-; [:maybe [:cat 
-;          [:? :any] 
-;          [:? :any] 
+; [:maybe [:cat
+;          [:? :any]
+;          [:? :any]
 ;          [:* :any]]]
 ; [:altn
 ;  [:map
@@ -1624,7 +1625,10 @@ A more complete example:
 ;    [:d {:optional true} :any]
 ;    [:e {:optional true} :any]
 ;    [:demo/f {:optional true}]
-;    [:demo/g {:optional true}]]]
+;    [:demo/g {:optional true}]
+;    [:h {:optional true} [:maybe [:cat
+;                                  [:? :any]
+;                                  [:* :any]]]]]]
 ;  [:args
 ;   [:*
 ;    [:alt
@@ -1632,6 +1636,9 @@ A more complete example:
 ;     [:cat [:= :e] :any]
 ;     [:cat [:= :demo/f] :demo/f]
 ;     [:cat [:= :demo/g] :demo/g]
+;     [:cat [:= :h] [:maybe [:cat
+;                            [:? :any]
+;                            [:* :any]]]]
 ;     [:cat :any :any]]]]]]
 ```
 

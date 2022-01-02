@@ -16,8 +16,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* **BREAKING**: local registries in vector syntax are stored as identity, not as form
-* new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes
+* **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
+* new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
 ```clj
 (require '[malli.destructure :as md])

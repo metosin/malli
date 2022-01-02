@@ -37,9 +37,12 @@
     :bind '[a {:keys [b]
                :strs [c]
                :syms [d]
-               :demo/keys [e]
-               :demo/syms [f]
-               :or {b 0, d 0, f 0} :as map}]
+               :demo/syms [e]
+               :demo/keys [f]
+               g :demo/g
+               h 123
+               :or {b 0, d 0, f 0}
+               :as map}]
     :schema [:cat
              :any
              [:altn
@@ -47,16 +50,20 @@
                      [:b {:optional true} :any]
                      ["c" {:optional true} :any]
                      ['d {:optional true} :any]
-                     [:demo/e {:optional true} :any]
-                     ['demo/f {:optional true} :any]]]
+                     ['demo/e {:optional true} :any]
+                     [:demo/f {:optional true}]
+                     [:demo/g {:optional true}]
+                     [123 {:optional true} :any]]]
               [:args [:schema
                       [:*
                        [:alt
                         [:cat [:= :b] :any]
                         [:cat [:= "c"] :any]
                         [:cat [:= 'd] :any]
-                        [:cat [:= :demo/e] :any]
-                        [:cat [:= 'demo/f] :any]
+                        [:cat [:= 'demo/e] :any]
+                        [:cat [:= :demo/f] :demo/f]
+                        [:cat [:= :demo/g] :demo/g]
+                        [:cat [:= 123] :any]
                         [:cat :any :any]]]]]]]
     :errors '[[{::keysz [z]}]
               [{:kikka/keyz [z]}]]}
@@ -67,32 +74,17 @@
              [:altn
               [:map [:map
                      [:a :any]
-                     [:demo/b :any]
-                     [:demo/c :any]]]
+                     :demo/b
+                     :demo/c]]
               [:args [:schema [:* [:alt
                                    [:cat [:= :a] :any]
-                                   [:cat [:= :demo/b] :any]
-                                   [:cat [:= :demo/c] :any]
+                                   [:cat [:= :demo/b] :demo/b]
+                                   [:cat [:= :demo/c] :demo/c]
                                    [:cat :any :any]]]]]]]}
    {:name "map destructuring with required-keys and closed-maps"
     :bind '[{:keys [a :demo/b] :demo/keys [c]}]
     :options {::md/required-keys true
               ::md/closed-maps true}
-    :schema [:cat
-             [:altn
-              [:map [:map {:closed true}
-                     [:a :any]
-                     [:demo/b :any]
-                     [:demo/c :any]]]
-              [:args [:schema [:* [:alt
-                                   [:cat [:= :a] :any]
-                                   [:cat [:= :demo/b] :any]
-                                   [:cat [:= :demo/c] :any]]]]]]]}
-   {:name "map destructuring with required-keys, closed-maps and references"
-    :bind '[{:keys [a :demo/b] :demo/keys [c]}]
-    :options {::md/required-keys true
-              ::md/closed-maps true
-              ::md/references true}
     :schema [:cat
              [:altn
               [:map [:map {:closed true}
@@ -103,11 +95,25 @@
                                    [:cat [:= :a] :any]
                                    [:cat [:= :demo/b] :demo/b]
                                    [:cat [:= :demo/c] :demo/c]]]]]]]}
+   {:name "map destructuring with required-keys, closed-maps and references disallowed"
+    :bind '[{:keys [a :demo/b] :demo/keys [c]}]
+    :options {::md/required-keys true
+              ::md/closed-maps true
+              ::md/references false}
+    :schema [:cat
+             [:altn
+              [:map [:map {:closed true}
+                     [:a :any]
+                     [:demo/b :any]
+                     [:demo/c :any]]]
+              [:args [:schema [:* [:alt
+                                   [:cat [:= :a] :any]
+                                   [:cat [:= :demo/b] :any]
+                                   [:cat [:= :demo/c] :any]]]]]]]}
    {:name "map destructuring with required-keys, closed-maps, references and no sequential-maps"
     :bind '[{:keys [a :demo/b] :demo/keys [c]}]
     :options {::md/required-keys true
               ::md/closed-maps true
-              ::md/references true
               ::md/sequential-maps false}
     :schema [:cat
              [:altn
@@ -130,14 +136,14 @@
                      [:b {:optional true} :any]
                      ["c" {:optional true} :any]
                      ['d {:optional true} :any]
-                     [:demo/e {:optional true} :any]
+                     [:demo/e {:optional true}]
                      ['demo/f {:optional true} :any]]]
               [:args [:*
                       [:alt
                        [:cat [:= :b] :any]
                        [:cat [:= "c"] :any]
                        [:cat [:= 'd] :any]
-                       [:cat [:= :demo/e] :any]
+                       [:cat [:= :demo/e] :demo/e]
                        [:cat [:= 'demo/f] :any]
                        [:cat :any :any]]]]]]}
    {:name "Nested Keyword argument"
@@ -267,7 +273,17 @@
                [:b :int]]]
              [:map
               [:a :int]
-              [:b :int]]]}])
+              [:b :int]]]}
+   {:name "derived map keys"
+    :bind '[{[g :- :int & gs :- [:* :string]] :value
+             [a & as :as aas :- [:* :boolean]] 123}]
+    :options {::md/sequential-maps false
+              ::md/required-keys true}
+    :schema [:cat [:altn [:map [:map
+                                [:value [:maybe [:cat
+                                                 [:? :int]
+                                                 [:* :string]]]]
+                                [123 [:schema [:* :boolean]]]]]]]}])
 
 (deftest parse-test
   (let [test-all (fn [expectations]

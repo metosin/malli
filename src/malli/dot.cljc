@@ -29,7 +29,7 @@
       (swap! registry* assoc k
              (m/walk v (fn [schema path children _]
                          (let [options (update (m/options schema) :registry #(mr/composite-registry @registry* %))
-                               schema (m/into-schema (m/type schema) (m/properties schema) children options)]
+                               schema (m/into-schema (m/parent schema) (m/properties schema) children options)]
                            (if (and (seq path) (= :map (m/type schema)))
                              (let [ref (-schema-name k path)]
                                (swap! registry* assoc ref (mu/update-properties schema assoc ::entity k))

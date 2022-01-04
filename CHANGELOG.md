@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 

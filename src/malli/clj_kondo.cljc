@@ -1,4 +1,5 @@
 (ns malli.clj-kondo
+  #?(:cljs (:require-macros [malli.clj-kondo]))
   (:require #?(:clj [clojure.java.io :as io])
             [fipp.edn :as fipp]
             [malli.core :as m]))
@@ -175,15 +176,18 @@
   ([] (collect nil))
   ([ns]
    (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
-     (->> (for [[k vs] (m/function-schemas) :when (-collect k) [_ v] vs v (from v)] v)))))
+     (for [[k vs] (m/function-schemas) :when (-collect k) [_ v] vs v (from v)] v))))
 
 (defn linter-config [xs]
   (reduce
     (fn [acc {:keys [ns name arity] :as data}]
       (assoc-in
-        acc [:linters :type-mismatch :namespaces (symbol (str ns)) name :arities arity]
+        acc [:linters :type-mismatch :namespaces ns name :arities arity]
         (select-keys data [:args :ret :min-arity])))
     {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+
+#?(:clj
+   (defmacro emit-cljs! [] (emit!)))

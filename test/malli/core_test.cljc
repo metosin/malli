@@ -2453,6 +2453,8 @@
     (is (m/validate [List :int] '(1 2)))
     (is (not (m/validate [List :int] [1 2])))))
 
+(defn function-schema-registry-test-fn [])
+
 (deftest function-schema-registry-test
   (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)

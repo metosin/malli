@@ -103,6 +103,12 @@
         rest [:* :any]
         :else :any))
 
+(defn -schema [{:keys [elems rest]} options]
+  (cond-> :cat
+    (or (seq elems) rest) (vector)
+    (seq elems) (into (map #(-transform % options false) elems))
+    rest (conj (-transform (:arg rest) options true))))
+
 (defn -unschematize [x]
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))
 
@@ -143,11 +149,8 @@
   ([arglist] (parse arglist nil))
   ([arglist {:keys [::inline-schemas] :or {inline-schemas true} :as options}]
    (let [parse-scheme (if inline-schemas SchematizedBinding Binding)
-         {:keys [elems rest] :as parsed} (m/parse parse-scheme arglist)
+         parsed (m/parse parse-scheme arglist)
          arglist' (->> parsed (-unschematize) (m/unparse Binding))
-         schema' (cond-> :cat
-                   (or (seq elems) rest) (vector)
-                   (seq elems) (into (map #(-transform % options false) elems))
-                   rest (conj (-transform (:arg rest) options true)))]
+         schema' (-schema parsed options)]
      (when (= ::m/invalid arglist') (m/-fail! ::invalid-arglist {:arglist arglist}))
      {:raw-arglist arglist, :parsed parsed, :arglist arglist', :schema schema'})))

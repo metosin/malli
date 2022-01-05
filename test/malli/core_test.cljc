@@ -1718,6 +1718,9 @@
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
 
+      (testing "parse + unparse"
+        (is (= [2 3] (->> (m/parse [:+ :int] [2 3]) (m/unparse [:+ :int])))))
+
       (let [s [:+ string?]]
         (are [v errs]
           (let [es errs]

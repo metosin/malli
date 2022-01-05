@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* FIX: `:+` parsing returns vector, not sequence
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
 * `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form

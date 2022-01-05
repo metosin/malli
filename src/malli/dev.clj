@@ -1,6 +1,7 @@
 (ns malli.dev
   (:require [malli.core :as m]
             [malli.instrument :as mi]
+            [malli.dev.pretty :as pretty]
             [malli.clj-kondo :as clj-kondo]))
 
 (defn stop!
@@ -16,7 +17,7 @@
    a filtered set of function Vars (e.g. `defn`s). See [[malli.core/-instrument]]
    for possible options. Re-instruments if the function schemas change. Also emits
    clj-kondo type annotations."
-  ([] (start! nil))
+  ([] (start! {:report (pretty/reporter)}))
   ([options]
    (with-out-str (stop!))
    (mi/collect! {:ns (all-ns)})

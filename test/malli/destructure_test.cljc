@@ -151,14 +151,15 @@
             & {:keys [a b] :as opts}]
     :schema [:cat
              [:maybe
-              [:altn
-               [:map [:map
-                      [:a {:optional true} :any]
-                      [:b {:optional true} :any]]]
-               [:args [:* [:alt
-                           [:cat [:= :a] :any]
-                           [:cat [:= :b] :any]
-                           [:cat :any :any]]]]]]
+              [:cat
+               [:altn
+                [:map [:map
+                       [:a {:optional true} :any]
+                       [:b {:optional true} :any]]]
+                [:args [:* [:alt
+                            [:cat [:= :a] :any]
+                            [:cat [:= :b] :any]
+                            [:cat :any :any]]]]]]]
              [:altn
               [:map [:map
                      [:a {:optional true} :any]
@@ -268,9 +269,10 @@
             & {:keys [a b] :as opts} :- [:map [:a :int] [:b :int]]]
     :schema [:cat
              [:maybe
-              [:map
-               [:a :int]
-               [:b :int]]]
+              [:cat
+               [:map
+                [:a :int]
+                [:b :int]]]]
              [:map
               [:a :int]
               [:b :int]]]}

@@ -8,7 +8,7 @@
 (def MapLike (m/-collection-schema {:type 'MapLike, :empty {}, :pred -map-like?}))
 (def Never (m/-simple-schema {:type 'Never, :pred (fn [_] false)}))
 
-(defn -schema [inline-schemas]
+(defn -create [inline-schemas]
   (m/schema
    [:schema
     {:registry {"Schema" any?
@@ -54,8 +54,8 @@
                                        [:arg "Arg"]]]]]}}
     "Binding"]))
 
-(def Binding (-schema false))
-(def SchematizedBinding (-schema true))
+(def Binding (-create false))
+(def SchematizedBinding (-create true))
 
 (declare -transform)
 
@@ -66,7 +66,7 @@
   (or (some->> as :schema :schema (conj [:schema]))
       (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
             rs (if rest (-transform (:arg rest) options true) [:* :any])]
-        [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)])))
+        [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) [:cat rs])])))
 
 (defn -qualified-keys [m]
   (for [[k vs] m

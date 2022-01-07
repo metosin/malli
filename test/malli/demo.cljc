@@ -17,7 +17,9 @@
   "inline schemas (plumatic-style)"
   [x :- :int] (inc x))
 
-(dev/start!)
+(comment
+ (dev/start!)
+ (dev/stop!))
 
 (comment
  (kikka "1")

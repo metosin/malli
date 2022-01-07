@@ -209,6 +209,22 @@
                :output output}
         max (assoc :max max)))))
 
+(defn -group-by-arity! [infos]
+  (let [aritys (atom #{})]
+    (reduce
+     (fn [acc {:keys [min arity] :as info}]
+       (let [vararg (= :varargs arity)
+             min (if (and vararg (@aritys min)) (inc (apply max @aritys)) min)]
+         (cond (and vararg (@aritys arity))
+               (-fail! ::multiple-varargs {:infos infos})
+
+               (@aritys min)
+               (-fail! ::duplicate-min-arities {:infos infos})
+
+               :else
+               (do (swap! aritys conj arity)
+                         (assoc acc arity (assoc info :min min)))))) {} infos)))
+
 ;;
 ;; registry
 ;;
@@ -1730,11 +1746,7 @@
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (type %)) children)
           (-fail! ::non-function-childs {:children children}))
-        (let [infos (-vmap -function-info children)]
-          (when-not (= (count children) (count (distinct (-vmap :arity infos))))
-            (-fail! ::duplicate-arities {:infos infos}))
-          (when-not (= (count children) (count (distinct (-vmap :min infos))))
-            (-fail! ::duplicate-min-arities {:infos infos})))
+        (-group-by-arity! (-vmap -function-info children))
         ^{:type ::schema}
         (reify
           Schema
@@ -1768,7 +1780,7 @@
           (-cache [_] cache)
           LensSchema
           (-keep [_])
-          (-get [this key default] (get children key default))
+          (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
@@ -2427,10 +2439,9 @@
                      (when-not (validate-output value)
                        (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
                    value))))
-       :function (let [arity->info (->> (for [schema (children schema)]
-                                          (let [{:keys [arity] :as info} (-function-info schema)]
-                                            [arity (assoc info :f (-instrument (assoc props :schema schema) f options))]))
-                                        (into {}))
+       :function (let [arity->info (->> (children schema)
+                                        (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))
+                                        (-group-by-arity!))
                        arities (-> arity->info keys set)
                        varargs-info (arity->info :varargs)]
                    (if (= 1 (count arities))

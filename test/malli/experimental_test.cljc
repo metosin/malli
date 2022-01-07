@@ -28,6 +28,15 @@
    & {:keys [c d] :as m2} :- CD]
   [a b c d m1 m2])
 
+;; multi-arity
+(mx/defn f6 :- [:int {:min 0}]
+  "docstring"
+  {:some "meta"}
+  ([x :- [:int {:min 0}]] (inc x))
+  ([x :- [:int {:min 0}], y :- :int] (+ x y))
+  ([x :- [:int {:min 0}], y :- :int & zs :- [:* :int]] (apply + x y zs))
+  {:more "meta"})
+
 (def expectations
   [{:var #'f1
     :calls [[nil 1]
@@ -44,7 +53,7 @@
                    [[] ::throws]
                    [[1 2] ::throws]]}
    {:var #'f3
-    :meta {:arglists '[[x]]
+    :meta {:arglists '([x])
            :raw-arglists '[[x :- :int]]
            :schema [:=> [:cat :int] :any]}
     :calls [[[1] 1]
@@ -55,8 +64,8 @@
                    [[1 2] ::throws]]}
    {:var #'f4
     :meta {:doc "int int -> int functions"
-           :arglists '[[x y]]
-           :raw-arglists '[[x :- [:int {:min 0}] y :- :int]]
+           :arglists '([x y])
+           :raw-arglists '([x :- [:int {:min 0}] y :- :int])
            :schema [:=> [:cat [:int {:min 0}] :int] [:int {:min 0}]]}
     :calls [[[1 2] 3]
             [[-2 1] -1]
@@ -67,9 +76,9 @@
                    [[-1 -1] ::throws] ;; ret
                    [[1 "2"] ::throws]]}
    {:var #'f5
-    :meta {:arglists '[[[& {:keys [a b], :as m1}] & {:keys [c d], :as m2}]]
-           :raw-arglists '[[[& {:keys [a b] :as m1} :- AB]
-                            & {:keys [c d] :as m2} :- CD]]
+    :meta {:arglists '([[& {:keys [a b], :as m1}] & {:keys [c d], :as m2}])
+           :raw-arglists '([[& {:keys [a b] :as m1} :- AB]
+                            & {:keys [c d] :as m2} :- CD])
            :schema [:=>
                     [:cat [:maybe [:cat AB]] CD]
                     [:cat :int :int :int :int AB CD]]}
@@ -80,7 +89,30 @@
     :instrumented [[[[{:a 1, :b 2}] {:c 3, :d 4}]
                     [1 2 3 4 {:a 1, :b 2} {:c 3, :d 4}]]
                    [[[{:a -1, :b 2}] {:c 3, :d 4}]
-                    ::throws]]}])
+                    ::throws]]}
+   {:var #'f6
+    :meta {:arglists '([x] [x y] [x y & zs])
+           :raw-arglists '([x :- [:int {:min 0}]]
+                           [x :- [:int {:min 0}] y :- :int]
+                           [x :- [:int {:min 0}] y :- :int & zs :- [:* :int]])
+           :schema [:function
+                    [:=> [:cat [:int {:min 0}]] [:int {:min 0}]]
+                    [:=> [:cat [:int {:min 0}] :int] [:int {:min 0}]]
+                    [:=> [:cat [:int {:min 0}] :int [:* :int]] [:int {:min 0}]]]}
+    :calls [[[1] 2]
+            [[-1] 0]
+            [[1 2] 3]
+            [[1 -2] -1]
+            [[-1 2] 1]
+            [[1 2 3 4] 10]
+            [[-1 2 3 4] 8]]
+    :instrumented [[[1] 2]
+                   [[-1] ::throws]
+                   [[1 2] 3]
+                   [[1 -2] ::throws]
+                   [[-1 2] ::throws]
+                   [[1 2 3 4] 10]
+                   [[-1 2 3 4] ::throws]]}])
 
 (defn -strument! [mode v]
   (with-out-str

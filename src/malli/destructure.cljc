@@ -88,12 +88,13 @@
                               (cond (and ref required-keys) k
                                     required-keys [k t]
                                     :else (cond-> [k {:optional true}] (not ref) (conj t)))))
-        ->arg (fn [[k t]] [:cat [:= k] (if (and references (qualified-keyword? k)) k t)])]
-    (cond-> [:altn]
-      :always (conj [:map (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))])
-      (or rest sequential-maps) (conj [:args (-> (into [:alt] (map ->arg keys))
-                                                 (cond-> (not closed-maps) (conj [:cat :any :any]))
-                                                 (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]))))
+        ->arg (fn [[k t]] [:cat [:= k] (if (and references (qualified-keyword? k)) k t)])
+        schema (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))]
+    (if (or rest sequential-maps)
+      [:altn [:map schema] [:args (-> (into [:alt] (map ->arg keys))
+                                      (cond-> (not closed-maps) (conj [:cat :any :any]))
+                                      (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]]
+      schema)))
 
 (defn -transform [{[k v] :arg schema :schema :as all} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
@@ -111,6 +112,12 @@
 
 (defn -unschematize [x]
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))
+
+(defn -function-schema
+  ([arglists] (-function-schema arglists nil))
+  ([arglists options]
+   (let [->schema (fn [arglist] [:=> (-schema (m/parse SchematizedBinding arglist) options) :any])]
+     (as-> (map ->schema arglists) $ (if (next $) (into [:function] $) (first $))))))
 
 ;;
 ;; public api
@@ -154,3 +161,8 @@
          schema' (-schema parsed options)]
      (when (= ::m/invalid arglist') (m/-fail! ::invalid-arglist {:arglist arglist}))
      {:raw-arglist arglist, :parsed parsed, :arglist arglist', :schema schema'})))
+
+(defn infer
+  "Infers a schema from a function Var. Best effort."
+  ([var] (infer var nil))
+  ([var options] (-> var meta :arglists (-function-schema options))))

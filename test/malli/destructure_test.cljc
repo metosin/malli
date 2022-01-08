@@ -116,11 +116,10 @@
               ::md/closed-maps true
               ::md/sequential-maps false}
     :schema [:cat
-             [:altn
-              [:map [:map {:closed true}
-                     [:a :any]
-                     :demo/b
-                     :demo/c]]]]}
+             [:map {:closed true}
+              [:a :any]
+              :demo/b
+              :demo/c]]}
    {:name "Keyword argument functions now also accept maps"
     :bind '[a & {:keys [b]
                  :strs [c]
@@ -281,11 +280,11 @@
              [a & as :as aas :- [:* :boolean]] 123}]
     :options {::md/sequential-maps false
               ::md/required-keys true}
-    :schema [:cat [:altn [:map [:map
-                                [:value [:maybe [:cat
-                                                 [:? :int]
-                                                 [:* :string]]]]
-                                [123 [:schema [:* :boolean]]]]]]]}])
+    :schema [:cat [:map
+                   [:value [:maybe [:cat
+                                    [:? :int]
+                                    [:* :string]]]]
+                   [123 [:schema [:* :boolean]]]]]}])
 
 (deftest parse-test
   (let [test-all (fn [expectations]
@@ -319,3 +318,27 @@
 
 (deftest binding-schema
   (is (m/form md/Binding)))
+
+(deftest function-schema-test
+  (is (= [:=> [:cat [:map [:a :any] :demo/b :demo/c]] :any]
+         (md/-function-schema
+          '[[{:keys [a :demo/b] :demo/keys [c]}]]
+          {::md/sequential-maps false
+           ::md/required-keys true})))
+  (is (= [:function
+          [:=> [:cat :int] :any]
+          [:=> [:cat :int [:* :int]] :any]]
+         (md/-function-schema
+          '([a :- :int]
+            [a :- :int & bs :- [:* :int]])))))
+
+(defn my-var
+  ([a] (my-var a nil))
+  ([a & bs] [a bs]))
+
+#?(:clj
+   (deftest infer-test
+     (is (= [:function
+             [:=> [:cat :any] :any]
+             [:=> [:cat :any [:* :any]] :any]]
+            (md/infer #'my-var)))))

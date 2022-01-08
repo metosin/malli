@@ -1,5 +1,6 @@
 (ns malli.experimental
   (:refer-clojure :exclude [defn])
+  #?(:cljs (:require-macros malli.experimental))
   (:require [clojure.core :as c]
             [malli.core :as m]
             [malli.destructure :as md]))
@@ -56,4 +57,4 @@
 ;; public api
 ;;
 
-(defmacro defn [& args] (-defn SchematizedParams args))
+#?(:clj (defmacro defn [& args] (-defn SchematizedParams args)))

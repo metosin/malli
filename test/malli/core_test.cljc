@@ -2363,6 +2363,12 @@
             [:function
              :cat])))
 
+    (testing "varargs with identical min arity get +1 arity"
+      (is (m/schema
+           [:function
+            [:=> :cat nil?]
+            [:=> [:cat [:? nil?]] nil?]])))
+
     (testing "invalid arities"
 
       (is (thrown-with-msg?
@@ -2374,12 +2380,13 @@
                [:=> :cat nil?]])))
 
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/duplicate-min-arities"
-            (m/schema
-              [:function
-               [:=> :cat nil?]
-               [:=> [:cat [:? nil?]] nil?]]))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/multiple-varargs"
+           (m/schema
+            [:function
+             [:=> :cat nil?]
+             [:=> [:cat [:? nil?]] nil?]
+             [:=> [:cat [:? nil?] [:? nil?]] nil?]]))))
 
     (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
           invalid-f (fn ([x] x) ([x y] (str x y)))

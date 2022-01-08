@@ -214,12 +214,12 @@
     (reduce
      (fn [acc {:keys [min arity] :as info}]
        (let [vararg (= :varargs arity)
-             min (if (and vararg (@aritys min)) (inc (apply max @aritys)) min)]
+             min (if (and vararg (@aritys min)) (inc (apply max (filter int? @aritys))) min)]
          (cond (and vararg (@aritys arity))
                (-fail! ::multiple-varargs {:infos infos})
 
                (@aritys min)
-               (-fail! ::duplicate-min-arities {:infos infos})
+               (-fail! ::duplicate-arities {:infos infos})
 
                :else
                (do (swap! aritys conj arity)

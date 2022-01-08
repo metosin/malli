@@ -126,7 +126,7 @@
     (testing "plain calls"
       (doseq [[arg ret] calls]
         (if (= ::throws ret)
-          (is (thrown? #?(:clj Exception, :cljs js/Error) (apply var arg)))
+          (is (thrown? Exception (apply var arg)))
           (is (= ret (apply var arg))))))
 
     (when-let [m (:meta e)]
@@ -140,7 +140,7 @@
         (try
           (doseq [[arg ret] instrumented]
             (if (= ::throws ret)
-              (is (thrown? #?(:clj Exception, :cljs js/Error) (apply var arg)))
+              (is (thrown? Exception (apply var arg)))
               (is (= ret (apply var arg)))))
           (finally
             (-strument! :unstrument var)))))))

@@ -2390,10 +2390,10 @@
    (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
-     (if (#{:=> :function} t) s (-fail! :invalid-=>schema {:type t, :schema s})))))
+     (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name schema data]
-  (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema schema), :ns ns, :name name})))
+(defn -register-function-schema! [ns name ?schema data]
+  (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema ?schema), :ns ns, :name name})))
 
 #?(:clj
    (defmacro => [name value]

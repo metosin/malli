@@ -8,6 +8,10 @@
   * [Multi-arity Functions](#multi-arity-functions)
   * [Instrumentation](#instrumentation)
 * [Defn Schemas](#defn-schemas)
+  * [Defining Function Schemas](#defining-function-schemas)
+    * [Function Schema Annotations](#function-schema-annotations)
+    * [Function Schema Metadata](#function-schema-metadata)
+    * [Function Inline Schemas](#function-inline-schemas)
   * [Defn Instrumentation](#defn-instrumentation)
   * [Defn Checking](#defn-checking)
 * [Development Instumentation](#development-instrumentation)
@@ -330,7 +334,7 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 There are three ways to add function schemas to function Vars (e.g. `defn`s):
 
 1. Function Schema Annotation with `m/=>`
-2. Function Scheema Metadata via `:malli/schema`
+2. Function Schema Metadata via `:malli/schema`
 3. Function Inline Schemas with `mx/defn`
 
 #### Function Schema Annotations
@@ -379,7 +383,7 @@ Turning instrumentation on:
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 11, :args [10], :schema [:=> [:cat :int] [:int {:max 6}]]}
 ```
 
-#### Function Scheema Metadata
+#### Function Schema Metadata
 
 `defn` schemas can be defined with standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. It's just data.
 

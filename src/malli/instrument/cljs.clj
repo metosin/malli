@@ -86,9 +86,7 @@
                                            ns-sym
                                            (symbol
                                             (str ns-sym) (str fn-sym)))))
-              acc sym-map))
-           []
-           (m/function-schemas))]
+              acc sym-map)) [] (m/function-schemas))]
     `(filterv some? ~r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

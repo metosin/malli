@@ -32,6 +32,16 @@ Malli is in well matured [alpha](README.md#alpha).
 ; => [:cat :string :any [:* :int]]
 ```
 
+* new `malli.experimental` namespace with schematized `defn`, automatically registers the functions schemas with `m/=>`.
+
+```clj
+(require '[malli.experimental :as mx])
+
+(mx/defn kakka :- :int
+  "inline schemas (plumatic-style)"
+  [x :- :int] (inc x))
+```
+
 ## 0.7.5 (2021-12-19)
 
 * [clj-kondo 2021.12.16+](https://github.com/clj-kondo/clj-kondo/blob/master/CHANGELOG.md#20211216) can load malli type configs automatically from new location (`.clj-kondo/metosin/malli-types/config.edn`)

@@ -325,19 +325,29 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 
 ## Defn Schemas
 
-Function Vars (e.g. `defn`) can be annotated with function schemas using `m/=>` macro, which stores the var -> schema mappings in a global registry.
+### Defining Function Schemas
 
-A simple function (Var) and schema for it:
+There are three ways to add function schemas to function Vars (e.g. `defn`s):
+
+1. Function Schema Annotation with `m/=>`
+2. Function Scheema Metadata via `:malli/schema`
+3. Function Inline Schemas with `mx/defn`
+
+#### Function Schema Annotations
+
+`m/=>` macro takes the Var name and the function schema and stores the var -> schema mappings in a global registry.
 
 ```clj
+(def small-int [:int {:max 6}])
+
 (defn plus1 [x] (inc x))
-(m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
+(m/=> plus1 [:=> [:cat :int] small-int])
 ``` 
 
 The order doesn't matter, so this also works:
 
 ```clj
-(m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
+(m/=> plus1 [:=> [:cat :int] small-int])
 (defn plus1 [x] (inc x))
 ```
 
@@ -346,9 +356,122 @@ Listing the current accumulation of function (Var) schemas:
 ```clj
 (m/function-schemas)
 ;{user {plus1 {:schema [:=> [:cat :int] [:int {:max 6}]]
-;              :meta nil
 ;              :ns user
 ;              :name plus1}}}
+```
+
+Without instrumentation turned on, there is no schema enforcement:
+
+```clj
+(plus1 10)
+; => 11
+```
+
+Turning instrumentation on:
+
+```clj
+(require '[malli.instrument :as mi])
+
+(mi/instrument!)
+; =prints=> ..instrumented #'user/plus1
+
+(plus1 10)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 11, :args [10], :schema [:=> [:cat :int] [:int {:max 6}]]}
+```
+
+#### Function Scheema Metadata
+
+`defn` schemas can be defined with standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. It's just data.
+
+```clj
+(defn minus
+  "a normal clojure function, no dependencies to malli"
+  {:malli/schema [:=> [:cat :int] small-int]}
+  [x]
+  (dec x))
+```
+
+To collect instrumentation for the `defn`, we need to call `mi/collect!`. It reads all public vars from a given namespace and registers function schemas from `:malli/schema` metadata.
+
+```clj
+(mi/collect!)
+; => #{#'user/minus}
+
+(m/function-schemas)
+;{user {plus1 {:schema [:=> [:cat :int] [:int {:max 6}]]
+;              :ns user
+;              :name plus1},
+;       minus {:schema [:=> [:cat :int] [:int {:min 6}]]
+;              :ns user
+;              :name minus}}}
+```
+
+We'll also have to reinstument the new var:
+
+```clj
+(mi/instrument!)
+; =prints=> ..instrumented #'user/plus1
+; =prints=> ..instrumented #'user/minus
+
+(minus 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:min 6}], :value 5, :args [6], :schema [:=> [:cat :int] [:int {:min 6}]]}
+```
+
+All Var metadata keys with `malli` namespace are used. The list of relevant keys:
+
+| key             | description |
+| ----------------|-------------|
+| `:malli/schema` | function schema
+| `:malli/scope`  | optional set of scope definitions, defaults to `#{:input :output}`
+| `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
+| `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value
+
+Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
+
+#### Function Inline Schemas
+
+Malli also supports [Plumatic Schema -style](https://github.com/plumatic/schema#beyond-type-hints) schema hints via `malli.experimental` ns:
+
+```clj
+(require '[malli.experimental :as mx])
+
+(mx/defn times :- :int
+  "x times y"
+  [x :- :int, y :- small-int]
+  (* x y))
+```
+
+Function schema is registered automatically:
+
+```clj
+(m/function-schemas)
+;{user {plus1 {:schema [:=> [:cat :int] [:int {:max 6}]]
+;              :ns user
+;              :name plus1},
+;       minus {:schema [:=> [:cat :int] [:int {:max 6}]]
+;              :ns user
+;              :name minus},
+;       times {:schema [:=> [:cat :int [:int {:max 6}]] :int]
+;              :ns user
+;              :name times}}}
+```
+... but not instrumented:
+
+```clj
+(times 10 10)
+; => 100
+```
+
+with instrumentation:
+
+```clj
+(mi/instrument!)
+; =prints=> ..instrumented #'user/plus1
+; =prints=> ..instrumented #'user/minus
+; =prints=> ..instrumented #'user/times
+
+(times 10 10)
+; =throws=> :malli.core/invalid-input {:input [:cat :int [:int {:max 6}]], :args [10 10], :schema [:=> [:cat :int [:int {:max 6}]] :int]}
 ```
 
 ### Defn Instrumentation
@@ -362,39 +485,42 @@ The function (Var) registry is passive and doesn't do anything by itself. To ins
 Vars can be instrumented with `mi/instrument!` and the instrumentation can be removed with `mi/unstrument!`.
 
 ```clj
-(plus1 6)
-; => 7
+(m/=> power [:=> [:cat :int] [:int {:max 6}]])
+(defn power [x] (* x x))
+
+(power 6)
+; => 36
 
 ;; instrument all registered vars
 (mi/instrument!)
 
-(plus1 6)
-; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
+(power 6)
+; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 36, :args [6], :schema [:=> [:cat :int] [:int {:max 6}]]}
 
 (mi/unstrument!)
 
-(plus1 6)
-; => 7
+(power 6)
+; => 36
 ```
 
 Instrumentation can be configured with the same options as `m/-instrument` and with a set of `:filters` to select which Vars should be instrumented.
 
 ```clj
 (mi/instrument!
-  {:filters [;; everything from user ns
-             (mi/-filter-ns 'user)
-             ;; ... and some vars
-             (mi/-filter-var #{#'plus})
-             ;; all other vars with :always-validate meta
-             (mi/-filter-var #(-> % meta :always-validate))]
-   ;; scope
-   :scope #{:input :output}
-   ;; just print
-   :report println})
+ {:filters [;; everything from user ns
+            (mi/-filter-ns 'user)
+            ;; ... and some vars
+            (mi/-filter-var #{#'power})
+            ;; all other vars with :always-validate meta
+            (mi/-filter-var #(-> % meta :always-validate))]
+  ;; scope
+  :scope #{:input :output}
+  ;; just print
+  :report println})
 
-(plus1 8)
-; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
-; => 9
+(power 6)
+; =prints=> :malli.core/invalid-output {:output [:int {:max 6}], :value 36, :args [6], :schema [:=> [:cat :int] [:int {:max 6}]]}
+; => 36
 ```
 
 ### Defn Checking
@@ -404,7 +530,7 @@ We can also check the defn schemas against their function implementations using 
 Checking all registered schemas:
 
 ```clj
-(mg/check)
+(mi/check)
 ;{user/plus1 {:schema [:=> [:cat :int] [:int {:max 6}]],
 ;             :value #object[user$plus1],
 ;             :errors (#Error{:path [],
@@ -455,7 +581,7 @@ We redefined `plus1` function schema and the instrumentation is now out of sync.
 
 This is not good developer experience. 
 
-We can do better.
+We can do much better.
 
 ## Development Instrumentation
 
@@ -555,42 +681,6 @@ Pretty printer uses [fipp](https://github.com/brandonbloom/fipp) under the hood 
 ```clj
 (dev/start! {:report (pretty/reporter (pretty/-printer {:width 80}))})
 ```
-
-## Defn Schemas via Metadata
-
-Another option to define `defn` schemas is to use standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. Itä's just data.
-
-```clj
-(defn minus
-  "a normal clojure function, no dependencies to malli"
-  {:malli/schema [:=> [:cat :int] [:int {:min 6}]]}
-  [x] 
-  (dec x))
-```
-
-To enable instrumentation for the `defn`, we need to call `mi/collect!`. It reads all public vars from a given namespace and registers function schemas from `:malli/schema` metadata.
-
-```clj
-(mi/collect!)
-; => #{#'user/minus}
-
-(mi/instrument!)
-; =prints=> ..instrumented #'user/minus
-
-(minus 6)
-; =throws=> :malli.core/invalid-output {:output [:int {:min 6}], :value 5, :args [6], :schema [:=> [:cat :int] [:int {:min 6}]]}
-```
-
-All keys with `malli` namespace are read. The list of relevant keys:
-
-| key             | description |
-| ----------------|-------------|
-| `:malli/schema` | function schema
-| `:malli/scope`  | optional set of scope definitions, defaults to `#{:input :output}`
-| `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
-| `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value
-
-Setting `:malli/gen` to `true` while function body generation is enabled with `mi/instrument!` allows body to be generated, to return valid generated data.
 
 ### TL;DR
 

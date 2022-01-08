@@ -20,12 +20,12 @@
 (deftest instrument!-test
 
   (testing "without instrumentation"
-    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
+    (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]}))
     (is (= "21" ((->plus) "2")))
     (is (= 7 ((->plus) 6))))
 
   (testing "with instrumentation"
-    (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
+    (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]}))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" ((->plus) "2")))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" ((->plus) 6)))))
 
@@ -35,11 +35,11 @@
 
   (testing "without instrumentation"
 
-    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
+    (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]}))
     (is (= 1 ((->minus) "2")))
     (is (= 5 ((->minus) 6))))
 
   (testing "with instrumentation"
-    (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
+    (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]}))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" ((->minus) "2")))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" ((->minus) 6)))))

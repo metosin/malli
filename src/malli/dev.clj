@@ -22,8 +22,8 @@
    (with-out-str (stop!))
    (mi/collect! {:ns (all-ns)})
    (let [watch (fn [_ _ old new]
-                 (mi/instrument! (assoc options :data (->> (for [[n d] new
-                                                                 :let [no (get old n)]
+                 (mi/instrument! (assoc options :data (->> (for [[n d] (:clj new)
+                                                                 :let [no (get-in old [:clj n])]
                                                                  [s d] d
                                                                  :when (not= d (get no s))]
                                                              [[n s] d])

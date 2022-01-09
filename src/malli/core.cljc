@@ -2383,9 +2383,8 @@
 ;;
 
 (defonce ^:private -function-schemas* (atom {}))
-(defonce ^:private -function-schemas-cljs* (atom {}))
-(defn function-schemas [] @-function-schemas*)
-(defn function-schemas-cljs [] @-function-schemas-cljs*)
+(defn function-schemas [] (:clj @-function-schemas*))
+(defn function-schemas-cljs [] (:cljs @-function-schemas*))
 
 (defn function-schema
   ([?schema]
@@ -2395,11 +2394,11 @@
      (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
 (defn -register-function-schema! [ns name ?schema data]
-  (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema ?schema), :ns ns, :name name})))
+  (swap! -function-schemas* assoc-in [:clj ns name] (merge data {:schema (function-schema ?schema), :ns ns, :name name})))
 
-(defn -register-function-schema-cljs! [ns name schema data]
-  ;; we cannot invoke `function-schema` at macroexpansion-time - `schema` could contain cljs vars that will only resovle at runtime.
-  (swap! -function-schemas-cljs* assoc-in [ns name] (merge data {:schema schema, :ns ns, :name name})))
+(defn -register-function-schema-cljs! [ns name ?schema data]
+  ;; we cannot invoke `function-schema` at macroexpansion-time - `?schema` could contain cljs vars that will only resovle at runtime.
+  (swap! -function-schemas* assoc-in [:cljs ns name] (merge data {:schema ?schema, :ns ns, :name name})))
 
 #?(:clj
    (defmacro => [name value]

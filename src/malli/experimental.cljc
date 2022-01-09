@@ -44,14 +44,14 @@
         parglists (if single (->> arities val parse vector) (->> arities val :arities (map parse)))
         raw-arglists (map :raw-arglist parglists)
         schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))]
-    `(do (let [defn# (c/defn
-                       ~name
-                       ~@(some-> doc vector)
-                       ~(assoc meta :raw-arglists (list 'quote raw-arglists), :schema schema)
-                       ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-                       ~@(when-not single (some->> arities val :meta vector)))]
-           (m/=> ~name ~schema)
-           defn#))))
+    `(let [defn# (c/defn
+                   ~name
+                   ~@(some-> doc vector)
+                   ~(assoc meta :raw-arglists (list 'quote raw-arglists), :schema schema)
+                   ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                   ~@(when-not single (some->> arities val :meta vector)))]
+       (m/=> ~name ~schema)
+       defn#)))
 
 ;;
 ;; public api

@@ -7,7 +7,7 @@
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
   []
   `(do
-     ~(mi/unstrument* nil)
+     ~(mi/-unstrument nil)
      ~(do (clj-kondo/save! {}) nil)))
 
 (defmacro start!
@@ -17,11 +17,11 @@
    This does NOT re-instrument functions if the function schemas change - use hot reloading to get a similar effect."
   [options]
   `(do
-     ~(mi/unstrument* nil)
+     ~(mi/-unstrument nil)
      ~(do (clj-kondo/save! {}) nil)
      ;; malli.dev/stop ^^
 
      ;; register all function schemas and instrument them based on the options
-     ~(mi/collect-all-ns*)
-     ~(mi/instrument* options)
+     ~(mi/-collect-all-ns)
+     ~(mi/-instrument options)
      ~(do (clj-kondo/emit!) nil)))

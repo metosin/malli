@@ -317,7 +317,7 @@
 
 (defn +-validator [p] (cat-validator p (*-validator p)))
 (defn +-explainer [p] (cat-explainer p (*-explainer p)))
-(defn +-parser [p] (fmap-parser (fn [[v vs]] (cons v vs)) (cat-parser p (*-parser p))))
+(defn +-parser [p] (fmap-parser (fn [[v vs]] (into [v] vs)) (cat-parser p (*-parser p))))
 
 (defn +-unparser [up]
   (let [up* (*-unparser up)]

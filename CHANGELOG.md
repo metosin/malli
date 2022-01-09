@@ -16,7 +16,9 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* FIX: `:+` parsing returns vector, not sequence
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
+* `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
@@ -28,6 +30,16 @@ Malli is in well matured [alpha](README.md#alpha).
 
 (-> '[a :- :string, b & cs :- [:* :int]] (md/parse) :schema)
 ; => [:cat :string :any [:* :int]]
+```
+
+* new `malli.experimental` namespace with schematized `defn`, automatically registers the functions schemas with `m/=>`.
+
+```clj
+(require '[malli.experimental :as mx])
+
+(mx/defn kakka :- :int
+  "inline schemas (plumatic-style)"
+  [x :- :int] (inc x))
 ```
 
 ## 0.7.5 (2021-12-19)

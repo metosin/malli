@@ -1718,6 +1718,9 @@
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
 
+      (testing "parse + unparse"
+        (is (= [2 3] (->> (m/parse [:+ :int] [2 3]) (m/unparse [:+ :int])))))
+
       (let [s [:+ string?]]
         (are [v errs]
           (let [es errs]
@@ -2360,6 +2363,12 @@
             [:function
              :cat])))
 
+    (testing "varargs with identical min arity get +1 arity"
+      (is (m/schema
+           [:function
+            [:=> :cat nil?]
+            [:=> [:cat [:? nil?]] nil?]])))
+
     (testing "invalid arities"
 
       (is (thrown-with-msg?
@@ -2371,12 +2380,13 @@
                [:=> :cat nil?]])))
 
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/duplicate-min-arities"
-            (m/schema
-              [:function
-               [:=> :cat nil?]
-               [:=> [:cat [:? nil?]] nil?]]))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/multiple-varargs"
+           (m/schema
+            [:function
+             [:=> :cat nil?]
+             [:=> [:cat [:? nil?]] nil?]
+             [:=> [:cat [:? nil?] [:? nil?]] nil?]]))))
 
     (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
           invalid-f (fn ([x] x) ([x y] (str x y)))
@@ -2456,7 +2466,7 @@
 (defn function-schema-registry-test-fn [])
 
 (deftest function-schema-registry-test
-  (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
+  (swap! @#'m/-function-schemas* update :clj dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)
         _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
         new-function-schemas (m/function-schemas)

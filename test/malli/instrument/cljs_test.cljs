@@ -9,7 +9,6 @@
 
 (def small-int [:int {:max 6}])
 
-
 (defn minus
   "kukka"
   {:malli/schema [:=> [:cat :int] [:int {:min 6}]]
@@ -21,7 +20,6 @@
   {:malli/schema [:=> [:cat :int] small-int]
    :malli/scope #{:input :output}}
   [x] (dec x))
-
 
 (defn plus-small-int [x] (inc x))
 (m/=> plus-small-int [:=> [:cat :int] small-int])
@@ -75,9 +73,7 @@
     (is (= 5 (minus 6)))
 
     (is (= 1 (minus-small-int "2")))
-    (is (= 9 (minus-small-int 10)))
-
-    (is (= 36 (power 6))))
+    (is (= 9 (minus-small-int 10))))
 
   (testing "with instrumentation"
     (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
@@ -86,6 +82,4 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus 6)))
 
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (minus-small-int "2")))
-    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus-small-int 10)))
-
-    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (power 6)))))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus-small-int 10)))))

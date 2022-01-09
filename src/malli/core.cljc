@@ -2371,7 +2371,9 @@
 ;;
 
 (defonce ^:private -function-schemas* (atom {}))
+(defonce ^:private -function-schemas-cljs* (atom {}))
 (defn function-schemas [] @-function-schemas*)
+(defn function-schemas-cljs [] @-function-schemas-cljs*)
 
 (defn function-schema
   ([?schema]
@@ -2383,14 +2385,18 @@
 (defn -register-function-schema! [ns name schema data]
   (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema schema), :ns ns, :name name})))
 
+(defn -register-function-schema-cljs! [ns name schema data]
+  ;; we cannot invoke `function-schema` at macroexpansion-time - `schema` could contain cljs vars that will only resovle at runtime.
+  (swap! -function-schemas-cljs* assoc-in [ns name] (merge data {:schema schema, :ns ns, :name name})))
+
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
            sym `'~(symbol (str *ns*) (str name))]
-       ;; in cljs we need to register the schema in clojure (the cljs compiler) so it is visible in the -function-schemas* map at macroexpansion time.
+       ;; in cljs we need to register the schema in clojure (the cljs compiler) so it is visible in the -function-schemas-cljs* map at macroexpansion time.
        (when (some? (:ns &env))
-         (-register-function-schema! (symbol (str *ns*)) name value (meta name)))
+         (-register-function-schema-cljs! (symbol (str *ns*)) name value (meta name)))
        `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
 
 (defn -instrument

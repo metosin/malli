@@ -47,7 +47,7 @@
          ~replace-var-code)
       replace-var-code)))
 
-(defn -instrument [{:keys [data] :or {data (m/function-schemas-cljs)} :as opts}]
+(defn -instrument [{:keys [data] :or {data (m/function-schemas :cljs)} :as opts}]
   (let [r
         (reduce
          (fn [acc [ns-sym sym-map]]
@@ -84,7 +84,7 @@
               (fn [acc' fn-sym schema-map]
                 (conj acc' (-emit-unstrument-fn (assoc opts :schema (:schema schema-map))
                                                 ns-sym (symbol (str ns-sym) (str fn-sym)))))
-              acc sym-map)) [] (m/function-schemas-cljs))]
+              acc sym-map)) [] (m/function-schemas :cljs))]
     `(filterv some? ~r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,7 +101,7 @@
   (let [r (reduce (fn [acc [ns-sym sym-map]]
                     (reduce-kv (fn [acc' fn-sym schema-map]
                                  (conj acc' (-emit-check schema-map (symbol (str ns-sym) (str fn-sym)))))
-                               acc sym-map)) [] (m/function-schemas-cljs))]
+                               acc sym-map)) [] (m/function-schemas :cljs))]
     `(into {} ~r)))
 
 ;;

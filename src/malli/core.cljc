@@ -2383,8 +2383,7 @@
 ;;
 
 (defonce ^:private -function-schemas* (atom {}))
-(defn function-schemas [] (:clj @-function-schemas*))
-(defn function-schemas-cljs [] (:cljs @-function-schemas*))
+(defn function-schemas ([] (function-schemas :clj)) ([key] (@-function-schemas* key)))
 
 (defn function-schema
   ([?schema]

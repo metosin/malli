@@ -2386,27 +2386,27 @@
 (defn function-schemas ([] (function-schemas :clj)) ([key] (@-function-schemas* key)))
 
 (defn function-schema
-  ([?schema]
-   (function-schema ?schema nil))
+  ([?schema] (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
      (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name ?schema data]
-  (swap! -function-schemas* assoc-in [:clj ns name] (merge data {:schema (function-schema ?schema), :ns ns, :name name})))
-
-(defn -register-function-schema-cljs! [ns name ?schema data]
-  ;; we cannot invoke `function-schema` at macroexpansion-time - `?schema` could contain cljs vars that will only resovle at runtime.
-  (swap! -function-schemas* assoc-in [:cljs ns name] (merge data {:schema ?schema, :ns ns, :name name})))
+;; for cljs we cannot invoke `function-schema` at macroexpansion-time
+;; - `?schema` could contain cljs vars that will only resovle at runtime.
+(defn -register-function-schema!
+  ([ns name ?schema data] (-register-function-schema! ns name ?schema data :clj function-schema))
+  ([ns name ?schema data key f]
+   (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))))
 
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
            sym `'~(symbol (str *ns*) (str name))]
-       ;; in cljs we need to register the schema in clojure (the cljs compiler) so it is visible in the -function-schemas-cljs* map at macroexpansion time.
+       ;; in cljs we need to register the schema in clojure (the cljs compiler)
+       ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
        (when (some? (:ns &env))
-         (-register-function-schema-cljs! (symbol (str *ns*)) name value (meta name)))
+         (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity))
        `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
 
 (defn -instrument

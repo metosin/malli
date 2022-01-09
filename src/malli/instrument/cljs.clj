@@ -11,7 +11,7 @@
   (let [ns (symbol (namespace (:name var-map)))
         schema (:malli/schema meta)]
     (when schema
-      (m/-register-function-schema-cljs! ns simple-name schema (m/-unlift-keys meta "malli"))
+      (m/-register-function-schema! ns simple-name schema (m/-unlift-keys meta "malli") :cljs identity)
       `(do (m/-register-function-schema! '~ns '~simple-name ~schema ~(m/-unlift-keys meta "malli"))
            '~(:name var-map)))))
 

@@ -2466,7 +2466,7 @@
 (defn function-schema-registry-test-fn [])
 
 (deftest function-schema-registry-test
-  (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
+  (swap! @#'m/-function-schemas* update :clj dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)
         _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
         new-function-schemas (m/function-schemas)

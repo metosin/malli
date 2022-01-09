@@ -82,11 +82,8 @@
            (fn [acc [ns-sym sym-map]]
              (reduce-kv
               (fn [acc' fn-sym schema-map]
-                (conj acc'
-                      (-emit-unstrument-fn (assoc opts :schema (:schema schema-map))
-                                           ns-sym
-                                           (symbol
-                                           (str ns-sym) (str fn-sym)))))
+                (conj acc' (-emit-unstrument-fn (assoc opts :schema (:schema schema-map))
+                                                ns-sym (symbol (str ns-sym) (str fn-sym)))))
               acc sym-map)) [] (m/function-schemas-cljs))]
     `(filterv some? ~r)))
 

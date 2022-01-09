@@ -1567,19 +1567,14 @@ Malli also supports adding type hints as an extension to the normal Clojure synt
 ; => [:cat :int :string [:* :boolean]]
 ```
 
-Example to pull out function argument schemas:
+Pulling out function argument schemas from Vars:
 
 ```clj
 (defn kikka
   ([a] [a])
   ([a b & cs] [a b cs]))
 
-(->> #'kikka
-     meta
-     :arglists
-     (map infer)
-     (map (fn [s] [:=> s :any]))
-     (into [:function]))
+(md/infer #'kikka)
 ;[:function
 ; [:=> [:cat :any] :any] 
 ; [:=> [:cat :any :any [:* :any]] :any]]

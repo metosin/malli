@@ -37,17 +37,9 @@ Presentations:
 - CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
 - ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
 
-Try the [online demo](https://malli.io). Libraries using or supporting malli:
+Try the [online demo](https://malli.io), see also some [3rd Party Libraries](#3rd-party-libraries).
 
-- [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
-- [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
-- [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
-- [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
-- [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
-- [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
-- [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
-- [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
-- [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli-defn.png" width="600" />
 
 ## Motivation
 
@@ -2705,8 +2697,20 @@ With sci (18Mb):
 ./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
 ```
 
+## 3rd party libraries
+
+- [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
+- [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
+- [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
+- [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
+- [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
+- [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
+- [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
+- [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
+- [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
+
 ## License
 
-Copyright © 2019-2021 Metosin Oy and contributors.
+Copyright © 2019-2022 Metosin Oy and contributors.
 
 Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

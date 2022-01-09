@@ -4,14 +4,14 @@
             [malli.generator :as mg]))
 
 ;;
-;; Collect schemas - register them into the known malli.core/-function-schemas* atom based on their metadata.
+;; Collect schemas - register them into the known malli.core/-function-schemas[-cljs]* atom based on their metadata.
 ;;
 
 (defn -collect! [simple-name {:keys [meta] :as var-map}]
   (let [ns (symbol (namespace (:name var-map)))
         schema (:malli/schema meta)]
     (when schema
-      (m/-register-function-schema! ns simple-name schema (m/-unlift-keys meta "malli"))
+      (m/-register-function-schema-cljs! ns simple-name schema (m/-unlift-keys meta "malli"))
       `(do (m/-register-function-schema! '~ns '~simple-name ~schema ~(m/-unlift-keys meta "malli"))
            '~(:name var-map)))))
 
@@ -27,9 +27,10 @@
 
 (defn -emit-instrument-fn [{:keys [gen filters] :as instrument-opts} {:keys [schema] :as schema-map} ns-sym fn-sym]
   ;; gen is a function
-  (let [schema-map (assoc (select-keys schema-map [:gen :scope :report])
-                          ;; At macroexpansion time the schema will be a JVM object, this converts it to a JS object.
-                          :schema `(m/function-schema ~(m/form schema)))
+  (let [schema-map (-> schema-map
+                       (select-keys [:gen :scope :report])
+                       ;; The schema passed in may contain cljs vars that have to be resolved at runtime in cljs.
+                       (assoc :schema `(m/function-schema ~schema)))
         schema-map-with-gen
         (as-> (merge (select-keys instrument-opts [:scope :report :gen]) schema-map) $
               ;; use the passed in gen fn to generate a value
@@ -46,14 +47,13 @@
          ~replace-var-code)
       replace-var-code)))
 
-(defn -instrument [{:keys [data] :or {data (m/function-schemas)} :as opts}]
+(defn -instrument [{:keys [data] :or {data (m/function-schemas-cljs)} :as opts}]
   (let [r
         (reduce
          (fn [acc [ns-sym sym-map]]
            (reduce-kv
             (fn [acc' fn-sym schema-map]
-              (conj acc'
-                    (-emit-instrument-fn opts schema-map ns-sym (symbol (str ns-sym) (str fn-sym)))))
+              (conj acc' (-emit-instrument-fn opts schema-map ns-sym (symbol (str ns-sym) (str fn-sym)))))
             acc sym-map)) [] data)]
     `(filterv some? ~r)))
 
@@ -62,9 +62,10 @@
 ;;
 
 (defn -emit-unstrument-fn [{:keys [schema filters] :as opts} ns-sym fn-sym]
-  (let [opts (assoc (select-keys opts [:gen :scope :report])
-                    ;; At macroexpansion time the schema will be a JVM object, this converts it to a JS object.
-                    :schema `(m/function-schema ~(m/form schema)))
+  (let [opts (-> opts
+                 (select-keys [:gen :scope :report])
+                 ;; The schema passed in may contain cljs vars that have to be resolved at runtime in cljs.
+                 (assoc :schema `(m/function-schema ~schema)))
         replace-with-orig
         `(when-let [orig-fn# (get @instrumented-vars '~fn-sym)]
            (swap! instrumented-vars #(dissoc % '~fn-sym))
@@ -85,8 +86,8 @@
                       (-emit-unstrument-fn (assoc opts :schema (:schema schema-map))
                                            ns-sym
                                            (symbol
-                                            (str ns-sym) (str fn-sym)))))
-              acc sym-map)) [] (m/function-schemas))]
+                                           (str ns-sym) (str fn-sym)))))
+              acc sym-map)) [] (m/function-schemas-cljs))]
     `(filterv some? ~r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -94,8 +95,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn -emit-check [{:keys [schema]} fn-sym]
-  `(let [schema# (m/function-schema ~(m/form schema))
-         fn# (or (get @instrumented-vars '~fn-sym) '~fn-sym)]
+  `(let [schema# (m/function-schema ~schema)
+         fn# (or (get @instrumented-vars '~fn-sym) ~fn-sym)]
      (when-let [err# (mg/check schema# fn#)]
        ['~fn-sym err#])))
 
@@ -103,7 +104,7 @@
   (let [r (reduce (fn [acc [ns-sym sym-map]]
                     (reduce-kv (fn [acc' fn-sym schema-map]
                                  (conj acc' (-emit-check schema-map (symbol (str ns-sym) (str fn-sym)))))
-                               acc sym-map)) [] (m/function-schemas))]
+                               acc sym-map)) [] (m/function-schemas-cljs))]
     `(into {} ~r)))
 
 ;;

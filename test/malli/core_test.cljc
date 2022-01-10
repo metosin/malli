@@ -2474,7 +2474,10 @@
         fn-schema (get this-ns-schemas 'function-schema-registry-test-fn)]
     (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))
     (is (map? this-ns-schemas))
-    (is (map? fn-schema))))
+    (is (map? fn-schema))
+    (testing "fully namespaced symbols"
+      (is (= (m/=> malli.core-test/function-schema-registry-test-fn [:=> :cat :nil])
+             (m/=> function-schema-registry-test-fn [:=> :cat :nil]))))))
 
 (deftest -instrument-test
   (let [int<=6 [:int {:max 6}]]

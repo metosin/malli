@@ -1,7 +1,9 @@
 (ns malli.clj-kondo-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [malli.clj-kondo :as clj-kondo]
             [malli.core :as m]
+            [malli.registry :as mr]
             [malli.util :as mu]))
 
 (def Schema
@@ -37,6 +39,24 @@
 
 (m/=> siren [:=> [:cat ifn? coll?] map?])
 
+(def StringStartingWithA
+  (m/schema
+   (m/-simple-schema
+    {:type ::string-starting-with-a
+     :pred #(str/starts-with? % "a")
+     :type-properties {:clj-kondo/type ::string-starting-with-a}})))
+
+(def options
+  {:registry (mr/composite-registry
+              (m/-registry)
+              {::string-starting-with-a StringStartingWithA})})
+
+(defn f1
+  [s]
+  (str s " - this starts with a `a`"))
+
+(m/=> f1 (m/schema [:=> [:cat ::string-starting-with-a] :string] options))
+
 (deftest clj-kondo-integration-test
 
   (is (= {:op :keys,
@@ -61,7 +81,10 @@
                                    :ret :int,
                                    :min-arity 2}}}
               'siren
-              {:arities {2 {:args [:ifn :coll], :ret :map}}}}}
+              {:arities {2 {:args [:ifn :coll], :ret :map}}}
+              'f1
+              {:arities {1 {:args [:malli.clj-kondo-test/string-starting-with-a]
+                            :ret :string}}}}}
             (-> 'malli.clj-kondo-test
                 (clj-kondo/collect)
                 (clj-kondo/linter-config)

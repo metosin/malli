@@ -2396,17 +2396,18 @@
 (defn -register-function-schema!
   ([ns name ?schema data] (-register-function-schema! ns name ?schema data :clj function-schema))
   ([ns name ?schema data key f]
-   (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))))
+   (let [options (when (map? data) (:malli/options data))]
+     (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema options), :ns ns, :name name})))))
 
 #?(:clj
    (defmacro => [name value]
-     (let [name' `'~(symbol (str name))
-           ns' `'~(symbol (str *ns*))
-           sym `'~(symbol (str *ns*) (str name))]
+     (let [name' `'~(symbol (clojure.core/name name))
+           ns' `'~(symbol (or (namespace name) (str *ns*)))
+           sym `'~(symbol (or (namespace name) (str *ns*)) (clojure.core/name name))]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
        (when (some? (:ns &env))
-         (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity))
+         (-register-function-schema! (str ns') (str name') value (meta name) :cljs identity))
        `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
 
 (defn -instrument

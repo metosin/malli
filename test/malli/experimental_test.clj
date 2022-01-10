@@ -1,7 +1,10 @@
 (ns malli.experimental-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest testing is]]
+            [malli.core :as m]
             [malli.experimental :as mx]
-            [malli.instrument :as mi]))
+            [malli.instrument :as mi]
+            [malli.registry :as mr]))
 
 ;; normal, no-args
 (mx/defn f1 [] 1)
@@ -36,6 +39,22 @@
   ([x :- [:int {:min 0}], y :- :int] (+ x y))
   ([x :- [:int {:min 0}], y :- :int & zs :- [:* :int]] (apply + x y zs))
   {:more "meta"})
+
+(def StringStartingWithA
+  (m/schema
+   (m/-simple-schema
+    {:type ::string-starting-with-a
+     :pred #(str/starts-with? % "a")})))
+
+(def options
+  {:registry (mr/composite-registry
+              (m/-registry)
+              {::string-starting-with-a StringStartingWithA})})
+
+;; custom types
+(mx/defn ^{:malli/options options} f7
+  [s :- ::string-starting-with-a]
+  (str s " - this starts with a `a`"))
 
 (def expectations
   [{:var #'f1
@@ -72,7 +91,7 @@
             [[-1 -1] -2]
             [[1 "2"] ::throws]]
     :instrumented [[[1 2] 3]
-                   [[-2 1] ::throws] ;; input
+                   [[-2 1] ::throws]  ;; input
                    [[-1 -1] ::throws] ;; ret
                    [[1 "2"] ::throws]]}
    {:var #'f5
@@ -112,7 +131,12 @@
                    [[1 -2] ::throws]
                    [[-1 2] ::throws]
                    [[1 2 3 4] 10]
-                   [[-1 2 3 4] ::throws]]}])
+                   [[-1 2 3 4] ::throws]]}
+   {:var #'f7
+    :calls [[["ab"] "ab - this starts with a `a`"]
+            [["ba"] "ba - this starts with a `a`"]]
+    :instrumented [[["ab"] "ab - this starts with a `a`"]
+                   [["ba"] ::throws]]}])
 
 (defn -strument! [mode v]
   (with-out-str

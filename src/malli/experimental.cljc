@@ -48,7 +48,11 @@
                    ~name
                    ~@(some-> doc vector)
                    ~(assoc meta :raw-arglists (list 'quote raw-arglists), :schema schema)
-                   ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                   ~@(map (fn [{:keys [arglist prepost body]}]
+                            (if prepost
+                              `(~arglist ~prepost ~@body)
+                              `(~arglist ~@body)))
+                          parglists)
                    ~@(when-not single (some->> arities val :meta vector)))]
        (m/=> ~name ~schema)
        defn#)))

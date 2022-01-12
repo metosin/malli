@@ -73,7 +73,7 @@
            (.log js/console "..unstrumented" '~fn-sym)
            '~fn-sym)]
     (if filters
-      `(when (some #(% ~ns-sym (var ~fn-sym) ~opts) ~filters)
+      `(when (some #(% '~ns-sym (var ~fn-sym) ~opts) ~filters)
          ~replace-with-orig)
       replace-with-orig)))
 

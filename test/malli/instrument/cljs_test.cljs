@@ -66,15 +66,6 @@
 
 (deftest collect!-test
 
-  (testing "without instrumentation"
-    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
-
-    (is (= 1 (minus "2")))
-    (is (= 5 (minus 6)))
-
-    (is (= 1 (minus-small-int "2")))
-    (is (= 9 (minus-small-int 10))))
-
   (testing "with instrumentation"
     (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
 
@@ -82,4 +73,13 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus 6)))
 
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (minus-small-int "2")))
-    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus-small-int 10)))))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus-small-int 10))))
+
+  (testing "without instrumentation"
+    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
+
+    (is (= 1 (minus "2")))
+    (is (= 5 (minus 6)))
+
+    (is (= 1 (minus-small-int "2")))
+    (is (= 9 (minus-small-int 10)))))

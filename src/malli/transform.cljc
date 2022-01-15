@@ -313,10 +313,10 @@
 (defn transformer [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
-                                          :key (if name
-                                                 (if (qualified-keyword? name)
-                                                   [(keyword key) name]
-                                                   [(keyword key (clojure.core/name name))]))})
+                                          :keys (when name
+                                                  (cond-> [[(keyword key) name]]
+                                                    (not (qualified-keyword? name))
+                                                    (conj [(keyword key (clojure.core/name name))])))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
         ->chain (m/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
@@ -329,11 +329,10 @@
         (-transformer-chain [_] chain)
         (-value-transformer [_ schema method options]
           (reduce
-            (fn [acc {{:keys [key default transformers]} method}]
-              (let [options (or options (m/options schema))]
-                (if-let [?interceptor (or (if key
-                                            (or (some-> (get-in (m/properties schema) key) (->eval options))
-                                                (some-> (get-in (m/type-properties schema) key) (->eval options))))
+            (fn [acc {{:keys [keys default transformers]} method}]
+              (let [options (or options (m/options schema))
+                    hinted (fn [f x] (some-> (get-in (f schema) x) (->eval options)))]
+                (if-let [?interceptor (or (some #(or (hinted m/properties %) (hinted m/type-properties %)) keys)
                                           (get transformers (m/type schema))
                                           default)]
                   (let [interceptor (-interceptor ?interceptor schema options)]

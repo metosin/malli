@@ -42,6 +42,15 @@ Malli is in well matured [alpha](README.md#alpha).
   [x :- :int] (inc x))
 ```
 
+* transformer names can be qualified, schema properties support `:decode` and `:encode` keys:
+
+```clj
+(m/decode
+  [:string {:decode {:string (partial str "olipa "}}]
+  "kerran" mt/string-transformer)
+; => "olipa kerran"
+```
+
 ## 0.7.5 (2021-12-19)
 
 * [clj-kondo 2021.12.16+](https://github.com/clj-kondo/clj-kondo/blob/master/CHANGELOG.md#20211216) can load malli type configs automatically from new location (`.clj-kondo/metosin/malli-types/config.edn`)

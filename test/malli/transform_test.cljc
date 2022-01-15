@@ -647,13 +647,22 @@
                 "10"
                 transformer))))
 
-  (testing "namespaced transformer names"
-    (let [transformer (mt/transformer {:name ::kikka}
-	                              mt/string-transformer)
-          schema [keyword? {:encode {::kikka {:leave 'str/upper-case}}
-                            :decode {::kikka {:enter 'str/lower-case}}}]]
-      (is (= :kukka (m/decode schema "KUKKA" transformer)))
-      (is (= "KUKKA" (m/encode schema :kukka transformer)))))
+  (testing "full override encode and decode"
+    (testing "namespaced transformer names"
+      (let [transformer (mt/transformer {:name ::kikka}
+                                        mt/string-transformer)
+            schema [keyword? {:encode {::kikka {:leave 'str/upper-case}}
+                              :decode {::kikka {:enter 'str/lower-case}}}]]
+        (is (= :kukka (m/decode schema "KUKKA" transformer)))
+        (is (= "KUKKA" (m/encode schema :kukka transformer)))))
+    (testing "full override masks compact keys with simple keyword names"
+      (let [transformer (mt/transformer {:name :kikka})
+            schema [:string {:encode {:kikka {:leave 'str/upper-case}}
+                             :encode/kikka {:enter (partial str "masked")}
+                             :decode {:kikka {:enter 'str/lower-case}}
+                             :decode/kikka {:enter (partial str "masked")}}]]
+        (is (= "kukka" (m/decode schema "KUKKA" transformer)))
+        (is (= "KUKKA" (m/encode schema "kukka" transformer))))))
 
   (testing "and"
     (testing "decode"

@@ -777,6 +777,15 @@ Schema properties can be used to override default transformations:
 ; => "KERRAN"
 ```
 
+This works too:
+
+```clj
+(m/decode
+  [string? {:decode {:string 'str/upper-case}}]
+  "kerran" mt/string-transformer)
+; => "KERRAN"
+```
+
 Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 
 ```clj

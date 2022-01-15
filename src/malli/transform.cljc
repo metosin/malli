@@ -313,10 +313,10 @@
 (defn transformer [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
-                                          :key (if name
-                                                 (if (qualified-keyword? name)
-                                                   [(keyword key) name]
-                                                   [(keyword key (clojure.core/name name))]))})
+                                          :keys (when name
+                                                  (cond-> [[(keyword key) name]]
+                                                    (not (qualified-keyword? name))
+                                                    (conj [(keyword key (clojure.core/name name))])))})
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
         ->chain (m/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
@@ -329,13 +329,11 @@
         (-transformer-chain [_] chain)
         (-value-transformer [_ schema method options]
           (reduce
-            (fn [acc {{:keys [key default transformers]} method}]
-              (let [options (or options (m/options schema))]
-                (if-let [?interceptor (or (if key
-                                            (or (some-> (get-in (m/properties schema) key) (->eval options))
-                                                (some-> (get-in (m/type-properties schema) key) (->eval options))))
-                                          (get transformers (m/type schema))
-                                          default)]
+            (fn [acc {{:keys [keys default transformers]} method}]
+              (let [options (or options (m/options schema))
+                    from (fn [f] #(some-> (get-in (f schema) %) (->eval options)))
+                    from-properties (some-fn (from m/properties) (from m/type-properties))]
+                (if-let [?interceptor (or (some from-properties keys) (get transformers (m/type schema)) default)]
                   (let [interceptor (-interceptor ?interceptor schema options)]
                     (if (nil? acc) interceptor (-interceptor [acc interceptor] schema options)))
                   acc))) nil chain'))))))

@@ -331,10 +331,9 @@
           (reduce
             (fn [acc {{:keys [keys default transformers]} method}]
               (let [options (or options (m/options schema))
-                    hinted (fn [f x] (some-> (get-in (f schema) x) (->eval options)))]
-                (if-let [?interceptor (or (some #(or (hinted m/properties %) (hinted m/type-properties %)) keys)
-                                          (get transformers (m/type schema))
-                                          default)]
+                    from (fn [f] #(some-> (get-in (f schema) %) (->eval options)))
+                    from-properties (some-fn (from m/properties) (from m/type-properties))]
+                (if-let [?interceptor (or (some from-properties keys) (get transformers (m/type schema)) default)]
                   (let [interceptor (-interceptor ?interceptor schema options)]
                     (if (nil? acc) interceptor (-interceptor [acc interceptor] schema options)))
                   acc))) nil chain'))))))

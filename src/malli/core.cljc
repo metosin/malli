@@ -587,6 +587,79 @@
     (fn [x] (= (namespace x) ns-name))))
 
 ;;
+;; string schema helpers
+;;
+
+#?(:cljs (defn -numeric-char? [c] (and (< 47 c) (< c 58))))
+#?(:cljs (defn -upper-alpha-char? [c] (and (< 64 c) (< c 91))))
+#?(:cljs (defn -lower-alpha-char? [c] (and (< 96 c) (< c 123))))
+#?(:cljs (defn -letter? [c] (or (-lower-alpha-char? c) (-upper-alpha-char? c))))
+#?(:cljs (defn -alphanumeric? [c] (or (-letter? c) (-numeric-char? c))))
+
+(defn -charset-predicate
+  [o]
+  (case o
+    :digit #?(:clj #(Character/isDigit ^char %) :cljs -numeric-char?)
+    :letter #?(:clj #(Character/isLetter ^char %) :cljs -letter?)
+    (:alphanumeric :letter-or-digit) #?(:clj #(Character/isLetterOrDigit ^char %) :cljs -alphanumeric?)
+    :alphabetic #?(:clj #(Character/isAlphabetic (int %)) :cljs -letter?)
+    (cond
+      (set? o) (miu/-some-pred (mapv -charset-predicate o))
+      (char? o) #?(:clj #(= ^char o %) :cljs (let [i (.charCodeAt o 0)] #(= i %)))
+      :else (eval o))))
+
+(defn string-char-predicate
+  [p]
+  (fn charset-pred ^Boolean [^String s]
+    (let [n #?(:clj (.length s) :cljs (.-length s))]
+      (loop [i 0]
+        (if (= i n)
+          true
+          (if (p #?(:clj  (.charAt s (unchecked-int i))
+                    :cljs (.charCodeAt s (unchecked-int i))))
+            (recur (unchecked-inc i))
+            false))))))
+
+#?(:clj
+   (defn find-blank-method
+     []
+     (try
+       (.getMethod String "isBlank" (into-array Class []))
+       #(.isBlank ^String %)
+       (catch Exception _
+         (require 'clojure.string)
+         clojure.string/blank?))))
+
+#?(:clj  (def blank? (find-blank-method))
+   :cljs (defn blank? [^String s] (zero? (.-length (.trim s)))))
+
+(defn -string-predicates
+  ([{:keys [charset pattern non-blank]}]
+   (let [pattern
+         (when pattern
+           (let [pattern (re-pattern pattern)]
+             #?(:clj #(.find (.matcher ^Pattern pattern ^String %))
+                :cljs #(boolean (re-find pattern %)))))
+         charset
+         (when charset
+           (let [p (-charset-predicate charset)]
+             (string-char-predicate p)))
+         non-blank (when non-blank #(not (blank? %)))]
+     (-> non-blank
+         (miu/-maybe-and charset)
+         (miu/-maybe-and pattern)))))
+
+(defn -string-property-pred
+  []
+  (fn [properties]
+    (miu/-maybe-and
+     ((-min-max-pred
+       #?(:clj #(.length ^String %)
+          :cljs #(.-length ^String %)))
+      properties)
+     (-string-predicates properties))))
+
+;;
 ;; Schemas
 ;;
 
@@ -641,7 +714,7 @@
 
 (defn -nil-schema [] (-simple-schema {:type :nil, :pred nil?}))
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))
-(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
+(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-string-property-pred)}))
 (defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
 (defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
 (defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))

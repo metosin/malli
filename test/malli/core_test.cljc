@@ -2634,3 +2634,44 @@
   (is (= ["1"] (m/-vmap str (subvec [1 2] 0 1))))
   (is (= ["1"] (m/-vmap str (lazy-seq [1]))))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))
+
+(deftest string-test
+  (testing "pattern"
+    (let [s (m/schema [:string {:pattern "foo"}])]
+      (is (true? (m/validate s "foo")))
+      (is (true? (m/validate s "afoo")))
+      (is (true? (m/validate s "fooa")))
+      (is (false? (m/validate s "foao"))))
+    (let [s (m/schema [:string {:pattern "^foo"}])]
+      (is (true? (m/validate s "foo")))
+      (is (false? (m/validate s "afoo")))
+      (is (true? (m/validate s "fooa")))
+      (is (false? (m/validate s "foao")))))
+  (testing "charset"
+    (let [s (m/schema [:string {:charset :alphabetic}])]
+      (is (true? (m/validate s "foo")))
+      (is (false? (m/validate s "fo1o"))))
+    (let [s (m/schema [:string {:charset :letter}])]
+      (is (true? (m/validate s "foo")))
+      (is (false? (m/validate s "fo1o"))))
+    (let [s (m/schema [:string {:charset :letter-or-digit}])]
+      (is (true? (m/validate s "foo")))
+      (is (true? (m/validate s "fo0")))
+      (is (false? (m/validate s "f-1o"))))
+    (let [s (m/schema [:string {:charset #{\- :letter-or-digit}}])]
+      (is (true? (m/validate s "foo")))
+      (is (true? (m/validate s "fo0")))
+      (is (true? (m/validate s "f-1x")))
+      (is (false? (m/validate s "f?1o")))))
+  (testing "non blank"
+    (let [s (m/schema [:string {:non-blank true}])]
+      (is (true? (m/validate s "foo")))
+      (is (false? (m/validate s "")))
+      (is (false? (m/validate s "  ")))))
+  (testing "Combined"
+    (let [s (m/schema [:string {:non-blank true :pattern "foo" :charset :letter-or-digit}])]
+      (is (true? (m/validate s "foo")))
+      (is (false? (m/validate s "")))
+      (is (false? (m/validate s "  ")))
+      (is (false? (m/validate s " foo ")))
+      (is (true? (m/validate s "foo0"))))))

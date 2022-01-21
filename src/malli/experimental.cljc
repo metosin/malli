@@ -1,5 +1,5 @@
 (ns malli.experimental
-  (:refer-clojure :exclude [defn])
+  (:refer-clojure :exclude [defn defn-])
   #?(:cljs (:require-macros malli.experimental))
   (:require [clojure.core :as c]
             [malli.core :as m]
@@ -35,8 +35,9 @@
 (def SchematizedParams (-schema true))
 (def Params (-schema false))
 
-(c/defn -defn [schema args]
+(c/defn -defn [opts schema args]
   (let [{:keys [name return doc meta arities] :as parsed} (m/parse schema args)
+        meta (merge meta (:meta opts))
         _ (when (= ::m/invalid parsed) (m/-fail! ::parse-error {:schema schema, :args args}))
         parse (fn [{:keys [args] :as parsed}] (merge (md/parse args) parsed))
         ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
@@ -57,4 +58,5 @@
 ;; public api
 ;;
 
-#?(:clj (defmacro defn [& args] (-defn SchematizedParams args)))
+#?(:clj (defmacro defn [& args] (-defn {} SchematizedParams args)))
+#?(:clj (defmacro defn- [& args] (-defn {:meta {:private true}} SchematizedParams args)))

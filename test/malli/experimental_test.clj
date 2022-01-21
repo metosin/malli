@@ -37,6 +37,8 @@
   ([x :- [:int {:min 0}], y :- :int & zs :- [:* :int]] (apply + x y zs))
   {:more "meta"})
 
+(mx/defn- f7 ([x] x))
+
 (def expectations
   [{:var #'f1
     :calls [[nil 1]
@@ -112,7 +114,19 @@
                    [[1 -2] ::throws]
                    [[-1 2] ::throws]
                    [[1 2 3 4] 10]
-                   [[-1 2 3 4] ::throws]]}])
+                   [[-1 2 3 4] ::throws]]}
+   {:var #'f7
+    :meta {:private true
+           :arglists '([x])}
+    :calls [[[1] 1]
+            [["kikka"] "kikka"]
+            [[] ::throws]
+            [[1 2] ::throws]]
+    :instrumented [[[1] 1]
+                   [["kikka"] "kikka"]
+                   [[] ::throws]
+                   [[1 2] ::throws]]}])
+
 
 (defn -strument! [mode v]
   (with-out-str

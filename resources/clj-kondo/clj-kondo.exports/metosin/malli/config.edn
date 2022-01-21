@@ -1,2 +1,3 @@
-{:lint-as {malli.experimental/defn schema.core/defn}}
+{:lint-as {malli.experimental/defn schema.core/defn
+           malli.experimental/defn- schema.core/defn}}
  :linters {:unresolved-symbol {:exclude [(malli.core/=>)]}}}

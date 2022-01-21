@@ -2038,8 +2038,8 @@
    (-cached (schema ?schema options) :validator -validator)))
 
 (defn validate
-  "Validates a value againsta a given schema. Creates the `validator` for every call.
-   When performance matters, (re-)use `validator` instead."
+  "Returns true if value is valid according to given schema. Creates the `validator`
+   for every call. When performance matters, (re-)use `validator` instead."
   ([?schema value]
    (validate ?schema value nil))
   ([?schema value options]

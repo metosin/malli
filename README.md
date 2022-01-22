@@ -355,8 +355,8 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
-;;     :errors (#Error{:path [0 :val :s], :in [3], :schema string?, :value 11}
-;;              #Error{:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
+;;     :errors ({:path [0 :val :s], :in [3], :schema string?, :value 11}
+;;              {:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
 ```
 
 while `:cat` and `:alt` just use numeric indices for paths:
@@ -367,8 +367,8 @@ while `:cat` and `:alt` just use numeric indices for paths:
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:cat string? [:alt string? boolean?]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
-;;     :errors (#Error{:path [0 1 0], :in [3], :schema string?, :value 11}
-;;              #Error{:path [0 1 1], :in [3], :schema boolean?, :value 11})}
+;;     :errors ({:path [0 1 0], :in [3], :schema string?, :value 11}
+;;              {:path [0 1 1], :in [3], :schema boolean?, :value 11})}
 ```
 
 As all these examples show, the "seqex" operators take any non-seqex child schema to
@@ -534,22 +534,22 @@ Detailed errors with `m/explain`:
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},
-; :errors (#Error{:path [:tags 0]
-;                 :in [:tags 0]
-;                 :schema keyword?
-;                 :value "coffee"}
-;          #Error{:path [:address :city],
-;                 :in [:address :city],
-;                 :schema [:map
-;                          [:street string?]
-;                          [:city string?]
-;                          [:zip int?]
-;                          [:lonlat [:tuple double? double?]]],
-;                 :type :malli.core/missing-key}
-;          #Error{:path [:address :lonlat 1]
-;                 :in [:address :lonlat 1]
-;                 :schema double?
-;                 :value nil})}
+; :errors ({:path [:tags 0]
+;           :in [:tags 0]
+;           :schema keyword?
+;           :value "coffee"}
+;          {:path [:address :city],
+;           :in [:address :city],
+;           :schema [:map
+;                    [:street string?]
+;                    [:city string?]
+;                    [:zip int?]
+;                    [:lonlat [:tuple double? double?]]],
+;           :type :malli.core/missing-key}
+;          {:path [:address :lonlat 1]
+;           :in [:address :lonlat 1]
+;           :schema double?
+;           :value nil})}
 ```
 
 ## Custom Error Messages

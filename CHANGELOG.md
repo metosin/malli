@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.8.0-SNAPSHOT
 
 * FIX: `:+` parsing returns vector, not sequence
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript

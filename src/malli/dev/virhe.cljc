@@ -22,11 +22,9 @@
    :error 196})
 
 (defn -color [color body printer]
-  (let [colors (:colors printer -dark-colors)]
-    [:span
-     [:pass (str "\033[38;5;" (get colors color (:error colors)) "m")]
-     body
-     [:pass "\u001B[0m"]]))
+  (let [colors (:colors printer -dark-colors)
+        color (get colors color (:error colors))]
+    [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]]))
 
 ;;
 ;; EDN
@@ -106,14 +104,13 @@
 (defn -printer
   ([] (-printer nil))
   ([options]
-   (map->EdnPrinter
-     (merge
-       {:width 80
-        :symbols {}
-        :print-length *print-length*
-        :print-level *print-level*
-        :print-meta *print-meta*}
-       options))))
+   (let [defaults {:width 80
+                   :symbols {}
+                   :colors -dark-colors
+                   :print-length *print-length*
+                   :print-level *print-level*
+                   :print-meta *print-meta*}]
+     (map->EdnPrinter (cond->> options defaults (merge defaults))))))
 
 (defn -pprint
   ([x] (-pprint x (-printer)))

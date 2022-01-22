@@ -25,6 +25,7 @@ Data-driven Schemas for Clojure/Script.
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
+- Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
 
 Presentations:
@@ -680,6 +681,12 @@ For closed schemas, key spelling can be checked with:
 ;           :streetz ["should be spelled :street"]}
 ; :name ["disallowed key"]}
 ```
+
+## Pretty Errors
+
+For pretty development-time error printing, try `malli.dev.pretty/explain`
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
 
 ## Value Transformation
 

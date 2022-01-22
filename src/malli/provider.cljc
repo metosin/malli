@@ -7,6 +7,10 @@
 
 (defn -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
+(defrecord Hinted [value hint])
+(defn -hinted [x hint] (->Hinted x hint))
+(defn -value-hint [x] (if (instance? Hinted x) [(:value x) (:hint x)] [x (some-> x meta ::hint)]))
+
 (defn -inferrer [options]
   (let [schemas (->> options (m/-registry) (mr/-schemas) (vals) (filter #(-safe? m/schema %)))
         form->validator (into {} (mapv (juxt m/form m/validator) schemas))
@@ -16,7 +20,7 @@
         infer-seq (fn [infer] (fn [acc x] (update (reduce infer acc x) :data (fnil conj []) x)))
         merge+ (fnil #(merge-with + %1 %2) {})]
     (fn infer [acc x]
-      (let [hint (some-> x meta ::hint)
+      (let [[x hint] (-value-hint x)
             type (cond (nil? x) :nil
                        (map? x) :map
                        (set? x) :set
@@ -31,9 +35,11 @@
                             (:set :vector :sequential) (update $ :values (fnil (infer-seq infer) {}) x)))]
         (-> acc (update :count (fnil inc 0)) (update :types update type ->type))))))
 
-(defn -value-schema [{:keys [schemas]}]
-  (let [max (->> schemas vals (apply max))]
-    (->> schemas (filter #(= max (val %))) (map (fn [[k]] [k (-preferences k -1)])) (sort-by second >) (ffirst))))
+(defn -value-schema [{:keys [schemas hints] :as stats}]
+  (or (when-let [hint (and (= 1 (count hints)) (first hints))]
+        (case hint :enum (into [:enum] (keys (:values stats))), hint))
+      (let [max (->> schemas vals (apply max))]
+        (->> schemas (filter #(= max (val %))) (map (fn [[k]] [k (-preferences k -1)])) (sort-by second >) (ffirst)))))
 
 (defn -sequential-schema [{tc :count :as stats} type schema {::keys [infer tuple-threshold] :as options}]
   (let [vstats* (delay (-> stats :types type))

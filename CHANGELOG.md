@@ -19,6 +19,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * FIX: `:+` parsing returns vector, not sequence
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
 * `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
+* allow `:malli/schema` to be defined via arglist meta-data, [#615](https://github.com/metosin/malli/pull/615)
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
@@ -53,7 +54,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 * `malli.dev.pretty/explain` for pretty-printing explanations
 
-<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png">
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
 
 ## 0.7.5 (2021-12-19)
 

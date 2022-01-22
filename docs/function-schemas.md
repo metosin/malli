@@ -132,23 +132,23 @@ Explanation why it is not valid:
 (m/explain =>plus str)
 ;{:schema [:=> [:cat :int :int] :int],
 ; :value #object[clojure.core$str],
-; :errors (#Error{:path [],
-;                 :in [],
-;                 :schema [:=> [:cat :int :int] :int],
-;                 :value #object[clojure.core$str],
-;                 :check {:total-nodes-visited 0,
-;                         :depth 0,
-;                         :pass? false,
-;                         :result false,
-;                         :result-data nil,
-;                         :time-shrinking-ms 1,
-;                         :smallest [(0 0)],
-;                         :malli.generator/explain-output {:schema :int,
-;                                                          :value "00",
-;                                                          :errors (#Error{:path []
-;                                                                          :in []
-;                                                                          :schema :int
-;                                                                          :value "00"})}}})}
+; :errors ({:path [],
+;           :in [],
+;           :schema [:=> [:cat :int :int] :int],
+;           :value #object[clojure.core$str],
+;           :check {:total-nodes-visited 0,
+;                   :depth 0,
+;                   :pass? false,
+;                   :result false,
+;                   :result-data nil,
+;                   :time-shrinking-ms 1,
+;                   :smallest [(0 0)],
+;                   :malli.generator/explain-output {:schema :int,
+;                                                    :value "00",
+;                                                    :errors ({:path []
+;                                                              :in []
+;                                                              :schema :int
+;                                                              :value "00"})}}})}
 ```
 
 Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not an `:int`. Looks good.
@@ -209,26 +209,26 @@ Multi-arity functions can be composed with `:function`:
 ;          [:=> [:cat ::small-int] :int]
 ;          [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]],
 ; :value #object[malli.core_test$eval27255$fn__27256],
-; :errors (#Error{:path [],
-;                 :in [],
-;                 :schema [:function
-;                          {:registry {::small-int [:int {:min -100, :max 100}]}}
-;                          [:=> [:cat ::small-int] :int]
-;                          [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]],
-;                 :value #object[malli.core_test$eval27255$fn__27256],
-;                 :check ({:total-nodes-visited 2,
-;                          :depth 1,
-;                          :pass? false,
-;                          :result false,
-;                          :result-data nil,
-;                          :time-shrinking-ms 0,
-;                          :smallest [(0 0)],
-;                          :malli.generator/explain-output {:schema :int,
-;                                                           :value "00",
-;                                                           :errors (#Error{:path []
-;                                                                           :in []
-;                                                                           :schema :int
-;                                                                           :value "00"})}})})}
+; :errors ({:path [],
+;           :in [],
+;           :schema [:function
+;                    {:registry {::small-int [:int {:min -100, :max 100}]}}
+;                    [:=> [:cat ::small-int] :int]
+;                    [:=> [:cat ::small-int ::small-int [:* ::small-int]] :int]],
+;           :value #object[malli.core_test$eval27255$fn__27256],
+;           :check ({:total-nodes-visited 2,
+;                    :depth 1,
+;                    :pass? false,
+;                    :result false,
+;                    :result-data nil,
+;                    :time-shrinking-ms 0,
+;                    :smallest [(0 0)],
+;                    :malli.generator/explain-output {:schema :int,
+;                                                     :value "00",
+;                                                     :errors ({:path []
+;                                                               :in []
+;                                                               :schema :int
+;                                                               :value "00"})}})})}
 ```
 
 Generating multi-arity functions:
@@ -537,23 +537,23 @@ Checking all registered schemas:
 (mi/check)
 ;{user/plus1 {:schema [:=> [:cat :int] [:int {:max 6}]],
 ;             :value #object[user$plus1],
-;             :errors (#Error{:path [],
-;                             :in [],
-;                             :schema [:=> [:cat :int] [:int {:max 6}]],
-;                             :value #object[user$plus1],
-;                             :check {:total-nodes-visited 12,
-;                                     :depth 4,
-;                                     :pass? false,
-;                                     :result false,
-;                                     :result-data nil,
-;                                     :time-shrinking-ms 0,
-;                                     :smallest [(6)],
-;                                     :malli.generator/explain-output {:schema [:int {:max 6}],
-;                                                                      :value 7,
-;                                                                      :errors (#Error{:path [],
-;                                                                                      :in [],
-;                                                                                      :schema [:int {:max 6}],
-;                                                                                      :value 7})}}})}}
+;             :errors ({:path [],
+;                       :in [],
+;                       :schema [:=> [:cat :int] [:int {:max 6}]],
+;                       :value #object[user$plus1],
+;                       :check {:total-nodes-visited 12,
+;                               :depth 4,
+;                               :pass? false,
+;                               :result false,
+;                               :result-data nil,
+;                               :time-shrinking-ms 0,
+;                               :smallest [(6)],
+;                               :malli.generator/explain-output {:schema [:int {:max 6}],
+;                                                                :value 7,
+;                                                                :errors ({:path [],
+;                                                                          :in [],
+;                                                                          :schema [:int {:max 6}],
+;                                                                          :value 7})}}})}}
 ```
 
 It reports that the `plus1` is not correct. It accepts `:int` but promises to return `[:int {:max 6}]`. Let's fix the contract by constraining the input values.

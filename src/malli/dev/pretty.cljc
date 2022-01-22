@@ -34,9 +34,9 @@
   (let [{:keys [schema value]} explanation]
     {:body
      [:group
-      (-block "Schema:" (v/-visit schema printer) printer) :break :break
       (-block "Value:" (v/-visit value printer) printer) :break :break
       (-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
+      (-block "Schema:" (v/-visit schema printer) printer) :break :break
       (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 (defmethod v/-format ::m/invalid-input [_ _ {:keys [args input]} printer]
@@ -82,9 +82,9 @@
        (let [message (with-out-str (report type data))]
          (throw (ex-info message {:type type :data data})))))))
 
-(defn ^:no-doc explain
+(defn explain
   ([?schema value] (explain ?schema value nil))
   ([?schema value options]
-   (let [printer (assoc (or (::printer options) (-printer)) :title "Validation Error")]
+   (let [printer (assoc (or (::printer options) (assoc (-printer) :width 60)) :title "Validation Error")]
      (when-let [e (->> value (m/explain ?schema) (me/with-error-messages))]
        ((reporter printer) ::m/explain e) e))))

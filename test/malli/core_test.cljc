@@ -2656,6 +2656,6 @@
                                'my/bigger-than-5 BiggerThan5})}
           via-ast #(-> (m/ast % options) (m/from-ast options))]
 
-      (is (via-ast :my/bigger-than-3))
-      (is (via-ast :my-bigger-than-4))
-      (is (via-ast 'my/bigger-than-5)))))
+      (is (m/schema? (via-ast :my/bigger-than-3)))
+      (is (m/schema? (via-ast :my-bigger-than-4)))
+      (is (m/schema? (via-ast 'my/bigger-than-5))))))

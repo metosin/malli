@@ -1513,23 +1513,24 @@ Sample-data can be type-hinted with `::mp/hint`:
 
 ### :tuple inferring
 
-Inferring `:tuple` requires 3 samples with same size and types:
+By default, tuples are not inferred:
 
 ```clj
 (mp/provide
   [[1 "kikka" true]
    [2 "kukka" true]
    [3 "kakka" true]])
-; [:tuple int? string? boolean?]
+; [:vector some?]
 ```
 
-This can be configured via `::mp/tuple-threshold` options:
+There is `::mp/tuple-threshold` option:
 
 ```clj
 (mp/provide
   [[1 "kikka" true]
-   [2 "kukka" true]]
-  {::mp/tuple-threshold 2})
+   [2 "kukka" true]
+   [3 "kakka" false]]
+  {::mp/tuple-threshold 3})
 ; [:tuple int? string? boolean?]
 ```
 

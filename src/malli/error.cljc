@@ -241,7 +241,7 @@
 (defn -resolve-direct-error [_ error options]
   [(error-path error options) (error-message error options)])
 
-(defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
+(defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path in] :as error} options]
   (let [options (assoc options :unknown false)]
     (loop [path path, l nil, mp path, p (m/properties (:schema error)), m (error-message error options)]
       (let [[path' m' p'] (or (let [schema (mu/get-in schema path)]
@@ -253,12 +253,9 @@
                                         message (error-message {:schema schema} options)]
                                     (when message [(conj path l) message (m/properties schema)]))))
                               (when m [mp m p]))]
-        (if (seq path) (recur (pop path) (last path) path' p' m') (when m
-                                                                    (if (seq (:in error))
-                                                                      [(mu/path->in schema path') m' p']
-                                                                      ;; we are in different `in`,
-                                                                      ;; use the original path
-                                                                      [(error-path error options) m' p'])))))))
+        (if (seq path)
+          (recur (pop path) (last path) path' p' m')
+          (when m [(if (seq in) (mu/path->in schema path') (error-path error options)) m' p']))))))
 
 (defn with-error-message
   ([error]

@@ -16,13 +16,15 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## 0.8.0-SNAPSHOT
 
-* FIX: `m/from-ast` does not work with symbols or unamespaced keywords, [#626](https://github.com/metosin/malli/issues/626)
-* FIX: `:+` parsing returns vector, not sequence
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
 * `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
 * allow `:malli/schema` to be defined via arglist meta-data, [#615](https://github.com/metosin/malli/pull/615)
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
 * **BREAKING**: `:malli.provider/tuple-threshold` has no default value
+* FIX: `me/-resolve-root-error` does not respect `:error/path`, [#554](https://github.com/metosin/malli/issues/554)
+* FIX: `m/from-ast` does not work with symbols or unamespaced keywords, [#626](https://github.com/metosin/malli/issues/626)
+* FIX: `:+` parsing returns vector, not sequence
+
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
 ```clj

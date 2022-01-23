@@ -253,7 +253,12 @@
                                         message (error-message {:schema schema} options)]
                                     (when message [(conj path l) message (m/properties schema)]))))
                               (when m [mp m p]))]
-        (if (seq path) (recur (pop path) (last path) path' p' m') (when m [(mu/path->in schema path') m' p']))))))
+        (if (seq path) (recur (pop path) (last path) path' p' m') (when m
+                                                                    (if (seq (:in error))
+                                                                      [(mu/path->in schema path') m' p']
+                                                                      ;; we are in different `in`,
+                                                                      ;; use the original path
+                                                                      [(error-path error options) m' p'])))))))
 
 (defn with-error-message
   ([error]

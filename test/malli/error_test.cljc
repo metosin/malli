@@ -566,7 +566,20 @@
       [:map {:error/message "map-failure" ::level :warn} [:foo :int]]
       [[]
        "map-failure"
-       {:error/message "map-failure", ::level :warn}])))
+       {:error/message "map-failure", ::level :warn}]))
+
+  (testing ":fn with :error/path #554"
+   (is (= {:password2 ["passwords don't match"]}
+          (-> [:and [:map
+                     [:password string?]
+                     [:password2 string?]]
+               [:fn {:error/message "passwords don't match"
+                     :error/path    [:password2]}
+                '(fn [{:keys [password password2]}]
+                   (= password password2))]]
+              (m/explain {:password  "secret"
+                          :password2 "faarao"})
+              (me/humanize {:resolve me/-resolve-root-error}))))))
 
 (deftest limits
   (is (= {:a [["should be an int"]]

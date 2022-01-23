@@ -66,25 +66,28 @@
    ;; implicit sample count for :map-of
    [[:map-of string? [:map [:name string?]]]
     [{"1" {:name "1"}
-      "2" {:name "2"}
-      "3" {:name "3"}}]]
+      "2" {:name "2"}}
+     {"3" {:name "3"}}]]
 
-   ;; tuple-like with too few elements
+   ;; tuple-like without options
    [[:vector some?]
     [[1 "kikka" true]
-     [2 "kukka" true]]]
+     [2 "kukka" true]
+     [3 "kakka" false]]]
 
-   ;; tuple-like with enough samples
-   [[:tuple int? string? boolean?]
+   ;; tuple-like with threshold not reached
+   [[:vector some?]
     [[1 "kikka" true]
-     [2 "kukka" true]]
-    {::mp/tuple-threshold 2}]
+     [2 "kukka" true]
+     [3 "kakka" false]]
+    {::mp/tuple-threshold 4}]
 
-   ;; tuple-like with enough samples
+   ;; tuple-like with threshold reached
    [[:tuple int? string? boolean?]
     [[1 "kikka" true]
      [2 "kukka" true]
-     [3 "kakka" true]]]
+     [3 "kakka" false]]
+    {::mp/tuple-threshold 3}]
 
    ;; tuple-like with non-coherent data
    [[:vector some?]

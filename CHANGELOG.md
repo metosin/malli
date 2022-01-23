@@ -22,6 +22,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
 * allow `:malli/schema` to be defined via arglist meta-data, [#615](https://github.com/metosin/malli/pull/615)
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
+* **BREAKING**: `:malli.provider/tuple-threshold` has no default value
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
 ```clj

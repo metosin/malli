@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## 0.8.0-SNAPSHOT
 
+* FIX: `m/from-ast` does not work with symbols or unamespaced keywords, [#626](https://github.com/metosin/malli/issues/626)
 * FIX: `:+` parsing returns vector, not sequence
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
 * `malli.dev/start!` uses `malli.dev.pretty/reporter` by default

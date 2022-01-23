@@ -2634,3 +2634,28 @@
   (is (= ["1"] (m/-vmap str (subvec [1 2] 0 1))))
   (is (= ["1"] (m/-vmap str (lazy-seq [1]))))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))
+
+(deftest issue-626-test
+  (testing "m/from-ast does not work with symbols or unamespaced keywords"
+    (let [BiggerThan3 (m/schema
+                       (m/-simple-schema
+                        {:type :my/bigger-than-3
+                         :pred #(> % 3)}))
+          BiggerThan4 (m/schema
+                       (m/-simple-schema
+                        {:type :my-bigger-than-4
+                         :pred #(> % 4)}))
+          BiggerThan5 (m/schema
+                       (m/-simple-schema
+                        {:type 'my/bigger-than-5
+                         :pred #(> % 5)}))
+          options {:registry (malli.registry/composite-registry
+                              (m/-registry)
+                              {:my/bigger-than-3 BiggerThan3
+                               :my-bigger-than-4 BiggerThan4
+                               'my/bigger-than-5 BiggerThan5})}
+          via-ast #(-> (m/ast % options) (m/from-ast options))]
+
+      (is (m/schema? (via-ast :my/bigger-than-3)))
+      (is (m/schema? (via-ast :my-bigger-than-4)))
+      (is (m/schema? (via-ast 'my/bigger-than-5))))))

@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
-                               lambdaisland/kaocha {:mvn/version "1.60.972"}
+                               lambdaisland/kaocha {:mvn/version "1.60.977"}
                                lambdaisland/kaocha-cljs {:mvn/version "1.0.107"}
                                org.babashka/sci {:mvn/version "0.2.8"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}
@@ -57,10 +57,10 @@
                              "-Dclojure.compiler.direct-linking=true"]}
            :clojure-10 {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
            :clojure-11 {}}
- :deps {org.clojure/clojure {:mvn/version "1.11.0-alpha3"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.0-alpha4"}
         borkdude/dynaload {:mvn/version "0.2.2"}
         borkdude/edamame {:mvn/version "0.0.18"}
-        org.clojure/test.check {:mvn/version "1.1.0"}
+        org.clojure/test.check {:mvn/version "1.1.1"}
         ;; pretty errors, optional deps
-        fipp/fipp {:mvn/version "0.6.24"}
+        fipp/fipp {:mvn/version "0.6.25"}
         mvxcvi/arrangement {:mvn/version "2.0.0"}}}

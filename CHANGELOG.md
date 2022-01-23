@@ -60,6 +60,12 @@ Malli is in well matured [alpha](README.md#alpha).
 
 <img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
 
+* updated dependencies:
+
+```clj
+fipp/fipp 0.6.24 -> 0.6.25
+```
+
 ## 0.7.5 (2021-12-19)
 
 * [clj-kondo 2021.12.16+](https://github.com/clj-kondo/clj-kondo/blob/master/CHANGELOG.md#20211216) can load malli type configs automatically from new location (`.clj-kondo/metosin/malli-types/config.edn`)

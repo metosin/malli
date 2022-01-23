@@ -40,7 +40,7 @@
     <dependency>
       <groupId>fipp</groupId>
       <artifactId>fipp</artifactId>
-      <version>0.6.24</version>
+      <version>0.6.25</version>
     </dependency>
     <dependency>
       <groupId>mvxcvi</groupId>

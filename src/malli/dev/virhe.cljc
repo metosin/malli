@@ -75,7 +75,7 @@
                               [:span (fipp.visit/visit printer k) " " (fipp.visit/visit printer v)]))))
 
   (visit-set [this x]
-    (let [xs (sort-by identity (fn [a b] (arrangement.core/rank a b)) x)]
+    (let [xs (sort-by identity (fn [a b] (arrangement.core/rank a b)) (seq x))]
       (fipp.edn/pretty-coll this "#{" xs :line "}" fipp.visit/visit)))
 
   (visit-tagged [this {:keys [tag form]}]

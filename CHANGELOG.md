@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED 
+
+* FIX: bug in inferring with value encoders [#631](https://github.com/metosin/malli/issues/631)
+
 ## 0.8.0 (2022-01-23)
 
 * new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript

@@ -65,7 +65,7 @@
         (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
 (defn -decoded [{:keys [values]} vp t]
-  (let [vs (keys values), -decode (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) vs))]
+  (let [vs (keys values), -decode (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) false vs))]
     (reduce-kv (fn [acc s f] (if (-decode f) (reduced s) acc)) t vp)))
 
 (defn -schema

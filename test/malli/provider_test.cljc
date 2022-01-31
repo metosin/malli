@@ -123,6 +123,11 @@
       "09e59de6-5fee-11ec-bf63-0242ac130002" {:id "09e59de6-5fee-11ec-bf63-0242ac130002"}
       "15511020-5fee-11ec-bf63-0242ac130002" {:id "15511020-5fee-11ec-bf63-0242ac130002"}}]
     {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}}]
+   [[:map-of inst? string?]
+    [{"1901-03-02T22:20:11.000Z" "123"
+      "1902-04-03T22:20:11.000Z" "234"
+      "1904-06-05T22:20:11.000Z" "456"}]
+    {::mp/value-decoders {'string? {'inst? mt/-string->date}}}]
 
    ;; value-hints
    [[:map [:name :string] [:gender [:enum "male" "female"]]]

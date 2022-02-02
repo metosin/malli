@@ -683,7 +683,10 @@ To throw the prettified error instead of just printint it:
 Pretty printer uses [fipp](https://github.com/brandonbloom/fipp) under the hood and has lot of configuration options:
 
 ```clj
-(dev/start! {:report (pretty/reporter (pretty/-printer {:width 80}))})
+(dev/start! {:report (pretty/reporter (pretty/-printer {:width 80
+                                                        :print-length 30
+                                                        :print-level 2
+                                                        :print-meta true}))})
 ```
 
 ### TL;DR

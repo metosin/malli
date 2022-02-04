@@ -1061,7 +1061,7 @@ Finding first value (prewalk):
   [:map
    [:x int?]
    [:y [:vector [:tuple
-                 [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                 [:or [:fn {:salaisuus "turvassa"} boolean?] int?]
                  [:schema {:salaisuus "vaarassa"} false?]]]]
    [:z [:string {:salaisuus "piilossa"}]]]
   (fn [schema _ _]
@@ -1349,13 +1349,13 @@ Schemas can be used to generate values:
 
 ;; :gen/elements (note, are not validated)
 (mg/generate
-  [:and {:gen/elements ["kikka" "kukka" "kakka"]} string?]
+  [:fn {:gen/elements ["kikka" "kukka" "kakka"]} string?]
   {:seed 10})
 ; => "kikka"
 
 ;; portable :gen/fmap
 (mg/generate
-  [:and {:gen/fmap '(partial str "kikka_")} string?]
+  [:fn {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})
 ;; => "kikka_WT3K0yax2"
 

@@ -225,6 +225,14 @@
                (do (swap! aritys conj arity)
                          (assoc acc arity (assoc info :min min)))))) {} infos)))
 
+(defn- -re-min-max [f {min' :min, max' :max} child]
+  (let [{min'' :min max'' :max} (-regex-min-max child)]
+    (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
+
+(defn- -re-alt-min-max [{min' :min, max' :max} child]
+  (let [{min'' :min max'' :max} (-regex-min-max child)]
+    (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
+
 ;;
 ;; registry
 ;;
@@ -2280,14 +2288,6 @@
    :qualified-keyword (-qualified-keyword-schema)
    :qualified-symbol (-qualified-symbol-schema)
    :uuid (-uuid-schema)})
-
-(defn- -re-min-max [f {min' :min, max' :max} child]
-  (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
-
-(defn- -re-alt-min-max [{min' :min, max' :max} child]
-  (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
 
 (defn sequence-schemas []
   {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}

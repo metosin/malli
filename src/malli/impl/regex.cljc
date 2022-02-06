@@ -396,10 +396,10 @@
                   (p driver regs pos coll
                      (fn [v pos coll]
                        (noncaching-park-transformer!
-                         driver
-                         (fn [driver regs coll* pos coll k]
-                           (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
-                         regs coll* pos coll k)))) ; TCO
+                        driver
+                        (fn [driver regs coll* pos coll k]
+                          (optionals driver (conj (pop regs) (inc (peek regs))) (conj coll* v) pos coll k))
+                        regs coll* pos coll k)))) ; TCO
                 (k coll* pos coll)))]
       (fn [driver regs pos coll k] (compulsories driver (conj regs 0) [] pos coll k)))))
 
@@ -447,9 +447,9 @@
 
 ;; Custom hash set so that Cljs Malli users can have decent perf without having to to set up Closure ES6 Set polyfill.
 ;; Uses quadratic probing with power-of-two sizes and triangular numbers, what a nice trick!
-(deftype ^:private Cache
-  #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
-     :cljs [^:mutable values, ^:mutable size])
+(deftype Cache
+         #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
+            :cljs [^:mutable values, ^:mutable size])
   ICache
   (ensure-cached! [_ f pos regs]
     (when (> (unchecked-inc size) (bit-shift-right (alength values) 1)) ; potential new load factor > 0.5
@@ -489,8 +489,8 @@
 (defn- make-cache [] (Cache. (object-array 2) 0))
 
 (deftype ^:private CheckDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
-     :cljs [^:mutable success, stack, cache])
+         #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
+            :cljs [^:mutable success, stack, cache])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -504,9 +504,9 @@
       (noncaching-park-validator! self validator regs pos coll k))))
 
 (deftype ^:private ParseDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
-            ^:unsynchronized-mutable result]
-     :cljs [^:mutable success, stack, cache, ^:mutable result])
+         #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
+                   ^:unsynchronized-mutable result]
+            :cljs [^:mutable success, stack, cache, ^:mutable result])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -547,9 +547,9 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
-            in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
-     :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
+         #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
+                   in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+            :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
 
   Driver
   (succeed! [_] (set! success (boolean true)))

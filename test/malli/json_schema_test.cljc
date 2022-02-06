@@ -100,7 +100,7 @@
   (testing "full override"
     (is (= {:type "file"}
            (json-schema/transform
-             [:map {:json-schema {:type "file"}} [:file any?]]))))
+            [:map {:json-schema {:type "file"}} [:file any?]]))))
 
   (testing "Having all attributes optional in input should not output a required at all even empty. JSON-Schema validation will failed on this
             (see http://json-schema.org/understanding-json-schema/reference/object.html#required-properties and
@@ -110,7 +110,7 @@
                          :x2 {:title "x"},
                          :x3 {:title "x", :type "string", :default "x"},
                          :x4 {:title "x-string", :default "x2"},
-                         :x5 {:type "x-string"}},}
+                         :x5 {:type "x-string"}}}
            (json-schema/transform
             [:map
              [:x1 {:json-schema/title "x"          :optional true} :string]
@@ -128,12 +128,12 @@
                          :x5 {:type "x-string"}},
             :required [:x1 :x2 :x3 :x4 :x5]}
            (json-schema/transform
-             [:map
-              [:x1 {:json-schema/title "x"} :string]
-              [:x2 {:json-schema {:title "x"}} [:string {:json-schema/default "x"}]]
-              [:x3 {:json-schema/title "x"} [:string {:json-schema/default "x"}]]
-              [:x4 {:json-schema/title "x-string"} [:string {:json-schema {:default "x2"}}]]
-              [:x5 {:json-schema {:type "x-string"}} [:string {:json-schema {:default "x"}}]]]))))
+            [:map
+             [:x1 {:json-schema/title "x"} :string]
+             [:x2 {:json-schema {:title "x"}} [:string {:json-schema/default "x"}]]
+             [:x3 {:json-schema/title "x"} [:string {:json-schema/default "x"}]]
+             [:x4 {:json-schema/title "x-string"} [:string {:json-schema {:default "x2"}}]]
+             [:x5 {:json-schema {:type "x-string"}} [:string {:json-schema {:default "x"}}]]]))))
 
   (testing "with properties"
     (is (= {:allOf [{:type "integer"}]
@@ -141,22 +141,22 @@
             :description "blabla"
             :default 42}
            (json-schema/transform
-             [:and {:title "age"
-                    :description "blabla"
-                    :default 42} int?])))
+            [:and {:title "age"
+                   :description "blabla"
+                   :default 42} int?])))
     (is (= {:allOf [{:type "integer"}]
             :title "age2"
             :description "blabla2"
             :default 422
             :example 422}
            (json-schema/transform
-             [:and {:title "age"
-                    :json-schema/title "age2"
-                    :description "blabla"
-                    :json-schema/description "blabla2"
-                    :default 42
-                    :json-schema/default 422
-                    :json-schema/example 422} int?])))))
+            [:and {:title "age"
+                   :json-schema/title "age2"
+                   :description "blabla"
+                   :json-schema/description "blabla2"
+                   :default 42
+                   :json-schema/default 422
+                   :json-schema/example 422} int?])))))
 
 (deftest util-schemas-test
   (let [registry (merge (m/default-schemas) (mu/schemas))]
@@ -169,10 +169,10 @@
                            :z {:type "integer"}},
               :required [:x :y :z]}
              (json-schema/transform
-               [:merge {:title "merge"}
-                [:map [:x {:json-schema/example 42} int?] [:y int?]]
-                [:map [:z int?]]]
-               {:registry registry}))))
+              [:merge {:title "merge"}
+               [:map [:x {:json-schema/example 42} int?] [:y int?]]
+               [:map [:z int?]]]
+              {:registry registry}))))
 
     (testing "union"
       (is (= {:title "union",
@@ -181,10 +181,10 @@
                            :y {:type "integer"}},
               :required [:x :y]}
              (json-schema/transform
-               [:union {:title "union"}
-                [:map [:x int?] [:y int?]]
-                [:map [:x string?]]]
-               {:registry registry}))))
+              [:union {:title "union"}
+               [:map [:x int?] [:y int?]]
+               [:map [:x string?]]]
+              {:registry registry}))))
 
     (testing "select-keys"
       (is (= {:title "select-keys"
@@ -192,10 +192,10 @@
               :properties {:x {:type "integer"}}
               :required [:x]}
              (json-schema/transform
-               [:select-keys {:title "select-keys"}
-                [:map [:x int?] [:y int?]]
-                [:x]]
-               {:registry registry}))))))
+              [:select-keys {:title "select-keys"}
+               [:map [:x int?] [:y int?]]
+               [:x]]
+              {:registry registry}))))))
 
 (deftest references-test
   (is (= {:$ref "#/definitions/Order",
@@ -228,27 +228,27 @@
                                                          :required [:delivered :address]}},
                                  :required [:lines :delivery]}}}
          (json-schema/transform
-           [:schema
-            {:registry {"Country" [:map
-                                   [:name [:enum :FI :PO]]
-                                   [:neighbors [:vector [:ref "Country"]]]]
-                        "Burger" [:map
-                                  [:name string?]
-                                  [:description {:optional true} string?]
-                                  [:origin [:maybe "Country"]]
-                                  [:price pos-int?]]
-                        "OrderLine" [:map
-                                     [:burger "Burger"]
-                                     [:amount int?]]
-                        "Order" [:map
-                                 [:lines [:vector "OrderLine"]]
-                                 [:delivery [:map
-                                             [:delivered boolean?]
-                                             [:address [:map
-                                                        [:street string?]
-                                                        [:zip int?]
-                                                        [:country "Country"]]]]]]}}
-            "Order"]))))
+          [:schema
+           {:registry {"Country" [:map
+                                  [:name [:enum :FI :PO]]
+                                  [:neighbors [:vector [:ref "Country"]]]]
+                       "Burger" [:map
+                                 [:name string?]
+                                 [:description {:optional true} string?]
+                                 [:origin [:maybe "Country"]]
+                                 [:price pos-int?]]
+                       "OrderLine" [:map
+                                    [:burger "Burger"]
+                                    [:amount int?]]
+                       "Order" [:map
+                                [:lines [:vector "OrderLine"]]
+                                [:delivery [:map
+                                            [:delivered boolean?]
+                                            [:address [:map
+                                                       [:street string?]
+                                                       [:zip int?]
+                                                       [:country "Country"]]]]]]}}
+           "Order"]))))
 
 (deftest function-schema-test
   (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))

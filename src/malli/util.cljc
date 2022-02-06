@@ -42,12 +42,12 @@
   ([?schema f options]
    (let [result (atom nil)]
      (m/-walk
-       (m/schema ?schema options)
-       (reify m/Walker
-         (-accept [_ s path options] (not (or @result (reset! result (f s path options)))))
-         (-inner [this s path options] (when-not @result (m/-walk s this path options)))
-         (-outer [_ _ _ _ _]))
-       [] options)
+      (m/schema ?schema options)
+      (reify m/Walker
+        (-accept [_ s path options] (not (or @result (reset! result (f s path options)))))
+        (-inner [this s path options] (when-not @result (m/-walk s this path options)))
+        (-outer [_ _ _ _ _]))
+      [] options)
      @result)))
 
 (defn merge
@@ -118,13 +118,13 @@
    (closed-schema ?schema nil))
   ([?schema options]
    (m/walk
-     ?schema
-     (m/schema-walker
-       (fn [schema]
-         (if (-open-map? schema options)
-           (update-properties schema c/assoc :closed true)
-           schema)))
-     options)))
+    ?schema
+    (m/schema-walker
+     (fn [schema]
+       (if (-open-map? schema options)
+         (update-properties schema c/assoc :closed true)
+         schema)))
+    options)))
 
 (defn open-schema
   "Opens recursively all :map schemas by removing `:closed`
@@ -133,13 +133,13 @@
    (open-schema ?schema nil))
   ([?schema options]
    (m/walk
-     ?schema
-     (m/schema-walker
-       (fn [schema]
-         (if (-open-map? schema options)
-           (update-properties schema c/dissoc :closed)
-           schema)))
-     options)))
+    ?schema
+    (m/schema-walker
+     (fn [schema]
+       (if (-open-map? schema options)
+         (update-properties schema c/dissoc :closed)
+         schema)))
+    options)))
 
 (defn subschemas
   "Returns all subschemas for unique paths as a vector of maps with :schema, :path and :in keys.
@@ -176,10 +176,10 @@
         in-equals (fn [[x & xs] [y & ys]] (cond (and x (= x y)) (recur xs ys), (= x y) true, (= ::m/in x) (recur xs ys)))
         parent-exists (fn [v1 v2] (let [i (min (count v1) (count v2))] (= (subvec v1 0 i) (subvec v2 0 i))))]
     (find-first
-      schema
-      (fn [_ path _]
-        (when (and (in-equals (path->in schema path) in) (not (some #(parent-exists path %) @state)))
-          (swap! state conj path) nil)))
+     schema
+     (fn [_ path _]
+       (when (and (in-equals (path->in schema path) in) (not (some #(parent-exists path %) @state)))
+         (swap! state conj path) nil)))
     @state))
 
 ;;
@@ -233,14 +233,14 @@
    (rename-keys ?schema kmap nil))
   ([?schema kmap options]
    (transform-entries
-     ?schema
-     (fn [entries]
-       (let [source-keys (set (keys kmap))
-             target-keys (set (vals kmap))
-             remove-conflicts (fn [[k]] (or (source-keys k) (not (target-keys k))))
-             alter-keys (fn [[k m v]] [(c/get kmap k k) m v])]
-         (->> entries (filter remove-conflicts) (map alter-keys))))
-     options)))
+    ?schema
+    (fn [entries]
+      (let [source-keys (set (keys kmap))
+            target-keys (set (vals kmap))
+            remove-conflicts (fn [[k]] (or (source-keys k) (not (target-keys k))))
+            alter-keys (fn [[k m v]] [(c/get kmap k k) m v])]
+        (->> entries (filter remove-conflicts) (map alter-keys))))
+    options)))
 
 (defn dissoc
   "Like [[clojure.core/dissoc]], but for EntrySchemas."
@@ -313,7 +313,7 @@
   [schema ks f & args]
   (letfn [(up [s [k & ks] f args]
             (assoc s k (if ks (up (get s k (m/schema :map (m/options schema))) ks f args)
-                              (apply f (get s k) args))))]
+                           (apply f (get s k) args))))]
     (up schema ks f args)))
 
 ;;
@@ -326,8 +326,8 @@
         r (when properties (properties :registry))
         properties (if r (c/assoc properties :registry (m/-property-registry r options m/-form)) properties)]
     (cond-> {:type (m/type schema)}
-            (seq properties) (clojure.core/assoc :properties properties)
-            (seq children) (clojure.core/assoc :children children))))
+      (seq properties) (clojure.core/assoc :properties properties)
+      (seq children) (clojure.core/assoc :children children))))
 
 (defn to-map-syntax
   ([?schema] (to-map-syntax ?schema nil))

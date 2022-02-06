@@ -18,10 +18,10 @@
   [x :- :int] (inc x))
 
 (comment
- (dev/start!)
- (dev/stop!))
+  (dev/start!)
+  (dev/stop!))
 
 (comment
- (kikka "1")
- (kukka 1 2)
- (kakka "1"))
+  (kikka "1")
+  (kukka 1 2)
+  (kakka "1"))

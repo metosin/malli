@@ -2690,6 +2690,12 @@ npx shadow-cljs run shadow.cljs.build-report app2 /tmp/report.html
 npx shadow-cljs run shadow.cljs.build-report app2-sci /tmp/report.html
 ```
 
+## Formatting the code
+
+```bash
+clojure-lsp format
+```
+
 ## Checking the generated code
 
 ```bash

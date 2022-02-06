@@ -313,10 +313,10 @@
                                           (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
                                explain-output (when-not explain-input (m/explain output response))]
                            (cond-> shrunk
-                                   explain-input (assoc ::explain-input explain-input)
-                                   explain-output (assoc ::explain-output explain-output)
-                                   (ex-message result) (-> (update :result ex-message)
-                                                           (dissoc :result-data)))))))))]
+                             explain-input (assoc ::explain-input explain-input)
+                             explain-output (assoc ::explain-output explain-output)
+                             (ex-message result) (-> (update :result ex-message)
+                                                     (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]

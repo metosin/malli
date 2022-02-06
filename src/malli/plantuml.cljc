@@ -13,8 +13,8 @@
        (println "@startuml")
        (doseq [[k v] (sorted registry)]
          (println (if (entity? k) "entity" "abstract") k "{\n"
-            (or (some->> (m/entries v) (map (fn [[k s]] (str (pr-str k) " " (pr-str (m/form (m/deref s)))))) (str/join "\n "))
-                (pr-str (m/form v))))
+                  (or (some->> (m/entries v) (map (fn [[k s]] (str (pr-str k) " " (pr-str (m/form (m/deref s)))))) (str/join "\n "))
+                      (pr-str (m/form v))))
          (println "}"))
        (doseq [[from tos] (sorted (md/-get-links registry)), to tos]
          (println from (if (entity? to) "o--" "*--") to))

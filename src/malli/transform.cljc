@@ -26,8 +26,8 @@
         (m/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
       (when-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
         (merge
-          (dissoc ?interceptor :compile)
-          interceptor)))
+         (dissoc ?interceptor :compile)
+         interceptor)))
 
     (and (map? ?interceptor)
          (or (contains? ?interceptor :enter)
@@ -35,11 +35,11 @@
 
     (coll? ?interceptor)
     (reduce
-      (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
-        (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
-              leave (if (and leave new-leave) #(leave (new-leave %)) (or leave new-leave))]
-          {:enter enter :leave leave}))
-      (keep #(-interceptor % schema options) ?interceptor))
+     (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
+       (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
+             leave (if (and leave new-leave) #(leave (new-leave %)) (or leave new-leave))]
+         {:enter enter :leave leave}))
+     (keep #(-interceptor % schema options) ?interceptor))
 
     (nil? ?interceptor) nil
 
@@ -251,60 +251,60 @@
 
 (defn -string-decoders []
   (merge
-    (-json-decoders)
-    {'integer? -string->long
-     'int? -string->long
-     'pos-int? -string->long
-     'neg-int? -string->long
-     'nat-int? -string->long
-     'zero? -string->long
+   (-json-decoders)
+   {'integer? -string->long
+    'int? -string->long
+    'pos-int? -string->long
+    'neg-int? -string->long
+    'nat-int? -string->long
+    'zero? -string->long
 
-     :int -string->long
-     :double -string->double
-     :boolean -string->boolean
+    :int -string->long
+    :double -string->double
+    :boolean -string->boolean
 
-     :> -string->long
-     :>= -string->long
-     :< -string->long
-     :<= -string->long
-     := -string->long
-     :not= -string->long
+    :> -string->long
+    :>= -string->long
+    :< -string->long
+    :<= -string->long
+    := -string->long
+    :not= -string->long
 
-     'number? -string->double
-     'float? -string->double
-     'double? -string->double
-     #?@(:clj ['rational? -string->double])
-     #?@(:clj ['decimal? -string->decimal])
+    'number? -string->double
+    'float? -string->double
+    'double? -string->double
+    #?@(:clj ['rational? -string->double])
+    #?@(:clj ['decimal? -string->decimal])
 
-     'boolean? -string->boolean
-     'false? -string->boolean
-     'true? -string->boolean
+    'boolean? -string->boolean
+    'false? -string->boolean
+    'true? -string->boolean
 
-     :map-of (-transform-map-keys m/-keyword->string)
-     :vector -sequential->vector}))
+    :map-of (-transform-map-keys m/-keyword->string)
+    :vector -sequential->vector}))
 
 (defn -string-encoders []
   (merge
-    (-json-encoders)
-    {'integer? -any->string
-     'int? -any->string
-     'pos-int? -any->string
-     'neg-int? -any->string
-     'nat-int? -any->string
-     'zero? -any->string
+   (-json-encoders)
+   {'integer? -any->string
+    'int? -any->string
+    'pos-int? -any->string
+    'neg-int? -any->string
+    'nat-int? -any->string
+    'zero? -any->string
 
-     :int -any->string
-     :double -any->string
+    :int -any->string
+    :double -any->string
      ;:boolean -any->string
 
-     :> -any->string
-     :>= -any->string
-     :< -any->string
-     :<= -any->string
-     := -any->string
-     :not= -any->string
+    :> -any->string
+    :>= -any->string
+    :< -any->string
+    :<= -any->string
+    := -any->string
+    :not= -any->string
 
-     'double -any->string}))
+    'double -any->string}))
 
 ;;
 ;; transformers
@@ -329,34 +329,34 @@
         (-transformer-chain [_] chain)
         (-value-transformer [_ schema method options]
           (reduce
-            (fn [acc {{:keys [keys default transformers]} method}]
-              (let [options (or options (m/options schema))
-                    from (fn [f] #(some-> (get-in (f schema) %) (->eval options)))
-                    from-properties (some-fn (from m/properties) (from m/type-properties))]
-                (if-let [?interceptor (or (some from-properties keys) (get transformers (m/type schema)) default)]
-                  (let [interceptor (-interceptor ?interceptor schema options)]
-                    (if (nil? acc) interceptor (-interceptor [acc interceptor] schema options)))
-                  acc))) nil chain'))))))
+           (fn [acc {{:keys [keys default transformers]} method}]
+             (let [options (or options (m/options schema))
+                   from (fn [f] #(some-> (get-in (f schema) %) (->eval options)))
+                   from-properties (some-fn (from m/properties) (from m/type-properties))]
+               (if-let [?interceptor (or (some from-properties keys) (get transformers (m/type schema)) default)]
+                 (let [interceptor (-interceptor ?interceptor schema options)]
+                   (if (nil? acc) interceptor (-interceptor [acc interceptor] schema options)))
+                 acc))) nil chain'))))))
 
 (defn json-transformer
   ([]
    (json-transformer nil))
   ([{::keys [json-vectors map-of-key-decoders] :or {map-of-key-decoders (-string-decoders)}}]
    (transformer
-     {:name :json
-      :decoders (-> (-json-decoders)
-                    (assoc :map-of {:compile (fn [schema _]
-                                               (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
-                                                           (m/-comp m/-keyword->string) (-transform-map-keys))
-                                                   (-transform-map-keys m/-keyword->string)))})
-                    (cond-> json-vectors (assoc :vector -sequential->vector)))
-      :encoders (-json-encoders)})))
+    {:name :json
+     :decoders (-> (-json-decoders)
+                   (assoc :map-of {:compile (fn [schema _]
+                                              (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
+                                                          (m/-comp m/-keyword->string) (-transform-map-keys))
+                                                  (-transform-map-keys m/-keyword->string)))})
+                   (cond-> json-vectors (assoc :vector -sequential->vector)))
+     :encoders (-json-encoders)})))
 
 (defn string-transformer []
   (transformer
-    {:name :string
-     :decoders (-string-decoders)
-     :encoders (-string-encoders)}))
+   {:name :string
+    :decoders (-string-decoders)
+    :encoders (-string-encoders)}))
 
 (defn strip-extra-keys-transformer
   ([]
@@ -367,8 +367,8 @@
                                  (when-let [ks (some->> schema m/entries (map first) seq set)]
                                    (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x))))))}]
      (transformer
-       {:decoders {:map transform}
-        :encoders {:map transform}}))))
+      {:decoders {:map transform}
+       :encoders {:map transform}}))))
 
 (defn key-transformer [{:keys [decode encode types] :or {types #{:map}}}]
   (let [transform (fn [f stage] (when f {stage (-transform-map-keys f)}))]
@@ -402,22 +402,22 @@
                                       (fn [x]
                                         (if (map? x)
                                           (reduce-kv
-                                            (fn [acc k f]
-                                              (if-not (contains? x k)
-                                                (assoc acc k (f))
-                                                acc))
-                                            x defaults)
+                                           (fn [acc k f]
+                                             (if-not (contains? x k)
+                                               (assoc acc k (f))
+                                               acc))
+                                           x defaults)
                                           x)))))}]
      (transformer
-       {:default-decoder set-default
-        :default-encoder set-default}
-       {:decoders {:map add-defaults}
-        :encoders {:map add-defaults}}))))
+      {:default-decoder set-default
+       :default-encoder set-default}
+      {:decoders {:map add-defaults}
+       :encoders {:map add-defaults}}))))
 
 (defn collection-transformer []
   (let [coders {:vector -sequential-or-set->vector
                 :sequential -sequential-or-set->seq
                 :set -sequential->set}]
     (transformer
-      {:decoders coders
-       :encoders coders})))
+     {:decoders coders
+      :encoders coders})))

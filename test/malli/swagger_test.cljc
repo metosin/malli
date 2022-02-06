@@ -101,14 +101,14 @@
   (testing "full override"
     (is (= {:type "file"}
            (swagger/transform
-             [:map {:swagger {:type "file"}} [:file any?]])))
+            [:map {:swagger {:type "file"}} [:file any?]])))
     (is (= {:type "file"}
            (swagger/transform
-             [:map {:json-schema {:type "file"}} [:file any?]])))
+            [:map {:json-schema {:type "file"}} [:file any?]])))
     (is (= {:type "file"}
            (swagger/transform
-             [:map {:swagger {:type "file"}
-                    :json-schema {:type "file2"}} [:file any?]]))))
+            [:map {:swagger {:type "file"}
+                   :json-schema {:type "file2"}} [:file any?]]))))
 
   (testing "map-entry overrides"
     (is (= {:type "object",
@@ -119,12 +119,12 @@
                          :x5 {:type "x-string"}},
             :required [:x1 :x2 :x3 :x4 :x5]}
            (swagger/transform
-             [:map
-              [:x1 {:swagger/title "x"} :string]
-              [:x2 {:swagger {:title "x"}} [:string {:swagger/default "x"}]]
-              [:x3 {:swagger/title "x"} [:string {:swagger/default "x"}]]
-              [:x4 {:swagger/title "x-string"} [:string {:swagger {:default "x2"}}]]
-              [:x5 {:swagger {:type "x-string"}} [:string {:swagger {:default "x"}}]]]))))
+            [:map
+             [:x1 {:swagger/title "x"} :string]
+             [:x2 {:swagger {:title "x"}} [:string {:swagger/default "x"}]]
+             [:x3 {:swagger/title "x"} [:string {:swagger/default "x"}]]
+             [:x4 {:swagger/title "x-string"} [:string {:swagger {:default "x2"}}]]
+             [:x5 {:swagger {:type "x-string"}} [:string {:swagger {:default "x"}}]]]))))
 
   (testing "with properties"
     (is (= {:title "age"
@@ -134,9 +134,9 @@
             :default 42
             :x-allOf [{:type "integer", :format "int64"}]}
            (swagger/transform
-             [:and {:title "age"
-                    :description "blabla"
-                    :default 42} int?])))
+            [:and {:title "age"
+                   :description "blabla"
+                   :default 42} int?])))
     (is (= {:title "age2"
             :type "integer"
             :format "int64"
@@ -145,13 +145,13 @@
             :example 422
             :x-allOf [{:type "integer", :format "int64"}]}
            (swagger/transform
-             [:and {:title "age"
-                    :json-schema/title "age2"
-                    :description "blabla"
-                    :json-schema/description "blabla2"
-                    :default 42
-                    :json-schema/default 422
-                    :json-schema/example 422} int?])))
+            [:and {:title "age"
+                   :json-schema/title "age2"
+                   :description "blabla"
+                   :json-schema/description "blabla2"
+                   :default 42
+                   :json-schema/default 422
+                   :json-schema/example 422} int?])))
     (is (= {:title "age3"
             :type "integer"
             :format "int64"
@@ -160,17 +160,17 @@
             :example 4222
             :x-allOf [{:type "integer", :format "int64"}]}
            (swagger/transform
-             [:and {:title "age"
-                    :json-schema/title "age2"
-                    :swagger/title "age3"
-                    :description "blabla"
-                    :json-schema/description "blabla2"
-                    :swagger/description "blabla3"
-                    :default 42
-                    :json-schema/default 422
-                    :swagger/default 4222
-                    :json-schema/example 422
-                    :swagger/example 4222} int?])))))
+            [:and {:title "age"
+                   :json-schema/title "age2"
+                   :swagger/title "age3"
+                   :description "blabla"
+                   :json-schema/description "blabla2"
+                   :swagger/description "blabla3"
+                   :default 42
+                   :json-schema/default 422
+                   :swagger/default 4222
+                   :json-schema/example 422
+                   :swagger/example 4222} int?])))))
 
 (deftest util-schemas-test
   (let [registry (merge (m/default-schemas) (mu/schemas))]
@@ -183,10 +183,10 @@
                            :z {:type "integer", :format "int64"}},
               :required [:x :y :z]}
              (swagger/transform
-               [:merge {:title "merge"}
-                [:map [:x {:swagger/example 42} int?] [:y int?]]
-                [:map [:z int?]]]
-               {:registry registry}))))
+              [:merge {:title "merge"}
+               [:map [:x {:swagger/example 42} int?] [:y int?]]
+               [:map [:z int?]]]
+              {:registry registry}))))
 
     (testing "union"
       (is (= {:title "union",
@@ -199,10 +199,10 @@
                            :y {:type "integer", :format "int64"}},
               :required [:x :y]}
              (swagger/transform
-               [:union {:title "union"}
-                [:map [:x int?] [:y int?]]
-                [:map [:x string?]]]
-               {:registry registry}))))
+              [:union {:title "union"}
+               [:map [:x int?] [:y int?]]
+               [:map [:x string?]]]
+              {:registry registry}))))
 
     (testing "select-keys"
       (is (= {:title "select-keys"
@@ -210,10 +210,10 @@
               :properties {:x {:type "integer", :format "int64"}}
               :required [:x]}
              (swagger/transform
-               [:select-keys {:title "select-keys"}
-                [:map [:x int?] [:y int?]]
-                [:x]]
-               {:registry registry}))))))
+              [:select-keys {:title "select-keys"}
+               [:map [:x int?] [:y int?]]
+               [:x]]
+              {:registry registry}))))))
 
 (deftest references-test
   (is (= {:$ref "#/definitions/Order",
@@ -250,24 +250,24 @@
                                                          :required [:delivered :address]}},
                                  :required [:lines :delivery]}}}
          (swagger/transform
-           [:schema
-            {:registry {"Country" [:map
-                                   [:name [:enum :FI :PO]]
-                                   [:neighbors [:vector [:ref "Country"]]]]
-                        "Burger" [:map
-                                  [:name string?]
-                                  [:description {:optional true} string?]
-                                  [:origin [:maybe "Country"]]
-                                  [:price pos-int?]]
-                        "OrderLine" [:map
-                                     [:burger "Burger"]
-                                     [:amount int?]]
-                        "Order" [:map
-                                 [:lines [:vector "OrderLine"]]
-                                 [:delivery [:map
-                                             [:delivered boolean?]
-                                             [:address [:map
-                                                        [:street string?]
-                                                        [:zip int?]
-                                                        [:country "Country"]]]]]]}}
-            "Order"]))))
+          [:schema
+           {:registry {"Country" [:map
+                                  [:name [:enum :FI :PO]]
+                                  [:neighbors [:vector [:ref "Country"]]]]
+                       "Burger" [:map
+                                 [:name string?]
+                                 [:description {:optional true} string?]
+                                 [:origin [:maybe "Country"]]
+                                 [:price pos-int?]]
+                       "OrderLine" [:map
+                                    [:burger "Burger"]
+                                    [:amount int?]]
+                       "Order" [:map
+                                [:lines [:vector "OrderLine"]]
+                                [:delivery [:map
+                                            [:delivered boolean?]
+                                            [:address [:map
+                                                       [:street string?]
+                                                       [:zip int?]
+                                                       [:country "Country"]]]]]]}}
+           "Order"]))))

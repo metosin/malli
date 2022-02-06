@@ -2524,13 +2524,13 @@ Same with Clojure Spec and Plumatic Schema:
 (spec/def ::y int?)
 (spec/def ::z string?)
 
-;; clojure.spec (19µs)
+;; clojure.spec (19000ns)
 (let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
       transform #(st/coerce spec % st/string-transformer)]
   (assert (= expexted (transform data)))
   (cc/quick-bench (transform data)))
 
-;; plumatic schema (2.2µs)
+;; plumatic schema (2200ns)
 (let [schema {:x schema/Bool
               (schema/optional-key :y) schema/Int
               :z schema/Str}

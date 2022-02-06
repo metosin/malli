@@ -1,7 +1,8 @@
 (ns malli.dev.pretty-test
-  (:require [clojure.test :refer [deftest is]]
-            [malli.core-test :as mct]
-            [malli.dev.pretty :as pretty]))
+  (:require
+   [clojure.test :refer [deftest is]]
+   [malli.core-test :as mct]
+   [malli.dev.pretty :as pretty]))
 
 (deftest explain-test
   (is (nil? (pretty/explain :string "1")))

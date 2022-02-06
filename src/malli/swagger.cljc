@@ -1,7 +1,8 @@
 (ns malli.swagger
-  (:require [malli.json-schema :as json-schema]
-            [malli.core :as m]
-            [clojure.set :as set]))
+  (:require
+   [clojure.set :as set]
+   [malli.core :as m]
+   [malli.json-schema :as json-schema]))
 
 (defprotocol SwaggerSchema
   (-accept [this children options] "transforms schema to Swagger Schema"))

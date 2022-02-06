@@ -1,7 +1,8 @@
 (ns malli.plantuml
-  (:require [malli.core :as m]
-            [malli.dot :as md]
-            [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]
+   [malli.core :as m]
+   [malli.dot :as md]))
 
 (defn transform
   ([?schema] (transform ?schema nil))

@@ -1,7 +1,8 @@
 (ns malli.dot-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [clojure.string :as str]
-            [malli.dot :as md]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is]]
+   [malli.dot :as md]))
 
 (def Order
   [:schema

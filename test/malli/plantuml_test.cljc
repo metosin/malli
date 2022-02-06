@@ -1,7 +1,8 @@
 (ns malli.plantuml-test
-  (:require [clojure.test :refer [deftest is]]
-            [clojure.string :as str]
-            [malli.plantuml :as plantuml]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is]]
+   [malli.plantuml :as plantuml]))
 
 (defn trimmed= [s1 s2]
   (letfn [(trim [x] (str/trim (str/replace x #"\s+" " ")))]

@@ -1,8 +1,9 @@
 (ns malli.dot
-  (:require [malli.core :as m]
-            [malli.util :as mu]
-            [malli.registry :as mr]
-            [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]
+   [malli.core :as m]
+   [malli.registry :as mr]
+   [malli.util :as mu]))
 
 (defn -lift [?schema]
   (let [schema (m/schema ?schema)]

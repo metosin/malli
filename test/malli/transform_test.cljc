@@ -1,9 +1,10 @@
 (ns malli.transform-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [malli.core :as m]
-            [malli.transform :as mt]
-            [malli.core-test]
-            [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer [are deftest is testing]]
+   [malli.core :as m]
+   [malli.core-test]
+   [malli.transform :as mt]))
 
 (deftest ->interceptor-test
   (are [?interceptor expected]

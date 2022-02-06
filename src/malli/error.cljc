@@ -1,7 +1,8 @@
 (ns malli.error
-  (:require [malli.core :as m]
-            [clojure.string :as str]
-            [malli.util :as mu]))
+  (:require
+   [clojure.string :as str]
+   [malli.core :as m]
+   [malli.util :as mu]))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
   (fn [{:keys [schema value]} _]

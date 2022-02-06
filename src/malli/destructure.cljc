@@ -1,7 +1,8 @@
 (ns malli.destructure
-  (:require [malli.core :as m]
-            [clojure.walk :as walk]
-            [malli.impl.util :as miu]))
+  (:require
+   [clojure.walk :as walk]
+   [malli.core :as m]
+   [malli.impl.util :as miu]))
 
 (defn -map-like? [x] (or (map? x) (and (seqable? x) (every? (fn [e] (and (vector? e) (= 2 (count e)))) x))))
 (defn -qualified-key? [k] (and (qualified-keyword? k) (-> k name #{"keys" "syms"})))

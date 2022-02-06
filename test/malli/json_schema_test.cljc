@@ -1,9 +1,10 @@
 (ns malli.json-schema-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [malli.core-test]
-            [malli.json-schema :as json-schema]
-            [malli.core :as m]
-            [malli.util :as mu]))
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [malli.core :as m]
+   [malli.core-test]
+   [malli.json-schema :as json-schema]
+   [malli.util :as mu]))
 
 (def expectations
   [;; predicates

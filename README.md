@@ -2694,6 +2694,7 @@ npx shadow-cljs run shadow.cljs.build-report app2-sci /tmp/report.html
 
 ```bash
 clojure-lsp format
+clojure-lsp clean-ns
 ```
 
 ## Checking the generated code

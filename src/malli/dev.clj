@@ -1,8 +1,9 @@
 (ns malli.dev
-  (:require [malli.core :as m]
-            [malli.instrument :as mi]
-            [malli.dev.pretty :as pretty]
-            [malli.clj-kondo :as clj-kondo]))
+  (:require
+   [malli.clj-kondo :as clj-kondo]
+   [malli.core :as m]
+   [malli.dev.pretty :as pretty]
+   [malli.instrument :as mi]))
 
 (defn stop!
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."

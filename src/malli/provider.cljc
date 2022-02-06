@@ -1,6 +1,7 @@
 (ns malli.provider
-  (:require [malli.core :as m]
-            [malli.registry :as mr]))
+  (:require
+   [malli.core :as m]
+   [malli.registry :as mr]))
 
 (def -preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean? 'uuid?]
                       (reverse) (zipmap (drop 1 (range))) (assoc :any -13, :or -12, :and -11, 'any? -10, 'some? -9)))

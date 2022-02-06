@@ -1,8 +1,9 @@
 (ns malli.clj-kondo-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [malli.clj-kondo :as clj-kondo]
-            [malli.core :as m]
-            [malli.util :as mu]))
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [malli.clj-kondo :as clj-kondo]
+   [malli.core :as m]
+   [malli.util :as mu]))
 
 (def Schema
   (m/schema

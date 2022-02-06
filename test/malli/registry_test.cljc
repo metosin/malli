@@ -1,7 +1,8 @@
 (ns malli.registry-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [malli.core :as m]
-            [malli.registry :as mr]))
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [malli.core :as m]
+   [malli.registry :as mr]))
 
 (deftest mutable-test
   (let [registry* (atom {})

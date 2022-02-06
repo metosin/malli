@@ -1,10 +1,11 @@
 (ns malli.error-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [malli.core-test]
-            [malli.error :as me]
-            [malli.core :as m]
-            [malli.util :as mu]
-            [malli.generator :as mg]))
+  (:require
+   [clojure.test :refer [are deftest is testing]]
+   [malli.core :as m]
+   [malli.core-test]
+   [malli.error :as me]
+   [malli.generator :as mg]
+   [malli.util :as mu]))
 
 (deftest error-message-test
   (let [msg "should be an int"

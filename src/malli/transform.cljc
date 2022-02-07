@@ -94,7 +94,7 @@
     (try
       #?(:clj  (UUID/fromString x)
          ;; http://stackoverflow.com/questions/7905929/how-to-test-valid-uuid-guid
-         :cljs (if (re-find #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" x)
+         :cljs (if (re-find #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" x)
                  (uuid x)
                  x))
       (catch #?(:clj Exception, :cljs js/Error) _ x))

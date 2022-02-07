@@ -833,12 +833,15 @@
 (deftest map-of-json-keys-transform
   (let [schema [:map-of int? uuid?]]
     (doseq [data [{:0 "2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
-                   :1 "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}
+                   :1 "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
+                   :2 "017de28f-5801-8c62-9ce9-cef70883794a"}
                   {"0" "2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
-                   "1" "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}]]
+                   "1" "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
+                   "2" "017de28f-5801-8c62-9ce9-cef70883794a"}]]
 
       (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
-              1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"}
+              1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
+              2 #uuid"017de28f-5801-8c62-9ce9-cef70883794a"}
              (m/decode schema data mt/json-transformer))))))
 
 #?(:clj

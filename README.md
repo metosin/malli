@@ -2431,6 +2431,36 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/plantuml.png"/>
 
+## Lite
+
+Simple syntax sugar, like [data-specs](https://cljdoc.org/d/metosin/spec-tools/CURRENT/doc/data-specs), but for malli.
+
+```clj
+(require '[malli.experimental.lite :as l])
+
+(l/schema
+ {:map1 {:x int?
+         :y [:maybe string?]
+         :z (l/maybe keyword?)}
+  :map2 {:min-max [:int {:min 0 :max 10}]
+         :tuples (l/vector (l/tuple int? string?))
+         :optional (l/optional (l/maybe :boolean))
+         :set-of-maps (l/set {:e int?
+                              :f string?})
+         :map-of-int (l/map-of int? {:s string?})}})
+;[:map
+; [:map1
+;  [:map
+;   [:x int?]
+;   [:y [:maybe string?]]
+;   [:z [:maybe keyword?]]]]
+; [:map2
+;  [:map
+;   [:min-max [:int {:min 0, :max 10}]]
+;   [:tuples [:vector [:tuple int? string?]]]
+;   [:optional {:optional true} [:maybe :boolean]]
+```
+
 ## Performance
 
 Malli tries to be really, really fast.

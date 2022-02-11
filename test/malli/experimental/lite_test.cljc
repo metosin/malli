@@ -1,5 +1,5 @@
 (ns malli.experimental.lite-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [malli.experimental.lite :as l]
             [malli.core :as m]))
 

@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* new ns, `malli.experimental.lite`, see the [docs](README.md#lite).
+
 ## 0.8.1 (2022-02-05)
 
 * FIX: bug in inferring with value encoders [#631](https://github.com/metosin/malli/issues/631)

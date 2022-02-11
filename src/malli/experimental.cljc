@@ -1,9 +1,10 @@
 (ns malli.experimental
   (:refer-clojure :exclude [defn])
   #?(:cljs (:require-macros malli.experimental))
-  (:require [clojure.core :as c]
-            [malli.core :as m]
-            [malli.destructure :as md]))
+  (:require
+   [clojure.core :as c]
+   [malli.core :as m]
+   [malli.destructure :as md]))
 
 (c/defn -schema [inline-schemas]
   (m/schema

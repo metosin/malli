@@ -1,13 +1,14 @@
 (ns malli.generator
-  (:require [clojure.test.check.generators :as gen]
-            #?(:clj [borkdude.dynaload :as dynaload])
-            [clojure.string :as str]
-            [clojure.test.check :as check]
-            [clojure.test.check.random :as random]
-            [clojure.test.check.properties :as prop]
-            [clojure.test.check.rose-tree :as rose]
-            [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]))
+  (:require
+   [clojure.spec.gen.alpha :as ga]
+   [clojure.string :as str]
+   [clojure.test.check :as check]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [clojure.test.check.random :as random]
+   [clojure.test.check.rose-tree :as rose]
+   [malli.core :as m]
+   #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
 
@@ -313,10 +314,10 @@
                                           (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
                                explain-output (when-not explain-input (m/explain output response))]
                            (cond-> shrunk
-                                   explain-input (assoc ::explain-input explain-input)
-                                   explain-output (assoc ::explain-output explain-output)
-                                   (ex-message result) (-> (update :result ex-message)
-                                                           (dissoc :result-data)))))))))]
+                             explain-input (assoc ::explain-input explain-input)
+                             explain-output (assoc ::explain-output explain-output)
+                             (ex-message result) (-> (update :result ex-message)
+                                                     (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]

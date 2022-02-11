@@ -33,9 +33,9 @@
                        (assoc :schema `(m/function-schema ~schema)))
         schema-map-with-gen
         (as-> (merge (select-keys instrument-opts [:scope :report :gen]) schema-map) $
-              ;; use the passed in gen fn to generate a value
-              (cond (and gen (true? (:gen schema-map))) (assoc $ :gen gen)
-                    :else (dissoc $ :gen)))
+          ;; use the passed in gen fn to generate a value
+          (cond (and gen (true? (:gen schema-map))) (assoc $ :gen gen)
+                :else (dissoc $ :gen)))
         replace-var-code
         `(do
            (swap! instrumented-vars #(assoc % '~fn-sym ~fn-sym))

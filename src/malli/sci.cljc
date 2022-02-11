@@ -1,5 +1,6 @@
 (ns malli.sci
-  (:require [borkdude.dynaload :as dynaload]))
+  (:require
+   [borkdude.dynaload :as dynaload]))
 
 (defn evaluator [options fail!]
   (let [eval-string* (dynaload/dynaload 'sci.core/eval-string* {:default nil})

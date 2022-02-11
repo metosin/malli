@@ -1,9 +1,11 @@
 (ns malli.provider-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [malli.provider :as mp]
-            [malli.core :as m]
-            [malli.transform :as mt])
-  #?(:clj (:import (java.util UUID Date))))
+  (:require
+   [clojure.test :refer [deftest is]]
+   [malli.core :as m]
+   [malli.provider :as mp]
+   [malli.transform :as mt])
+  #?(:clj (:import
+           (java.util UUID Date))))
 
 (def expectations
   [[int? [1 2 3]]

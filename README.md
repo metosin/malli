@@ -2524,13 +2524,13 @@ Same with Clojure Spec and Plumatic Schema:
 (spec/def ::y int?)
 (spec/def ::z string?)
 
-;; clojure.spec (19µs)
+;; clojure.spec (19000ns)
 (let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
       transform #(st/coerce spec % st/string-transformer)]
   (assert (= expexted (transform data)))
   (cc/quick-bench (transform data)))
 
-;; plumatic schema (2.2µs)
+;; plumatic schema (2200ns)
 (let [schema {:x schema/Bool
               (schema/optional-key :y) schema/Int
               :z schema/Str}
@@ -2688,6 +2688,13 @@ npx shadow-cljs run shadow.cljs.build-report app2 /tmp/report.html
 
 # with sci
 npx shadow-cljs run shadow.cljs.build-report app2-sci /tmp/report.html
+```
+
+## Formatting the code
+
+```bash
+clojure-lsp format
+clojure-lsp clean-ns
 ```
 
 ## Checking the generated code

@@ -1,6 +1,7 @@
 (ns malli.registry
   (:refer-clojure :exclude [type])
-  #?(:clj (:import (java.util HashMap Map))))
+  #?(:clj (:import
+           (java.util HashMap Map))))
 
 #?(:cljs (goog-define mode "default")
    :clj  (def mode (as-> (or (System/getProperty "malli.registry/mode") "default") $ (.intern $))))
@@ -75,17 +76,17 @@
   (let [cache* (atom {})
         registry* (atom default-registry)]
     (reset!
-      registry*
-      (composite-registry
-        default-registry
-        (reify
-          Registry
-          (-schema [_ name]
-            (or (@cache* name)
-                (when-let [schema (provider name @registry*)]
-                  (swap! cache* assoc name schema)
-                  schema)))
-          (-schemas [_] @cache*))))))
+     registry*
+     (composite-registry
+      default-registry
+      (reify
+        Registry
+        (-schema [_ name]
+          (or (@cache* name)
+              (when-let [schema (provider name @registry*)]
+                (swap! cache* assoc name schema)
+                schema)))
+        (-schemas [_] @cache*))))))
 
 (defn schema
   "finds a schema from a registry"

@@ -1,12 +1,13 @@
 (ns malli.generator-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [clojure.test.check.properties :refer [for-all]]
-            [clojure.test.check.clojure-test :refer [defspec]]
-            [clojure.test.check.generators :as gen]
-            [malli.json-schema-test :as json-schema-test]
-            [malli.generator :as mg]
-            [malli.core :as m]
-            [malli.util :as mu]))
+  (:require
+   [clojure.test :refer [are deftest is testing]]
+   [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :refer [for-all]]
+   [malli.core :as m]
+   [malli.generator :as mg]
+   [malli.json-schema-test :as json-schema-test]
+   [malli.util :as mu]))
 
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
@@ -46,7 +47,7 @@
           NaN? (fn [x]
                  (#?(:clj  Double/isNaN
                      :cljs js/isNaN)
-                   x))
+                  x))
           special? #(or (NaN? %)
                         (infinity? %))
           test-presence (fn [f options]
@@ -120,20 +121,20 @@
 
   (testing "no generator"
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #":malli.generator/no-generator"
-          (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
+         #?(:clj Exception, :cljs js/Error)
+         #":malli.generator/no-generator"
+         (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
 
   (testing "sci not available"
     (let [schema (m/schema [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})]
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (mg/generator schema)))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (mg/generator schema)))
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
       (testing "direct options win"
         (is (mg/generator schema {::m/disable-sci false})))))
 
@@ -198,10 +199,10 @@
 
 (defspec repeat-test 100
   (for-all [[s coll] (schema+coll-gen :repeat (gen/tuple
-                                                (gen/let [min gen/nat
-                                                          len gen/nat]
-                                                  {:min min, :max (+ min len)})
-                                                seqex-child))]
+                                               (gen/let [min gen/nat
+                                                         len gen/nat]
+                                                 {:min min, :max (+ min len)})
+                                               seqex-child))]
     (m/validate s coll)))
 
 (deftest min-max-test

@@ -1,11 +1,12 @@
 (ns malli.dev.virhe
   "initial code for https://github.com/metosin/virhe"
-  (:require #?(:clj [clojure.string :as str])
-            [arrangement.core]
-            [fipp.visit]
-            [fipp.edn]
-            [fipp.engine]
-            [fipp.ednize]))
+  (:require
+   [arrangement.core]
+   [fipp.edn]
+   [fipp.ednize]
+   [fipp.engine]
+   [fipp.visit]
+   #?(:clj [clojure.string :as str])))
 
 ;;
 ;; colors

@@ -1,7 +1,8 @@
 (ns malli.demo
-  (:require [malli.core :as m]
-            [malli.dev :as dev]
-            [malli.experimental :as mx]))
+  (:require
+   [malli.core :as m]
+   [malli.dev :as dev]
+   [malli.experimental :as mx]))
 
 (defn kikka
   "schema via var metadata"
@@ -18,10 +19,10 @@
   [x :- :int] (inc x))
 
 (comment
- (dev/start!)
- (dev/stop!))
+  (dev/start!)
+  (dev/stop!))
 
 (comment
- (kikka "1")
- (kukka 1 2)
- (kakka "1"))
+  (kikka "1")
+  (kukka 1 2)
+  (kakka "1"))

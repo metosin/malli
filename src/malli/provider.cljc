@@ -1,6 +1,7 @@
 (ns malli.provider
-  (:require [malli.core :as m]
-            [malli.registry :as mr]))
+  (:require
+   [malli.core :as m]
+   [malli.registry :as mr]))
 
 (def -preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean? 'uuid?]
                       (reverse) (zipmap (drop 1 (range))) (assoc :any -13, :or -12, :and -11, 'any? -10, 'some? -9)))
@@ -28,11 +29,11 @@
                        (sequential? x) :sequential
                        :else :value)
             ->type #(as-> (update % :count (fnil inc 0)) $
-                          (cond-> $ hint (update :hints (fnil conj #{}) hint))
-                          (case type
-                            (:value :nil) (-> $ (update :values merge+ {x 1}) (update :schemas merge+ (infer-value x)))
-                            :map ((infer-map infer) $ x)
-                            (:set :vector :sequential) (update $ :values (fnil (infer-seq infer) {}) x)))]
+                      (cond-> $ hint (update :hints (fnil conj #{}) hint))
+                      (case type
+                        (:value :nil) (-> $ (update :values merge+ {x 1}) (update :schemas merge+ (infer-value x)))
+                        :map ((infer-map infer) $ x)
+                        (:set :vector :sequential) (update $ :values (fnil (infer-seq infer) {}) x)))]
         (-> acc (update :count (fnil inc 0)) (update :types update type ->type))))))
 
 (defn -value-schema [{:keys [schemas hints] :as stats}]

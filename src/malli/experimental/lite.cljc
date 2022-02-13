@@ -4,13 +4,14 @@
 
 (declare schema)
 
+(def ^:dynamic *options* nil)
 (defrecord -Optional [value])
 (defn -schema [t & xs] (schema (into [t] (map schema xs))))
 (defn -entry [[k v]]
   (let [[v optional] (if (instance? -Optional v) [(:value v) true] [v])]
     (cond-> [k] optional (conj {:optional true}) :always (conj (schema v)))))
 
-(defn schema [x] (m/schema (if (map? x) (into [:map] (map -entry x)) x)))
+(defn schema [x] (m/schema (if (map? x) (into [:map] (map -entry x)) x) *options*))
 
 (defn optional [x] (->-Optional x))
 (defn maybe [x] (-schema :maybe x))

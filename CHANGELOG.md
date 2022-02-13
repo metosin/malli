@@ -14,9 +14,14 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.8.2-SNAPSHOT
 
 * new ns, `malli.experimental.lite`, see the [docs](README.md#lite).
+* updated deps:
+
+```clj
+borkdude/edamame 0.0.18 -> 0.0.19
+```
 
 ## 0.8.1 (2022-02-05)
 

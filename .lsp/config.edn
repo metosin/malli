@@ -1,0 +1,2 @@
+{:cljfmt {:indents {for-all [[:inner 0]]
+                    are [[:inner 0]]}}}

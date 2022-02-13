@@ -2433,6 +2433,8 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 Simple syntax sugar, like [data-specs](https://cljdoc.org/d/metosin/spec-tools/CURRENT/doc/data-specs), but for malli.
 
+As the namespace suggests, it's experimental, built for [reitit](https://github.com/metosin/reitit).
+
 ```clj
 (require '[malli.experimental.lite :as l])
 

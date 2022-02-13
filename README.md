@@ -116,9 +116,9 @@ Usage:
 
 ### Map Syntax
 
-**NOTE**: Map Syntax / SchemaAST is considered as alpha and subject to change.
-
 Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
+
+**NOTE**: For now, Map syntax in considered as internal, so don't use it as a database persistency model.
 
 ```clj
 ;; just a type (String)
@@ -1759,8 +1759,6 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ```
 
 ## Schema AST
-
-**NOTE**: Map Syntax / SchemaAST is considered as alpha and subject to change.
 
 Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. 
 

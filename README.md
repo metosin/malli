@@ -12,7 +12,7 @@ Data-driven Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schema definitions as data
-- Both [Vector](#vector-syntax) and [Map](#map-syntax) -syntax
+- [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) syntaxes
 - [Validation](#validation) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Generating values](#value-generation) from Schemas

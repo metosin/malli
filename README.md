@@ -2461,6 +2461,19 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 ;   [:optional {:optional true} [:maybe :boolean]]
 ```
 
+Options can be used by binding a dynamic `l/*options*` Var:
+
+```clj
+(binding [l/*options* {:registry (merge 
+                                  (m/default-schemas) 
+                                  {:user/id :int})}]
+  (l/schema {:id (l/maybe :user/id)
+             :child {:id :user/id}}))
+;[:map 
+; [:id [:maybe :user/id]] 
+; [:child [:map [:id :user/id]]]]
+```
+
 ## Performance
 
 Malli tries to be really, really fast.

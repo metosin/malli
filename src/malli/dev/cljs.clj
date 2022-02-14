@@ -1,7 +1,6 @@
 (ns malli.dev.cljs
-  (:require
-   [malli.clj-kondo :as clj-kondo]
-   [malli.instrument.cljs :as mi]))
+  (:require [malli.clj-kondo :as clj-kondo]
+            [malli.instrument.cljs :as mi]))
 
 (defmacro stop!
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."

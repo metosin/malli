@@ -1,7 +1,6 @@
 (ns malli.impl.util
-  #?(:clj (:import
-           (clojure.lang MapEntry LazilyPersistentVector)
-           (java.util.concurrent TimeoutException TimeUnit FutureTask))))
+  #?(:clj (:import (clojure.lang MapEntry LazilyPersistentVector)
+                   (java.util.concurrent TimeoutException TimeUnit FutureTask))))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 

@@ -1,9 +1,8 @@
 (ns malli.clj-kondo
   #?(:cljs (:require-macros [malli.clj-kondo]))
-  (:require
-   [fipp.edn :as fipp]
-   [malli.core :as m]
-   #?(:clj [clojure.java.io :as io])))
+  (:require [fipp.edn :as fipp]
+            [malli.core :as m]
+            #?(:clj [clojure.java.io :as io])))
 
 (declare transform)
 

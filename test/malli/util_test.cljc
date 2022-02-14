@@ -1,10 +1,9 @@
 (ns malli.util-test
-  (:require
-   [clojure.test :refer [are deftest is testing]]
-   [malli.core :as m]
-   [malli.impl.util :as miu]
-   [malli.registry :as mr]
-   [malli.util :as mu]))
+  (:require [clojure.test :refer [are deftest is testing]]
+            [malli.core :as m]
+            [malli.impl.util :as miu]
+            [malli.registry :as mr]
+            [malli.util :as mu]))
 
 (defn form= [& ?schemas]
   (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))

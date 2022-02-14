@@ -1,8 +1,7 @@
 (ns malli.dev.pretty
-  (:require
-   [malli.core :as m]
-   [malli.dev.virhe :as v]
-   [malli.error :as me]))
+  (:require [malli.core :as m]
+            [malli.dev.virhe :as v]
+            [malli.error :as me]))
 
 (defn -printer
   ([] (-printer nil))

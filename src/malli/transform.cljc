@@ -1,14 +1,12 @@
 (ns malli.transform
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
-  (:require
-   [malli.core :as m]
-   #?(:cljs [goog.date.UtcDateTime])
-   #?(:cljs [goog.date.Date]))
-  #?(:clj (:import
-           (java.time Instant ZoneId)
-           (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
-           (java.time.temporal ChronoField)
-           (java.util Date UUID))))
+  (:require [malli.core :as m]
+            #?(:cljs [goog.date.UtcDateTime])
+            #?(:cljs [goog.date.Date]))
+  #?(:clj (:import (java.time Instant ZoneId)
+                   (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
+                   (java.time.temporal ChronoField)
+                   (java.util Date UUID))))
 
 (def ^:dynamic *max-compile-depth* 10)
 

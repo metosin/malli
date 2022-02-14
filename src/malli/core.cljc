@@ -1,16 +1,14 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   #?(:cljs (:require-macros malli.core))
-  (:require
-   [clojure.core :as c]
-   [malli.impl.regex :as re]
-   [malli.impl.util :as miu]
-   [malli.registry :as mr]
-   [malli.sci :as ms])
-  #?(:clj (:import
-           (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
-           (java.util.concurrent.atomic AtomicReference)
-           (java.util.regex Pattern))))
+  (:require [clojure.core :as c]
+            [malli.impl.regex :as re]
+            [malli.impl.util :as miu]
+            [malli.registry :as mr]
+            [malli.sci :as ms])
+  #?(:clj (:import (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
+                   (java.util.concurrent.atomic AtomicReference)
+                   (java.util.regex Pattern))))
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry

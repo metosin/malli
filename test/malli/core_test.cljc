@@ -1,18 +1,16 @@
 (ns malli.core-test
-  (:require
-   [clojure.string :as str]
-   [clojure.test :refer [are deftest is testing]]
-   [clojure.test.check.generators :as gen]
-   [clojure.walk :as walk]
-   [malli.core :as m]
-   [malli.edn :as edn]
-   [malli.generator :as mg]
-   [malli.impl.util :as miu]
-   [malli.registry :as mr]
-   [malli.transform :as mt]
-   [malli.util :as mu])
-  #?(:clj (:import
-           (clojure.lang IFn))))
+  (:require [clojure.string :as str]
+            [clojure.test :refer [are deftest is testing]]
+            [clojure.test.check.generators :as gen]
+            [clojure.walk :as walk]
+            [malli.core :as m]
+            [malli.edn :as edn]
+            [malli.generator :as mg]
+            [malli.impl.util :as miu]
+            [malli.registry :as mr]
+            [malli.transform :as mt]
+            [malli.util :as mu])
+  #?(:clj (:import (clojure.lang IFn))))
 
 (defn with-schema-forms [result]
   (some-> result

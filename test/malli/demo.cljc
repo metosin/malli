@@ -1,8 +1,7 @@
 (ns malli.demo
-  (:require
-   [malli.core :as m]
-   [malli.dev :as dev]
-   [malli.experimental :as mx]))
+  (:require [malli.core :as m]
+            [malli.dev :as dev]
+            [malli.experimental :as mx]))
 
 (defn kikka
   "schema via var metadata"

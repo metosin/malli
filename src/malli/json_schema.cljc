@@ -1,7 +1,6 @@
 (ns malli.json-schema
-  (:require
-   [clojure.set :as set]
-   [malli.core :as m]))
+  (:require [clojure.set :as set]
+            [malli.core :as m]))
 
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))

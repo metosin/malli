@@ -1,7 +1,7 @@
 (ns malli.experimental.lite-test
   (:require [clojure.test :refer [deftest is testing]]
-            [malli.experimental.lite :as l]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.experimental.lite :as l]))
 
 (deftest schema-test
   (let [lschema (l/schema

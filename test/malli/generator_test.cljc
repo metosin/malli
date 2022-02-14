@@ -1,13 +1,12 @@
 (ns malli.generator-test
-  (:require
-   [clojure.test :refer [are deftest is testing]]
-   [clojure.test.check.clojure-test :refer [defspec]]
-   [clojure.test.check.generators :as gen]
-   [clojure.test.check.properties :refer [for-all]]
-   [malli.core :as m]
-   [malli.generator :as mg]
-   [malli.json-schema-test :as json-schema-test]
-   [malli.util :as mu]))
+  (:require [clojure.test :refer [are deftest is testing]]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :refer [for-all]]
+            [malli.core :as m]
+            [malli.generator :as mg]
+            [malli.json-schema-test :as json-schema-test]
+            [malli.util :as mu]))
 
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations

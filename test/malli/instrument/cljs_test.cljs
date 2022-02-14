@@ -1,9 +1,8 @@
 (ns malli.instrument.cljs-test
-  (:require
-   [cljs.test :refer [deftest is testing]]
-   [malli.core :as m]
-   [malli.experimental :as mx]
-   [malli.instrument.cljs :as mi]))
+  (:require [cljs.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [malli.experimental :as mx]
+            [malli.instrument.cljs :as mi]))
 
 (defn plus [x] (inc x))
 (m/=> plus [:=> [:cat :int] [:int {:max 6}]])

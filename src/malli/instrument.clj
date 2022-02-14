@@ -1,7 +1,6 @@
 (ns malli.instrument
-  (:require
-   [malli.core :as m]
-   [malli.generator :as mg]))
+  (:require [malli.core :as m]
+            [malli.generator :as mg]))
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))

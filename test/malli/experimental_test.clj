@@ -1,8 +1,7 @@
 (ns malli.experimental-test
-  (:require
-   [clojure.test :refer [deftest is testing]]
-   [malli.experimental :as mx]
-   [malli.instrument :as mi]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [malli.experimental :as mx]
+            [malli.instrument :as mi]))
 
 ;; normal, no-args
 (mx/defn f1 [] 1)

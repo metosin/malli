@@ -34,10 +34,8 @@
   https://www.metosin.fi/blog/malli-regex-schemas/."
 
   (:refer-clojure :exclude [+ * repeat cat])
-  (:require
-   [malli.impl.util :as miu])
-  #?(:clj (:import
-           [java.util ArrayDeque])))
+  (:require [malli.impl.util :as miu])
+  #?(:clj (:import [java.util ArrayDeque])))
 
 ;;;; # Driver Protocols
 

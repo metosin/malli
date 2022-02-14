@@ -1,8 +1,7 @@
 (ns malli.destructure-test
-  (:require
-   [clojure.test :refer [deftest is testing]]
-   [malli.core :as m]
-   [malli.destructure :as md]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [malli.destructure :as md]))
 
 (def expectations
   [{:name "empty"

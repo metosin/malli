@@ -1,8 +1,7 @@
 (ns malli.instrument-test
-  (:require
-   [clojure.test :refer [deftest is testing]]
-   [malli.core :as m]
-   [malli.instrument :as mi]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [malli.instrument :as mi]))
 
 (defn plus [x] (inc x))
 (m/=> plus [:=> [:cat :int] [:int {:max 6}]])

@@ -1,14 +1,13 @@
 (ns malli.generator
-  (:require
-   [clojure.spec.gen.alpha :as ga]
-   [clojure.string :as str]
-   [clojure.test.check :as check]
-   [clojure.test.check.generators :as gen]
-   [clojure.test.check.properties :as prop]
-   [clojure.test.check.random :as random]
-   [clojure.test.check.rose-tree :as rose]
-   [malli.core :as m]
-   #?(:clj [borkdude.dynaload :as dynaload])))
+  (:require [clojure.spec.gen.alpha :as ga]
+            [clojure.string :as str]
+            [clojure.test.check :as check]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
+            [clojure.test.check.random :as random]
+            [clojure.test.check.rose-tree :as rose]
+            [malli.core :as m]
+            #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
 

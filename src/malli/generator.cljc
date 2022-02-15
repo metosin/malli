@@ -14,6 +14,10 @@
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
 
+;;
+;; generators
+;;
+
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
 (defn -recur [schema {::keys [recursion recursion-limit] :or {recursion-limit 4} :as options}]
@@ -154,21 +158,28 @@
       (gen/fmap #(apply concat %) (-coll-gen schema identity options))
       (-coll-gen schema identity options))))
 
-;;
-;; generators
-;;
-
-(defn- qualified-keyword-generator [schema]
+(defn -qualified-ident-gen [schema mk-gen-with-namespace mk-gen-random]
   (if-let [namespace-unparsed (:namespace (m/properties schema))]
-    (gen/fmap (fn [k] (keyword (name namespace-unparsed) (name k)))
-              gen/keyword)
-    (gen/such-that qualified-keyword? gen/keyword-ns)))
+    (mk-gen-with-namespace (name namespace-unparsed))
+    (mk-gen-random)))
 
-(defn- qualified-symbol-generator [schema]
-  (if-let [namespace-unparsed (:namespace (m/properties schema))]
-    (gen/fmap (fn [k] (symbol (name namespace-unparsed) (name k)))
-              gen/symbol)
-    (gen/such-that qualified-symbol? gen/symbol-ns)))
+(defn -qualified-keyword-gen [schema]
+  (-qualified-ident-gen
+   schema
+   (fn [ns-name] (gen/fmap (fn [k] (keyword ns-name (name k)))
+                           gen/keyword))
+   #(gen/such-that qualified-keyword? gen/keyword-ns)))
+
+(defn -qualified-symbol-gen [schema]
+  (-qualified-ident-gen
+   schema
+   (fn [ns-name] (gen/fmap (fn [k] (symbol ns-name (name k)))
+                           gen/symbol))
+   #(gen/such-that qualified-symbol? gen/symbol-ns)))
+
+;;
+;; User-facing API
+;;
 
 (defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
@@ -214,8 +225,8 @@
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)
-(defmethod -schema-generator :qualified-keyword [schema _] (qualified-keyword-generator schema))
-(defmethod -schema-generator :qualified-symbol [schema _] (qualified-symbol-generator schema))
+(defmethod -schema-generator :qualified-keyword [schema _] (-qualified-keyword-gen schema))
+(defmethod -schema-generator :qualified-symbol [schema _] (-qualified-symbol-gen schema))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))

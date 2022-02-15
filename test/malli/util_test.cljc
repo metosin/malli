@@ -1,9 +1,9 @@
 (ns malli.util-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [malli.impl.util :as miu]
-            [malli.util :as mu]
+  (:require [clojure.test :refer [are deftest is testing]]
             [malli.core :as m]
-            [malli.registry :as mr]))
+            [malli.impl.util :as miu]
+            [malli.registry :as mr]
+            [malli.util :as mu]))
 
 (defn form= [& ?schemas]
   (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))
@@ -184,7 +184,7 @@
     (let [schema [:map {:title "map", :closed false}
                   [:a int?]
                   [:b {:optional true} int?]
-                  [:c [:map {, :closed false}
+                  [:c [:map {:closed false}
                        [:d int?]]]]]
 
       (is (mu/equals schema (mu/closed-schema schema)))
@@ -208,9 +208,9 @@
 
     (testing "derefs automatically"
       (is (mu/equals (mu/select-keys
-                       [:schema
-                        [:map [:a int?] [:b int?]]]
-                       [:a])
+                      [:schema
+                       [:map [:a int?] [:b int?]]]
+                      [:a])
                      [:map [:a int?]])))))
 
 (deftest rename-keys-test
@@ -235,7 +235,6 @@
 ;;
 ;; LensSchemas
 ;;
-
 
 (deftest basic-lens-schema-test
   (let [re #"kikka"
@@ -374,20 +373,20 @@
 (deftest get-in-test
   (is (mu/equals boolean?
                  (mu/get-in
-                   (m/schema [:map
-                              [:x [:vector
-                                   [:set
-                                    [:sequential
-                                     [:tuple int? [:map [:y [:maybe [:schema [::m/schema boolean?]]]]]]]]]]])
-                   [:x 0 0 0 1 :y 0 0 0])))
+                  (m/schema [:map
+                             [:x [:vector
+                                  [:set
+                                   [:sequential
+                                    [:tuple int? [:map [:y [:maybe [:schema [::m/schema boolean?]]]]]]]]]]])
+                  [:x 0 0 0 1 :y 0 0 0])))
   (is (mu/equals (mu/get-in
-                   [:map
-                    [:x [:vector
-                         [:set
-                          [:sequential
-                           [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]
-                   [:x 0 0 0 1 :y 9]
-                   pos-int?)
+                  [:map
+                   [:x [:vector
+                        [:set
+                         [:sequential
+                          [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]
+                  [:x 0 0 0 1 :y 9]
+                  pos-int?)
                  pos-int?))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
                  (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
@@ -429,10 +428,10 @@
   (is (mu/equals (mu/update (m/schema [:schema int?]) 0 (constantly string?)) [:schema string?]))
 
   (let [schema (m/schema
-                 [:map {:title "map"}
-                  [:a int?]
-                  [:b {:optional true} int?]
-                  [:c string?]])]
+                [:map {:title "map"}
+                 [:a int?]
+                 [:b {:optional true} int?]
+                 [:c string?]])]
     (is (mu/equals (mu/update schema :a mu/update-properties assoc :title "a")
                    [:map {:title "map"}
                     [:a [int? {:title "a"}]]
@@ -512,15 +511,15 @@
 
     (testing "manual options are preserved in output type from the transform"
       (is (mu/equals
-            (mu/transform-entries schema key->key-transform options)
-            result-schema
-            options)))
+           (mu/transform-entries schema key->key-transform options)
+           result-schema
+           options)))
 
     (testing "schema-attached-options are preserved in output type from the transform"
       (is (mu/equals
-            (mu/transform-entries schema-with-options key->key-transform nil)
-            result-schema
-            options)))))
+           (mu/transform-entries schema-with-options key->key-transform nil)
+           result-schema
+           options)))))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]
@@ -551,18 +550,18 @@
 
     (let [walked-properties (atom [])]
       (is (= "turvassa" (mu/find-first
-                          schema
-                          (fn [s _in _options]
-                            (some->> s m/properties (swap! walked-properties conj))
-                            (some-> s m/properties :salaisuus)))))
+                         schema
+                         (fn [s _in _options]
+                           (some->> s m/properties (swap! walked-properties conj))
+                           (some-> s m/properties :salaisuus)))))
       (is (= [{:salaisuus "turvassa"}] @walked-properties)))
 
     (let [walked-properties (atom [])]
       (is (= "vaarassa" (mu/find-first
-                          schema
-                          (fn [s _in _options]
-                            (some->> s m/properties (swap! walked-properties conj))
-                            (some-> s m/properties :salaisuus #{"vaarassa"})))))
+                         schema
+                         (fn [s _in _options]
+                           (some->> s m/properties (swap! walked-properties conj))
+                           (some-> s m/properties :salaisuus #{"vaarassa"})))))
       (is (= [{:salaisuus "turvassa"}
               {:salaisuus "vaarassa"}] @walked-properties)))))
 
@@ -870,7 +869,6 @@
                                          [:neighbor nil {:type :ref
                                                          :children [{:type :ref
                                                                      :children ["Address"]}]}]]}]}
-
 
                  (mu/to-map-syntax schema {::m/walk-refs true
                                            ::m/walk-schema-refs true}))))))))

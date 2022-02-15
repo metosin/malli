@@ -7,6 +7,10 @@
 
 (defn -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
+(defrecord Hinted [value hint])
+(defn -hinted [x hint] (->Hinted x hint))
+(defn -value-hint [x] (if (instance? Hinted x) [(:value x) (:hint x)] [x (some-> x meta ::hint)]))
+
 (defn -inferrer [options]
   (let [schemas (->> options (m/-registry) (mr/-schemas) (vals) (filter #(-safe? m/schema %)))
         form->validator (into {} (mapv (juxt m/form m/validator) schemas))
@@ -16,7 +20,7 @@
         infer-seq (fn [infer] (fn [acc x] (update (reduce infer acc x) :data (fnil conj []) x)))
         merge+ (fnil #(merge-with + %1 %2) {})]
     (fn infer [acc x]
-      (let [hint (some-> x meta ::hint)
+      (let [[x hint] (-value-hint x)
             type (cond (nil? x) :nil
                        (map? x) :map
                        (set? x) :set
@@ -24,18 +28,20 @@
                        (sequential? x) :sequential
                        :else :value)
             ->type #(as-> (update % :count (fnil inc 0)) $
-                          (cond-> $ hint (update :hints (fnil conj #{}) hint))
-                          (case type
-                            (:value :nil) (-> $ (update :values merge+ {x 1}) (update :schemas merge+ (infer-value x)))
-                            :map ((infer-map infer) $ x)
-                            (:set :vector :sequential) (update $ :values (fnil (infer-seq infer) {}) x)))]
+                      (cond-> $ hint (update :hints (fnil conj #{}) hint))
+                      (case type
+                        (:value :nil) (-> $ (update :values merge+ {x 1}) (update :schemas merge+ (infer-value x)))
+                        :map ((infer-map infer) $ x)
+                        (:set :vector :sequential) (update $ :values (fnil (infer-seq infer) {}) x)))]
         (-> acc (update :count (fnil inc 0)) (update :types update type ->type))))))
 
-(defn -value-schema [{:keys [schemas]}]
-  (let [max (->> schemas vals (apply max))]
-    (->> schemas (filter #(= max (val %))) (map (fn [[k]] [k (-preferences k -1)])) (sort-by second >) (ffirst))))
+(defn -value-schema [{:keys [schemas hints] :as stats}]
+  (or (when-let [hint (and (= 1 (count hints)) (first hints))]
+        (case hint :enum (into [:enum] (keys (:values stats))), hint))
+      (let [max (->> schemas vals (apply max))]
+        (->> schemas (filter #(= max (val %))) (map (fn [[k]] [k (-preferences k -1)])) (sort-by second >) (ffirst)))))
 
-(defn -sequential-schema [{tc :count :as stats} type schema {::keys [infer tuple-threshold] :as options}]
+(defn -sequential-schema [{tc :count :as stats} type schema {:keys [::infer ::tuple-threshold] :as options}]
   (let [vstats* (delay (-> stats :types type))
         data* (delay (-> @vstats* :values :data))
         vs* (delay (map (fn [x] (map #(schema (infer {} %)) x)) @data*))
@@ -43,12 +49,12 @@
     (or (and (= :vector type)
              (or (when (and (some-> @vstats* :hints (= #{:tuple})) @tuple?*)
                    (into [:tuple] (map #(schema (reduce infer {} %) options) (apply map vector @data*))))
-                 (when-let [tuple-threshold (when (= tc (:count @vstats*)) (or tuple-threshold 3))]
+                 (when-let [tuple-threshold (when (and tuple-threshold (= tc (:count @vstats*))) tuple-threshold)]
                    (when (and (>= tc tuple-threshold) @tuple?*)
                      (when (apply = @vs*) (into [:tuple] (first @vs*)))))))
         [type (-> @vstats* :values (schema options))])))
 
-(defn -map-schema [{tc :count :as stats} schema {::keys [infer map-of-threshold] :or {map-of-threshold 3} :as options}]
+(defn -map-schema [{tc :count :as stats} schema {:keys [::infer ::map-of-threshold] :or {map-of-threshold 3} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
         ks* (delay (schema (reduce infer {} (map :key entries)) options))
         ?ks* (delay (let [kss (map #(schema (infer {} (:key %)) options) entries)] (when (apply = kss) (first kss))))
@@ -59,12 +65,12 @@
         (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
 (defn -decoded [{:keys [values]} vp t]
-  (let [vs (keys values), -decode (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) vs))]
+  (let [vs (keys values), -decode (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) false vs))]
     (reduce-kv (fn [acc s f] (if (-decode f) (reduced s) acc)) t vp)))
 
 (defn -schema
   ([stats] (-schema stats nil))
-  ([{:keys [types] :as stats} {::keys [value-decoders] :as options}]
+  ([{:keys [types] :as stats} {:keys [::value-decoders] :as options}]
    (cond (= 1 (count (keys types))) (let [type (-> types keys first)]
                                       (case type
                                         :nil :nil
@@ -88,7 +94,7 @@
   "Returns a inferring function of `values -> schema`. Supports the following options:
 
   - `:malli.provider/map-of-threshold (default 3), how many identical value schemas need for :map-of
-  - `:malli.provider/tuple-threshold (default 3), how many identical value schemas need for :tuple
+  - `:malli.provider/tuple-threshold, how many identical value schemas need for :tuple
   - `:malli.provider/value-decoders, function of `type -> target-type -> value -> decoded-value`"
   ([] (provider nil))
   ([options] (let [infer (-inferrer options)]

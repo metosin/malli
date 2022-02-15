@@ -14,9 +14,35 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.8.3 (2022-02-15)
 
+* FIX: qualified-keyword with namespace doesn't generate the ns [#642](https://github.com/metosin/malli/issues/642)
+
+## 0.8.2 (2022-02-14)
+
+* new ns, `malli.experimental.lite`, see the [docs](README.md#lite).
+* updated deps:
+
+```clj
+borkdude/edamame 0.0.18 -> 0.0.19
+```
+
+## 0.8.1 (2022-02-05)
+
+* FIX: bug in inferring with value encoders [#631](https://github.com/metosin/malli/issues/631)
+* FIX: The malli pretty printer (virhe) is failing when it tries to print a datomic dbwhen it tries to pr [#629](https://github.com/metosin/malli/issues/629)
+
+## 0.8.0 (2022-01-23)
+
+* new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
+* `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
+* allow `:malli/schema` to be defined via arglist meta-data, [#615](https://github.com/metosin/malli/pull/615)
 * **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
+* **BREAKING**: `:malli.provider/tuple-threshold` has no default value
+* FIX: `me/-resolve-root-error` does not respect `:error/path`, [#554](https://github.com/metosin/malli/issues/554)
+* FIX: `m/from-ast` does not work with symbols or unamespaced keywords, [#626](https://github.com/metosin/malli/issues/626)
+* FIX: `:+` parsing returns vector, not sequence
+
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
 ```clj
@@ -27,6 +53,35 @@ Malli is in well matured [alpha](README.md#alpha).
 
 (-> '[a :- :string, b & cs :- [:* :int]] (md/parse) :schema)
 ; => [:cat :string :any [:* :int]]
+```
+
+* new `malli.experimental` namespace with schematized `defn`, automatically registers the functions schemas with `m/=>`.
+
+```clj
+(require '[malli.experimental :as mx])
+
+(mx/defn kakka :- :int
+  "inline schemas (plumatic-style)"
+  [x :- :int] (inc x))
+```
+
+* transformer names can be qualified, schema properties support `:decode` and `:encode` keys:
+
+```clj
+(m/decode
+  [:string {:decode {:string (partial str "olipa "}}]
+  "kerran" mt/string-transformer)
+; => "olipa kerran"
+```
+
+* `malli.dev.pretty/explain` for pretty-printing explanations
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
+
+* updated dependencies:
+
+```clj
+fipp/fipp 0.6.24 -> 0.6.25
 ```
 
 ## 0.7.5 (2021-12-19)

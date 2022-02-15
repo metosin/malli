@@ -6,23 +6,23 @@
 
 (def Schema
   (m/schema
-    [:map {:registry {::id string?
-                      ::price double?}}
-     ::id
-     [::price {:optional true}]
-     [:name string?]
-     [:description [:maybe string?]]
-     [:tags {:optional true} [:set qualified-keyword?]]
-     [::y {:optional true} boolean?]
-     [:select-keys [:maybe [:select-keys [:map [:x int?] [:y int?]] [:x]]]]
-     [:nested [:merge
-               [:map [:id ::id]]
-               [:map [:price ::price]]]]
-     [:string-type-enum  [:maybe [:enum "b" "c"]]]
-     [:keyword-type-enum [:enum :a :b]]
-     [:any-type-enum [:enum :a "b" "c"]]
-     [:z [:vector [:map-of int? int?]]]]
-    {:registry (merge (m/default-schemas) (mu/schemas))}))
+   [:map {:registry {::id string?
+                     ::price double?}}
+    ::id
+    [::price {:optional true}]
+    [:name string?]
+    [:description [:maybe string?]]
+    [:tags {:optional true} [:set qualified-keyword?]]
+    [::y {:optional true} boolean?]
+    [:select-keys [:maybe [:select-keys [:map [:x int?] [:y int?]] [:x]]]]
+    [:nested [:merge
+              [:map [:id ::id]]
+              [:map [:price ::price]]]]
+    [:string-type-enum  [:maybe [:enum "b" "c"]]]
+    [:keyword-type-enum [:enum :a :b]]
+    [:any-type-enum [:enum :a "b" "c"]]
+    [:z [:vector [:map-of int? int?]]]]
+   {:registry (merge (m/default-schemas) (mu/schemas))}))
 
 (defn kikka
   ([x] (* x x))

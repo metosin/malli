@@ -12,7 +12,7 @@ Data-driven Schemas for Clojure/Script.
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
 - Schema definitions as data
-- Both [Vector](#vector-syntax) and [Map](#map-syntax) -syntax
+- [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) syntaxes
 - [Validation](#validation) and [Value Transformation](#value-transformation)
 - First class [Error Messages](#error-messages) with [Spell Checking](#spell-checking)
 - [Generating values](#value-generation) from Schemas
@@ -25,6 +25,7 @@ Data-driven Schemas for Clojure/Script.
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
+- Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
 
 Presentations:
@@ -37,17 +38,9 @@ Presentations:
 - CEST 2.6.2020: [Data-driven Rapid Application Development with Malli](https://www.youtube.com/watch?v=ww9yR_rbgQs)
 - ClojureD 2020: [Malli: Inside Data-driven Schemas](https://www.youtube.com/watch?v=MR83MhWQ61E), slides [here](https://www.slideshare.net/metosin/malli-inside-datadriven-schemas)
 
-Try the [online demo](https://malli.io). Libraries using or supporting malli:
+Try the [online demo](https://malli.io), see also some [3rd Party Libraries](#3rd-party-libraries).
 
-- [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
-- [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
-- [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
-- [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
-- [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
-- [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
-- [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
-- [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
-- [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
+<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli-defn.png" width="600" />
 
 ## Motivation
 
@@ -123,9 +116,9 @@ Usage:
 
 ### Map Syntax
 
-**NOTE**: Map Syntax / SchemaAST is considered as alpha and subject to change.
-
 Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
+
+**NOTE**: For now, Map syntax in considered as internal, so don't use it as a database persistency model.
 
 ```clj
 ;; just a type (String)
@@ -363,8 +356,8 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
-;;     :errors (#Error{:path [0 :val :s], :in [3], :schema string?, :value 11}
-;;              #Error{:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
+;;     :errors ({:path [0 :val :s], :in [3], :schema string?, :value 11}
+;;              {:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
 ```
 
 while `:cat` and `:alt` just use numeric indices for paths:
@@ -375,8 +368,8 @@ while `:cat` and `:alt` just use numeric indices for paths:
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:cat string? [:alt string? boolean?]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
-;;     :errors (#Error{:path [0 1 0], :in [3], :schema string?, :value 11}
-;;              #Error{:path [0 1 1], :in [3], :schema boolean?, :value 11})}
+;;     :errors ({:path [0 1 0], :in [3], :schema string?, :value 11}
+;;              {:path [0 1 1], :in [3], :schema boolean?, :value 11})}
 ```
 
 As all these examples show, the "seqex" operators take any non-seqex child schema to
@@ -542,22 +535,22 @@ Detailed errors with `m/explain`:
 ;         :address {:street "Ahlmanintie 29"
 ;                   :zip 33100
 ;                   :lonlat [61.4858322 nil]}},
-; :errors (#Error{:path [:tags 0]
-;                 :in [:tags 0]
-;                 :schema keyword?
-;                 :value "coffee"}
-;          #Error{:path [:address :city],
-;                 :in [:address :city],
-;                 :schema [:map
-;                          [:street string?]
-;                          [:city string?]
-;                          [:zip int?]
-;                          [:lonlat [:tuple double? double?]]],
-;                 :type :malli.core/missing-key}
-;          #Error{:path [:address :lonlat 1]
-;                 :in [:address :lonlat 1]
-;                 :schema double?
-;                 :value nil})}
+; :errors ({:path [:tags 0]
+;           :in [:tags 0]
+;           :schema keyword?
+;           :value "coffee"}
+;          {:path [:address :city],
+;           :in [:address :city],
+;           :schema [:map
+;                    [:street string?]
+;                    [:city string?]
+;                    [:zip int?]
+;                    [:lonlat [:tuple double? double?]]],
+;           :type :malli.core/missing-key}
+;          {:path [:address :lonlat 1]
+;           :in [:address :lonlat 1]
+;           :schema double?
+;           :value nil})}
 ```
 
 ## Custom Error Messages
@@ -689,6 +682,12 @@ For closed schemas, key spelling can be checked with:
 ; :name ["disallowed key"]}
 ```
 
+## Pretty Errors
+
+For pretty development-time error printing, try `malli.dev.pretty/explain`
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
+
 ## Value Transformation
 
 ```clj
@@ -781,6 +780,15 @@ Schema properties can be used to override default transformations:
 ```clj
 (m/decode
   [string? {:decode/string 'str/upper-case}]
+  "kerran" mt/string-transformer)
+; => "KERRAN"
+```
+
+This works too:
+
+```clj
+(m/decode
+  [string? {:decode {:string 'str/upper-case}}]
   "kerran" mt/string-transformer)
 ; => "KERRAN"
 ```
@@ -1505,23 +1513,24 @@ Sample-data can be type-hinted with `::mp/hint`:
 
 ### :tuple inferring
 
-Inferring `:tuple` requires 3 samples with same size and types:
+By default, tuples are not inferred:
 
 ```clj
 (mp/provide
   [[1 "kikka" true]
    [2 "kukka" true]
    [3 "kakka" true]])
-; [:tuple int? string? boolean?]
+; [:vector some?]
 ```
 
-This can be configured via `::mp/tuple-threshold` options:
+There is `::mp/tuple-threshold` option:
 
 ```clj
 (mp/provide
   [[1 "kikka" true]
-   [2 "kukka" true]]
-  {::mp/tuple-threshold 2})
+   [2 "kukka" true]
+   [3 "kakka" false]]
+  {::mp/tuple-threshold 3})
 ; [:tuple int? string? boolean?]
 ```
 
@@ -1550,10 +1559,13 @@ Adding custom decoding via `::mp/value-decoders` option:
 
 ```clj
 (mp/provide
- [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
-  {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
- {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}})
-; => [:map [:id :uuid]]
+ [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"
+   :time "2021-01-01T00:00:00Z"}
+  {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"
+   :time "2022-01-01T00:00:00Z"}]
+ {::mp/value-decoders {'string? {:uuid mt/-string->uuid
+                                 'inst? mt/-string->date}}})
+; => [:map [:id :uuid] [:time inst?]
 ```
 
 ## Destructuring
@@ -1575,19 +1587,14 @@ Malli also supports adding type hints as an extension to the normal Clojure synt
 ; => [:cat :int :string [:* :boolean]]
 ```
 
-Example to pull out function argument schemas:
+Pulling out function argument schemas from Vars:
 
 ```clj
 (defn kikka
   ([a] [a])
   ([a b & cs] [a b cs]))
 
-(->> #'kikka
-     meta
-     :arglists
-     (map infer)
-     (map (fn [s] [:=> s :any]))
-     (into [:function]))
+(md/infer #'kikka)
 ;[:function
 ; [:=> [:cat :any] :any] 
 ; [:=> [:cat :any :any [:* :any]] :any]]
@@ -1752,8 +1759,6 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 ```
 
 ## Schema AST
-
-**NOTE**: Map Syntax / SchemaAST is considered as alpha and subject to change.
 
 Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. 
 
@@ -2424,6 +2429,51 @@ Visualized with [PlantText](https://www.planttext.com/):
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/plantuml.png"/>
 
+## Lite
+
+Simple syntax sugar, like [data-specs](https://cljdoc.org/d/metosin/spec-tools/CURRENT/doc/data-specs), but for malli.
+
+As the namespace suggests, it's experimental, built for [reitit](https://github.com/metosin/reitit).
+
+```clj
+(require '[malli.experimental.lite :as l])
+
+(l/schema
+ {:map1 {:x int?
+         :y [:maybe string?]
+         :z (l/maybe keyword?)}
+  :map2 {:min-max [:int {:min 0 :max 10}]
+         :tuples (l/vector (l/tuple int? string?))
+         :optional (l/optional (l/maybe :boolean))
+         :set-of-maps (l/set {:e int?
+                              :f string?})
+         :map-of-int (l/map-of int? {:s string?})}})
+;[:map
+; [:map1
+;  [:map
+;   [:x int?]
+;   [:y [:maybe string?]]
+;   [:z [:maybe keyword?]]]]
+; [:map2
+;  [:map
+;   [:min-max [:int {:min 0, :max 10}]]
+;   [:tuples [:vector [:tuple int? string?]]]
+;   [:optional {:optional true} [:maybe :boolean]]
+```
+
+Options can be used by binding a dynamic `l/*options*` Var:
+
+```clj
+(binding [l/*options* {:registry (merge 
+                                  (m/default-schemas) 
+                                  {:user/id :int})}]
+  (l/schema {:id (l/maybe :user/id)
+             :child {:id :user/id}}))
+;[:map 
+; [:id [:maybe :user/id]] 
+; [:child [:map [:id :user/id]]]]
+```
+
 ## Performance
 
 Malli tries to be really, really fast.
@@ -2517,13 +2567,13 @@ Same with Clojure Spec and Plumatic Schema:
 (spec/def ::y int?)
 (spec/def ::z string?)
 
-;; clojure.spec (19µs)
+;; clojure.spec (19000ns)
 (let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
       transform #(st/coerce spec % st/string-transformer)]
   (assert (= expexted (transform data)))
   (cc/quick-bench (transform data)))
 
-;; plumatic schema (2.2µs)
+;; plumatic schema (2200ns)
 (let [schema {:x schema/Bool
               (schema/optional-key :y) schema/Int
               :z schema/Str}
@@ -2683,6 +2733,13 @@ npx shadow-cljs run shadow.cljs.build-report app2 /tmp/report.html
 npx shadow-cljs run shadow.cljs.build-report app2-sci /tmp/report.html
 ```
 
+## Formatting the code
+
+```bash
+clojure-lsp format
+clojure-lsp clean-ns
+```
+
 ## Checking the generated code
 
 ```bash
@@ -2705,8 +2762,20 @@ With sci (18Mb):
 ./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
 ```
 
+## 3rd party libraries
+
+- [Aave](https://github.com/teknql/aave), a code checking tool for Clojure.
+- [Gungnir](https://github.com/kwrooijen/gungnir), a high level, data driven database library for Clojure data mapping.
+- [Regal](https://github.com/lambdaisland/regal), Royally reified regular expressions
+- [Reitit](https://github.com/metosin/reitit), a fast data-driven router for Clojure/Script.
+- [wasm.cljc](https://github.com/helins/wasm.cljc) - Spec compliant WebAssembly compiler and decompiler
+- [malli-instrument](https://github.com/setzer22/malli-instrument) - Instrumentation for malli mimicking the clojure.spec.alpha API
+- [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
+- [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
+- [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
+
 ## License
 
-Copyright © 2019-2021 Metosin Oy and contributors.
+Copyright © 2019-2022 Metosin Oy and contributors.
 
 Available under the terms of the Eclipse Public License 2.0, see `LICENSE`.

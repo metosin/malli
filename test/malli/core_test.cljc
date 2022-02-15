@@ -1,15 +1,15 @@
 (ns malli.core-test
-  (:require [clojure.test :refer [deftest testing is are]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [are deftest is testing]]
+            [clojure.test.check.generators :as gen]
+            [clojure.walk :as walk]
             [malli.core :as m]
             [malli.edn :as edn]
-            [malli.transform :as mt]
-            [malli.util :as mu]
-            [malli.registry :as mr]
-            [malli.impl.util :as miu]
-            [clojure.walk :as walk]
             [malli.generator :as mg]
-            [clojure.test.check.generators :as gen]
-            [clojure.string :as str])
+            [malli.impl.util :as miu]
+            [malli.registry :as mr]
+            [malli.transform :as mt]
+            [malli.util :as mu])
   #?(:clj (:import (clojure.lang IFn))))
 
 (defn with-schema-forms [result]
@@ -41,13 +41,13 @@
 
 (deftest parse-entries-test
   (let [entry-parser (m/-create-entry-parser
-                       [[:x int?]
-                        ::x
-                        "x"
-                        [::y {:optional true}]
-                        [:y {:optional true, :title "boolean"} boolean?]]
-                       {:naked-keys true}
-                       {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
+                      [[:x int?]
+                       ::x
+                       "x"
+                       [::y {:optional true}]
+                       [:y {:optional true, :title "boolean"} boolean?]]
+                      {:naked-keys true}
+                      {:registry (merge (m/default-schemas) {::x int?, "x" int?, ::y int?})})]
     (testing "forms"
       (is (= [[:x 'int?]
               ::x
@@ -72,12 +72,12 @@
   (testing "duplicate keys"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
                  (m/-create-entry-parser
-                   [[:x int?]
-                    [:x boolean?]] {:naked-keys true} nil))))
+                  [[:x int?]
+                   [:x boolean?]] {:naked-keys true} nil))))
   (testing "naked keys fails when not supported"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
                  (m/-create-entry-parser
-                   [::x] nil nil)))))
+                  [::x] nil nil)))))
 
 (deftest eval-test
   (testing "with defaults"
@@ -147,25 +147,25 @@
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
-               [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-               "kerran" mt/string-transformer)))
+              [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+              "kerran" mt/string-transformer)))
 
       (testing "sci not available"
         (let [schema (m/schema
-                       [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-                       {::m/disable-sci true})]
+                      [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+                      {::m/disable-sci true})]
 
           (is (thrown-with-msg?
-                #?(:clj Exception, :cljs js/Error)
-                #":malli.core/sci-not-available"
-                (m/decoder schema mt/string-transformer)))
+               #?(:clj Exception, :cljs js/Error)
+               #":malli.core/sci-not-available"
+               (m/decoder schema mt/string-transformer)))
 
           (is (thrown-with-msg?
-                #?(:clj Exception, :cljs js/Error)
-                #":malli.core/sci-not-available"
-                (m/decoder
-                  [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-                  {::m/disable-sci true} mt/string-transformer)))
+               #?(:clj Exception, :cljs js/Error)
+               #":malli.core/sci-not-available"
+               (m/decoder
+                [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+                {::m/disable-sci true} mt/string-transformer)))
 
           (testing "direct options win"
             (is (m/decoder schema {::m/disable-sci false} mt/string-transformer)))))
@@ -227,8 +227,8 @@
 
       (is (= "olipa_kerran_avaruus"
              (m/decode
-               [:and {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}} string?]
-               "kerran" mt/string-transformer)))
+              [:and {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}} string?]
+              "kerran" mt/string-transformer)))
 
       (doseq [schema [schema schema*]]
         (is (true? (m/validate (over-the-wire schema) 1))))
@@ -456,8 +456,8 @@
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
 
       (is (= 4 (m/decode
-                 [:> {:decode/string '{:enter inc, :leave (partial * 2)}} 0]
-                 1 mt/string-transformer)))
+                [:> {:decode/string '{:enter inc, :leave (partial * 2)}} 0]
+                1 mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -530,8 +530,8 @@
       (is (= "1" (m/decode schema "1" mt/json-transformer)))
 
       (is (= 4 (m/decode
-                 [:maybe {:decode/string '{:enter inc, :leave (partial * 2)}} int?]
-                 1 mt/string-transformer)))
+                [:maybe {:decode/string '{:enter inc, :leave (partial * 2)}} int?]
+                1 mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 
@@ -550,8 +550,8 @@
 
     (testing "invalid refs fail"
       (is (thrown?
-            #?(:clj Exception, :cljs js/Error)
-            (m/schema [:ref int?]))))
+           #?(:clj Exception, :cljs js/Error)
+           (m/schema [:ref int?]))))
 
     (testing "recursion"
       (let [ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}} ::cons])]
@@ -581,10 +581,10 @@
         (is (= ["1" ["two" ["3" nil]]] (m/decode ConsCell ["1" ["two" ["3" nil]]] mt/json-transformer)))
         (is (= [1 [2 [3 [4 ::end]]]]
                (m/decode
-                 [:schema {:registry {::cons [:maybe [:tuple int? [:ref {:decode/string (fnil identity ::end)} ::cons]]]}}
-                  ::cons]
-                 [1 [2 [3 [4 nil]]]]
-                 mt/string-transformer)))
+                [:schema {:registry {::cons [:maybe [:tuple int? [:ref {:decode/string (fnil identity ::end)} ::cons]]]}}
+                 ::cons]
+                [1 [2 [3 [4 nil]]]]
+                mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire ConsCell) [1 [2 nil]])))
 
@@ -614,24 +614,24 @@
                       ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}]
 
         (is (true? (m/validate
-                     ::ping
-                     ["ping" ["pong" nil]]
-                     {:registry (mr/composite-registry (m/default-schemas) registry)})))
+                    ::ping
+                    ["ping" ["pong" nil]]
+                    {:registry (mr/composite-registry (m/default-schemas) registry)})))
 
         (is (true? (m/validate
-                     [:schema {:registry registry}
-                      ::ping]
-                     ["ping" ["pong" nil]])))))
+                    [:schema {:registry registry}
+                     ::ping]
+                    ["ping" ["pong" nil]])))))
 
     (testing "fails with missing :ref"
       (is (thrown?
-            #?(:clj Exception, :cljs js/Error)
-            (m/validate
-              [:schema
-               {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] [:ref ::invalid]]]
-                           ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref ::ping]]]}}
-               ::ping]
-              ["ping" ["ping" nil]])))))
+           #?(:clj Exception, :cljs js/Error)
+           (m/validate
+            [:schema
+             {:registry {::ping [:maybe {:id ::pong} [:tuple [:= "ping"] [:ref ::invalid]]]
+                         ::pong [:maybe {:id ::ping} [:tuple [:= "pong"] [:ref ::ping]]]}}
+             ::ping]
+            ["ping" ["ping" nil]])))))
 
   (testing "::m/schema ast"
     (is (= :int
@@ -644,9 +644,9 @@
   (testing "schema"
     (is (form= :int
                (as-> [:schema :int] $
-                     (m/explain $ "1")
-                     (let [{:keys [schema] [{:keys [path]}] :errors} $]
-                       (mu/get-in schema path))))))
+                 (m/explain $ "1")
+                 (let [{:keys [schema] [{:keys [path]}] :errors} $]
+                   (mu/get-in schema path))))))
 
   (testing "malli.core/schema"
     (is (= [::m/schema {:registry {::cons [:maybe [:tuple 'int? [:ref ::cons]]]}}
@@ -660,8 +660,8 @@
 
     (is (= "$kikka"
            (m/decode
-             [:schema {:decode/custom (partial str "$")} string?] "kikka"
-             (mt/transformer {:name :custom})))))
+            [:schema {:decode/custom (partial str "$")} string?] "kikka"
+            (mt/transformer {:name :custom})))))
 
   (testing "schema schemas"
     (let [schema [:and
@@ -692,8 +692,8 @@
 
       (is (= "$kikka"
              (m/decode
-               [:schema {:decode/custom (partial str "$")} string?] "kikka"
-               (mt/transformer {:name :custom}))))
+              [:schema {:decode/custom (partial str "$")} string?] "kikka"
+              (mt/transformer {:name :custom}))))
 
       (testing "deref"
         (is (mu/equals (m/schema int?) (m/deref int?)))
@@ -765,8 +765,8 @@
         (is (= ::m/invalid (m/unparse schema false)))
 
         (is (= 4 (m/decode
-                   [:re {:decode/string '{:enter inc, :leave (partial * 2)}} ".*"]
-                   1 mt/string-transformer)))
+                  [:re {:decode/string '{:enter inc, :leave (partial * 2)}} ".*"]
+                  1 mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire schema) "a.b")))
 
@@ -814,8 +814,8 @@
         (is (= ::m/invalid (m/unparse schema "invalid")))
 
         (is (= 4 (m/decode
-                   [:fn {:decode/string '{:enter inc, :leave (partial * 2)}} 'int?]
-                   1 mt/string-transformer)))
+                  [:fn {:decode/string '{:enter inc, :leave (partial * 2)}} 'int?]
+                  1 mt/string-transformer)))
 
         (is (true? (m/validate (over-the-wire schema) 12)))
 
@@ -850,15 +850,15 @@
 
   (testing "map schemas"
     (let [schema (m/schema
-                   [:map
-                    [:x boolean?]
-                    [:y {:optional true} int?]
-                    [:z {:optional false} string?]])
+                  [:map
+                   [:x boolean?]
+                   [:y {:optional true} int?]
+                   [:z {:optional false} string?]])
           closed-schema (m/schema
-                          [:map {:closed true}
-                           [:x boolean?]
-                           [:y {:optional true} int?]
-                           [:z {:optional false} string?]])
+                         [:map {:closed true}
+                          [:x boolean?]
+                          [:y {:optional true} int?]
+                          [:z {:optional false} string?]])
           valid {:x true, :y 1, :z "kikka"}
           valid-with-extras {:x true, :y 1, :z "kikka", :extra "key"}
           valid2 {:x false, :y 1, :z "kikka"}
@@ -943,15 +943,15 @@
       (is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} mt/strip-extra-keys-transformer)))
       (is (= {:x_key true, :y_key 2} (m/decode schema {:x true, :y 2}
                                                (mt/key-transformer
-                                                 {:decode #(-> % name (str "_key") keyword)}))))
+                                                {:decode #(-> % name (str "_key") keyword)}))))
 
       (is (= {:x 32}
              (m/decode
-               [:map {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
-                [:x {:decode/string '{:enter inc, :leave inc}}
-                 [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]
-               {:x 1}
-               mt/string-transformer)))
+              [:map {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
+               [:x {:decode/string '{:enter inc, :leave inc}}
+                [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]
+              {:x 1}
+              mt/string-transformer)))
 
       (is (true? (m/validate (over-the-wire schema) valid)))
 
@@ -986,15 +986,15 @@
 
   (testing "nil keys"
     (is (true? (m/validate
-                 [:map
-                  ["status" [:enum "ok"]]
-                  [1 any?]
-                  [nil any?]
-                  [::a string?]]
-                 {"status" "ok"
-                  1 'number
-                  nil :yay
-                  ::a "properly awesome"}))))
+                [:map
+                 ["status" [:enum "ok"]]
+                 [1 any?]
+                 [nil any?]
+                 [::a string?]]
+                {"status" "ok"
+                 1 'number
+                 nil :yay
+                 ::a "properly awesome"}))))
 
   (testing "accumulating errors #84"
     (let [re #"b"
@@ -1083,26 +1083,26 @@
 
       (is (= {:type :math, :x 24}
              (m/decode
-               [:multi {:dispatch :type
-                        :decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
-                [:math [:map [:type keyword?] [:x [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]]]
-               {:type :math, :x 1} mt/string-transformer)))
+              [:multi {:dispatch :type
+                       :decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
+               [:math [:map [:type keyword?] [:x [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]]]]
+              {:type :math, :x 1} mt/string-transformer)))
 
       (testing "in multi schema (two options)"
         (is (= {:category :book :title "FOUNTAINHEAD"}
                (m/decode
-                 [:multi
-                  {:dispatch :category}
-                  [:book
-                   [:map
-                    [:category [:= :book]]
-                    [:title {:decode/string-upper clojure.string/upper-case} string?]]]
-                  [:video
-                   [:map
-                    [:category [:= :video]]
-                    [:name string?]]]]
-                 {:category :book :title "Fountainhead"}
-                 (mt/transformer {:name :string-upper})))))
+                [:multi
+                 {:dispatch :category}
+                 [:book
+                  [:map
+                   [:category [:= :book]]
+                   [:title {:decode/string-upper clojure.string/upper-case} string?]]]
+                 [:video
+                  [:map
+                   [:category [:= :video]]
+                   [:name string?]]]]
+                {:category :book :title "Fountainhead"}
+                (mt/transformer {:name :string-upper})))))
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
@@ -1225,9 +1225,9 @@
 
     (is (= {:x 24}
            (m/decode
-             [:map-of {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
-              keyword? [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]
-             {:x 1} mt/string-transformer)))
+            [:map-of {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
+             keyword? [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]
+            {:x 1} mt/string-transformer)))
 
     (is (true? (m/validate (over-the-wire [:map-of string? int?]) {"age" 18})))
 
@@ -1334,17 +1334,17 @@
       (is (= {:x 1} (m/decode [:vector [:map [:x int?]]] {:x 1} (mt/transformer {:name "test"}))))
       (is (= [24 30 36 42]
              (m/decode
-               [:sequential
-                {:decode/string '{:enter (partial map inc), :leave (partial map (partial * 2))}}
-                [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]
-               [1 2 3 4] mt/string-transformer)))
+              [:sequential
+               {:decode/string '{:enter (partial map inc), :leave (partial map (partial * 2))}}
+               [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]]
+              [1 2 3 4] mt/string-transformer)))
       (is (= [24 48 8 10]
              (m/decode
-               [:tuple
-                {:decode/string '{:enter (partial mapv inc), :leave (partial mapv (partial * 2))}}
-                [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]
-                [int? {:decode/string '{:enter (partial + 3), :leave (partial * 4)}}]]
-               [1 2 3 4] mt/string-transformer)))
+              [:tuple
+               {:decode/string '{:enter (partial mapv inc), :leave (partial mapv (partial * 2))}}
+               [int? {:decode/string '{:enter (partial + 2), :leave (partial * 3)}}]
+               [int? {:decode/string '{:enter (partial + 3), :leave (partial * 4)}}]]
+              [1 2 3 4] mt/string-transformer)))
 
       (testing "changing type results in children not being called"
         (are [schema data]
@@ -1354,9 +1354,9 @@
                                  (fn [_] (throw (ex-info "Was called" {:schema schema
                                                                        :data data})))]
                              (mt/transformer
-                               {:name :test
-                                :encoders {'int? should-not-be-called
-                                           'keyword? should-not-be-called}})))))
+                              {:name :test
+                               :encoders {'int? should-not-be-called
+                                          'keyword? should-not-be-called}})))))
           [:map {:encode/test (fn [{:keys [age]}]
                                 (str "age:" age))}
            [:age int?]]
@@ -1718,6 +1718,9 @@
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+])))
       (is (thrown? #?(:clj Exception, :cljs js/Error) (m/validator [:+ string? int?])))
 
+      (testing "parse + unparse"
+        (is (= [2 3] (->> (m/parse [:+ :int] [2 3]) (m/unparse [:+ :int])))))
+
       (let [s [:+ string?]]
         (are [v errs]
           (let [es errs]
@@ -1787,23 +1790,23 @@
 
     (testing "RefSchemas"
       (is (m/validate
-            [:schema {:registry {"ints" [:+ int?]
-                                 "bools" [:+ boolean?]}}
-             [:* [:cat "ints" "bools"]]]
-            [1 true 2 2 false]))
+           [:schema {:registry {"ints" [:+ int?]
+                                "bools" [:+ boolean?]}}
+            [:* [:cat "ints" "bools"]]]
+           [1 true 2 2 false]))
       (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                             (m/validator
-                              [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                               ::ints])))
+                             [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
+                              ::ints])))
       (is (m/validate
-            [:schema {:registry {::ints [:* [:or int? [:ref ::ints]]]}}
-             ::ints]
-            [[1 2 3]]))
+           [:schema {:registry {::ints [:* [:or int? [:ref ::ints]]]}}
+            ::ints]
+           [[1 2 3]]))
       ;; A bit undesirable, but intentional:
       (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                             (m/validator
-                              [:schema {:registry {::boll [:cat boolean?]}}
-                               [:* [:ref ::boll]]]))))))
+                             [:schema {:registry {::boll [:cat boolean?]}}
+                              [:* [:ref ::boll]]]))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]
@@ -1855,10 +1858,10 @@
 (deftest round-trip-test
   (testing "schemas can be roundtripped"
     (let [schema (m/schema
-                   [:map
-                    [:x boolean?]
-                    [:y {:optional true} int?]
-                    [:z string?]])
+                  [:map
+                   [:x boolean?]
+                   [:y {:optional true} int?]
+                   [:z string?]])
           schema' (over-the-wire schema)
           valid {:x true, :y 1, :z "kikka"}]
       (is (= true
@@ -1868,10 +1871,10 @@
 
 (deftest custom-registry-test
   (let [registry (merge
-                   (m/comparator-schemas)
-                   (m/base-schemas)
-                   {"int" (m/-simple-schema {:type "int", :pred int?})
-                    "string" (m/-simple-schema {:type "string", :pred string?})})]
+                  (m/comparator-schemas)
+                  (m/base-schemas)
+                  {"int" (m/-simple-schema {:type "int", :pred int?})
+                   "string" (m/-simple-schema {:type "string", :pred string?})})]
     (is (true? (m/validate [:or "int" "string"] 123 {:registry registry})))
     (is (false? (m/validate [:or "int" "string"] 'kikka {:registry registry})))))
 
@@ -1904,21 +1907,21 @@
                     [double? {:path [:address 0 ::m/in :lonlat 1]}]]]]]]]]
 
              (m/walk
-               [:map
-                [:id string?]
-                [:tags [:set keyword?]]
-                [:address
-                 [:maybe
-                  [:vector
-                   [:map
-                    [:street string?]
-                    [:lonlat [:tuple double? double?]]]]]]]
-               (fn [schema path children options]
-                 (m/into-schema
-                   (m/type schema)
-                   (assoc (m/properties schema) :path path)
-                   children
-                   options))))))
+              [:map
+               [:id string?]
+               [:tags [:set keyword?]]
+               [:address
+                [:maybe
+                 [:vector
+                  [:map
+                   [:street string?]
+                   [:lonlat [:tuple double? double?]]]]]]]
+              (fn [schema path children options]
+                (m/into-schema
+                 (m/type schema)
+                 (assoc (m/properties schema) :path path)
+                 children
+                 options))))))
 
 (deftest custom-registry-qualified-keyword-in-map-test
   (let [schema [:map {:registry {::id int?
@@ -1937,8 +1940,8 @@
 
   (testing "invalid ref"
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-ref"
-          (m/schema [:map {:registry {:kikka :int}} :int])))))
+         #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-ref"
+         (m/schema [:map {:registry {:kikka :int}} :int])))))
 
 (deftest simple-schemas
   (testing "simple schemas"
@@ -2165,14 +2168,14 @@
 
 (def Over6
   (m/-simple-schema
-    {:type :user/over6
-     :pred #(and (int? %) (> % 6))
-     :type-properties {:error/message "should be over 6"
-                       :decode/string mt/-string->long
-                       :json-schema/type "integer"
-                       :json-schema/format "int64"
-                       :json-schema/minimum 6
-                       :gen/gen generate-over6}}))
+   {:type :user/over6
+    :pred #(and (int? %) (> % 6))
+    :type-properties {:error/message "should be over 6"
+                      :decode/string mt/-string->long
+                      :json-schema/type "integer"
+                      :json-schema/format "int64"
+                      :json-schema/minimum 6
+                      :gen/gen generate-over6}}))
 
 (deftest custom-simple-type-test
 
@@ -2199,15 +2202,15 @@
 
   (testing "with instance-based type-properties"
     (let [Over (m/-simple-schema
-                 (fn [{:keys [value]} _]
-                   (assert (int? value))
-                   {:type :user/over
-                    :pred #(and (int? %) (> % value))
-                    :type-properties {:error/message (str "should be over " value)
-                                      :decode/string mt/-string->long
-                                      :json-schema/type "integer"
-                                      :json-schema/format "int64"
-                                      :json-schema/minimum value}}))]
+                (fn [{:keys [value]} _]
+                  (assert (int? value))
+                  {:type :user/over
+                   :pred #(and (int? %) (> % value))
+                   :type-properties {:error/message (str "should be over " value)
+                                     :decode/string mt/-string->long
+                                     :json-schema/type "integer"
+                                     :json-schema/format "int64"
+                                     :json-schema/minimum value}}))]
 
       (testing "over6"
         (let [schema [Over {:value 6}]]
@@ -2277,8 +2280,8 @@
 
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                         (m/-regex-min-max
-                          (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                     ::ints])))))
+                         (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
+                                    ::ints])))))
 
 (defn single-arity
   ([x] x)
@@ -2354,29 +2357,36 @@
   (testing ":function"
 
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #":malli.core/non-function-childs"
-          (m/schema
-            [:function
-             :cat])))
+         #?(:clj Exception, :cljs js/Error)
+         #":malli.core/non-function-childs"
+         (m/schema
+          [:function
+           :cat])))
+
+    (testing "varargs with identical min arity get +1 arity"
+      (is (m/schema
+           [:function
+            [:=> :cat nil?]
+            [:=> [:cat [:? nil?]] nil?]])))
 
     (testing "invalid arities"
 
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/duplicate-arities"
-            (m/schema
-              [:function
-               [:=> :cat nil?]
-               [:=> :cat nil?]])))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/duplicate-arities"
+           (m/schema
+            [:function
+             [:=> :cat nil?]
+             [:=> :cat nil?]])))
 
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/duplicate-min-arities"
-            (m/schema
-              [:function
-               [:=> :cat nil?]
-               [:=> [:cat [:? nil?]] nil?]]))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/multiple-varargs"
+           (m/schema
+            [:function
+             [:=> :cat nil?]
+             [:=> [:cat [:? nil?]] nil?]
+             [:=> [:cat [:? nil?] [:? nil?]] nil?]]))))
 
     (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
           invalid-f (fn ([x] x) ([x y] (str x y)))
@@ -2412,8 +2422,8 @@
 
       (testing "non-accumulating errors"
         (let [schema (m/schema
-                       [:tuple :int [:function [:=> [:cat :int] :int]]]
-                       {::m/function-checker malli.generator/function-checker})
+                      [:tuple :int [:function [:=> [:cat :int] :int]]]
+                      {::m/function-checker malli.generator/function-checker})
               f (fn [_] 1)]
           (is (results= {:schema schema,
                          :value ["1" f],
@@ -2432,7 +2442,7 @@
 (deftest test-415
   (testing "multi default is not transformed"
     (let [transformer (mt/key-transformer
-                        {:encode (comp keyword str/upper-case name)})
+                       {:encode (comp keyword str/upper-case name)})
           schema [:multi {:dispatch :foo-bar}
                   [:bar [:map [:foo-bar keyword?]]]
                   [::m/default [:map [:foo-bar keyword?]]]]]
@@ -2442,19 +2452,21 @@
 
 (deftest custom-collection-test
   (let [List (m/-collection-schema
-               (fn [properties [child]]
-                 {:type :list
-                  :pred list?
-                  :empty '()
-                  :type-properties {:error/message "should be a list"
-                                    :gen/schema [:vector properties child]
-                                    :gen/fmap #(or (list* %) '())}}))]
+              (fn [properties [child]]
+                {:type :list
+                 :pred list?
+                 :empty '()
+                 :type-properties {:error/message "should be a list"
+                                   :gen/schema [:vector properties child]
+                                   :gen/fmap #(or (list* %) '())}}))]
 
     (is (m/validate [List :int] '(1 2)))
     (is (not (m/validate [List :int] [1 2])))))
 
+(defn function-schema-registry-test-fn [])
+
 (deftest function-schema-registry-test
-  (swap! @#'m/-function-schemas* dissoc 'malli.core-test)
+  (swap! @#'m/-function-schemas* update :clj dissoc 'malli.core-test)
   (let [prior-function-schemas (m/function-schemas)
         _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
         new-function-schemas (m/function-schemas)
@@ -2471,30 +2483,30 @@
       (let [pow2 (m/-instrument {:schema [:=> [:cat :int] int<=6]} (fn [x] (* x x)))]
         (is (= 4 (pow2 2)))
         (is (thrown-with-msg?
-              #?(:clj Exception, :cljs js/Error)
-              #":malli.core/invalid-input"
-              (pow2 "2")))
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/invalid-input"
+             (pow2 "2")))
         (is (thrown-with-msg?
-              #?(:clj Exception, :cljs js/Error)
-              #":malli.core/invalid-output"
-              (pow2 4)))
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/invalid-output"
+             (pow2 4)))
         (is (thrown-with-msg?
-              #?(:clj Exception, :cljs js/Error)
-              #":malli.core/invalid-arity"
-              (pow2 4 2)))))
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/invalid-arity"
+             (pow2 4 2)))))
 
     (testing "multi-arity, with options"
       (let [report* (atom [])
             <-report #(let [report @report*] (reset! report* []) report)
             pow2 (m/-instrument
-                   {:schema [:function
-                             [:=> [:cat :int] int<=6]
-                             [:=> [:cat :int :int] int<=6]]
-                    :scope #{:input :output}
-                    :report (fn [error _] (swap! report* conj error))}
-                   (fn
-                     ([x] (* x x))
-                     ([x y] (* x y))))]
+                  {:schema [:function
+                            [:=> [:cat :int] int<=6]
+                            [:=> [:cat :int :int] int<=6]]
+                   :scope #{:input :output}
+                   :report (fn [error _] (swap! report* conj error))}
+                  (fn
+                    ([x] (* x x))
+                    ([x y] (* x y))))]
         (is (= 4 (pow2 2)))
 
         (is (= 16 (pow2 4)))
@@ -2505,16 +2517,16 @@
 
     (testing "generated function"
       (let [pow2 (m/-instrument
-                   {:schema [:function
-                             [:=> [:cat :int] int<=6]
-                             [:=> [:cat :int :int] int<=6]]
-                    :gen mg/generate})]
+                  {:schema [:function
+                            [:=> [:cat :int] int<=6]
+                            [:=> [:cat :int :int] int<=6]]
+                   :gen mg/generate})]
         (is (m/validate int<=6 (pow2 100)))
         (is (m/validate int<=6 (pow2 100 100)))
         (is (thrown-with-msg?
-              #?(:clj Exception, :cljs js/Error)
-              #":malli.core/invalid-arity"
-              (pow2 100 100 100)))))))
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/invalid-arity"
+             (pow2 100 100 100)))))))
 
 (deftest -safe-pred-test
   (is (true? ((m/-safe-pred (constantly "true")) ::any)))
@@ -2622,3 +2634,28 @@
   (is (= ["1"] (m/-vmap str (subvec [1 2] 0 1))))
   (is (= ["1"] (m/-vmap str (lazy-seq [1]))))
   (is (= ["1" "2"] (m/-vmap str [1 2]))))
+
+(deftest issue-626-test
+  (testing "m/from-ast does not work with symbols or unamespaced keywords"
+    (let [BiggerThan3 (m/schema
+                       (m/-simple-schema
+                        {:type :my/bigger-than-3
+                         :pred #(> % 3)}))
+          BiggerThan4 (m/schema
+                       (m/-simple-schema
+                        {:type :my-bigger-than-4
+                         :pred #(> % 4)}))
+          BiggerThan5 (m/schema
+                       (m/-simple-schema
+                        {:type 'my/bigger-than-5
+                         :pred #(> % 5)}))
+          options {:registry (malli.registry/composite-registry
+                              (m/-registry)
+                              {:my/bigger-than-3 BiggerThan3
+                               :my-bigger-than-4 BiggerThan4
+                               'my/bigger-than-5 BiggerThan5})}
+          via-ast #(-> (m/ast % options) (m/from-ast options))]
+
+      (is (m/schema? (via-ast :my/bigger-than-3)))
+      (is (m/schema? (via-ast :my-bigger-than-4)))
+      (is (m/schema? (via-ast 'my/bigger-than-5))))))

@@ -1,6 +1,6 @@
 (ns malli.destructure
-  (:require [malli.core :as m]
-            [clojure.walk :as walk]
+  (:require [clojure.walk :as walk]
+            [malli.core :as m]
             [malli.impl.util :as miu]))
 
 (defn -map-like? [x] (or (map? x) (and (seqable? x) (every? (fn [e] (and (vector? e) (= 2 (count e)))) x))))
@@ -8,7 +8,7 @@
 (def MapLike (m/-collection-schema {:type 'MapLike, :empty {}, :pred -map-like?}))
 (def Never (m/-simple-schema {:type 'Never, :pred (fn [_] false)}))
 
-(defn -schema [inline-schemas]
+(defn -create [inline-schemas]
   (m/schema
    [:schema
     {:registry {"Schema" any?
@@ -54,8 +54,8 @@
                                        [:arg "Arg"]]]]]}}
     "Binding"]))
 
-(def Binding (-schema false))
-(def SchematizedBinding (-schema true))
+(def Binding (-create false))
+(def SchematizedBinding (-create true))
 
 (declare -transform)
 
@@ -66,7 +66,7 @@
   (or (some->> as :schema :schema (conj [:schema]))
       (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
             rs (if rest (-transform (:arg rest) options true) [:* :any])]
-        [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) rs)])))
+        [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) [:cat rs])])))
 
 (defn -qualified-keys [m]
   (for [[k vs] m
@@ -88,12 +88,13 @@
                               (cond (and ref required-keys) k
                                     required-keys [k t]
                                     :else (cond-> [k {:optional true}] (not ref) (conj t)))))
-        ->arg (fn [[k t]] [:cat [:= k] (if (and references (qualified-keyword? k)) k t)])]
-    (cond-> [:altn]
-      :always (conj [:map (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))])
-      (or rest sequential-maps) (conj [:args (-> (into [:alt] (map ->arg keys))
-                                                 (cond-> (not closed-maps) (conj [:cat :any :any]))
-                                                 (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]))))
+        ->arg (fn [[k t]] [:cat [:= k] (if (and references (qualified-keyword? k)) k t)])
+        schema (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))]
+    (if (or rest sequential-maps)
+      [:altn [:map schema] [:args (-> (into [:alt] (map ->arg keys))
+                                      (cond-> (not closed-maps) (conj [:cat :any :any]))
+                                      (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]]
+      schema)))
 
 (defn -transform [{[k v] :arg schema :schema :as all} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
@@ -103,8 +104,20 @@
         rest [:* :any]
         :else :any))
 
+(defn -schema [{:keys [elems rest]} options]
+  (cond-> :cat
+    (or (seq elems) rest) (vector)
+    (seq elems) (into (map #(-transform % options false) elems))
+    rest (conj (-transform (:arg rest) options true))))
+
 (defn -unschematize [x]
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))
+
+(defn -function-schema
+  ([arglists] (-function-schema arglists nil))
+  ([arglists options]
+   (let [->schema (fn [arglist] [:=> (-schema (m/parse SchematizedBinding arglist) options) :any])]
+     (as-> (map ->schema arglists) $ (if (next $) (into [:function] $) (first $))))))
 
 ;;
 ;; public api
@@ -143,11 +156,13 @@
   ([arglist] (parse arglist nil))
   ([arglist {:keys [::inline-schemas] :or {inline-schemas true} :as options}]
    (let [parse-scheme (if inline-schemas SchematizedBinding Binding)
-         {:keys [elems rest] :as parsed} (m/parse parse-scheme arglist)
+         parsed (m/parse parse-scheme arglist)
          arglist' (->> parsed (-unschematize) (m/unparse Binding))
-         schema' (cond-> :cat
-                   (or (seq elems) rest) (vector)
-                   (seq elems) (into (map #(-transform % options false) elems))
-                   rest (conj (-transform (:arg rest) options true)))]
+         schema' (-schema parsed options)]
      (when (= ::m/invalid arglist') (m/-fail! ::invalid-arglist {:arglist arglist}))
      {:raw-arglist arglist, :parsed parsed, :arglist arglist', :schema schema'})))
+
+(defn infer
+  "Infers a schema from a function Var. Best effort."
+  ([var] (infer var nil))
+  ([var options] (-> var meta :arglists (-function-schema options))))

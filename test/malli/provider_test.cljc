@@ -1,7 +1,7 @@
 (ns malli.provider-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [malli.provider :as mp]
+  (:require [clojure.test :refer [deftest is]]
             [malli.core :as m]
+            [malli.provider :as mp]
             [malli.transform :as mt])
   #?(:clj (:import (java.util UUID Date))))
 
@@ -66,25 +66,28 @@
    ;; implicit sample count for :map-of
    [[:map-of string? [:map [:name string?]]]
     [{"1" {:name "1"}
-      "2" {:name "2"}
-      "3" {:name "3"}}]]
+      "2" {:name "2"}}
+     {"3" {:name "3"}}]]
 
-   ;; tuple-like with too few elements
+   ;; tuple-like without options
    [[:vector some?]
     [[1 "kikka" true]
-     [2 "kukka" true]]]
+     [2 "kukka" true]
+     [3 "kakka" false]]]
 
-   ;; tuple-like with enough samples
-   [[:tuple int? string? boolean?]
+   ;; tuple-like with threshold not reached
+   [[:vector some?]
     [[1 "kikka" true]
-     [2 "kukka" true]]
-    {::mp/tuple-threshold 2}]
+     [2 "kukka" true]
+     [3 "kakka" false]]
+    {::mp/tuple-threshold 4}]
 
-   ;; tuple-like with enough samples
+   ;; tuple-like with threshold reached
    [[:tuple int? string? boolean?]
     [[1 "kikka" true]
      [2 "kukka" true]
-     [3 "kakka" true]]]
+     [3 "kakka" false]]
+    {::mp/tuple-threshold 3}]
 
    ;; tuple-like with non-coherent data
    [[:vector some?]
@@ -120,6 +123,16 @@
       "09e59de6-5fee-11ec-bf63-0242ac130002" {:id "09e59de6-5fee-11ec-bf63-0242ac130002"}
       "15511020-5fee-11ec-bf63-0242ac130002" {:id "15511020-5fee-11ec-bf63-0242ac130002"}}]
     {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}}]
+   [[:map-of inst? string?]
+    [{"1901-03-02T22:20:11.000Z" "123"
+      "1902-04-03T22:20:11.000Z" "234"
+      "1904-06-05T22:20:11.000Z" "456"}]
+    {::mp/value-decoders {'string? {'inst? mt/-string->date}}}]
+
+   ;; value-hints
+   [[:map [:name :string] [:gender [:enum "male" "female"]]]
+    [{:name "Tommi", :gender (mp/-hinted "male" :enum)}
+     {:name (mp/-hinted "Tiina" :string), :gender "female"}]]
 
    [[:map
      [:id string?]

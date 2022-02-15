@@ -19,9 +19,9 @@
          (case mode
            :instrument (let [original-fn (or (-original v) (deref v))
                              dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
-                                        (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
-                                              (true? (:gen d)) (dissoc $ :gen)
-                                              :else $))]
+                                    (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
+                                          (true? (:gen d)) (dissoc $ :gen)
+                                          :else $))]
                          (alter-meta! v assoc ::original-fn original-fn)
                          (alter-var-root v (constantly (m/-instrument dgen original-fn)))
                          (println "..instrumented" v))
@@ -31,9 +31,14 @@
                          (println "..unstrumented" v))
            (mode v d)))))))
 
+(defn -schema [v]
+  (let [{:keys [malli/schema arglists]} (meta v)]
+    (or schema (as-> (seq (keep (comp :malli/schema meta) arglists)) $
+                 (when (= (count arglists) (count $)) (cond->> $ (next $) (into [:function])))))))
+
 (defn -collect! [v]
-  (let [{:keys [ns name malli/schema] :as meta} (meta v)]
-    (when schema (m/-register-function-schema! (-> ns str symbol) name schema (m/-unlift-keys meta "malli")) v)))
+  (let [{:keys [ns name] :as m} (meta v)]
+    (when-let [s (-schema v)] (m/-register-function-schema! (-> ns str symbol) name s (m/-unlift-keys m "malli")))))
 
 ;;
 ;; public api
@@ -46,8 +51,8 @@
   ([options]
    (let [res* (atom {})]
      (-strument! (assoc options :mode (fn [v {:keys [schema]}]
-                                           (some->> (mg/check schema (or (-original v) (deref v)))
-                                                    (swap! res* assoc (symbol v))))))
+                                        (some->> (mg/check schema (or (-original v) (deref v)))
+                                                 (swap! res* assoc (symbol v))))))
      (not-empty @res*))))
 
 (defn collect!

@@ -1,6 +1,6 @@
 (ns malli.plantuml-test
-  (:require [clojure.test :refer [deftest is]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is]]
             [malli.plantuml :as plantuml]))
 
 (defn trimmed= [s1 s2]
@@ -15,8 +15,8 @@
          [:enum {:title \"enum\"} \"S\" \"M\" \"L\"]
        }
        @enduml"
-        (plantuml/transform
-          [:enum {:title "enum"} "S" "M" "L"])))
+       (plantuml/transform
+        [:enum {:title "enum"} "S" "M" "L"])))
 
   (is (trimmed=
        "@startuml
@@ -24,9 +24,9 @@
          :x :string
         }
         @enduml"
-        (plantuml/transform
-          [:map {:x 1}
-           [:x {:x 1} :string]])))
+       (plantuml/transform
+        [:map {:x 1}
+         [:x {:x 1} :string]])))
 
   (is (trimmed=
        "@startuml

@@ -1,7 +1,7 @@
 (ns malli.edn
   (:refer-clojure :exclude [read-string])
-  (:require [malli.core :as m]
-            [edamame.core :as edamame]))
+  (:require [edamame.core :as edamame]
+            [malli.core :as m]))
 
 (defn -parse-string [x]
   (edamame/parse-string x {:dispatch {\# {\" #(re-pattern %)}}}))

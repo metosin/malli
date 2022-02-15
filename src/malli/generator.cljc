@@ -1,18 +1,22 @@
 (ns malli.generator
-  (:require [clojure.test.check.generators :as gen]
-            #?(:clj [borkdude.dynaload :as dynaload])
+  (:require [clojure.spec.gen.alpha :as ga]
             [clojure.string :as str]
             [clojure.test.check :as check]
-            [clojure.test.check.random :as random]
+            [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
-            [clojure.spec.gen.alpha :as ga]
-            [malli.core :as m]))
+            [malli.core :as m]
+            #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
 
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
+
+;;
+;; generators
+;;
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
@@ -154,9 +158,16 @@
       (gen/fmap #(apply concat %) (-coll-gen schema identity options))
       (-coll-gen schema identity options))))
 
-;;
-;; generators
-;;
+(defn -qualified-ident-gen [schema mk-value-with-ns value-with-ns-gen-size pred gen]
+  (if-let [namespace-unparsed (:namespace (m/properties schema))]
+    (gen/fmap (fn [k] (mk-value-with-ns (name namespace-unparsed) (name k))) value-with-ns-gen-size)
+    (gen/such-that pred gen)))
+
+(defn -qualified-keyword-gen [schema]
+  (-qualified-ident-gen schema keyword gen/keyword qualified-keyword? gen/keyword-ns))
+
+(defn -qualified-symbol-gen [schema]
+  (-qualified-ident-gen schema symbol gen/symbol qualified-symbol? gen/symbol-ns))
 
 (defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
@@ -202,8 +213,8 @@
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)
-(defmethod -schema-generator :qualified-keyword [_ _] (gen/such-that qualified-keyword? gen/keyword-ns))
-(defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
+(defmethod -schema-generator :qualified-keyword [schema _] (-qualified-keyword-gen schema))
+(defmethod -schema-generator :qualified-symbol [schema _] (-qualified-symbol-gen schema))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
@@ -313,10 +324,10 @@
                                           (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
                                explain-output (when-not explain-input (m/explain output response))]
                            (cond-> shrunk
-                                   explain-input (assoc ::explain-input explain-input)
-                                   explain-output (assoc ::explain-output explain-output)
-                                   (ex-message result) (-> (update :result ex-message)
-                                                           (dissoc :result-data)))))))))]
+                             explain-input (assoc ::explain-input explain-input)
+                             explain-output (assoc ::explain-output explain-output)
+                             (ex-message result) (-> (update :result ex-message)
+                                                     (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]

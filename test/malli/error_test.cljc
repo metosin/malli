@@ -1,10 +1,10 @@
 (ns malli.error-test
-  (:require [clojure.test :refer [deftest testing is are]]
+  (:require [clojure.test :refer [are deftest is testing]]
+            [malli.core :as m]
             [malli.core-test]
             [malli.error :as me]
-            [malli.core :as m]
-            [malli.util :as mu]
-            [malli.generator :as mg]))
+            [malli.generator :as mg]
+            [malli.util :as mu]))
 
 (deftest error-message-test
   (let [msg "should be an int"
@@ -122,9 +122,9 @@
             {:x ["invalid type"]}]
            (-> [:vector [:map [:x [:vector int?]]]]
                (m/explain
-                 [{:x [1 2 3]}
-                  {:x [1 "2" "3"]}
-                  {:x #{"whatever"}}])
+                [{:x [1 2 3]}
+                 {:x [1 "2" "3"]}
+                 {:x #{"whatever"}}])
                (me/humanize)))))
 
   (testing "so nested"
@@ -134,7 +134,7 @@
                    {:x [["should be an int"]]}]}
            (-> [:map [:data [:vector [:map [:x [:vector int?]]]]]]
                (m/explain
-                 {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
+                {:data [{:x ["1" 2 "3"]} {:x ["1" 2 "3"]} {:x [1]} {:x ["1"]} {:x [1]}]})
                (me/humanize)))))
 
   (testing "disallowed keys in closed maps"
@@ -146,9 +146,9 @@
   (testing "multiple errors on same key are preserved"
     (is (= {:x ["missing required key" "missing required key"]}
            (me/humanize
-             {:value {},
-              :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
-                       {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]}))))
+            {:value {},
+             :errors [{:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}
+                      {:in [:x], :schema [:map [:x int?]], :type ::m/missing-key}]}))))
 
   (testing "maps can have top level errors and key errors"
     (is (= {:person {:malli/error ["should be a seq"],
@@ -195,34 +195,34 @@
                   :f ["PITÄISI OLLA NUMERO"]}}
              (-> (m/explain schema value)
                  (me/humanize
-                   {:locale :fi
-                    :errors (-> me/default-errors
-                                (assoc-in ['int? :error/message :fi] "NUMERO")
-                                (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))
+                  {:locale :fi
+                   :errors (-> me/default-errors
+                               (assoc-in ['int? :error/message :fi] "NUMERO")
+                               (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))
 
 (deftest sci-not-available-test
   (testing "sci not available"
     (let [schema (m/schema [:string {:error/fn '(constantly "FAIL")}] {::m/disable-sci true})]
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (-> schema (m/explain ::invalid) (me/with-error-messages))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (-> schema (m/explain ::invalid) (me/with-error-messages))))
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (-> schema (m/explain ::invalid) (me/humanize))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (-> schema (m/explain ::invalid) (me/humanize))))
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (-> [:string {:error/fn '(constantly "FAIL")}]
-                (m/explain ::invalid)
-                (me/with-error-messages {::m/disable-sci true}))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (-> [:string {:error/fn '(constantly "FAIL")}]
+               (m/explain ::invalid)
+               (me/with-error-messages {::m/disable-sci true}))))
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (-> [:string {:error/fn '(constantly "FAIL")}]
-                (m/explain ::invalid)
-                (me/humanize {::m/disable-sci true}))))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (-> [:string {:error/fn '(constantly "FAIL")}]
+               (m/explain ::invalid)
+               (me/humanize {::m/disable-sci true}))))
       (testing "direct options win"
         (is (-> schema (m/explain ::invalid) (me/with-error-messages {::m/disable-sci false})))
         (is (-> schema (m/explain ::invalid) (me/humanize {::m/disable-sci false})))))))
@@ -315,12 +315,12 @@
               [:e [:string {:min 1, :max 4}]]
               [:f [:string {:min 4, :max 4}]]]
              (m/explain
-               {:a 123
-                :b ""
-                :c "invalid"
-                :d ""
-                :e 123
-                :f "invalid"})
+              {:a 123
+               :b ""
+               :c "invalid"
+               :d ""
+               :e 123
+               :f "invalid"})
              (me/humanize)))))
 
 (deftest int-test
@@ -338,12 +338,12 @@
               [:e [:int {:min 1, :max 4}]]
               [:f [:int {:min 4, :max 4}]]]
              (m/explain
-               {:a "123"
-                :b 0
-                :c 5
-                :d 0
-                :e "123"
-                :f 5})
+              {:a "123"
+               :b 0
+               :c 5
+               :d 0
+               :e "123"
+               :f 5})
              (me/humanize)))))
 
 (deftest double-test
@@ -361,12 +361,12 @@
               [:e [:double {:min 1, :max 4}]]
               [:f [:double {:min 4, :max 4}]]]
              (m/explain
-               {:a "123"
-                :b 0.0
-                :c 5.0
-                :d 0.0
-                :e "123"
-                :f 5.0})
+              {:a "123"
+               :b 0.0
+               :c 5.0
+               :d 0.0
+               :e "123"
+               :f 5.0})
              (me/humanize)))))
 
 (deftest any-test
@@ -460,9 +460,9 @@
   (is (= [{:x ["missing required key"]}
           {:x ["missing required key"]}]
          (-> (m/explain
-               [:sequential [:map [:x [:sequential [:map [:y number?]]]]]]
-               '({:a 10}
-                 {:b 10}))
+              [:sequential [:map [:x [:sequential [:map [:y number?]]]]]]
+              '({:a 10}
+                {:b 10}))
              (me/humanize)))))
 
 (deftest util-schemas-test
@@ -539,11 +539,11 @@
   (testing "correct paths"
     (is (= ["should be an integer" "should be an integer" "should be an integer"]
            (me/humanize
-             (m/explain [:and [:and :int :int :int]] "2")
-             {:resolve me/-resolve-direct-error})
+            (m/explain [:and [:and :int :int :int]] "2")
+            {:resolve me/-resolve-direct-error})
            (me/humanize
-             (m/explain [:and [:and :int :int :int]] "2")
-             {:resolve me/-resolve-root-error}))))
+            (m/explain [:and [:and :int :int :int]] "2")
+            {:resolve me/-resolve-root-error}))))
 
   (testing "collecting all properties"
     (are [schema expected]
@@ -566,7 +566,20 @@
       [:map {:error/message "map-failure" ::level :warn} [:foo :int]]
       [[]
        "map-failure"
-       {:error/message "map-failure", ::level :warn}])))
+       {:error/message "map-failure", ::level :warn}]))
+
+  (testing ":fn with :error/path #554"
+    (is (= {:password2 ["passwords don't match"]}
+           (-> [:and [:map
+                      [:password string?]
+                      [:password2 string?]]
+                [:fn {:error/message "passwords don't match"
+                      :error/path    [:password2]}
+                 '(fn [{:keys [password password2]}]
+                    (= password password2))]]
+               (m/explain {:password  "secret"
+                           :password2 "faarao"})
+               (me/humanize {:resolve me/-resolve-root-error}))))))
 
 (deftest limits
   (is (= {:a [["should be an int"]]
@@ -583,12 +596,12 @@
               [:e [:vector {:min 2, :max 5} int?]]
               [:f [:vector {:min 5, :max 5} int?]]]
              (m/explain
-               {:a ["123"]
-                :b [1]
-                :c [1 2 3 4 5 6]
-                :d [1]
-                :e [1.2]
-                :f [1 2 3 4]})
+              {:a ["123"]
+               :b [1]
+               :c [1 2 3 4 5 6]
+               :d [1]
+               :e [1.2]
+               :f [1 2 3 4]})
              (me/humanize)))))
 
 (defrecord Horror [])

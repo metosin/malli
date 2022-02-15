@@ -1,8 +1,8 @@
 (ns malli.dot
-  (:require [malli.core :as m]
-            [malli.util :as mu]
+  (:require [clojure.string :as str]
+            [malli.core :as m]
             [malli.registry :as mr]
-            [clojure.string :as str]))
+            [malli.util :as mu]))
 
 (defn -lift [?schema]
   (let [schema (m/schema ?schema)]
@@ -12,12 +12,12 @@
 (defn -collect [schema]
   (let [state (atom {})]
     (m/walk
-      schema
-      (fn [schema _ _ _]
-        (let [properties (m/properties schema)]
-          (doseq [[k v] (-> (m/-properties-and-options properties (m/options schema) identity) first :registry)]
-            (swap! state assoc-in [:registry k] v))
-          (swap! state assoc :schema schema))))
+     schema
+     (fn [schema _ _ _]
+       (let [properties (m/properties schema)]
+         (doseq [[k v] (-> (m/-properties-and-options properties (m/options schema) identity) first :registry)]
+           (swap! state assoc-in [:registry k] v))
+         (swap! state assoc :schema schema))))
     @state))
 
 (defn -schema-name [base path]
@@ -41,10 +41,10 @@
   (let [links (atom {})]
     (doseq [[from schema] registry]
       (m/walk
-        schema
-        (fn [schema _ _ _]
-          (when-let [to (when (m/-ref-schema? schema) (m/-ref schema))]
-            (swap! links update from (fnil conj #{}) to)))))
+       schema
+       (fn [schema _ _ _]
+         (when-let [to (when (m/-ref-schema? schema) (m/-ref schema))]
+           (swap! links update from (fnil conj #{}) to)))))
     @links))
 
 ;;

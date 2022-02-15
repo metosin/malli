@@ -1,6 +1,6 @@
 (ns malli.error
-  (:require [malli.core :as m]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [malli.core :as m]
             [malli.util :as mu]))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
@@ -181,11 +181,11 @@
 
 (defn- -next-row [previous current other-seq]
   (reduce
-    (fn [row [diagonal above other]]
-      (let [update-val (if (= other current) diagonal (inc (min diagonal above (peek row))))]
-        (conj row update-val)))
-    [(inc (first previous))]
-    (map vector previous (next previous) other-seq)))
+   (fn [row [diagonal above other]]
+     (let [update-val (if (= other current) diagonal (inc (min diagonal above (peek row))))]
+       (conj row update-val)))
+   [(inc (first previous))]
+   (map vector previous (next previous) other-seq)))
 
 (defn- -levenshtein [sequence1 sequence2]
   (peek (reduce (fn [previous current] (-next-row previous current sequence2))
@@ -241,7 +241,7 @@
 (defn -resolve-direct-error [_ error options]
   [(error-path error options) (error-message error options)])
 
-(defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path] :as error} options]
+(defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path in] :as error} options]
   (let [options (assoc options :unknown false)]
     (loop [path path, l nil, mp path, p (m/properties (:schema error)), m (error-message error options)]
       (let [[path' m' p'] (or (let [schema (mu/get-in schema path)]
@@ -253,7 +253,9 @@
                                         message (error-message {:schema schema} options)]
                                     (when message [(conj path l) message (m/properties schema)]))))
                               (when m [mp m p]))]
-        (if (seq path) (recur (pop path) (last path) path' p' m') (when m [(mu/path->in schema path') m' p']))))))
+        (if (seq path)
+          (recur (pop path) (last path) path' p' m')
+          (when m [(if (seq in) (mu/path->in schema path') (error-path error options)) m' p']))))))
 
 (defn with-error-message
   ([error]
@@ -282,26 +284,26 @@
            types {::m/extra-key (fn [_ path value] [::misspelled-key (last path) (-> value keys set (or #{}))])
                   ::m/invalid-dispatch-value handle-invalid-value}]
        (update
-         explanation
-         :errors
-         (fn [errors]
-           (as-> errors $
-                 (mapv (fn [{:keys [schema path type] :as error}]
-                         (if-let [get-keys (types type)]
-                           (let [known-keys (->> schema (m/entries) (map first) (set))
-                                 value (get-in (:value explanation) (butlast path))
-                                 [error-type key keys] (get-keys schema path value)
-                                 similar (-most-similar-to keys key known-keys)
-                                 likely-misspelling-of (mapv #(conj (vec (butlast path)) %) (vec similar))]
-                             (swap! !likely-misspelling-of into likely-misspelling-of)
-                             (cond-> error similar (assoc :type error-type
-                                                          ::likely-misspelling-of likely-misspelling-of)))
-                           error)) $)
-                 (if-not keep-likely-misspelled-of
-                   (remove (fn [{:keys [path type]}]
-                             (and (@!likely-misspelling-of path)
-                                  (= type ::m/missing-key))) $)
-                   $))))))))
+        explanation
+        :errors
+        (fn [errors]
+          (as-> errors $
+            (mapv (fn [{:keys [schema path type] :as error}]
+                    (if-let [get-keys (types type)]
+                      (let [known-keys (->> schema (m/entries) (map first) (set))
+                            value (get-in (:value explanation) (butlast path))
+                            [error-type key keys] (get-keys schema path value)
+                            similar (-most-similar-to keys key known-keys)
+                            likely-misspelling-of (mapv #(conj (vec (butlast path)) %) (vec similar))]
+                        (swap! !likely-misspelling-of into likely-misspelling-of)
+                        (cond-> error similar (assoc :type error-type
+                                                     ::likely-misspelling-of likely-misspelling-of)))
+                      error)) $)
+            (if-not keep-likely-misspelled-of
+              (remove (fn [{:keys [path type]}]
+                        (and (@!likely-misspelling-of path)
+                             (= type ::m/missing-key))) $)
+              $))))))))
 
 (defn humanize
   "Humanized a explanation. Accepts the following optitons:
@@ -316,7 +318,7 @@
                                             :as options}]
    (when errors
      (reduce
-       (fn [acc error]
-         (let [[path message] (resolve explanation error options)]
-           (-assoc-in acc value path (wrap (assoc error :message message)))))
-       nil errors))))
+      (fn [acc error]
+        (let [[path message] (resolve explanation error options)]
+          (-assoc-in acc value path (wrap (assoc error :message message)))))
+      nil errors))))

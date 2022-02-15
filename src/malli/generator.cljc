@@ -158,6 +158,18 @@
 ;; generators
 ;;
 
+(defn- qualified-keyword-generator [schema]
+  (if-let [namespace-unparsed (:namespace (m/properties schema))]
+    (gen/fmap (fn [k] (keyword (name namespace-unparsed) (name k)))
+              gen/keyword)
+    (gen/such-that qualified-keyword? gen/keyword-ns)))
+
+(defn- qualified-symbol-generator [schema]
+  (if-let [namespace-unparsed (:namespace (m/properties schema))]
+    (gen/fmap (fn [k] (symbol (name namespace-unparsed) (name k)))
+              gen/symbol)
+    (gen/such-that qualified-symbol? gen/symbol-ns)))
+
 (defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
@@ -202,8 +214,8 @@
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)
-(defmethod -schema-generator :qualified-keyword [_ _] (gen/such-that qualified-keyword? gen/keyword-ns))
-(defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
+(defmethod -schema-generator :qualified-keyword [schema _] (qualified-keyword-generator schema))
+(defmethod -schema-generator :qualified-symbol [schema _] (qualified-symbol-generator schema))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))

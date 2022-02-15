@@ -862,6 +862,20 @@ With custom key and type defaults:
 ; => {:user {:name "", :description "-"}}
 ```
 
+With custom function:
+
+```clj
+(m/decode
+ [:map
+  [:os [:string {:property "os.name"}]]
+  [:timezone [:string {:property "user.timezone"}]]]
+ {} 
+ (mt/default-value-transformer 
+  {:key :property
+   :default-fn (fn [_ x] (System/getProperty x))}))
+; => {:os "Mac OS X", :timezone "Europe/Helsinki"}
+```
+
 Single sweep of defaults & string encoding:
 
 ```clj

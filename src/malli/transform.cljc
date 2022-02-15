@@ -380,23 +380,22 @@
 (defn default-value-transformer
   ([]
    (default-value-transformer nil))
-  ([{:keys [key default-fn defaults] :or {key :default, default-fn identity}}]
+  ([{:keys [key default-fn defaults] :or {key :default, default-fn (fn [_ x] x)}}]
    (let [get-default (fn [schema]
                        (if-some [e (some-> schema m/properties (find key))]
                          (constantly (val e))
                          (some->> schema m/type (get defaults) (#(constantly (% schema))))))
          set-default {:compile (fn [schema _]
                                  (when-some [f (get-default schema)]
-                                   (fn [x] (if (nil? x) (default-fn (f)) x))))}
+                                   (fn [x] (if (nil? x) (default-fn schema (f)) x))))}
          add-defaults {:compile (fn [schema _]
                                   (let [defaults (into {}
                                                        (keep (fn [[k {:keys [optional] :as p} v]]
                                                                (when-not optional
                                                                  (let [e (find p key)]
-                                                                   (when-some [f (if e
-                                                                                   (constantly (val e))
-                                                                                   (get-default v))]
-                                                                     [k (comp default-fn f)])))))
+                                                                   (when-some [f (if e (constantly (val e))
+                                                                                       (get-default v))]
+                                                                     [k (fn [] (default-fn schema (f)))])))))
                                                        (m/children schema))]
                                     (when (seq defaults)
                                       (fn [x]

@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* support for `default-fn` in `mt/default-value-transformer`
+
 ## 0.8.3 (2022-02-15)
 
 * FIX: qualified-keyword with namespace doesn't generate the ns [#642](https://github.com/metosin/malli/issues/642)

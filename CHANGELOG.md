@@ -16,7 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* support for `default-fn` in `mt/default-value-transformer`
+* support for 2-arity `default-fn` option in `mt/default-value-transformer` [#582](https://github.com/metosin/malli/pull/582) & [#644](https://github.com/metosin/malli/pull/644)
 
 ## 0.8.3 (2022-02-15)
 

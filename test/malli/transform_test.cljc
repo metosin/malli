@@ -832,21 +832,24 @@
                   [:first {:default 1} int?]
                   [:second {:default 2} int?]]]
       (testing "called on each defaulted value"
-        (let [seen (atom [])]
-          (is (= {:first 1, :second 2} (m/encode schema nil (mt/default-value-transformer {:default-fn (fn [x] (swap! seen conj x) x)}))))
+        (let [seen (atom [])
+              transformer (mt/default-value-transformer {:default-fn (fn [_ x] (swap! seen conj x) x)})]
+          (is (= {:first 1, :second 2} (m/encode schema nil transformer)))
           (is (= [{} 1 2] @seen))))
 
       (testing "only called on defaulted value"
-        (let [seen (atom [])]
-          (is (= {:first -1, :second 2} (m/encode schema {:first -1} (mt/default-value-transformer {:default-fn (fn [x] (swap! seen conj x) x)}))))
+        (let [seen (atom [])
+              transformer (mt/default-value-transformer {:default-fn (fn [_ x] (swap! seen conj x) x)})]
+          (is (= {:first -1, :second 2} (m/encode schema {:first -1} transformer)))
           (is (= [2] @seen)))))
 
     (testing "custom default :key"
       (let [schema [:map {}
                     [:first {:default 1, :name 'one} int?]
                     [:second {:default 2, :name 'two} int?]]]
-        (let [seen (atom [])]
-          (is (= {:first 'one, :second 'two} (m/encode schema {} (mt/default-value-transformer {:key :name, :default-fn (fn [x] (swap! seen conj x) x)}))))
+        (let [seen (atom [])
+              transformer (mt/default-value-transformer {:key :name, :default-fn (fn [_ x] (swap! seen conj x) x)})]
+          (is (= {:first 'one, :second 'two} (m/encode schema {} transformer)))
           (is (= ['one 'two] @seen)))))))
 
 (deftest type-properties-based-transformations

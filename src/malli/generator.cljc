@@ -14,6 +14,10 @@
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
 
+;;
+;; generators
+;;
+
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
 (defn -recur [schema {::keys [recursion recursion-limit] :or {recursion-limit 4} :as options}]
@@ -154,8 +158,24 @@
       (gen/fmap #(apply concat %) (-coll-gen schema identity options))
       (-coll-gen schema identity options))))
 
+(defn -qualified-ident-gen [schema mk-value-with-ns value-with-ns-gen-size mk-gen-random]
+  (if-let [namespace-unparsed (:namespace (m/properties schema))]
+    (gen/fmap (fn [k] (mk-value-with-ns (name namespace-unparsed) (name k)))
+              value-with-ns-gen-size)
+    (mk-gen-random)))
+
+(defn -qualified-keyword-gen [schema]
+  (-qualified-ident-gen schema
+                        keyword gen/keyword
+                        #(gen/such-that qualified-keyword? gen/keyword-ns)))
+
+(defn -qualified-symbol-gen [schema]
+  (-qualified-ident-gen schema
+                        symbol gen/symbol
+                        #(gen/such-that qualified-symbol? gen/symbol-ns)))
+
 ;;
-;; generators
+;; User-facing API
 ;;
 
 (defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
@@ -202,8 +222,8 @@
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)
-(defmethod -schema-generator :qualified-keyword [_ _] (gen/such-that qualified-keyword? gen/keyword-ns))
-(defmethod -schema-generator :qualified-symbol [_ _] (gen/such-that qualified-symbol? gen/symbol-ns))
+(defmethod -schema-generator :qualified-keyword [schema _] (-qualified-keyword-gen schema))
+(defmethod -schema-generator :qualified-symbol [schema _] (-qualified-symbol-gen schema))
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))

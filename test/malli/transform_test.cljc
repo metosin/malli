@@ -825,7 +825,29 @@
                          :tuple (constantly nil)
                          'string? (constantly "")
                          'int? (constantly nil)
-                         'double? (constantly nil)}}))))))
+                         'double? (constantly nil)}})))))
+
+  (testing "default-fn applied on default value, when any"
+    (let [schema [:map {:default {}}
+                  [:first {:default 1} int?]
+                  [:second {:default 2} int?]]]
+      (testing "called on each defaulted value"
+        (let [seen (atom [])]
+          (is (= {:first 1, :second 2} (m/encode schema nil (mt/default-value-transformer {:default-fn (fn [x] (swap! seen conj x) x)}))))
+          (is (= [{} 1 2] @seen))))
+
+      (testing "only called on defaulted value"
+        (let [seen (atom [])]
+          (is (= {:first -1, :second 2} (m/encode schema {:first -1} (mt/default-value-transformer {:default-fn (fn [x] (swap! seen conj x) x)}))))
+          (is (= [2] @seen)))))
+
+    (testing "custom default :key"
+      (let [schema [:map {}
+                    [:first {:default 1, :name 'one} int?]
+                    [:second {:default 2, :name 'two} int?]]]
+        (let [seen (atom [])]
+          (is (= {:first 'one, :second 'two} (m/encode schema {} (mt/default-value-transformer {:key :name, :default-fn (fn [x] (swap! seen conj x) x)}))))
+          (is (= ['one 'two] @seen)))))))
 
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))

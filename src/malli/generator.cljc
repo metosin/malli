@@ -158,24 +158,21 @@
       (gen/fmap #(apply concat %) (-coll-gen schema identity options))
       (-coll-gen schema identity options))))
 
-(defn -qualified-ident-gen [schema mk-gen-with-namespace mk-gen-random]
+(defn -qualified-ident-gen [schema mk-value-with-ns value-with-ns-gen-size mk-gen-random]
   (if-let [namespace-unparsed (:namespace (m/properties schema))]
-    (mk-gen-with-namespace (name namespace-unparsed))
+    (gen/fmap (fn [k] (mk-value-with-ns (name namespace-unparsed) (name k)))
+              value-with-ns-gen-size)
     (mk-gen-random)))
 
 (defn -qualified-keyword-gen [schema]
-  (-qualified-ident-gen
-   schema
-   (fn [ns-name] (gen/fmap (fn [k] (keyword ns-name (name k)))
-                           gen/keyword))
-   #(gen/such-that qualified-keyword? gen/keyword-ns)))
+  (-qualified-ident-gen schema
+                        keyword gen/keyword
+                        #(gen/such-that qualified-keyword? gen/keyword-ns)))
 
 (defn -qualified-symbol-gen [schema]
-  (-qualified-ident-gen
-   schema
-   (fn [ns-name] (gen/fmap (fn [k] (symbol ns-name (name k)))
-                           gen/symbol))
-   #(gen/such-that qualified-symbol? gen/symbol-ns)))
+  (-qualified-ident-gen schema
+                        symbol gen/symbol
+                        #(gen/such-that qualified-symbol? gen/symbol-ns)))
 
 ;;
 ;; User-facing API

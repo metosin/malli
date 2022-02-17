@@ -1,4 +1,4 @@
-# malli 
+# malli
 
 [![Build Status](https://img.shields.io/github/workflow/status/metosin/malli/Run%20tests.svg)](https://github.com/metosin/malli/actions)
 [![cljdoc badge](https://cljdoc.org/badge/metosin/malli)](https://cljdoc.org/d/metosin/malli/)
@@ -68,7 +68,7 @@ Malli requires Clojure 1.10+ and is tested against 1.10 and 1.11.
 
 Malli supports both [Vector](#vector-syntax) and [Map](#map-syntax) syntaxes.
 
-### Vector Syntax
+### Vector syntax
 
 The default syntax uses vectors, inspired by [hiccup](https://github.com/weavejester/hiccup):
 
@@ -114,7 +114,7 @@ Usage:
 ; => [:string {:min 1}]
 ```
 
-### Map Syntax
+### Map syntax
 
 Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 
@@ -127,17 +127,17 @@ Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 ;; type with properties
 {:type :string
  :properties {:min 1, :max 10}
- 
+
 ;; type with properties and children
 {:type :tuple
  :properties {:title "location"}
  :children [{:type :double}
             {:type :double}]}
- 
+
 ;; a function schema of :int -> :int
 {:type :=>
  :input {:type :cat, :children [{:type :int}]}
- :output :int}           
+ :output :int}
 ```
 
 Usage:
@@ -163,7 +163,7 @@ Usage:
 
 Map-syntax is also called the [Schema AST](#schema-ast).
 
-### Why Two Syntaxes?
+### Why two syntaxes?
 
 We have found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Instantiating schemas using the Schema AST can be much faster.
 
@@ -210,11 +210,11 @@ Schemas can have properties:
     :description "It's an age"
     :json-schema/example 20}
    :int [:> 18]])
-   
+
 (m/properties Age)
 ; => {:title "Age"
 ;     :description "It's an age"
-;     :json-schema/example 20}   
+;     :json-schema/example 20}
 ```
 
 Maps are open by default:
@@ -233,7 +233,7 @@ Maps can be closed with `:closed` property:
   [:map {:closed true} [:x :int]]
   {:x 1, :extra "key"})
 ; => false
-``` 
+```
 
 Maps keys are not limited to keywords:
 
@@ -276,20 +276,20 @@ You can also use [decomplected maps keys and values](https://clojure.org/about/s
 ; => true
 ```
 
-## Homogeneous Maps
+## Homogeneous maps
 
 Other times, we use a map as a homogeneous index. In this case, all our key-value
 pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 ```clj
-(m/validate 
+(m/validate
   [:map-of :string [:map [:lat number?] [:long number?]]]
   {"oslo" {:lat 60 :long 11}
    "helsinki" {:lat 60 :long 24}})
 ;; => true
 ```
 
-## Sequence Schemas
+## Sequence schemas
 
 You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for vectors and `:set` for sets.
 
@@ -363,7 +363,7 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 while `:cat` and `:alt` just use numeric indices for paths:
 
 ```clj
-(m/explain 
+(m/explain
   [:* [:cat string? [:alt string? boolean?]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
 ;; => {:schema [:* [:cat string? [:alt string? boolean?]]],
@@ -385,7 +385,7 @@ a seqex child `:schema` can be used:
 ;; whereas
 (m/validate
   [:cat [:= :names] [:* string?] [:= :nums] [:* number?]]
-  [:names "a" "b" :nums 1 2 3]) 
+  [:names "a" "b" :nums 1 2 3])
 ; => true
 ```
 
@@ -473,7 +473,7 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 ## Fn schemas
 
 `:fn` allows any predicate function to be used:
- 
+
 ```clj
 (def my-schema
   [:and
@@ -481,7 +481,7 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
     [:x int?]
     [:y int?]]
    [:fn (fn [{:keys [x y]}] (> x y))]])
-   
+
 (m/validate my-schema {:x 1, :y 0})
 ; => true
 
@@ -489,7 +489,7 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 ; => false
 ```
 
-## Error Messages
+## Error messages
 
 Detailed errors with `m/explain`:
 
@@ -553,7 +553,7 @@ Detailed errors with `m/explain`:
 ;           :value nil})}
 ```
 
-## Custom Error Messages
+## Custom error messages
 
 Explain results can be humanized with `malli.error/humanize`:
 
@@ -578,7 +578,7 @@ Error messages can be customized with `:error/message` and `:error/fn` propertie
 ```clj
 (-> [:map
      [:id int?]
-     [:size [:enum {:error/message "should be: S|M|L"} 
+     [:size [:enum {:error/message "should be: S|M|L"}
              "S" "M" "L"]]
      [:age [:fn {:error/fn '(fn [{:keys [value]} _] (str value ", should be > 18"))}
             '(fn [x] (and (int? x) (> x 18)))]]]
@@ -665,7 +665,7 @@ Looking up humanized errors from parent schemas with custom `:resolve` (BETA, su
 ; => {:foo ["entry-failure"]}
 ```
 
-## Spell Checking
+## Spell checking
 
 For closed schemas, key spelling can be checked with:
 
@@ -682,19 +682,19 @@ For closed schemas, key spelling can be checked with:
 ; :name ["disallowed key"]}
 ```
 
-## Pretty Errors
+## Pretty errors
 
 For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 <img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
 
-## Value Transformation
+## Value transformation
 
 ```clj
 (require '[malli.transform :as mt])
 ```
 
-Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `m/Transformer`. 
+Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `m/Transformer`.
 
 Default Transformers include: `string-transformer`, `json-transformer`, `strip-extra-keys-transformer`, `default-value-transformer` and `key-transformer`.
 
@@ -832,7 +832,7 @@ Going crazy:
                   :leave '#(update % :x (partial * 2))}}
    [:x [int? {:decode/math {:enter '(partial + 2)
                             :leave '(partial * 3)}}]]]
-  {:x 1} 
+  {:x 1}
   (mt/transformer {:name :math}))
 ; => {:x 24}
 ```
@@ -869,8 +869,8 @@ With custom function:
  [:map
   [:os [:string {:property "os.name"}]]
   [:timezone [:string {:property "user.timezone"}]]]
- {} 
- (mt/default-value-transformer 
+ {}
+ (mt/default-value-transformer
   {:key :property
    :default-fn (fn [_ x] (System/getProperty x))}))
 ; => {:os "Mac OS X", :timezone "Europe/Helsinki"}
@@ -899,7 +899,7 @@ Single sweep of defaults & string encoding:
 ; :c {:x "42"}}
 ```
 
-## Programming with Schemas
+## Programming with schemas
 
 ```clj
 (require '[malli.util :as mu])
@@ -932,8 +932,8 @@ Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `g
 (-> Address
     (mu/dissoc :address)
     (mu/update-properties assoc :title "Address"))
-;[:map {:title "Address"} 
-; [:id string?] 
+;[:map {:title "Address"}
+; [:id string?]
 ; [:tags [:set keyword?]]]
 ```
 
@@ -941,13 +941,13 @@ Making keys optional or required:
 
 ```clj
 (mu/optional-keys [:map [:x int?] [:y int?]])
-;[:map 
-; [:x {:optional true} int?] 
+;[:map
+; [:x {:optional true} int?]
 ; [:y {:optional true} int?]]
 
 (mu/required-keys [:map [:x {:optional true} int?] [:y int?]])
-;[:map 
-; [:x int?] 
+;[:map
+; [:x int?]
 ; [:y int?]]
 ```
 
@@ -968,7 +968,7 @@ Closing and opening all `:map` schemas recursively:
 ; [:c [:map {:closed true}
 ;      [:d int?]]]]
 
-(-> abcd 
+(-> abcd
     mu/closed-schema
     mu/open-schema)
 ;[:map {:title "abcd"}
@@ -1007,14 +1007,14 @@ With `:and`, first child is used in merge:
 ```clj
 (mu/merge
   [:and {:type "entity"}
-   [:map {:title "user"} 
+   [:map {:title "user"}
     [:name :string]]
    map?]
   [:map {:description "aged"} [:age :int]])
-;[:and {:type "entity"} 
-; [:map {:title "user", :description "aged"} 
-;  [:name :string] 
-;  [:age :int]] 
+;[:and {:type "entity"}
+; [:map {:title "user", :description "aged"}
+;  [:name :string]
+;  [:age :int]]
 ; map?]
 ```
 
@@ -1175,7 +1175,7 @@ and back, returning all paths:
 ; => [[0 :address 0 :lonlat]]
 ```
 
-## Declarative Schema Transformation
+## Declarative schema transformation
 
 There are also declarative versions of schema transforming utilities in `malli.util/schemas`. These include `:merge`, `:union` and `:select-keys`:
 
@@ -1195,15 +1195,15 @@ Merged
 ; [:map [:y :int]]]
 
 (m/deref Merged)
-;[:map 
-; [:x :string] 
+;[:map
+; [:x :string]
 ; [:y :int]]
 
 (m/validate Merged {:x "kikka", :y 6})
 ; => true
 ```
 
-## Persisting Schemas 
+## Persisting schemas
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
@@ -1220,14 +1220,14 @@ Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eva
     (edn/read-string)
     (doto (-> (m/validate {:x 0, :y 1}) prn)) ; => false
     (doto (-> (m/validate {:x 2, :y 1}) prn))) ; => true
-;[:and 
-; [:map 
-;  [:x int?] 
-;  [:y int?]] 
+;[:and
+; [:map
+;  [:x int?]
+;  [:y int?]]
 ; [:fn (fn [{:keys [x y]}] (> x y))]]
 ```
 
-## Multi Schemas
+## Multi schemas
 
 Closed dispatch with `:multi` schema and `:dispatch` property:
 
@@ -1289,7 +1289,7 @@ Any (serializable) function can be used for `:dispatch`:
 ; :address {:country :finland}}
 ```
 
-## Recursive Schemas
+## Recursive schemas
 
 To create a recursive schema, introduce a [local registry](#local-registry) and wrap all recursive positions in the registry with `:ref`. Now you may reference the recursive schemas in the body of the schema.
 
@@ -1310,7 +1310,7 @@ Without the `:ref` keyword, malli eagerly expands the schema until a stack overf
   [:schema {:registry {::cons [:maybe [:tuple pos-int? ::cons]]}}
    ::cons]
   [16 [64 [26 [1 [13 nil]]]]])
-; StackOverflowError 
+; StackOverflowError
 ```
 
 Mutual recursion works too. Thanks to the `:schema` construct, many schemas could be defined in the local registry, the top-level one being promoted by the `:schema` second parameter:
@@ -1336,7 +1336,7 @@ Nested registries, the last definition wins:
 ; => true
 ```
 
-## Value Generation
+## Value generation
 
 Schemas can be used to generate values:
 
@@ -1356,8 +1356,8 @@ Schemas can be used to generate values:
 ;; => 55740
 
 ;; regexs work too (only clj and if [com.gfredericks/test.chuck "0.2.10"+] available)
-(mg/generate 
-  [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"] 
+(mg/generate
+  [:re #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"]
   {:seed 42, :size 10})
 ; => "CaR@MavCk70OHiX.yZ"
 
@@ -1380,14 +1380,14 @@ Schemas can be used to generate values:
 ; => 19
 
 ;; :gen/min & :gen/max for numbers and collections
-(mg/generate 
+(mg/generate
   [:vector {:gen/min 4, :gen/max 4} :int] '
   {:seed 1})
 ; => [-8522515 -1433 -1 1]
 
 ;; :gen/infinite? & :gen/NaN? for :double
-(mg/generate 
-  [:double {:gen/infinite? true, :gen/NaN? true}] 
+(mg/generate
+  [:double {:gen/infinite? true, :gen/NaN? true}]
   {:seed 1})
 ; => ##Inf
 
@@ -1434,7 +1434,7 @@ Integration with test.check:
 ; => (2 1 2 2 2 2 8 1 55 83)
 ```
 
-## Inferring Schemas
+## Inferring schemas
 
 Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):
 
@@ -1610,7 +1610,7 @@ Pulling out function argument schemas from Vars:
 
 (md/infer #'kikka)
 ;[:function
-; [:=> [:cat :any] :any] 
+; [:=> [:cat :any] :any]
 ; [:=> [:cat :any :any [:* :any]] :any]]
 ```
 
@@ -1682,7 +1682,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ; {:prop "-user", :val [:s "joe"]}]
 ```
 
-`m/parser` to create an optimized parser: 
+`m/parser` to create an optimized parser:
 
 ```clj
 (def Hiccup
@@ -1740,7 +1740,7 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 ; [:p "Hello, world of data"]]
 ```
 
-## Serializable Functions
+## Serializable functions
 
 Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
 it is not present, the malli function evaluator throws `:sci-not-available` exception.
@@ -1774,7 +1774,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 ## Schema AST
 
-Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation. 
+Implemented with protocol `malli.core/AST`. Allows lossless round-robin with faster schema creation.
 
 **NOTE**: For now, the AST syntax in considered as internal, e.g. don't use it as a database persistency model.
 
@@ -1818,15 +1818,15 @@ Implemented with protocol `malli.core/AST`. Allows lossless round-robin with fas
 ; => true
 ```
 
-## Schema Transformation
+## Schema transformation
 
 Schemas can be transformed using post-walking, e.g. the [Visitor Pattern](https://en.wikipedia.org/wiki/visitor_pattern).
 
 The identity walker:
 
 ```clj
-(m/walk 
-  Address 
+(m/walk
+  Address
   (m/schema-walker identity))
 ;[:map
 ; [:id string?]
@@ -1922,8 +1922,8 @@ Custom transformation via `:json-schema` namespaced properties:
 Full override with `:json-schema` property:
 
 ```clj
-(json-schema/transform 
-  [:map {:json-schema {:type "file"}} 
+(json-schema/transform
+  [:map {:json-schema {:type "file"}}
    [:file any?]])
 ; {:type "file"}
 ```
@@ -1973,19 +1973,19 @@ Custom transformation via `:swagger` and `:json-schema` namespaced properties:
 Full override with `:swagger` property:
 
 ```clj
-(swagger/transform 
-  [:map {:swagger {:type "file"}} 
+(swagger/transform
+  [:map {:swagger {:type "file"}}
    [:file any?]])
 ; {:type "file"}
 ```
 
-## Custom Schema Types
+## Custom schema types
 
 Schema Types are described using `m/IntoSchema` protocol, which has a factory method
-`(-into-schema [this properties children options])` to create the actual Schema instances. 
+`(-into-schema [this properties children options])` to create the actual Schema instances.
 See `malli.core` for example implementations.
 
-### Simple Schema
+### Simple schema
 
 For simple cases, there is `m/-simple-schema`:
 
@@ -2041,7 +2041,7 @@ register the types:
 ; => {:type "integer", :format "int64", :minimum 6, :example 42}
 ```
 
-### Content Dependent Simple Schema
+### Content dependent simple schema
 
 You can also build content-dependent schemas by using a callback function of `properties children -> opts` instead of static `opts`:
 
@@ -2065,7 +2065,7 @@ You can also build content-dependent schemas by using a callback function of `pr
 ; => ["should be over 12, was 10"]
 ```
 
-## Schema Registry
+## Schema registry
 
 Schemas are looked up using a `malli.registry/Registry` protocol, which is effectively a map from schema `type` to a schema recipe (`Schema`, `IntoSchema` or vector-syntax schema). `Map`s can also be used as a registry.
 
@@ -2144,7 +2144,7 @@ Passing in custom options to all public methods is a lot of boilerplate. For the
 (require '[malli.registy :as mr])
 
 ;; the default registry
-(-> m/default-registry (mr/schemas) (count)) 
+(-> m/default-registry (mr/schemas) (count))
 ;=> 140
 
 ;; global side-effects! free since 0.7.0!
@@ -2152,10 +2152,10 @@ Passing in custom options to all public methods is a lot of boilerplate. For the
   {:string (m/-string-schema)
    :maybe (m/-maybe-schema)
    :map (m/-map-schema)})
-   
+
 (-> m/default-registry (mr/schemas) (count))
 ; => 3
-   
+
 (m/validate
   [:map [:maybe [:maybe :string]]]
   {:maybe "sheep"})
@@ -2169,7 +2169,7 @@ Passing in custom options to all public methods is a lot of boilerplate. For the
 * cljs: `:closure-defines {malli.registry/mode "strict"}`
 * clj: `:jvm-opts ["-Dmalli.registry/mode=strict"]`
 
-### DCE and Schemas
+### DCE and schemas
 
 The default schema registry is defined as a Var, so all Schema implementation (100+) are dragged in. For ClojureScript, this means the schemas implementations are not removed via Dead Code Elimination (DCE), resulting a large (37KB, zipped) js-bundle.
 
@@ -2185,7 +2185,7 @@ Malli allows the default registry to initialized with empty schemas, using the f
 
 With this, you can register just what you need and rest are DCE'd. The previous example results in just a 3KB gzip bundle.
 
-## Registry implemenations
+## Registry implementations
 
 Malli supports multiple type of registries.
 
@@ -2240,7 +2240,7 @@ The mutable registry can also be passed in as an explicit option:
 ; => true
 ```
 
-### Dynamic Registry
+### Dynamic registry
 
 If you know what you are doing, you can also use [dynamic scope](https://stuartsierra.com/2013/03/29/perils-of-dynamic-scope) to pass in default schema registry:
 
@@ -2256,7 +2256,7 @@ If you know what you are doing, you can also use [dynamic scope](https://stuarts
 ; => true
 ```
 
-### Lazy Registries
+### Lazy registries
 
 You can provide schemas at runtime using `mr/lazy-registry` - it takes a local registry and a provider function of `type registry -> schema` as arguments:
 
@@ -2299,7 +2299,7 @@ You can provide schemas at runtime using `mr/lazy-registry` - it takes a local r
 ; => true
 ```
 
-### Composite Registry
+### Composite registry
 
 Registries can be composed, a full example:
 
@@ -2333,7 +2333,7 @@ Registries can be composed, a full example:
 ; => true
 ```
 
-## Function Schemas
+## Function schemas
 
 See [Working with functions](docs/function-schemas.md).
 
@@ -2388,7 +2388,7 @@ In action:
 
 ![malli](docs/img/clj-kondo.png)
 
-## Visualizing Schemas
+## Visualizing schemas
 
 ### DOT
 
@@ -2478,13 +2478,13 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 Options can be used by binding a dynamic `l/*options*` Var:
 
 ```clj
-(binding [l/*options* {:registry (merge 
-                                  (m/default-schemas) 
+(binding [l/*options* {:registry (merge
+                                  (m/default-schemas)
                                   {:user/id :int})}]
   (l/schema {:id (l/maybe :user/id)
              :child {:id :user/id}}))
-;[:map 
-; [:id [:maybe :user/id]] 
+;[:map
+; [:id [:maybe :user/id]]
 ; [:child [:map [:id :user/id]]]]
 ```
 
@@ -2492,9 +2492,9 @@ Options can be used by binding a dynamic `l/*options*` Var:
 
 Malli tries to be really, really fast.
 
-### Validation Perfomance
+### Validation perfomance
 
-Usually as fast (or faster) as idiomatic Clojure. 
+Usually as fast (or faster) as idiomatic Clojure.
 
 ```clj
 (require '[criterium.core :as cc])
@@ -2545,7 +2545,7 @@ Same with Clojure Spec and Plumatic Schema:
   (cc/quick-bench (valid? valid)))
 ```
 
-### Transformation Performance
+### Transformation performance
 
 Usually faster than idiomatic Clojure.
 
@@ -2614,8 +2614,8 @@ The transformation engine is smart enough to just transform parts of the schema 
 ; => true
 
 ;; 5ns
-(cc/quick-bench 
-  (json->user 
+(cc/quick-bench
+  (json->user
     {:id 1
      :name "tiina"
      :address {:street "kotikatu"
@@ -2645,7 +2645,7 @@ The transformation engine is smart enough to just transform parts of the schema 
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 ```
 
-## Built-in Schemas
+## Built-in schemas
 
 #### `malli.core/predicate-schemas`
 

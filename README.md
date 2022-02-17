@@ -2185,7 +2185,7 @@ Malli allows the default registry to initialized with empty schemas, using the f
 
 With this, you can register just what you need and rest are DCE'd. The previous example results in just a 3KB gzip bundle.
 
-## Registry implemenations
+## Registry implementations
 
 Malli supports multiple type of registries.
 

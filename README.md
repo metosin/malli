@@ -2141,7 +2141,7 @@ See also [Recursive Schemas](#recursive-schemas).
 Passing in custom options to all public methods is a lot of boilerplate. For the lazy, there is an easier way - we can swap the (global) default registry:
 
 ```clj
-(require '[malli.registy :as mr])
+(require '[malli.registry :as mr])
 
 ;; the default registry
 (-> m/default-registry (mr/schemas) (count))

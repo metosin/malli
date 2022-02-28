@@ -25,7 +25,7 @@
 ;; instrument
 ;;
 
-(defn -emit-instrument-fn [{:keys [gen filters] :as instrument-opts} {:keys [schema] :as schema-map} ns-sym fn-sym]
+(defn -emit-instrument-fn [env {:keys [gen filters] :as instrument-opts} {:keys [schema] :as schema-map} ns-sym fn-sym]
   ;; gen is a function
   (let [schema-map (-> schema-map
                        (select-keys [:gen :scope :report])
@@ -36,24 +36,24 @@
           ;; use the passed in gen fn to generate a value
           (cond (and gen (true? (:gen schema-map))) (assoc $ :gen gen)
                 :else (dissoc $ :gen)))
-        replace-var-code
-        `(do
-           (swap! instrumented-vars #(assoc % '~fn-sym ~fn-sym))
-           (set! ~fn-sym (m/-instrument ~schema-map-with-gen ~fn-sym))
-           (.log js/console "..instrumented" '~fn-sym)
-           '~fn-sym)]
+        replace-var-code (when (ana-api/resolve env fn-sym)
+                           `(do
+                              (swap! instrumented-vars #(assoc % '~fn-sym ~fn-sym))
+                              (set! ~fn-sym (m/-instrument ~schema-map-with-gen ~fn-sym))
+                              (.log js/console "..instrumented" '~fn-sym)
+                              '~fn-sym))]
     (if filters
       `(when (some #(% '~ns-sym (var ~fn-sym) ~schema-map) ~filters)
          ~replace-var-code)
       replace-var-code)))
 
-(defn -instrument [{:keys [data] :or {data (m/function-schemas :cljs)} :as opts}]
+(defn -instrument [env {:keys [data] :or {data (m/function-schemas :cljs)} :as opts}]
   (let [r
         (reduce
          (fn [acc [ns-sym sym-map]]
            (reduce-kv
             (fn [acc' fn-sym schema-map]
-              (conj acc' (-emit-instrument-fn opts schema-map ns-sym (symbol (str ns-sym) (str fn-sym)))))
+              (conj acc' (-emit-instrument-fn env opts schema-map ns-sym (symbol (str ns-sym) (str fn-sym)))))
             acc sym-map)) [] data)]
     `(filterv some? ~r)))
 
@@ -61,28 +61,28 @@
 ;; unstrument
 ;;
 
-(defn -emit-unstrument-fn [{:keys [schema filters] :as opts} ns-sym fn-sym]
+(defn -emit-unstrument-fn [env {:keys [schema filters] :as opts} ns-sym fn-sym]
   (let [opts (-> opts
                  (select-keys [:gen :scope :report])
                  ;; The schema passed in may contain cljs vars that have to be resolved at runtime in cljs.
                  (assoc :schema `(m/function-schema ~schema)))
-        replace-with-orig
-        `(when-let [orig-fn# (get @instrumented-vars '~fn-sym)]
-           (swap! instrumented-vars #(dissoc % '~fn-sym))
-           (set! ~fn-sym orig-fn#)
-           (.log js/console "..unstrumented" '~fn-sym)
-           '~fn-sym)]
+        replace-with-orig (when (ana-api/resolve env fn-sym)
+                            `(when-let [orig-fn# (get @instrumented-vars '~fn-sym)]
+                               (swap! instrumented-vars #(dissoc % '~fn-sym))
+                               (set! ~fn-sym orig-fn#)
+                               (.log js/console "..unstrumented" '~fn-sym)
+                               '~fn-sym))]
     (if filters
       `(when (some #(% '~ns-sym (var ~fn-sym) ~opts) ~filters)
          ~replace-with-orig)
       replace-with-orig)))
 
-(defn -unstrument [opts]
+(defn -unstrument [env opts]
   (let [r (reduce
            (fn [acc [ns-sym sym-map]]
              (reduce-kv
               (fn [acc' fn-sym schema-map]
-                (conj acc' (-emit-unstrument-fn (assoc opts :schema (:schema schema-map))
+                (conj acc' (-emit-unstrument-fn env (assoc opts :schema (:schema schema-map))
                                                 ns-sym (symbol (str ns-sym) (str fn-sym)))))
               acc sym-map)) [] (m/function-schemas :cljs))]
     `(filterv some? ~r)))
@@ -138,11 +138,11 @@
 (defmacro instrument!
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).
    See [[malli.core/-instrument]] for possible options."
-  ([] (-instrument {}))
-  ([opts] (-instrument opts)))
+  ([] (-instrument &env {}))
+  ([opts] (-instrument &env opts)))
 
 (defmacro unstrument!
   "Removes instrumentation from a filtered set of function Vars (e.g. `defn`s).
    See [[malli.core/-instrument]] for possible options."
-  ([] (-unstrument {}))
-  ([opts] (-unstrument opts)))
+  ([] (-unstrument &env {}))
+  ([opts] (-unstrument &env opts)))

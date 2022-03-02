@@ -13,3 +13,4 @@ classes
 /demosci
 /target
 .clj-kondo
+.clerk

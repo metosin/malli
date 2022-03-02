@@ -14,9 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.8.4 (2022-03-02)
 
 * support for 2-arity `default-fn` option in `mt/default-value-transformer` [#582](https://github.com/metosin/malli/pull/582) & [#644](https://github.com/metosin/malli/pull/644)
+* fix malli.dev.cljs implementation [#655](https://github.com/metosin/malli/pull/655)
 
 ## 0.8.3 (2022-02-15)
 

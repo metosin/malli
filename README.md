@@ -66,7 +66,7 @@ Malli requires Clojure 1.10+ and is tested against 1.10 and 1.11.
 
 ## Syntax
 
-Malli supports both [Vector](#vector-syntax) and [Map](#map-syntax) syntaxes.
+Malli supports [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) syntaxes.
 
 ### Vector syntax
 
@@ -163,9 +163,13 @@ Usage:
 
 Map-syntax is also called the [Schema AST](#schema-ast).
 
-### Why two syntaxes?
+### Why multiple syntaxes?
 
-We have found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Instantiating schemas using the Schema AST can be much faster.
+Malli started with just the [Vector syntax](#vector-syntax). It's really powerful and relatively easy to read, but not optimal for all use cases.
+
+We introduced [Map Syntax](#map-syntax) as we found out that the overhead of parsing large amount of vector-syntaxes can be a deal-breaker when running on slow single-threaded environments like Javascript on mobile phones. Map-syntax allows lazy and parseless Schema Creation.
+
+We added [Lite Syntax](#lite) for simplified schema creation for special cases, like to be used with [reitit coercion](https://cljdoc.org/d/metosin/reitit/CURRENT/doc/coercion/malli) and for easy migration from [data-specs](https://cljdoc.org/d/metosin/spec-tools/CURRENT/doc/data-specs).
 
 ## Validation
 

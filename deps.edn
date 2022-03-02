@@ -1,9 +1,9 @@
 {:paths ["src" "resources"]
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
-                               lambdaisland/kaocha {:mvn/version "1.62.993"}
+                               lambdaisland/kaocha {:mvn/version "1.63.998"}
                                lambdaisland/kaocha-cljs {:mvn/version "1.0.107"}
-                               org.babashka/sci {:mvn/version "0.2.9"}
+                               org.babashka/sci {:mvn/version "0.3.1"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}
                                metosin/spec-tools {:mvn/version "0.10.5"}
                                spec-provider/spec-provider {:mvn/version "0.4.14"}
@@ -21,7 +21,7 @@
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.2.8"}}}
+           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.3.1"}}}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.7.2" :git/sha "e6ff67c"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]
@@ -29,7 +29,7 @@
                         jmh-clojure/task {:mvn/version "0.1.1"}}
                  :main-opts ["-m" "jmh.main"]}
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.17.2"}}}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.17.5"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
                                 :sha "f68d66d99d95f4d2bfd61f001e28a8ad7c4d3a12"}}
@@ -47,7 +47,7 @@
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
                      :extra-deps {org.clojure/clojure {:mvn/version "1.11.0-alpha3"}
-                                  org.babashka/sci {:mvn/version "0.2.8"}}}
+                                  org.babashka/sci {:mvn/version "0.3.1"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                org.clojure/clojure {:mvn/version "1.11.0-alpha3"}
@@ -57,7 +57,7 @@
                              "-Dclojure.compiler.direct-linking=true"]}
            :clojure-10 {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
            :clojure-11 {}}
- :deps {org.clojure/clojure {:mvn/version "1.11.0-beta1"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.0-rc1"}
         borkdude/dynaload {:mvn/version "0.2.2"}
         borkdude/edamame {:mvn/version "0.0.19"}
         org.clojure/test.check {:mvn/version "1.1.1"}

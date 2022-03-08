@@ -1,5 +1,6 @@
 (ns malli.instrument.cljs-test
   (:require [cljs.test :refer [deftest is testing]]
+            [malli.instrument.fn-schemas :refer [sum-nums str-join str-join2 str-join3 str-join4]]
             [malli.core :as m]
             [malli.experimental :as mx]
             [malli.instrument.cljs :as mi]))
@@ -62,13 +63,17 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (power "2")))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (power 6)))))
 
-(mi/collect!)
+(mi/collect! {:ns ['malli.instrument.cljs-test 'malli.instrument.fn-schemas]})
 
 (deftest collect!-test
 
   (testing "with instrumentation"
-    (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
-
+    (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test 'malli.instrument.fn-schemas)]})
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join [1 "2"])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join2 [1 "2"])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join3 [1 "2"])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join4 [1 "2"])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (sum-nums "2")))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (minus "2")))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus 6)))
 
@@ -76,10 +81,15 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (minus-small-int 10))))
 
   (testing "without instrumentation"
-    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
+    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test 'malli.instrument.fn-schemas)]})
 
     (is (= 1 (minus "2")))
     (is (= 5 (minus 6)))
+    (is (= (sum-nums [2 "3" 4 5]) "2345"))
+    (is (= (str-join [1 "2"]) "12"))
+    (is (= (str-join2 [1 "2"]) "12"))
+    (is (= (str-join3 [1 "2"]) "12"))
+    (is (= (str-join4 [1 "2"]) "12"))
 
     (is (= 1 (minus-small-int "2")))
     (is (= 9 (minus-small-int 10)))))

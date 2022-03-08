@@ -28,7 +28,7 @@
             metadata (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))]
         (m/-register-function-schema! ns simple-name schema* metadata :cljs identity)
         `(do
-           (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata)
+           (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)
            '~(:name var-map))))))
 
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))

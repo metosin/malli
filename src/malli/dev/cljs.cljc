@@ -23,7 +23,7 @@
         ;; register all function schemas and instrument them based on the options
         ~(mi/-collect-all-ns)
         ~(mi/-instrument env options)
-        ~(do (clj-kondo/emit!) nil)) ) )
+        ~(do (clj-kondo/emit-cljs!*) nil)) ) )
 
 #?(:clj (defmacro start!
           "Collects defn schemas from all loaded namespaces and starts instrumentation for

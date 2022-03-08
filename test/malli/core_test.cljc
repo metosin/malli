@@ -2467,9 +2467,9 @@
 
 (deftest function-schema-registry-test
   (swap! @#'m/-function-schemas* update :clj dissoc 'malli.core-test)
-  (let [prior-function-schemas (m/function-schemas)
+  (let [prior-function-schemas (m/function-schemas #?(:cljs :cljs :clj :clj))
         _ (m/=> function-schema-registry-test-fn [:=> :cat :nil])
-        new-function-schemas (m/function-schemas)
+        new-function-schemas (m/function-schemas #?(:cljs :cljs :clj :clj))
         this-ns-schemas (get new-function-schemas 'malli.core-test)
         fn-schema (get this-ns-schemas 'function-schema-registry-test-fn)]
     (is (= (inc (count prior-function-schemas)) (count new-function-schemas)))

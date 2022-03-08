@@ -190,4 +190,15 @@
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
 
 #?(:clj
-   (defmacro emit-cljs! [] (emit!)))
+   (defn collect-cljs
+     ([] (collect-cljs nil))
+     ([ns]
+      (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
+        (for [[k vs] (m/function-schemas :cljs) :when (-collect k) [_ v] vs v (from v)] v)))))
+
+#?(:clj
+   (defn emit-cljs!* []
+     (-> (collect-cljs) (linter-config) (save!)) nil))
+
+#?(:clj
+   (defmacro emit-cljs! [] (emit-cljs!*)))

@@ -1,5 +1,6 @@
 (ns malli.instrument.cljs
   (:require [cljs.analyzer.api :as ana-api]
+            [clojure.walk :as walk]
             [malli.core :as m]
             [malli.generator :as mg]))
 
@@ -7,13 +8,28 @@
 ;; Collect schemas - register them into the known malli.core/-function-schemas[-cljs]* atom based on their metadata.
 ;;
 
-(defn -collect! [simple-name {:keys [meta] :as var-map}]
+(defn -collect! [env simple-name {:keys [meta] :as var-map}]
   (let [ns (symbol (namespace (:name var-map)))
         schema (:malli/schema meta)]
     (when schema
-      (m/-register-function-schema! ns simple-name schema (m/-unlift-keys meta "malli") :cljs identity)
-      `(do (m/-register-function-schema! '~ns '~simple-name ~schema ~(m/-unlift-keys meta "malli"))
-           '~(:name var-map)))))
+      (let [-qualify-sym (fn [form]
+                           (if (symbol? form)
+                             (if (simple-symbol? form)
+                               (if-let [form-ns (get-in (ana-api/find-ns ns) [:uses form])]
+                                 ;; a referred symbol
+                                 (symbol (str form-ns) (str form))
+                                 (symbol (str ns) (str form)))
+                               (let [ns-part   (symbol (namespace form))
+                                     name-part (name form)
+                                     full-ns   (get-in (ana-api/find-ns ns) [:requires ns-part])]
+                                 (symbol (str full-ns) name-part)))
+                             form))
+            schema* (walk/postwalk -qualify-sym schema)
+            metadata (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))]
+        (m/-register-function-schema! ns simple-name schema* metadata :cljs identity)
+        `(do
+           (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata)
+           '~(:name var-map))))))
 
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
 
@@ -125,7 +141,7 @@
    | `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([] `(collect! ~{:ns (symbol (str *ns*))}))
   ([{:keys [ns]}]
-   (reduce (fn [acc [var-name var-map]] (let [v (-collect! var-name var-map)] (cond-> acc v (conj v))))
+   (reduce (fn [acc [var-name var-map]] (let [v (-collect! &env var-name var-map)] (cond-> acc v (conj v))))
            #{}
            (mapcat (fn [n]
                      (let [ns-sym (cond (symbol? n) n

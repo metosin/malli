@@ -2404,9 +2404,11 @@
            sym `'~(symbol (str *ns*) (str name))]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
-       (when (some? (:ns &env))
-         (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity))
-       `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
+       (if (some? (:ns &env))
+         (do
+           (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity)
+           `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name) :cljs identity) ~sym))
+         `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym)))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,

@@ -1907,7 +1907,7 @@
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x))
+  [x] (satisfies? IntoSchema x))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
@@ -1958,7 +1958,7 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
+  [x] (satisfies? Schema x))
 
 (defn schema
   "Creates a Schema object from any of the following:

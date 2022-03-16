@@ -2659,3 +2659,15 @@
       (is (m/schema? (via-ast :my/bigger-than-3)))
       (is (m/schema? (via-ast :my-bigger-than-4)))
       (is (m/schema? (via-ast 'my/bigger-than-5))))))
+
+(defrecord ExtensionExample []
+  m/Schema
+  m/IntoSchema)
+
+(deftest schema?-test
+  (is (m/schema? (reify m/Schema)))
+  (is (m/schema? (map->ExtensionExample {}))))
+
+(deftest into-schema?-test
+  (is (m/into-schema? (reify m/IntoSchema)))
+  (is (m/into-schema? (map->ExtensionExample {}))))

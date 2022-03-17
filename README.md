@@ -854,9 +854,9 @@ To JSON:
 
 ```clj
 (def Tags
-  [:map
-   {:closed true}
-   [:tags [:set :keyword]]])
+  (m/schema [:map
+             {:closed true}
+             [:tags [:set :keyword]]]))
 (jsonista.core/write-value-as-string
  (m/encode Tags
            {:tags #{:bar :quux}}
@@ -871,7 +871,7 @@ From JSON without validation:
           (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
                                     jsonista.core/keyword-keys-object-mapper)
           mt/json-transformer)
-; => {:foo #{:bar ["quux"]}}
+; => {:tags #{:bar ["quux"]}}
 ```
 
 From JSON with validation:
@@ -893,6 +893,18 @@ From JSON with validation:
                       (jsonista.core/read-value "{\"tags\":[\"bar\",\"quux\"]}" ; <- note! no error
                                                 jsonista.core/keyword-keys-object-mapper)
                       mt/json-transformer))
+; => true
+```
+
+For performance, it's best to prebuild the validator, decoder and explainer:
+
+```clj
+(def validate-Tags (m/validator Tags))
+(def decode-Tags (m/decoder Tags mt/json-transformer))
+(-> (jsonista.core/read-value "{\"tags\":[\"bar\",\"quux\"]}"
+                              jsonista.core/keyword-keys-object-mapper)
+    decode-Tags
+    validate-Tags)
 ; => true
 ```
 

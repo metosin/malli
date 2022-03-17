@@ -841,6 +841,73 @@ Going crazy:
 ; => {:x 24}
 ```
 
+## To and from JSON
+
+The `m/encode` and `m/decode` functions work on clojure data. To go
+from clojure data to JSON, you need a JSON library like
+[jsonista](https://github.com/metosin/jsonista). Additionally, since
+`m/decode` doesn't check the schema, you need to run `m/validate` (or
+`m/explain`) if you want to make sure your data conforms to your
+schema.
+
+To JSON:
+
+```clj
+(def Tags
+  (m/schema [:map
+             {:closed true}
+             [:tags [:set :keyword]]]))
+(jsonista.core/write-value-as-string
+ (m/encode Tags
+           {:tags #{:bar :quux}}
+           mt/json-transformer))
+; => "{\"tags\":[\"bar\",\"quux\"]}"
+```
+
+From JSON without validation:
+
+```clj
+(m/decode Tags
+          (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
+                                    jsonista.core/keyword-keys-object-mapper)
+          mt/json-transformer)
+; => {:tags #{:bar ["quux"]}}
+```
+
+From JSON with validation:
+
+```clj
+(m/explain Tags
+           (m/decode Tags
+                     (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
+                                               jsonista.core/keyword-keys-object-mapper)
+                     mt/json-transformer))
+; => {:schema [:map {:closed true} [:tags [:set :keyword]]],
+;     :value {:tags #{:bar ["quux"]}},
+;     :errors ({:path [:tags 0], :in [:tags ["quux"]], :schema :keyword, :value ["quux"]})}
+```
+
+```clj
+(m/validate Tags
+            (m/decode Tags
+                      (jsonista.core/read-value "{\"tags\":[\"bar\",\"quux\"]}" ; <- note! no error
+                                                jsonista.core/keyword-keys-object-mapper)
+                      mt/json-transformer))
+; => true
+```
+
+For performance, it's best to prebuild the validator, decoder and explainer:
+
+```clj
+(def validate-Tags (m/validator Tags))
+(def decode-Tags (m/decoder Tags mt/json-transformer))
+(-> (jsonista.core/read-value "{\"tags\":[\"bar\",\"quux\"]}"
+                              jsonista.core/keyword-keys-object-mapper)
+    decode-Tags
+    validate-Tags)
+; => true
+```
+
 ## Default values
 
 Applying default values:

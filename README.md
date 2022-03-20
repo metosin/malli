@@ -947,6 +947,30 @@ With custom function:
 ; => {:os "Mac OS X", :timezone "Europe/Helsinki"}
 ```
 
+Optional Keys are not added by default:
+
+```clj
+(m/decode
+ [:map
+  [:name [:string {:default "kikka"}]]
+  [:description {:optional true} [:string {:default "kikka"}]]]
+ {}
+ (mt/default-value-transformer))
+; => {:name "kikka"}
+```
+
+Adding optional keys too via `::mt/add-optional-keys` option:
+
+```clj
+(m/decode
+ [:map
+  [:name [:string {:default "kikka"}]]
+  [:description {:optional true} [:string {:default "kikka"}]]]
+ {}
+ (mt/default-value-transformer {::mt/add-optional-keys true}))
+; => {:name "kikka", :description "kikka"}
+```
+
 Single sweep of defaults & string encoding:
 
 ```clj

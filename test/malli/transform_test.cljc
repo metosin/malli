@@ -790,9 +790,13 @@
 
   (testing "optional key"
     (is (= {:x 5} (m/decode [:map [:x :int] [:y {:optional true, :default 0} :int]] {:x 5}
-                            mt/default-value-transformer)))
+                            (mt/default-value-transformer))))
+    (is (= {:x 5, :y 0} (m/decode [:map [:x :int] [:y {:optional true, :default 0} :int]] {:x 5}
+                                  (mt/default-value-transformer {::mt/add-optional-keys true}))))
     (is (= {:x 5} (m/decode [:map [:x :int] [:y {:optional true} [:int {:default 0}]]] {:x 5}
-                            mt/default-value-transformer))))
+                            (mt/default-value-transformer))))
+    (is (= {:x 5, :y 0} (m/decode [:map [:x :int] [:y {:optional true} [:int {:default 0}]]] {:x 5}
+                                  (mt/default-value-transformer {::mt/add-optional-keys true})))))
 
   (testing "with custom options"
     (is (= false (m/decode [:and {:? false} boolean?] nil (mt/default-value-transformer {:key :?}))))

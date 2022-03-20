@@ -189,16 +189,16 @@
 #?(:clj
    (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
 
-#?(:clj
-   (defn collect-cljs
-     ([] (collect-cljs nil))
-     ([ns]
-      (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
-        (for [[k vs] (m/function-schemas :cljs) :when (-collect k) [_ v] vs v (from v)] v)))))
+(defn collect-cljs
+  ([] (collect-cljs nil))
+  ([ns]
+   (let [-collect (fn [k] (or (nil? ns) (= k (symbol (str ns)))))]
+     (for [[k vs] (m/function-schemas :cljs) :when (-collect k) [_ v] vs v (from v)] v))))
 
-#?(:clj
-   (defn emit-cljs!* []
-     (-> (collect-cljs) (linter-config) (save!)) nil))
+#?(:cljs
+   (defn- print!* [config]
+     (js/console.log (with-out-str (fipp/pprint config {:width 120})))))
 
-#?(:clj
-   (defmacro emit-cljs! [] (emit-cljs!*)))
+#?(:cljs
+   (defn print-cljs! []
+     (-> (collect-cljs) (linter-config) (print!*)) nil))

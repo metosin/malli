@@ -52,20 +52,29 @@
                 :z :vector}}
          (clj-kondo/transform Schema)))
 
-  #?(:clj
-     (is (= {'malli.clj-kondo-test
-             {'kikka
-              {:arities {1 {:args [:int],
-                            :ret :int},
-                         :varargs {:args [:int :int {:op :rest, :spec :int}],
-                                   :ret :int,
-                                   :min-arity 2}}}
-              'siren
-              {:arities {2 {:args [:ifn :coll], :ret :map}}}}}
-            (-> 'malli.clj-kondo-test
-                (clj-kondo/collect)
-                (clj-kondo/linter-config)
-                (get-in [:linters :type-mismatch :namespaces])))))
+  (let [expected-out
+        {'malli.clj-kondo-test
+         {'kikka
+          {:arities {1        {:args [:int],
+                               :ret  :int},
+                     :varargs {:args      [:int :int {:op :rest, :spec :int}],
+                               :ret       :int,
+                               :min-arity 2}}}
+          'siren
+          {:arities {2 {:args [:ifn :coll], :ret :map}}}}}]
+    #?(:clj
+       (is (= expected-out
+             (-> 'malli.clj-kondo-test
+               (clj-kondo/collect)
+               (clj-kondo/linter-config)
+               (get-in [:linters :type-mismatch :namespaces])))))
+
+    #?(:cljs
+       (is (= expected-out
+             (-> 'malli.clj-kondo-test
+               (clj-kondo/collect-cljs)
+               (clj-kondo/linter-config)
+               (get-in [:linters :type-mismatch :namespaces]))))))
   (testing "sequential elements"
     (is (= {:op :rest :spec :int}
            (clj-kondo/transform [:repeat :int])))

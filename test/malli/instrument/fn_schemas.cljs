@@ -8,6 +8,11 @@
   [args]
   (apply + args))
 
+(defn sum-nums2
+  {:malli/schema [:=> [:cat VecOfInts] float?]}
+  [args]
+  (apply + args))
+
 (defn str-join
   {:malli/schema [:=> [:cat VecOfStrings] schemas/string]}
   [args]

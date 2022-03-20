@@ -15,10 +15,21 @@
       (let [-qualify-sym (fn [form]
                            (if (symbol? form)
                              (if (simple-symbol? form)
-                               (if-let [form-ns (get-in (ana-api/find-ns ns) [:uses form])]
-                                 ;; a referred symbol
-                                 (symbol (str form-ns) (str form))
-                                 (symbol (str ns) (str form)))
+                               (let [ns-data (ana-api/find-ns ns)
+                                     intern-keys (set (keys (ana-api/ns-interns ns)))]
+                                 (cond
+                                   ;; a referred symbol
+                                   (get-in ns-data [:uses form])
+                                   (let [form-ns (str (get-in ns-data [:uses form]))]
+                                     (symbol form-ns (str form)))
+
+                                   ;; interned var
+                                   (contains? intern-keys form)
+                                   (symbol (str ns) (str form))
+
+                                   :else
+                                   ;; a cljs.core var, do not qualify it
+                                   form))
                                (let [ns-part   (symbol (namespace form))
                                      name-part (name form)
                                      full-ns   (get-in (ana-api/find-ns ns) [:requires ns-part])]

@@ -380,7 +380,7 @@
 (defn default-value-transformer
   ([]
    (default-value-transformer nil))
-  ([{:keys [key default-fn defaults] :or {key :default, default-fn (fn [_ x] x)}}]
+  ([{:keys [key default-fn defaults ::add-optional-keys] :or {key :default, default-fn (fn [_ x] x)}}]
    (let [get-default (fn [schema]
                        (if-some [e (some-> schema m/properties (find key))]
                          (constantly (val e))
@@ -391,7 +391,7 @@
          add-defaults {:compile (fn [schema _]
                                   (let [defaults (into {}
                                                        (keep (fn [[k {:keys [optional] :as p} v]]
-                                                               (when-not optional
+                                                               (when (or (not optional) add-optional-keys)
                                                                  (let [e (find p key)]
                                                                    (when-some [f (if e (constantly (val e))
                                                                                        (get-default v))]

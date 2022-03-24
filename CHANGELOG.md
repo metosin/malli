@@ -14,6 +14,20 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `malli.transform/default-value-transformer` accepts `mt/add-optional-keys` option:
+
+```clj
+(m/decode
+ [:map
+  [:name [:string {:default "kikka"}]]
+  [:description {:optional true} [:string {:default "kikka"}]]]
+ {}
+ (mt/default-value-transformer {::mt/add-optional-keys true}))
+; => {:name "kikka", :description "kikka"}
+```
+
 ## 0.8.4 (2022-03-02)
 
 * support for 2-arity `default-fn` option in `mt/default-value-transformer` [#582](https://github.com/metosin/malli/pull/582) & [#644](https://github.com/metosin/malli/pull/644)

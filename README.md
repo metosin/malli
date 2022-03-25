@@ -2483,11 +2483,36 @@ In action:
 
 ![malli](docs/img/clj-kondo.png)
 
+## Static type checking via Typed Clojure
+
+[Typed Clojure](https://github.com/typedclojure/typedclojure) is an optional type system for Clojure.
+
+[typed.malli](https://github.com/typedclojure/typedclojure/tree/main/typed/malli) can consume a subset of malli
+schema syntax to statically type check and infer Clojure code.
+
+See this in action in the [malli-type-providers](https://github.com/typedclojure/typedclojure/tree/main/example-projects/malli-type-providers)
+example project.
+
+```clojure
+(ns typed-example.malli-type-providers
+  (:require [typed.clojure :as t]
+            [malli.core :as m]))
+
+;; just use malli instrumentation normally
+(m/=> foo [:=> [:cat :int] :int])
+;; Typed Clojure will statically check `foo` against its schema (after converting it to a type)
+(defn foo [t] (inc t))
+;; Typed Clojure will automatically infer `foo`s type from its schema
+(foo 1)
+
+(comment (t/check-ns-clj)) ;; check this ns
+```
+
 ## Visualizing schemas
 
 ### DOT
 
-Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language):
+Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language) ):
 
 ```clj
 (require '[malli.dot :as md])

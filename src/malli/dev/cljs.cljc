@@ -1,8 +1,6 @@
 (ns malli.dev.cljs
   #?(:cljs (:require-macros [malli.dev.cljs]))
-  #?(:cljs (:require [malli.instrument.cljs]
-                     [malli.dev.pretty :as pretty]))
-
+  #?(:cljs (:require [malli.instrument.cljs]))
   #?(:clj (:require [malli.clj-kondo :as clj-kondo]
                     [malli.dev.pretty :as pretty]
                     [malli.instrument.cljs :as mi])))

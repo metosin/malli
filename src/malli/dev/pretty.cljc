@@ -82,13 +82,13 @@
        (let [message (with-out-str (report type data))]
          (throw (ex-info message {:type type :data data})))))))
 
-(defn prettier [key title f options]
+(defn prettifier [type title f options]
   (let [printer (assoc (or (::printer options) (assoc (-printer) :width 60)) :title title)
         actor (::actor options reporter)]
-    (fn [] (when-let [res (f)] ((actor printer) key res) res))))
+    (fn [& args] (when-let [res (apply f args)] ((actor printer) type res) res))))
 
 (defn explain
   ([?schema value] (explain ?schema value nil))
   ([?schema value options]
    (let [explain (fn [] (->> (m/explain ?schema value options) (me/with-error-messages)))]
-     ((prettier ::m/explain "Validation Error" explain options)))))
+     ((prettifier ::m/explain "Validation Error" explain options)))))

@@ -365,7 +365,7 @@
    (let [transform {:compile (fn [schema _]
                                (when (accept schema)
                                  (when-let [ks (some->> schema m/entries (map first) seq set)]
-                                   (fn [x] (reduce (fn [acc k] (if-not (ks k) (dissoc acc k) acc)) x (keys x))))))}]
+                                   (fn [x] (reduce-kv (fn [acc k _] (if-not (ks k) (dissoc acc k) acc)) x x)))))}]
      (transformer
       {:decoders {:map transform}
        :encoders {:map transform}}))))

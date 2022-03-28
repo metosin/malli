@@ -1444,7 +1444,7 @@ For example, here is a recursive schema using `:schema` for singly-linked lists 
 ```clojure
 (m/validate
   [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
-   ::cons]
+   [:ref ::cons]]
   [16 [64 [26 [1 [13 nil]]]]])
 ; => true
 ```
@@ -1458,6 +1458,25 @@ Without the `:ref` keyword, malli eagerly expands the schema until a stack overf
   [16 [64 [26 [1 [13 nil]]]]])
 ; StackOverflowError
 ```
+
+Technically, you only need the `:ref` in recursive positions. However, it is best practice to `:ref` all references
+to recursive variables for better-behaving generators:
+
+```clojure
+;; Note:
+[:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+ ::cons]
+;; produces the same generator as the "unfolded"
+[:maybe [:tuple pos-int? [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}} ::cons]]]
+;; while 
+[:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+ [:ref ::cons]]
+;; has a direct correspondance to the following generator:
+(gen/recursive-gen
+  (fn [rec] (gen/one-of [(gen/return nil) (gen/tuple rec)]))
+  (gen/return nil))
+```
+
 
 Mutual recursion works too. Thanks to the `:schema` construct, many schemas could be defined in the local registry, the top-level one being promoted by the `:schema` second parameter:
 

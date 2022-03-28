@@ -13,3 +13,7 @@ classes
 /demosci
 /target
 .clj-kondo
+.clerk
+.shadow-cljs
+public/*
+!public/index.html

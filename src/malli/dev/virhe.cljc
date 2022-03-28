@@ -1,11 +1,11 @@
 (ns malli.dev.virhe
   "initial code for https://github.com/metosin/virhe"
-  (:require #?(:clj [clojure.string :as str])
-            [arrangement.core]
-            [fipp.visit]
+  (:require [arrangement.core]
             [fipp.edn]
+            [fipp.ednize]
             [fipp.engine]
-            [fipp.ednize]))
+            [fipp.visit]
+            #?(:clj [clojure.string :as str])))
 
 ;;
 ;; colors
@@ -22,11 +22,9 @@
    :error 196})
 
 (defn -color [color body printer]
-  (let [colors (:colors printer -dark-colors)]
-    [:span
-     [:pass (str "\033[38;5;" (get colors color (:error colors)) "m")]
-     body
-     [:pass "\u001B[0m"]]))
+  (let [colors (:colors printer -dark-colors)
+        color (get colors color (:error colors))]
+    [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]]))
 
 ;;
 ;; EDN
@@ -77,7 +75,7 @@
                               [:span (fipp.visit/visit printer k) " " (fipp.visit/visit printer v)]))))
 
   (visit-set [this x]
-    (let [xs (sort-by identity (fn [a b] (arrangement.core/rank a b)) x)]
+    (let [xs (sort-by identity (fn [a b] (arrangement.core/rank a b)) (seq x))]
       (fipp.edn/pretty-coll this "#{" xs :line "}" fipp.visit/visit)))
 
   (visit-tagged [this {:keys [tag form]}]
@@ -106,14 +104,13 @@
 (defn -printer
   ([] (-printer nil))
   ([options]
-   (map->EdnPrinter
-     (merge
-       {:width 80
-        :symbols {}
-        :print-length *print-length*
-        :print-level *print-level*
-        :print-meta *print-meta*}
-       options))))
+   (let [defaults {:width 80
+                   :symbols {}
+                   :colors -dark-colors
+                   :print-length *print-length*
+                   :print-level *print-level*
+                   :print-meta *print-meta*}]
+     (map->EdnPrinter (cond->> options defaults (merge defaults))))))
 
 (defn -pprint
   ([x] (-pprint x (-printer)))
@@ -129,8 +126,8 @@
 (defn -visit [x printer]
   (fipp.visit/visit printer x))
 
-(defn -location [e ss]
-  #?(:clj
+#?(:clj
+   (defn -location [e ss]
      (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
            [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
                                   (cond (start-with f s) (recur (rest fs) ss)
@@ -174,7 +171,7 @@
 (defmulti -format (fn [type _ _ _] type) :default ::default)
 
 (defmethod -format ::default [_ message data printer]
-  {:body (into [:group (-text (or (:message data) message) printer)] (if data [:break :break (-visit data printer)]))})
+  {:body (into [:group (-text (or (:message data) message) printer)] (when data [:break :break (-visit data printer)]))})
 
 ;;
 ;; documents
@@ -183,5 +180,5 @@
 (defn -exception-doc [e printer]
   (let [{:keys [type data]} (ex-data e)
         {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
-        location (-location e (:throwing-fn-top-level-ns-names printer))]
+        location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)), :cljs nil)]
     (-section title location body printer)))

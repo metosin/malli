@@ -1,6 +1,6 @@
 (ns malli.impl.util
-  #?(:clj (:import (java.util.concurrent TimeoutException TimeUnit FutureTask)
-                   (clojure.lang MapEntry LazilyPersistentVector))))
+  #?(:clj (:import (clojure.lang MapEntry LazilyPersistentVector)
+                   (java.util.concurrent TimeoutException TimeUnit FutureTask))))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 
@@ -11,11 +11,9 @@
 (defn -map-valid [f v] (if (-invalid? v) v (f v)))
 (defn -map-invalid [f v] (if (-invalid? v) (f v) v))
 
-(defrecord SchemaError [path in schema value type message])
-
 (defn -error
-  ([path in schema value] (->SchemaError path in schema value nil nil))
-  ([path in schema value type] (->SchemaError path in schema value type nil)))
+  ([path in schema value] {:path path, :in in, :schema schema, :value value})
+  ([path in schema value type] {:path path, :in in, :schema schema, :value value, :type type}))
 
 (defn -vmap
   ([os] (-vmap identity os))

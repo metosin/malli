@@ -1,28 +1,28 @@
 (ns malli.clj-kondo-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [malli.clj-kondo :as clj-kondo]
             [malli.core :as m]
             [malli.util :as mu]))
 
 (def Schema
   (m/schema
-    [:map {:registry {::id string?
-                      ::price double?}}
-     ::id
-     [::price {:optional true}]
-     [:name string?]
-     [:description [:maybe string?]]
-     [:tags {:optional true} [:set qualified-keyword?]]
-     [::y {:optional true} boolean?]
-     [:select-keys [:maybe [:select-keys [:map [:x int?] [:y int?]] [:x]]]]
-     [:nested [:merge
-               [:map [:id ::id]]
-               [:map [:price ::price]]]]
-     [:string-type-enum  [:maybe [:enum "b" "c"]]]
-     [:keyword-type-enum [:enum :a :b]]
-     [:any-type-enum [:enum :a "b" "c"]]
-     [:z [:vector [:map-of int? int?]]]]
-    {:registry (merge (m/default-schemas) (mu/schemas))}))
+   [:map {:registry {::id string?
+                     ::price double?}}
+    ::id
+    [::price {:optional true}]
+    [:name string?]
+    [:description [:maybe string?]]
+    [:tags {:optional true} [:set qualified-keyword?]]
+    [::y {:optional true} boolean?]
+    [:select-keys [:maybe [:select-keys [:map [:x int?] [:y int?]] [:x]]]]
+    [:nested [:merge
+              [:map [:id ::id]]
+              [:map [:price ::price]]]]
+    [:string-type-enum  [:maybe [:enum "b" "c"]]]
+    [:keyword-type-enum [:enum :a :b]]
+    [:any-type-enum [:enum :a "b" "c"]]
+    [:z [:vector [:map-of int? int?]]]]
+   {:registry (merge (m/default-schemas) (mu/schemas))}))
 
 (defn kikka
   ([x] (* x x))
@@ -52,17 +52,33 @@
                 :z :vector}}
          (clj-kondo/transform Schema)))
 
-  #?(:clj
-     (is (= {'malli.clj-kondo-test
-             {'kikka
-              {:arities {1 {:args [:int],
-                            :ret :int},
-                         :varargs {:args [:int :int {:op :rest, :spec :int}],
-                                   :ret :int,
-                                   :min-arity 2}}}
-              'siren
-              {:arities {2 {:args [:ifn :coll], :ret :map}}}}}
-            (-> 'malli.clj-kondo-test
-                (clj-kondo/collect)
-                (clj-kondo/linter-config)
-                (get-in [:linters :type-mismatch :namespaces]))))))
+  (let [expected-out
+        {'malli.clj-kondo-test
+         {'kikka
+          {:arities {1        {:args [:int],
+                               :ret  :int},
+                     :varargs {:args      [:int :int {:op :rest, :spec :int}],
+                               :ret       :int,
+                               :min-arity 2}}}
+          'siren
+          {:arities {2 {:args [:ifn :coll], :ret :map}}}}}]
+    #?(:clj
+       (is (= expected-out
+             (-> 'malli.clj-kondo-test
+               (clj-kondo/collect)
+               (clj-kondo/linter-config)
+               (get-in [:linters :type-mismatch :namespaces])))))
+
+    #?(:cljs
+       (is (= expected-out
+             (-> 'malli.clj-kondo-test
+               (clj-kondo/collect-cljs)
+               (clj-kondo/linter-config)
+               (get-in [:linters :type-mismatch :namespaces]))))))
+  (testing "sequential elements"
+    (is (= {:op :rest :spec :int}
+           (clj-kondo/transform [:repeat :int])))
+    (is (= {:op :rest :spec {:op :keys :req {:price :int}}}
+           (clj-kondo/transform [:repeat [:map [:price :int]]])))
+    (is (= {:op :rest :spec [:int]}
+           (clj-kondo/transform [:repeat [:tuple :int]])))))

@@ -12,9 +12,161 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 [breakver]: https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md
 
-Malli is in [alpha](README.md#alpha).
+Malli is in well matured [alpha](README.md#alpha).
 
-## 0.7.0-20211031.202317-3 (2021-10-31)
+## UNRELEASED
+
+* `malli.transform/default-value-transformer` accepts `mt/add-optional-keys` option:
+
+```clj
+(m/decode
+ [:map
+  [:name [:string {:default "kikka"}]]
+  [:description {:optional true} [:string {:default "kikka"}]]]
+ {}
+ (mt/default-value-transformer {::mt/add-optional-keys true}))
+; => {:name "kikka", :description "kikka"}
+```
+
+## 0.8.4 (2022-03-02)
+
+* support for 2-arity `default-fn` option in `mt/default-value-transformer` [#582](https://github.com/metosin/malli/pull/582) & [#644](https://github.com/metosin/malli/pull/644)
+* fix malli.dev.cljs implementation [#655](https://github.com/metosin/malli/pull/655)
+
+## 0.8.3 (2022-02-15)
+
+* FIX: qualified-keyword with namespace doesn't generate the ns [#642](https://github.com/metosin/malli/issues/642)
+
+## 0.8.2 (2022-02-14)
+
+* new ns, `malli.experimental.lite`, see the [docs](README.md#lite).
+* updated deps:
+
+```clj
+borkdude/edamame 0.0.18 -> 0.0.19
+```
+
+## 0.8.1 (2022-02-05)
+
+* FIX: bug in inferring with value encoders [#631](https://github.com/metosin/malli/issues/631)
+* FIX: The malli pretty printer (virhe) is failing when it tries to print a datomic dbwhen it tries to pr [#629](https://github.com/metosin/malli/issues/629)
+
+## 0.8.0 (2022-01-23)
+
+* new `malli.instrument.cljs` and `malli.dev.cljs` namespaces for instrumentationa and dev-tooling for ClojureScript
+* `malli.dev/start!` uses `malli.dev.pretty/reporter` by default
+* allow `:malli/schema` to be defined via arglist meta-data, [#615](https://github.com/metosin/malli/pull/615)
+* **BREAKING**: local registries with schemas in vector syntax are stored as identity, not as form
+* **BREAKING**: `:malli.provider/tuple-threshold` has no default value
+* FIX: `me/-resolve-root-error` does not respect `:error/path`, [#554](https://github.com/metosin/malli/issues/554)
+* FIX: `m/from-ast` does not work with symbols or unamespaced keywords, [#626](https://github.com/metosin/malli/issues/626)
+* FIX: `:+` parsing returns vector, not sequence
+
+* new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
+
+```clj
+(require '[malli.destructure :as md])
+
+(-> '[a b & cs] (md/parse) :schema)
+; => [:cat :any :any [:* :any]]
+
+(-> '[a :- :string, b & cs :- [:* :int]] (md/parse) :schema)
+; => [:cat :string :any [:* :int]]
+```
+
+* new `malli.experimental` namespace with schematized `defn`, automatically registers the functions schemas with `m/=>`.
+
+```clj
+(require '[malli.experimental :as mx])
+
+(mx/defn kakka :- :int
+  "inline schemas (plumatic-style)"
+  [x :- :int] (inc x))
+```
+
+* transformer names can be qualified, schema properties support `:decode` and `:encode` keys:
+
+```clj
+(m/decode
+  [:string {:decode {:string (partial str "olipa "}}]
+  "kerran" mt/string-transformer)
+; => "olipa kerran"
+```
+
+* `malli.dev.pretty/explain` for pretty-printing explanations
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
+
+* updated dependencies:
+
+```clj
+fipp/fipp 0.6.24 -> 0.6.25
+```
+
+## 0.7.5 (2021-12-19)
+
+* [clj-kondo 2021.12.16+](https://github.com/clj-kondo/clj-kondo/blob/master/CHANGELOG.md#20211216) can load malli type configs automatically from new location (`.clj-kondo/metosin/malli-types/config.edn`)
+* use [fipp](https://github.com/brandonbloom/fipp) for fast pretty-printing the clj-kondo configs
+* updated dependencies:
+
+```clj
+mvxcvi/arrangement 1.2.0 -> 2.0.0
+borkdude/edamame 0.0.11 -> 0.0.18
+org.clojure/test.check 1.1.0 -> 1.1.1 
+```
+
+## 0.7.4 (2021-12-18)
+
+* schema inferring supports value decoding via options
+
+```clj
+(mp/provide
+ [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
+  {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
+ {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}})
+; => [:map [:id :uuid]]
+```
+
+## 0.7.3 (2021-12-15)
+
+* `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:
+
+```clj
+(require '[malli.provider :as mp])
+
+(mp/provide
+  [^{::mp/hint :map-of}
+   {:a {:b 1, :c 2}
+    :b {:b 2, :c 1}
+    :c {:b 3}
+    :d nil}])
+;[:map-of
+; keyword?
+; [:maybe [:map
+;          [:b int?]
+;          [:c {:optional true} int?]]]]
+```
+
+* `:tuple` inferring (supports type-hints and threshold options)
+
+```clj
+(mp/provide
+  [[1 "kikka" true]
+   [2 "kukka" true]
+   [3 "kakka" true]]
+  {::mp/tuple-threshold 3})
+; [:tuple int? string? boolean?]
+```
+
+## 0.7.2 (2021-12-12)
+
+* FIX Function with Sequential return value cannot define as function schema [#585](https://github.com/metosin/malli/issues/585)
+
+## 0.7.1 (2021-12-11)
+
+* FIX `decimal?` predicate schema was removed in 0.7.0, [#590](https://github.com/metosin/malli/issues/590)
+
+## 0.7.0 (2021-12-07)
 
 ### Performance
 
@@ -127,18 +279,47 @@ New optimized map-syntax to super-fast schema creation, see [README](README.md#m
 ; => true
 ```
 
-Will fully replace the old map-syntax at some point.
+Currently in alpha, will fully replace the old map-syntax at some point.
+
+### Swappable default registry
+
+No need to play with Compiler options or JVM properties to swap the default registry (only if you want to get DCE on CLJS with small set of schemas). Can be disabled with new `malli.registry/mode=strict` option.
+
+```clj
+(require '[malli.core :as m]
+         '[malli.util :as mu]
+         '[malli.registry :as mr]
+         '[malli.generator :as mg])
+
+;; look ma, just works
+(mr/set-default-registry!
+  (mr/composite-registry
+    (m/default-schemas)
+    (mu/schemas)))
+
+(mg/generate
+  [:merge
+   [:map [:x :int]]
+   [:map [:y :int]]])
+; => {:x 0, :y 92}
+```
 
 ### Public API
 
+* **BREAKING**: `m/explain` `:errors` are plain maps, not `Error` records.
+* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
+* **BREAKING**: strings generate alphanumeric chars by default
+* `malli.provider` supports inferring of `:maybe` and `:map-of`
+* configure default registry in less invasive manner, [#488](https://github.com/metosin/malli/issues/488)
+* `nil` is a valid default with `mt/default-value-transformer` [#576](https://github.com/metosin/malli/issues/576)
+* fixed `:schema` explain path, [#573](https://github.com/metosin/malli/issues/573)
+* fixed `:enum` explain path, [#553](https://github.com/metosin/malli/issues/553)
 * fixed pretty printing of function values, [#509](https://github.com/metosin/malli/pull/509)
 * fixed `:function` lenses
 * fixed arity error in `m/function-schema`
 * add localized error messages for all type-schemas
 * support for Lazy EntrySchema parsing
 * `empty?` Schema does not throw exceptions
-* **BREAKING**: `malli.provider/schema` is moved into extender API: `malli.provider/-schema`
-* **BREAKING**: strings generate alphanumeric chars by default
 
 ### Extender API
 

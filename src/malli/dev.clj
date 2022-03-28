@@ -1,7 +1,8 @@
 (ns malli.dev
-  (:require [malli.core :as m]
-            [malli.instrument :as mi]
-            [malli.clj-kondo :as clj-kondo]))
+  (:require [malli.clj-kondo :as clj-kondo]
+            [malli.core :as m]
+            [malli.dev.pretty :as pretty]
+            [malli.instrument :as mi]))
 
 (defn stop!
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
@@ -16,13 +17,13 @@
    a filtered set of function Vars (e.g. `defn`s). See [[malli.core/-instrument]]
    for possible options. Re-instruments if the function schemas change. Also emits
    clj-kondo type annotations."
-  ([] (start! nil))
+  ([] (start! {:report (pretty/reporter)}))
   ([options]
    (with-out-str (stop!))
    (mi/collect! {:ns (all-ns)})
    (let [watch (fn [_ _ old new]
-                 (mi/instrument! (assoc options :data (->> (for [[n d] new
-                                                                 :let [no (get old n)]
+                 (mi/instrument! (assoc options :data (->> (for [[n d] (:clj new)
+                                                                 :let [no (get-in old [:clj n])]
                                                                  [s d] d
                                                                  :when (not= d (get no s))]
                                                              [[n s] d])

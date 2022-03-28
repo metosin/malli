@@ -1,6 +1,7 @@
 (ns malli.perf.creation-perf-test
   (:require [malli.perf.core :as p]
             [malli.core :as m]
+            [malli.generator :as mg]
             [malli.util :as mu]))
 
 (comment
@@ -188,6 +189,11 @@
   ;; 15µs (satisfies?)
   ;;  9µs (fast merge)
   (p/bench (mu/merge schema schema)))
+
+(comment
+  ;; 119µs
+  ;; 16µs (cache generator)
+  (p/bench (mg/generate schema)))
 
 (comment
 

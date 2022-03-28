@@ -1,11 +1,11 @@
 (ns malli.generator-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [clojure.test.check.properties :refer [for-all]]
+  (:require [clojure.test :refer [are deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
-            [malli.json-schema-test :as json-schema-test]
-            [malli.generator :as mg]
+            [clojure.test.check.properties :refer [for-all]]
             [malli.core :as m]
+            [malli.generator :as mg]
+            [malli.json-schema-test :as json-schema-test]
             [malli.util :as mu]))
 
 (comment
@@ -76,7 +76,7 @@
           NaN? (fn [x]
                  (#?(:clj  Double/isNaN
                      :cljs js/isNaN)
-                   x))
+                  x))
           special? #(or (NaN? %)
                         (infinity? %))
           test-presence (fn [f options]
@@ -87,6 +87,64 @@
       (is (test-presence special? {:gen/infinite? true
                                    :gen/NaN? true}))
       (is (not (test-presence special? nil)))))
+
+  (testing "qualified-keyword properties"
+    (testing "no namespace => random"
+      (is (< 1 (->> (mg/sample [:qualified-keyword {:namespace nil}]
+                               {:size 100})
+                    (map namespace)
+                    frequencies
+                    (count))))
+      (is (< 1 (->> (mg/sample [:qualified-keyword {}]
+                               {:size 100})
+                    (map namespace)
+                    frequencies
+                    (count)))))
+    (testing "namespace => keyword with exact namesapce"
+      (is (= {"hi" 100}
+             (->> (mg/sample [:qualified-keyword {:namespace :hi}]
+                             {:size 100})
+                  (map namespace)
+                  frequencies)))
+      (is (= {"hi" 100}
+             (->> (mg/sample [:qualified-keyword {:namespace "hi"}]
+                             {:size 100})
+                  (map namespace)
+                  frequencies))))
+    (testing "generated result should pass validation"
+      (is (->> (mg/sample [:qualified-keyword {:namespace "hi"}]
+                          {:size 100})
+               (remove (partial m/validate [:qualified-keyword {:namespace "hi"}]))
+               empty?))))
+
+  (testing "qualified-symbol properties"
+    (testing "no namespace => random"
+      (is (< 1 (->> (mg/sample [:qualified-symbol {:namespace nil}]
+                               {:size 100})
+                    (map namespace)
+                    frequencies
+                    (count))))
+      (is (< 1 (->> (mg/sample [:qualified-symbol {}]
+                               {:size 100})
+                    (map namespace)
+                    frequencies
+                    (count)))))
+    (testing "namespace => symbol with exact namesapce"
+      (is (= {"hi" 100}
+             (->> (mg/sample [:qualified-symbol {:namespace :hi}]
+                             {:size 100})
+                  (map namespace)
+                  frequencies)))
+      (is (= {"hi" 100}
+             (->> (mg/sample [:qualified-symbol {:namespace "hi"}]
+                             {:size 100})
+                  (map namespace)
+                  frequencies))))
+    (testing "generated result should pass validation"
+      (is (->> (mg/sample [:qualified-symbol {:namespace "hi"}]
+                          {:size 100})
+               (remove (partial m/validate [:qualified-symbol {:namespace "hi"}]))
+               empty?))))
 
   (testing "map entries"
     (is (= {:korppu "koira"
@@ -150,20 +208,20 @@
 
   (testing "no generator"
     (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #":malli.generator/no-generator"
-          (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
+         #?(:clj Exception, :cljs js/Error)
+         #":malli.generator/no-generator"
+         (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
 
   (testing "sci not available"
     (let [schema (m/schema [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})]
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (mg/generator schema)))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (mg/generator schema)))
       (is (thrown-with-msg?
-            #?(:clj Exception, :cljs js/Error)
-            #":malli.core/sci-not-available"
-            (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
+           #?(:clj Exception, :cljs js/Error)
+           #":malli.core/sci-not-available"
+           (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
       (testing "direct options win"
         (is (mg/generator schema {::m/disable-sci false})))))
 
@@ -228,10 +286,10 @@
 
 (defspec repeat-test 100
   (for-all [[s coll] (schema+coll-gen :repeat (gen/tuple
-                                                (gen/let [min gen/nat
-                                                          len gen/nat]
-                                                  {:min min, :max (+ min len)})
-                                                seqex-child))]
+                                               (gen/let [min gen/nat
+                                                         len gen/nat]
+                                                 {:min min, :max (+ min len)})
+                                               seqex-child))]
     (m/validate s coll)))
 
 (deftest min-max-test

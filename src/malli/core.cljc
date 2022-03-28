@@ -1,16 +1,14 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   #?(:cljs (:require-macros malli.core))
-  (:require [malli.sci :as ms]
-            [malli.impl.util :as miu]
+  (:require [clojure.core :as c]
             [malli.impl.regex :as re]
+            [malli.impl.util :as miu]
             [malli.registry :as mr]
-            [clojure.core :as c])
-  #?(:clj (:import (java.util.regex Pattern)
-                   (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
-                   (malli.impl.util SchemaError)
+            [malli.sci :as ms])
+  #?(:clj (:import (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
                    (java.util.concurrent.atomic AtomicReference)
-                   (java.util Collection LinkedList))))
+                   (java.util.regex Pattern))))
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
@@ -126,7 +124,6 @@
 
   (-regex-min-max [_] {:min 1, :max 1}))
 
-#?(:clj (defmethod print-method SchemaError [v ^java.io.Writer w] (.write w (str "#Error" (->> v (filter val) (into {}))))))
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
 
@@ -186,14 +183,14 @@
              ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
              ([f1 f2 f3 f4 f5 f6 f7 f8 & fs]
               (-comp
-                (apply -comp fs)
-                (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1))))]
+               (apply -comp fs)
+               (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1))))]
       :cljs [([f1 f2 f3 & fs]
               (-comp
-                (apply -comp fs)
-                (fn [x] (-> x f3 f2 f1))))]))
+               (apply -comp fs)
+               (fn [x] (-> x f3 f2 f1))))]))
 
-(defn -update [m k f] (assoc m k (f (get m k))))
+(defn -update [x k f] (assoc x k (f (get x k))))
 
 (defn -equals [x y] (or (identical? x y) (= x y)))
 
@@ -204,7 +201,7 @@
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
 
 (defn -function-info [schema]
-  (if (= (type schema) :=>)
+  (when (= (type schema) :=>)
     (let [[input output] (-children schema)
           {:keys [min max]} (-regex-min-max input)]
       (cond-> {:min min
@@ -212,6 +209,30 @@
                :input input
                :output output}
         max (assoc :max max)))))
+
+(defn -group-by-arity! [infos]
+  (let [aritys (atom #{})]
+    (reduce
+     (fn [acc {:keys [min arity] :as info}]
+       (let [vararg (= :varargs arity)
+             min (if (and vararg (@aritys min)) (inc (apply max (filter int? @aritys))) min)]
+         (cond (and vararg (@aritys arity))
+               (-fail! ::multiple-varargs {:infos infos})
+
+               (@aritys min)
+               (-fail! ::duplicate-arities {:infos infos})
+
+               :else
+               (do (swap! aritys conj arity)
+                   (assoc acc arity (assoc info :min min)))))) {} infos)))
+
+(defn- -re-min-max [f {min' :min, max' :max} child]
+  (let [{min'' :min max'' :max} (-regex-min-max child)]
+    (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
+
+(defn- -re-alt-min-max [{min' :min, max' :max} child]
+  (let [{min'' :min max'' :max} (-regex-min-max child)]
+    (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
 
 ;;
 ;; registry
@@ -269,15 +290,15 @@
 ;;
 
 (defn -create-form [type properties children options]
-   (let [has-children (seq children)
-         has-properties (seq properties)
-         properties (when has-properties
-                      (let [registry (:registry properties)]
-                        (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
-     (cond (and has-properties has-children) (reduce conj [type properties] children)
-           has-properties [type properties]
-           has-children (reduce conj [type] children)
-           :else type)))
+  (let [has-children (seq children)
+        has-properties (seq properties)
+        properties (when has-properties
+                     (let [registry (:registry properties)]
+                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+    (cond (and has-properties has-children) (reduce conj [type properties] children)
+          has-properties [type properties]
+          has-children (reduce conj [type] children)
+          :else type)))
 
 (defn -simple-form [parent properties children f options]
   (-create-form (-type parent) properties (-vmap f children) options))
@@ -483,7 +504,7 @@
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
         child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (if (seq child-transformers) (apply -comp (rseq child-transformers)))]
+        child-transformer (when (seq child-transformers) (apply -comp (rseq child-transformers)))]
     (-intercepting parent-transformer child-transformer)))
 
 (defn -map-transformer [ts]
@@ -496,15 +517,7 @@
                                (assoc m k (t (val entry)))
                                m)) x ts))))
 
-(defn -tuple-transformer [ts]
-  #?(:clj  (let [tl (LinkedList. ^Collection (-vmap (fn [[k v]] (MapEntry/create k v)) ts))]
-             (fn [x] (let [i (.iterator ^Iterable tl)]
-                       (loop [x ^IPersistentVector x]
-                         (if (.hasNext i)
-                           (let [e ^MapEntry (.next i), k (.key e)]
-                             (recur (.assoc x k ((.val e) (.nth x k)))))
-                           x)))))
-     :cljs (fn [x] (reduce-kv -update x ts))))
+(defn -tuple-transformer [ts] (fn [x] (reduce-kv -update x ts)))
 
 (defn -collection-transformer [t empty]
   #?(:clj  (fn [x] (let [i (.iterator ^Iterable x)]
@@ -512,7 +525,7 @@
                        (if (.hasNext i)
                          (recur (.cons x (t (.next i))))
                          x))))
-     :cljs (fn [x] (into (if x empty) (map t) x))))
+     :cljs (fn [x] (into (when x empty) (map t) x))))
 
 ;;
 ;; ast
@@ -591,7 +604,7 @@
 
 (defn -simple-schema [?props]
   (let [{:keys [type type-properties pred property-pred min max from-ast to-ast]
-         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (if (map? ?props) ?props)]
+         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (when (map? ?props) ?props)]
     ^{:type ::into-schema}
     (reify
       AST
@@ -719,10 +732,10 @@
             (let [explainers (-vmap (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
                 (reduce
-                  (fn [acc' explainer]
-                    (let [acc'' (explainer x in acc')]
-                      (if (identical? acc' acc'') (reduced acc) acc'')))
-                  acc explainers))))
+                 (fn [acc' explainer]
+                   (let [acc'' (explainer x in acc')]
+                     (if (identical? acc' acc'') (reduced acc) acc'')))
+                 acc explainers))))
           (-parser [_] (->parser -parser))
           (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
@@ -734,14 +747,14 @@
                                  (if (= :decode method)
                                    (fn [x]
                                      (reduce-kv
-                                       (fn [x i transformer]
-                                         (let [x* (transformer x)]
-                                           (if ((nth validators i) x*) (reduced x*) x)))
-                                       x transformers))
+                                      (fn [x i transformer]
+                                        (let [x* (transformer x)]
+                                          (if ((nth validators i) x*) (reduced x*) x)))
+                                      x transformers))
                                    (fn [x]
                                      (reduce-kv
-                                       (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
-                                       x validators)))))
+                                      (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                                      x validators)))))
                 (-intercepting this-transformer))))
           (-walk [this walker path options] (-walk-indexed this walker path options))
           (-simplify [this] (let [children (into [] (remove -unreachable?) children)]
@@ -787,10 +800,10 @@
             (let [explainers (-vmap (fn [[k _ c]] (-explainer c (conj path k))) (-children this))]
               (fn explain [x in acc]
                 (reduce
-                  (fn [acc' explainer]
-                    (let [acc'' (explainer x in acc')]
-                      (if (identical? acc' acc'') (reduced acc) acc'')))
-                  acc explainers))))
+                 (fn [acc' explainer]
+                   (let [acc'' (explainer x in acc')]
+                     (if (identical? acc' acc'') (reduced acc) acc'')))
+                 acc explainers))))
           (-parser [this]
             (let [parsers (-vmap (fn [[k _ c]]
                                    (let [c (-parser c)]
@@ -815,14 +828,14 @@
                                  (if (= :decode method)
                                    (fn [x]
                                      (reduce-kv
-                                       (fn [x i transformer]
-                                         (let [x* (transformer x)]
-                                           (if ((nth validators i) x*) (reduced x*) x)))
-                                       x transformers))
+                                      (fn [x i transformer]
+                                        (let [x* (transformer x)]
+                                          (if ((nth validators i) x*) (reduced x*) x)))
+                                      x transformers))
                                    (fn [x]
                                      (reduce-kv
-                                       (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
-                                       x validators)))))
+                                      (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                                      x validators)))))
                 (-intercepting this-transformer))))
           (-walk [this walker path options] (-walk-entries this walker path options))
           (-simplify [this] (if (-unreachable? this)
@@ -928,7 +941,7 @@
              (-parent-children-transformer this (list schema) transformer method options))
            (-walk [this walker path options]
              (if (::walk-entry-vals options)
-               (if (-accept walker this path options)
+               (when (-accept walker this path options)
                  (-outer walker this path (list (-inner walker schema path options)) options))
                (-walk schema walker path options)))
            (-simplify [this] this)
@@ -943,7 +956,7 @@
            LensSchema
            (-keep [_])
            (-get [_ key default] (if (= 0 key) schema default))
-           (-set [_ key value] (if (= 0 key) (-val-schema value properties)))
+           (-set [_ key value] (when (= 0 key) (-val-schema value properties)))
            RefSchema
            (-ref [_])
            (-deref [_] schema)))))))
@@ -968,21 +981,21 @@
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
                               parsers (cond->> (-vmap
-                                                 (fn [[key {:keys [optional]} schema]]
-                                                   (let [parser (f schema)]
-                                                     (fn [m]
-                                                       (if-let [e (find m key)]
-                                                         (let [v (val e)
-                                                               v* (parser v)]
-                                                           (cond (miu/-invalid? v*) (reduced v*)
-                                                                 (identical? v* v) m
-                                                                 :else (assoc m key v*)))
-                                                         (if optional m (reduced ::invalid))))))
-                                                 (-children this))
+                                                (fn [[key {:keys [optional]} schema]]
+                                                  (let [parser (f schema)]
+                                                    (fn [m]
+                                                      (if-let [e (find m key)]
+                                                        (let [v (val e)
+                                                              v* (parser v)]
+                                                          (cond (miu/-invalid? v*) (reduced v*)
+                                                                (identical? v* v) m
+                                                                :else (assoc m key v*)))
+                                                        (if optional m (reduced ::invalid))))))
+                                                (-children this))
                                         closed (cons (fn [m]
                                                        (reduce
-                                                         (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                         m (keys m)))))]
+                                                        (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
+                                                        m (keys m)))))]
                           (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
@@ -992,41 +1005,41 @@
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
                    validators (cond-> (-vmap
-                                        (fn [[key {:keys [optional]} value]]
-                                          (let [valid? (-validator value)
-                                                default (boolean optional)]
-                                            #?(:clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
-                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
-                                        (-children this))
+                                       (fn [[key {:keys [optional]} value]]
+                                         (let [valid? (-validator value)
+                                               default (boolean optional)]
+                                           #?(:clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
+                                              :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
+                                       (-children this))
                                 closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
                    validate (miu/-every-pred validators)]
                (fn [m] (and (map? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
                    explainers (cond-> (-vmap
-                                        (fn [[key {:keys [optional]} schema]]
-                                          (let [explainer (-explainer schema (conj path key))]
-                                            (fn [x in acc]
-                                              (if-let [e (find x key)]
-                                                (explainer (val e) (conj in key) acc)
-                                                (if-not optional
-                                                  (conj acc (miu/-error (conj path key) (conj in key) this nil ::missing-key))
-                                                  acc)))))
-                                        (-children this))
+                                       (fn [[key {:keys [optional]} schema]]
+                                         (let [explainer (-explainer schema (conj path key))]
+                                           (fn [x in acc]
+                                             (if-let [e (find x key)]
+                                               (explainer (val e) (conj in key) acc)
+                                               (if-not optional
+                                                 (conj acc (miu/-error (conj path key) (conj in key) this nil ::missing-key))
+                                                 acc)))))
+                                       (-children this))
                                 closed (conj (fn [x in acc]
                                                (reduce
-                                                 (fn [acc k]
-                                                   (if (contains? keyset k)
-                                                     acc
-                                                     (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
-                                                 acc (keys x)))))]
+                                                (fn [acc k]
+                                                  (if (contains? keyset k)
+                                                    acc
+                                                    (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
+                                                acc (keys x)))))]
                (fn [x in acc]
                  (if-not (map? x)
                    (conj acc (miu/-error path in this x ::invalid-type))
                    (reduce
-                     (fn [acc explainer]
-                       (explainer x in acc))
-                     acc explainers)))))
+                    (fn [acc explainer]
+                      (explainer x in acc))
+                    acc explainers)))))
            (-parser [this] (->parser this -parser))
            (-unparser [this] (->parser this -unparser))
            (-transformer [this transformer method options]
@@ -1113,9 +1126,9 @@
                 (and (map? m)
                      (validate-limits m)
                      (reduce-kv
-                       (fn [_ key value]
-                         (or (and (key-valid? key) (value-valid? value)) (reduced false)))
-                       true m)))))
+                      (fn [_ key value]
+                        (or (and (key-valid? key) (value-valid? value)) (reduced false)))
+                      true m)))))
           (-explainer [this path]
             (let [key-explainer (-explainer key-schema (conj path 0))
                   value-explainer (-explainer value-schema (conj path 1))]
@@ -1125,12 +1138,12 @@
                   (if-not (validate-limits m)
                     (conj acc (miu/-error path in this m ::limits))
                     (reduce-kv
-                      (fn [acc key value]
-                        (let [in (conj in key)]
-                          (->> acc
-                               (key-explainer key in)
-                               (value-explainer value in))))
-                      acc m))))))
+                     (fn [acc key value]
+                       (let [in (conj in key)]
+                         (->> acc
+                              (key-explainer key in)
+                              (value-explainer value in))))
+                     acc m))))))
           (-parser [_] (->parser -parser))
           (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
@@ -1160,7 +1173,7 @@
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn -collection-schema [?props]
-  (let [props* (atom (if (map? ?props) ?props))]
+  (let [props* (atom (when (map? ?props) ?props))]
     ^{:type ::into-schema}
     (reify
       AST
@@ -1173,27 +1186,28 @@
       (-into-schema [parent {:keys [min max] :as properties} children options]
         (if (fn? ?props)
           (-into-schema (-collection-schema (?props properties children)) properties children options)
-          (let [{type :type fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
+          (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
             (reset! props* ?props)
             (-check-children! type properties children 1 1)
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
                   validate-limits (-validate-limits min max)
-                  ->parser (fn [f] (let [child-parser (f schema)]
-                                     (fn [x]
-                                       (cond
-                                         (not (fpred x)) ::invalid
-                                         (not (validate-limits x)) ::invalid
-                                         :else (let [x' (reduce
-                                                          (fn [acc v]
-                                                            (let [v' (child-parser v)]
-                                                              (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                          [] x)]
-                                                 (cond
-                                                   (miu/-invalid? x') x'
-                                                   fempty (into fempty x')
-                                                   :else x'))))))]
+                  ->parser (fn [f g] (let [child-parser (f schema)]
+                                       (fn [x]
+                                         (cond
+                                           (not (fpred x)) ::invalid
+                                           (not (validate-limits x)) ::invalid
+                                           :else (let [x' (reduce
+                                                           (fn [acc v]
+                                                             (let [v' (child-parser v)]
+                                                               (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                           [] x)]
+                                                   (cond
+                                                     (miu/-invalid? x') x'
+                                                     g (g x')
+                                                     fempty (into fempty x')
+                                                     :else x'))))))]
               ^{:type ::schema}
               (reify
                 AST
@@ -1215,8 +1229,8 @@
                                   (if (< i size)
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
-                (-parser [_] (->parser -parser))
-                (-unparser [_] (->parser -unparser))
+                (-parser [_] (->parser -parser parse))
+                (-unparser [_] (->parser -unparser unparse))
                 (-transformer [this transformer method options]
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
@@ -1228,7 +1242,7 @@
                         ->child (-guard collection? ->child)]
                     (-intercepting this-transformer ->child)))
                 (-walk [this walker path options]
-                  (if (-accept walker this path options)
+                  (when (-accept walker this path options)
                     (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
                 (-simplify [this]
                   (if (-unreachable? schema)
@@ -1284,8 +1298,8 @@
               (fn [x] (and (vector? x)
                            (= (count x) size)
                            (reduce-kv
-                             (fn [acc i validator]
-                               (if (validator (nth x i)) acc (reduced false))) true validators)))))
+                            (fn [acc i validator]
+                              (if (validator (nth x i)) acc (reduced false))) true validators)))))
           (-explainer [this path]
             (let [explainers (-vmap (fn [[i s]] (-explainer s (conj path i))) (map-indexed vector children))]
               (fn [x in acc]
@@ -1346,7 +1360,7 @@
           (-explainer [this path]
             (let [validator (-validator this)]
               (fn explain [x in acc]
-                (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc))))
+                (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
           (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
           (-unparser [this] (-parser this))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
@@ -1570,13 +1584,13 @@
              (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} @dispatch-map)]
                (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (key x))] (f (val x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
-             ;; FIXME: Probably should not use `dispatch`
-             ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
+            ;; FIXME: Probably should not use `dispatch`
+            ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
              (let [this-transformer (-value-transformer transformer this method options)
                    ->children (reduce-kv (fn [acc k s] (let [t (-transformer s transformer method options)]
                                                          (cond-> acc t (assoc k t)))) {} @dispatch-map)
                    find (finder ->children)
-                   child-transformer (if (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
+                   child-transformer (when (seq ->children) (fn [x] (if-some [t (find (dispatch x))] (t x) x)))]
                (-intercepting this-transformer child-transformer)))
            (-walk [this walker path options] (-walk-entries this walker path options))
            (-simplify [this] (if-some [new-children (not-empty
@@ -1652,7 +1666,7 @@
            (-walk [this walker path options]
              (let [accept (fn [] (-inner walker (-ref) (into path [0 0])
                                          (-update options ::walked-refs #(conj (or % #{}) ref))))]
-               (if (-accept walker this path options)
+               (when (-accept walker this path options)
                  (if (or (not ((-boolean-fn (::walk-refs options false)) ref))
                          (contains? (::walked-refs options) ref))
                    (-outer walker this path [ref] options)
@@ -1670,7 +1684,7 @@
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
-                                                (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                      (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))
@@ -1706,16 +1720,19 @@
           (reify
             AST
             (-to-ast [this _]
-              (if id (-ast {:type type, :value id} (-properties this) (-options this)) (-to-child-ast this)))
+              (cond
+                id (-ast {:type type, :value id} (-properties this) (-options this))
+                raw (-to-value-ast this)
+                :else (-to-child-ast this)))
             Schema
             (-validator [_] (-validator child))
-            (-explainer [_ path] (-explainer child path))
+            (-explainer [_ path] (-explainer child (conj path 0)))
             (-parser [_] (-parser child))
             (-unparser [_] (-unparser child))
             (-transformer [this transformer method options]
               (-parent-children-transformer this children transformer method options))
             (-walk [this walker path options]
-              (if (-accept walker this path options)
+              (when (-accept walker this path options)
                 (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
                   (-outer walker this path (-inner-indexed walker path children options) options)
                   (-outer walker this path [id] options))))
@@ -1734,7 +1751,7 @@
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
             (-set [this key value] (if (= key 0) (-set-children this [value])
-                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                       (-fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
@@ -1837,11 +1854,7 @@
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (every? #(= :=> (type %)) children)
           (-fail! ::non-function-childs {:children children}))
-        (let [infos (-vmap -function-info children)]
-          (when-not (= (count children) (count (distinct (-vmap :arity infos))))
-            (-fail! ::duplicate-arities {:infos infos}))
-          (when-not (= (count children) (count (distinct (-vmap :min infos))))
-            (-fail! ::duplicate-min-arities {:infos infos})))
+        (-group-by-arity! (-vmap -function-info children))
         ^{:type ::schema}
         (reify
           Schema
@@ -1877,7 +1890,7 @@
           (-cache [_] cache)
           LensSchema
           (-keep [_])
-          (-get [this key default] (get children key default))
+          (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
@@ -2011,7 +2024,7 @@
    (let [properties (when properties (when (pos? (count properties)) properties))
          r (when properties (properties :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties :registry (-property-registry r options -form)) properties)]
+         properties (if r (assoc properties :registry (-property-registry r options identity)) properties)]
      (-into-schema (-lookup! type into-schema? options) properties children options))))
 
 (defn type
@@ -2123,12 +2136,12 @@
    (walk ?schema f nil))
   ([?schema f options]
    (-walk
-     (schema ?schema options)
-     (reify Walker
-       (-accept [_ s _ _] s)
-       (-inner [this s p options] (-walk s this p options))
-       (-outer [_ s p c options] (f s p c options)))
-     [] options)))
+    (schema ?schema options)
+    (reify Walker
+      (-accept [_ s _ _] s)
+      (-inner [this s p options] (-walk s this p options))
+      (-outer [_ s p c options] (f s p c options)))
+    [] options)))
 
 (defn validator
   "Returns an pure validation function of type `x -> boolean` for a given Schema.
@@ -2139,8 +2152,8 @@
    (-cached (schema ?schema options) :validator -validator)))
 
 (defn validate
-  "Validates a value againsta a given schema. Creates the `validator` for every call.
-   When performance matters, (re-)use `validator` instead."
+  "Returns true if value is valid according to given schema. Creates the `validator`
+   for every call. When performance matters, (re-)use `validator` instead."
   ([?schema value]
    (validate ?schema value nil))
   ([?schema value options]
@@ -2158,7 +2171,7 @@
        ([value]
         (explainer value [] []))
        ([value in acc]
-        (if-let [errors (seq (explainer' value in acc))]
+        (when-let [errors (seq (explainer' value in acc))]
           {:schema schema'
            :value value
            :errors errors}))))))
@@ -2263,8 +2276,8 @@
   ([?schema]
    (entries ?schema nil))
   ([?schema options]
-   (if-let [schema (schema ?schema options)]
-     (if (-entry-schema? schema) (-entries schema)))))
+   (when-let [schema (schema ?schema options)]
+     (when (-entry-schema? schema) (-entries schema)))))
 
 (defn deref
   "Derefs top-level `RefSchema`s or returns original Schema."
@@ -2292,9 +2305,9 @@
                    (let [r (when-let [r (:registry ?ast)] (-delayed-registry r from-ast))
                          options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
                          ast (cond-> ?ast r (-update :properties #(assoc % :registry (-property-registry r options identity))))]
-                     (if (-ast? s)
-                       (-from-ast s ast options)
-                       (-into-schema s (:properties ast) (-vmap #(from-ast % options) (:children ast)) options)))
+                     (cond (and (into-schema? s) (-ast? s)) (-from-ast s ast options)
+                           (into-schema? s) (-into-schema s (:properties ast) (-vmap #(from-ast % options) (:children ast)) options)
+                           :else s))
                    (-fail! ::invalid-ast {:ast ?ast}))
      :else (-fail! ::invalid-ast {:ast ?ast}))))
 
@@ -2352,7 +2365,7 @@
           #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #'inst? #'seqable?
           #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
           #'zero? #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #'ifn? #'fn?
-          #?@(:clj [#'rational? #'rational? #'ratio? #'bytes?])]
+          #?@(:clj [#'rational? #'ratio? #'bytes? #'decimal?])]
          (reduce -register-var {}))))
 
 (defn class-schemas []
@@ -2382,14 +2395,6 @@
    :qualified-keyword (-qualified-keyword-schema)
    :qualified-symbol (-qualified-symbol-schema)
    :uuid (-uuid-schema)})
-
-(defn- -re-min-max [f {min' :min, max' :max} child]
-  (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
-
-(defn- -re-alt-min-max [{min' :min, max' :max} child]
-  (let [{min'' :min max'' :max} (-regex-min-max child)]
-    (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
 
 (defn sequence-schemas []
   {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}
@@ -2475,33 +2480,43 @@
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
-  (mr/registry (cond (identical? mr/type "default") (mr/fast-registry (default-schemas))
-                     (identical? mr/type "custom") (mr/custom-default-registry)
-                     :else (-fail! ::invalid-registry.type {:type mr/type}))))
+  (let [strict (identical? mr/mode "strict")
+        registry (mr/fast-registry (if (identical? mr/type "custom") {} (default-schemas)))]
+    (when-not strict (mr/set-default-registry! registry))
+    (mr/registry (if strict registry (mr/custom-default-registry)))))
 
 ;;
-;; function schemas (alpha, subject to change)
+;; function schemas
 ;;
 
 (defonce ^:private -function-schemas* (atom {}))
-(defn function-schemas [] @-function-schemas*)
+(defn function-schemas ([] (function-schemas :clj)) ([key] (@-function-schemas* key)))
 
 (defn function-schema
-  ([?schema]
-   (function-schema ?schema nil))
+  ([?schema] (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
-     (if (#{:=> :function} t) s (-fail! :invalid-=>schema {:type t, :schema s})))))
+     (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
-(defn -register-function-schema! [ns name schema data]
-  (swap! -function-schemas* assoc-in [ns name] (merge data {:schema (function-schema schema), :ns ns, :name name})))
+;; for cljs we cannot invoke `function-schema` at macroexpansion-time
+;; - `?schema` could contain cljs vars that will only resovle at runtime.
+(defn -register-function-schema!
+  ([ns name ?schema data] (-register-function-schema! ns name ?schema data :clj function-schema))
+  ([ns name ?schema data key f]
+   (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))))
 
 #?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
            sym `'~(symbol (str *ns*) (str name))]
-       `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym))))
+       ;; in cljs we need to register the schema in clojure (the cljs compiler)
+       ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
+       (if (some? (:ns &env))
+         (do
+           (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity)
+           `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name) :cljs identity) ~sym))
+         `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym)))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,
@@ -2537,10 +2552,9 @@
                      (when-not (validate-output value)
                        (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
                    value))))
-       :function (let [arity->info (->> (for [schema (children schema)]
-                                          (let [{:keys [arity] :as info} (-function-info schema)]
-                                            [arity (assoc info :f (-instrument (assoc props :schema schema) f options))]))
-                                        (into {}))
+       :function (let [arity->info (->> (children schema)
+                                        (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))
+                                        (-group-by-arity!))
                        arities (-> arity->info keys set)
                        varargs-info (arity->info :varargs)]
                    (if (= 1 (count arities))

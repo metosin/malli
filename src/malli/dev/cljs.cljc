@@ -2,7 +2,6 @@
   #?(:cljs (:require-macros [malli.dev.cljs]))
   #?(:cljs (:require [malli.instrument.cljs]))
   #?(:clj (:require [malli.clj-kondo :as clj-kondo]
-                    [malli.dev.pretty :as pretty]
                     [malli.instrument.cljs :as mi])))
 
 #?(:clj (defmacro stop!
@@ -24,11 +23,11 @@
 #?(:clj (defmacro start!
           "Collects defn schemas from all loaded namespaces and starts instrumentation for
            a filtered set of function Vars (e.g. `defn`s). See [[malli.core/-instrument]] for possible options.
-           Differences from Clojure malli.dev/start:
+           Differences from Clojure `malli.dev/start!`:
 
-           - Does not emit clj-kondo type annotations.
+           - Does not emit clj-kondo type annotations. See `malli.clj-kondo/print-cljs!` to print clj-kondo config.
            - Does not re-instrument functions if the function schemas change - use hot reloading to get a similar effect."
-          ([] (start!* &env {:report `(pretty/reporter)}))
+          ([] (start!* &env {}))
           ([options] (start!* &env options))))
 
 #?(:clj (defmacro collect-all! [] (mi/-collect-all-ns)))

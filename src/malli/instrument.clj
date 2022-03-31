@@ -23,7 +23,7 @@
                                           (true? (:gen d)) (dissoc $ :gen)
                                           :else $))]
                          (alter-meta! v assoc ::original-fn original-fn)
-                         (alter-var-root v (constantly (m/-instrument dgen original-fn)))
+                         (alter-var-root v (constantly (m/-instrument dgen original-fn nil :original-fn-meta (meta v))))
                          (println "..instrumented" v))
            :unstrument (when-let [original-fn (-original v)]
                          (alter-meta! v dissoc ::original-fn)

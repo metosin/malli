@@ -2425,7 +2425,7 @@
    (-instrument props nil nil))
   ([props f]
    (-instrument props f nil))
-  ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options]
+  ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options & {:keys [original-fn-meta]}]
    (let [schema (-> props :schema (schema options))]
      (case (type schema)
        :=> (let [{:keys [min max input output]} (-function-info schema)
@@ -2436,13 +2436,18 @@
                (let [args (vec args), arity (count args)]
                  (when wrap-input
                    (when-not (<= min arity (or max miu/+max-size+))
-                     (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
+                     (report ::invalid-arity
+                             {:arity arity, :arities #{{:min min :max max}}, :args args,
+                              :input input, :schema schema, :original-fn-meta original-fn-meta}))
                    (when-not (validate-input args)
-                     (report ::invalid-input {:input input, :args args, :schema schema})))
+                     (report ::invalid-input
+                             {:input input, :args args, :schema schema, :original-fn-meta original-fn-meta})))
                  (let [value (apply f args)]
                    (when wrap-output
                      (when-not (validate-output value)
-                       (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
+                       (report ::invalid-output
+                               {:output output, :value value, :args args, :schema schema,
+                                :original-fn-meta original-fn-meta})))
                    value))))
        :function (let [arity->info (->> (children schema)
                                         (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))

@@ -5,13 +5,15 @@
     [malli.dev.cljs :as dev]
     [malli.dev.pretty :as pretty]
     [malli.generator :as mg]
+    [malli.dev.cljs :as md]
     [malli.instrument.cljs :as mi]))
 
 (defn init []
   (js/console.log "INIT!"))
 
 (defn refresh {:dev/after-load true} []
-  (.log js/console "hot reload"))
+  ;(.log js/console "hot reload")
+  )
 
 (defn x+y
   {:malli/schema [:=> [:cat float? float?] :double]}
@@ -162,6 +164,16 @@
 
 (defn plusX [x] (inc x))
 (m/=> plusX [:=> [:cat :int] MyInt])
+
+(defn try-it []
+  (plus "a"))
+
+(defn ^:dev/after-load x []
+  (println "AFTER LOAD - malli.dev.cljs/start!")
+  (md/start!)
+  (js/setTimeout try-it 200)
+  )
+
 
 (comment
   ((->minus) 5)

@@ -24,7 +24,8 @@
 (defn -color [color body printer]
   (let [colors (:colors printer -dark-colors)
         color (get colors color (:error colors))]
-    [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]]))
+    #?(:cljs [:span body]
+       :clj  [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]])))
 
 ;;
 ;; EDN

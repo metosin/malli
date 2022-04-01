@@ -52,17 +52,21 @@
 ;; instrument
 ;;
 
-(defn -emit-instrument-fn [env {:keys [gen filters] :as instrument-opts} {:keys [schema] :as schema-map} ns-sym fn-sym]
+(defn -emit-instrument-fn [env {:keys [gen filters report] :as instrument-opts}
+                           {:keys [schema] :as schema-map} ns-sym fn-sym]
   ;; gen is a function
   (let [schema-map (-> schema-map
                        (select-keys [:gen :scope :report])
                        ;; The schema passed in may contain cljs vars that have to be resolved at runtime in cljs.
-                       (assoc :schema `(m/function-schema ~schema)))
+                       (assoc :schema `(m/function-schema ~schema))
+                     (cond-> report
+                       (assoc :report `(cljs.core/fn [type# data#] (~report type# (assoc data# :fn-name '~fn-sym))))))
         schema-map-with-gen
-        (as-> (merge (select-keys instrument-opts [:scope :report :gen]) schema-map) $
-          ;; use the passed in gen fn to generate a value
-          (cond (and gen (true? (:gen schema-map))) (assoc $ :gen gen)
-                :else (dissoc $ :gen)))
+                   (as-> (merge (select-keys instrument-opts [:scope :report :gen]) schema-map) $
+                     ;; use the passed in gen fn to generate a value
+                     (if (and gen (true? (:gen schema-map)))
+                       (assoc $ :gen gen)
+                       (dissoc $ :gen)))
         replace-var-code (when (ana-api/resolve env fn-sym)
                            `(do
                               (swap! instrumented-vars #(assoc % '~fn-sym ~fn-sym))

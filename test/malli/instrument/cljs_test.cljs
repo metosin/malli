@@ -95,3 +95,7 @@
 
     (is (= 1 (minus-small-int "2")))
     (is (= 9 (minus-small-int 10)))))
+
+(deftest check-test
+  (let [results (mi/check)]
+    (is (map? results))))

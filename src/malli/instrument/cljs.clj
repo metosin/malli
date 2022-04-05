@@ -1,8 +1,7 @@
 (ns malli.instrument.cljs
   (:require [cljs.analyzer.api :as ana-api]
             [clojure.walk :as walk]
-            [malli.core :as m]
-            [malli.generator :as mg]))
+            [malli.core :as m]))
 
 ;;
 ;; Collect schemas - register them into the known malli.core/-function-schemas[-cljs]* atom based on their metadata.
@@ -125,7 +124,7 @@
 (defn -emit-check [{:keys [schema]} fn-sym]
   `(let [schema# (m/function-schema ~schema)
          fn# (or (get @instrumented-vars '~fn-sym) ~fn-sym)]
-     (when-let [err# (mg/check schema# fn#)]
+     (when-let [err# (perform-check schema# fn#)]
        ['~fn-sym err#])))
 
 (defn -check []

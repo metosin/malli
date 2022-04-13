@@ -2659,3 +2659,7 @@
       (is (m/schema? (via-ast :my/bigger-than-3)))
       (is (m/schema? (via-ast :my-bigger-than-4)))
       (is (m/schema? (via-ast 'my/bigger-than-5))))))
+
+(deftest cat-catn-unparse-test
+  (is (= ::m/invalid (m/unparse [:cat string? int? string?] [1 2 3])))
+  (is (= ::m/invalid (m/unparse [:catn [:a string?] [:b int?] [:c string?]] {:a 1 :b 2 :c 3}))))

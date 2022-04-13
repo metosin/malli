@@ -184,20 +184,20 @@
   (let [unparsers (vec unparsers)]
     (fn [tup]
       (if (and (vector? tup) (= (count tup) (count unparsers)))
-        (reduce-kv (fn [coll i unparser] (miu/-map-valid #(into coll %) (unparser (get tup i))))
-                   [] unparsers)
+        (miu/-reduce-kv-valid (fn [coll i unparser] (miu/-map-valid #(into coll %) (unparser (get tup i))))
+                              [] unparsers)
         :malli.core/invalid))))
 
 (defn catn-unparser [& unparsers]
   (let [unparsers (into {} unparsers)]
     (fn [m]
       (if (and (map? m) (= (count m) (count unparsers)))
-        (reduce-kv (fn [coll tag unparser]
-                     (if-some [kv (find m tag)]
-                       (miu/-map-valid #(into coll %) (unparser (val kv)))
-                       :malli.core/invalid))
-                   ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
-                   [] unparsers)
+        (miu/-reduce-kv-valid (fn [coll tag unparser]
+                                (if-some [kv (find m tag)]
+                                  (miu/-map-valid #(into coll %) (unparser (val kv)))
+                                  :malli.core/invalid))
+                              ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
+                              [] unparsers)
         :malli.core/invalid))))
 
 (defn cat-transformer

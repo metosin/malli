@@ -2262,7 +2262,9 @@
          (reduce -register-var {}))))
 
 (defn class-schemas []
-  {#?(:clj Pattern, :cljs js/RegExp) (-re-schema true)})
+  {#?(:clj Pattern,
+      ;; closure will complain if you reference the global RegExp object.
+      :cljs (unchecked-get #"" "constructor")) (-re-schema true)})
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}

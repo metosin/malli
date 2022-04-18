@@ -23,3 +23,6 @@
 (mx/defn power-arg-ns :- [:int {:max 6}]
   "Arg, ns"
   [x :- defs/defs-int-arg] (* x x))
+(mx/defn power-full :- malli.instrument.cljs-test.defs/defs-small-int
+  "This appears to pass correctly, when the above aren't breaking during instrumentation"
+  [x :- malli.instrument.cljs-test.defs/defs-int-arg] (* x x))

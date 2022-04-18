@@ -47,7 +47,9 @@
     (is (= (plus-over-100 8) 9))
 
     (is (= 4 (power "2")))
-    (is (= 36 (power 6)))
+    (is (= 36 (power 6))))
+  (testing "without instrumentation, from another ns"
+    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test.indirect-fn)]})
 
     (is (= 4 (indirect-fn/power-ret-refer "2")))
     (is (= 36 (indirect-fn/power-ret-refer 6)))
@@ -59,7 +61,10 @@
     (is (= 36 (indirect-fn/power-arg-refer 6)))
 
     (is (= 4 (indirect-fn/power-arg-ns "2")))
-    (is (= 36 (indirect-fn/power-arg-ns 6))))
+    (is (= 36 (indirect-fn/power-arg-ns 6)))
+
+    (is (= 4 (indirect-fn/power-full "2")))
+    (is (= 36 (indirect-fn/power-full 6))))
 
   (testing "with instrumentation"
     (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test)]})
@@ -74,7 +79,9 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus-over-100 8)))
 
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (power "2")))
-    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (power 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (power 6))))
+  (testing "with instrumentation, from another ns"
+    (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test.indirect-fn)]})
 
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (indirect-fn/power-ret-refer "2")))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (indirect-fn/power-ret-refer 6)))
@@ -86,7 +93,10 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (indirect-fn/power-arg-refer 6)))
 
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (indirect-fn/power-arg-ns "2")))
-    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (indirect-fn/power-arg-ns 6)))))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (indirect-fn/power-arg-ns 6)))
+
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (indirect-fn/power-full "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (indirect-fn/power-full 6)))))
 
 (mi/collect! {:ns ['malli.instrument.cljs-test 'malli.instrument.fn-schemas]})
 

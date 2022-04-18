@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   #?(:cljs (:require-macros malli.core))
   (:require [clojure.core :as c]
+            [clojure.walk :as walk]
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
@@ -2400,17 +2401,36 @@
    (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))))
 
 #?(:clj
+   (def resolve-fn
+     "Which function do we use for resolving var's namespaces?"
+     ;; If we're in a cljs env, we need to use the cljs analyzer
+     (if (find-ns 'cljs.analyzer.api)
+       (ns-resolve 'cljs.analyzer.api 'resolve)
+       resolve)))
+#?(:clj
+    (defn fix-syms
+      "Walk a data structure, resolve syms to their full names"
+      [env d]
+      (walk/postwalk
+       (fn [x]
+         (if (symbol? x)
+           (or (:name (resolve-fn env x)) x)
+           x))
+       d)))
+
+#?(:clj
    (defmacro => [name value]
      (let [name' `'~(symbol (str name))
            ns' `'~(symbol (str *ns*))
-           sym `'~(symbol (str *ns*) (str name))]
+           sym `'~(symbol (str *ns*) (str name))
+           value' (fix-syms &env value)]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
        (if (some? (:ns &env))
          (do
-           (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity)
-           `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name) :cljs identity) ~sym))
-         `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym)))))
+           (-register-function-schema! (symbol (str *ns*)) name value' (meta name) :cljs identity)
+           `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name) :cljs identity) ~sym))
+         `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name)) ~sym)))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,

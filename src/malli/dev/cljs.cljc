@@ -19,7 +19,7 @@
         ~(mi/-unstrument env nil)
 
         ;; register all function schemas and instrument them based on the options
-        ~(mi/-collect-all-ns)
+        ~(mi/-collect-all-ns env)
         ~(mi/-instrument env options))))
 
 #?(:clj (defmacro start!
@@ -32,4 +32,4 @@
           ([] (start!* &env {:report `(pretty/thrower)}))
           ([options] (start!* &env options))))
 
-#?(:clj (defmacro collect-all! [] (mi/-collect-all-ns)))
+#?(:clj (defmacro collect-all! [] (mi/-collect-all-ns &env)))

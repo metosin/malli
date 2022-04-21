@@ -1,5 +1,7 @@
 (ns malli.instrument.fn-schemas
-  (:require [malli.instrument.fn-schemas2 :as schemas :refer [VecOfStrings]]))
+  (:require
+    [malli.experimental :as mx]
+    [malli.instrument.fn-schemas2 :as schemas :refer [small-int int-arg VecOfStrings]]))
 
 (def VecOfInts [:vector :int])
 
@@ -34,3 +36,25 @@
   {:malli/schema [:=> [:cat malli.instrument.fn-schemas2/VecOfStrings] schemas/string]}
   [args]
   (apply str args))
+
+(mx/defn str-join-mx2 :- int?
+  [args :- VecOfInts]
+  (apply str args))
+
+(mx/defn power-ret-refer :- small-int
+  [x :- :int] (* x x))
+
+(mx/defn power-ret-ns :- schemas/small-int
+  [x :- :int] (* x x))
+
+(mx/defn power-arg-refer :- [:int {:max 6}]
+  [x :- int-arg] (* x x))
+
+(mx/defn power-arg-ns :- [:int {:max 6}]
+  [x :- schemas/int-arg] (* x x))
+
+(mx/defn power-full :- malli.instrument.fn-schemas2/small-int
+  [x :- malli.instrument.fn-schemas2/int-arg] (* x x))
+
+(mx/defn power-int? :- small-int
+  [x :- int?] (* x x))

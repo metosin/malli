@@ -1,15 +1,21 @@
 (ns malli.instrument-app
   (:require
     [malli.clj-kondo :as mari]
+    [malli.helpers2 :as h2]
     [malli.core :as m]
     [malli.dev.cljs :as dev]
     [malli.dev.pretty :as pretty]
     [malli.generator :as mg]
     [malli.dev.cljs :as md]
+    [malli.experimental :as mx]
     [malli.instrument.cljs :as mi]))
 
 (defn init []
   (js/console.log "INIT!"))
+
+(comment
+  (meta #'h2/f3))
+
 
 (defn refresh {:dev/after-load true} []
   ;(.log js/console "hot reload")
@@ -166,11 +172,33 @@
 (m/=> plusX [:=> [:cat :int] MyInt])
 
 (defn try-it []
-  (plus "a"))
+
+  (println "sq: " (pr-str (h2/square-it 5)))
+  ;(plus "a")
+  )
 
 (defn ^:dev/after-load x []
   (println "AFTER LOAD - malli.dev.cljs/start!")
-  (md/start!)
+  ;(md/start!)
+
+  (mi/unstrument!)
+
+
+  ;; register all function schemas and instrument them based on the options
+  (md/collect-all!)
+
+  (mi/instrument! {:report (pretty/thrower)
+                   :filters
+                   [(mi/-filter-ns 'malli.helpers2 'malli.instrument-app)]})
+
+
+  (println "f3 1: " (h2/f3 500))
+
+
+  ;(println "f3: " (h2/f3 "500"))
+
+  ;(println "f5 " (h2/f5 [:a 1, :b 2] :c 3, :d 4 ))
+
   (js/setTimeout try-it 200)
   )
 

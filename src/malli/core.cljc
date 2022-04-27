@@ -1,7 +1,8 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   #?(:cljs (:require-macros malli.core))
-  (:require [clojure.core :as c]
+  (:require #?(:clj [clojure.walk :as walk])
+            [clojure.core :as c]
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
@@ -2401,16 +2402,22 @@
 
 #?(:clj
    (defmacro => [name value]
-     (let [name' `'~(symbol (str name))
-           ns' `'~(symbol (str *ns*))
-           sym `'~(symbol (str *ns*) (str name))]
+     (let [resolve' (if (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve) resolve)
+           resolve-symbols (fn [env d]
+                             (walk/postwalk
+                               (fn [x] (cond->> x (symbol? x) (or (:name (resolve' env x)))))
+                               d))
+           name'  `'~(symbol (str name))
+           ns'    `'~(symbol (str *ns*))
+           sym    `'~(symbol (str *ns*) (str name))
+           value' (resolve-symbols &env value)]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
        (if (some? (:ns &env))
          (do
-           (-register-function-schema! (symbol (str *ns*)) name value (meta name) :cljs identity)
-           `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name) :cljs identity) ~sym))
-         `(do (-register-function-schema! ~ns' ~name' ~value ~(meta name)) ~sym)))))
+           (-register-function-schema! (symbol (str *ns*)) name value' (meta name) :cljs identity)
+           `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name) :cljs identity) ~sym))
+         `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name)) ~sym)))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,

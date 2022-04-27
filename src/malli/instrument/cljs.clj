@@ -43,9 +43,21 @@
 
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
 
+(defn -collect!*
+  [env {:keys [ns]}]
+  (reduce (fn [acc [var-name var-map]] (let [v (-collect! env var-name var-map)] (cond-> acc v (conj v))))
+    #{}
+    (mapcat (fn [n]
+              (let [ns-sym (cond (symbol? n) n
+                                 ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
+                                 (list? n) (second n)
+                                 :else (symbol (str n)))]
+                (ana-api/ns-publics ns-sym)))
+      (-sequential ns))))
+
 ;; intended to be called from a cljs macro
-(defn -collect-all-ns []
-  `(collect! {:ns ~(ana-api/all-ns)}))
+(defn -collect-all-ns [env]
+  (-collect!* env {:ns (ana-api/all-ns)}))
 
 ;;
 ;; instrument
@@ -154,16 +166,7 @@
    | `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([] `(collect! ~{:ns (symbol (str *ns*))}))
-  ([{:keys [ns]}]
-   (reduce (fn [acc [var-name var-map]] (let [v (-collect! &env var-name var-map)] (cond-> acc v (conj v))))
-           #{}
-           (mapcat (fn [n]
-                     (let [ns-sym (cond (symbol? n) n
-                                        ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
-                                        (list? n) (second n)
-                                        :else (symbol (str n)))]
-                       (ana-api/ns-publics ns-sym)))
-                   (-sequential ns)))))
+  ([args-map] (-collect!* &env args-map)))
 
 (defmacro instrument!
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).

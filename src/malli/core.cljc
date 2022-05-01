@@ -2265,7 +2265,7 @@
 (defn class-schemas []
   {#?(:clj Pattern,
       ;; closure will complain if you reference the global RegExp object.
-      :cljs (unchecked-get #"" "constructor")) (-re-schema true)})
+      :cljs (c/type #"")) (-re-schema true)})
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
@@ -2394,7 +2394,7 @@
      (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
 ;; for cljs we cannot invoke `function-schema` at macroexpansion-time
-;; - `?schema` could contain cljs vars that will only resovle at runtime.
+;; - `?schema` could contain cljs vars that will only resolve at runtime.
 (defn -register-function-schema!
   ([ns name ?schema data] (-register-function-schema! ns name ?schema data :clj function-schema))
   ([ns name ?schema data key f]
@@ -2402,18 +2402,17 @@
 
 #?(:clj
    (defmacro => [name value]
-     (let [resolve' (if (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve) resolve)
-           resolve-symbols (fn [env d]
-                             (walk/postwalk
-                               (fn [x] (cond->> x (symbol? x) (or (:name (resolve' env x)))))
-                               d))
+     (let [cljs-resolve         (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve))
+           cljs-resolve-symbols (fn [env d]
+                                  (walk/postwalk (fn [x] (cond->> x (symbol? x) (or (:name (cljs-resolve env x)))))
+                                    d))
            name'  `'~(symbol (str name))
            ns'    `'~(symbol (str *ns*))
            sym    `'~(symbol (str *ns*) (str name))
-           value' (resolve-symbols &env value)]
+           value' (cond->> value (:ns &env) (cljs-resolve-symbols &env))]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
-       (if (some? (:ns &env))
+       (if (:ns &env)
          (do
            (-register-function-schema! (symbol (str *ns*)) name value' (meta name) :cljs identity)
            `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name) :cljs identity) ~sym))

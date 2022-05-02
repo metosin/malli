@@ -98,7 +98,7 @@
 (defmethod accept :maybe [_ _ [child] _] (if (keyword? child) (keyword "nilable" (name child)) child))
 (defmethod accept :tuple [_ _ children _] children)
 (defmethod accept :multi [_ _ _ _] :any) ;;??
-(defmethod accept :re [_ _ _ _] :regex)
+(defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :fn)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
 (defmethod accept :=> [_ _ _ _] :fn)

@@ -81,4 +81,8 @@
     (is (= {:op :rest :spec {:op :keys :req {:price :int}}}
            (clj-kondo/transform [:repeat [:map [:price :int]]])))
     (is (= {:op :rest :spec [:int]}
-           (clj-kondo/transform [:repeat [:tuple :int]])))))
+           (clj-kondo/transform [:repeat [:tuple :int]]))))
+
+  (testing "regular expressions"
+    (is (= :string (clj-kondo/transform [:re "kikka"]))
+        "the :re schema models a string, clj-kondo's :regex a Pattern object")))

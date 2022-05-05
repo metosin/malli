@@ -52,7 +52,8 @@
                            [:rest [:? [:catn
                                        [:amp "Amp"]
                                        [:arg "Arg"]]]]]}}
-    "Binding"]))
+    "Binding"]
+    {:registry (m/default-schemas)}))
 
 (def Binding (-create false))
 (def SchematizedBinding (-create true))

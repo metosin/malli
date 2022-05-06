@@ -148,3 +148,32 @@
 (deftest check-test
   (let [results (mi/check)]
     (is (map? results))))
+
+(mx/>defn times :- :int
+  "x times y"
+  [x :- :int, y :- small-int]
+  (* x y))
+
+(mx/>defn times2 :- :int
+  "x times y"
+  ([x :- :int] (+ 50 x))
+  ([x :- :int, y :- small-int]
+   (* x y)))
+
+(deftest test-experimental-defn
+  (testing "throws on invalid args"
+    (is (thrown-with-msg? js/Error #"Invalid function arguments" (times "2" 1)))
+    (is (thrown-with-msg? js/Error #"Invalid function arguments" (times 2 10)))
+    (is (= 2 (times 2 1)))
+
+    (is (thrown-with-msg? js/Error #"Invalid function arguments" (times2 "2")))
+    (is (thrown-with-msg? js/Error #"Invalid function arguments" (times2 2 10)))
+
+    (is (= 52 (times2 2)))
+    (is (= 2 (times2 2 1))))
+
+  (testing "var metadata is present"
+    (is (= '([x y]) (-> #'times meta :arglists)))
+    (is (= '([x] [x y])) (-> #'times2 meta :arglists))
+    (is (= "x times y" (-> #'times meta :doc)))
+    (is (= "x times y" (-> #'times2 meta :doc)))))

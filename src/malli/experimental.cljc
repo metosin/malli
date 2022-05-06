@@ -72,11 +72,19 @@
            single       (= :single (key arities))
            parglists    (if single (->> arities val parse vector) (->> arities val :arities (map parse)))
            raw-arglists (map :raw-arglist parglists)
-           schema       (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))]
-       `(def ~name (m/-instrument {:schema ~schema :report ~report}
-                     (c/fn ~name
-                       ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-                       ~@(when-not single (some->> arities val :meta vector))))))))
+           schema       (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+           instr-fn-sym (gensym "instr-fn")]
+       `(let [~instr-fn-sym
+              (m/-instrument {:schema ~schema :report ~report}
+                (c/fn ~name
+                  ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                  ~@(when-not single (some->> arities val :meta vector))))]
+          (c/defn ~name
+            ~@(some-> doc vector)
+            ~(assoc meta :raw-arglists (list 'quote raw-arglists), :schema schema)
+            ~@(map (fn [{:keys [arglist prepost]}] `(~arglist ~prepost (~instr-fn-sym ~@arglist))) parglists)
+            ~@(when-not single (some->> arities val :meta vector)))))))
+;;
 ;;
 ;; public api
 ;;
@@ -89,6 +97,6 @@
           (let [report
                 (if (:ns &env)
                   `(fn [type# data#] ((malli.dev.pretty/thrower) type#
-                                      (assoc data# :fn-name ~(symbol (str (:name (:ns &env))) (str (first args))))))
+                                      (assoc data# :fn-name '~(symbol (str (:name (:ns &env))) (str (first args))))))
                   `(malli.dev.pretty/thrower))]
             (->defn SchematizedParams report args))))

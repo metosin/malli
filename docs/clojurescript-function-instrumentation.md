@@ -5,7 +5,7 @@ Function instrumentation is also supported when developing ClojureScript browser
 Things work differently from the Clojure version of instrumentation because there are no runtime Vars in ClojureScript and thus the 
 instrumentation must happen at compile-time using macros.
 The macro will emit code that `set!`s the function at runtime with a version that validates the function's inputs and outputs
-against its declare malli schema.
+against its declared malli schema.
 
 # Dev Setup
 
@@ -24,13 +24,23 @@ For an application that uses React.js such as Reagent you will typically declare
 ...}
 ```
 
-In your init namespace require `malli.dev.cljs`:
+In your application's entry namespace you need to tell the compiler to always reload this namespace so that the macro will rerun when
+you change schemas and function definitions in other namespaces while developing.
+
+We do this with the `{:dev/always true}` metadata on the namespace:
+
+(this was pointed out by Thomas Heller [here](https://clojureverse.org/t/problem-using-malli-clojurescript-instrumentation-and-shadow-cljs/8612/2).
+  If you're still running into stale code issues during development you can try requiring all namespaces in a preload like he suggests in that comment)
 
 ```clj
-(require [malli.dev.cljs :as md])
+(ns co.my-org.my-app.entry
+  {:dev/always true}
+  (:require [malli.dev.cljs :as md]))
 ```
 
-and invoke `start!` in your init function before rendering your application:
+and require the `malli.dev.cljs` namespace.
+
+In your init function before rendering your application invoke `malli.dev.cljs/start!`
 
 ```clj
 (defn ^:export init [] 

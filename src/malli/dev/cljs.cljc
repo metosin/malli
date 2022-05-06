@@ -16,8 +16,6 @@
 #?(:clj
    (defn start!* [env options]
      `(do
-        ~(mi/-unstrument env nil)
-
         ;; register all function schemas and instrument them based on the options
         ~(mi/-collect-all-ns env)
         ~(mi/-instrument env options))))
@@ -27,6 +25,7 @@
            a filtered set of function Vars (e.g. `defn`s). See [[malli.core/-instrument]] for possible options.
            Differences from Clojure `malli.dev/start!`:
 
+           - Does not unstrument functions - this is handled by hot reloading.
            - Does not emit clj-kondo type annotations. See `malli.clj-kondo/print-cljs!` to print clj-kondo config.
            - Does not re-instrument functions if the function schemas change - use hot reloading to get a similar effect."
           ([] (start!* &env {:report `(pretty/thrower)}))

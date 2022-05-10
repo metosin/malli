@@ -31,7 +31,7 @@ Data-driven Schemas for Clojure/Script.
 Presentations:
 
 - [High-Performance Schemas in Clojure/Script with Malli 1/2](https://www.metosin.fi/blog/high-performance-schemas-in-clojurescript-with-malli-1-2/)
-- [ClojureScript Podcast: Malli wtih Tommi Reiman](https://soundcloud.com/user-959992602/s4-e30-malli-wtih-tommi-reiman)
+- [ClojureStream Podcast: Malli wtih Tommi Reiman](https://soundcloud.com/clojurestream/s4-e30-malli-wtih-tommi-reiman)
 - [Structure and Interpretation of Malli Regex Schemas](https://www.metosin.fi/blog/malli-regex-schemas/)
 - LNDCLJ 9.12.2020: [Designing with Malli](https://youtu.be/bQDkuF6-py4), slides [here](https://www.slideshare.net/mobile/metosin/designing-with-malli)
 - [Malli, Data-Driven Schemas for Clojure/Script](https://www.metosin.fi/blog/malli/)

@@ -2671,14 +2671,14 @@ Usually faster than idiomatic Clojure.
 
 ```clj
 (def data {:x "true", :y "1", :z "kikka"})
-(def expexted {:x true, :y 1, :z "kikka"})
+(def expected {:x true, :y 1, :z "kikka"})
 
 ;; idiomatic clojure (290ns)
 (let [transform (fn [{:keys [x y] :as m}]
                   (cond-> m
                     (string? x) (update :x #(Boolean/parseBoolean %))
                     (string? y) (update :y #(Long/parseLong %))))]
-  (assert (= expexted (transform data)))
+  (assert (= expected (transform data)))
   (cc/quick-bench (transform data)))
 
 ;; malli (72ns)
@@ -2687,7 +2687,7 @@ Usually faster than idiomatic Clojure.
               [:y {:optional true} int?]
               [:z string?]]
       transform (m/decoder schema (mt/string-transformer))]
-  (assert (= expexted (transform data)))
+  (assert (= expected (transform data)))
   (cc/quick-bench (transform data)))
 ```
 
@@ -2704,7 +2704,7 @@ Same with Clojure Spec and Plumatic Schema:
 ;; clojure.spec (19000ns)
 (let [spec (spec/keys :req-un [::x ::z] :opt-un [::y])
       transform #(st/coerce spec % st/string-transformer)]
-  (assert (= expexted (transform data)))
+  (assert (= expected (transform data)))
   (cc/quick-bench (transform data)))
 
 ;; plumatic schema (2200ns)
@@ -2712,7 +2712,7 @@ Same with Clojure Spec and Plumatic Schema:
               (schema/optional-key :y) schema/Int
               :z schema/Str}
       transform (sc/coercer schema sc/string-coercion-matcher)]
-  (assert (= expexted (transform data)))
+  (assert (= expected (transform data)))
   (cc/quick-bench (transform data)))
 ```
 

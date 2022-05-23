@@ -1,5 +1,5 @@
 (ns malli.util
-  (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in])
+  (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
             [malli.core :as m]))
 
@@ -235,7 +235,7 @@
    (transform-entries
     ?schema
     (fn [entries]
-      (let [source-keys (set (keys kmap))
+      (let [source-keys (set (c/keys kmap))
             target-keys (set (vals kmap))
             remove-conflicts (fn [[k]] (or (source-keys k) (not (target-keys k))))
             alter-keys (fn [[k m v]] [(c/get kmap k k) m v])]
@@ -256,6 +256,12 @@
   ([?schema k options]
    (let [schema (m/schema (or ?schema :map) options)]
      (when schema (m/-get schema [::m/find k] nil)))))
+
+(defn keys
+  "Like [[clojure.core/keys]], but for EntrySchemas."
+  [?schema]
+  (for [[k _] (m/entries ?schema)]
+    k))
 
 ;;
 ;; LensSchemas

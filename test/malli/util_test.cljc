@@ -946,6 +946,13 @@
          (-> [:map [:a [:map [:b {:optional true} Int]]]]
              (mu/get-in [:a [::m/find :b]])))))
 
+(deftest keys-test
+  (is (= [:a :b :c]
+         (mu/keys (m/schema [:map
+                             [:a {:optional true} :string]
+                             [:b {:optional false} any?]
+                             [:c [:vector double?]]])))))
+
 #?(:clj
    (deftest composers
      (let [-t (constantly true)

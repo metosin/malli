@@ -3,6 +3,7 @@
             [clojure.test :refer [are deftest is testing]]
             [clojure.test.check.generators :as gen]
             [clojure.walk :as walk]
+            #?(:clj [jsonista.core :as json])
             [malli.core :as m]
             [malli.edn :as edn]
             [malli.generator :as mg]
@@ -2663,3 +2664,25 @@
 (deftest cat-catn-unparse-test
   (is (= ::m/invalid (m/unparse [:cat string? int? string?] [1 2 3])))
   (is (= ::m/invalid (m/unparse [:catn [:a string?] [:b int?] [:c string?]] {:a 1 :b 2 :c 3}))))
+
+#?(:clj
+   (deftest explain-data-test
+     (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
+           input-1 {:a 1}
+           input-2 {:a [true]}]
+       (testing "explain-data output can be printed as json"
+         (is (= {"errors" [{"in" ["a"]
+                            "path" ["a"]
+                            "schema" ["vector" ["maybe" "string"]]
+                            "type" "malli.core/invalid-type"
+                            "value" 1}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" 1}}
+                (json/read-value (json/write-value-as-string (m/explain-data schema input-1)))))
+         (is (= {"errors" [{"in" ["a" 0]
+                            "path" ["a" 0 0]
+                            "schema" "string"
+                            "value" true}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" [true]}}
+                (json/read-value (json/write-value-as-string (m/explain-data schema input-2)))))))))

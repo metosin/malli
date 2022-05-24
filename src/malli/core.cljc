@@ -2070,25 +2070,6 @@
            :value value
            :errors errors}))))))
 
-(defn data-explainer
-  "Like `explainer` but output is pure clojure data. Schema objects have been replaced with their m/form.
-   Useful when you need to serialise errrors."
-  ([?schema]
-   (data-explainer ?schema nil))
-  ([?schema options]
-   (let [explainer' (explainer ?schema options)
-         schema->data (fn [s]
-                        (if (schema? s)
-                          (form s)
-                          s))]
-     (fn data-explainer
-       ([value]
-        (data-explainer value [] []))
-       ([value in acc]
-        (-> (explainer' value in acc)
-            (update :schema schema->data)
-            (update :errors (partial mapv #(update % :schema schema->data)))))))))
-
 (defn explain
   "Explains a value against a given schema. Creates the `explainer` for every call.
    When performance matters, (re-)use `explainer` instead."
@@ -2096,16 +2077,6 @@
    (explain ?schema value nil))
   ([?schema value options]
    ((explainer ?schema options) value [] [])))
-
-(defn explain-data
-  "Explains a value against a given schema. Like `explain` but output is pure clojure data.
-  Schema objects have been replaced with their m/form. Useful when you need to serialise errrors.
-
-  Creates the `data-explainer` for every call. When performance matters, (re-)use `data-explainer` instead."
-  ([?schema value]
-   (explain-data ?schema value nil))
-  ([?schema value options]
-   ((data-explainer ?schema options) value [] [])))
 
 (defn parser
   "Returns an pure parser function of type `x -> either parsed-x ::invalid` for a given Schema.

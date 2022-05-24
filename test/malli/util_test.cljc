@@ -1,5 +1,6 @@
 (ns malli.util-test
   (:require [clojure.test :refer [are deftest is testing]]
+            #?(:clj [jsonista.core :as json])
             [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
@@ -987,3 +988,25 @@
          (is (true?  ((miu/-some-pred ft) nil)))
          (is (false? ((miu/-some-pred ff) nil)))
          (is (true?  ((miu/-some-pred tt) nil)))))))
+
+#?(:clj
+   (deftest explain-data-test
+     (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
+           input-1 {:a 1}
+           input-2 {:a [true]}]
+       (testing "explain-data output can be printed as json"
+         (is (= {"errors" [{"in" ["a"]
+                            "path" ["a"]
+                            "schema" ["vector" ["maybe" "string"]]
+                            "type" "malli.core/invalid-type"
+                            "value" 1}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" 1}}
+                (json/read-value (json/write-value-as-string (mu/explain-data schema input-1)))))
+         (is (= {"errors" [{"in" ["a" 0]
+                            "path" ["a" 0 0]
+                            "schema" "string"
+                            "value" true}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" [true]}}
+                (json/read-value (json/write-value-as-string (mu/explain-data schema input-2)))))))))

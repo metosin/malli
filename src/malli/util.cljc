@@ -182,6 +182,35 @@
          (swap! state conj path) nil)))
     @state))
 
+(defn data-explainer
+  "Like `m/explainer` but output is pure clojure data. Schema objects have been replaced with their m/form.
+   Useful when you need to serialise errrors."
+  ([?schema]
+   (data-explainer ?schema nil))
+  ([?schema options]
+   (let [explainer' (m/explainer ?schema options)
+         schema->data (fn [s]
+                        (if (m/schema? s)
+                          (m/form s)
+                          s))]
+     (fn data-explainer
+       ([value]
+        (data-explainer value [] []))
+       ([value in acc]
+        (-> (explainer' value in acc)
+            (c/update :schema schema->data)
+            (c/update :errors (partial mapv #(c/update % :schema schema->data)))))))))
+
+(defn explain-data
+  "Explains a value against a given schema. Like `m/explain` but output is pure clojure data.
+  Schema objects have been replaced with their `m/form`. Useful when you need to serialise errrors.
+
+  Creates the `mu/data-explainer` for every call. When performance matters, (re-)use `mu/data-explainer` instead."
+  ([?schema value]
+   (explain-data ?schema value nil))
+  ([?schema value options]
+   ((data-explainer ?schema options) value [] [])))
+
 ;;
 ;; EntrySchemas
 ;;

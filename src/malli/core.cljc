@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key])
   #?(:cljs (:require-macros malli.core))
-  (:require [clojure.walk :as walk]
+  (:require #?(:clj [clojure.walk :as walk])
             [clojure.core :as c]
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]
@@ -2085,7 +2085,9 @@
        ([value]
         (data-explainer value [] []))
        ([value in acc]
-        (walk/prewalk schema->data (explainer' value in acc)))))))
+        (-> (explainer' value in acc)
+            (update :schema schema->data)
+            (update :errors (partial mapv #(update % :schema schema->data)))))))))
 
 (defn explain
   "Explains a value against a given schema. Creates the `explainer` for every call.

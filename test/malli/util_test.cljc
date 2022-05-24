@@ -952,7 +952,13 @@
          (mu/keys (m/schema [:map
                              [:a {:optional true} :string]
                              [:b {:optional false} any?]
-                             [:c [:vector double?]]])))))
+                             [:c [:vector double?]]]))))
+  (is (= []
+         (mu/keys (m/schema [:map]))))
+  (is (nil?
+       (mu/keys (m/schema :string))))
+  (is (nil?
+       (mu/keys (m/schema [:vector :int])))))
 
 #?(:clj
    (deftest composers

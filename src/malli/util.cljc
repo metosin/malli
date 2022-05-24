@@ -289,8 +289,9 @@
 (defn keys
   "Like [[clojure.core/keys]], but for EntrySchemas."
   [?schema]
-  (for [[k _] (m/entries ?schema)]
-    k))
+  (when-let [ents (m/entries ?schema)]
+    (for [[k _] ents]
+      k)))
 
 ;;
 ;; LensSchemas

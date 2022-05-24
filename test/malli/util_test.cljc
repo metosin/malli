@@ -989,11 +989,27 @@
          (is (false? ((miu/-some-pred ff) nil)))
          (is (true?  ((miu/-some-pred tt) nil)))))))
 
-#?(:clj
-   (deftest explain-data-test
-     (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
-           input-1 {:a 1}
-           input-2 {:a [true]}]
+(deftest explain-data-test
+  (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
+        input-1 {:a 1}
+        input-2 {:a [true]}]
+    (testing "explain-data output is plain data"
+      (is (= {:errors [{:in [:a]
+                        :path [:a]
+                        :schema [:vector [:maybe :string]]
+                        :type :malli.core/invalid-type
+                        :value 1}]
+              :schema [:map [:a [:vector [:maybe :string]]]]
+              :value {:a 1}}
+             (mu/explain-data schema input-1)))
+      (is (= {:errors [{:in [:a 0]
+                        :path [:a 0 0]
+                        :schema :string
+                        :value true}]
+              :schema [:map [:a [:vector [:maybe :string]]]]
+              :value {:a [true]}}
+             (mu/explain-data schema input-2))))
+    #?(:clj
        (testing "explain-data output can be printed as json"
          (is (= {"errors" [{"in" ["a"]
                             "path" ["a"]

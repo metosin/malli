@@ -188,18 +188,14 @@
   ([?schema]
    (data-explainer ?schema nil))
   ([?schema options]
-   (let [explainer' (m/explainer ?schema options)
-         schema->data (fn [s]
-                        (if (m/schema? s)
-                          (m/form s)
-                          s))]
+   (let [explainer' (m/explainer ?schema options)]
      (fn data-explainer
        ([value]
         (data-explainer value [] []))
        ([value in acc]
         (-> (explainer' value in acc)
-            (c/update :schema schema->data)
-            (c/update :errors (partial mapv #(c/update % :schema schema->data)))))))))
+            (c/update :schema m/form)
+            (c/update :errors (partial mapv #(c/update % :schema m/form)))))))))
 
 (defn explain-data
   "Explains a value against a given schema. Like `m/explain` but output is pure clojure data.

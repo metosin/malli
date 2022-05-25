@@ -1,5 +1,6 @@
 (ns malli.util-test
   (:require [clojure.test :refer [are deftest is testing]]
+            #?(:clj [jsonista.core :as json])
             [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
@@ -946,6 +947,19 @@
          (-> [:map [:a [:map [:b {:optional true} Int]]]]
              (mu/get-in [:a [::m/find :b]])))))
 
+(deftest keys-test
+  (is (= [:a :b :c]
+         (mu/keys (m/schema [:map
+                             [:a {:optional true} :string]
+                             [:b {:optional false} any?]
+                             [:c [:vector double?]]]))))
+  (is (= []
+         (mu/keys (m/schema [:map]))))
+  (is (nil?
+       (mu/keys (m/schema :string))))
+  (is (nil?
+       (mu/keys (m/schema [:vector :int])))))
+
 #?(:clj
    (deftest composers
      (let [-t (constantly true)
@@ -980,3 +994,41 @@
          (is (true?  ((miu/-some-pred ft) nil)))
          (is (false? ((miu/-some-pred ff) nil)))
          (is (true?  ((miu/-some-pred tt) nil)))))))
+
+(deftest explain-data-test
+  (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
+        input-1 {:a 1}
+        input-2 {:a [true]}]
+    (testing "explain-data output is plain data"
+      (is (= {:errors [{:in [:a]
+                        :path [:a]
+                        :schema [:vector [:maybe :string]]
+                        :type :malli.core/invalid-type
+                        :value 1}]
+              :schema [:map [:a [:vector [:maybe :string]]]]
+              :value {:a 1}}
+             (mu/explain-data schema input-1)))
+      (is (= {:errors [{:in [:a 0]
+                        :path [:a 0 0]
+                        :schema :string
+                        :value true}]
+              :schema [:map [:a [:vector [:maybe :string]]]]
+              :value {:a [true]}}
+             (mu/explain-data schema input-2))))
+    #?(:clj
+       (testing "explain-data output can be printed as json"
+         (is (= {"errors" [{"in" ["a"]
+                            "path" ["a"]
+                            "schema" ["vector" ["maybe" "string"]]
+                            "type" "malli.core/invalid-type"
+                            "value" 1}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" 1}}
+                (json/read-value (json/write-value-as-string (mu/explain-data schema input-1)))))
+         (is (= {"errors" [{"in" ["a" 0]
+                            "path" ["a" 0 0]
+                            "schema" "string"
+                            "value" true}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" [true]}}
+                (json/read-value (json/write-value-as-string (mu/explain-data schema input-2)))))))))

@@ -28,6 +28,8 @@ Malli is in well matured [alpha](README.md#alpha).
 ; => {:name "kikka", :description "kikka"}
 ```
 
+* added `mall.util/explain-data`, `malli.util/data-explainer` and `malli.util/keys` [#707](https://github.com/metosin/malli/pull/707)
+
 ## 0.8.4 (2022-03-02)
 
 * support for 2-arity `default-fn` option in `mt/default-value-transformer` [#582](https://github.com/metosin/malli/pull/582) & [#644](https://github.com/metosin/malli/pull/644)

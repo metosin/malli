@@ -557,6 +557,8 @@ Detailed errors with `m/explain`:
 ;           :value nil})}
 ```
 
+Note! If you need error messages that serialize neatly to EDN/JSON, use `mu/explain-data` instead.
+
 ## Custom error messages
 
 Explain results can be humanized with `malli.error/humanize`:

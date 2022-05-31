@@ -112,8 +112,13 @@
     (m/-set-properties schema (not-empty (apply f (m/-properties schema) args)))))
 
 (defn closed-schema
-  "Closes recursively all :map schemas by adding `{:closed true}`
-  property, unless schema explicitely open with `{:closed false}`"
+  "Maps are implicitly open by default. They can be explicitly closed or
+  open by specifying the `{:closed (true|false)}` property.
+
+  This function converts implicitly open maps to explicitly closed
+  maps, recursively. Explicitly open maps are left untouched.
+
+  See [[open-schema]]"
   ([?schema]
    (closed-schema ?schema nil))
   ([?schema options]
@@ -127,8 +132,13 @@
     options)))
 
 (defn open-schema
-  "Opens recursively all :map schemas by removing `:closed`
-  property, unless schema explicitely open with `{:closed false}`"
+  "Maps are implicitly open by default. They can be explicitly closed or
+  open by specifying the `{:closed (true|false)}` property.
+
+  This function converts explicitly closed maps to implicitly open
+  maps, recursively. Explicitly open maps are left untouched.
+
+  See [[closed-schema]]"
   ([?schema]
    (open-schema ?schema nil))
   ([?schema options]

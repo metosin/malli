@@ -27,7 +27,7 @@
         p (c/merge ?p1 ?p2)]
     (-simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
-(defn- -open-map? [schema options]
+(defn- -ok-to-close-or-open? [schema options]
   (and (= :map (m/type schema options)) (-> schema m/properties :closed false? not)))
 
 ;;
@@ -126,7 +126,7 @@
     ?schema
     (m/schema-walker
      (fn [schema]
-       (if (-open-map? schema options)
+       (if (-ok-to-close-or-open? schema options)
          (update-properties schema c/assoc :closed true)
          schema)))
     options)))
@@ -146,7 +146,7 @@
     ?schema
     (m/schema-walker
      (fn [schema]
-       (if (-open-map? schema options)
+       (if (-ok-to-close-or-open? schema options)
          (update-properties schema c/dissoc :closed)
          schema)))
     options)))

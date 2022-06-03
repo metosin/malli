@@ -167,29 +167,37 @@
                    (mu/update-properties schema assoc :joulu "loma")))))
 
 (deftest open-closed-schema-test
-  (let [open [:map {:title "map"}
-              [:a int?]
-              [:b {:optional true} int?]
-              [:c [:map
-                   [:d int?]]]]
+  (let [implicitly-open [:map {:title "map"}
+                         [:a int?]
+                         [:b {:optional true} int?]
+                         [:c [:map
+                              [:d int?]]]]
         closed [:map {:title "map", :closed true}
                 [:a int?]
                 [:b {:optional true} int?]
                 [:c [:map {:closed true}
                      [:d int?]]]]]
+    
+    (is (true? (#'mu/-ok-to-close-or-open? implicitly-open {})))
+    (is (true? (#'mu/-ok-to-close-or-open? closed {})))
 
-    (is (mu/equals closed (mu/closed-schema open)))
-    (is (mu/equals open (mu/open-schema closed))))
+    (is (mu/equals closed (mu/closed-schema implicitly-open)))
+    (is (mu/equals implicitly-open (mu/open-schema closed)))
+    (is (some? (m/explain (mu/closed-schema implicitly-open) {:a 2 :c {:d 1} :d "lol"})))
+    (is (nil? (m/explain (mu/open-schema closed) {:a 2 :c {:d 1} :d "lol"}))))
 
-  (testing "explicitely open maps not effected"
-    (let [schema [:map {:title "map", :closed false}
-                  [:a int?]
-                  [:b {:optional true} int?]
-                  [:c [:map {:closed false}
-                       [:d int?]]]]]
+  (testing "explicitly open maps not effected"
+    (let [explicitly-open [:map {:title "map", :closed false}
+                           [:a int?]
+                           [:b {:optional true} int?]
+                           [:c [:map {:closed false}
+                                [:d int?]]]]]
+      (is (false? (#'mu/-ok-to-close-or-open? explicitly-open {})))
 
-      (is (mu/equals schema (mu/closed-schema schema)))
-      (is (mu/equals schema (mu/open-schema schema))))))
+      (is (mu/equals explicitly-open (mu/closed-schema explicitly-open)))
+      (is (mu/equals explicitly-open (mu/open-schema explicitly-open)))
+      (is (nil? (m/explain (mu/closed-schema explicitly-open) {:a 2 :c {:d 1} :d "lol"})))
+      (is (nil? (m/explain (mu/open-schema explicitly-open) {:a 2 :c {:d 1} :d "lol"}))))))
 
 (deftest select-key-test
   (let [schema [:map {:title "map"}

@@ -27,7 +27,7 @@
         p (c/merge ?p1 ?p2)]
     (-simplify-map-entry [k (c/assoc p :optional (not required)) (merge s1 s2 options)])))
 
-(defn- -open-map? [schema options]
+(defn- -ok-to-close-or-open? [schema options]
   (and (= :map (m/type schema options)) (-> schema m/properties :closed false? not)))
 
 ;;
@@ -112,8 +112,13 @@
     (m/-set-properties schema (not-empty (apply f (m/-properties schema) args)))))
 
 (defn closed-schema
-  "Closes recursively all :map schemas by adding `{:closed true}`
-  property, unless schema explicitely open with `{:closed false}`"
+  "Maps are implicitly open by default. They can be explicitly closed or
+  open by specifying the `{:closed (true|false)}` property.
+
+  This function converts implicitly open maps to explicitly closed
+  maps, recursively. Explicitly open maps are left untouched.
+
+  See [[open-schema]]"
   ([?schema]
    (closed-schema ?schema nil))
   ([?schema options]
@@ -121,14 +126,19 @@
     ?schema
     (m/schema-walker
      (fn [schema]
-       (if (-open-map? schema options)
+       (if (-ok-to-close-or-open? schema options)
          (update-properties schema c/assoc :closed true)
          schema)))
     options)))
 
 (defn open-schema
-  "Opens recursively all :map schemas by removing `:closed`
-  property, unless schema explicitely open with `{:closed false}`"
+  "Maps are implicitly open by default. They can be explicitly closed or
+  open by specifying the `{:closed (true|false)}` property.
+
+  This function converts explicitly closed maps to implicitly open
+  maps, recursively. Explicitly open maps are left untouched.
+
+  See [[closed-schema]]"
   ([?schema]
    (open-schema ?schema nil))
   ([?schema options]
@@ -136,7 +146,7 @@
     ?schema
     (m/schema-walker
      (fn [schema]
-       (if (-open-map? schema options)
+       (if (-ok-to-close-or-open? schema options)
          (update-properties schema c/dissoc :closed)
          schema)))
     options)))

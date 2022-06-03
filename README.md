@@ -821,7 +821,7 @@ To access Schema (and options) use `:compile`:
 ```clj
 (m/decode
   [int? {:math/multiplier 10
-         :decode/math {:compile '(fn [schema _]
+         :decode/math {:compile (fn [schema _]
                                   (let [multiplier (:math/multiplier (m/properties schema))]
                                     (fn [x] (* x multiplier))))}}]
   12

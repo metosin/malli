@@ -178,8 +178,8 @@
                 [:c [:map {:closed true}
                      [:d int?]]]]]
     
-    (is (true? (#'mu/-ok-to-close-or-open? implicitly-open)))
-    (is (true? (#'mu/-ok-to-close-or-open? closed)))
+    (is (true? (#'mu/-ok-to-close-or-open? implicitly-open {})))
+    (is (true? (#'mu/-ok-to-close-or-open? closed {})))
 
     (is (mu/equals closed (mu/closed-schema implicitly-open)))
     (is (mu/equals implicitly-open (mu/open-schema closed)))
@@ -192,7 +192,7 @@
                            [:b {:optional true} int?]
                            [:c [:map {:closed false}
                                 [:d int?]]]]]
-      (is (false? (#'mu/-ok-to-close-or-open? explicitly-open)))
+      (is (false? (#'mu/-ok-to-close-or-open? explicitly-open {})))
 
       (is (mu/equals explicitly-open (mu/closed-schema explicitly-open)))
       (is (mu/equals explicitly-open (mu/open-schema explicitly-open)))

@@ -48,11 +48,12 @@
     (-block "Errors:" (-explain input args printer) printer) :break :break
     (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-output [_ _ {:keys [value output fn-name] :as args} printer]
+(defmethod v/-format ::m/invalid-output [_ _ {:keys [value args output fn-name]} printer]
   {:body
    [:group
     (-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
     #?(:cljs (-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
+    (-block "Function arguments:" (v/-visit args printer) printer) :break :break
     (-block "Output Schema:" (v/-visit output printer) printer) :break :break
     (-block "Errors:" (-explain output value printer) printer) :break :break
     (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})

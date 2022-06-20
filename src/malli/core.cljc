@@ -374,8 +374,8 @@
       ;; remove
       (letfn [(cut [v] (into (subvec v 0 i) (subvec v (inc i))))]
         (-simple-entry-parser (dissoc keyset k) (cut children) (cut forms)))
-      (let [c [k p s]
-            p (if i (if override p (nth (children i) 1)) p)
+      (let [p (if i (if override p (nth (children i) 1)) p)
+            c [k p s]
             f (if (seq p) [k p (-form s)] [k (-form s)])]
         (if i
           ;; update

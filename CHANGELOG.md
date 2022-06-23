@@ -47,8 +47,13 @@ borkdude/edamame 0.0.18 -> 1.0.0
 ```
 
 ## 0.8.7 (2022-06-23)
+* technical redeploy
+
 ## 0.8.6 (2022-06-23)
+* technical redeploy
+
 ## 0.8.5 (2022-06-23)
+* technical redeploy
 
 ## 0.8.4 (2022-03-02)
 

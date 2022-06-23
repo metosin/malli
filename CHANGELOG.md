@@ -14,8 +14,20 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## (0.8.5)
 
+* new guide for [Static type checking via Typed Clojure](README.md#static-type-checking-via-typed-clojure)
+* new guide for [To and from JSON](README.md#to-and-from-json)
+* much improved support for instrumentation & type checking with ClojureScript via [#660](https://github.com/metosin/malli/pull/660), [#661](https://github.com/metosin/malli/pull/661), [#662](https://github.com/metosin/malli/pull/662), [#667](https://github.com/metosin/malli/pull/667), [#681](https://github.com/metosin/malli/pull/681), [#685](https://github.com/metosin/malli/pull/685), [#696](https://github.com/metosin/malli/pull/696), [#697](https://github.com/metosin/malli/pull/697), [#700](https://github.com/metosin/malli/pull/700), [#703](https://github.com/metosin/malli/pull/703)
+* new `malli.dev.pretty/prettier` helper, [#672]
+* faster stripping away extra keys from maps, [#674](https://github.com/metosin/malli/pull/674)
+* fix regex unparsing, [#690]
+* fix [Warning under advanced compilation](#87) via #692
+* [Map :re schema to clj-kondo :string](https://github.com/metosin/malli/pull/701)
+* added `mall.util/explain-data`, `malli.util/data-explainer` and `malli.util/keys` [#707](https://github.com/metosin/malli/pull/707)
+* fix [mu/open-schema does not open a closed schema](https://github.com/metosin/malli/issues/673) via [#709](https://github.com/metosin/malli/pull/709)
+* [Show function input arguments on invalid return value](https://github.com/metosin/malli/pull/711)
+* fix [Don't lose properties when updating a key](https://github.com/metosin/malli/pull/712)
 * `malli.transform/default-value-transformer` accepts `mt/add-optional-keys` option:
 
 ```clj
@@ -27,8 +39,6 @@ Malli is in well matured [alpha](README.md#alpha).
  (mt/default-value-transformer {::mt/add-optional-keys true}))
 ; => {:name "kikka", :description "kikka"}
 ```
-
-* added `mall.util/explain-data`, `malli.util/data-explainer` and `malli.util/keys` [#707](https://github.com/metosin/malli/pull/707)
 
 ## 0.8.4 (2022-03-02)
 

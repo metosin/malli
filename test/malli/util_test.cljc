@@ -466,7 +466,13 @@
                     [:a int?]
                     [:b {:optional true} int?]
                     [:c string?]
-                    [:d boolean?]]))))
+                    [:d boolean?]]))
+
+    (testing "Optional property is maintained when optional key is updated"
+      (is (true? (m/validate
+                  (mu/update schema :b identity)
+                  {:a 1
+                   :c "a string"}))))))
 
 (deftest assoc-in-test
   (is (mu/equals (mu/assoc-in (m/schema [:vector int?]) [0] string?) [:vector string?]))
@@ -507,7 +513,17 @@
                  [:map [:a {:optional false} [:map [:x {:optional false} any?]]]]))
   (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
                                [[:a] [:x {:optional false}]] (constantly any?))
-                 [:map [:a [:map [:x {:optional false} any?]]]])))
+                 [:map [:a [:map [:x {:optional false} any?]]]]))
+
+  (testing "Optional property is maintained when optional key is updated"
+    (let [schema [:map {:title "map"}
+                  [:a int?]
+                  [:b {:optional true} int?]
+                  [:c string?]]]
+      (is (true? (m/validate
+                  (mu/update-in schema [:b] identity)
+                  {:a 1
+                   :c "a string"}))))))
 
 (deftest transform-entries-test
   (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))

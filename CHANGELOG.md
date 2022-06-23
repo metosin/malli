@@ -67,6 +67,18 @@ borkdude/edamame 0.0.18 -> 1.0.0
 ## 0.8.2 (2022-02-14)
 
 * new ns, `malli.experimental.lite`, see the [docs](README.md#lite).
+
+```clojure
+(require '[malli.experimental.lite :as l])
+
+{:id string?
+ :tags [:set keyword?]
+ :address {:street string?
+           :city string?
+           :zip (l/optional int?)
+           :lonlat [:tuple double? double?]}} 
+```           
+
 * updated deps:
 
 ```clojure

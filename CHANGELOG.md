@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## (0.8.5)
+## 0.8.5 (2022-06-23)
 
 * new guide for [Static type checking via Typed Clojure](README.md#static-type-checking-via-typed-clojure)
 * new guide for [To and from JSON](README.md#to-and-from-json)

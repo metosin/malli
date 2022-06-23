@@ -30,7 +30,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * fix [Don't lose properties when updating a key](https://github.com/metosin/malli/pull/712)
 * `malli.transform/default-value-transformer` accepts `mt/add-optional-keys` option:
 
-```clj
+```clojure
 (m/decode
  [:map
   [:name [:string {:default "kikka"}]]
@@ -38,6 +38,12 @@ Malli is in well matured [alpha](README.md#alpha).
  {}
  (mt/default-value-transformer {::mt/add-optional-keys true}))
 ; => {:name "kikka", :description "kikka"}
+```
+* updated dependencies:
+
+```clojure
+fipp/fipp 0.2.5 -> 0.2.6
+borkdude/edamame 0.0.18 -> 1.0.0
 ```
 
 ## 0.8.4 (2022-03-02)
@@ -54,7 +60,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * new ns, `malli.experimental.lite`, see the [docs](README.md#lite).
 * updated deps:
 
-```clj
+```clojure
 borkdude/edamame 0.0.18 -> 0.0.19
 ```
 
@@ -76,7 +82,7 @@ borkdude/edamame 0.0.18 -> 0.0.19
 
 * new `malli.destructure` ns for parsing Clojure & Plumatic destructuring binding syntaxes, see [Destructuring](README.md#destructuring).
 
-```clj
+```clojure
 (require '[malli.destructure :as md])
 
 (-> '[a b & cs] (md/parse) :schema)
@@ -88,7 +94,7 @@ borkdude/edamame 0.0.18 -> 0.0.19
 
 * new `malli.experimental` namespace with schematized `defn`, automatically registers the functions schemas with `m/=>`.
 
-```clj
+```clojure
 (require '[malli.experimental :as mx])
 
 (mx/defn kakka :- :int
@@ -98,7 +104,7 @@ borkdude/edamame 0.0.18 -> 0.0.19
 
 * transformer names can be qualified, schema properties support `:decode` and `:encode` keys:
 
-```clj
+```clojure
 (m/decode
   [:string {:decode {:string (partial str "olipa "}}]
   "kerran" mt/string-transformer)
@@ -111,7 +117,7 @@ borkdude/edamame 0.0.18 -> 0.0.19
 
 * updated dependencies:
 
-```clj
+```clojure
 fipp/fipp 0.6.24 -> 0.6.25
 ```
 
@@ -121,7 +127,7 @@ fipp/fipp 0.6.24 -> 0.6.25
 * use [fipp](https://github.com/brandonbloom/fipp) for fast pretty-printing the clj-kondo configs
 * updated dependencies:
 
-```clj
+```clojure
 mvxcvi/arrangement 1.2.0 -> 2.0.0
 borkdude/edamame 0.0.11 -> 0.0.18
 org.clojure/test.check 1.1.0 -> 1.1.1 
@@ -131,7 +137,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 * schema inferring supports value decoding via options
 
-```clj
+```clojure
 (mp/provide
  [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
@@ -143,7 +149,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 * `:map-of` inferring can be forced with `:malli.provider/hint :map-of` meta-data:
 
-```clj
+```clojure
 (require '[malli.provider :as mp])
 
 (mp/provide
@@ -161,7 +167,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 * `:tuple` inferring (supports type-hints and threshold options)
 
-```clj
+```clojure
 (mp/provide
   [[1 "kikka" true]
    [2 "kukka" true]
@@ -186,7 +192,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 #### Schema Creation
 
-```clj
+```clojure
 (def ?schema
   [:map
    [:x boolean?]
@@ -206,7 +212,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 #### Schema Transformation
 
-```clj
+```clojure
 ;; 26µs -> 1.2µs (21x)
 (bench (m/walk schema (m/schema-walker identity)))
 
@@ -225,7 +231,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 #### Schema Workers
 
-```clj
+```clojure
 (def schema (m/schema ?schema))
 
 ;; 1.6µs -> 64ns (25x)
@@ -237,7 +243,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 #### Schema Inferring
 
-```clj
+```clojure
 (def samples
   [{:id "Lillan"
     :tags #{:artesan :coffee :hotel}
@@ -265,7 +271,7 @@ org.clojure/test.check 1.1.0 -> 1.1.1
 
 New optimized map-syntax to super-fast schema creation, see [README](README.md#map-syntax).
 
-```clj
+```clojure
 (def ast (m/ast ?schema))
 ;{:type :map,
 ; :keys {:x {:order 0, :value {:type boolean?}},
@@ -297,7 +303,7 @@ Currently in alpha, will fully replace the old map-syntax at some point.
 
 No need to play with Compiler options or JVM properties to swap the default registry (only if you want to get DCE on CLJS with small set of schemas). Can be disabled with new `malli.registry/mode=strict` option.
 
-```clj
+```clojure
 (require '[malli.core :as m]
          '[malli.util :as mu]
          '[malli.registry :as mr]
@@ -351,7 +357,7 @@ No need to play with Compiler options or JVM properties to swap the default regi
 
 * Much faster validators on CLJ (loop unrolling & programming against interfaces) with `:or`, `:and`, `:orn` and `:map`, thanks to [Ben Sless](https://github.com/bsless):
 
-```clj
+```clojure
 ;; 164ns -> 28ns
 (let [valid? (m/validator [:and [:> 0] [:> 1] [:> 2] [:> 3] [:> 4]])]
   (cc/quick-bench (valid? 5)))
@@ -364,7 +370,7 @@ No need to play with Compiler options or JVM properties to swap the default regi
 
 * Much faster collection transformers on CLJ (loop unrolling & programming against interfaces):
 
-```clj
+```clojure
 (let [decode (m/decoder
                [:map
                 [:id :string]
@@ -403,7 +409,7 @@ No need to play with Compiler options or JVM properties to swap the default regi
 * `malli.util/transform-entries` passes in options [#340]/(https://github.com/metosin/malli/pull/340)  
 * BETA: humanized errors can be read from parent schemas (also from map entries), fixes [#86](https://github.com/metosin/malli/issues/86):
 
-```clj
+```clojure
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
@@ -512,7 +518,7 @@ No need to play with Compiler options or JVM properties to swap the default regi
 * **BREAKING (MINOR)**: the following utilities in `malli.util` deref top-level refs recursively: `merge`, `union`, `transform-entries`, `optional-keys`, `required-keys`, `select-keys` and `dissoc`.
 * `m/deref-all` derefs all top-level references recursively, e.g.
 
-```clj
+```clojure
 (m/deref-all [:schema [:schema int?]])
 ; => int?
 ```
@@ -524,7 +530,7 @@ No need to play with Compiler options or JVM properties to swap the default regi
 
 There are also declarative versions of schema transforming utilities in `malli.util/schemas`. These include `:merge`, `:union` and `:select-keys`:
 
-```clj
+```clojure
 (def registry (merge (m/default-schemas) (mu/schemas)))
 
 (def Merged
@@ -554,7 +560,7 @@ Merged
 
 * `malli.transform/default-value-transformer` accepts options `:key` and `:defaults`:
 
-```clj
+```clojure
 (m/decode
   [:map
    [:user [:map

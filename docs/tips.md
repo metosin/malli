@@ -4,7 +4,7 @@
 
 Schemas can be walked over recursively using `m/walk`:
 
-```clj
+```clojure
 (require '[malli.core :as m])
 
 (def Schema
@@ -37,7 +37,7 @@ In the example, `:tags` key was removed as it's contents would have been an empt
 
 Example how to trim all `:string` values using a custom transformer:
 
-```clj
+```clojure
 (require '[malli.transform :as mt])
 (require '[malli.core :as m])
 (require '[clojure.string :as str])
@@ -68,7 +68,7 @@ Example how to trim all `:string` values using a custom transformer:
 
 Transforming a comma-separated string into a vector of ints:
 
-```clj
+```clojure
 (require '[malli.core :as m])
 (require '[malli.transform :as mt])
 (require '[clojure.string :as str])
@@ -82,7 +82,7 @@ Transforming a comma-separated string into a vector of ints:
 
 Using a custom transformer:
 
-```clj
+```clojure
 (defn query-decoder [schema]
   (m/decoder
     schema
@@ -117,7 +117,7 @@ Using a custom transformer:
 
 Returning a Schema form with `nil` in place of empty properties:
 
-```clj
+```clojure
 (require '[malli.core :as m])
 
 (defn normalize-properties [?schema]
@@ -147,7 +147,7 @@ The `mt/default-value-transformer` can fill default values if the `:default` pro
 is possible though to calculate a default value with a given function providing custom transformer
 derived from `mt/default-value-transformer`:
 
-```clj
+```clojure
 (defn default-fn-value-transformer
   ([]
    (default-fn-value-transformer nil))
@@ -177,7 +177,7 @@ derived from `mt/default-value-transformer`:
 ```
 
 Example 1: if `:secondary` is missing, same its value to value of `:primary`
-```clj
+```clojure
 (m/decode
  [:map
   [:primary string?]
@@ -187,7 +187,7 @@ Example 1: if `:secondary` is missing, same its value to value of `:primary`
 ```
 
 Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
-```clj
+```clojure
 (def Purchase
   [:map
    [:qty {:default 1} number?]
@@ -209,7 +209,7 @@ Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
 1. walk entries on the way in
 2. unwalk entries on the way out
 
-```clj
+```clojure
 (defn walk-properties [schema f]
   (m/walk
     schema
@@ -224,7 +224,7 @@ Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
 
 Stripping all swagger-keys:
 
-```clj
+```clojure
 (defn remove-swagger-keys [p]
   (not-empty
     (reduce-kv
@@ -250,7 +250,7 @@ e.g. don't fail if the optional keys hava invalid values.
 1. create a helper function that transforms the schema swapping the actual schema with `:any`
 2. done.
 
-```clj
+```clojure
 (defn allow-invalid-optional-values [schema]
   (m/walk
     schema
@@ -295,7 +295,7 @@ e.g. don't fail if the optional keys hava invalid values.
 
 By default, one can inline schema reference definitions with `:map`, like:
 
-```clj
+```clojure
 (def User
   [:map
    [::id :int]
@@ -305,7 +305,7 @@ By default, one can inline schema reference definitions with `:map`, like:
 
 It would be nice to be able to simplify the schemas into:
 
-```clj
+```clojure
 [:map
  ::id
  [:name :string]
@@ -319,7 +319,7 @@ Use cases:
 
 Naive implementation (doesn't look up the local registries):
 
-```clj
+```clojure
 (defn collect-references [schema]
   (let [acc* (atom {})
         ->registry (fn [registry]
@@ -354,7 +354,7 @@ Naive implementation (doesn't look up the local registries):
 
 In action:
 
-```clj
+```clojure
 (collect-references User)
 ;{:registry {:user/id :int,
 ;            :user/country :string}
@@ -364,7 +364,7 @@ In action:
 ;          [:user/country {:optional true}]]}
 ```
 
-```clj
+```clojure
 (collect-references
   [:map
    [:user/id :int]
@@ -375,7 +375,7 @@ In action:
 
 ## Getting error-values into humanized result
 
-```clj
+```clojure
 (-> [:map
      [:x :int]
      [:y [:set :keyword]]
@@ -409,7 +409,7 @@ Here are a few examples of valid and invalid data:
 * `"domain/aa"` is not valid
 * `"kika/aaa"` is not valid
 
-```clj
+```clojure
 (def domain #"[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+")
 
 (def ipv4 #"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")

@@ -17,7 +17,7 @@ if you are using shadow-cljs just ensure this library is on the classpath.
 
 For an application that uses React.js such as Reagent you will typically declare an entry namespace and init function in your `shadow-cljs.edn` config like so:
 
-```clj
+```clojure
 {...
 :modules {:app {:entries [your-app.entry-ns]
 :init-fn your-app.entry-ns/init}}
@@ -32,7 +32,7 @@ We do this with the `{:dev/always true}` metadata on the namespace:
 (this was pointed out by Thomas Heller [here](https://clojureverse.org/t/problem-using-malli-clojurescript-instrumentation-and-shadow-cljs/8612/2).
   If you're still running into stale code issues during development you can try requiring all namespaces in a preload like he suggests in that comment)
 
-```clj
+```clojure
 (ns co.my-org.my-app.entry
   {:dev/always true}
   (:require [malli.dev.cljs :as md]))
@@ -42,7 +42,7 @@ and require the `malli.dev.cljs` namespace.
 
 In your init function before rendering your application invoke `malli.dev.cljs/start!`
 
-```clj
+```clojure
 (defn ^:export init [] 
   (md/start!)
   (my-app/mount!)
@@ -54,7 +54,7 @@ overwrite any instrumented versions.
 To instrument the newly loaded code with shadow-cljs we can use the [lifecylce hook](https://shadow-cljs.github.io/docs/UsersGuide.html#_lifecycle_hooks)
 `:after-load` by adding metadata to a function and invoking `malli.dev.cljs/start!` again:
 
-```clj
+```clojure
 (defn ^:dev/after-load reload []
   (md/start!)
   (my-app/mount!))
@@ -64,7 +64,7 @@ It is useful to understand what is happening when you invoke `(malli.dev.cljs/st
 
 The line where `start!` lives in your code will be replaced by a block of code that looks something like:
 
-```clj
+```clojure
 (set! your-app-ns/a-function
    (fn [& args] 
    :; validate the args against the input schema

@@ -73,14 +73,14 @@ Malli supports [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) sy
 
 The default syntax uses vectors, inspired by [hiccup](https://github.com/weavejester/hiccup):
 
-```clj
+```clojure
 type
 [type & children]
 [type properties & children]
 ```
 Examples:
 
-```clj
+```clojure
 ;; just a type (String)
 :string
 
@@ -96,7 +96,7 @@ Examples:
 
 Usage:
 
-```clj
+```clojure
 (require '[malli.core :as m])
 
 (def non-empty-string
@@ -121,7 +121,7 @@ Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 
 **NOTE**: For now, Map syntax in considered as internal, so don't use it as a database persistency model.
 
-```clj
+```clojure
 ;; just a type (String)
 {:type :string}
 
@@ -143,7 +143,7 @@ Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 
 Usage:
 
-```clj
+```clojure
 (def non-empty-string
   (m/from-ast {:type :string
                :properties {:min 1}}))
@@ -176,7 +176,7 @@ We added [Lite Syntax](#lite) for simplified schema creation for special cases, 
 
 Validating values against a schema:
 
-```clj
+```clojure
 ;; with schema instances
 (m/validate (m/schema :int) 1)
 ; => true
@@ -208,7 +208,7 @@ Validating values against a schema:
 
 Schemas can have properties:
 
-```clj
+```clojure
 (def Age
   [:and
    {:title "Age"
@@ -224,7 +224,7 @@ Schemas can have properties:
 
 Maps are open by default:
 
-```clj
+```clojure
 (m/validate
   [:map [:x :int]]
   {:x 1, :extra "key"})
@@ -233,7 +233,7 @@ Maps are open by default:
 
 Maps can be closed with `:closed` property:
 
-```clj
+```clojure
 (m/validate
   [:map {:closed true} [:x :int]]
   {:x 1, :extra "key"})
@@ -242,7 +242,7 @@ Maps can be closed with `:closed` property:
 
 Maps keys are not limited to keywords:
 
-```clj
+```clojure
 (m/validate
   [:map
    ["status" [:enum "ok"]]
@@ -258,7 +258,7 @@ Maps keys are not limited to keywords:
 
 Most core-predicates are mapped to Schemas:
 
-```clj
+```clojure
 (m/validate string? "kikka")
 ; => true
 ```
@@ -269,7 +269,7 @@ See [the full list of default schemas](#schema-registry).
 
 You can also use [decomplected maps keys and values](https://clojure.org/about/spec#_decomplect_mapskeysvalues) using registry references. References must be either qualified keywords or strings.
 
-```clj
+```clojure
 (m/validate
   [:map {:registry {::id int?
                     ::country string?}}
@@ -286,7 +286,7 @@ You can also use [decomplected maps keys and values](https://clojure.org/about/s
 Other times, we use a map as a homogeneous index. In this case, all our key-value
 pairs have the same type. For this use case, we can use the `:map-of` schema.
 
-```clj
+```clojure
 (m/validate
   [:map-of :string [:map [:lat number?] [:long number?]]]
   {"oslo" {:lat 60 :long 11}
@@ -298,7 +298,7 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
 
 You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for vectors and `:set` for sets.
 
-```clj
+```clojure
 (m/validate [:sequential any?] (list "this" 'is :number 42))
 ;; => true
 
@@ -311,7 +311,7 @@ You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for ve
 
 A `:tuple` describes a fixed length Clojure vector of heterogeneous elements:
 
-```clj
+```clojure
 (m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
 ;; => true
 ```
@@ -319,7 +319,7 @@ A `:tuple` describes a fixed length Clojure vector of heterogeneous elements:
 Malli also supports sequence regexes like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
 The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
-```clj
+```clojure
 (m/validate [:cat string? int?] ["foo" 0]) ; => true
 
 (m/validate [:catn [:s string?] [:n int?]] ["foo" 0]) ; => true
@@ -327,7 +327,7 @@ The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 `:alt` & `:altn` for alternatives
 
-```clj
+```clojure
 (m/validate [:alt keyword? string?] ["foo"]) ; => true
 
 (m/validate [:altn [:kw keyword?] [:s string?]] ["foo"]) ; => true
@@ -335,7 +335,7 @@ The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 and `:?`, `:*`, `:+` & `:repeat` for repetition:
 
-```clj
+```clojure
 (m/validate [:? int?] []) ; => true
 (m/validate [:? int?] [1]) ; => true
 (m/validate [:? int?] [1 2]) ; => false
@@ -355,7 +355,7 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 
 `:catn` and `:altn` allow naming the subsequences / alternatives
 
-```clj
+```clojure
 (m/explain
   [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
@@ -367,7 +367,7 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 
 while `:cat` and `:alt` just use numeric indices for paths:
 
-```clj
+```clojure
 (m/explain
   [:* [:cat string? [:alt string? boolean?]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
@@ -381,7 +381,7 @@ As all these examples show, the "seqex" operators take any non-seqex child schem
 mean a sequence of one element that matches that schema. To force that behaviour for
 a seqex child `:schema` can be used:
 
-```clj
+```clojure
 (m/validate
   [:cat [:= :names] [:schema [:* string?]] [:= :nums] [:schema [:* number?]]]
   [:names ["a" "b"] :nums [1 2 3]])
@@ -396,7 +396,7 @@ a seqex child `:schema` can be used:
 
 Although a lot of effort has gone into making the seqex implementation fast
 
-```clj
+```clojure
 (require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
 
@@ -409,7 +409,7 @@ Although a lot of effort has gone into making the seqex implementation fast
 
 it is always better to use less general tools whenever possible:
 
-```clj
+```clojure
 (let [valid? (partial s/valid? (s/coll-of int?))]
   (cc/quick-bench (valid? (range 10)))) ; Execution time mean : 1.8µs
 
@@ -421,13 +421,13 @@ it is always better to use less general tools whenever possible:
 
 Using a predicate:
 
-```clj
+```clojure
 (m/validate string? "kikka")
 ```
 
 Using `:string` Schema:
 
-```clj
+```clojure
 (m/validate :string "kikka")
 ;; => true
 
@@ -437,7 +437,7 @@ Using `:string` Schema:
 
 Using regular expressions:
 
-```clj
+```clojure
 
 (m/validate #"a+b+c+" "abbccc")
 ;; => true
@@ -464,7 +464,7 @@ Using regular expressions:
 
 Use `:maybe` to express that an element should match some schema OR be `nil`:
 
-```clj
+```clojure
 (m/validate [:maybe string?] "bingo")
 ;; => true
 
@@ -479,7 +479,7 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 
 `:fn` allows any predicate function to be used:
 
-```clj
+```clojure
 (def my-schema
   [:and
    [:map
@@ -498,7 +498,7 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 
 Detailed errors with `m/explain`:
 
-```clj
+```clojure
 (def Address
   [:map
    [:id string?]
@@ -564,7 +564,7 @@ Note! If you need error messages that serialize neatly to EDN/JSON, use `mu/expl
 
 Explain results can be humanized with `malli.error/humanize`:
 
-```clj
+```clojure
 (require '[malli.error :as me])
 
 (-> Address
@@ -582,7 +582,7 @@ Explain results can be humanized with `malli.error/humanize`:
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:
 
-```clj
+```clojure
 (-> [:map
      [:id int?]
      [:size [:enum {:error/message "should be: S|M|L"}
@@ -600,7 +600,7 @@ Error messages can be customized with `:error/message` and `:error/fn` propertie
 
 Messages can be localized:
 
-```clj
+```clojure
 (-> [:map
      [:id int?]
      [:size [:enum {:error/message {:en "should be: S|M|L"
@@ -623,7 +623,7 @@ Messages can be localized:
 
 Top-level humanized map-errors are under `:malli/error`:
 
-```clj
+```clojure
 (-> [:and [:map
            [:password string?]
            [:password2 string?]]
@@ -638,7 +638,7 @@ Top-level humanized map-errors are under `:malli/error`:
 
 Errors can be targeted using `:error/path` property:
 
-```clj
+```clojure
 (-> [:and [:map
            [:password string?]
            [:password2 string?]]
@@ -654,7 +654,7 @@ Errors can be targeted using `:error/path` property:
 
 By default, only direct erroneous schema properties are used:
 
-```clj
+```clojure
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]] ;; here, :int fails, no error props
     (m/explain {:foo "1"})
@@ -664,7 +664,7 @@ By default, only direct erroneous schema properties are used:
 
 Looking up humanized errors from parent schemas with custom `:resolve` (BETA, subject to change):
 
-```clj
+```clojure
 (-> [:map
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
@@ -676,7 +676,7 @@ Looking up humanized errors from parent schemas with custom `:resolve` (BETA, su
 
 For closed schemas, key spelling can be checked with:
 
-```clj
+```clojure
 (-> [:map [:address [:map [:street string?]]]]
     (mu/closed-schema)
     (m/explain
@@ -697,7 +697,7 @@ For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 ## Value transformation
 
-```clj
+```clojure
 (require '[malli.transform :as mt])
 ```
 
@@ -707,7 +707,7 @@ Default Transformers include: `string-transformer`, `json-transformer`, `strip-e
 
 **NOTE**: the included transformers are best-effort, i.e. they won't throw on bad input, they will just pass the input value through unchanged. You should make sure your schema validation catches these non-transformed values. Custom transformers should follow the same idiom.
 
-```clj
+```clojure
 (m/decode int? "42" mt/string-transformer)
 ; 42
 
@@ -717,7 +717,7 @@ Default Transformers include: `string-transformer`, `json-transformer`, `strip-e
 
 Transformations are recursive:
 
-```clj
+```clojure
 (m/decode
   Address
   {:id "Lillan",
@@ -737,7 +737,7 @@ Transformations are recursive:
 
 Transform map keys:
 
-```clj
+```clojure
 (m/encode
   Address
   {:id "Lillan",
@@ -757,7 +757,7 @@ Transform map keys:
 
 Transformers can be composed with `mt/transformer`:
 
-```clj
+```clojure
 (def strict-json-transformer
   (mt/transformer
     mt/strip-extra-keys-transformer
@@ -784,7 +784,7 @@ Transformers can be composed with `mt/transformer`:
 
 Schema properties can be used to override default transformations:
 
-```clj
+```clojure
 (m/decode
   [string? {:decode/string 'str/upper-case}]
   "kerran" mt/string-transformer)
@@ -793,7 +793,7 @@ Schema properties can be used to override default transformations:
 
 This works too:
 
-```clj
+```clojure
 (m/decode
   [string? {:decode {:string 'str/upper-case}}]
   "kerran" mt/string-transformer)
@@ -802,14 +802,14 @@ This works too:
 
 Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 
-```clj
+```clojure
 (m/decode
   [string? {:decode/string {:enter 'str/upper-case}}]
   "kerran" mt/string-transformer)
 ; => "KERRAN"
 ```
 
-```clj
+```clojure
 (m/decode
   [string? {:decode/string {:enter '#(str "olipa_" %)
                             :leave '#(str % "_avaruus")}}]
@@ -819,7 +819,7 @@ Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 
 To access Schema (and options) use `:compile`:
 
-```clj
+```clojure
 (m/decode
   [int? {:math/multiplier 10
          :decode/math {:compile (fn [schema _]
@@ -832,7 +832,7 @@ To access Schema (and options) use `:compile`:
 
 Going crazy:
 
-```clj
+```clojure
 (m/decode
   [:map
    {:decode/math {:enter '#(update % :x inc)
@@ -855,7 +855,7 @@ schema.
 
 To JSON:
 
-```clj
+```clojure
 (def Tags
   (m/schema [:map
              {:closed true}
@@ -869,7 +869,7 @@ To JSON:
 
 From JSON without validation:
 
-```clj
+```clojure
 (m/decode Tags
           (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
                                     jsonista.core/keyword-keys-object-mapper)
@@ -879,7 +879,7 @@ From JSON without validation:
 
 From JSON with validation:
 
-```clj
+```clojure
 (m/explain Tags
            (m/decode Tags
                      (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
@@ -890,7 +890,7 @@ From JSON with validation:
 ;     :errors ({:path [:tags 0], :in [:tags ["quux"]], :schema :keyword, :value ["quux"]})}
 ```
 
-```clj
+```clojure
 (m/validate Tags
             (m/decode Tags
                       (jsonista.core/read-value "{\"tags\":[\"bar\",\"quux\"]}" ; <- note! no error
@@ -901,7 +901,7 @@ From JSON with validation:
 
 For performance, it's best to prebuild the validator, decoder and explainer:
 
-```clj
+```clojure
 (def validate-Tags (m/validator Tags))
 (def decode-Tags (m/decoder Tags mt/json-transformer))
 (-> (jsonista.core/read-value "{\"tags\":[\"bar\",\"quux\"]}"
@@ -915,14 +915,14 @@ For performance, it's best to prebuild the validator, decoder and explainer:
 
 Applying default values:
 
-```clj
+```clojure
 (m/decode [:and {:default 42} int?] nil mt/default-value-transformer)
 ; => 42
 ```
 
 With custom key and type defaults:
 
-```clj
+```clojure
 (m/decode
   [:map
    [:user [:map
@@ -938,7 +938,7 @@ With custom key and type defaults:
 
 With custom function:
 
-```clj
+```clojure
 (m/decode
  [:map
   [:os [:string {:property "os.name"}]]
@@ -952,7 +952,7 @@ With custom function:
 
 Optional Keys are not added by default:
 
-```clj
+```clojure
 (m/decode
  [:map
   [:name [:string {:default "kikka"}]]
@@ -964,7 +964,7 @@ Optional Keys are not added by default:
 
 Adding optional keys too via `::mt/add-optional-keys` option:
 
-```clj
+```clojure
 (m/decode
  [:map
   [:name [:string {:default "kikka"}]]
@@ -976,7 +976,7 @@ Adding optional keys too via `::mt/add-optional-keys` option:
 
 Single sweep of defaults & string encoding:
 
-```clj
+```clojure
 (m/encode
   [:map {:default {}}
    [:a [int? {:default 1}]]
@@ -999,20 +999,20 @@ Single sweep of defaults & string encoding:
 
 ## Programming with schemas
 
-```clj
+```clojure
 (require '[malli.util :as mu])
 ```
 
 Updating Schema properties:
 
-```clj
+```clojure
 (mu/update-properties [:vector int?] assoc :min 1)
 ; => [:vector {:min 1} int?]
 ```
 
 Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `get`, `assoc`, `update`, `get-in`, `assoc-in`, `update-in`
 
-```clj
+```clojure
 (mu/get-in Address [:address :lonlat])
 ; => [:tuple double? double?]
 
@@ -1037,7 +1037,7 @@ Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `g
 
 Making keys optional or required:
 
-```clj
+```clojure
 (mu/optional-keys [:map [:x int?] [:y int?]])
 ;[:map
 ; [:x {:optional true} int?]
@@ -1051,7 +1051,7 @@ Making keys optional or required:
 
 Closing and opening all `:map` schemas recursively:
 
-```clj
+```clojure
 (def abcd
   [:map {:title "abcd"}
    [:a int?]
@@ -1078,7 +1078,7 @@ Closing and opening all `:map` schemas recursively:
 
 Merging Schemas (last value wins):
 
-```clj
+```clojure
 (mu/merge
   [:map
    [:name string?]
@@ -1102,7 +1102,7 @@ Merging Schemas (last value wins):
 
 With `:and`, first child is used in merge:
 
-```clj
+```clojure
 (mu/merge
   [:and {:type "entity"}
    [:map {:title "user"}
@@ -1118,7 +1118,7 @@ With `:and`, first child is used in merge:
 
 Schema unions (merged values of both schemas are valid for union schema):
 
-```clj
+```clojure
 (mu/union
   [:map
    [:name string?]
@@ -1142,7 +1142,7 @@ Schema unions (merged values of both schemas are valid for union schema):
 
 Adding generated example values to Schemas:
 
-```clj
+```clojure
 (m/walk
   [:map
    [:name string?]
@@ -1168,7 +1168,7 @@ Adding generated example values to Schemas:
 
 Finding first value (prewalk):
 
-```clj
+```clojure
 (mu/find-first
   [:map
    [:x int?]
@@ -1183,7 +1183,7 @@ Finding first value (prewalk):
 
 Finding all subschemas with paths, retaining order:
 
-```clj
+```clojure
 (def Schema
   (m/schema
     [:maybe
@@ -1237,7 +1237,7 @@ Finding all subschemas with paths, retaining order:
 
 Collecting unique value paths and their schema paths:
 
-```clj
+```clojure
 (->> Schema
      (mu/subschemas)
      (mu/distinct-by :id)
@@ -1258,7 +1258,7 @@ Collecting unique value paths and their schema paths:
 
 Schema paths can be converted into value paths:
 
-```clj
+```clojure
 (mu/get-in Schema [0 :address 0 :lonlat])
 ; => [:tuple double? double?]
 
@@ -1268,7 +1268,7 @@ Schema paths can be converted into value paths:
 
 and back, returning all paths:
 
-```clj
+```clojure
 (mu/in->paths Schema [:address :lonlat])
 ; => [[0 :address 0 :lonlat]]
 ```
@@ -1277,7 +1277,7 @@ and back, returning all paths:
 
 There are also declarative versions of schema transforming utilities in `malli.util/schemas`. These include `:merge`, `:union` and `:select-keys`:
 
-```clj
+```clojure
 (def registry (merge (m/default-schemas) (mu/schemas)))
 
 (def Merged
@@ -1305,7 +1305,7 @@ Merged
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
-```clj
+```clojure
 (require '[malli.edn :as edn])
 
 (-> [:and
@@ -1329,7 +1329,7 @@ Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eva
 
 Closed dispatch with `:multi` schema and `:dispatch` property:
 
-```clj
+```clojure
 (m/validate
   [:multi {:dispatch :type}
    [:sized [:map [:type keyword?] [:size int?]]]
@@ -1340,7 +1340,7 @@ Closed dispatch with `:multi` schema and `:dispatch` property:
 
 Default branch with `::m/default`:
 
-```clj
+```clojure
 (def valid?
   (m/validator
     [:multi {:dispatch :type}
@@ -1359,7 +1359,7 @@ Default branch with `::m/default`:
 
 Any (serializable) function can be used for `:dispatch`:
 
-```clj
+```clojure
 (m/validate
   [:multi {:dispatch 'first}
    [:sized [:tuple keyword? [:map [:size int?]]]]
@@ -1370,7 +1370,7 @@ Any (serializable) function can be used for `:dispatch`:
 
 `:dispatch` values should be decoded before actual values:
 
-```clj
+```clojure
 (m/decode
   [:multi {:dispatch :type
            :decode/string '#(update % :type keyword)}
@@ -1393,7 +1393,7 @@ To create a recursive schema, introduce a [local registry](#local-registry) and 
 
 For example, here is a recursive schema using `:schema` for singly-linked lists of positive integers:
 
-```clj
+```clojure
 (m/validate
   [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
    ::cons]
@@ -1403,7 +1403,7 @@ For example, here is a recursive schema using `:schema` for singly-linked lists 
 
 Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow error is thrown:
 
-```clj
+```clojure
 (m/validate
   [:schema {:registry {::cons [:maybe [:tuple pos-int? ::cons]]}}
    ::cons]
@@ -1413,7 +1413,7 @@ Without the `:ref` keyword, malli eagerly expands the schema until a stack overf
 
 Mutual recursion works too. Thanks to the `:schema` construct, many schemas could be defined in the local registry, the top-level one being promoted by the `:schema` second parameter:
 
-```clj
+```clojure
 (m/validate
   [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                        ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
@@ -1424,7 +1424,7 @@ Mutual recursion works too. Thanks to the `:schema` construct, many schemas coul
 
 Nested registries, the last definition wins:
 
-```clj
+```clojure
 (m/validate
   [:schema {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                        ::pong any?}} ;; effectively unreachable
@@ -1438,7 +1438,7 @@ Nested registries, the last definition wins:
 
 Schemas can be used to generate values:
 
-```clj
+```clojure
 (require '[malli.generator :as mg])
 
 ;; random
@@ -1500,7 +1500,7 @@ Schemas can be used to generate values:
 
 Generated values are valid:
 
-```clj
+```clojure
 (mg/generate Address {:seed 123, :size 4})
 ;{:id "H7",
 ; :tags #{:v?.w.t6!.QJYk-/-?s*4
@@ -1518,7 +1518,7 @@ Generated values are valid:
 
 Sampling values:
 
-```clj
+```clojure
 ;; sampling
 (mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
 ; => (25 39 51 13 53 43 57 15 26 27)
@@ -1526,7 +1526,7 @@ Sampling values:
 
 Integration with test.check:
 
-```clj
+```clojure
 (require '[clojure.test.check.generators :as gen])
 (gen/sample (mg/generator pos-int?))
 ; => (2 1 2 2 2 2 8 1 55 83)
@@ -1536,7 +1536,7 @@ Integration with test.check:
 
 Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):
 
-```clj
+```clojure
 (require '[malli.provider :as mp])
 
 (def samples
@@ -1569,14 +1569,14 @@ Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/t
 
 All samples are valid against the inferred schema:
 
-```clj
+```clojure
 (every? (partial m/validate (mp/provide samples)) samples)
 ; => true
 ```
 
 For better performance, use `mp/provider`:
 
-```clj
+```clojure
 ;; 5ms
 (p/bench (mp/provide samples))
 
@@ -1589,7 +1589,7 @@ For better performance, use `mp/provider`:
 
 Inferring `:map-of` requires 3 identical key & value schemas:
 
-```clj
+```clojure
 (mp/provide
   [{:a [1]
     :b [1 2]
@@ -1599,7 +1599,7 @@ Inferring `:map-of` requires 3 identical key & value schemas:
 
 This can be configured via `::mp/map-of-threshold` options:
 
-```clj
+```clojure
 (mp/provide
   [{:a [1]
     :b [1 2]}]
@@ -1609,7 +1609,7 @@ This can be configured via `::mp/map-of-threshold` options:
 
 Sample-data can be type-hinted with `::mp/hint`:
 
-```clj
+```clojure
 (mp/provide
   [^{::mp/hint :map-of}
    {:a {:b 1, :c 2}
@@ -1627,7 +1627,7 @@ Sample-data can be type-hinted with `::mp/hint`:
 
 By default, tuples are not inferred:
 
-```clj
+```clojure
 (mp/provide
   [[1 "kikka" true]
    [2 "kukka" true]
@@ -1637,7 +1637,7 @@ By default, tuples are not inferred:
 
 There is `::mp/tuple-threshold` option:
 
-```clj
+```clojure
 (mp/provide
   [[1 "kikka" true]
    [2 "kukka" true]
@@ -1648,7 +1648,7 @@ There is `::mp/tuple-threshold` option:
 
 Sample-data can be type-hinted with `::mp/hint`:
 
-```clj
+```clojure
 (mp/provide
   [^{::mp/hint :tuple}
    [1 "kikka" true]
@@ -1660,7 +1660,7 @@ Sample-data can be type-hinted with `::mp/hint`:
 
 By default, no decoding is applied for (leaf) values:
 
-```clj
+```clojure
 (mp/provide
  [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}])
@@ -1669,7 +1669,7 @@ By default, no decoding is applied for (leaf) values:
 
 Adding custom decoding via `::mp/value-decoders` option:
 
-```clj
+```clojure
 (mp/provide
  [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"
    :time "2021-01-01T00:00:00Z"}
@@ -1684,7 +1684,7 @@ Adding custom decoding via `::mp/value-decoders` option:
 
 Schemas can also be inferred from [Clojure Destructuring Syntax](https://clojure.org/guides/destructuring).
 
-```clj
+```clojure
 (require '[malli.destructure :as md])
 
 (def infer (comp :schema md/parse))
@@ -1694,14 +1694,14 @@ Schemas can also be inferred from [Clojure Destructuring Syntax](https://clojure
 ```
 Malli also supports adding type hints as an extension to the normal Clojure syntax (enabled by default), inspired by [Plumatic Schema](https://github.com/plumatic/schema#beyond-type-hints).
 
-```clj
+```clojure
 (infer '[a :- :int, b :- :string & cs :- [:* :boolean]])
 ; => [:cat :int :string [:* :boolean]]
 ```
 
 Pulling out function argument schemas from Vars:
 
-```clj
+```clojure
 (defn kikka
   ([a] [a])
   ([a b & cs] [a b cs]))
@@ -1724,7 +1724,7 @@ Pulling out function argument schemas from Vars:
 
 A more complete example:
 
-```clj
+```clojure
 (infer '[a [b c & rest :as bc]
          & {:keys [d e]
             :demo/keys [f]
@@ -1767,7 +1767,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 
 `m/parse` for one-time things:
 
-```clj
+```clojure
 (m/parse
   [:* [:catn
        [:prop string?]
@@ -1782,7 +1782,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 
 `m/parser` to create an optimized parser:
 
-```clj
+```clojure
 (def Hiccup
   [:schema {:registry {"hiccup" [:orn
                                  [:node [:catn
@@ -1812,7 +1812,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 
 Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
 
-```clj
+```clojure
 (def Multi
   [:multi {:dispatch :type}
    [:user [:map [:size :int]]]
@@ -1829,7 +1829,7 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
 
 The inverse of parsing, using `m/unparse` and `m/unparser`:
 
-```clj
+```clojure
 (->> [:div {:class [:foo :bar]}
       [:p "Hello, world of data"]]
      (m/parse Hiccup)
@@ -1847,7 +1847,7 @@ For ClojureScript, you also need to require `sci.core` manually, either directly
 
 For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
 
-```clj
+```clojure
 (def my-schema
   [:and
    [:map
@@ -1864,7 +1864,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 **NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
-```clj
+```clojure
 (m/validate [:fn 'int?] 1 {::m/disable-sci true})
 ; Execution error
 ; :malli.core/sci-not-available {:code int?}
@@ -1876,7 +1876,7 @@ Implemented with protocol `malli.core/AST`. Allows lossless round-robin with fas
 
 **NOTE**: For now, the AST syntax in considered as internal, e.g. don't use it as a database persistency model.
 
-```clj
+```clojure
 (def ?schema
   [:map
    [:x boolean?]
@@ -1922,7 +1922,7 @@ Schemas can be transformed using post-walking, e.g. the [Visitor Pattern](https:
 
 The identity walker:
 
-```clj
+```clojure
 (m/walk
   Address
   (m/schema-walker identity))
@@ -1939,7 +1939,7 @@ The identity walker:
 
 Adding `:title` property to schemas:
 
-```clj
+```clojure
 (m/walk
   Address
   (m/schema-walker #(mu/update-properties % assoc :title (name (m/type %)))))
@@ -1956,7 +1956,7 @@ Adding `:title` property to schemas:
 
 Transforming schemas into maps:
 
-```clj
+```clojure
 (m/walk
   Address
   (fn [schema _ children _]
@@ -1980,7 +1980,7 @@ Transforming schemas into maps:
 
 Transforming Schemas into [JSON Schema](https://json-schema.org/):
 
-```clj
+```clojure
 (require '[malli.json-schema :as json-schema])
 
 (json-schema/transform Address)
@@ -2002,7 +2002,7 @@ Transforming Schemas into [JSON Schema](https://json-schema.org/):
 
 Custom transformation via `:json-schema` namespaced properties:
 
-```clj
+```clojure
 (json-schema/transform
   [:enum
    {:title "Fish"
@@ -2019,7 +2019,7 @@ Custom transformation via `:json-schema` namespaced properties:
 
 Full override with `:json-schema` property:
 
-```clj
+```clojure
 (json-schema/transform
   [:map {:json-schema {:type "file"}}
    [:file any?]])
@@ -2030,7 +2030,7 @@ Full override with `:json-schema` property:
 
 Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md):
 
-```clj
+```clojure
 (require '[malli.swagger :as swagger])
 
 (swagger/transform Address)
@@ -2053,7 +2053,7 @@ Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Speci
 
 Custom transformation via `:swagger` and `:json-schema` namespaced properties:
 
-```clj
+```clojure
 (swagger/transform
   [:enum
    {:title "Fish"
@@ -2070,7 +2070,7 @@ Custom transformation via `:swagger` and `:json-schema` namespaced properties:
 
 Full override with `:swagger` property:
 
-```clj
+```clojure
 (swagger/transform
   [:map {:swagger {:type "file"}}
    [:file any?]])
@@ -2087,7 +2087,7 @@ See `malli.core` for example implementations.
 
 For simple cases, there is `m/-simple-schema`:
 
-```clj
+```clojure
 (require '[clojure.test.check.generators :as gen])
 
 (def Over6
@@ -2109,7 +2109,7 @@ For simple cases, there is `m/-simple-schema`:
 and children) and as Schema type to create new Schema instances without needing to
 register the types:
 
-```clj
+```clojure
 (m/schema? (m/schema Over6))
 ; => true
 
@@ -2119,7 +2119,7 @@ register the types:
 
 `:pred` is used for validation:
 
-```clj
+```clojure
 (m/validate Over6 2)
 ; => false
 
@@ -2131,7 +2131,7 @@ register the types:
 (instance) properties by many Schema applications, including [error messages](#custom-error-messages),
 [value generation](#value-generation) and [json-schema](#json-schema) transformations.
 
-```clj
+```clojure
 (json-schema/transform Over6)
 ; => {:type "integer", :format "int64", :minimum 6}
 
@@ -2143,7 +2143,7 @@ register the types:
 
 You can also build content-dependent schemas by using a callback function of `properties children -> opts` instead of static `opts`:
 
-```clj
+```clojure
 (def Over
   (m/-simple-schema
     (fn [{:keys [value]} _]
@@ -2169,7 +2169,7 @@ Schemas are looked up using a `malli.registry/Registry` protocol, which is effec
 
 Custom `Registry` can be passed into all/most malli public APIs via the optional options map using `:registry` key. If omitted, `malli.core/default-registry` is used.
 
-```clj
+```clojure
 ;; the default registry
 (m/validate [:maybe string?] "kikka")
 ; => true
@@ -2185,7 +2185,7 @@ The default immutable registry is merged from multiple parts, enabling easy re-c
 
 Here's an example to create a custom registry without the default core predicates and with `:neg-int` and `:pos-int` Schemas:
 
-```clj
+```clojure
 (def registry
   (merge
     (m/class-schemas)
@@ -2203,7 +2203,7 @@ Here's an example to create a custom registry without the default core predicate
 
 We did not register normal predicate schemas:
 
-```clj
+```clojure
 (m/validate pos-int? 123 {:registry registry})
 ; Syntax error (ExceptionInfo) compiling
 ; :malli.core/invalid-schema {:schema pos-int?}
@@ -2213,7 +2213,7 @@ We did not register normal predicate schemas:
 
 Any schema can define a local registry using `:registry` schema property:
 
-```clj
+```clojure
 (def Adult
   [:map {:registry {::age [:and int? [:> 18]]}}
    [:age ::age]])
@@ -2224,7 +2224,7 @@ Any schema can define a local registry using `:registry` schema property:
 
 Local registries can be persisted:
 
-```clj
+```clojure
 (-> Adult
     (malli.edn/write-string)
     (malli.edn/read-string)
@@ -2238,7 +2238,7 @@ See also [Recursive Schemas](#recursive-schemas).
 
 Passing in custom options to all public methods is a lot of boilerplate. For the lazy, there is an easier way - we can swap the (global) default registry:
 
-```clj
+```clojure
 (require '[malli.registry :as mr])
 
 ;; the default registry
@@ -2275,7 +2275,7 @@ Malli allows the default registry to initialized with empty schemas, using the f
    * cljs: `:closure-defines {malli.registry/type "custom"}`
    * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
 
-```clj
+```clojure
 ;; with the flag set on
 (-> m/default-registry (mr/schemas) (count))
 ; => 0
@@ -2291,7 +2291,7 @@ Malli supports multiple type of registries.
 
 Just just a `Map`.
 
-```clj
+```clojure
 (require '[malli.registry :as mr])
 
 (mr/set-default-registry!
@@ -2311,7 +2311,7 @@ Just just a `Map`.
 
 Using a custom registry atom:
 
-```clj
+```clojure
 (def registry*
   (atom {:string (m/-string-schema)
          :maybe (m/-maybe-schema)
@@ -2331,7 +2331,7 @@ Using a custom registry atom:
 
 The mutable registry can also be passed in as an explicit option:
 
-```clj
+```clojure
 (def registry (mr/mutable-registry registry*))
 
 (m/validate :non-empty-string "malli" {:registry registry})
@@ -2342,7 +2342,7 @@ The mutable registry can also be passed in as an explicit option:
 
 If you know what you are doing, you can also use [dynamic scope](https://stuartsierra.com/2013/03/29/perils-of-dynamic-scope) to pass in default schema registry:
 
-```clj
+```clojure
 (mr/set-default-registry!
   (mr/dynamic-registry))
 
@@ -2358,7 +2358,7 @@ If you know what you are doing, you can also use [dynamic scope](https://stuarts
 
 You can provide schemas at runtime using `mr/lazy-registry` - it takes a local registry and a provider function of `type registry -> schema` as arguments:
 
-```clj
+```clojure
 (def registry
   (mr/lazy-registry
     (m/default-schemas)
@@ -2401,7 +2401,7 @@ You can provide schemas at runtime using `mr/lazy-registry` - it takes a local r
 
 Registries can be composed, a full example:
 
-```clj
+```clojure
 (require '[malli.core :as m])
 (require '[malli.registry :as mr])
 
@@ -2445,7 +2445,7 @@ See [Instrumentation](docs/function-schemas.md#instrumentation).
 
 Given functions and function Schemas:
 
-```clj
+```clojure
 (defn square [x] (* x x))
 (m/=> square [:=> [:cat int?] nat-int?])
 
@@ -2460,7 +2460,7 @@ Given functions and function Schemas:
 
 Generating `clj-kondo` configuration from current namespace:
 
-```clj
+```clojure
 (require '[malli.clj-kondo :as mc])
 
 (-> (mc/collect *ns*) (mc/linter-config))
@@ -2478,7 +2478,7 @@ Generating `clj-kondo` configuration from current namespace:
 
 Emitting confing into `./.clj-kondo/configs/malli/config.edn`:
 
-```clj
+```clojure
 (mc/emit!)
 ```
 
@@ -2517,7 +2517,7 @@ example project.
 
 Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language) ):
 
-```clj
+```clojure
 (require '[malli.dot :as md])
 
 (def Address
@@ -2555,7 +2555,7 @@ Visualized with [Graphviz](https://graphviz.org/):
 
 Transforming Schemas into [PlantUML](https://plantuml.com/):
 
-```clj
+```clojure
 (require '[malli.plantuml :as plantuml])
 
 (plantuml/transform Address)
@@ -2572,7 +2572,7 @@ Simple syntax sugar, like [data-specs](https://cljdoc.org/d/metosin/spec-tools/C
 
 As the namespace suggests, it's experimental, built for [reitit](https://github.com/metosin/reitit).
 
-```clj
+```clojure
 (require '[malli.experimental.lite :as l])
 
 (l/schema
@@ -2600,7 +2600,7 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 
 Options can be used by binding a dynamic `l/*options*` Var:
 
-```clj
+```clojure
 (binding [l/*options* {:registry (merge
                                   (m/default-schemas)
                                   {:user/id :int})}]
@@ -2619,7 +2619,7 @@ Malli tries to be really, really fast.
 
 Usually as fast (or faster) as idiomatic Clojure.
 
-```clj
+```clojure
 (require '[criterium.core :as cc])
 
 (def valid {:x true, :y 1, :z "zorro"})
@@ -2646,7 +2646,7 @@ Usually as fast (or faster) as idiomatic Clojure.
 
 Same with Clojure Spec and Plumatic Schema:
 
-```clj
+```clojure
 (require '[clojure.spec.alpha :as spec])
 (require '[schema.core :as schema])
 
@@ -2672,7 +2672,7 @@ Same with Clojure Spec and Plumatic Schema:
 
 Usually faster than idiomatic Clojure.
 
-```clj
+```clojure
 (def data {:x "true", :y "1", :z "kikka"})
 (def expected {:x true, :y 1, :z "kikka"})
 
@@ -2696,7 +2696,7 @@ Usually faster than idiomatic Clojure.
 
 Same with Clojure Spec and Plumatic Schema:
 
-```clj
+```clojure
 (require '[spec-tools.core :as st])
 (require '[schema.coerce :as sc])
 
@@ -2721,7 +2721,7 @@ Same with Clojure Spec and Plumatic Schema:
 
 The transformation engine is smart enough to just transform parts of the schema that need to be transformed. If there is nothing to transform, `identity` function is returned.
 
-```clj
+```clojure
 (def json->user
   (m/decoder
     [:map
@@ -2748,7 +2748,7 @@ The transformation engine is smart enough to just transform parts of the schema 
 
 ### Parsing performance
 
-```clj
+```clojure
 ;; 37µs
 (let [spec (s/* (s/cat :prop string?,
                        :val (s/alt :s string?
@@ -2894,7 +2894,7 @@ Without sci (11Mb)
 
 With sci (18Mb):
 
-```clj
+```clojure
 ./bin/native-image demosci
 ./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
 ```

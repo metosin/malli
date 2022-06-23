@@ -2223,6 +2223,7 @@
 
 (defn -default-sci-options []
   {:preset :termination-safe
+   :aliases {'str 'clojure.string}
    :namespaces {'malli.core {'properties properties
                              'type type
                              'children children

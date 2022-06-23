@@ -24,7 +24,7 @@
 
 In Clojure, functions are first-class. Here's a simple function:
 
-```clj
+```clojure
 (defn plus [x y]
   (+ x y))
   
@@ -36,7 +36,7 @@ In Clojure, functions are first-class. Here's a simple function:
 
 Simplest way to describe function values with malli is to use predefined predicate schemas `fn?` and `ifn?`:
 
-```clj
+```clojure
 (require '[malli.core :as m])
 
 (m/validate fn? plus)
@@ -48,7 +48,7 @@ Simplest way to describe function values with malli is to use predefined predica
 
 Note that `ifn?` also accepts many data-structures that can be used as functions:
 
-```clj
+```clojure
 (m/validate ifn? :kikka)
 ; => true
 
@@ -66,7 +66,7 @@ Function values can be described with `:=>` and `:function` schemas. They allows
 
 Examples of function definitions:
 
-```clj
+```clojure
 ;; no args, no return
 [:=> :cat :nil]
 
@@ -86,20 +86,20 @@ Examples of function definitions:
 
 Function definition for the `plus` looks like this:
 
-```clj
+```clojure
 (def =>plus [:=> [:cat :int :int] :int])
 ```
 
 Let's try:
 
-```clj
+```clojure
 (m/validate =>plus plus)
 ; => true
 ```
 
 But, wait, as there was no way to know the function arity & other information at runtime, so how did the validation work? Actually, it didn't. By default. `:=>` validation just checks that it's a `fn?`, so this holds too:
 
-```clj
+```clojure
 (m/validate =>plus str)
 ; => true
 ```
@@ -111,7 +111,7 @@ Enter, generative testing.
 
 Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [test.check](https://github.com/clojure/test.check) to check the functions at runtime. For this, there is `:malli.core/function-checker` option.
 
-```clj
+```clojure
 (require '[malli.generator :as mg])
 
 (def =>plus 
@@ -128,7 +128,7 @@ Like [clojure.spec](https://clojure.org/about/spec) demonstrated, we can use [te
 
 Explanation why it is not valid:
 
-```clj
+```clojure
 (m/explain =>plus str)
 ;{:schema [:=> [:cat :int :int] :int],
 ; :value #object[clojure.core$str],
@@ -159,7 +159,7 @@ But, why `mg/function-checker` is not enabled by default? The reason is that it 
 
 We can also generate function implementations based on the function schemas. The generated functions check the function arity and arguments at runtime and return generated values.
 
-```clj
+```clojure
 (def plus-gen (mg/generate =>plus))
 
 (plus-gen 1)
@@ -176,7 +176,7 @@ We can also generate function implementations based on the function schemas. The
 
 Multi-arity functions can be composed with `:function`:
 
-```clj
+```clojure
 ;; multi-arity fn with function checking always on
 (def =>my-fn
   (m/schema
@@ -233,7 +233,7 @@ Multi-arity functions can be composed with `:function`:
 
 Generating multi-arity functions:
 
-```clj
+```clojure
 (def my-fn-gen (mg/generate =>my-fn))
 
 (my-fn-gen)
@@ -264,7 +264,7 @@ Simplest way to do this is to use `m/-instrument` which takes options map and a 
 
 Instrumentig a function with input & return constraints:
 
-```clj
+```clojure
 (def pow
   (m/-instrument
     {:schema [:=> [:cat :int] [:int {:max 6}]]}
@@ -285,7 +285,7 @@ Instrumentig a function with input & return constraints:
 
 Example of a multi-arity function with instrumentation scopes and custom reporting function:
 
-```clj
+```clojure
 (def multi-arity-pow
   (m/-instrument
     {:schema [:function
@@ -309,7 +309,7 @@ Example of a multi-arity function with instrumentation scopes and custom reporti
 
 With `:gen` we can omit the function body. Here's an example to generate random values based on the return schema:
 
-```clj
+```clojure
 (def pow-gen
   (m/-instrument
     {:schema [:function
@@ -341,7 +341,7 @@ There are three ways to add function schemas to function Vars (e.g. `defn`s):
 
 `m/=>` macro takes the Var name and the function schema and stores the var -> schema mappings in a global registry.
 
-```clj
+```clojure
 (def small-int [:int {:max 6}])
 
 (defn plus1 [x] (inc x))
@@ -350,14 +350,14 @@ There are three ways to add function schemas to function Vars (e.g. `defn`s):
 
 The order doesn't matter, so this also works:
 
-```clj
+```clojure
 (m/=> plus1 [:=> [:cat :int] small-int])
 (defn plus1 [x] (inc x))
 ```
 
 Listing the current accumulation of function (Var) schemas:
 
-```clj
+```clojure
 (m/function-schemas)
 ;{user {plus1 {:schema [:=> [:cat :int] [:int {:max 6}]]
 ;              :ns user
@@ -366,14 +366,14 @@ Listing the current accumulation of function (Var) schemas:
 
 Without instrumentation turned on, there is no schema enforcement:
 
-```clj
+```clojure
 (plus1 10)
 ; => 11
 ```
 
 Turning instrumentation on:
 
-```clj
+```clojure
 (require '[malli.instrument :as mi])
 
 (mi/instrument!)
@@ -387,7 +387,7 @@ Turning instrumentation on:
 
 `defn` schemas can be defined with standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. It's just data.
 
-```clj
+```clojure
 (defn minus
   "a normal clojure function, no dependencies to malli"
   {:malli/schema [:=> [:cat :int] small-int]}
@@ -397,7 +397,7 @@ Turning instrumentation on:
 
 To collect instrumentation for the `defn`, we need to call `mi/collect!`. It reads all public vars from a given namespace and registers function schemas from `:malli/schema` metadata.
 
-```clj
+```clojure
 (mi/collect!)
 ; => #{#'user/minus}
 
@@ -412,7 +412,7 @@ To collect instrumentation for the `defn`, we need to call `mi/collect!`. It rea
 
 We'll also have to reinstument the new var:
 
-```clj
+```clojure
 (mi/instrument!)
 ; =prints=> ..instrumented #'user/plus1
 ; =prints=> ..instrumented #'user/minus
@@ -436,7 +436,7 @@ Setting `:malli/gen` to `true` while function body generation is enabled with `m
 
 Malli also supports [Plumatic Schema -style](https://github.com/plumatic/schema#beyond-type-hints) schema hints via `malli.experimental` ns:
 
-```clj
+```clojure
 (require '[malli.experimental :as mx])
 
 (mx/defn times :- :int
@@ -447,7 +447,7 @@ Malli also supports [Plumatic Schema -style](https://github.com/plumatic/schema#
 
 Function schema is registered automatically:
 
-```clj
+```clojure
 (m/function-schemas)
 ;{user {plus1 {:schema [:=> [:cat :int] [:int {:max 6}]]
 ;              :ns user
@@ -461,14 +461,14 @@ Function schema is registered automatically:
 ```
 ... but not instrumented:
 
-```clj
+```clojure
 (times 10 10)
 ; => 100
 ```
 
 with instrumentation:
 
-```clj
+```clojure
 (mi/instrument!)
 ; =prints=> ..instrumented #'user/plus1
 ; =prints=> ..instrumented #'user/minus
@@ -482,13 +482,13 @@ with instrumentation:
 
 The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentations focus is for development time, but can also be used for production builds.
 
-```clj
+```clojure
 (require '[malli.instrument :as mi])
 ```
 
 Vars can be instrumented with `mi/instrument!` and the instrumentation can be removed with `mi/unstrument!`.
 
-```clj
+```clojure
 (m/=> power [:=> [:cat :int] [:int {:max 6}]])
 (defn power [x] (* x x))
 
@@ -509,7 +509,7 @@ Vars can be instrumented with `mi/instrument!` and the instrumentation can be re
 
 Instrumentation can be configured with the same options as `m/-instrument` and with a set of `:filters` to select which Vars should be instrumented.
 
-```clj
+```clojure
 (mi/instrument!
  {:filters [;; everything from user ns
             (mi/-filter-ns 'user)
@@ -533,7 +533,7 @@ We can also check the defn schemas against their function implementations using 
 
 Checking all registered schemas:
 
-```clj
+```clojure
 (mi/check)
 ;{user/plus1 {:schema [:=> [:cat :int] [:int {:max 6}]],
 ;             :value #object[user$plus1],
@@ -558,7 +558,7 @@ Checking all registered schemas:
 
 It reports that the `plus1` is not correct. It accepts `:int` but promises to return `[:int {:max 6}]`. Let's fix the contract by constraining the input values.
 
-```clj
+```clojure
 (m/=> plus1 [:=> [:cat [:int {:max 5}]] [:int {:max 6}]])
 
 (mg/check)
@@ -571,7 +571,7 @@ A pragmatically correct schema for `plus1` would be `[:=> [:cat :int] [:int]]`. 
 
 We redefined `plus1` function schema and the instrumentation is now out of sync. We have to call `mi/instrument!` to re-instrument it correctly. 
 
-```clj
+```clojure
 ;; the old schema & old error
 (plus1 6)
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 9, :args [8], :schema [:=> [:cat :int] [:int {:max 6}]]}
@@ -591,13 +591,13 @@ We can do much better.
 
 For better DX, there is `malli.dev` namespace. 
 
-```clj
+```clojure
 (require '[malli.dev :as dev])
 ```
 
 It's main entry points is `dev/start!`, taking same options as `mi/instrument!`. It runs `mi/instrument!` and `mi/collect!` (for all loaded namespaces) once and starts watching the function registry for changes. Any change that matches the filters will cause automatic re-instrumentation for the functions. `dev/stop!` removes all instrumentation and stops watching the registry.
 
-```clj
+```clojure
 (defn plus1 [x] (inc x))
 (m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
 
@@ -634,11 +634,11 @@ Here's the above code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo
 
 For prettier runtime error messages, we can swap the default error printer / thrower.
 
-```clj
+```clojure
 (require '[malli.dev.pretty :as pretty])
 ```
 
-```clj
+```clojure
 (defn plus1 [x] (inc x))
 (m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
 
@@ -676,13 +676,13 @@ For prettier runtime error messages, we can swap the default error printer / thr
 
 To throw the prettified error instead of just printint it:
 
-```clj
+```clojure
 (dev/start! {:report (pretty/thrower)})
 ```
 
 Pretty printer uses [fipp](https://github.com/brandonbloom/fipp) under the hood and has lot of configuration options:
 
-```clj
+```clojure
 (dev/start! {:report (pretty/reporter (pretty/-printer {:width 80
                                                         :print-length 30
                                                         :print-level 2
@@ -693,7 +693,7 @@ Pretty printer uses [fipp](https://github.com/brandonbloom/fipp) under the hood 
 
 Example of annotating function with var meta-data and using `malli.dev` for dev-time function instrumentation, pretty runtime exceptions and clj-kondo for static checking:
 
-```clj
+```clojure
 (ns malli.demo)
 
 (defn plus1

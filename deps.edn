@@ -40,9 +40,11 @@
                                :sha "b093f79420fef019faf62a75b888b5e10f4e8cc9"}}
                  :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
                              "--project-path" "malli.jar"]}
-           :deploy {:extra-deps {deps-deploy/deps-deploy {:mvn/version "RELEASE"}}
-                    :main-opts ["-m" "deps-deploy.deps-deploy" "deploy"
-                                "malli.jar"]}
+           :deploy {:extra-deps {spliset/deps-deploy {:mvn/version "RELEASE"}}
+                    :exec-fn deps-deploy.deps-deploy/deploy
+                    :exec-args {:installer :remote
+                                :sign-releases? true
+                                :artifact "malli.jar"}}
            :install {:extra-deps {deps-deploy/deps-deploy {:mvn/version "RELEASE"}}
                      :main-opts ["-m" "deps-deploy.deps-deploy" "install"
                                  "malli.jar"]}

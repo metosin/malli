@@ -95,7 +95,11 @@
           (symbol? child) :symbol
           :else :any)))))
 
-(defmethod accept :maybe [_ _ [child] _] (if (keyword? child) (keyword "nilable" (name child)) child))
+(defmethod accept :maybe [_ _ [child] _]
+  (cond
+    (= :keys (:op child)) (assoc child :nilable true)
+    (keyword? child) (keyword "nilable" (name child))
+    :else child))
 (defmethod accept :tuple [_ _ children _] children)
 (defmethod accept :multi [_ _ _ _] :any) ;;??
 (defmethod accept :re [_ _ _ _] :string)

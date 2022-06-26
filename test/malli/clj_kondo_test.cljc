@@ -44,7 +44,7 @@
           :req {::id :string,
                 :name :string,
                 :description :nilable/string,
-                :select-keys {:op :keys, :req {:x :int}},
+                :select-keys {:op :keys, :req {:x :int} :nilable true},
                 :nested {:op :keys, :req {:id :string, :price :double}},
                 :string-type-enum :nilable/string
                 :keyword-type-enum :keyword

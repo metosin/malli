@@ -2910,6 +2910,7 @@ With sci (18Mb):
 - [Snoop](https://github.com/CrypticButter/snoop) - Function instrumentation using Malli schemas.
 - [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
 - [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
+- [malapropism](https://github.com/dpassen/malapropism) - malli-backed configuration library
 
 ## License
 

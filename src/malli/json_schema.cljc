@@ -80,11 +80,14 @@
 (defmethod accept :orn [_ _ children _] {:anyOf (map last children)})
 
 (defmethod accept ::m/val [_ _ children _] (first children))
-(defmethod accept :map [_ _ children _]
+(defmethod accept :map [_ schema children _]
   (let [required (->> children (filter (m/-comp not :optional second)) (mapv first))
+        additional-properties (:closed (m/properties schema))
         object {:type "object"
                 :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))}]
-    (if (empty? required) object (assoc object :required required))))
+    (cond-> object
+      (seq required) (assoc :required required)
+      additional-properties (assoc :additionalProperties false))))
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 

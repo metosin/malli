@@ -92,14 +92,16 @@
     (is (= ['int? 'string?] (map m/form (m/eval "(m/children [:or {:some \"props\"} int? string?])"))))
     (is (schema= [[:x [::m/val 'int?]] [:y [::m/val 'string?]]] (m/eval "(m/entries [:map [:x int?] [:y string?]])")))
     (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])"))))
-  (testing "with options"
-    (testing "disabling sci"
-      (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
-      (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1))))
-    (testing "custom bindings"
-      (let [f '(fn [schema] (m/form schema))]
-        (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval f) :string)))
-        (is (= :string ((m/eval f {::m/sci-options {:namespaces {'malli.core {'form m/form}}}}) :string)))))))
+  #?(:bb nil
+     :default
+     (testing "with options"
+       (testing "disabling sci"
+         (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
+         (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1))))
+       (testing "custom bindings"
+         (let [f '(fn [schema] (m/form schema))]
+           (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval f) :string)))
+           (is (= :string ((m/eval f {::m/sci-options {:namespaces {'malli.core {'form m/form}}}}) :string))))))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -837,7 +839,8 @@
     #?(:clj
        (testing "non-terminating functions DO NOT fail fast"
          (let [schema [:fn '(fn [x] (< x (apply max (range))))]]
-           (is (= ::miu/timeout (miu/-run (fn [] (m/validate schema 1)) 100)))
+           #?(:bb nil ;; Graalvm doesn't support calling .stop on Threads since that is deprecated
+              :clj (is (= ::miu/timeout (miu/-run (fn [] (m/validate schema 1)) 100))))
            #_(is (false? (m/validate schema 1)))
            #_(is (results= {:schema schema
                             :value 1

@@ -1,10 +1,19 @@
 (ns malli.util-test
   (:require [clojure.test :refer [are deftest is testing]]
-            #?(:clj [jsonista.core :as json])
+            #?(:bb [cheshire.core :as json]
+               :clj [jsonista.core :as json])
             [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
             [malli.util :as mu]))
+
+#?(:clj (defn from-json [s]
+          #?(:bb (json/parse-string s)
+             :clj (json/read-value s))))
+
+#?(:clj (defn to-json [x]
+          #?(:bb (json/generate-string x)
+             :clj (json/write-value-as-string x))))
 
 (defn form= [& ?schemas]
   (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))
@@ -1048,11 +1057,11 @@
                             "value" 1}]
                  "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
                  "value" {"a" 1}}
-                (json/read-value (json/write-value-as-string (mu/explain-data schema input-1)))))
+                (from-json (to-json (mu/explain-data schema input-1)))))
          (is (= {"errors" [{"in" ["a" 0]
                             "path" ["a" 0 0]
                             "schema" "string"
                             "value" true}]
                  "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
                  "value" {"a" [true]}}
-                (json/read-value (json/write-value-as-string (mu/explain-data schema input-2)))))))))
+                (from-json (to-json (mu/explain-data schema input-2)))))))))

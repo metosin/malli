@@ -16,7 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## 0.8.9 (2022-07-01)
 
-* Works with [Babashka](README#babashka).
+* Works with [Babashka](README#babashka), [#718](https://github.com/metosin/malli/pull/718)
 * updated dependencies:
 
 ```clojure

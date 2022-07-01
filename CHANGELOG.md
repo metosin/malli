@@ -14,6 +14,15 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 0.8.9 (2022-07-01)
+
+* Works with [Babashka](README#babashka).
+* updated dependencies:
+
+```clojure
+borkdude/dynaload 0.2.2 -> 0.3.4
+```
+
 ## 0.8.8 (2022-06-23)
 
 * new guide for [Static type checking via Typed Clojure](README.md#static-type-checking-via-typed-clojure)

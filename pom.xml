@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.8.8</version>
+  <version>0.8.9</version>
   <name>malli</name>
   <licenses>
     <license>
@@ -15,13 +15,13 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.8.8</tag>
+    <tag>0.8.9</tag>
   </scm>
   <dependencies>
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>dynaload</artifactId>
-      <version>0.2.2</version>
+      <version>0.3.4</version>
     </dependency>
     <dependency>
       <groupId>borkdude</groupId>

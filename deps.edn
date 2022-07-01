@@ -1,6 +1,6 @@
 {:paths ["src" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        borkdude/dynaload {:mvn/version "0.2.2"}
+        borkdude/dynaload {:mvn/version "0.3.4"}
         borkdude/edamame {:mvn/version "1.0.0"}
         org.clojure/test.check {:mvn/version "1.1.1"}
         ;; pretty errors, optional deps

@@ -4,8 +4,9 @@
 [![cljdoc badge](https://cljdoc.org/badge/metosin/malli)](https://cljdoc.org/d/metosin/malli/)
 [![Clojars Project](https://img.shields.io/clojars/v/metosin/malli.svg)](https://clojars.org/metosin/malli)
 [![Slack](https://img.shields.io/badge/clojurians-malli-blue.svg?logo=slack)](https://clojurians.slack.com/messages/malli/)
+<a href="https://babashka.org" rel="nofollow"><img src="https://github.com/babashka/babashka/raw/master/logo/badge.svg" alt="bb compatible" style="max-width: 100%;"></a>
 
-Data-driven Schemas for Clojure/Script.
+Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 
 **STATUS**: well matured [*alpha*](#alpha)
 
@@ -2897,6 +2898,31 @@ With sci (18Mb):
 ```clojure
 ./bin/native-image demosci
 ./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
+```
+
+## Babashka
+
+Since version 0.8.9 malli is compatible with [babashka](https://babashka.org/),
+a native, fast starting Clojure interpreter for scripting.
+
+You can add malli to `bb.edn`:
+
+``` clojure
+{:deps {metosin/malli {:mvn/version "0.8.9"}}}
+```
+
+or directly in a babashka script:
+
+``` clojure
+(ns bb-malli
+  (:require [babashka.deps :as deps]))
+
+(deps/add-deps '{:deps {metosin/malli {:mvn/version "0.8.9"}}})
+
+(require '[malli.core :as malli])
+
+(prn (malli/validate [:map [:a [:int]]] {:a 1}))
+(prn (malli/explain [:map [:a [:int]]] {:a "foo"}))
 ```
 
 ## 3rd party libraries

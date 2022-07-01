@@ -7,7 +7,8 @@
             [malli.impl.util :as miu]
             [malli.registry :as mr]
             [malli.sci :as ms])
-  #?(:clj (:import (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
+  #?(:clj (:import #?(:bb (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector PersistentArrayMap)
+                      :clj (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap))
                    (java.util.concurrent.atomic AtomicReference)
                    (java.util.regex Pattern))))
 
@@ -449,8 +450,11 @@
         (-fail! ::invalid-ref {:ref e})))))
 
 (defn -eager-entry-parser [children props options]
-  (letfn [(-vec [^objects arr] #?(:clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
-          (-map [^objects arr] #?(:clj (PersistentArrayMap/createWithCheck arr)
+  (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
+          (-map [^objects arr] #?(:bb (let [m (apply array-map arr)]
+                                        (when-not (= (* 2 (count m)) (count arr))
+                                          (-fail! ::duplicate-keys)) m)
+                                  :clj (PersistentArrayMap/createWithCheck arr)
                                   :cljs (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
                                             (-fail! ::duplicate-keys)) m)))
@@ -504,7 +508,11 @@
     (-intercepting parent-transformer child-transformer)))
 
 (defn -map-transformer [ts]
-  #?(:clj  (apply -comp (map (fn child-transformer [[k t]]
+  #?(:bb (fn [x] (reduce (fn child-transformer [m [k t]]
+                           (if-let [entry (find m k)]
+                             (assoc m k (t (val entry)))
+                             m)) x ts))
+     :clj  (apply -comp (map (fn child-transformer [[k t]]
                                (fn [^Associative x]
                                  (if-let [e ^MapEntry (.entryAt x k)]
                                    (.assoc x k (t (.val e))) x))) (rseq ts)))
@@ -516,7 +524,8 @@
 (defn -tuple-transformer [ts] (fn [x] (reduce-kv -update x ts)))
 
 (defn -collection-transformer [t empty]
-  #?(:clj  (fn [x] (let [i (.iterator ^Iterable x)]
+  #?(:bb (fn [x] (into (when x empty) (map t) x))
+     :clj  (fn [x] (let [i (.iterator ^Iterable x)]
                      (loop [x ^IPersistentCollection empty]
                        (if (.hasNext i)
                          (recur (.cons x (t (.next i))))
@@ -977,7 +986,8 @@
                                        (fn [[key {:keys [optional]} value]]
                                          (let [valid? (-validator value)
                                                default (boolean optional)]
-                                           #?(:clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
+                                           #?(:bb (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
+                                              :clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        (-children this))
                                 closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
@@ -1976,7 +1986,7 @@
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t #?(:clj (.nth v 0), :cljs (nth v 0))
-                             n #?(:clj (.count v), :cljs (count v))
+                             n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
                            (into-schema t ?p (when (< 2 n) (subvec ?schema 2 n)) options)

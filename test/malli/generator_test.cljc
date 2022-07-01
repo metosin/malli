@@ -150,7 +150,8 @@
                               [:int [:map [:type [:= :int]] [:int int?]]]
                               [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]}} ::multi])))
 
-  #?(:clj (testing "regex"
+  #?(:bb nil ;; test.chuck doesn't work in bb
+     :clj (testing "regex"
             (let [re #"^\d+ \d+$"]
               (m/validate re (mg/generate re)))
 

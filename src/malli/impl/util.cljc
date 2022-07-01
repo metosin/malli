@@ -1,5 +1,6 @@
 (ns malli.impl.util
-  #?(:clj (:import (clojure.lang MapEntry LazilyPersistentVector)
+  #?(:clj (:import #?(:bb (clojure.lang MapEntry)
+                      :clj (clojure.lang MapEntry LazilyPersistentVector))
                    (java.util.concurrent TimeoutException TimeUnit FutureTask))))
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
@@ -22,7 +23,8 @@
                      (if-not (zero? c)
                        (let [oa (object-array c), iter (.iterator ^Iterable os)]
                          (loop [n 0] (when (.hasNext iter) (aset oa n (f (.next iter))) (recur (unchecked-inc n))))
-                         (LazilyPersistentVector/createOwning oa)) []))
+                         #?(:bb (vec oa)
+                            :clj (LazilyPersistentVector/createOwning oa))) []))
              :cljs (into [] (map f) os))))
 
 #?(:clj

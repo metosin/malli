@@ -34,8 +34,8 @@
   (let [{:keys [schema value]} explanation]
     {:body
      [:group
-      (-block "Value:" (v/-visit value printer) printer) :break :break
       (-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
+      (-block "Value:" (v/-visit value printer) printer) :break :break
       (-block "Schema:" (v/-visit schema printer) printer) :break :break
       (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 

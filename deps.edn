@@ -1,6 +1,6 @@
 {:paths ["src" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        borkdude/dynaload {:mvn/version "0.3.4"}
+        borkdude/dynaload {:mvn/version "0.3.5"}
         borkdude/edamame {:mvn/version "1.0.0"}
         org.clojure/test.check {:mvn/version "1.1.1"}
         ;; pretty errors, optional deps
@@ -10,7 +10,7 @@
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
                                lambdaisland/kaocha {:mvn/version "1.68.1059"}
                                lambdaisland/kaocha-cljs {:mvn/version "1.0.107"}
-                               org.babashka/sci {:mvn/version "0.3.31"}
+                               org.babashka/sci {:mvn/version "0.3.32"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}
                                metosin/spec-tools {:mvn/version "0.10.5"}
                                spec-provider/spec-provider {:mvn/version "0.4.14"}

@@ -548,7 +548,7 @@
   (testing "collecting all properties"
     (are [schema expected]
       (let [{:keys [errors] :as error} (m/explain schema {:foo "1"})]
-        (is (= [expected] (map #(me/-resolve-root-error error % nil) errors))))
+        (= [expected] (map #(me/-resolve-root-error error % nil) errors)))
 
       ;; direct
       [:map [:foo [:int {:error/message "direct-failure" ::level :warn}]]]

@@ -137,7 +137,7 @@
         (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
     (testing "recursion limiting"
       (are [schema]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))
+        (every? (partial m/validate schema) (mg/sample schema {:size 100}))
 
         [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
         [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
@@ -267,7 +267,7 @@
 
   (testing "valid properties"
     (are [schema]
-      (is (every? #(<= 10 % 20) (map count (mg/sample schema {:size 1000}))))
+      (every? #(<= 10 % 20) (map count (mg/sample schema {:size 1000})))
 
       [:vector {:min 10, :max 20} int?]
       [:set {:min 10, :max 20} int?]
@@ -287,7 +287,7 @@
 
   (testing "invalid properties"
     (are [schema]
-      (is (thrown? #?(:clj Exception, :cljs js/Error) (mg/sample schema {:size 1000})))
+      (thrown? #?(:clj Exception, :cljs js/Error) (mg/sample schema {:size 1000}))
 
       ;; :gen/min less than :min
       [:vector {:min 11, :gen/min 10, :max 100, :gen/max 20} int?]

@@ -280,8 +280,7 @@
                          [:yxy [:map [:y keyword?]]]
                          [:kw keyword?]]]]
           (are [input result]
-            (is (= (m/decode schema input mt/string-transformer)
-                   result))
+            (= (m/decode schema input mt/string-transformer) result)
 
             {:x "true", :y "true"} {:x :true, :y "true"}
             {:x false, :y "true"} {:x false, :y :true}
@@ -307,8 +306,7 @@
                                 [:y keyword?]
                                 [:enter boolean?]]]]]]
           (are [input result]
-            (is (= (m/decode (mu/closed-schema schema) input mt/string-transformer)
-                   result))
+            (= (m/decode (mu/closed-schema schema) input mt/string-transformer) result)
 
             {:x "true"} {:x :true, :enter true, :leave true}
             {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
@@ -1351,15 +1349,16 @@
 
       (testing "changing type results in children not being called"
         (are [schema data]
-          (is (= "age:31"
-                 (m/encode schema data
-                           (let [should-not-be-called
-                                 (fn [_] (throw (ex-info "Was called" {:schema schema
-                                                                       :data data})))]
-                             (mt/transformer
-                              {:name :test
-                               :encoders {'int? should-not-be-called
-                                          'keyword? should-not-be-called}})))))
+          (= "age:31"
+             (m/encode schema data
+                       (let [should-not-be-called
+                             (fn [_] (throw (ex-info "Was called" {:schema schema
+                                                                   :data data})))]
+                         (mt/transformer
+                          {:name :test
+                           :encoders {'int? should-not-be-called
+                                      'keyword? should-not-be-called}}))))
+
           [:map {:encode/test (fn [{:keys [age]}]
                                 (str "age:" age))}
            [:age int?]]

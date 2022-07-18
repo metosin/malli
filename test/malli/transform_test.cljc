@@ -413,7 +413,7 @@
         strip-all (mt/strip-extra-keys-transformer {:accept (constantly true)})]
 
     (are [expected transformer schema]
-      (is (= expected (m/decode schema {:x 1, :y 2} transformer)))
+      (= expected (m/decode schema {:x 1, :y 2} transformer))
 
       {:x 1} strip-default [:map [:x int?]]
       {:x 1, :y 2} strip-default [:map {:closed false} [:x int?]]
@@ -530,8 +530,8 @@
                                      'int? (record-call :int)
                                      'string? (record-call :string)}})]
         (m/decode schema data transformer)
-        (= call-order
-           @calls))
+        (= call-order @calls))
+
       [:map
        [:foo int?]
        [:bar string?]]
@@ -667,49 +667,49 @@
   (testing "and"
     (testing "decode"
       (are [x expected]
-        (is (= expected
-               (m/decode [:and {:decode/string {:enter #(if (re-matches #"\d{2}" %) (str % "0") %)
-                                                :leave #(if (>= % 100) (* 10 %) %)}}
-                          int?
-                          [any? {:decode/string {:enter inc
-                                                 :leave (partial * 2)}}]]
-                         x mt/string-transformer)))
+        (= expected
+           (m/decode [:and {:decode/string {:enter #(if (re-matches #"\d{2}" %) (str % "0") %)
+                                            :leave #(if (>= % 100) (* 10 %) %)}}
+                      int?
+                      [any? {:decode/string {:enter inc
+                                             :leave (partial * 2)}}]]
+                     x mt/string-transformer))
         "1" 4
         "11" 2220))
     (testing "encode"
       (are [x expected]
-        (is (= expected
-               (m/encode [:and {:encode/string {:enter #(if (> % 10) (* % 10) %)
-                                                :leave #(if (re-matches #"<<\d{3}>>" %) (str "<<" % ">>") %)}}
-                          keyword?
-                          [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
-                          int?] x mt/string-transformer)))
+        (= expected
+           (m/encode [:and {:encode/string {:enter #(if (> % 10) (* % 10) %)
+                                            :leave #(if (re-matches #"<<\d{3}>>" %) (str "<<" % ">>") %)}}
+                      keyword?
+                      [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
+                      int?] x mt/string-transformer))
         1 "<<1>>"
         11 "<<<<110>>>>")))
 
   (testing "or"
     (testing "decode"
       (are [x expected]
-        (is (= expected
-               (m/decode [:or {:decode/string {:enter #(if (re-matches #"\d{2}" %) (str % "0") %)
-                                               :leave #(cond (and (int? %) (>= % 100)) (* 10 %)
-                                                             (keyword? %) (keyword "decoded" (name %))
-                                                             :else %)}}
-                          [pos-int? {:decode/string {:enter mt/-string->long
-                                                     :leave #(if (int? %) (inc %) %)}}]
-                          keyword?]
-                         x mt/string-transformer)))
+        (= expected
+           (m/decode [:or {:decode/string {:enter #(if (re-matches #"\d{2}" %) (str % "0") %)
+                                           :leave #(cond (and (int? %) (>= % 100)) (* 10 %)
+                                                         (keyword? %) (keyword "decoded" (name %))
+                                                         :else %)}}
+                      [pos-int? {:decode/string {:enter mt/-string->long
+                                                 :leave #(if (int? %) (inc %) %)}}]
+                      keyword?]
+                     x mt/string-transformer))
         "1" 2
         "11" 1110
         "-1" :decoded/-1))
     (testing "encode"
       (are [x expected]
-        (is (= expected
-               (m/encode [:or {:encode/string {:enter #(if (> % 10) (* % 10) %)
-                                               :leave #(if (re-matches #"<<\d{3}>>" %) (str "<<" % ">>") %)}}
-                          keyword?
-                          [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
-                          int?] x mt/string-transformer)))
+        (= expected
+           (m/encode [:or {:encode/string {:enter #(if (> % 10) (* % 10) %)
+                                           :leave #(if (re-matches #"<<\d{3}>>" %) (str "<<" % ">>") %)}}
+                      keyword?
+                      [pos-int? {:encode/string {:enter #(str "<<" %), :leave #(str % ">>")}}]
+                      int?] x mt/string-transformer))
         1 "<<1>>"
         -1 "-1"
         11 "<<<<110>>>>"))))
@@ -746,7 +746,7 @@
 (deftest default-transformer
   (testing "nil collections"
     (are [schema expected]
-      (is (= expected (m/decode schema nil mt/default-value-transformer)))
+      (= expected (m/decode schema nil mt/default-value-transformer))
 
       [:vector {:default [1 2 3]} int?] [1 2 3]
       [:map {:default {:x 10}} [:x int?]] {:x 10}

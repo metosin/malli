@@ -25,7 +25,7 @@
 
 (deftest simplify-map-entry-test
   (are [entry expected]
-    (is (= expected (mu/-simplify-map-entry entry)))
+    (= expected (mu/-simplify-map-entry entry))
 
     [:x 'int?] [:x 'int?]
     [:x nil 'int?] [:x 'int?]
@@ -260,10 +260,10 @@
 
     (testing "get"
       (are [schema key expected]
-        (is (form= (try
-                     (mu/get (m/schema schema) key)
-                     (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
-                   expected))
+        (form= (try
+                 (mu/get (m/schema schema) key)
+                 (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
+               expected)
 
         nil 0 ::throws
 
@@ -320,10 +320,10 @@
 
     (testing "assoc"
       (are [schema key value expected]
-        (is (form= (try
-                     (mu/assoc (m/schema schema) key value)
-                     (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
-                   expected))
+        (form= (try
+                 (mu/assoc (m/schema schema) key value)
+                 (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
+               expected)
 
         nil 0 'int? ::throws
 

@@ -141,23 +141,26 @@
 (defn -error [e] ^::error [e])
 (defn -error? [x] (-> x meta ::error))
 
-(defn- -get [x k] (when (or (set? x) (associative? x)) (get x k)))
+(defn -get [x k] (cond (or (set? x) (associative? x)) (get x k) (sequential? x) (get (vec x) k)))
+(defn -concat [x y] (cond->> (concat x y) (and (some? x) (not (seq? x))) (into (empty x))))
+(defn -fill [x i fill] (-concat x (repeat (- i (count x)) fill)))
 
-(defn -push [x k v]
-  (let [x' (if-let [x' (when (and (number? k) (or (set? x) (sequential? x))) (vec x))]
-             (let [size' (count x')] (if (> k size') (into x (repeat (- (inc k) size') nil)) x)) x)]
-    (if (set? x') (conj x' v) (assoc x' k v))))
+(defn -push [x k v fill]
+  (let [x' (cond-> x (and (int? k) (sequential? x) (> k (count x))) (-fill k fill))]
+    (cond (or (nil? x') (associative? x')) (assoc x' k v)
+          (set? x') (conj x' v)
+          :else (apply list (assoc (vec x') k v)))))
 
-(defn -assoc-in [a v [p & ps] e]
+(defn -push-in [a v [p & ps] e]
   (let [v' (-get v p)
         a' (or a (cond (sequential? v) [], (record? v) {}, :else (empty v)))]
     (cond
       ;; error present, let's not go deeper
       (and p (-error? a')) a
       ;; we can go deeper
-      p (-push a' p (-assoc-in (-get a' p) v' ps e))
+      p (-push a' p (-push-in (-get a' p) v' ps e) nil)
       ;; it's a map!
-      (map? a) (-assoc-in a' v [:malli/error] e)
+      (map? a) (-push-in a' v [:malli/error] e)
       ;; accumulate
       (-error? a') (conj a' e)
       ;; lose it
@@ -171,6 +174,27 @@
   (let [properties (m/properties schema)]
     (or (-maybe-localized (:error/path properties) locale)
         (-maybe-localized (:error/path properties) default-locale))))
+
+;;
+;; error values
+;;
+
+(defn -replace-in [a v [p & ps] e fill]
+  (let [a' (or a (if (record? v) {} (empty v)))]
+    (if p (-push (cond-> a' (set? a') (disj p)) p (-replace-in (-get a' p) (-get v p) ps e fill) fill) e)))
+
+(defn -error-value [{:keys [errors value]} options]
+  (let [mask (::mask-valid-values options)
+        accept (::accept-error options #(-> % :type (not= ::m/missing-key)))
+        wrap (::wrap-error options :value)
+        acc (when (::fill-valid-values options) value)]
+    (reduce (fn [acc error] (cond-> acc (accept error) (-replace-in value (:in error) (wrap error) mask))) acc errors)))
+
+(defn -masked [mask x y]
+  (cond (map? x) (reduce-kv (fn [acc k v] (let [e (find y k)] (assoc acc k (if e (-masked mask v (val e)) mask)))) y x)
+        (set? x) (cond-> y (not= (count x) (count y)) (conj mask))
+        (sequential? x) (-fill y (count x) mask)
+        :else y))
 
 ;;
 ;; spell checking (kudos to https://github.com/bhauman/spell-spec)
@@ -306,7 +330,7 @@
               $))))))))
 
 (defn humanize
-  "Humanized a explanation. Accepts the following optitons:
+  "Humanized a explanation. Accepts the following options:
 
   - `:wrap`, a function of `error -> message`, defaulting to `:message`
   - `:resolve`, a function of `explanation error options -> path message`"
@@ -320,5 +344,16 @@
      (reduce
       (fn [acc error]
         (let [[path message] (resolve explanation error options)]
-          (-assoc-in acc value path (wrap (assoc error :message message)))))
+          (-push-in acc value path (wrap (assoc error :message message)))))
       nil errors))))
+
+(defn error-value
+  "Returns the parts of value that are in error. Accepts the following options:
+
+  - `::mask-valid-values`, value to mask valid values with
+  - `::wrap-error`, function to wrap the error map (default: `:value`)"
+  ([explanation]
+   (error-value explanation nil))
+  ([explanation {mask ::mask-valid-values :as options}]
+   (cond->> (-error-value explanation options)
+     mask (-masked mask (:value explanation)))))

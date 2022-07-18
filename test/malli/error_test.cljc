@@ -105,9 +105,9 @@
                (me/humanize)))))
 
   (testing "set"
-    (is (= #{#{["should be an int"]}}
-           (-> [:set [:set int?]]
-               (m/explain #{#{1} #{"2"}})
+    (is (= #{#{["should be a keyword"]}}
+           (-> [:set [:set keyword?]]
+               (m/explain #{#{42 :a {}}})
                (me/humanize)))))
 
   (testing "invalid type"
@@ -574,10 +574,10 @@
                       [:password string?]
                       [:password2 string?]]
                 [:fn {:error/message "passwords don't match"
-                      :error/path    [:password2]}
+                      :error/path [:password2]}
                  '(fn [{:keys [password password2]}]
                     (= password password2))]]
-               (m/explain {:password  "secret"
+               (m/explain {:password "secret"
                            :password2 "faarao"})
                (me/humanize {:resolve me/-resolve-root-error}))))))
 
@@ -610,7 +610,7 @@
   (let [f (fn [s] [:fn {:error/message s} (constantly false)])
         => ::irrelevant]
     (are [schema value _ expected]
-      (is (= expected (-> (m/explain schema value) (me/humanize))))
+      (= expected (-> (m/explain schema value) (me/humanize)))
 
       ;; simple cases
       :any :any => nil
@@ -654,3 +654,60 @@
   (is (= {:user {:type ["invalid dispatch value"]}}
          (-> (m/explain [:map [:user [:multi {:dispatch :type}]]] {:user nil})
              (me/humanize)))))
+
+(def ... '...)
+
+(deftest in-error-test
+  (let [Address [:map {:closed true}
+                 [:id :string]
+                 [:tags [:set :keyword]]
+                 [:numbers [:sequential :int]]
+                 [:address [:map
+                            [:street :string]
+                            [:city :string]
+                            [:zip :int]
+                            [:lonlat [:tuple :double :double]]]]]
+        address {:id "Lillan"
+                 :EXTRA "KEY"
+                 :tags #{:artesan "coffee" :garden "ground"}
+                 :numbers (list 1 "2" 3 4 "5" 6 7)
+                 :address {:street "Ahlmanintie 29"
+                           :zip 33100
+                           :lonlat [61.4858322, "23.7832851,17"]}}]
+
+    (testing "with defaults"
+      (is (= {:EXTRA "KEY"
+              :tags #{"coffee" "ground"}
+              :numbers [nil "2" nil nil "5"]
+              :address {:lonlat [nil "23.7832851,17"]}}
+             (-> (m/explain Address address)
+                 (me/error-value)))))
+
+    (testing "masked valid values"
+      (let [explain (m/explain Address address)]
+        (is (= {:id ...
+                :EXTRA "KEY"
+                :tags #{"coffee" "ground" ...}
+                :numbers [... "2" ... ... "5" ... ...]
+                :address {:street ...
+                          :zip ...
+                          :lonlat [... "23.7832851,17"]}}
+               (me/error-value explain {::me/mask-valid-values ...})))
+
+        (is (= [{:EXTRA ..., :address ..., :id ..., :numbers ..., :tags #{"coffee" ...}}
+                {:EXTRA ..., :address ..., :id ..., :numbers ..., :tags #{"ground" ...}}
+                {:EXTRA ..., :address ..., :id ... :numbers [... "2" ... ... ... ... ...], :tags ...}
+                {:EXTRA ..., :address ..., :id ..., :numbers [... ... ... ... "5" ... ...], :tags ...}
+                {:EXTRA ..., :address ..., :id ..., :numbers ..., :tags ...}
+                {:EXTRA ..., :address {:lonlat [... "23.7832851,17"], :street ..., :zip ...}, :id ..., :numbers ..., :tags ...}
+                {:EXTRA "KEY", :address ..., :id ..., :numbers ..., :tags ...}]
+               (for [error (:errors explain)]
+                 (me/error-value (assoc explain :errors [error]) {::me/mask-valid-values ...}))))))
+
+    (testing "custom painting of errors"
+      (is (= {:EXTRA {:value "KEY", :type :malli.core/extra-key}
+              :tags #{{:value "ground"} {:value "coffee"}}
+              :numbers [nil {:value "2"} nil nil {:value "5"}]
+              :address {:lonlat [nil {:value "23.7832851,17"}]}}
+             (-> (m/explain Address address)
+                 (me/error-value {::me/wrap-error #(select-keys % [:value :type])})))))))

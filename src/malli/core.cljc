@@ -1007,12 +1007,12 @@
                                                  acc)))))
                                        (-children this))
                                 closed (conj (fn [x in acc]
-                                               (reduce
-                                                (fn [acc k]
+                                               (reduce-kv
+                                                (fn [acc k v]
                                                   (if (contains? keyset k)
                                                     acc
-                                                    (conj acc (miu/-error (conj path k) (conj in k) this nil ::extra-key))))
-                                                acc (keys x)))))]
+                                                    (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
+                                                acc x))))]
                (fn [x in acc]
                  (if-not (map? x)
                    (conj acc (miu/-error path in this x ::invalid-type))

@@ -262,7 +262,7 @@ Simplest way to do this is to use `m/-instrument` which takes options map and a 
 | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
 | `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value
 
-Instrumentig a function with input & return constraints:
+Instrumenting a function with input & return constraints:
 
 ```clojure
 (def pow

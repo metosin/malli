@@ -17,3 +17,4 @@ classes
 .shadow-cljs
 public/*
 !public/index.html
+.cache

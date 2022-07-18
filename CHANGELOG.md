@@ -17,7 +17,8 @@ Malli is in well matured [alpha](README.md#alpha).
 ## UNRELEASED
 
 * Source-compatible with nbb, [#726](https://github.com/metosin/malli/pull/726)
-* updated dependencies:
+* Switch Value and Errors in the pretty output order, [#720](https://github.com/metosin/malli/pull/720)
+* Updated dependencies:
 
 ```clojure
 borkdude/dynaload 0.3.4 -> 0.3.5

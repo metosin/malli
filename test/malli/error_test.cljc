@@ -683,6 +683,15 @@
              (-> (m/explain Address address)
                  (me/error-value)))))
 
+    (testing "custom accept"
+      (is (= {:EXTRA "KEY"
+              :tags #{"coffee" "ground"}
+              :numbers [nil "2" nil nil "5"]
+              :address {:city nil
+                        :lonlat [nil "23.7832851,17"]}}
+             (-> (m/explain Address address)
+                 (me/error-value {::me/accept-error (constantly true)})))))
+
     (testing "masked valid values"
       (let [explain (m/explain Address address)]
         (is (= {:id ...

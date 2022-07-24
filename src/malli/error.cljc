@@ -352,6 +352,7 @@
 
   - `::mask-valid-values`, value to mask valid values with
   - `::keep-valid-values`, keep valid values (overrides mask)
+  - `::accept-error`, function to accept errors
   - `::wrap-error`, function to wrap the error map (default: `:value`)"
   ([explanation]
    (error-value explanation nil))

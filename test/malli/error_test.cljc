@@ -710,4 +710,16 @@
               :numbers [nil {:value "2"} nil nil {:value "5"}]
               :address {:lonlat [nil {:value "23.7832851,17"}]}}
              (-> (m/explain Address address)
-                 (me/error-value {::me/wrap-error #(select-keys % [:value :type])})))))))
+                 (me/error-value {::me/wrap-error #(select-keys % [:value :type])}))))
+
+      (testing "keeping valid values"
+        (is (= {:EXTRA {:type :malli.core/extra-key, :value "KEY"}
+                :address {:lonlat [61.4858322 {:value "23.7832851,17"}]
+                          :street "Ahlmanintie 29"
+                          :zip 33100}
+                :id "Lillan"
+                :numbers [1 {:value "2"} 3 4 {:value "5"} 6 7]
+                :tags #{:artesan :garden {:value "coffee"} {:value "ground"}}}
+               (-> (m/explain Address address)
+                   (me/error-value {::me/wrap-error #(select-keys % [:value :type])
+                                    ::me/keep-valid-values true}))))))))

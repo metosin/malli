@@ -187,7 +187,7 @@
   (let [mask (::mask-valid-values options)
         accept (::accept-error options #(-> % :type (not= ::m/missing-key)))
         wrap (::wrap-error options :value)
-        acc (when (::fill-valid-values options) value)]
+        acc (when (::keep-valid-values options) value)]
     (reduce (fn [acc error] (cond-> acc (accept error) (-replace-in value (:in error) (wrap error) mask))) acc errors)))
 
 (defn -masked [mask x y]
@@ -351,6 +351,7 @@
   "Returns the parts of value that are in error. Accepts the following options:
 
   - `::mask-valid-values`, value to mask valid values with
+  - `::keep-valid-values`, keep valid values (overrides mask)
   - `::wrap-error`, function to wrap the error map (default: `:value`)"
   ([explanation]
    (error-value explanation nil))

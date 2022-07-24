@@ -655,8 +655,6 @@
          (-> (m/explain [:map [:user [:multi {:dispatch :type}]]] {:user nil})
              (me/humanize)))))
 
-(def ... '...)
-
 (deftest in-error-test
   (let [Address [:map {:closed true}
                  [:id :string]
@@ -694,24 +692,24 @@
 
     (testing "masked valid values"
       (let [explain (m/explain Address address)]
-        (is (= {:id ...
+        (is (= {:id '...
                 :EXTRA "KEY"
-                :tags #{"coffee" "ground" ...}
-                :numbers [... "2" ... ... "5" ... ...]
-                :address {:street ...
-                          :zip ...
-                          :lonlat [... "23.7832851,17"]}}
-               (me/error-value explain {::me/mask-valid-values ...})))
+                :tags #{"coffee" "ground" '...}
+                :numbers ['... "2" '... '... "5" '... '...]
+                :address {:street '...
+                          :zip '...
+                          :lonlat ['... "23.7832851,17"]}}
+               (me/error-value explain {::me/mask-valid-values '...})))
 
-        (is (= [{:EXTRA ..., :address ..., :id ..., :numbers ..., :tags #{"coffee" ...}}
-                {:EXTRA ..., :address ..., :id ..., :numbers ..., :tags #{"ground" ...}}
-                {:EXTRA ..., :address ..., :id ... :numbers [... "2" ... ... ... ... ...], :tags ...}
-                {:EXTRA ..., :address ..., :id ..., :numbers [... ... ... ... "5" ... ...], :tags ...}
-                {:EXTRA ..., :address ..., :id ..., :numbers ..., :tags ...}
-                {:EXTRA ..., :address {:lonlat [... "23.7832851,17"], :street ..., :zip ...}, :id ..., :numbers ..., :tags ...}
-                {:EXTRA "KEY", :address ..., :id ..., :numbers ..., :tags ...}]
+        (is (= [{:EXTRA '..., :address '..., :id '..., :numbers '..., :tags #{"coffee" '...}}
+                {:EXTRA '..., :address '..., :id '..., :numbers '..., :tags #{"ground" '...}}
+                {:EXTRA '..., :address '..., :id '... :numbers ['... "2" '... '... '... '... '...], :tags '...}
+                {:EXTRA '..., :address '..., :id '..., :numbers ['... '... '... '... "5" '... '...], :tags '...}
+                {:EXTRA '..., :address '..., :id '..., :numbers '..., :tags '...}
+                {:EXTRA '..., :address {:lonlat ['... "23.7832851,17"], :street '..., :zip '...}, :id '..., :numbers '..., :tags '...}
+                {:EXTRA "KEY", :address '..., :id '..., :numbers '..., :tags '...}]
                (for [error (:errors explain)]
-                 (me/error-value (assoc explain :errors [error]) {::me/mask-valid-values ...}))))))
+                 (me/error-value (assoc explain :errors [error]) {::me/mask-valid-values '...}))))))
 
     (testing "custom painting of errors"
       (is (= {:EXTRA {:value "KEY", :type :malli.core/extra-key}

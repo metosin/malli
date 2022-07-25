@@ -2665,3 +2665,29 @@
 (deftest cat-catn-unparse-test
   (is (= ::m/invalid (m/unparse [:cat string? int? string?] [1 2 3])))
   (is (= ::m/invalid (m/unparse [:catn [:a string?] [:b int?] [:c string?]] {:a 1 :b 2 :c 3}))))
+
+
+(deftest issue-451-test
+  (testing "registry -in schema vector syntax"
+    (let [one-level-schema  [:map {:registry {:my/string-like :string}}
+                             [:entry [:my/string-like {:some "prop"}]]]]
+
+      (is (true? (m/validate one-level-schema  {:entry "a"})))))
+
+  (testing "testcase from #451"
+    (let [opts {:registry {:string (m/-string-schema)
+                           ::derived-str :string
+                           ::derived-str2 ::derived-str
+                           ::derived-str3 [::derived-str {:error/message "bar"}]
+                           ::derived-str4 [::derived-str2 {:error/message "baz"}]}}]
+
+      (is (m/schema ::derived-str2 opts))
+      (is (m/schema ::derived-str3 opts))
+      (is (m/schema ::derived-str4 opts))
+
+      (is (= "baz"
+             (->
+              (m/schema ::derived-str4 opts)
+              (m/deref)
+              (m/properties)
+              :error/message))))))

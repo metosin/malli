@@ -267,6 +267,12 @@
       (-lookup ?schema options)
       (-fail! ::invalid-schema {:schema ?schema})))
 
+(defn- -recursive-lookup! [?schema options]
+  (if (into-schema? ?schema)
+    ?schema
+    (some-> (-lookup ?schema options)
+            (recur options))))
+
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
     (let [options (-update options :registry #(mr/composite-registry r (or % (-registry options))))]
@@ -1985,7 +1991,7 @@
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t #?(:clj (.nth v 0), :cljs (nth v 0))
+                             t (-recursive-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))

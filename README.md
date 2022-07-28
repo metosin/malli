@@ -42,6 +42,8 @@ Presentations:
 
 Try the [online demo](https://malli.io), see also some [3rd Party Libraries](#3rd-party-libraries).
 
+Want to contribute? See the [Development](#development) guide.
+
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli-defn.png" width="600" />
 
 ## Motivation
@@ -2831,6 +2833,21 @@ The API layers and stability:
 ## Supported Java versions
 
 Malli aims to support the LTS releases Java 8 and 11 and the latest Java release, Java 15.
+
+# Development
+
+Malli is open for contributions. Before contributing with a PR, please open an issue for it.
+
+## Adding new schema types
+
+To add a new schema type, e.g. `:float`, you should adding the following:
+
+* schema definition to `malli.core` + tests
+* default encoder/decoder mappings into `malli.transform` + tests
+* JSON Schema mappings into `malli.json-schema` + tests
+* Generators into `malli.generator` + tests
+* **OPTIONALLY** adding inferrers into `malli.provider` + tests
+* update `README.md`
 
 ## Running tests
 

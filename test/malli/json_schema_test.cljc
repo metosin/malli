@@ -252,3 +252,10 @@
 
 (deftest function-schema-test
   (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))
+
+(deftest additional-properties-test
+  (is (= {:type "object"
+          :properties {:name {:type "string"}}
+          :required [:name]
+          :additionalProperties false}
+         (json-schema/transform [:map {:closed true} [:name :string]]))))

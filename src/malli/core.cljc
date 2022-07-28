@@ -262,16 +262,11 @@
     (or (mr/-schema registry ?schema)
         (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
 
-(defn- -lookup! [?schema f options]
+(defn- -lookup! [?schema f rec options]
   (or (and f (f ?schema) ?schema)
-      (-lookup ?schema options)
-      (-fail! ::invalid-schema {:schema ?schema})))
-
-(defn- -recursive-lookup! [?schema options]
-  (if (into-schema? ?schema)
-    ?schema
-    (some-> (-lookup ?schema options)
-            (recur options))))
+      (if-let [?schema (-lookup ?schema options)]
+        (cond-> ?schema rec (recur f rec options))
+        (-fail! ::invalid-schema {:schema ?schema}))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -1935,7 +1930,7 @@
          r (when properties (properties :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
          properties (if r (assoc properties :registry (-property-registry r options identity)) properties)]
-     (-into-schema (-lookup! type into-schema? options) properties children options))))
+     (-into-schema (-lookup! type into-schema? false options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -1991,7 +1986,7 @@
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t (-recursive-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) options)
+                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
@@ -1999,7 +1994,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-lookup! nil options) (recur options))))))
+             (-> ?schema (-lookup! nil false options) (recur options))))))
 
 (defn form
   "Returns the Schema form"

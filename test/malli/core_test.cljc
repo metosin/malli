@@ -837,7 +837,7 @@
     #?(:clj
        (testing "non-terminating functions DO NOT fail fast"
          (let [schema [:fn '(fn [x] (< x (apply max (range))))]]
-           #?(:bb nil ;; Graalvm doesn't support calling .stop on Threads since that is deprecated
+           #?(:bb  nil ;; Graalvm doesn't support calling .stop on Threads since that is deprecated
               :clj (is (= ::miu/timeout (miu/-run (fn [] (m/validate schema 1)) 100))))
            #_(is (false? (m/validate schema 1)))
            #_(is (results= {:schema schema
@@ -2669,10 +2669,10 @@
 
 (deftest issue-451-test
   (testing "registry -in schema vector syntax"
-    (let [one-level-schema  [:map {:registry {:my/string-like :string}}
-                             [:entry [:my/string-like {:some "prop"}]]]]
+    (let [one-level-schema [:map {:registry {:my/string-like :string}}
+                            [:entry [:my/string-like {:some "prop"}]]]]
 
-      (is (true? (m/validate one-level-schema  {:entry "a"})))))
+      (is (true? (m/validate one-level-schema {:entry "a"})))))
 
   (testing "testcase from #451"
     (let [opts {:registry {:string (m/-string-schema)

@@ -1468,7 +1468,7 @@ Schemas can be used to generate values:
   {:seed 10})
 ; => "kikka"
 
-;; portable :gen/fmap
+;; portable :gen/fmap (requires `org.babashka/sci` dependency to work)
 (mg/generate
   [:and {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})

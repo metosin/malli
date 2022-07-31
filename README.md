@@ -1468,11 +1468,17 @@ Schemas can be used to generate values:
   {:seed 10})
 ; => "kikka"
 
+;; :gen/fmap 
+(mg/generate
+  [:and {:gen/fmap (partial str "kikka_")} string?]
+  {:seed 10, :size 10})
+;; => "kikka_WT3K0yax2"
+
 ;; portable :gen/fmap (requires `org.babashka/sci` dependency to work)
 (mg/generate
   [:and {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})
-;; => "kikka_WT3K0yax2"
+;; => "kikka_nWT3K0ya7"
 
 ;; :gen/schema
 (mg/generate

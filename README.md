@@ -175,6 +175,23 @@ We introduced [Map Syntax](#map-syntax) as we found out that the overhead of par
 
 We added [Lite Syntax](#lite) for simplified schema creation for special cases, like to be used with [reitit coercion](https://cljdoc.org/d/metosin/reitit/CURRENT/doc/coercion/malli) and for easy migration from [data-specs](https://cljdoc.org/d/metosin/spec-tools/CURRENT/doc/data-specs).
 
+## Example Address schema
+
+Following example schema is assumed in many of the following examples.
+
+```clojure
+(def Address
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:city string?]
+     [:zip int?]
+     [:lonlat [:tuple double? double?]]]]])
+```
+
 ## Validation
 
 Validating values against a schema:
@@ -502,17 +519,6 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 Detailed errors with `m/explain`:
 
 ```clojure
-(def Address
-  [:map
-   [:id string?]
-   [:tags [:set keyword?]]
-   [:address
-    [:map
-     [:street string?]
-     [:city string?]
-     [:zip int?]
-     [:lonlat [:tuple double? double?]]]]])
-
 (m/explain
   Address
   {:id "Lillan"
@@ -590,8 +596,8 @@ Error messages can be customized with `:error/message` and `:error/fn` propertie
      [:id int?]
      [:size [:enum {:error/message "should be: S|M|L"}
              "S" "M" "L"]]
-     [:age [:fn {:error/fn '(fn [{:keys [value]} _] (str value ", should be > 18"))}
-            '(fn [x] (and (int? x) (> x 18)))]]]
+     [:age [:fn {:error/fn (fn [{:keys [value]} _] (str value ", should be > 18"))}
+            (fn [x] (and (int? x) (> x 18)))]]]
     (m/explain {:size "XL", :age 10})
     (me/humanize
       {:errors (-> me/default-errors
@@ -609,16 +615,16 @@ Messages can be localized:
      [:size [:enum {:error/message {:en "should be: S|M|L"
                                     :fi "pitäisi olla: S|M|L"}}
              "S" "M" "L"]]
-     [:age [:fn {:error/fn {:en '(fn [{:keys [value]} _] (str value ", should be > 18"))
-                            :fi '(fn [{:keys [value]} _] (str value ", pitäisi olla > 18"))}}
-            '(fn [x] (and (int? x) (> x 18)))]]]
+     [:age [:fn {:error/fn {:en (fn [{:keys [value]} _] (str value ", should be > 18"))
+                            :fi (fn [{:keys [value]} _] (str value ", pitäisi olla > 18"))}}
+            (fn [x] (and (int? x) (> x 18)))]]]
     (m/explain {:size "XL", :age 10})
     (me/humanize
       {:locale :fi
        :errors (-> me/default-errors
                    (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
-                   (assoc ::m/missing-key {:error/fn {:en '(fn [{:keys [in]} _] (str "missing key " (last in)))
-                                                      :fi '(fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
+                   (assoc ::m/missing-key {:error/fn {:en (fn [{:keys [in]} _] (str "missing key " (last in)))
+                                                      :fi (fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
 ;{:id ["puuttuu avain :id"]
 ; :size ["pitäisi olla: S|M|L"]
 ; :age ["10, pitäisi olla > 18"]}
@@ -631,7 +637,7 @@ Top-level humanized map-errors are under `:malli/error`:
            [:password string?]
            [:password2 string?]]
      [:fn {:error/message "passwords don't match"}
-      '(fn [{:keys [password password2]}]
+       (fn [{:keys [password password2]}]
          (= password password2))]]
     (m/explain {:password "secret"
                 :password2 "faarao"})
@@ -647,7 +653,7 @@ Errors can be targeted using `:error/path` property:
            [:password2 string?]]
      [:fn {:error/message "passwords don't match"
            :error/path [:password2]}
-      '(fn [{:keys [password password2]}]
+       (fn [{:keys [password password2]}]
          (= password password2))]]
     (m/explain {:password "secret"
                 :password2 "faarao"})
@@ -789,7 +795,7 @@ Schema properties can be used to override default transformations:
 
 ```clojure
 (m/decode
-  [string? {:decode/string 'str/upper-case}]
+  [string? {:decode/string clojure.string/upper-case}]
   "kerran" mt/string-transformer)
 ; => "KERRAN"
 ```
@@ -798,7 +804,7 @@ This works too:
 
 ```clojure
 (m/decode
-  [string? {:decode {:string 'str/upper-case}}]
+  [string? {:decode {:string clojure.string/upper-case}}]
   "kerran" mt/string-transformer)
 ; => "KERRAN"
 ```
@@ -807,15 +813,15 @@ Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 
 ```clojure
 (m/decode
-  [string? {:decode/string {:enter 'str/upper-case}}]
+  [string? {:decode/string {:enter clojure.string/upper-case}}]
   "kerran" mt/string-transformer)
 ; => "KERRAN"
 ```
 
 ```clojure
 (m/decode
-  [string? {:decode/string {:enter '#(str "olipa_" %)
-                            :leave '#(str % "_avaruus")}}]
+  [string? {:decode/string {:enter #(str "olipa_" %)
+                            :leave #(str % "_avaruus")}}]
   "kerran" mt/string-transformer)
 ; => "olipa_kerran_avaruus"
 ```
@@ -838,10 +844,10 @@ Going crazy:
 ```clojure
 (m/decode
   [:map
-   {:decode/math {:enter '#(update % :x inc)
-                  :leave '#(update % :x (partial * 2))}}
-   [:x [int? {:decode/math {:enter '(partial + 2)
-                            :leave '(partial * 3)}}]]]
+   {:decode/math {:enter #(update % :x inc)
+                  :leave #(update % :x (partial * 2))}}
+   [:x [int? {:decode/math {:enter (partial + 2)
+                            :leave (partial * 3)}}]]]
   {:x 1}
   (mt/transformer {:name :math}))
 ; => {:x 24}
@@ -1198,7 +1204,7 @@ Finding all subschemas with paths, retaining order:
         [:map
          [:street {:optional true} string?]
          [:lonlat {:optional true} [:tuple double? double?]]]
-        [:fn '(fn [{:keys [street lonlat]}] (or street lonlat))]]]]]))
+        [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]))
 
 (mu/subschemas Schema)
 ;[{:path [], :in [], :schema [:maybe
@@ -1308,6 +1314,8 @@ Merged
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
+Following example requires [sci](https://github.com/borkdude/sci) as external dependency because it includes a function definition. See [Serializable functions](#serializable-functions).
+
 ```clojure
 (require '[malli.edn :as edn])
 
@@ -1360,11 +1368,11 @@ Default branch with `::m/default`:
 ; => false
 ```
 
-Any (serializable) function can be used for `:dispatch`:
+Any function can be used for `:dispatch`:
 
 ```clojure
 (m/validate
-  [:multi {:dispatch 'first}
+  [:multi {:dispatch first}
    [:sized [:tuple keyword? [:map [:size int?]]]]
    [:human [:tuple keyword? [:map [:name string?] [:address [:map [:country keyword?]]]]]]]
   [:human {:name "seppo", :address {:country :sweden}}])
@@ -1376,7 +1384,7 @@ Any (serializable) function can be used for `:dispatch`:
 ```clojure
 (m/decode
   [:multi {:dispatch :type
-           :decode/string '#(update % :type keyword)}
+           :decode/string #(update % :type keyword)}
    [:sized [:map [:type [:= :sized]] [:size int?]]]
    [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
   {:type "human"
@@ -1468,11 +1476,17 @@ Schemas can be used to generate values:
   {:seed 10})
 ; => "kikka"
 
-;; portable :gen/fmap
+;; :gen/fmap 
+(mg/generate
+  [:and {:gen/fmap (partial str "kikka_")} string?]
+  {:seed 10, :size 10})
+;; => "kikka_WT3K0yax2"
+
+;; portable :gen/fmap (requires `org.babashka/sci` dependency to work)
 (mg/generate
   [:and {:gen/fmap '(partial str "kikka_")} string?]
   {:seed 10, :size 10})
-;; => "kikka_WT3K0yax2"
+;; => "kikka_nWT3K0ya7"
 
 ;; :gen/schema
 (mg/generate
@@ -1482,7 +1496,7 @@ Schemas can be used to generate values:
 
 ;; :gen/min & :gen/max for numbers and collections
 (mg/generate
-  [:vector {:gen/min 4, :gen/max 4} :int] '
+  [:vector {:gen/min 4, :gen/max 4} :int]
   {:seed 1})
 ; => [-8522515 -1433 -1 1]
 
@@ -1580,6 +1594,8 @@ All samples are valid against the inferred schema:
 For better performance, use `mp/provider`:
 
 ```clojure
+(require '[criterium.core :as p])
+
 ;; 5ms
 (p/bench (mp/provide samples))
 

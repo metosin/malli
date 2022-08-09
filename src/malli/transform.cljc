@@ -416,7 +416,8 @@
 (defn collection-transformer []
   (let [coders {:vector -sequential-or-set->vector
                 :sequential -sequential-or-set->seq
-                :set -sequential->set}]
+                :set -sequential->set
+                :tuple -sequential->vector}]
     (transformer
      {:decoders coders
       :encoders coders})))

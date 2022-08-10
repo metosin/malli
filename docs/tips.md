@@ -444,7 +444,7 @@ Here are a few examples of valid and invalid data:
 
 It is also possible to use a custom transformer instead of `string-transformer` (for example, in order to avoid `string-transformer` to perform additional encoding and decoding):
 
-```
+```clojure
 (def schema [:multi {:dispatch first
                      :decode/my-custom #(str/split % #"/")
                      :encode/my-custom #(str/join "/" %)}
@@ -455,4 +455,41 @@ It is also possible to use a custom transformer instead of `string-transformer` 
 
 (decode "ip/127.0.0.1")
 ; => ["ip" "127.0.0.1"]
+```
 
+## Converting Schema values
+
+Example utility to convert schemas recursively:
+
+```clojure
+(defn schema-mapper [m]
+  (fn [s] ((or (get m (m/type s)) ;; type mapping
+               (get m ::default)  ;; default mapping
+               (constantly s))    ;; nop
+           s)))
+
+(m/walk
+ [:map
+  [:id :keyword]
+  [:size :int]
+  [:tags [:set :keyword]]
+  [:sub
+   [:map
+    [:kw :keyword]
+    [:data [:tuple :keyword :int :keyword]]]]]
+ (m/schema-walker
+  (schema-mapper
+    {:keyword (constantly :string)                            ;; :keyword -> :string
+     :int #(m/-set-properties % {:gen/elements [1 2]})        ;; custom :int generator
+     ::default #(m/-set-properties % {::type (m/type %)})}))) ;; for others
+;[:map {::type :map}
+; [:id :string]
+; [:size [:int {:gen/elements [1 2 3]}]]
+; [:tags [:set {:gen/type :set} :string]]
+; [:sub [:map {::type :map}
+;        [:kw :string]
+;        [:data [:tuple {::type :tuple} 
+;                :string
+;                [:int {:gen/elements [1 2 3]}]
+;                :string]]]]]
+```

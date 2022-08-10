@@ -22,6 +22,11 @@ Malli is in well matured [alpha](README.md#alpha).
 * Set additionalProperties if map is closed [#719](https://github.com/metosin/malli/pull/719), fixes [#716](https://github.com/metosin/malli/issues/716)
 * Initial [Development Guide](README.md#development)
 * Add seq to tuple transformation [#735](https://github.com/metosin/malli/pull/735), fixes [#734](https://github.com/metosin/malli/issues/734)
+* Better humanized results with sets
+* `::m/extra-key` error retains the error value
+* New `malli.error/error-value` utility for [compact error value presentation](README.md#values-in-error).
+* **BREAKING**: `me/-push` takes extra argument
+* **BREAKING**: `me/-assoc-in` is now called `me/-push-in`
 * Updated dependencies:
 
 ```clojure

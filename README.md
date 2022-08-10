@@ -569,7 +569,7 @@ Detailed errors with `m/explain`:
 
 Note! If you need error messages that serialize neatly to EDN/JSON, use `mu/explain-data` instead.
 
-## Custom error messages
+## Humanized error messages
 
 Explain results can be humanized with `malli.error/humanize`:
 
@@ -588,6 +588,8 @@ Explain results can be humanized with `malli.error/humanize`:
 ; :address {:city ["missing required key"]
 ;           :lonlat [nil ["should be a double"]]}}
 ```
+
+## Custom error messages
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:
 
@@ -696,6 +698,41 @@ For closed schemas, key spelling can be checked with:
 ;{:address {:street ["missing required key"]
 ;           :streetz ["should be spelled :street"]}
 ; :name ["disallowed key"]}
+```
+
+## Values in error
+
+Just to get parts of the value that are in error:
+
+```clojure
+(-> Address
+    (m/explain
+     {:id "Lillan"
+      :tags #{:artesan "coffee" :garden "ground"}
+      :address {:street "Ahlmanintie 29"
+                :zip 33100
+                :lonlat [61.4858322, "23.7832851,17"]}})
+    (me/error-value))
+;{:tags #{"coffee" "ground"}
+; :address {:lonlat [nil "23.7832851,17"]}}
+```
+
+Masking irrelevant parts:
+
+```clojure
+(-> Address
+    (m/explain
+     {:id "Lillan"
+      :tags #{:artesan "coffee" :garden "ground"}
+      :address {:street "Ahlmanintie 29"
+                :zip 33100
+                :lonlat [61.4858322, "23.7832851,17"]}})
+    (me/error-value {::me/mask-valid-values '...}))
+;{:id ...
+; :tags #{"coffee" "ground" ...}
+; :address {:street ...
+;           :zip ...
+;           :lonlat [... "23.7832851,17"]}}
 ```
 
 ## Pretty errors

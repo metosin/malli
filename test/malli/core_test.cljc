@@ -917,7 +917,7 @@
                      :errors [{:path [:extra],
                                :in [:extra],
                                :schema closed-schema,
-                               :value nil,
+                               :value "key",
                                :type :malli.core/extra-key,
                                :message nil}]}
                     (m/explain closed-schema valid-with-extras)))

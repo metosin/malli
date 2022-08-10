@@ -354,7 +354,8 @@
     ;; sets to sequences / vectors, lose order, is this a good transformation?
     (is (= [1 3 2] (m/decode [:vector int?] #{1 2 3} mt/collection-transformer)))
     (is (= #{1 2 3} (m/decode [:set {:decode/string #(map str %)} int?]
-                              "123" mt/string-transformer))))
+                              "123" mt/string-transformer)))
+    (is (= [1 2 3] (m/decode [:tuple int? int? int?] '(1 2 3) mt/collection-transformer))))
   (testing "encode"
     (is (= #{1 2 3} (m/encode [:set int?] [1 2 3] mt/collection-transformer))))
 

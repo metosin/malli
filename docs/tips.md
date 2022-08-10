@@ -457,7 +457,7 @@ It is also possible to use a custom transformer instead of `string-transformer` 
 ; => ["ip" "127.0.0.1"]
 ```
 
-## Converting Schema values
+## Converting Schemas 
 
 Example utility to convert schemas recursively:
 
@@ -485,7 +485,7 @@ Example utility to convert schemas recursively:
 ;[:map {::type :map}
 ; [:id :string]
 ; [:size [:int {:gen/elements [1 2 3]}]]
-; [:tags [:set {:gen/type :set} :string]]
+; [:tags [:set {::type :set} :string]]
 ; [:sub [:map {::type :map}
 ;        [:kw :string]
 ;        [:data [:tuple {::type :tuple} 

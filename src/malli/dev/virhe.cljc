@@ -111,7 +111,7 @@
                    :print-length *print-length*
                    :print-level *print-level*
                    :print-meta *print-meta*}]
-     (map->EdnPrinter (cond->> options defaults (merge defaults))))))
+     (map->EdnPrinter (cond-> defaults options (merge options))))))
 
 (defn -pprint
   ([x] (-pprint x (-printer)))
@@ -158,12 +158,7 @@
   (-color :text body printer))
 
 (defn -section [title location body printer]
-  [:group
-   (-title title location printer)
-   :break :break
-   body
-   :break :break
-   (-footer printer)])
+  [:group (-title title location printer) :break :break body :break :break (-footer printer)])
 
 ;;
 ;; formatting

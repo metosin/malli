@@ -11,7 +11,8 @@
             :width 100
             :colors v/-dark-colors
             :unknown (fn [x] (when (m/schema? x) (m/form x)))
-            :throwing-fn-top-level-ns-names ["malli" "clojure"]}
+            :throwing-fn-top-level-ns-names ["malli" "clojure" "malli"]
+            ::me/mask-valid-values '...}
            options))))
 
 (defn -errors [explanation printer]
@@ -30,14 +31,13 @@
 ;; formatters
 ;;
 
-(defmethod v/-format ::m/explain [_ _ explanation printer]
-  (let [{:keys [schema value]} explanation]
-    {:body
-     [:group
-      (-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
-      (-block "Value:" (v/-visit value printer) printer) :break :break
-      (-block "Schema:" (v/-visit schema printer) printer) :break :break
-      (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
+(defmethod v/-format ::m/explain [_ _ {:keys [schema] :as explanation} printer]
+  {:body
+   [:group
+    (-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
+    (-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
+    (-block "Schema:" (v/-visit schema printer) printer) :break :break
+    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-input [_ _ {:keys [args input fn-name]} printer]
   {:body

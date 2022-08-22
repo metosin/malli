@@ -567,7 +567,7 @@ Detailed errors with `m/explain`:
 ;           :value nil})}
 ```
 
-Note! If you need error messages that serialize neatly to EDN/JSON, use `mu/explain-data` instead.
+Note! If you need error messages that serialize neatly to EDN/JSON, use `malli.util/explain-data` instead.
 
 ## Humanized error messages
 
@@ -2345,7 +2345,7 @@ Malli supports multiple type of registries.
 
 ### Immutable registry
 
-Just just a `Map`.
+Just a `Map`.
 
 ```clojure
 (require '[malli.registry :as mr])

@@ -4,7 +4,8 @@
                      [malli.dev.pretty :as pretty]))
   #?(:clj (:require [malli.clj-kondo :as clj-kondo]
                     [malli.dev.pretty :as pretty]
-                    [malli.instrument.cljs :as mi])))
+                    [malli.instrument.cljs :as mi]
+                    [malli.core :as m])))
 
 #?(:clj (defmacro stop!
           "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
@@ -17,6 +18,8 @@
    (defn start!* [env options]
      `(do
         ;; register all function schemas and instrument them based on the options
+        ;; first clear out all metadata schemas to support dev-time removal of metadata schemas on functions - they should not be instrumented
+        ~(m/-deregister-metadata-function-schemas! :cljs)
         ~(mi/-collect-all-ns env)
         ~(mi/-instrument env options))))
 

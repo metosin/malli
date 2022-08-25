@@ -1,7 +1,7 @@
 (ns malli.instrument-app
   (:require
     [malli.clj-kondo :as mari]
-    [malli.helpers2 :as h2]
+    ;[malli.helpers2 :as h2]
     [malli.core :as m]
     [malli.dev.cljs :as dev]
     [malli.dev.pretty :as pretty]
@@ -13,9 +13,8 @@
 (defn init []
   (js/console.log "INIT!"))
 
-(comment
-  (meta #'h2/f3))
-
+;(comment
+;  (meta #'h2/f3))
 
 (defn refresh {:dev/after-load true} []
   ;(.log js/console "hot reload")
@@ -29,20 +28,7 @@
 (comment
   (x+y 5 "10"))
 
-(comment
-  (dev/collect-all!)
-  (macroexpand '(dev/collect-all!))
-  (mi/instrument!))
-
 (defn sum [a b] (+ a b))
-
-(comment
-  (sum 1000 "1")
-  (mi/instrument! {})
-  @mi/instrumented-vars
-  (m/function-schemas)
-  (sum 1 1)
-  )
 
 (def sum2
   (m/-instrument {:schema (m/schema [:=> [:cat :int :int] :int])
@@ -69,8 +55,6 @@
   (dec x))
 
 (defn plus-gen
-  "a normal clojure function:malli.core/invalid-schema {:schema #object[malli.core.t_malli$core61329]}
-, no dependencies to malli"
   {:malli/schema [:=> [:cat :int] [:int {:min 6}]]}
   [x]
   (dec x))
@@ -173,35 +157,27 @@
 
 (defn try-it []
 
-  (println "sq: " (pr-str (h2/square-it 5)))
-  ;(plus "a")
+  (println "minus2")
+  (minus2 1 )
   )
 
 (defn ^:dev/after-load x []
   (println "AFTER LOAD - malli.dev.cljs/start!")
-  ;(md/start!)
+  (md/start!)
+  (js/setTimeout try-it 100)
 
-  (mi/unstrument!)
-
-
+  ;(mi/unstrument!)
   ;; register all function schemas and instrument them based on the options
-  (md/collect-all!)
-
-  (mi/instrument! {:report (pretty/thrower)
+  ;(md/collect-all!)
+  #_(mi/instrument! {:report (pretty/thrower)
                    :filters
                    [(mi/-filter-ns 'malli.helpers2 'malli.instrument-app)]})
-
-
-  (println "f3 1: " (h2/f3 500))
-
 
   ;(println "f3: " (h2/f3 "500"))
 
   ;(println "f5 " (h2/f5 [:a 1, :b 2] :c 3, :d 4 ))
 
-  (js/setTimeout try-it 200)
   )
-
 
 (comment
   ((->minus) 5)

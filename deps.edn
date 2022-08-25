@@ -36,7 +36,7 @@
                         jmh-clojure/task {:mvn/version "0.1.1"}}
                  :main-opts ["-m" "jmh.main"]}
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.19.4"}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.19.9"}
                                  binaryage/devtools {:mvn/version "1.0.6"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"

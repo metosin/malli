@@ -4,7 +4,7 @@
             [malli.core :as m]))
 
 ;;
-;; Collect schemas - register them into the known malli.core/-function-schemas[-cljs]* atom based on their metadata.
+;; Collect metadata declared function schemas - register them into the known malli.core/-function-schemas* atom based on their metadata.
 ;;
 
 (defn -collect! [env simple-name {:keys [meta] :as var-map}]
@@ -35,7 +35,9 @@
                                  (symbol (str full-ns) name-part)))
                              form))
             schema* (walk/postwalk -qualify-sym schema)
-            metadata (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))]
+            metadata     (assoc
+                           (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
+                           :metadata-schema? true)]
         (m/-register-function-schema! ns simple-name schema* metadata :cljs identity)
         `(do
            (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)

@@ -2399,6 +2399,8 @@
 (defonce ^:private -function-schemas* (atom {}))
 (defn function-schemas ([] (function-schemas :clj)) ([key] (@-function-schemas* key)))
 
+(defn -deregister-function-schemas! [key] (swap! -function-schemas* assoc key {}))
+
 (defn -deregister-metadata-function-schemas!
   [key]
   (swap! -function-schemas* update key

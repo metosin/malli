@@ -35,3 +35,8 @@
           ([options] (start!* &env options))))
 
 #?(:clj (defmacro collect-all! [] (mi/-collect-all-ns &env)))
+
+
+#?(:clj (defmacro deregister-function-schemas! []
+          (m/-deregister-function-schemas! :cljs)
+          nil))

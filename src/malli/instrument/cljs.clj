@@ -81,7 +81,8 @@
         replace-var-code (when (ana-api/resolve env fn-sym)
                            `(do
                               (swap! instrumented-vars #(assoc % '~fn-sym ~fn-sym))
-                              (set! ~fn-sym (m/-instrument ~schema-map-with-gen ~fn-sym))
+                              (set! ~fn-sym (meta-fn (m/-instrument ~schema-map-with-gen ~fn-sym)
+                                                     {:fn-name '~fn-sym}))
                               (.log js/console "..instrumented" '~fn-sym)
                               '~fn-sym))]
     (if filters

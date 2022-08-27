@@ -16,9 +16,11 @@
 #?(:clj
    (defn start!* [env options]
      `(do
+        (js/console.groupCollapsed "Instrumentation done")
         ;; register all function schemas and instrument them based on the options
         ~(mi/-collect-all-ns env)
-        ~(mi/-instrument env options))))
+        ~(mi/-instrument env options)
+        (js/console.groupEnd))))
 
 #?(:clj (defmacro start!
           "Collects defn schemas from all loaded namespaces and starts instrumentation for

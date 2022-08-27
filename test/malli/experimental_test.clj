@@ -121,13 +121,18 @@
       :filters [(mi/-filter-var #(= % v))]})))
 
 (deftest defn-test
+  (require 'malli.experimental-test :reload)
   (doseq [{:keys [var calls instrumented] :as e} expectations]
 
     (testing "plain calls"
       (doseq [[arg ret] calls]
         (if (= ::throws ret)
           (is (thrown? Exception (apply var arg)))
-          (is (= ret (apply var arg))))))
+          (let [actual (try (apply var arg)
+                            (catch Throwable ex
+                              (println "Unexpected failure in plain call" e [arg ret])
+                              (throw ex)))]
+            (is (= ret actual))))))
 
     (when-let [m (:meta e)]
       (testing "meta"

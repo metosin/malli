@@ -93,7 +93,7 @@
     (cond
       (and min (= min max)) (gen/fmap str/join (gen/vector gen/char min))
       (and min max) (gen/fmap str/join (gen/vector gen/char min max))
-      min (gen/fmap str/join (gen/sized (fn [size] (gen/vector gen/char min (clojure.core/max size min)))))
+      min (gen/fmap str/join (gen/sized #(gen/vector gen/char min (+ min %))))
       max (gen/fmap str/join (gen/vector gen/char 0 max))
       :else gen/string-alphanumeric)))
 
@@ -108,7 +108,7 @@
       (gen/fmap f (cond
                     (and min (= min max)) (gen/vector gen min)
                     (and min max) (gen/vector gen min max)
-                    min (gen/sized (fn [size] (gen/vector gen min (clojure.core/max size min))))
+                    min (gen/sized #(gen/vector gen min (+ min %)))
                     max (gen/vector gen 0 max)
                     :else (gen/vector gen))))))
 

@@ -816,12 +816,12 @@
                         (gen/return []))
                       {:seed 0}))))
   (testing "no empty vectors allowed"
-    (is (= '(nil nil [nil nil] [nil] nil [nil nil] nil [nil nil] nil [[nil nil]])
+    (is (= [nil nil [nil nil nil] [nil] nil [nil nil] nil [nil nil nil] nil [[nil nil nil]]]
            (mg/sample [:schema {:registry {::rec [:maybe [:vector {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
                         (fn [rec]
                           (gen/one-of [(gen/return nil)
-                                       (gen/sized #(gen/vector rec 1 %))]))
+                                       (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
                         (gen/one-of [(gen/return nil)]))
                       {:seed 0})))))

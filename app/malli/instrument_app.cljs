@@ -10,23 +10,12 @@
     [malli.experimental :as mx]
     [malli.instrument.cljs :as mi]))
 
-(defn init []
-  (js/console.log "INIT!"))
-
-;(comment
-;  (meta #'h2/f3))
-
-(defn refresh {:dev/after-load true} []
-  ;(.log js/console "hot reload")
-  )
+(defn init [] (js/console.log "INIT!"))
 
 (defn x+y
   {:malli/schema [:=> [:cat float? float?] :double]}
   [x y]
   (+ x y))
-
-(comment
-  (x+y 5 "10"))
 
 (defn sum [a b] (+ a b))
 
@@ -36,10 +25,6 @@
     sum))
 
 (m/=> sum [:=> [:cat :int :int] :int])
-
-(comment
-  (sum 1 2)
-  (sum "1" 2))
 
 (set! sum
   (m/-instrument {:schema (m/schema [:=> [:cat :int :int] :int])
@@ -61,11 +46,7 @@
 
 (comment
   @mi/instrumented-vars
-  ((get @mi/instrumented-vars `sum) 1 "2")
-  (sum 1 "2")
-  (sum 1 2)
-  (sum 2)
-  )
+  ((get @mi/instrumented-vars `sum) 1 "2"))
 
 (defn plus1 [a] (inc a))
 (m/=> plus1 [:=> [:cat :int] :int])
@@ -87,48 +68,12 @@
    [:=> [:cat :int] :int]
    [:=> [:cat :int :int [:* :int]] :int]])
 
-(comment
-  (plus-many 5)
-  (plus-many 5 8 1 0 20)
-  (plus-many "hi")
-  (var x)
-
-  (macroexpand '(mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument-test)]})))
-
 (def pow-gen
   (m/-instrument
     {:schema [:function
               [:=> [:cat :int] [:int {:max 6}]]
               [:=> [:cat :int :int] [:int {:max 6}]]]
      :gen mg/generate}))
-
-(comment
-  (mi/unstrument! nil)
-  (mi/instrument! {:gen mg/generate})
-  (mi/collect!)
-  (minus 8)
-  ;; should always be generated
-  (pow-gen 10)
-  ;; should not be generated
-  (plus-many 10)
-
-  (mi/instrument! {:report  (pretty/reporter)
-                   :filters [
-                             ;(mi/filter-var #{#'sum})
-
-                             (mi/-filter-var (fn [x]
-                                               (println "Checking var: " x)
-                                               (println "meta: " (:validate? (meta x)))
-                                               (:validate? (meta x))
-                                               ))
-                             ;(mi/-filter-ns 'malli.instrument-app)
-
-                             ]})
-  (mi/collect!)
-  (mi/collect! {:ns ['malli.instrument-app]})
-  (minus 5)
-  (minus "5")
-  (m/function-schemas))
 
 (defn minus2
   "kukka"
@@ -155,40 +100,46 @@
 (defn plusX [x] (inc x))
 (m/=> plusX [:=> [:cat :int] MyInt])
 
-(defn try-it []
+(defn my-function-bad
+  {:malli/schema [:=> [:cat :int [:* :int]] :any]}
+  [x & args]
+  (prn "X is " x " args are " args)
+  123)
 
+(defn pure-vary
+  {:malli/schema [:=> [:cat [:* :string]] some?]}
+  [& x] x)
+
+(defn multi-arity-variadic-fn
+  {:malli/schema
+     [:function
+      ;[:=> [:cat] [:int]]
+      [:=> [:cat :int] [:int]]
+      ;[:=> [:cat :string :string] [:string]]
+      [:=> [:cat :string :string :string [:* :string]] [:string]]]}
+  ([] 500)
+  ([a] (inc a))
+  ([a b] (str a b))
+  ([a b c & more] (str a b c more)))
+
+(defn try-it []
   (println "minus2")
-  (minus2 1 )
+  ;(minus2 1)
+  (plus-many 5 8 1 0 20)
+  ;(plus-many "hi")
+  (my-function-bad 1)
+  (my-function-bad 1 5)
+  ;(my-function-bad 1 nil)
+  ;(pure-vary "hi" 5)
+  (multi-arity-variadic-fn "a" "b")
+  ;; works b/c there is no schema for this arity:
+  (multi-arity-variadic-fn 'a "b" )
+  ;; fails as it hits the last fn schema
+  (multi-arity-variadic-fn 'a "b" "b")
+  ;(multi-arity-variadic-fn "a" "b" "c" :x)
   )
 
 (defn ^:dev/after-load x []
   (println "AFTER LOAD - malli.dev.cljs/start!")
   (md/start!)
-  (js/setTimeout try-it 100)
-
-  ;(mi/unstrument!)
-  ;; register all function schemas and instrument them based on the options
-  ;(md/collect-all!)
-  #_(mi/instrument! {:report (pretty/thrower)
-                   :filters
-                   [(mi/-filter-ns 'malli.helpers2 'malli.instrument-app)]})
-
-  ;(println "f3: " (h2/f3 "500"))
-
-  ;(println "f5 " (h2/f5 [:a 1, :b 2] :c 3, :d 4 ))
-
-  )
-
-(comment
-  ((->minus) 5)
-  (mi/check)
-  (macroexpand '(mi/check))
-  (mi/instrument! {:report (pretty/reporter) :filters [(mi/-filter-var #{#'sum})]})
-  (m/type (m/schema [:=> [:cat :int] small-int]))
-  (m/type (m/function-schema [:=> [:cat :int] small-int]))
-  (plus 8)
-  (m/function-schemas)
-  (mi/instrument!)
-  (mi/instrument! {:report  (pretty/reporter)
-                   :filters [(mi/-filter-var #{#'plusX})]})
-  (plusX 10))
+  (js/setTimeout try-it 100))

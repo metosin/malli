@@ -15,16 +15,35 @@ https://clojars.org/binaryage/devtools
 
 if you are using shadow-cljs just ensure this library is on the classpath.
 
-For an application that uses React.js such as Reagent you will typically declare an entry namespace and init function in your `shadow-cljs.edn` config like so:
+The rest of the guide assumes use of shadow-cljs as the instrumentation tooling works best with it.
+
+To enable instrumentation of ClojureScript builds, we add shadow-cljs build hooks and include a malli instrumentation
+macro in our entry namespace.
+
+To enable optimal development-time instrumentation shadow-cljs build-hooks are used to track the namespaces you make edits
+to as you develop. The instrumentation tooling will only re-instrument the edited namespaces after hot-reloading which should have significant
+time savings on codebases with lots of instrumented functions.
+
+Here is an example build config:
 
 ```clojure
 {...
-:modules {:app {:entries [your-app.entry-ns]
-:init-fn your-app.entry-ns/init}}
+ :builds
+ {:my-build   ; <--- this is your build-id
+  {:target :browser
+   :modules {:app {:init-fn your-app.entry-ns/init}}
+   :build-hooks [(malli.dev.shadow-cljs-instrument-hooks/configure-hook :my-build) ; <-- needs to match the build-id you want to instrument
+                 (malli.dev.shadow-cljs-instrument-hooks/compile-flush-hook)]
 ...}
 ```
 
-In your application's entry namespace you need to tell the compiler to always reload this namespace so that the macro will rerun when
+Please note that you must pass the build-id keyword you want to instrument, this is to handle the case where you have multiple
+builds being compiled at once and the hook will get messages for all of them. Because of this, instrumentation is intended
+to only be applied to one active build only.
+In the future the edited namespaces could be tracked per build to get rid of this limitation, but this would have its own tradeoffs, so
+for now only instrumenting one build at a time is supported with the build hooks.
+
+Now, in your application's entry namespace you need to tell the compiler to always reload this namespace so that the macro will rerun when
 you change schemas and function definitions in other namespaces while developing.
 
 We do this with the `{:dev/always true}` metadata on the namespace:
@@ -51,23 +70,24 @@ In your init function before rendering your application invoke `malli.dev.cljs/s
 When you save source code files during development and new code is hot-reloaded the non-instrumented versions will now 
 overwrite any instrumented versions.
 
-To instrument the newly loaded code with shadow-cljs we can use the [lifecylce hook](https://shadow-cljs.github.io/docs/UsersGuide.html#_lifecycle_hooks)
-`:after-load` by adding metadata to a function and invoking `malli.dev.cljs/start!` again:
+Thus, to instrument the newly loaded code with shadow-cljs we can use the [lifecylce hook](https://shadow-cljs.github.io/docs/UsersGuide.html#_lifecycle_hooks)
+`:after-load` by adding metadata to a function and this time invoking `malli.dev.cljs/refresh!` which will only instrument
+the updated namespaces since the last compile:
 
 ```clojure
 (defn ^:dev/after-load reload []
-  (md/start!)
+  (md/refresh!)
   (my-app/mount!))
 ```
 
-It is useful to understand what is happening when you invoke `(malli.dev.cljs/start!)`
+It is useful to understand what is happening when you invoke `(malli.dev.cljs/start!)` (and `malli.dev.cljs/refresh!`)
 
 The line where `start!` lives in your code will be replaced by a block of code that looks something like:
 
 ```clojure
 (set! your-app-ns/a-function
    (fn [& args] 
-   :; validate the args against the input schema
+   ;; validate the args against the input schema
    ;; invoke the function your-app-ns/a-function and validate the output against the output schema
    ;; return the output
    )

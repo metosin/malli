@@ -2402,21 +2402,25 @@
 (defn -deregister-function-schemas! [key] (swap! -function-schemas* assoc key {}))
 
 (defn -deregister-metadata-function-schemas!
-  [key]
-  (swap! -function-schemas* update key
-    (fn [fn-schemas-map]
-      (reduce-kv (fn [acc ns-sym fn-map]
-                   (assoc acc ns-sym
-                     (reduce-kv
-                       (fn [acc2 fn-sym fn-map]
-                         ;; rm metadata schemas
-                         (if (:metadata-schema? fn-map)
-                           acc2
-                           (assoc acc2 fn-sym fn-map)))
-                       {}
-                       fn-map)))
-        {}
-        fn-schemas-map))))
+  ([key] (-deregister-metadata-function-schemas! nil key))
+  ([ns-set key]
+   (swap! -function-schemas* update key
+     (fn [fn-schemas-map]
+       (reduce-kv (fn [acc ns-sym fn-map]
+                    ;; if the ns-set is nil or empty then clear all namespaces, else only clear those specified by the caller.
+                    (if (or (nil? (not-empty ns-set)) (contains? ns-set ns-sym))
+                      (assoc acc ns-sym
+                                 (reduce-kv
+                                   (fn [acc2 fn-sym fn-map]
+                                     ;; rm metadata schemas - this is added when collecting schemas in cljs
+                                     (if (:metadata-schema? fn-map)
+                                       acc2
+                                       (assoc acc2 fn-sym fn-map)))
+                                   {}
+                                   fn-map))
+                      acc))
+         {}
+         fn-schemas-map)))))
 
 (defn function-schema
   ([?schema] (function-schema ?schema nil))

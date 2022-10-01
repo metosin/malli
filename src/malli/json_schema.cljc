@@ -28,7 +28,7 @@
 (defmethod accept 'nat-int? [_ _ _ _] {:type "integer", :minimum 0})
 (defmethod accept 'float? [_ _ _ _] {:type "number"})
 (defmethod accept 'double? [_ _ _ _] {:type "number"})
-(defmethod accept 'pos? [_ _ _ _] {:type "number" :exclusiveMininum 0})
+(defmethod accept 'pos? [_ _ _ _] {:type "number" :exclusiveMinimum 0})
 (defmethod accept 'neg? [_ _ _ _] {:type "number" :exclusiveMaximum 0})
 (defmethod accept 'boolean? [_ _ _ _] {:type "boolean"})
 (defmethod accept 'string? [_ _ _ _] {:type "string"})

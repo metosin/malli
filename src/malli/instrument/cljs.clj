@@ -1,13 +1,21 @@
-(ns malli.instrument.cljs
+(ns ^:deprecated malli.instrument.cljs
   (:require [cljs.analyzer.api :as ana-api]
+            [cljs.env :as env]
+            [cljs.analyzer :as ana]
             [clojure.walk :as walk]
             [malli.core :as m]))
+
+;;
+;; CAUTION!!! - THIS NAMESPACE IS DEPRECATED.
+;; Please use the malli.instrument namespace from now on.
+;;
+
 
 ;;
 ;; Collect metadata declared function schemas - register them into the known malli.core/-function-schemas* atom based on their metadata.
 ;;
 
-(defn -collect! [env simple-name {:keys [meta] :as var-map}]
+(defn -collect! [simple-name {:keys [meta] :as var-map}]
   (let [ns (symbol (namespace (:name var-map)))
         schema (:malli/schema meta)]
     (when schema
@@ -46,8 +54,8 @@
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
 
 (defn -collect!*
-  [env {:keys [ns]}]
-  (reduce (fn [acc [var-name var-map]] (let [v (-collect! env var-name var-map)] (cond-> acc v (conj v))))
+  [{:keys [ns]}]
+  (reduce (fn [acc [var-name var-map]] (let [v (-collect! var-name var-map)] (cond-> acc v (conj v))))
     #{}
     (mapcat (fn [n]
               (let [ns-sym (cond (symbol? n) n
@@ -58,8 +66,10 @@
       (-sequential ns))))
 
 ;; intended to be called from a cljs macro
-(defn -collect-all-ns [env]
-  (-collect!* env {:ns (ana-api/all-ns)}))
+(defn -collect-all-ns []
+  (-collect!* {:ns (ana-api/all-ns)}))
+
+(defmacro collect-all! [] (-collect-all-ns))
 
 ;;
 ;; instrument
@@ -230,7 +240,7 @@
    | `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([] `(collect! ~{:ns (symbol (str *ns*))}))
-  ([args-map] (-collect!* &env args-map)))
+  ([args-map] (-collect!* args-map)))
 
 (defmacro instrument!
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).

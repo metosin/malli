@@ -1,5 +1,6 @@
 (ns malli.instrument
-  (:require [malli.core :as m]
+  (:require [clojure.walk :as walk]
+            [malli.core :as m]
             [malli.generator :as mg]))
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
@@ -12,13 +13,14 @@
 
 (defn -strument!
   ([] (-strument! nil))
-  ([{:keys [mode data filters gen] :or {mode :instrument, data (m/function-schemas)} :as options}]
+  ([{:keys [mode data filters gen report] :or {mode :instrument, data (m/function-schemas)} :as options}]
    (doseq [[n d] data, [s d] d]
      (when (or (not filters) (some #(% n s d) filters))
        (when-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (-original v) (deref v))
                              dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
+                                    (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol n s)))))))
                                     (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
                                           (true? (:gen d)) (dissoc $ :gen)
                                           :else $))]
@@ -40,6 +42,68 @@
   (let [{:keys [ns name] :as m} (meta v)]
     (when-let [s (-schema v)] (m/-register-function-schema! (-> ns str symbol) name s (m/-unlift-keys m "malli")))))
 
+(defn clj-collect!
+  ([] (clj-collect! {:ns *ns*}))
+  ([{:keys [ns]}]
+   (not-empty (reduce (fn [acc v] (let [v (-collect! v)] (cond-> acc v (conj v)))) #{} (vals (mapcat ns-publics (-sequential ns)))))))
+
+;;
+;; CLJS macro for collecting function schemas
+;;
+
+(let [cljs-find-ns    (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'find-ns)))
+      cljs-ns-interns (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'ns-interns)))]
+  (defn -cljs-collect!* [env simple-name {:keys [meta] :as var-map}]
+    (let [ns          (symbol (namespace (:name var-map)))
+          find-ns'    (cljs-find-ns env)
+          ns-interns' (cljs-ns-interns env)
+          schema      (:malli/schema meta)]
+      (when schema
+        (let [-qualify-sym (fn [form]
+                             (if (symbol? form)
+                               (if (simple-symbol? form)
+                                 (let [ns-data     (find-ns' ns)
+                                       intern-keys (set (keys (ns-interns' ns)))]
+                                   (cond
+                                     ;; a referred symbol
+                                     (get-in ns-data [:uses form])
+                                     (let [form-ns (str (get-in ns-data [:uses form]))]
+                                       (symbol form-ns (str form)))
+
+                                     ;; interned var
+                                     (contains? intern-keys form)
+                                     (symbol (str ns) (str form))
+
+                                     :else
+                                     ;; a cljs.core var, do not qualify it
+                                     form))
+                                 (let [ns-part   (symbol (namespace form))
+                                       name-part (name form)
+                                       full-ns   (get-in (find-ns' ns) [:requires ns-part])]
+                                   (symbol (str full-ns) name-part)))
+                               form))
+              schema*      (walk/postwalk -qualify-sym schema)
+              metadata     (assoc
+                             (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
+                             :metadata-schema? true)]
+          `(do
+             (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)
+             '~(:name var-map)))))))
+
+(defmacro cljs-collect!
+  ([] `(cljs-collect! ~{:ns (symbol (str *ns*))}))
+  ([opts]
+   (let [ns-publics' (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'ns-publics))]
+     (reduce (fn [acc [var-name var-map]] (let [v (-cljs-collect!* &env var-name var-map)] (cond-> acc v (conj v))))
+       #{}
+       (mapcat (fn [n]
+                 (let [ns-sym (cond (symbol? n) n
+                                    ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
+                                    (list? n) (second n)
+                                    :else (symbol (str n)))]
+                   (ns-publics' ns-sym)))
+         (-sequential (:ns opts)))))))
+
 ;;
 ;; public api
 ;;
@@ -55,7 +119,7 @@
                                                  (swap! res* assoc (symbol v))))))
      (not-empty @res*))))
 
-(defn collect!
+(defmacro collect!
   "Reads all public Vars from a given namespace(s) and registers a function (var) schema if `:malli/schema`
    metadata is present. The following metadata key can be used:
 
@@ -65,9 +129,11 @@
    | `:malli/scope`  | optional set of scope definitions, defaults to `#{:input :output}`
    | `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value"
-  ([] (collect! {:ns *ns*}))
-  ([{:keys [ns]}]
-   (not-empty (reduce (fn [acc v] (let [v (-collect! v)] (cond-> acc v (conj v)))) #{} (vals (mapcat ns-publics (-sequential ns)))))))
+  ([] `(collect! ~{:ns (symbol (str *ns*))}))
+  ([opts]
+   (if (:ns &env)
+     `(cljs-collect! ~opts)
+     `(clj-collect! ~opts))))
 
 (defn instrument!
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).

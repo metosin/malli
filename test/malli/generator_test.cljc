@@ -825,3 +825,40 @@
                                        (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
                         (gen/one-of [(gen/return nil)]))
                       {:seed 0})))))
+
+(defn alphanumeric-char? [c]
+  {:pre [(char? c)]}
+  (let [i (int c)]
+    (or (<= (int \a) i (int \z))
+        (<= (int \A) i (int \Z))
+        (<= (int \0) i (int \9)))))
+
+(defn alphanumeric-string? [s]
+  {:pre [(string? s)]}
+  (every? alphanumeric-char? s))
+
+(deftest string-gen-alphanumeric-test
+  (dotimes [seed 100]
+    (testing (pr-str seed)
+      (testing "(and min (= min max))"
+        (is (alphanumeric-string?
+              (mg/generate [:string {:min 10
+                                     :max 10}]
+                           {:seed seed}))))
+      (testing "(and min max)"
+        (is (alphanumeric-string?
+              (mg/generate [:string {:min 10
+                                     :max 20}]
+                           {:seed seed}))))
+      (testing "min"
+        (is (alphanumeric-string?
+              (mg/generate [:string {:min 10}]
+                           {:seed seed}))))
+      (testing "max"
+        (is (alphanumeric-string?
+              (mg/generate [:string {:max 20}]
+                           {:seed seed}))))
+      (testing ":else"
+        (is (alphanumeric-string?
+              (mg/generate [:string {}]
+                           {:seed seed})))))))

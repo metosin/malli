@@ -91,10 +91,10 @@
 (defn- -string-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)]
     (cond
-      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char min))
-      (and min max) (gen/fmap str/join (gen/vector gen/char min max))
-      min (gen/fmap str/join (gen/sized #(gen/vector gen/char min (+ min %))))
-      max (gen/fmap str/join (gen/vector gen/char 0 max))
+      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
+      (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
+      min (gen/fmap str/join (gen/sized #(gen/vector gen/char-alphanumeric min (+ min %))))
+      max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
       :else gen/string-alphanumeric)))
 
 (defn- -coll-gen [schema f options]

@@ -12,8 +12,8 @@ jobs:
     strategy:
       matrix:
         # Supported Java versions: LTS releases and latest
-        # TODO: Add 18 when available
-        jdk: [8, 11, 17]
+        # TODO: Replace 19=>20 when available
+        jdk: [8, 11, 17, 19]
         clojure: [10, 11]
 
     name: Clojure ${{ matrix.clojure }} (Java ${{ matrix.jdk }})

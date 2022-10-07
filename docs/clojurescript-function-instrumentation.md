@@ -2,10 +2,10 @@
 
 Function instrumentation is also supported when developing ClojureScript browser applications.
 
-Things work differently from the Clojure version of instrumentation because there are no runtime Vars in ClojureScript and thus the 
-instrumentation must happen at compile-time using macros.
-The macro will emit code that `set!`s the function at runtime with a version that validates the function's inputs and outputs
-against its declared malli schema.
+The implementation works by collecting function schemas using a ClojureScript macro which registers the function schemas
+available in the application.
+
+Instrumentation happens at runtime in a JavaScript runtime. The functions to instrument are replaced by instrumented versions.
 
 # Dev Setup
 
@@ -59,29 +59,6 @@ To instrument the newly loaded code with shadow-cljs we can use the [lifecylce h
   (md/start!)
   (my-app/mount!))
 ```
-
-It is useful to understand what is happening when you invoke `(malli.dev.cljs/start!)`
-
-The line where `start!` lives in your code will be replaced by a block of code that looks something like:
-
-```clojure
-(set! your-app-ns/a-function
-   (fn [& args] 
-   :; validate the args against the input schema
-   ;; invoke the function your-app-ns/a-function and validate the output against the output schema
-   ;; return the output
-   )
-;; assuming an implementation in your-app-ns like:
-(defn a-function 
-  {:malli/schema [:=> [:cat :int] :string]}
-  [x] 
-  (str x))
-```
-
-(you can see what is actually output here: https://github.com/metosin/malli/blob/400dc0c79805028a6d85413086d4d6d627231940/src/malli/instrument/cljs.clj#L69)
-
-And this is why the order of loaded code will affect the instrumented functions. If the code for `your-app-ns/a-function`
-is hot-reloaded and the `start!` call is never invoked again, the function will no longer be instrumented.
 
 ## Errors in the browser console
 

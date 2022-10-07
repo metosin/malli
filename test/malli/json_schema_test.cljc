@@ -8,6 +8,7 @@
 (def expectations
   [;; predicates
    [pos-int? {:type "integer", :minimum 1}]
+   [pos? {:type "number" :exclusiveMinimum 0}]
    [float? {:type "number"}]
    ;; comparators
    [[:> 6] {:type "number", :exclusiveMinimum 6}]

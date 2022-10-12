@@ -14,7 +14,7 @@
     * [Function Inline Schemas](#function-inline-schemas)
   * [Defn Instrumentation](#defn-instrumentation)
   * [Defn Checking](#defn-checking)
-* [Development Instumentation](#development-instrumentation)
+* [Development Instrumentation](#development-instrumentation)
   * [Static Type Checking](#static-type-checking)
   * [Pretty Errors](#pretty-errors)
 * [Defn Schemas via metadata](#defn-schemas-via-metadata)
@@ -410,7 +410,7 @@ To collect instrumentation for the `defn`, we need to call `mi/collect!`. It rea
 ;              :name minus}}}
 ```
 
-We'll also have to reinstument the new var:
+We'll also have to reinstrument the new var:
 
 ```clojure
 (mi/instrument!)

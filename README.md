@@ -2997,7 +2997,7 @@ a native, fast starting Clojure interpreter for scripting.
 You can add malli to `bb.edn`:
 
 ``` clojure
-{:deps {metosin/malli {:mvn/version "0.8.9"}}}
+{:deps {metosin/malli {:mvn/version "0.9.0"}}}
 ```
 
 or directly in a babashka script:
@@ -3006,7 +3006,7 @@ or directly in a babashka script:
 (ns bb-malli
   (:require [babashka.deps :as deps]))
 
-(deps/add-deps '{:deps {metosin/malli {:mvn/version "0.8.9"}}})
+(deps/add-deps '{:deps {metosin/malli {:mvn/version "0.9.0"}}})
 
 (require '[malli.core :as malli])
 

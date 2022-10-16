@@ -467,19 +467,17 @@
 
         (let [len (alength values)]
           (loop [i 0]
-            (if (< i len)
-              (do
-                (when-some [^CacheEntry v (aget values i)]
-                  (loop [i* (bit-and (.-hash v) max-index)
-                         collisions 0]
-                    (if (aget values* i*)
-                      (let [collisions (unchecked-inc collisions)]
-                        (recur
-                         (bit-and (unchecked-add i* collisions) max-index)
-                         collisions))
-                      (aset values* i* v))))
-                (recur (unchecked-inc i)))
-              nil)))
+            (when (< i len)
+              (when-some [^CacheEntry v (aget values i)]
+                (loop [i* (bit-and (.-hash v) max-index)
+                       collisions 0]
+                  (if (aget values* i*)
+                    (let [collisions (unchecked-inc collisions)]
+                      (recur
+                       (bit-and (unchecked-add i* collisions) max-index)
+                       collisions))
+                    (aset values* i* v))))
+              (recur (unchecked-inc i)))))
 
         (set! values values*)))
 

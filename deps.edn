@@ -8,15 +8,15 @@
         mvxcvi/arrangement {:mvn/version "2.0.0"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.13"}
-                               lambdaisland/kaocha {:mvn/version "1.68.1059"}
-                               lambdaisland/kaocha-cljs {:mvn/version "1.0.107"}
+                               lambdaisland/kaocha {:mvn/version "1.70.1086"}
+                               lambdaisland/kaocha-cljs {:mvn/version "1.4.130"}
                                org.babashka/sci {:mvn/version "0.3.32"}
-                               lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}
+                               lambdaisland/kaocha-junit-xml {:mvn/version "1.16.98"}
                                metosin/spec-tools {:mvn/version "0.10.5"}
                                spec-provider/spec-provider {:mvn/version "0.4.14"}
                                metosin/schema-tools {:mvn/version "0.12.3"}
                                metosin/jsonista {:mvn/version "0.3.6"}
-                               prismatic/schema {:mvn/version "1.3.0"}
+                               prismatic/schema {:mvn/version "1.4.1"}
                                minimallist/minimallist {:mvn/version "0.0.10"}
                                net.cgrand/seqexp {:mvn/version "0.6.2"}
                                meta-merge/meta-merge {:mvn/version "1.0.0"}
@@ -24,19 +24,19 @@
                                lambdaisland/deep-diff {:mvn/version "0.0-47"}
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
-                                                        :sha "99456b1856a6fd934e2c30b17920bd790dd81775"}}}
+                                                        :sha "3d32b5e571b98e2930a7b2ed1dd9551bb269375a"}}}
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.3.31"}}}
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.2" :git/sha "ba1a2bf"}}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]
                  :deps {jmh-clojure/jmh-clojure {:mvn/version "0.4.1"}
                         jmh-clojure/task {:mvn/version "0.1.1"}}
                  :main-opts ["-m" "jmh.main"]}
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.19.9"}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.20.5"}
                                  binaryage/devtools {:mvn/version "1.0.6"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
@@ -60,7 +60,7 @@
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                org.clojure/clojure {:mvn/version "1.11.1"}
-                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.1"}}
+                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.0"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"
                              "-Dclojure.compiler.direct-linking=true"]}

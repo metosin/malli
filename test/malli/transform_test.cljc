@@ -851,11 +851,11 @@
     (testing "custom default :key"
       (let [schema [:map {}
                     [:first {:default 1, :name 'one} int?]
-                    [:second {:default 2, :name 'two} int?]]]
-        (let [seen (atom [])
-              transformer (mt/default-value-transformer {:key :name, :default-fn (fn [_ x] (swap! seen conj x) x)})]
-          (is (= {:first 'one, :second 'two} (m/encode schema {} transformer)))
-          (is (= ['one 'two] @seen)))))))
+                    [:second {:default 2, :name 'two} int?]]
+            seen (atom [])
+            transformer (mt/default-value-transformer {:key :name, :default-fn (fn [_ x] (swap! seen conj x) x)})]
+        (is (= {:first 'one, :second 'two} (m/encode schema {} transformer)))
+        (is (= ['one 'two] @seen))))))
 
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))

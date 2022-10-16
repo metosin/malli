@@ -1,7 +1,5 @@
 (ns ^:deprecated malli.instrument.cljs
   (:require [cljs.analyzer.api :as ana-api]
-            [cljs.env :as env]
-            [cljs.analyzer :as ana]
             [clojure.walk :as walk]
             [malli.core :as m]))
 

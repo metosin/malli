@@ -1079,7 +1079,7 @@
         ^{:type ::schema}
         (reify
           AST
-          (-to-ast [this _]
+          (-to-ast [_ _]
             (-ast {:type :map-of, :key (ast key-schema), :value (ast value-schema)} properties options))
           Schema
           (-validator [_]

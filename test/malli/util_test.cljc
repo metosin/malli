@@ -186,7 +186,7 @@
                 [:b {:optional true} int?]
                 [:c [:map {:closed true}
                      [:d int?]]]]]
-    
+
     (is (true? (#'mu/-ok-to-close-or-open? implicitly-open {})))
     (is (true? (#'mu/-ok-to-close-or-open? closed {})))
 

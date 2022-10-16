@@ -2350,11 +2350,11 @@
         (is (= {:type :=>, :children [{:type :cat, :children [{:type 'int?} {:type 'int?}]} {:type 'int?}]}
                (mu/to-map-syntax schema1)))
 
-        (is {:type :=>
-             :input {:type :cat
-                     :children [{:type 'int?} {:type 'int?}]}
-             :output {:type 'int?}}
-            (= (m/ast schema1))))))
+        (is (= {:type :=>
+                :input {:type :cat
+                        :children [{:type 'int?} {:type 'int?}]}
+                :output {:type 'int?}}
+               (m/ast schema1))))))
 
   (testing ":function"
 

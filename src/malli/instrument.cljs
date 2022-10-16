@@ -10,7 +10,6 @@
 (defn ^:private -get-prop [ns prop] (g/getValueByKeys goog/global (-prop-js-path ns prop)))
 (defn ^:private -get-ns [ns] (g/getValueByKeys goog/global (-ns-js-path ns)))
 (defn ^:private -find-var [n s] (-get-prop n s))
-(defn ^:private -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
 (defn ^:private -original [f] (g/get f "malli$instrument$original"))
 (defn ^:private -instrumented? [f] (true? (g/get f "malli$instrument$instrumented?")))
 

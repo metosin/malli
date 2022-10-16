@@ -14,14 +14,26 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.9.0 (2022-10-16)
 
-* Source-compatible with nbb, [#726](https://github.com/metosin/malli/pull/726)
-* Switch Value and Errors in the pretty output order, [#720](https://github.com/metosin/malli/pull/720)
-* Fix registry lookup in schema vector syntax, [#729](https://github.com/metosin/malli/pull/729), fixes [#451](https://github.com/metosin/malli/issues/451)
-* Set additionalProperties if map is closed [#719](https://github.com/metosin/malli/pull/719), fixes [#716](https://github.com/metosin/malli/issues/716)
-* Initial [Development Guide](README.md#development)
+* Improve regex driver cache performance [#756](https://github.com/metosin/malli/pull/756)
+* Refactor cljs fn instrumentation to happen at runtime [#755](https://github.com/metosin/malli/pull/755)
+* Add jdk 19 to ci [#760](https://github.com/metosin/malli/pull/760)
+* Fix pos? json schema mapping [#757](https://github.com/metosin/malli/pull/757)
+* Generate alphanumeric strings with `:min/:max` [#759](https://github.com/metosin/malli/pull/759)
+* Add cljs instrumentation support for multi-arity and varargs functions [#753](https://github.com/metosin/malli/pull/753)
+* Attach fn-name metadata to instrumented CLJS functions [#746](https://github.com/metosin/malli/pull/746)
+* Improve generator distribution for sized schemas [#748](https://github.com/metosin/malli/pull/748)
+* Group instrumentation logging so it doesn't spam the browser console [#747](https://github.com/metosin/malli/pull/747)
+* Fix recursive gen [#677](https://github.com/metosin/malli/pull/677), fixed [On fixing Malli's recursive generation](https://github.com/metosin/malli/issues/452)
+* Mask valid values by default with `malli.dev.pretty/explain` [#738](https://github.com/metosin/malli/pull/738)
 * Add seq to tuple transformation [#735](https://github.com/metosin/malli/pull/735), fixes [#734](https://github.com/metosin/malli/issues/734)
+* Switch Value and Errors in the pretty output order, [#720](https://github.com/metosin/malli/pull/720)
+* Ensure all examples work without sci unless mentioned otherwise [#733](https://github.com/metosin/malli/pull/733)
+* Set additionalProperties if map is closed [#719](https://github.com/metosin/malli/pull/719), fixes [#716](https://github.com/metosin/malli/issues/716)
+* Fix registry lookup in schema vector syntax, [#729](https://github.com/metosin/malli/pull/729), fixes [#451](https://github.com/metosin/malli/issues/451)
+* Source-compatible with nbb, [#726](https://github.com/metosin/malli/pull/726)
+* Initial [Development Guide](README.md#development)
 * Better humanized results with sets
 * `::m/extra-key` error retains the error value
 * New `malli.error/error-value` utility for [compact error value presentation](README.md#values-in-error).

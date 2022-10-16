@@ -48,15 +48,15 @@
 
 (defn -never-gen
   "Return a generator of no values that is compatible with -unreachable-gen?."
-  [{::keys [original-generator-schema] :as options}]
+  [{::keys [original-generator-schema] :as _options}]
   (with-meta (gen/such-that (fn [_]
-                              (throw (ex-info 
-                                       (str "Cannot generate values due to infinitely expanding schema: "
-                                            (if original-generator-schema
-                                              (m/form original-generator-schema)
-                                              "<no schema form>"))
-                                       (cond-> {}
-                                         original-generator-schema (assoc :schema (m/form original-generator-schema))))))
+                              (throw (ex-info
+                                      (str "Cannot generate values due to infinitely expanding schema: "
+                                           (if original-generator-schema
+                                             (m/form original-generator-schema)
+                                             "<no schema form>"))
+                                      (cond-> {}
+                                        original-generator-schema (assoc :schema (m/form original-generator-schema))))))
                             gen/any)
              {::never-gen true
               ::original-generator-schema original-generator-schema}))
@@ -123,22 +123,21 @@
                   (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})))))
 
 (defn -and-gen [schema options]
-  (if-some [gen (-not-unreachable
-                  (-> schema (m/children options) first (generator options)))]
+  (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
     (gen/such-that (m/validator schema options) gen 100)
     (-never-gen options)))
 
 (defn -or-gen [schema options]
   (if-some [gs (not-empty
-                 (into [] (keep #(-not-unreachable (generator % options)))
-                       (m/children schema options)))]
+                (into [] (keep #(-not-unreachable (generator % options)))
+                      (m/children schema options)))]
     (gen/one-of gs)
     (-never-gen options)))
 
 (defn -multi-gen [schema options]
   (if-some [gs (not-empty
-                 (into [] (keep #(-not-unreachable (generator (last %) options)))
-                       (m/entries schema options)))]
+                (into [] (keep #(-not-unreachable (generator (last %) options)))
+                      (m/entries schema options)))]
     (gen/one-of gs)
     (-never-gen options)))
 
@@ -292,7 +291,7 @@
               dschema (m/deref schema)]
           (cond->> (generator dschema (assoc-in options [::rec-gen ref-id] scalar-ref-gen))
             (realized? scalar-ref-gen) (gen/recursive-gen
-                                         #(generator dschema (assoc-in options [::rec-gen ref-id] %))))))))
+                                        #(generator dschema (assoc-in options [::rec-gen ref-id] %))))))))
 
 (defn -=>-gen [schema options]
   (let [output-generator (generator (:output (m/-function-info schema)) options)]

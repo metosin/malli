@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 0.9.1 (2022-10-17)
+
+* Fix instrument! in dev.cljs/start! - pass cljs function schemas [#766](https://github.com/metosin/malli/pull/766)
+
 ## 0.9.0 (2022-10-16)
 
 * Improve regex driver cache performance [#756](https://github.com/metosin/malli/pull/756)

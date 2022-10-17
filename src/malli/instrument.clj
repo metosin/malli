@@ -20,7 +20,7 @@
          (case mode
            :instrument (let [original-fn (or (-original v) (deref v))
                              dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
-                                    (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol n s)))))))
+                                    (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
                                     (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
                                           (true? (:gen d)) (dissoc $ :gen)
                                           :else $))]

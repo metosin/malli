@@ -2699,7 +2699,7 @@
                              :organization (hash-map :id (random-uuid)
                                                      :code (rand-int 100)))]
     (testing "returns map schema with map? as default :pred fn"
-      (let [DefaultMapSchema (m/-map-schema)
+      (let [DefaultMapSchema (m/-map-schema {:naked-keys true})
             data-schema (m/schema [DefaultMapSchema
                                    [:id uuid?]
                                    [:name string?]

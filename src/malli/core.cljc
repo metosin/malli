@@ -942,7 +942,7 @@
 
 (defn -map-schema
   ([]
-   (-map-schema {:naked-keys true :pred map?}))
+   (-map-schema {:naked-keys true}))
   ([opts] ;; :naked-keys, :lazy, :pred
    ^{:type ::into-schema}
    (reify
@@ -954,7 +954,7 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
-       (let [pred? (:pred opts)
+       (let [pred? (:pred opts map?)
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)

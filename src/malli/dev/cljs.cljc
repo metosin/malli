@@ -33,7 +33,7 @@
         (m/-deregister-metadata-function-schemas! :cljs)
         (malli.instrument/collect! {:ns ~(vec (ana-api/all-ns))})
         (js/console.groupCollapsed "Instrumentation done")
-        (malli.instrument/instrument! ~options)
+        (malli.instrument/instrument! (assoc ~options :data (m/function-schemas :cljs)))
         (js/console.groupEnd)))))
 
 ;; only used by deprecated malli.instrument.cljs implementation

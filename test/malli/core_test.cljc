@@ -10,7 +10,7 @@
             [malli.registry :as mr]
             [malli.transform :as mt]
             [malli.util :as mu])
-  #?(:clj (:import (clojure.lang IFn))))
+  #?(:clj (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -2691,3 +2691,41 @@
               (m/deref)
               (m/properties)
               :error/message))))))
+
+(deftest -map-schema-test
+  (testing "returns map schema with map? as default :pred fn"
+    (let [DefaultMapSchema (m/-map-schema)
+          data-schema (m/schema [DefaultMapSchema
+                                 [:id uuid?]
+                                 [:name string?]
+                                 [:code {:optional true} int?]
+                                 [:organization [DefaultMapSchema
+                                                 [:id uuid?]
+                                                 [:name {:optional true} string?]
+                                                 [:code int?]]]])
+          test-data {:id (random-uuid)
+                     :name "baz"
+                     :code (rand-int 100)
+                     :organization {:id (random-uuid)
+                                    :code (rand-int 100)}}]
+      (is (m/validate data-schema test-data))))
+
+  (testing "returns map schema with custom :pred fn as provided in opts"
+    (let [persistent-array-map? #(instance? PersistentArrayMap %)
+          ArrayMapSchema (m/-map-schema {:pred persistent-array-map?})
+          persistent-hash-map? #(instance? PersistentHashMap %)
+          HashMapSchema (m/-map-schema {:pred persistent-hash-map?})
+          data-schema (m/schema [ArrayMapSchema
+                                 [:id uuid?]
+                                 [:name string?]
+                                 [:code {:optional true} int?]
+                                 [:organization [HashMapSchema
+                                                 [:id uuid?]
+                                                 [:name {:optional true} string?]
+                                                 [:code int?]]]])
+          test-data (array-map :id (random-uuid)
+                               :name "baz"
+                               :code (rand-int 100)
+                               :organization (hash-map :id (random-uuid)
+                                                       :code (rand-int 100)))]
+      (is (m/validate data-schema test-data)))))

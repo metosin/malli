@@ -943,7 +943,7 @@
 (defn -map-schema
   ([]
    (-map-schema {:naked-keys true}))
-  ([opts] ;; :naked-keys, :lazy
+  ([opts] ;; :naked-keys, :lazy, :pred
    ^{:type ::into-schema}
    (reify
      AST
@@ -954,7 +954,8 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]
-       (let [entry-parser (-create-entry-parser children opts options)
+       (let [pred? (:pred opts map?)
+             entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
              ->parser (fn [this f]
@@ -975,7 +976,7 @@
                                                        (reduce
                                                         (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                         m (keys m)))))]
-                          (fn [x] (if (map? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
+                          (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
            AST
@@ -993,7 +994,7 @@
                                        (-children this))
                                 closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
                    validate (miu/-every-pred validators)]
-               (fn [m] (and (map? m) (validate m)))))
+               (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
                    explainers (cond-> (-vmap
@@ -1014,7 +1015,7 @@
                                                     (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
                                                 acc x))))]
                (fn [x in acc]
-                 (if-not (map? x)
+                 (if-not (pred? x)
                    (conj acc (miu/-error path in this x ::invalid-type))
                    (reduce
                     (fn [acc explainer]
@@ -1028,7 +1029,7 @@
                                         (let [t (-transformer s transformer method options)]
                                           (cond-> acc t (conj [k t])))) [] (-entries this))
                    apply->children (when (seq ->children) (-map-transformer ->children))
-                   apply->children (-guard map? apply->children)]
+                   apply->children (-guard pred? apply->children)]
                (-intercepting this-transformer apply->children)))
            (-walk [this walker path options] (-walk-entries this walker path options))
            (-properties [_] properties)

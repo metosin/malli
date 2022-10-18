@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 0.9.2 (2022-10-18)
+
+* Fix report-fn fn-name symbol constructor in instrument [#768](https://github.com/metosin/malli/pull/768)
+
 ## 0.9.1 (2022-10-17)
 
 * Fix instrument! in dev.cljs/start! - pass cljs function schemas [#766](https://github.com/metosin/malli/pull/766)

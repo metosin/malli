@@ -54,41 +54,43 @@
 (let [cljs-find-ns    (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'find-ns)))
       cljs-ns-interns (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'ns-interns)))]
   (defn -cljs-collect!* [env simple-name {:keys [meta] :as var-map}]
-    (let [ns          (symbol (namespace (:name var-map)))
-          find-ns'    (cljs-find-ns env)
-          ns-interns' (cljs-ns-interns env)
-          schema      (:malli/schema meta)]
-      (when schema
-        (let [-qualify-sym (fn [form]
-                             (if (symbol? form)
-                               (if (simple-symbol? form)
-                                 (let [ns-data     (find-ns' ns)
-                                       intern-keys (set (keys (ns-interns' ns)))]
-                                   (cond
-                                     ;; a referred symbol
-                                     (get-in ns-data [:uses form])
-                                     (let [form-ns (str (get-in ns-data [:uses form]))]
-                                       (symbol form-ns (str form)))
+    ;; when collecting google closure or other js code symbols will not have namespaces
+    (when (namespace (:name var-map))
+      (let [ns          (symbol (namespace (:name var-map)))
+            find-ns'    (cljs-find-ns env)
+            ns-interns' (cljs-ns-interns env)
+            schema      (:malli/schema meta)]
+        (when schema
+          (let [-qualify-sym (fn [form]
+                               (if (symbol? form)
+                                 (if (simple-symbol? form)
+                                   (let [ns-data     (find-ns' ns)
+                                         intern-keys (set (keys (ns-interns' ns)))]
+                                     (cond
+                                       ;; a referred symbol
+                                       (get-in ns-data [:uses form])
+                                       (let [form-ns (str (get-in ns-data [:uses form]))]
+                                         (symbol form-ns (str form)))
 
-                                     ;; interned var
-                                     (contains? intern-keys form)
-                                     (symbol (str ns) (str form))
+                                       ;; interned var
+                                       (contains? intern-keys form)
+                                       (symbol (str ns) (str form))
 
-                                     :else
-                                     ;; a cljs.core var, do not qualify it
-                                     form))
-                                 (let [ns-part   (symbol (namespace form))
-                                       name-part (name form)
-                                       full-ns   (get-in (find-ns' ns) [:requires ns-part])]
-                                   (symbol (str full-ns) name-part)))
-                               form))
-              schema*      (walk/postwalk -qualify-sym schema)
-              metadata     (assoc
-                             (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
-                             :metadata-schema? true)]
-          `(do
-             (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)
-             '~(:name var-map)))))))
+                                       :else
+                                       ;; a cljs.core var, do not qualify it
+                                       form))
+                                   (let [ns-part   (symbol (namespace form))
+                                         name-part (name form)
+                                         full-ns   (get-in (find-ns' ns) [:requires ns-part])]
+                                     (symbol (str full-ns) name-part)))
+                                 form))
+                schema*      (walk/postwalk -qualify-sym schema)
+                metadata     (assoc
+                               (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
+                               :metadata-schema? true)]
+            `(do
+               (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)
+               '~(:name var-map))))))))
 
 (defmacro cljs-collect!
   ([] `(cljs-collect! ~{:ns (symbol (str *ns*))}))
@@ -102,7 +104,12 @@
                                     (list? n) (second n)
                                     :else (symbol (str n)))]
                    (ns-publics' ns-sym)))
-         (-sequential (:ns opts)))))))
+         ;; support quoted vectors of ns symbols in cljs
+         (let [nses (:ns opts)
+               nses (if (and (= 'quote (first nses)) (coll? (second nses)))
+                      (second nses)
+                      nses)]
+           (-sequential nses)))))))
 
 ;;
 ;; public api

@@ -142,13 +142,12 @@
       (is (= 4 (schemas/power-full "2")))
       (is (= 36 (schemas/power-full 6)))))
 
-(mi/collect! {:ns ['malli.instrument-test 'malli.instrument.fn-schemas]})
-
 (deftest ^:simple collect!-test
+
+  (mi/collect! {:ns ['malli.instrument-test 'malli.instrument.fn-schemas]})
 
   (testing "with instrumentation"
     (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})
-    (println "calling instrumented fn str-join")
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join [1 "2"])))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join2 [1 "2"])))
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join3 [1 "2"])))

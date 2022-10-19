@@ -121,7 +121,6 @@
     (is (= 4 (power "2")))
     (is (= 36 (power 6)))
 
-
     (is (= "2" (str-join-mx ["2"])))
     (is (= "6" (str-join-mx [6])))
 
@@ -146,7 +145,6 @@
 (mi/collect! {:ns ['malli.instrument.cljs-test 'malli.instrument.fn-schemas]})
 
 (deftest collect!-test
-
   (testing "with instrumentation"
     (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument.cljs-test 'malli.instrument.fn-schemas)]})
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join [1 "2"])))

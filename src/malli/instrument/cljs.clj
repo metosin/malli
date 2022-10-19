@@ -157,7 +157,7 @@
         replace-var-code (when-let [fn-var (ana-api/resolve env fn-sym)]
                            (-emit-replace-var-code fn-sym (:meta fn-var) schema-map-with-gen schema))]
     (if filters
-      `(when (some #(% '~ns-sym (var ~fn-sym) ~schema-map) ~filters)
+      `(when (some #(% '~ns-sym (resolve '~fn-sym) ~schema-map) ~filters)
          ~replace-var-code)
       replace-var-code)))
 
@@ -187,7 +187,7 @@
                                (.log js/console "..unstrumented" '~fn-sym)
                                '~fn-sym))]
     (if filters
-      `(when (some #(% '~ns-sym (var ~fn-sym) ~opts) ~filters)
+      `(when (some #(% '~ns-sym (resolve '~fn-sym) ~opts) ~filters)
          ~replace-with-orig)
       replace-with-orig)))
 

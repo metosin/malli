@@ -310,7 +310,7 @@
   ([?schema k default]
    (get ?schema k default nil))
   ([?schema k default options]
-   (let [schema (m/schema (or ?schema :map) options)]
+   (let [schema (m/deref-all (or ?schema :map) options)]
      (when schema (m/-get schema k default)))))
 
 (defn assoc
@@ -318,12 +318,12 @@
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
-   (m/-set (m/schema ?schema options) key value)))
+   (m/-set (m/deref-all ?schema options) key value)))
 
 (defn update
   "Like [[clojure.core/update]], but for LensSchema instances."
   [schema key f & args]
-  (m/-set (m/schema schema) key (apply f (get schema key) args)))
+  (m/-set (m/deref-all schema) key (apply f (get schema key) args)))
 
 (defn get-in
   "Like [[clojure.core/get-in]], but for LensSchemas."
@@ -332,7 +332,7 @@
   ([?schema ks default]
    (get-in ?schema ks default nil))
   ([?schema [k & ks] default options]
-   (let [schema (m/schema (or ?schema :map) options)]
+   (let [schema (m/deref-all (or ?schema :map) options)]
      (if-not k
        schema
        (let [sentinel #?(:clj (Object.), :cljs (js-obj))
@@ -347,7 +347,7 @@
   ([?schema ks value]
    (assoc-in ?schema ks value nil))
   ([?schema [k & ks] value options]
-   (let [schema (m/schema ?schema options)]
+   (let [schema (m/deref-all ?schema options)]
      (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value) value)))))
 
 (defn update-in

@@ -655,6 +655,14 @@
          (-> (m/explain [:map [:user [:multi {:dispatch :type}]]] {:user nil})
              (me/humanize)))))
 
+(deftest push-assoc-keyword-on-vector-774
+  (let [x []
+        k :credated-at
+        v ["should be either :created-at or :id"]
+        fill nil]
+    (testing "don't return an IllegalArgumentException key must be integer"
+      (is (me/-push x k v fill)))))
+
 (deftest in-error-test
   (let [Address [:map {:closed true}
                  [:id :string]

@@ -75,14 +75,22 @@
               (g/set (-get-prop n s) accessor instrumented-fn))))))))
 
 (defn -replace-fn [original-fn n s opts]
-  (cond
-    (-pure-variadic? original-fn) (-replace-variadic-fn original-fn n s opts)
-    (-max-fixed-arity original-fn) (-replace-multi-arity original-fn n s opts)
-    :else (let [instrumented-fn (meta-fn (m/-instrument opts original-fn) {:instrumented-symbol (symbol n s)})]
-            (g/set original-fn "malli$instrument$instrumented?" true)
-            (g/set instrumented-fn "malli$instrument$instrumented?" true)
-            (g/set instrumented-fn "malli$instrument$original" original-fn)
-            (g/set (-get-ns n) (munge (name s)) instrumented-fn))))
+  (try
+    (cond
+      (-pure-variadic? original-fn) (-replace-variadic-fn original-fn n s opts)
+      (-max-fixed-arity original-fn) (-replace-multi-arity original-fn n s opts)
+      :else (let [instrumented-fn (meta-fn (m/-instrument opts original-fn) {:instrumented-symbol (symbol (name n) (name s))})]
+              (g/set original-fn "malli$instrument$instrumented?" true)
+              (g/set instrumented-fn "malli$instrument$instrumented?" true)
+              (g/set instrumented-fn "malli$instrument$original" original-fn)
+              (g/set (-get-ns n) (munge (name s)) instrumented-fn)))
+    (catch :default e
+      (if (instance? ExceptionInfo e)
+        (throw
+          (ex-info
+            (str "Schema error when instrumenting function: " (symbol (name n) (name s)) " - " (ex-message e))
+            (ex-data e)))
+        (throw (js/Error. (str "Schema error when instrumenting function: " (symbol (name n) (name s)) ". " e)))))))
 
 (defn -strument!
   ([] (-strument! nil))

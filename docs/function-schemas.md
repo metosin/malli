@@ -15,6 +15,7 @@
   * [Defn Instrumentation](#defn-instrumentation)
   * [Defn Checking](#defn-checking)
 * [Development Instrumentation](#development-instrumentation)
+  * [ClojureScript Support](#clojurescript-support)
   * [Static Type Checking](#static-type-checking)
   * [Pretty Errors](#pretty-errors)
 * [Defn Schemas via metadata](#defn-schemas-via-metadata)
@@ -621,6 +622,10 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 ; =prints=> ..unstrumented #'user/plus1
 ; =prints=> stopped instrumentation
 ```
+
+## ClojureScript support
+
+See the document: [docs/clojurescript-function-instrumentation.md](clojurescript-function-instrumentation.md)
 
 ### Static Type Checking
 

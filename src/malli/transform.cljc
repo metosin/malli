@@ -358,6 +358,8 @@
     :decoders (-string-decoders)
     :encoders (-string-encoders)}))
 
+(defn no-op-transformer [] (transformer {}))
+
 (defn strip-extra-keys-transformer
   ([]
    (strip-extra-keys-transformer nil))

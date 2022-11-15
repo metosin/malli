@@ -54,7 +54,7 @@
                      (when (apply = @vs*) (into [:tuple] (first @vs*)))))))
         [type (-> @vstats* :values (schema options))])))
 
-(defn -map-schema [{tc :count :as stats} schema {:keys [::infer ::map-of-threshold] :or {map-of-threshold 3} :as options}]
+(defn -map-schema [{tc :count :as stats} schema {:keys [::infer ::map-of-threshold] :or {map-of-threshold 8} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
         ks* (delay (schema (reduce infer {} (map :key entries)) options))
         ?ks* (delay (let [kss (map #(schema (infer {} (:key %)) options) entries)] (when (apply = kss) (first kss))))

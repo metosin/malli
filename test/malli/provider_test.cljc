@@ -67,7 +67,12 @@
    [[:map-of string? [:map [:name string?]]]
     [{"1" {:name "1"}
       "2" {:name "2"}}
-     {"3" {:name "3"}}]]
+     {"3" {:name "3"}}
+     {"4" {:name "4"}
+      "5" {:name "5"}
+      "6" {:name "6"}
+      "7" {:name "7"}
+      "8" {:name "8"}}]]
 
    ;; tuple-like without options
    [[:vector some?]
@@ -122,13 +127,14 @@
     [{"0423191a-5fee-11ec-bf63-0242ac130002" {:id "0423191a-5fee-11ec-bf63-0242ac130002"}
       "09e59de6-5fee-11ec-bf63-0242ac130002" {:id "09e59de6-5fee-11ec-bf63-0242ac130002"}
       "15511020-5fee-11ec-bf63-0242ac130002" {:id "15511020-5fee-11ec-bf63-0242ac130002"}}]
-    {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}}]
+    {::mp/value-decoders {'string? {:uuid mt/-string->uuid}}
+     ::mp/map-of-threshold 3}]
    [[:map-of inst? string?]
     [{"1901-03-02T22:20:11.000Z" "123"
       "1902-04-03T22:20:11.000Z" "234"
       "1904-06-05T22:20:11.000Z" "456"}]
-    {::mp/value-decoders {'string? {'inst? mt/-string->date}}}]
-
+    {::mp/value-decoders {'string? {'inst? mt/-string->date}}
+     ::mp/map-of-threshold 3}]
    ;; value-hints
    [[:map [:name :string] [:gender [:enum "male" "female"]]]
     [{:name "Tommi", :gender (mp/-hinted "male" :enum)}

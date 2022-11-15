@@ -17,6 +17,8 @@ Malli is in well matured [alpha](README.md#alpha).
 ## UNRELEASED
 
 * Adds `:pred` option to `m/-map-schema` [#767](https://github.com/metosin/malli/pull/767)
+* **BREAKING**: Change default of `:malli.provider/map-of-threshold` from 3 to 8
+* New `malli.core/-no-op-transformer`
 
 ## 0.9.2 (2022-10-18)
 

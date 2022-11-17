@@ -492,6 +492,11 @@
 ;; transformers
 ;;
 
+(defn -no-op-transformer []
+  (reify Transformer
+    (-transformer-chain [_])
+    (-value-transformer [_ _ _ _])))
+
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))
   ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
@@ -500,6 +505,7 @@
   (cond
     (-transformer? x) x
     (fn? x) (-into-transformer (x))
+    (nil? x) (-no-op-transformer)
     :else (-fail! ::invalid-transformer {:value x})))
 
 (defn -parent-children-transformer [parent children transformer method options]
@@ -2155,6 +2161,32 @@
    (if-let [transform (encoder ?schema options t)]
      (transform value)
      value)))
+
+(defn coercer
+  "Creates a function to decode and validate a value, throws on validation error."
+  ([?schema]
+   (coercer ?schema nil nil))
+  ([?schema transformer]
+   (coercer ?schema transformer nil))
+  ([?schema transformer options]
+   (let [s (schema ?schema options)
+         valid? (validator s)
+         decode (decoder s transformer)
+         explain (explainer s)]
+     (fn [x] (let [value (decode x)]
+               (when-not (valid? value)
+                 (-fail! ::invalid-input {:value value, :schema s, :explain (explain value)}))
+               value)))))
+
+(defn coerce
+  "Decode and validate a value, throws on validation error."
+  ([?schema value]
+   (coerce ?schema value nil nil))
+  ([?schema value transformer]
+   (coerce ?schema value transformer nil))
+  ([?schema value transformer options]
+   (let [coerce (coercer ?schema transformer options)]
+     (coerce value))))
 
 (defn entries
   "Returns `EntrySchema` children as a sequence of `clojure.lang/MapEntry`s

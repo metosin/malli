@@ -2737,5 +2737,9 @@
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x "kikka"} nil)))
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x "kikka"} nil nil)))))
     (testing "with transformer"
-      (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer)))
-      (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer nil))))))
+      (testing "success"
+        (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer)))
+        (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer nil))))
+      (testing "fails"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x 123} mt/string-transformer)))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x 123} mt/string-transformer nil)))))))

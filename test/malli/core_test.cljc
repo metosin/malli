@@ -2724,3 +2724,18 @@
                                                    [:name {:optional true} string?]
                                                    [:code int?]]]])]
         (is (m/validate data-schema test-data))))))
+
+(deftest coerce-test
+  (let [schema [:map [:x :keyword]]]
+    (testing "without transformer, just validates"
+      (testing "success"
+        (is (= {:x :kikka} (m/coerce schema {:x :kikka})))
+        (is (= {:x :kikka} (m/coerce schema {:x :kikka} nil)))
+        (is (= {:x :kikka} (m/coerce schema {:x :kikka} nil nil))))
+      (testing "fails"
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x "kikka"})))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x "kikka"} nil)))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x "kikka"} nil nil)))))
+    (testing "with transformer"
+      (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer)))
+      (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer nil))))))

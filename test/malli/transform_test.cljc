@@ -889,7 +889,7 @@
              (m/encode schema $ mt/string-transformer)
              (m/decode schema $ mt/string-transformer))))))
 
-(deftest inferring-enum-and-:=schema-decoders-test
+(deftest inferring-child-decoders-test
   (let [schema [:map
                 [:enum1 [:enum :created :running :closed]]
                 [:enum2 [:enum 1 2 3]]
@@ -908,4 +908,3 @@
     (testing "works with json and string transformers"
       (is (= expected (m/decode schema value (mt/json-transformer))))
       (is (= expected (m/decode schema value (mt/string-transformer)))))))
-

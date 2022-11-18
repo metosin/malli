@@ -786,7 +786,7 @@ For performance, precompute the transformations with `m/decoder` and `m/encoder`
 ; "42"
 ```
 
-For both decoding + validating the results (throwing exception on error), there are `m/coercer` and `m/coerce`:
+For both decoding + validating the results (throwing exception on error), there is `m/coercer` and `m/coerce`:
 
 ```clojure
 (m/coerce [:map [:x :int]] {:x "42"} mt/string-transformer)

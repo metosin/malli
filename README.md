@@ -786,15 +786,29 @@ For performance, precompute the transformations with `m/decoder` and `m/encoder`
 ; "42"
 ```
 
+### Coercion
+
 For both decoding + validating the results (throwing exception on error), there is `m/coercer` and `m/coerce`:
 
 ```clojure
-(m/coerce [:map [:x :int]] {:x "42"} mt/string-transformer)
-; {:x 42}
+(m/coerce :int "42" mt/string-transformer)
+; 42
 
-(m/coerce [:map [:x :int]] {:x "invalid"} mt/string-transformer)
-; =throws=> :malli.core/invalid-input {:value {:x "invalid"}, :schema [:map [:x :int]], :explain {:schema [:map [:x :int]], :value {:x "invalid"}, :errors ({:path [:x], :in [:x], :schema :int, :value "invalid"})}}
+(m/coerce :int "invalid" mt/string-transformer)
+; =throws=> :malli.core/invalid-input {:value "invalid", :schema :int, :explain {:schema :int, :value "invalid", :errors ({:path [], :in [], :schema :int, :value "invalid"})}}
 ```
+
+Coercion can be applied without transformer, doing just validation:
+
+```clojure
+(m/coerce :int 42)
+; 42
+
+(m/coerce :int "42")
+; =throws=> :malli.core/invalid-input {:value "42", :schema :int, :explain {:schema :int, :value "42", :errors ({:path [], :in [], :schema :int, :value "42"})}}
+```
+
+### Advanced 
 
 Transformations are recursive:
 

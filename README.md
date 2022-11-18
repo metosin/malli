@@ -747,11 +747,22 @@ For pretty development-time error printing, try `malli.dev.pretty/explain`
 (require '[malli.transform :as mt])
 ```
 
-Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `m/Transformer`.
+Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `Transformer` instance.
 
-Default Transformers include: `string-transformer`, `json-transformer`, `strip-extra-keys-transformer`, `default-value-transformer` and `key-transformer`.
+Default Transformers include: 
+
+| name                              | description                                         |
+|:----------------------------------|-----------------------------------------------------|
+| `mt/string-transformer`           | transform between strings and EDN                   |
+| `mt/json-transformer`             | transform between JSON and EDN                      |
+| `mt/strip-extra-keys-transformer` | drop extra keys from maps                           |
+| `mt/default-value-transformer`    | applies default values from schema properties       |
+| `mt/key-transformer`              | transformns map keys                                |
+| `mt/collection-transformer`       | conversion between collections (e.g. set -> vector) |
 
 **NOTE**: the included transformers are best-effort, i.e. they won't throw on bad input, they will just pass the input value through unchanged. You should make sure your schema validation catches these non-transformed values. Custom transformers should follow the same idiom.
+
+Simple usage:
 
 ```clojure
 (m/decode int? "42" mt/string-transformer)
@@ -759,6 +770,30 @@ Default Transformers include: `string-transformer`, `json-transformer`, `strip-e
 
 (m/encode int? 42 mt/string-transformer)
 ; "42"
+```
+
+For performance, precompute the transformations with `m/decoder` and `m/encoder`:
+
+```clojure
+(def string->int (m/decoder int? mt/string-transformer))
+
+(string->int "42")
+; 42
+
+(def int->string (m/encoder int? mt/string-transformer))
+
+(int->string 42)
+; "42"
+```
+
+For both decoding + validating the results (throwing exception on error), there are `m/coercer` and `m/coerce`:
+
+```clojure
+(m/coerce [:map [:x :int]] {:x "42"} mt/string-transformer)
+; {:x 42}
+
+(m/coerce [:map [:x :int]] {:x "invalid"} mt/string-transformer)
+; =throws=> :malli.core/invalid-input {:value {:x "invalid"}, :schema [:map [:x :int]], :explain {:schema [:map [:x :int]], :value {:x "invalid"}, :errors ({:path [:x], :in [:x], :schema :int, :value "invalid"})}}
 ```
 
 Transformations are recursive:

@@ -775,14 +775,14 @@ Simple usage:
 For performance, precompute the transformations with `m/decoder` and `m/encoder`:
 
 ```clojure
-(def string->int (m/decoder int? mt/string-transformer))
+(def decode (m/decoder int? mt/string-transformer))
 
-(string->int "42")
+(decode "42")
 ; 42
 
-(def int->string (m/encoder int? mt/string-transformer))
+(def encode (m/encoder int? mt/string-transformer))
 
-(int->string 42)
+(encode 42)
 ; "42"
 ```
 

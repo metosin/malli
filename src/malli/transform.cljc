@@ -197,6 +197,10 @@
     (set? x) (seq x)
     :else x))
 
+(defn -infer-child-decoder-compiler [schema _]
+  (cond (every? keyword? (m/children schema)) -string->keyword
+        (every? int? (m/children schema)) -string->long))
+
 ;;
 ;; decoders
 ;;
@@ -217,6 +221,9 @@
    'uuid? -string->uuid
    'double? -number->double
    'inst? -string->date
+
+   :enum {:compile -infer-child-decoder-compiler}
+   := {:compile -infer-child-decoder-compiler}
 
    :double -number->double
    :keyword -string->keyword
@@ -267,7 +274,6 @@
     :>= -string->long
     :< -string->long
     :<= -string->long
-    := -string->long
     :not= -string->long
 
     'number? -string->double

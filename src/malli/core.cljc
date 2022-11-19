@@ -172,7 +172,7 @@
 (defn -boolean-fn [x] (cond (boolean? x) (constantly x) (ifn? x) x :else (constantly false)))
 
 (defn -infer [children]
-  (loop [[[s f] & fs] [[:keyword keyword?] [:symbol symbol?] [:int int?] [:double float?]]]
+  (loop [[[s f] & fs] [[:string string?] [:keyword keyword?] [:symbol symbol?] [:int int?] [:double float?]]]
     (if (every? f children) s (when fs (recur fs)))))
 
 (defn -comp

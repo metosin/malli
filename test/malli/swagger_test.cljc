@@ -63,6 +63,7 @@
    [[:enum 1 2 "3"] {:enum [1 2 "3"]}]
    [[:enum 1 2 3] {:type "integer" :enum [1 2 3]}]
    [[:enum 1.1 2.2 3.3] {:type "number" :enum [1.1 2.2 3.3]}]
+   [[:enum "kikka" "kukka"] {:type "string" :enum ["kikka" "kukka"]}]
    [[:enum :kikka :kukka] {:type "string" :enum [:kikka :kukka]}]
    [[:maybe string?] {:type "string", :x-nullable true}]
    [[:tuple string? string?] {:type "array"

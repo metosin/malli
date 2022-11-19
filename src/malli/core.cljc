@@ -171,6 +171,10 @@
 
 (defn -boolean-fn [x] (cond (boolean? x) (constantly x) (ifn? x) x :else (constantly false)))
 
+(defn -infer [children]
+  (loop [[[s f] & fs] [[:keyword keyword?] [:symbol symbol?] [:int int?] [:double float?]]]
+    (if (every? f children) s (when fs (recur fs)))))
+
 (defn -comp
   ([] identity)
   ([f] f)
@@ -181,14 +185,8 @@
              ([f1 f2 f3 f4 f5 f6] (fn [x] (-> x f6 f5 f4 f3 f2 f1)))
              ([f1 f2 f3 f4 f5 f6 f7] (fn [x] (-> x f7 f6 f5 f4 f3 f2 f1)))
              ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
-             ([f1 f2 f3 f4 f5 f6 f7 f8 & fs]
-              (-comp
-               (apply -comp fs)
-               (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1))))]
-      :cljs [([f1 f2 f3 & fs]
-              (-comp
-               (apply -comp fs)
-               (fn [x] (-> x f3 f2 f1))))]))
+             ([f1 f2 f3 f4 f5 f6 f7 f8 & fs] (-comp (apply -comp fs) (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1))))]
+      :cljs [([f1 f2 f3 & fs] (-comp (apply -comp fs) (fn [x] (-> x f3 f2 f1))))]))
 
 (defn -update [x k f] (assoc x k (f (get x k))))
 

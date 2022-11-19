@@ -2,6 +2,8 @@
   (:require [clojure.set :as set]
             [malli.core :as m]))
 
+(declare -transform)
+
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
@@ -129,7 +131,7 @@
    :minItems
    :maxItems))
 
-(defmethod accept :enum [_ _ children _] {:enum children})
+(defmethod accept :enum [_ _ children options] (merge {:enum children} (some-> (m/-infer children) (-transform options))))
 (defmethod accept :maybe [_ _ children _] {:oneOf (conj children {:type "null"})})
 (defmethod accept :tuple [_ _ children _] {:type "array", :items children, :additionalItems false})
 (defmethod accept :re [_ schema _ options] {:type "string", :pattern (first (m/children schema options))})

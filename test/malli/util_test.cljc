@@ -912,52 +912,59 @@
 
     (testing "merge"
       (let [s (->> [:merge
-                    [:map [:x :string]]
+                    [:map [:x [:orn [:str :string]]]]
                     [:map [:y :int]]
                     [:schema [:map [:z {:optional true} :boolean]]]])]
         (is (= [:merge
-                [:map [:x :string]]
+                [:map [:x [:orn [:str :string]]]]
                 [:map [:y :int]]
                 [:schema [:map [:z {:optional true} :boolean]]]]
                (m/form s)))
-        (is (= [:map [:x :string] [:y :int] [:z {:optional true} :boolean]] (m/form (m/deref s))))
+        (is (= [:map
+                [:x [:orn [:str :string]]]
+                [:y :int]
+                [:z {:optional true} :boolean]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :y 1, :z true})))
-        (is (= false (m/validate s {:x "x", :y "y"})))))
+        (is (= false (m/validate s {:x "x", :y "y"})))
+        (is (= {:x [:str "x"], :y 1, :z true} (m/parse s {:x "x", :y 1, :z true})))))
 
     (testing "union"
       (let [s (->> [:union
-                    [:map [:x :string]]
+                    [:map [:x [:orn [:str :string]]]]
                     [:schema [:map [:x :int]]]])]
         (is (= [:union
-                [:map [:x :string]]
+                [:map [:x [:orn [:str :string]]]]
                 [:schema [:map [:x :int]]]]
                (m/form s)))
-        (is (= [:map [:x [:or :string :int]]] (m/form (m/deref s))))
+        (is (= [:map [:x [:or [:orn [:str :string]] :int]]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x"}) (m/validate s {:x 1})))
-        (is (= false (m/validate s {:x true})))))
+        (is (= false (m/validate s {:x true})))
+        (is (= {:x [:str "x"]} (m/parse s {:x "x"})))
+        (is (= {:x 1} (m/parse s {:x 1})))))
 
     (testing "select-keys"
       (let [s (->> [:select-keys
                     [:schema
                      [:map {:closed true}
-                      [:x :string]
+                      [:x [:orn [:str :string]]]
                       [:y :string]
                       [:z :string]]]
                     [:x :z]])]
         (is (= [:select-keys
                 [:schema
                  [:map {:closed true}
-                  [:x :string]
+                  [:x [:orn [:str :string]]]
                   [:y :string]
                   [:z :string]]]
                 [:x :z]]
                (m/form s)))
         (is (= [:map {:closed true}
-                [:x :string]
+                [:x [:orn [:str :string]]]
                 [:z :string]]
                (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :z "z"})))
-        (is (= false (m/validate s {:x "x", :y "y" :z "z"})))))))
+        (is (= false (m/validate s {:x "x", :y "y" :z "z"})))
+        (is (= {:x [:str "x"], :z "z"} (m/parse s {:x "x", :z "z"})))))))
 
 (def Int (m/schema int?))
 

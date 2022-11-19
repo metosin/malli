@@ -416,6 +416,8 @@
           m/Schema
           (-validator [_] (m/-validator schema))
           (-explainer [_ path] (m/-explainer schema path))
+          (-parser [this] (m/-parser schema))
+          (-unparser [this] (m/-unparser schema))
           (-transformer [this transformer method options]
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]

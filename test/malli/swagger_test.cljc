@@ -60,7 +60,11 @@
    [[:set string?] {:type "array"
                     :items {:type "string"}
                     :uniqueItems true}]
-   [[:enum 1 2 3] {:enum [1 2 3]}]
+   [[:enum 1 2 "3"] {:enum [1 2 "3"]}]
+   [[:enum 1 2 3] {:type "integer" :enum [1 2 3]}]
+   [[:enum 1.1 2.2 3.3] {:type "number" :enum [1.1 2.2 3.3]}]
+   [[:enum "kikka" "kukka"] {:type "string" :enum ["kikka" "kukka"]}]
+   [[:enum :kikka :kukka] {:type "string" :enum [:kikka :kukka]}]
    [[:maybe string?] {:type "string", :x-nullable true}]
    [[:tuple string? string?] {:type "array"
                               :items {}
@@ -218,7 +222,8 @@
 (deftest references-test
   (is (= {:$ref "#/definitions/Order",
           :definitions {"Country" {:type "object",
-                                   :properties {:name {:enum [:FI :PO]},
+                                   :properties {:name {:type "string"
+                                                       :enum [:FI :PO]},
                                                 :neighbors {:type "array"
                                                             :items {:$ref "#/definitions/Country"}}},
                                    :required [:name :neighbors]},

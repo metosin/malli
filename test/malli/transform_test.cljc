@@ -891,18 +891,30 @@
 
 (deftest inferring-child-decoders-test
   (let [schema [:map
-                [:enum1 [:enum :created :running :closed]]
-                [:enum2 [:enum 1 2 3]]
+                [:enum1 [:enum :kikka :kukka]]
+                [:enum2 [:enum 'kikka 'kukka]]
+                [:enum3 [:enum 1 2]]
+                [:enum4 [:enum 1.1 2.2]]
                 [:equals1 [:= :kikka]]
-                [:equals2 [:= 42]]]
-        value {:enum1 "created"
-               :enum2 "2"
+                [:equals2 [:= 'kikka]]
+                [:equals3 [:= 1]]
+                [:equals4 [:= 1.1]]]
+        value {:enum1 "kikka"
+               :enum2 "kikka"
+               :enum3 "1"
+               :enum4 "1.1"
                :equals1 "kikka"
-               :equals2 "42"}
-        expected {:enum1 :created
-                  :enum2 2
+               :equals2 "kikka"
+               :equals3 "1"
+               :equals4 "1.1"}
+        expected {:enum1 :kikka
+                  :enum2 'kikka
+                  :enum3 1
+                  :enum4 1.1
                   :equals1 :kikka
-                  :equals2 42}]
+                  :equals2 'kikka
+                  :equals3 1
+                  :equals4 1.1}]
     (testing "is not enabled by default"
       (is (= value (m/decode schema value nil))))
     (testing "works with json and string transformers"

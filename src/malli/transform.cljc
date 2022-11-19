@@ -198,8 +198,11 @@
     :else x))
 
 (defn -infer-child-decoder-compiler [schema _]
-  (cond (every? keyword? (m/children schema)) -string->keyword
-        (every? int? (m/children schema)) -string->long))
+  (let [children (m/children schema)]
+    (cond (every? keyword? children) -string->keyword
+          (every? symbol? children) -string->symbol
+          (every? int? children) -string->long
+          (every? float? children) -string->double)))
 
 ;;
 ;; decoders

@@ -808,7 +808,7 @@ Coercion can be applied without transformer, doing just validation:
 ; =throws=> :malli.core/invalid-input {:value "42", :schema :int, :explain {:schema :int, :value "42", :errors ({:path [], :in [], :schema :int, :value "42"})}}
 ```
 
-### Advanced 
+### Advanced Transformations
 
 Transformations are recursive:
 
@@ -848,6 +848,13 @@ Transform map keys:
 ;            "city" "Tampere"
 ;            "zip" 33100
 ;            "lonlat" [61.4858322 23.7854658]}}
+```
+
+Transforming homogenous `:enum` or `:=`s (supports automatic type detection of `:keyword`, `:symbol`, `:int` and `:double`):
+
+```clojure
+(m/decode [:enum :kikka :kukka] "kukka" mt/string-transformer)
+; => :kukka
 ```
 
 Transformers can be composed with `mt/transformer`:

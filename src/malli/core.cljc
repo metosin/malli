@@ -75,7 +75,7 @@
 
 (defprotocol Transformer
   (-transformer-chain [this] "returns transformer chain as a vector of maps with :name, :encoders, :decoders and :options")
-  (-value-transformer [this schema method options] "returns an value transforming interceptor for the given schema and method"))
+  (-value-transformer [this schema method options] "returns a value transforming interceptor for the given schema and method"))
 
 (defprotocol RegexSchema
   (-regex-op? [this] "is this a regex operator (e.g. :cat, :*...)")

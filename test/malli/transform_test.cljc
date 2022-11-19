@@ -173,7 +173,7 @@
             (is (= expected (m/decode schema value t)))
             (is (f (m/decode schema value t))))
 
-          [:set [:enum 1 2]] ["1" 2 "3"] #{"1" 2 "3"} set?
+          [:set [:enum 1 2 "3"]] ["1" 2 "3"] #{"1" 2 "3"} set?
 
           [:set keyword?] nil nil nil?
           [:set keyword?] ["1" 2 "3"] #{:1 2 :3} set?
@@ -888,3 +888,35 @@
            (as-> value $
              (m/encode schema $ mt/string-transformer)
              (m/decode schema $ mt/string-transformer))))))
+
+(deftest inferring-child-decoders-test
+  (let [schema [:map
+                [:enum1 [:enum :kikka :kukka]]
+                [:enum2 [:enum 'kikka 'kukka]]
+                [:enum3 [:enum 1 2]]
+                [:enum4 [:enum 1.1 2.2]]
+                [:equals1 [:= :kikka]]
+                [:equals2 [:= 'kikka]]
+                [:equals3 [:= 1]]
+                [:equals4 [:= 1.1]]]
+        value {:enum1 "kikka"
+               :enum2 "kikka"
+               :enum3 "1"
+               :enum4 "1.1"
+               :equals1 "kikka"
+               :equals2 "kikka"
+               :equals3 "1"
+               :equals4 "1.1"}
+        expected {:enum1 :kikka
+                  :enum2 'kikka
+                  :enum3 1
+                  :enum4 1.1
+                  :equals1 :kikka
+                  :equals2 'kikka
+                  :equals3 1
+                  :equals4 1.1}]
+    (testing "is not enabled by default"
+      (is (= value (m/decode schema value nil))))
+    (testing "works with json and string transformers"
+      (is (= expected (m/decode schema value (mt/json-transformer))))
+      (is (= expected (m/decode schema value (mt/string-transformer)))))))

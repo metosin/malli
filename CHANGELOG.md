@@ -20,7 +20,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * **BREAKING**: Change default of `:malli.provider/map-of-threshold` from 3 to 8
 * New `malli.core/coercer` and `malli.core/coerce` to decode and validate a value, throws on validation error.
 * New `malli.core/-no-op-transformer`
-* automatic type inferring with `:enum` and `:=` with `malli.transform` and `malli.json-schema` - detects homogenous `:keyword`, `:symbol`, `:int` or `:double`), [#782](https://github.com/metosin/malli/pull/782) & [#784](https://github.com/metosin/malli/pull/784)
+* automatic type inferring with `:enum` and `:=` with `malli.transform` and `malli.json-schema` - detects homogenous `:string`, `:keyword`, `:symbol`, `:int` and `:double`), [#782](https://github.com/metosin/malli/pull/782) & [#784](https://github.com/metosin/malli/pull/784)
 
 ## 0.9.2 (2022-10-18)
 

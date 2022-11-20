@@ -398,6 +398,7 @@
       (-never-gen options))))
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :any [_ _] (ga/gen-for-pred any?))
+(defmethod -schema-generator :some [_ _] gen/any-printable)
 (defmethod -schema-generator :nil [_ _] (gen/return nil))
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))

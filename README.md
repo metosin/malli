@@ -1768,7 +1768,7 @@ By default, tuples are not inferred:
   [[1 "kikka" true]
    [2 "kukka" true]
    [3 "kakka" true]])
-; [:vector some?]
+; [:vector :some]
 ```
 
 There is `::mp/tuple-threshold` option:
@@ -1789,7 +1789,7 @@ Sample-data can be type-hinted with `::mp/hint`:
   [^{::mp/hint :tuple}
    [1 "kikka" true]
    ["2" "kukka" true]])
-; [:tuple some? string? boolean?]
+; [:tuple :some string? boolean?]
 ```
 
 ### value decoding in inferring
@@ -2920,7 +2920,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 #### `malli.core/type-schemas`
 
-Type-like schemas: `:any`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:qualified-keyword`, `:symbol`, `:qualified-symbol`, and `:uuid`.
+Type-like schemas: `:any`, `:some`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:qualified-keyword`, `:symbol`, `:qualified-symbol`, and `:uuid`.
 
 ### `malli.core/sequence-schemas`
 

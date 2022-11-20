@@ -20,7 +20,7 @@
    [[:vector :any] [[]]]
 
    [[:maybe :int] [1 nil 2 3]]
-   [[:maybe some?] [1 nil 2 "some"]]
+   [[:maybe :some] [1 nil 2 "some"]]
    [[:maybe [:map [:x :int]]] [{:x 1} nil]]
    [[:maybe [:or [:map [:x :int]] :string]] [{:x 1} nil "1"]]
 
@@ -75,13 +75,13 @@
       "8" {:name "8"}}]]
 
    ;; tuple-like without options
-   [[:vector some?]
+   [[:vector :some]
     [[1 "kikka" true]
      [2 "kukka" true]
      [3 "kakka" false]]]
 
    ;; tuple-like with threshold not reached
-   [[:vector some?]
+   [[:vector :some]
     [[1 "kikka" true]
      [2 "kukka" true]
      [3 "kakka" false]]
@@ -95,7 +95,7 @@
     {::mp/tuple-threshold 3}]
 
    ;; tuple-like with non-coherent data
-   [[:vector some?]
+   [[:vector :some]
     [[1 "kikka" true]
      [2 "kukka" true]
      [3 "kakka" "true"]]]
@@ -106,12 +106,12 @@
      [2 "kukka" true]]]
 
    ;; a hererogenous hinted tuple
-   [[:tuple :int :string some?]
+   [[:tuple :int :string :some]
     [^{::mp/hint :tuple} [1 "kikka" true]
      [2 "kukka" "true"]]]
 
    ;; invalid hinted tuple
-   [[:vector some?]
+   [[:vector :some]
     [^{::mp/hint :tuple} [1 "kikka" true]
      [2 "kukka" true "invalid tuple"]]]
 
@@ -166,3 +166,65 @@
 (deftest provider-test
   (doseq [[schema samples options] expectations]
     (is (= (m/form schema) (m/form (mp/provide samples options))))))
+
+(def samples
+  [{:id "Lillan"
+    :tags #{:artesan :coffee :hotel}
+    :address {:street "Ahlmanintie 29"
+              :city "Tampere"
+              :zip 33100
+              :lonlat [61.4858322, 23.7854658]}}
+   {:id "Huber",
+    :description "Beefy place"
+    :tags #{:beef :wine :beer}
+    :address {:street "Aleksis Kiven katu 13"
+              :city "Tampere"
+              :zip 33200
+              :lonlat [61.4963599 23.7604916]}}])
+
+(mp/provide samples)
+
+(mp/provide
+ [{:a [1]
+   :b [1 2]
+   :c [1 2 3]}])
+
+(mp/provide
+ [{:a [1]
+   :b [1 2]
+   :c [1 2 3]
+   :d [1 2]
+   :e [1 2 3]
+   :f [1]
+   :g [1]
+   :h [1 2 3 4]}])
+
+(mp/provide
+ [^{::mp/hint :map-of}
+  {:a {:b 1, :c 2}
+   :b {:b 2, :c 1}
+   :c {:b 3}
+   :d nil}])
+
+;[:map-of
+; :keyword
+; [:maybe [:map
+;          [:b :int]
+;          [:c {:optional true} :int]]]]
+
+
+(mp/provide
+ [[1 "kikka" true]
+  [2 "kukka" true]
+  [3 "kakka" true]])
+
+(mp/provide
+ [[1 "kikka" true]
+  [2 "kukka" true]
+  [3 "kakka" false]]
+ {::mp/tuple-threshold 3})
+
+(mp/provide
+ [^{::mp/hint :tuple}
+  [1 "kikka" true]
+  ["2" "kukka" true]])

@@ -1685,15 +1685,15 @@ Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/t
 
 (mp/provide samples)
 ;[:map
-; [:id string?]
-; [:tags [:set keyword?]]
+; [:id :string]
+; [:tags [:set :keyword]]
 ; [:address
 ;  [:map
-;   [:street string?]
-;   [:city string?]
-;   [:zip number?]
-;   [:lonlat [:vector double?]]]]
-; [:description {:optional true} string?]]
+;   [:street :string]
+;   [:city :string]
+;   [:zip :int]
+;   [:lonlat [:vector :double]]]]
+; [:description {:optional true} :string]]
 ```
 
 All samples are valid against the inferred schema:
@@ -1718,14 +1718,19 @@ For better performance, use `mp/provider`:
 
 ### :map-of inferring
 
-Inferring `:map-of` requires 3 identical key & value schemas:
+Inferring `:map-of` requires 8 identical key & value schemas:
 
 ```clojure
 (mp/provide
   [{:a [1]
     :b [1 2]
-    :c [1 2 3]}])
-; [:map-of keyword? [:vector int?]]
+    :c [1 2 3]
+    :d [1 2]
+    :e [1 2 3]
+    :f [1]
+    :g [1]
+    :h [1 2 3 4]}])
+; [:map-of :keyword [:vector :int]]
 ```
 
 This can be configured via `::mp/map-of-threshold` options:
@@ -1735,7 +1740,7 @@ This can be configured via `::mp/map-of-threshold` options:
   [{:a [1]
     :b [1 2]}]
   {::mp/map-of-threshold 2})
-; [:map-of keyword? [:vector int?]]
+; [:map-of :keyword [:vector :int]]
 ```
 
 Sample-data can be type-hinted with `::mp/hint`:
@@ -1747,11 +1752,11 @@ Sample-data can be type-hinted with `::mp/hint`:
     :b {:b 2, :c 1}
     :c {:b 3}
     :d nil}])
-;[:map-of
-; keyword?
-; [:maybe [:map
-;          [:b int?]
-;          [:c {:optional true} int?]]]]
+;[:map-of 
+; :keyword 
+; [:maybe [:map 
+;          [:b :int] 
+;          [:c {:optional true} :int]]]]
 ```
 
 ### :tuple inferring
@@ -1774,7 +1779,7 @@ There is `::mp/tuple-threshold` option:
    [2 "kukka" true]
    [3 "kakka" false]]
   {::mp/tuple-threshold 3})
-; [:tuple int? string? boolean?]
+; [:tuple :int :string :boolean]
 ```
 
 Sample-data can be type-hinted with `::mp/hint`:

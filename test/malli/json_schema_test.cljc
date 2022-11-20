@@ -67,6 +67,7 @@
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
    [[:fn {:gen/elements [1]} int?] {}]
    [:any {}]
+   [:some {}]
    [:nil {:type "null"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]

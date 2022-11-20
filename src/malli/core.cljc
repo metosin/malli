@@ -663,6 +663,7 @@
 
 (defn -nil-schema [] (-simple-schema {:type :nil, :pred nil?}))
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))
+(defn -some-schema [] (-simple-schema {:type :some, :pred some?}))
 (defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
 (defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
 (defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
@@ -2323,6 +2324,7 @@
 
 (defn type-schemas []
   {:any (-any-schema)
+   :some (-some-schema)
    :nil (-nil-schema)
    :string (-string-schema)
    :int (-int-schema)

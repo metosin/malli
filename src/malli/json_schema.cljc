@@ -138,6 +138,7 @@
 (defmethod accept :fn [_ _ _ _] {})
 
 (defmethod accept :any [_ _ _ _] {})
+(defmethod accept :some [_ _ _ _] {})
 (defmethod accept :nil [_ _ _ _] {:type "null"})
 
 (defmethod accept :string [_ schema _ _]

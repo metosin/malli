@@ -2,8 +2,8 @@
   (:require [malli.core :as m]
             [malli.registry :as mr]))
 
-(def -preferences (-> ['int? 'integer? 'double? 'number? 'qualified-keyword? 'keyword? 'symbol? 'string? 'boolean? 'uuid?]
-                      (reverse) (zipmap (drop 1 (range))) (assoc :any -13, :or -12, :and -11, 'any? -10, 'some? -9)))
+(def -preferences (-> [:int 'integer? :double 'number? :qualified-keyword :keyword :symbol :string :boolean :uuid 'inst?]
+                      (reverse) (zipmap (drop 1 (range))) (assoc 'any? -14 'some? -13, :or -12, :and -11, :any -10, :some -9)))
 
 (defn -safe? [f & args] (try (apply f args) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
@@ -78,7 +78,7 @@
                                                  (cond->> vs vp (-decoded t vp)))
                                         (:set :vector :sequential) (-sequential-schema stats type -schema options)
                                         :map (-map-schema (type types) -schema options)))
-         (nil? types) 'any?
+         (nil? types) :any
          :else (let [children (map (fn [[type]] (-schema (update stats :types select-keys [type]) options)) types)
                      without-nils (remove #(= % :nil) children)
                      [c1 c2] (map count [children without-nils])]

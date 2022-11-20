@@ -30,6 +30,7 @@
 
   (testing "simple schemas"
     (doseq [schema [:any
+                    :some
                     [:string {:min 1, :max 4}]
                     [:int {:min 1, :max 4}]
                     [:double {:min 0.0, :max 1.0}]

@@ -1953,6 +1953,12 @@
                    :map-syntax {:type :any}
                    :ast {:type :any}
                    :form :any}
+             :some {:schema :some
+                    :validate {:success [1 "kikka"]
+                               :failure [nil]}
+                    :map-syntax {:type :some}
+                    :ast {:type :some}
+                    :form :some}
              :nil {:schema :nil
                    :validate {:success [nil], :failure [1 "kikka"]}
                    :map-syntax {:type :nil}

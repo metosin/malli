@@ -71,3 +71,58 @@
                   {:Type "AWS::ApiGateway::UsagePlan"})))
 
       (is (= 2 (count @loads))))))
+
+(defmulti my-mm identity)
+
+(defmethod my-mm "AWS::AppSync::ApiKey" [_]
+    [:map {:closed true}
+     [:Type [:= "AWS::AppSync::ApiKey"]]
+     [:ApiId string?]
+     [:Description {:optional true} string?]])
+
+(defmethod my-mm "AWS::ApiGateway::UsagePlan" [_]
+  [:map {:closed true}
+   [:Type [:= "AWS::ApiGateway::UsagePlan"]]
+   [:Description {:optional true} string?]
+   [:UsagePlanName {:optional true} string?]])
+
+(deftest lazy-registry+index-test
+  (let [loads (atom #{})
+        registry (mr/lazy-registry
+                  (m/default-schemas)
+                  (fn [type registry]
+                    (let [schema (some-> type my-mm (m/schema {:registry registry}))]
+                      (swap! loads conj type)
+                      schema)))
+        CloudFormation (m/schema [:multi {:dispatch :Type
+                                          :methods (fn []
+                                                     (swap! loads conj :methods)
+                                                     (keys (methods my-mm)))
+                                          :lazy-refs true,}]
+                                 {:registry registry})]
+
+    (testing "nothing is loaded"
+      (is (= 0 (count @loads))))
+
+    (testing "validating a schema pulls schema"
+      (is (true? (m/validate
+                  CloudFormation
+                  {:Type "AWS::AppSync::ApiKey"
+                   :ApiId "123"
+                   :Description "apkey"})))
+
+      (is (= 2 (count @loads))))
+
+    (testing "pulling more"
+      (is (true? (m/validate
+                  CloudFormation
+                  {:Type "AWS::ApiGateway::UsagePlan"})))
+
+      (is (= 3 (count @loads))))
+
+    (testing "pulling again"
+      (is (true? (m/validate
+                  CloudFormation
+                  {:Type "AWS::ApiGateway::UsagePlan"})))
+
+      (is (= 3 (count @loads))))))

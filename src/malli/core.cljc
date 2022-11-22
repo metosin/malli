@@ -473,17 +473,23 @@
           (recur (int (-parse-entry (aget ca i) naked-keys lazy-refs options i -children -forms -keyset))
                  (unchecked-inc-int ci)))))))
 
-(defn -lazy-entry-parser [?children props options]
-  (let [parser (delay (-eager-entry-parser ?children props options))]
-    (reify EntryParser
-      (-entry-keyset [_] (-entry-keyset @parser))
-      (-entry-children [_] (-entry-children @parser))
-      (-entry-entries [_] (-entry-entries @parser))
-      (-entry-forms [_] (-entry-forms @parser)))))
+
+(defn -lazy-entry-parser [?children props options]    
+    (let [children-fn (fn []
+                        (if-let [method-lookup (:methods props)]
+                          (into [] (concat ?children (method-lookup)))
+                          ?children))
+          parser (delay (-eager-entry-parser (children-fn) props options))]
+      (reify EntryParser
+        (-entry-keyset [_] (-entry-keyset @parser))
+        (-entry-children [_] (-entry-children @parser))
+        (-entry-entries [_] (-entry-entries @parser))
+        (-entry-forms [_] (-entry-forms @parser)))))
+
 
 (defn -create-entry-parser [?children props options]
   (cond (-entry-parser? ?children) ?children
-        (or (:lazy props) (::lazy-entries options)) (-lazy-entry-parser ?children props options)
+        (or (:methods props) (:lazy props) (::lazy-entries options)) (-lazy-entry-parser ?children props options)
         :else (-eager-entry-parser ?children props options)))
 
 ;;
@@ -1491,7 +1497,7 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
-       (let [opts' (merge opts (select-keys properties [:lazy-refs]))
+       (let [opts' (merge opts (select-keys properties [:lazy-refs :methods]))
              entry-parser (-create-entry-parser children opts' options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)

@@ -355,7 +355,7 @@
   [schema ks f & args]
   (letfn [(up [s [k & ks] f args]
             (assoc s k (if ks (up (get s k (m/schema :map (m/options schema))) ks f args)
-                           (apply f (get s k) args))))]
+                              (apply f (get s k) args))))]
     (up schema ks f args)))
 
 ;;
@@ -416,8 +416,8 @@
           m/Schema
           (-validator [_] (m/-validator schema))
           (-explainer [_ path] (m/-explainer schema path))
-          (-parser [this] (m/-parser schema))
-          (-unparser [this] (m/-unparser schema))
+          (-parser [_] (m/-parser schema))
+          (-unparser [_] (m/-unparser schema))
           (-transformer [this transformer method options]
             (m/-parent-children-transformer this [schema] transformer method options))
           (-walk [this walker path options]

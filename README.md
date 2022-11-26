@@ -2961,7 +2961,7 @@ The API layers and stability:
 
 * **public API**: public vars, name doesn't start with `-`, e.g. `malli.core/validate`. The most stable part of the library, should not change (much) in alpha
 * **extender API**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
-* **experimental**: stuff in `malli.experimental` ns, code might change be moved under a separate support library, but you can always copy the old implemention to your project, so ok to use.
+* **experimental**: stuff in `malli.experimental` ns, code might change be moved under a separate support library, but you can always copy the old implementation to your project, so ok to use.
 * **private API**: private vars and `malli.impl` namespaces, all bets are off.
 
 ## Supported Java versions

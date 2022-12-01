@@ -1307,7 +1307,7 @@
         ^{:type ::schema}
         (reify
           AST
-          (-to-ast [_ _] {:type :enum, :values children})
+          (-to-ast [_ _] (-ast {:type :enum :values children} properties options))
           Schema
           (-validator [_]
             (fn [x] (contains? schema x)))

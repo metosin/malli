@@ -504,6 +504,8 @@
       (testing "ast"
         (is (= {:type :enum, :values [1 2]}
                (m/ast schema)))
+        (is (= {:type :enum :properties {:optional true} :values [1 2]}
+               (m/ast (mu/update-properties schema assoc :optional true))))
         (is (true? (m/validate (m/from-ast (m/ast schema)) 1))))
 
       (is (= [:enum 1 2] (m/form schema)))))

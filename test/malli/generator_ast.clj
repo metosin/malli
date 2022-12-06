@@ -48,7 +48,9 @@
   (list (qualify-in-ns `tcgen/one-of) (mapv #(-generator-code % options) generators)))
 (defmethod -generator-code :return [{:keys [value]} _]
   (list (qualify-in-ns `tcgen/return)
-        value))
+        (if ((some-fn keyword? nil? boolean? number?))
+          value
+          (list 'quote value))))
 (defmethod -generator-code :recursive-gen [{:keys [target rec-gen scalar-gen]} options]
   (list (qualify-in-ns `tcgen/recursive-gen)
         (list (qualify-in-ns `fn) [(symbol target)] (-generator-code rec-gen options))
@@ -60,6 +62,8 @@
          (mapv #(-generator-code % options) generators)))
 
 (defn generator-code 
+  "Return pretty code that can be evaluated in this namespace
+  to create a generator for schema."
   ([?schema] (generator-code ?schema nil))
   ([?schema options]
    (-> ?schema

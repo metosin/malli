@@ -51,6 +51,41 @@
                                :additionalProperties {:type "string"}}]
    [[:vector string?] {:type "array", :items {:type "string"}}]
    [[:sequential string?] {:type "array", :items {:type "string"}}]
+   [[:sequential {:min 1, :max 4} string?] {:type "array",
+                                            :items {:type "string"},
+                                            :minItems 1,
+                                            :maxItems 4}]
+   [[:* string?] {:type "array", :items {:type "string"}}]
+   [[:? string?] {:type "array",
+                  :items {:type "string"},
+                  :maxItems 1}]
+   [[:+ string?] {:type "array",
+                  :items {:type "string"},
+                  :minItems 1}]
+   [[:repeat string?] {:type "array", :items {:type "string"}}]
+   [[:repeat {:min 1, :max 4} string?] {:type "array",
+                                        :items {:type "string"},
+                                        :minItems 1,
+                                        :maxItems 4}]
+   [[:repeat {:min 1, :max 4} [:tuple string? keyword?]] {:type "array",
+                                                          :items {:additionalItems false,
+                                                                  :items [{:type "string"},
+                                                                          {:type "string"}],
+                                                                  :type "array"}
+                                                          :minItems 1,
+                                                          :maxItems 4}]
+   [[:cat :int :string] {:type "array",
+                         :items [{:type "integer"} {:type "string"}],
+                         :additionalItems false}]
+   [[:catn [:f :int] [:s :string]] {:type "array",
+                                    :items [{:type "integer"} {:type "string"}],
+                                    :additionalItems false}]
+   [[:alt :int :string] {:type "array",
+                         :items {:oneOf [{:type "integer"} {:type "string"}]},
+                         :additionalItems false}]
+   [[:altn [:f :int] [:s :string]] {:type "array",
+                                    :items {:oneOf [{:type "integer"} {:type "string"}]},
+                                    :additionalItems false}]
    [[:set string?] {:type "array"
                     :items {:type "string"}
                     :uniqueItems true}]

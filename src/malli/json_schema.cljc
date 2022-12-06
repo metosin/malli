@@ -124,6 +124,36 @@
    :minItems
    :maxItems))
 
+(defmethod accept :* [_ _ children _]
+  {:type "array", :items (first children)})
+
+(defmethod accept :? [_ _ children _]
+  {:type "array", :items (first children),
+   :maxItems 1})
+
+(defmethod accept :+ [_ _ children _]
+  {:type "array", :items (first children),
+   :minItems 1})
+
+(defmethod accept :repeat [_ schema children _]
+  (minmax-properties
+   {:type "array", :items (first children)}
+   schema
+   :minItems
+   :maxItems))
+
+(defmethod accept :cat [_ _ children _]
+  {:type "array", :items children, :additionalItems false})
+
+(defmethod accept :catn [_ _ children _]
+  {:type "array", :items (mapv last children), :additionalItems false})
+
+(defmethod accept :alt [_ _ children _]
+  {:type "array", :items {:oneOf children}, :additionalItems false})
+
+(defmethod accept :altn [_ _ children _]
+  {:type "array", :items {:oneOf (mapv last children)}, :additionalItems false})
+
 (defmethod accept :set [_ schema children _]
   (minmax-properties
    {:type "array", :items (first children), :uniqueItems true}

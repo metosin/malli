@@ -48,9 +48,9 @@
   (list (qualify-in-ns `tcgen/one-of) (mapv #(-generator-code % options) generators)))
 (defmethod -generator-code :return [{:keys [value]} _]
   (list (qualify-in-ns `tcgen/return)
-        (if ((some-fn keyword? nil? boolean? number?))
-          value
-          (list 'quote value))))
+        (cond->> value
+          (not ((some-fn string? keyword? nil? boolean? number?) value))
+          (list 'quote))))
 (defmethod -generator-code :recursive-gen [{:keys [target rec-gen scalar-gen]} options]
   (list (qualify-in-ns `tcgen/recursive-gen)
         (list (qualify-in-ns `fn) [(symbol target)] (-generator-code rec-gen options))

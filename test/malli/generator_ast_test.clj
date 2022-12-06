@@ -10,27 +10,27 @@
             :generators
             [{:op :boolean}
              {:op :tuple,
-              :generators [{:op :elements, :coll [:not]} {:op :boolean}]}
+              :generators [{:op :return, :value :not} {:op :boolean}]}
              {:op :tuple,
               :generators
-              [{:op :elements, :coll [:and]}
+              [{:op :return, :value :and}
                {:op :vector, :generator {:op :recur}}]}
              {:op :tuple,
               :generators
-              [{:op :elements, :coll [:or]}
+              [{:op :return, :value :or}
                {:op :vector, :generator {:op :recur}}]}]},
            :scalar-gen
            {:op :one-of,
             :generators
             [{:op :boolean}
              {:op :tuple,
-              :generators [{:op :elements, :coll [:not]} {:op :boolean}]}
+              :generators [{:op :return, :value :not} {:op :boolean}]}
              {:op :tuple,
               :generators
-              [{:op :elements, :coll [:and]} {:op :return, :value ()}]}
+              [{:op :return, :value :and} {:op :return, :value ()}]}
              {:op :tuple,
               :generators
-              [{:op :elements, :coll [:or]} {:op :return, :value ()}]}]}}
+              [{:op :return, :value :or} {:op :return, :value ()}]}]}}
          (ast/generator-ast
            [:schema
             {:registry
@@ -47,21 +47,21 @@
             :generators
             [{:op :boolean}
              {:op :tuple,
-              :generators [{:op :elements, :coll [:not]} {:op :boolean}]}
+              :generators [{:op :return, :value :not} {:op :boolean}]}
              {:op :tuple,
               :generators
-              [{:op :elements, :coll [:and]}
+              [{:op :return, :value :and}
                {:op :not-empty, :gen {:op :vector, :generator {:op :recur}}}]}
              {:op :tuple,
               :generators
-              [{:op :elements, :coll [:or]}
+              [{:op :return, :value :or}
                {:op :not-empty, :gen {:op :vector, :generator {:op :recur}}}]}]},
            :scalar-gen
            {:op :one-of,
             :generators
             [{:op :boolean}
              {:op :tuple,
-              :generators [{:op :elements, :coll [:not]} {:op :boolean}]}]}}
+              :generators [{:op :return, :value :not} {:op :boolean}]}]}}
          (ast/generator-ast
            [:schema
             {:registry

@@ -397,7 +397,10 @@
 (defmethod -schema-generator :vector [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :set [schema options] (-coll-distinct-gen schema set options))
-(defmethod -schema-generator :enum [schema options] (gen/elements (m/children schema options)))
+(defmethod -schema-generator :enum [schema options] (let [es (m/children schema options)]
+                                                      (if (= 1 (count es))
+                                                        (gen/return (first es))
+                                                        (gen/elements es))))
 
 (defmethod -schema-generator :maybe [schema options]
   (let [g (-> schema (m/children options) first (generator options) -not-unreachable)]

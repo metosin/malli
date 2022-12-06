@@ -639,13 +639,13 @@
          (mg/sample (gen/recursive-gen
                       (fn [formula]
                         (gen/one-of [gen/boolean
-                                     (gen/tuple (gen/elements [:not]) gen/boolean)
-                                     (gen/tuple (gen/elements [:and]) (gen/vector formula))
-                                     (gen/tuple (gen/elements [:or]) (gen/vector formula))]))
+                                     (gen/tuple (gen/return :not) gen/boolean)
+                                     (gen/tuple (gen/return :and) (gen/vector formula))
+                                     (gen/tuple (gen/return :or) (gen/vector formula))]))
                       (gen/one-of [gen/boolean
-                                   (gen/tuple (gen/elements [:not]) gen/boolean)
-                                   (gen/tuple (gen/elements [:and]) (gen/return ()))
-                                   (gen/tuple (gen/elements [:or]) (gen/return ()))]))
+                                   (gen/tuple (gen/return :not) gen/boolean)
+                                   (gen/tuple (gen/return :and) (gen/return ()))
+                                   (gen/tuple (gen/return :or) (gen/return ()))]))
                     {:seed 0})))
   (is (= '([:not true] [:not false] [:and [true]] [:or [[:not false] true]] false [:and [[:not true]]] [:not false] [:or [[:not false] [:not true]]] [:not true] [:and [[:not false] [:and [[:not false] [:not true]]] [:and [[:not true]]]]])
          (mg/sample [:schema
@@ -661,11 +661,11 @@
          (mg/sample (gen/recursive-gen
                       (fn [formula]
                         (gen/one-of [gen/boolean
-                                     (gen/tuple (gen/elements [:not]) gen/boolean)
-                                     (gen/tuple (gen/elements [:and]) (gen/not-empty (gen/vector formula)))
-                                     (gen/tuple (gen/elements [:or]) (gen/not-empty (gen/vector formula)))]))
+                                     (gen/tuple (gen/return :not) gen/boolean)
+                                     (gen/tuple (gen/return :and) (gen/not-empty (gen/vector formula)))
+                                     (gen/tuple (gen/return :or) (gen/not-empty (gen/vector formula)))]))
                       (gen/one-of [gen/boolean
-                                   (gen/tuple (gen/elements [:not]) gen/boolean)]))
+                                   (gen/tuple (gen/return :not) gen/boolean)]))
                     {:seed 0}))))
 
 (deftest infinite-generator-test

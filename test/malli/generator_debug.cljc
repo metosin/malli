@@ -1,7 +1,8 @@
 (ns malli.generator-debug
   "Drop-in replacement for clojure.test.check.generators that returns AST's
   instead of generators."
-  (:refer-clojure :exclude [vector char keyword boolean not-empty symbol]))
+  (:refer-clojure :exclude [vector char keyword boolean not-empty symbol])
+  (:require [clojure.core :as cc]))
 
 (defmacro such-that [& args] (let [args (vec args)] `{:op :such-that :args-form '~args :args ~args}))
 (def any {:op :any})
@@ -22,10 +23,15 @@
 (defn return [value] {:op :return :value value})
 (defn one-of [generators] {:op :one-of :generators generators})
 (defn tuple [& generators] {:op :tuple :generators (vec generators)})
+(def ^:private ^:dynamic *recursion-depth* 0)
 (defn recursive-gen [rec scalar]
-  {:op :recursive-gen
-   :rec-gen (rec {:op :recur})
-   :scalar-gen scalar})
+  (let [target (cc/keyword (str "recur" *recursion-depth*))]
+    {:op :recursive-gen
+     :target target
+     :rec-gen (binding [*recursion-depth* (inc *recursion-depth*)]
+                (rec {:op :recur
+                      :target target}))
+     :scalar-gen scalar}))
 (def keyword {:op :keyword})
 (def keyword-ns {:op :keyword-ns})
 (def symbol {:op :symbol})

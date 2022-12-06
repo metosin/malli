@@ -119,7 +119,7 @@
       (gen/fmap f (cond
                     (and min (= min max)) (gen/vector gen min)
                     (and min max) (gen/vector gen min max)
-                    min (gen/sized #(gen/vector gen min (+ min %)))
+                    min (gen-vector-min gen min options)
                     max (gen/vector gen 0 max)
                     :else (gen/vector gen))))))
 
@@ -138,18 +138,23 @@
     (gen/such-that (m/validator schema options) gen 100)
     (-never-gen options)))
 
+(defn- gen-one-of [gs]
+  (if (= 1 (count gs))
+    (first gs)
+    (gen/one-of gs)))
+
 (defn -or-gen [schema options]
   (if-some [gs (not-empty
                 (into [] (keep #(-not-unreachable (generator % options)))
                       (m/children schema options)))]
-    (gen/one-of gs)
+    (gen-one-of gs)
     (-never-gen options)))
 
 (defn -multi-gen [schema options]
   (if-some [gs (not-empty
                 (into [] (keep #(-not-unreachable (generator (last %) options)))
                       (m/entries schema options)))]
-    (gen/one-of gs)
+    (gen-one-of gs)
     (-never-gen options)))
 
 (defn -map-gen [schema options]
@@ -164,7 +169,7 @@
         gen-opt (->> entries
                      (filter #(-> % last m/properties :optional))
                      (map (fn [[k s]] (let [g (-not-unreachable (value-gen k s))]
-                                        (gen/one-of (cond-> [(gen/return nil)]
+                                        (gen-one-of (cond-> [(gen/return nil)]
                                                       g (conj g))))))
                      (apply gen/tuple))]
     (if (not-any? -unreachable-gen? gens-req)
@@ -334,7 +339,7 @@
                 (keep #(-regex-generator (entry->schema %) options)))]
     (if (every? -unreachable-gen? gs)
       (-never-gen options)
-      (gen/one-of (into [] (keep -not-unreachable) gs)))))
+      (gen-one-of (into [] (keep -not-unreachable) gs)))))
 
 (defn -?-gen [schema options]
   (let [child (m/-get schema 0 nil)]
@@ -410,9 +415,9 @@
                                                         (gen/elements es))))
 
 (defmethod -schema-generator :maybe [schema options]
-  (let [g (-> schema (m/children options) first (generator options) -not-unreachable)]
-    (gen/one-of (cond-> [(gen/return nil)]
-                  g (conj g)))))
+  (if-some [g (-> schema (m/children options) first (generator options) -not-unreachable)]
+    (gen/one-of [(gen/return nil) g])
+    (gen/return nil)))
 
 (defmethod -schema-generator :tuple [schema options]
   (let [gs (map #(generator % options) (m/children schema options))]
@@ -463,7 +468,10 @@
 ;;
 
 (defn- -create-from-elements [props]
-  (some-> (:gen/elements props) gen/elements))
+  (when-some [els (not-empty (:gen/elements props))]
+    (if (= 1 (count els))
+      (gen/return (first els))
+      (gen/elements els))))
 
 (defn- -create-from-gen
   [props schema options]

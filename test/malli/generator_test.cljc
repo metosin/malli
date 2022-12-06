@@ -537,8 +537,7 @@
                                                                              (gen/one-of
                                                                                [(gen/tuple (gen/return "C")
                                                                                            (gen/one-of [(gen/return nil)
-                                                                                                        (gen/one-of
-                                                                                                          [A])]))
+                                                                                                        A]))
                                                                                 A])])))
                                                    (gen/recursive-gen
                                                      (fn [C]
@@ -557,8 +556,7 @@
                                                                                [A
                                                                                 (gen/tuple (gen/return "B")
                                                                                            (gen/one-of [(gen/return nil)
-                                                                                                        (gen/one-of
-                                                                                                          [A])]))])])))])])))
+                                                                                                        A]))])])))])])))
                       (gen/tuple (gen/return "A")
                                  (gen/one-of [(gen/return nil)
                                               (gen/one-of
@@ -566,30 +564,24 @@
                                                    (fn [B]
                                                      (gen/tuple (gen/return "B")
                                                                 (gen/one-of [(gen/return nil)
-                                                                             (gen/one-of
-                                                                               [(gen/tuple (gen/return "C")
-                                                                                           (gen/one-of [(gen/return nil)
-                                                                                                        (gen/one-of
-                                                                                                          [B])]))])])))
+                                                                             (gen/tuple (gen/return "C")
+                                                                                        (gen/one-of [(gen/return nil)
+                                                                                                     B]))])))
                                                    (gen/tuple (gen/return "B")
                                                               (gen/one-of [(gen/return nil)
-                                                                           (gen/one-of
-                                                                             [(gen/tuple (gen/return "C")
-                                                                                         (gen/one-of [(gen/return nil)]))])])))
+                                                                           (gen/tuple (gen/return "C")
+                                                                                      (gen/return nil))])))
                                                  (gen/recursive-gen
                                                    (fn [C]
                                                      (gen/tuple (gen/return "C")
                                                                 (gen/one-of [(gen/return nil)
-                                                                             (gen/one-of
-                                                                               [(gen/tuple (gen/return "B")
-                                                                                           (gen/one-of [(gen/return nil)
-                                                                                                        (gen/one-of
-                                                                                                          [C])]))])])))
+                                                                             (gen/tuple (gen/return "B")
+                                                                                        (gen/one-of [(gen/return nil)
+                                                                                                     C]))])))
                                                    (gen/tuple (gen/return "C")
                                                               (gen/one-of [(gen/return nil)
-                                                                           (gen/one-of
-                                                                             [(gen/tuple (gen/return "B")
-                                                                                         (gen/one-of [(gen/return nil)]))])])))])])))
+                                                                           (gen/tuple (gen/return "B")
+                                                                                      (gen/return nil))])))])])))
                     {:seed 0})))
   (is (= '([:E [:B]] [:E [:G [:D]]] [:E [:B]] [:E [:C]] [:E [:F [:D]]] [:E [:G [:B]]] [:E [:C]] [:E [:G [:C]]] [:E [:A]] [:E [:B]])
          (mg/sample [:schema {:registry {::A [:tuple [:= :A]]

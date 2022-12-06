@@ -417,9 +417,9 @@
 (defmethod -schema-generator :enum [schema options] (gen-elements (m/children schema options)))
 
 (defmethod -schema-generator :maybe [schema options]
-  (if-some [g (-> schema (m/children options) first (generator options) -not-unreachable)]
-    (gen/one-of [(gen/return nil) g])
-    (gen/return nil)))
+  (let [g (-> schema (m/children options) first (generator options) -not-unreachable)]
+    (gen-one-of (cond-> [(gen/return nil)]
+                  g (conj g)))))
 
 (defmethod -schema-generator :tuple [schema options]
   (let [gs (map #(generator % options) (m/children schema options))]

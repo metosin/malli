@@ -65,7 +65,7 @@
          (mapv #(-generator-code % options) generators)))
 
 (defn generator-code 
-  "Return pretty code that can be evaluated in this namespace
+  "Return pretty code that can be evaluated in the current namespace
   to create a generator for schema."
   ([?schema] (generator-code ?schema nil))
   ([?schema options]

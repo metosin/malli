@@ -35,7 +35,7 @@
           (when (= q (symbol v))
             (let [uq (symbol (name q))]
               ;; prevent recursive-gen bindings from shadowing globals
-              (when (not (re-matches #"recur\d+" uq))
+              (when (not (re-matches #"recur\d+" (name uq)))
                 uq)))))
       (when-some [nsym (some (fn [[asym ns]]
                                (when (= (symbol (namespace q))

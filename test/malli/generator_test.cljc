@@ -368,6 +368,7 @@
                                       [:ref ::foo]]
                                      {:size 1000})))))
 
+;; note: use malli.generator-ast/generator-code to regenerate the raw test.check code in this test
 (deftest recursive-gen-test
   (is (= '([] [] [] [] nil nil [[1 nil]] nil [[1 nil]] nil)
          (mg/sample [:schema {:registry {::cons [:maybe [:vector [:tuple pos-int? [:ref ::cons]]]]}}

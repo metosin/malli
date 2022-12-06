@@ -23,5 +23,6 @@
      (fn [g]
        (if (mg/-unreachable-gen? g)
          {:op :unreachable}
-         g))
+         (or (-> g meta ::mg/generator-ast)
+             g)))
      (generator ?schema (assoc options ::mg/generator-ast true)))))

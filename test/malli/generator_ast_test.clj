@@ -51,11 +51,15 @@
              {:op :tuple,
               :generators
               [{:op :return, :value :and}
-               {:op :not-empty, :gen {:op :vector, :generator {:op :recur}}}]}
+               {:op :vector-min
+                :generator {:op :recur}
+                :min 1}]}
              {:op :tuple,
               :generators
               [{:op :return, :value :or}
-               {:op :not-empty, :gen {:op :vector, :generator {:op :recur}}}]}]},
+               {:op :vector-min
+                :generator {:op :recur}
+                :min 1}]}]},
            :scalar-gen
            {:op :one-of,
             :generators

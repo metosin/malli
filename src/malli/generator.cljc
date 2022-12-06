@@ -92,12 +92,19 @@
 
 (defn- -double-gen [options] (gen/double* (merge {:infinite? false, :NaN? false} options)))
 
+(defn- gen-vector-min [gen min options]
+  (cond-> (gen/sized #(gen/vector gen min (+ min %)))
+    (::mg/generator-ast options) (vary-meta assoc ::mg/generator-ast
+                                            {:op :vector-min
+                                             :generator gen
+                                             :min min})))
+
 (defn- -string-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)]
     (cond
       (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
       (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
-      min (gen/fmap str/join (gen/sized #(gen/vector gen/char-alphanumeric min (+ min %))))
+      min (gen/fmap str/join (gen-vector-min gen/char-alphanumeric min options))
       max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
       :else gen/string-alphanumeric)))
 
@@ -342,7 +349,9 @@
         mode (::mg/-*-gen-mode options :*)
         options (dissoc options ::mg/-*-gen-mode)]
     (if-some [g (-not-unreachable (generator child options))]
-      (cond->> (gen/vector g)
+      (cond->> (case mode
+                 :* (gen/vector g)
+                 :+ (gen-vector-min g 1 options))
         (m/-regex-op? child)
         (gen/fmap #(apply concat %)))
       (case mode
@@ -350,9 +359,7 @@
         :+ (-never-gen options)))))
 
 (defn -+-gen [schema options]
-  (let [g (-*-gen schema (assoc options ::mg/-*-gen-mode :+))]
-    (cond-> g
-      (-not-unreachable g) gen/not-empty)))
+  (-*-gen schema (assoc options ::mg/-*-gen-mode :+)))
 
 (defn -repeat-gen [schema options]
   (let [child (m/-get schema 0 nil)]

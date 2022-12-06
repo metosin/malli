@@ -647,7 +647,7 @@
                                    (gen/tuple (gen/return :and) (gen/return ()))
                                    (gen/tuple (gen/return :or) (gen/return ()))]))
                     {:seed 0})))
-  (is (= '([:not true] [:not false] [:and [true]] [:or [[:not false] true]] false [:and [[:not true]]] [:not false] [:or [[:not false] [:not true]]] [:not true] [:and [[:not false] [:and [[:not false] [:not true]]] [:and [[:not true]]]]])
+  (is (= '([:not true] [:not false] [:and [true true]] [:or [true [:not true]]] false [:and [true [:not true] [:not true]]] [:not false] [:or [[:not true] [:not true] false]] [:not true] [:and [[:and [[:not false]]] [:not true]]])
          (mg/sample [:schema
                      {:registry
                       {::formula
@@ -662,8 +662,8 @@
                       (fn [formula]
                         (gen/one-of [gen/boolean
                                      (gen/tuple (gen/return :not) gen/boolean)
-                                     (gen/tuple (gen/return :and) (gen/not-empty (gen/vector formula)))
-                                     (gen/tuple (gen/return :or) (gen/not-empty (gen/vector formula)))]))
+                                     (gen/tuple (gen/return :and) (#'mg/gen-vector-min formula 1 {}))
+                                     (gen/tuple (gen/return :or) (#'mg/gen-vector-min formula 1 {}))]))
                       (gen/one-of [gen/boolean
                                    (gen/tuple (gen/return :not) gen/boolean)]))
                     {:seed 0}))))

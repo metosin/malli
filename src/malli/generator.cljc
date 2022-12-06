@@ -385,6 +385,11 @@
 (defn -qualified-symbol-gen [schema]
   (-qualified-ident-gen schema symbol gen/symbol qualified-symbol? gen/symbol-ns))
 
+(defn- gen-elements [es]
+  (if (= 1 (count es))
+    (gen/return (first es))
+    (gen/elements es)))
+
 (defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::mg/default)
 
 (defmethod -schema-generator ::mg/default [schema options] (ga/gen-for-pred (m/validator schema options)))
@@ -409,10 +414,7 @@
 (defmethod -schema-generator :vector [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :set [schema options] (-coll-distinct-gen schema set options))
-(defmethod -schema-generator :enum [schema options] (let [es (m/children schema options)]
-                                                      (if (= 1 (count es))
-                                                        (gen/return (first es))
-                                                        (gen/elements es))))
+(defmethod -schema-generator :enum [schema options] (gen-elements (m/children schema options)))
 
 (defmethod -schema-generator :maybe [schema options]
   (if-some [g (-> schema (m/children options) first (generator options) -not-unreachable)]
@@ -468,10 +470,7 @@
 ;;
 
 (defn- -create-from-elements [props]
-  (when-some [els (not-empty (:gen/elements props))]
-    (if (= 1 (count els))
-      (gen/return (first els))
-      (gen/elements els))))
+  (some-> (:gen/elements props) gen-elements))
 
 (defn- -create-from-gen
   [props schema options]

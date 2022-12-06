@@ -53,6 +53,7 @@
   (list (qualify-in-ns `tcgen/recursive-gen)
         (list (qualify-in-ns `fn) [(symbol target)] (-generator-code rec-gen options))
         (-generator-code scalar-gen options)))
+;; TODO infer pretty name from :ref schema
 (defmethod -generator-code :recur [{:keys [target]} options] (symbol target))
 (defmethod -generator-code :tuple [{:keys [generators]} options]
   (list* (qualify-in-ns `tcgen/tuple)

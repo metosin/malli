@@ -509,7 +509,7 @@
                                                                                   (gen/return nil))]))]))))
                    {:seed 0})))
   ;; linked list of ABC that never repeats
-  (is (= '(["A" ["B" nil]] ["A" nil] ["A" nil] ["A" ["C" ["B" nil]]] ["A" ["C" nil]] ["A" nil] ["A" ["C" ["B" ["C" nil]]]] ["A" nil] ["A" ["B" nil]] ["A" nil])
+  (is (= '(["A" ["B" nil]] ["A" nil] ["A" nil] ["A" ["C" ["B" nil]]] ["A" ["C" nil]] ["A" nil] ["A" ["C" ["B" ["C" ["B" nil]]]]] ["A" nil] ["A" ["B" nil]] ["A" nil])
          (mg/sample [:schema
                      {:registry {::A [:tuple [:= "A"] [:maybe [:or [:ref ::B] [:ref ::C]]]]
                                  ::B [:tuple [:= "B"] [:maybe [:or [:ref ::C] [:ref ::A]]]]
@@ -528,9 +528,7 @@
                                                                                (gen/one-of
                                                                                  [(gen/tuple (gen/return "C")
                                                                                              (gen/one-of [(gen/return nil)
-                                                                                                          (gen/one-of
-                                                                                                            [A
-                                                                                                             B])]))
+                                                                                                          (gen/one-of [A B])]))
                                                                                   A])])))
                                                      (gen/tuple (gen/return "B")
                                                                 (gen/one-of [(gen/return nil)
@@ -547,9 +545,7 @@
                                                                                  [A
                                                                                   (gen/tuple (gen/return "B")
                                                                                              (gen/one-of [(gen/return nil)
-                                                                                                          (gen/one-of
-                                                                                                            [C
-                                                                                                             A])]))])])))
+                                                                                                          (gen/one-of [C A])]))])])))
                                                      (gen/tuple (gen/return "C")
                                                                 (gen/one-of [(gen/return nil)
                                                                              (gen/one-of

@@ -30,34 +30,37 @@
 
 (defn- qualify-in-ns [q]
   {:pre [(qualified-symbol? q)]}
-  (or (when-some [v (resolve q)]
+  (or (when-some [v (get (ns-map *ns*) (symbol (name q)))]
         (when (var? v)
           (when (= q (symbol v))
             (symbol (name q)))))
       (when-some [nsym (some (fn [[asym ns]]
                                (when (= (symbol (namespace q))
                                         (ns-name ns))
-                                 (ns-name ns)))
+                                 asym))
                              (ns-aliases *ns*))]
         (symbol (name nsym) (name q)))
       q))
 
-(defn- explicate [form]
-  (walk/postwalk (fn [form]
-                   (cond-> form
-                     (qualified-symbol? form) qualify-in-ns))))
-
 (defmulti -generator-code (fn [ast _options] (:op ast)))
-(defmethod -generator-code :any [_ _] (explicate `tcgen/any))
-(defmethod -generator-code :some [_ _] (explicate `tcgen/any-printable))
-(defmethod -generator-code :nil [_ _] (explicate `(tcgen/return nil)))
-(defmethod -generator-code :recursive-gen [{:keys [rec-gen scalar-gen]} options]
-  (explicate `(tcgen/recursive-fn (fn [rec#]
-                                    (-generator-code rec-gen options))
-                                  ~(-generator-code scalar-gen options))))
+(defmethod -generator-code :any [_ _] (qualify-in-ns `tcgen/any))
+(defmethod -generator-code :one-of [{:keys [generators]} options]
+  (list (qualify-in-ns `tcgen/one-of) (mapv #(-generator-code % options) generators)))
+(defmethod -generator-code :return [{:keys [value]} _]
+  (list (qualify-in-ns `tcgen/return)
+        value))
+(defmethod -generator-code :recursive-gen [{:keys [target rec-gen scalar-gen]} options]
+  (list (qualify-in-ns `tcgen/recursive-gen)
+        (list (qualify-in-ns `fn) [(symbol target)] (-generator-code rec-gen options))
+        (-generator-code scalar-gen options)))
+(defmethod -generator-code :recur [{:keys [target]} options] (symbol target))
+(defmethod -generator-code :tuple [{:keys [generators]} options]
+  (list* (qualify-in-ns `tcgen/tuple)
+         (mapv #(-generator-code % options) generators)))
 
 (defn generator-code 
   ([?schema] (generator-code ?schema nil))
   ([?schema options]
-   (let [ast (-> (generator-ast ?schema options))]
-     (-generator-code ast))))
+   (-> ?schema
+       (generator-ast options)
+       (-generator-code options))))

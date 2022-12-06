@@ -624,6 +624,48 @@
                                               (gen/tuple (gen/return :B))
                                               (gen/tuple (gen/return :C))
                                               (gen/tuple (gen/return :D))])))
+                    {:seed 0})))
+  (is (= '([:not true] [:not false] [:and [[:not false]]] [:or [[:not false]]] false [:and [true [:not true]]] [:and ()] [:or [[:or ()] false]] [:not true] [:and [[:not true]]])
+         (mg/sample [:schema
+                     {:registry
+                      {::formula
+                       [:or
+                        :boolean
+                        [:tuple [:enum :not] :boolean]
+                        [:tuple [:enum :and] [:* [:ref ::formula]]]
+                        [:tuple [:enum :or]  [:* [:ref ::formula]]]]}}
+                     [:ref ::formula]]
+                    {:seed 0})
+         (mg/sample (gen/recursive-gen
+                      (fn [formula]
+                        (gen/one-of [gen/boolean
+                                     (gen/tuple (gen/elements [:not]) gen/boolean)
+                                     (gen/tuple (gen/elements [:and]) (gen/vector formula))
+                                     (gen/tuple (gen/elements [:or]) (gen/vector formula))]))
+                      (gen/one-of [gen/boolean
+                                   (gen/tuple (gen/elements [:not]) gen/boolean)
+                                   (gen/tuple (gen/elements [:and]) (gen/return ()))
+                                   (gen/tuple (gen/elements [:or]) (gen/return ()))]))
+                    {:seed 0})))
+  (is (= '([:not true] [:not false] [:and [true]] [:or [[:not false] true]] false [:and [[:not true]]] [:not false] [:or [[:not false] [:not true]]] [:not true] [:and [[:not false] [:and [[:not false] [:not true]]] [:and [[:not true]]]]])
+         (mg/sample [:schema
+                     {:registry
+                      {::formula
+                       [:or
+                        :boolean
+                        [:tuple [:enum :not] :boolean]
+                        [:tuple [:enum :and] [:+ [:ref ::formula]]]
+                        [:tuple [:enum :or]  [:+ [:ref ::formula]]]]}}
+                     [:ref ::formula]]
+                    {:seed 0})
+         (mg/sample (gen/recursive-gen
+                      (fn [formula]
+                        (gen/one-of [gen/boolean
+                                     (gen/tuple (gen/elements [:not]) gen/boolean)
+                                     (gen/tuple (gen/elements [:and]) (gen/not-empty (gen/vector formula)))
+                                     (gen/tuple (gen/elements [:or]) (gen/not-empty (gen/vector formula)))]))
+                      (gen/one-of [gen/boolean
+                                   (gen/tuple (gen/elements [:not]) gen/boolean)]))
                     {:seed 0}))))
 
 (deftest infinite-generator-test

@@ -30,7 +30,10 @@
 
 (defn- qualify-in-ns [q]
   {:pre [(qualified-symbol? q)]}
-  (or (when-some [v (get (ns-map *ns*) (symbol (name q)))]
+  (or (when (.startsWith (name q) "recur")
+        ;; prevent recursive-gen bindings from shadowing globals
+        q)
+      (when-some [v (get (ns-map *ns*) (symbol (name q)))]
         (when (var? v)
           (when (= q (symbol v))
             (symbol (name q)))))

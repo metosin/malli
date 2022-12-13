@@ -757,7 +757,7 @@ Default Transformers include:
 | `mt/json-transformer`             | transform between JSON and EDN                      |
 | `mt/strip-extra-keys-transformer` | drop extra keys from maps                           |
 | `mt/default-value-transformer`    | applies default values from schema properties       |
-| `mt/key-transformer`              | transformns map keys                                |
+| `mt/key-transformer`              | transforms map keys                                |
 | `mt/collection-transformer`       | conversion between collections (e.g. set -> vector) |
 
 **NOTE**: the included transformers are best-effort, i.e. they won't throw on bad input, they will just pass the input value through unchanged. You should make sure your schema validation catches these non-transformed values. Custom transformers should follow the same idiom.

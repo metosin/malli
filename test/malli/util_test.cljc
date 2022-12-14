@@ -1038,8 +1038,10 @@
 (deftest explain-data-test
   (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
         input-1 {:a 1}
-        input-2 {:a [true]}]
+        input-2 {:a [true]}
+        input-3 {:a ["kikka"]}]
     (testing "explain-data output is plain data"
+      (is (= nil (mu/explain-data schema input-3)))
       (is (= {:errors [{:in [:a]
                         :path [:a]
                         :schema [:vector [:maybe :string]]

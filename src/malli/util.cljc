@@ -203,9 +203,9 @@
        ([value]
         (data-explainer value [] []))
        ([value in acc]
-        (-> (explainer' value in acc)
-            (c/update :schema m/form)
-            (c/update :errors (partial mapv #(c/update % :schema m/form)))))))))
+        (some-> (explainer' value in acc)
+                (c/update :schema m/form)
+                (c/update :errors (partial mapv #(c/update % :schema m/form)))))))))
 
 (defn explain-data
   "Explains a value against a given schema. Like `m/explain` but output is pure clojure data.

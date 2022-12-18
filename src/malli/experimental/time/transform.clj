@@ -12,7 +12,7 @@
 (defn time-decoders
   [formats]
   (into
-   {}
+   time/default-parsers
    (for [k (keys formats)]
      [k {:compile
          (fn [schema opts]
@@ -23,7 +23,8 @@
 (defn time-encoders
   [formats]
   (into
-   {}
+   {:time/duration str
+    :time/zone-id str}
    (for [k (keys formats)]
      [k {:compile
          (fn [schema opts]

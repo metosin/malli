@@ -38,8 +38,8 @@
     (t/is (m/validate :time/local-date-time (LocalDateTime/parse "2020-01-01T12:00:00") {:registry r}))
     (t/is (not (m/validate :time/local-date-time "2020-01-01T12:00:00" {:registry r}))))
   (t/testing "instant"
-    (t/is (m/validate :time/instant (Instant/parse "2022-12-18T12:00:25.840823567-00:00") {:registry r}))
-    (t/is (not (m/validate :time/instant "2022-12-18T12:00:25.840823567-00:00" {:registry r}))))
+    (t/is (m/validate :time/instant (Instant/parse "2022-12-18T12:00:25.840823567Z") {:registry r}))
+    (t/is (not (m/validate :time/instant "2022-12-18T12:00:25.840823567Z" {:registry r}))))
   (t/testing "zoned date time"
     (t/is (m/validate :time/zoned-date-time (ZonedDateTime/parse "2022-12-18T12:00:25.840823567Z[UTC]") {:registry r}))
     (t/is (m/validate :time/zoned-date-time (ZonedDateTime/parse "2022-12-18T06:00:25.840823567-06:00[America/Chicago]") {:registry r}))

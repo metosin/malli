@@ -8,7 +8,7 @@
 
 Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 
-**STATUS**: well matured [*alpha*](#alpha)
+[Metosin Open Source Status: Active](https://github.com/metosin/open-source/blob/main/project-status.md#active). Stability: well matured [*alpha*](#alpha).
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 

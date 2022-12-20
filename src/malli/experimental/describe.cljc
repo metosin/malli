@@ -101,8 +101,8 @@
 (defmethod accept 'pos-int? [_ _ _ _] "integer greater than 0")
 (defmethod accept :pos-int [_ _ _ _] "integer greater than 0")
 
-(defmethod accept 'neg-int? [_ _ _ _] "integer less than -1")
-(defmethod accept :neg-int [_ _ _ _] "integer less than -1")
+(defmethod accept 'neg-int? [_ _ _ _] "integer less than 0")
+(defmethod accept :neg-int [_ _ _ _] "integer less than 0")
 
 (defmethod accept 'nat-int? [_ _ _ _] "natural integer")
 (defmethod accept :nat-int [_ _ _ _] "natural integer")

@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [malli.core :as m]))
 
-(declare -describe)
+(declare -describe describe)
 
 (defprotocol Descriptor (-accept [this children options] "transforms schema to a text descriptor"))
 

@@ -15,6 +15,9 @@
    (time/<= (LocalDate/parse "2020-01-01")
             (LocalDate/parse "2020-01-02")))
   (t/is
+   (time/<= (Duration/ofMillis 10)
+            (Duration/ofMillis 11)))
+  (t/is
    (not
     (time/<= (LocalDate/parse "2020-01-02")
              (LocalDate/parse "2020-01-01")))))
@@ -25,6 +28,9 @@
    (mr/registry (time/-time-schemas))))
 
 (t/deftest basic-types
+  (t/testing "Duration"
+    (t/is (m/validate :time/duration (Duration/ofMillis 10) {:registry r}))
+    (t/is (not (m/validate :time/duration 10 {:registry r}))))
   (t/testing "zone id"
     (t/is (m/validate :time/zone-id (ZoneId/of "UTC") {:registry r}))
     (t/is (not (m/validate :time/zone-id "UTC" {:registry r}))))
@@ -50,6 +56,12 @@
     (t/is (not (m/validate :time/offset-date-time "2022-12-18T12:00:25.840823567Z" {:registry r})))))
 
 (t/deftest min-max
+  (t/testing "Duration"
+    (t/is (-> [:time/duration {:min (Duration/ofMillis 9) :max (Duration/ofMillis 10)}]
+              (m/validate (Duration/ofMillis 10) {:registry r})))
+    (t/is (-> [:time/duration {:min (Duration/ofMillis 9) :max (Duration/ofMillis 10)}]
+              (m/validate (Duration/ofMillis 12) {:registry r})
+              not)))
   (t/testing "local date"
     (t/is (-> [:time/local-date {:min (LocalDate/parse "2020-01-01") :max (LocalDate/parse "2020-01-03")}]
               (m/validate (LocalDate/parse "2020-01-01") {:registry r})))

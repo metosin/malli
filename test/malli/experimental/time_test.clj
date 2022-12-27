@@ -9,15 +9,15 @@
 
 (t/deftest compare-dates
   (t/is
-   (time/t<= (LocalDate/parse "2020-01-01")
-             (LocalDate/parse "2020-01-01")))
+   (time/<= (LocalDate/parse "2020-01-01")
+            (LocalDate/parse "2020-01-01")))
   (t/is
-   (time/t<= (LocalDate/parse "2020-01-01")
-             (LocalDate/parse "2020-01-02")))
+   (time/<= (LocalDate/parse "2020-01-01")
+            (LocalDate/parse "2020-01-02")))
   (t/is
    (not
-    (time/t<= (LocalDate/parse "2020-01-02")
-              (LocalDate/parse "2020-01-01")))))
+    (time/<= (LocalDate/parse "2020-01-02")
+             (LocalDate/parse "2020-01-01")))))
 
 (def r
   (mr/composite-registry
@@ -51,41 +51,48 @@
 
 (t/deftest min-max
   (t/testing "local date"
-    (t/is (-> [:time/local-date {:min "2020-01-01" :max (LocalDate/parse "2020-01-03")}]
+    (t/is (-> [:time/local-date {:min (LocalDate/parse "2020-01-01") :max (LocalDate/parse "2020-01-03")}]
               (m/validate (LocalDate/parse "2020-01-01") {:registry r})))
-    (t/is (-> [:time/local-date {:min "2020-01-01" :max (LocalDate/parse "2020-01-03")}]
+    (t/is (-> [:time/local-date {:min (LocalDate/parse "2020-01-01") :max (LocalDate/parse "2020-01-03")}]
               (m/validate (LocalDate/parse "2020-01-04") {:registry r})
               not)))
   (t/testing "local time"
-    (t/is (-> [:time/local-time {:min "12:00:00" :max (LocalTime/parse "13:00:00")}]
+    (t/is (-> [:time/local-time {:min (LocalTime/parse "12:00:00") :max (LocalTime/parse "13:00:00")}]
               (m/validate (LocalTime/parse "12:00:00") {:registry r})))
-    (t/is (-> [:time/local-time {:min "12:00:00" :max (LocalTime/parse "13:00:00")}]
+    (t/is (-> [:time/local-time {:min (LocalTime/parse "12:00:00") :max (LocalTime/parse "13:00:00")}]
               (m/validate (LocalTime/parse "14:00:00") {:registry r})
               not)))
   (t/testing "local date time"
     (t/is (m/validate [:time/local-date-time
-                       {:min "2020-01-01T11:30:00"
-                        :max "2020-01-01T12:30:00"}]
+                       {:min (LocalDateTime/parse "2020-01-01T11:30:00")
+                        :max (LocalDateTime/parse "2020-01-01T12:30:00")}]
                       (LocalDateTime/parse "2020-01-01T12:00:00") {:registry r}))
     (t/is (-> [:time/local-date-time
-               {:min "2020-01-01T11:30:00"
-                :max "2020-01-01T12:30:00"}]
+               {:min (LocalDateTime/parse "2020-01-01T11:30:00")
+                :max (LocalDateTime/parse "2020-01-01T12:30:00")}]
               (m/validate (LocalDateTime/parse "2020-01-01T12:40:00") {:registry r})
               not)))
   (t/testing "instant"
     (t/is (-> [:time/instant
-               {:min "2022-12-18T11:30:25.840823567Z"
-                :max "2022-12-18T12:30:25.840823567Z"}]
+               {:min (Instant/parse "2022-12-18T11:30:25.840823567Z")
+                :max (Instant/parse "2022-12-18T12:30:25.840823567Z")}]
               (m/validate (Instant/parse "2022-12-18T12:00:25.840823567Z") {:registry r})))
     (t/is (-> [:time/instant
-               {:min "2022-12-18T11:30:25.840823567Z"
-                :max "2022-12-18T12:30:25.840823567Z"}]
+               {:min (Instant/parse "2022-12-18T11:30:25.840823567Z")
+                :max (Instant/parse "2022-12-18T12:30:25.840823567Z")}]
               (m/validate (Instant/parse "2022-12-18T12:40:25.840823567Z") {:registry r})
               not)))
-  #_
   (t/testing "zoned date time"
-    (t/is (m/validate :time/zoned-date-time (ZonedDateTime/parse "2022-12-18T12:00:25.840823567Z[UTC]") {:registry r}))
-    (t/is (m/validate :time/zoned-date-time (ZonedDateTime/parse "2022-12-18T06:00:25.840823567-06:00[America/Chicago]") {:registry r}))
+    (t/is (-> [:time/zoned-date-time
+               {:min (ZonedDateTime/parse "2022-12-18T11:30:25.840823567Z[UTC]")
+                :max (ZonedDateTime/parse "2022-12-18T12:10:25.840823567Z[UTC]")}]
+              (m/validate (ZonedDateTime/parse "2022-12-18T12:00:25.840823567Z[UTC]") {:registry r})))
+    (t/is (-> [:time/zoned-date-time
+               {:min (ZonedDateTime/parse "2022-12-18T05:40:25.840823567-06:00[America/Chicago]")
+                :max (ZonedDateTime/parse "2022-12-18T12:10:25.840823567Z[UTC]")}]
+              (m/validate (ZonedDateTime/parse
+                           "2022-12-18T06:00:25.840823567-06:00[America/Chicago]") {:registry r})))
+    #_
     (t/is (not (m/validate :time/zoned-date-time "2022-12-18T12:00:25.840823567Z[UTC]" {:registry r}))))
   #_
   (t/testing "offset date time"

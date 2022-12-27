@@ -34,9 +34,9 @@
 
 (defn duration-schema [] (-temporal-schema {:type :time/duration :class Duration}))
 (defn instant-schema [] (-temporal-schema {:type :time/instant :class Instant}))
-(defn local-date-schema [] (-temporal-schema {:type :time/local-date :class LocalDate}))
+(defn local-date-schema [] (-temporal-schema {:type :time/local-date :class LocalDate :type-properties {:min LocalDate/MIN :max LocalDate/MAX}}))
 (defn local-time-schema [] (-temporal-schema {:type :time/local-time :class LocalTime :type-properties {:min LocalTime/MIN :max LocalTime/MAX}}))
-(defn local-date-time-schema [] (-temporal-schema {:type :time/local-date-time :class LocalDateTime}))
+(defn local-date-time-schema [] (-temporal-schema {:type :time/local-date-time :class LocalDateTime :type-properties {:min LocalDateTime/MIN :max LocalDateTime/MAX}}))
 (defn offset-date-time-schema [] (-temporal-schema {:type :time/offset-date-time :class OffsetDateTime}))
 (defn zoned-date-time-schema [] (-temporal-schema {:type :time/zoned-date-time :class ZonedDateTime}))
 (defn zone-id-schema [] (m/-simple-schema {:type :time/zone-id :pred #(instance? ZoneId %)}))

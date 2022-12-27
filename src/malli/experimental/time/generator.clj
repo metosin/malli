@@ -29,6 +29,7 @@
      (-to-long (.toLocalTime ^LocalDateTime o)))
     (instance? OffsetDateTime o) (.toEpochMilli (.toInstant ^OffsetDateTime o))
     (instance? ZonedDateTime o) (.toEpochMilli (.toInstant ^ZonedDateTime o))
+    (instance? Duration o) (.toNanos ^Duration o)
     (int? o) (long o)))
 
 (defn to-long [o] (when o (-to-long o)))

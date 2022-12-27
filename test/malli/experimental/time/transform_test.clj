@@ -41,7 +41,9 @@
   (t/testing "offset date time"
     (t/is (validate :time/offset-date-time "2022-12-18T12:00:25.840823567Z"))
     (t/is (validate :time/offset-date-time "2022-12-18T06:00:25.840823567-06:00"))
-    (t/is (not (validate :time/offset-date-time "2_022-12-18T12:00:25.840823567Z")))))
+    (t/is (not (validate :time/offset-date-time "2_022-12-18T12:00:25.840823567Z"))))
+  (t/testing "Aggregates"
+    (t/is (validate [:map [:date :time/local-date]] {:date "2020-01-01"}))))
 
 (defn -decode
   [schema v]

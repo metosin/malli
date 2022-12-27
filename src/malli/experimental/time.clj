@@ -4,7 +4,7 @@
    [malli.core :as m]
    [malli.experimental.time :as time])
   (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId)))
+   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,8 +38,10 @@
 (defn local-time-schema [] (-temporal-schema {:type :time/local-time :class LocalTime :type-properties {:min LocalTime/MIN :max LocalTime/MAX}}))
 (defn local-date-time-schema [] (-temporal-schema {:type :time/local-date-time :class LocalDateTime :type-properties {:min LocalDateTime/MIN :max LocalDateTime/MAX}}))
 (defn offset-date-time-schema [] (-temporal-schema {:type :time/offset-date-time :class OffsetDateTime}))
+(defn offset-time-schema [] (-temporal-schema {:type :time/offset-time :class OffsetTime :type-properties {:min OffsetTime/MIN :max OffsetTime/MAX}}))
 (defn zoned-date-time-schema [] (-temporal-schema {:type :time/zoned-date-time :class ZonedDateTime}))
 (defn zone-id-schema [] (m/-simple-schema {:type :time/zone-id :pred #(instance? ZoneId %)}))
+(defn zone-offset-schema [] (m/-simple-schema {:type :time/zone-offset :pred #(instance? ZoneOffset %) :type-properties {:min ZoneOffset/MIN :max ZoneOffset/MAX}}))
 
 (defn -time-schemas
   []
@@ -50,4 +52,6 @@
    :time/offset-date-time (offset-date-time-schema)
    :time/local-date (local-date-schema)
    :time/local-time (local-time-schema)
+   :time/offset-time (offset-time-schema)
+   :time/zone-offset (zone-offset-schema)
    :time/local-date-time (local-date-time-schema)})

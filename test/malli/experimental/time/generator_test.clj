@@ -19,9 +19,11 @@
   (t/testing "simple schemas"
     (t/is (exercise :time/duration))
     (t/is (exercise :time/zone-id))
+    (t/is (exercise :time/zone-offset))
     (t/is (exercise :time/instant))
     (t/is (exercise :time/zoned-date-time))
     (t/is (exercise :time/offset-date-time))
+    (t/is (exercise :time/offset-time))
     (t/is (exercise :time/local-date))
     (t/is (exercise :time/local-time))
     (t/is (exercise :time/local-date-time)))

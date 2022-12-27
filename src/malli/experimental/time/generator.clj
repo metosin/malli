@@ -6,7 +6,7 @@
    [malli.generator :as mg]
    [malli.experimental.time :as time])
   (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId)))
+   (java.time Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -23,6 +23,7 @@
     (instance? Instant o) (.toEpochMilli ^Instant o)
     (instance? LocalDate o) (.toEpochDay ^LocalDate o)
     (instance? LocalTime o) (.toSecondOfDay ^LocalTime o)
+    (instance? ZoneOffset o) (.getTotalSeconds ^ZoneOffset o)
     (instance? LocalDateTime o)
     (unchecked-add
      (unchecked-multiply (.toEpochDay (.toLocalDate ^LocalDateTime o)) seconds-in-day)
@@ -39,13 +40,21 @@
         (merge
          (m/type-properties schema options)
          (m/properties schema options))
-        min (to-long min) max (to-long max) gen-min (to-long gen-min) gen-max (to-long gen-max)]
+        {:keys [accessor] :or {accessor identity}} options
+        as-long #(when % (to-long (accessor %)))
+        min (as-long min) max (as-long max) gen-min (as-long gen-min) gen-max (as-long gen-max)]
     (when (and min gen-min (< gen-min min))
       (m/-fail! ::mg/invalid-property {:key :gen/min, :value gen-min, :min min}))
     (when (and max gen-max (> gen-max max))
       (m/-fail! ::mg/invalid-property {:key :gen/max, :value gen-min, :max min}))
     {:min (or gen-min min)
      :max (or gen-max max)}))
+
+(defn -zone-offset-gen [schema options]
+  (ga/fmap #(ZoneOffset/ofTotalSeconds %) (gen/large-integer* (-min-max schema options))))
+
+(defmethod mg/-schema-generator :time/zone-offset [schema options]
+  (-zone-offset-gen schema options))
 
 (defn -instant-gen
   [schema options]
@@ -60,11 +69,29 @@
 (defmethod mg/-schema-generator :time/local-date [schema options]
   (ga/fmap #(LocalDate/ofEpochDay %) (gen/large-integer* (-min-max schema options))))
 
-(defmethod mg/-schema-generator :time/local-time [schema options]
+(defn -local-time-gen [schema options]
   (ga/fmap #(LocalTime/ofSecondOfDay %) (gen/large-integer* (-min-max schema options))))
+
+(defmethod mg/-schema-generator :time/local-time [schema options]
+  (-local-time-gen schema options))
 
 (comment
   (gen/sample (mg/-schema-generator (time/local-time-schema) nil)))
+
+(defn -offset-time-gen [schema options]
+  (let [local-opts (assoc options :accessor #(.toLocalTime ^OffsetTime %))
+        zone-opts (assoc options :accessor #(- (.getTotalSeconds (.getOffset ^OffsetTime %))))
+        offset-gen (-zone-offset-gen schema zone-opts)]
+    (ga/bind
+     (-local-time-gen schema local-opts)
+     (fn [local-time]
+       (ga/fmap #(OffsetTime/of local-time %) offset-gen)))))
+
+(defmethod mg/-schema-generator :time/offset-time [schema options]
+  (-offset-time-gen schema options))
+
+(comment
+  (gen/sample (mg/-schema-generator (time/offset-time-schema) nil)))
 
 (defmethod mg/-schema-generator :time/local-date-time [schema options]
   (gen/fmap

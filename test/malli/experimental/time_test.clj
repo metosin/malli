@@ -5,7 +5,7 @@
    [malli.experimental.time :as time]
    [clojure.test :as t])
   (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId)))
+   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime)))
 
 (t/deftest compare-dates
   (t/is
@@ -40,6 +40,9 @@
   (t/testing "local time"
     (t/is (m/validate :time/local-time (LocalTime/parse "12:00:00") {:registry r}))
     (t/is (not (m/validate :time/local-time "12:00:00" {:registry r}))))
+  (t/testing "offset time"
+    (t/is (m/validate :time/offset-time (OffsetTime/parse "12:00:00+00:00") {:registry r}))
+    (t/is (not (m/validate :time/offset-time "12:00:00" {:registry r}))))
   (t/testing "local date time"
     (t/is (m/validate :time/local-date-time (LocalDateTime/parse "2020-01-01T12:00:00") {:registry r}))
     (t/is (not (m/validate :time/local-date-time "2020-01-01T12:00:00" {:registry r}))))

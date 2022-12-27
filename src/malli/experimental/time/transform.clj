@@ -1,6 +1,6 @@
 (ns malli.experimental.time.transform
   (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId)
+   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)
    (java.time.temporal TemporalAccessor TemporalQuery)
    (java.time.format DateTimeFormatter))
   (:require
@@ -43,6 +43,7 @@
    :time/local-date DateTimeFormatter/ISO_LOCAL_DATE
    :time/local-date-time DateTimeFormatter/ISO_LOCAL_DATE_TIME
    :time/local-time DateTimeFormatter/ISO_LOCAL_TIME
+   :time/offset-time DateTimeFormatter/ISO_OFFSET_TIME
    :time/offset-date-time DateTimeFormatter/ISO_OFFSET_DATE_TIME
    :time/zoned-date-time DateTimeFormatter/ISO_ZONED_DATE_TIME})
 
@@ -52,20 +53,16 @@
    :time/local-date #(LocalDate/from %)
    :time/local-date-time #(LocalDateTime/from %)
    :time/offset-date-time #(OffsetDateTime/from %)
+   :time/offset-time #(OffsetTime/from %)
    :time/zoned-date-time #(ZonedDateTime/from %)})
 
 (def default-parsers
   (reduce-kv
    (fn [m k v] (assoc m k (safe-fn (->parser v (get queries k)))))
    {:time/duration (safe-fn #(Duration/parse %))
+    :time/zone-offset (safe-fn #(ZoneOffset/of ^String %))
     :time/zone-id (safe-fn #(ZoneId/of %))}
    default-formats))
-
-(defn t<=
-  [^Comparable x ^Comparable y]
-  (if (pos? (.compareTo x y))
-    false
-    true))
 
 (defn compile-parser
   [type formatter pattern]

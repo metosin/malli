@@ -20,6 +20,9 @@
   (t/testing "zone id"
     (t/is (validate :time/zone-id "UTC"))
     (t/is (not (validate :time/zone-id "UTC'"))))
+  (t/testing "zone offset"
+    (t/is (validate :time/zone-offset "+15:00"))
+    (t/is (not (validate :time/zone-offset "UTC"))))
   (t/testing "local date"
     (t/is (validate :time/local-date "2020-01-01"))
     (t/testing "Pattern"

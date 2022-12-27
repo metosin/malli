@@ -94,3 +94,6 @@
 
 (defmethod mg/-schema-generator :time/offset-date-time [schema options]
   (-offset-date-time-gen schema options))
+
+(defmethod mg/-schema-generator :time/duration [schema options]
+  (gen/fmap #(Duration/ofNanos %) (gen/large-integer* (-min-max schema options))))

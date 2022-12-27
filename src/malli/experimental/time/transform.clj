@@ -9,22 +9,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def default-formats
-  {:time/instant DateTimeFormatter/ISO_INSTANT
-   :time/local-date DateTimeFormatter/ISO_LOCAL_DATE
-   :time/local-date-time DateTimeFormatter/ISO_LOCAL_DATE_TIME
-   :time/local-time DateTimeFormatter/ISO_LOCAL_TIME
-   :time/offset-date-time DateTimeFormatter/ISO_OFFSET_DATE_TIME
-   :time/zoned-date-time DateTimeFormatter/ISO_ZONED_DATE_TIME})
-
-(def queries
-  {:time/instant #(Instant/from %)
-   :time/local-time #(LocalTime/from %)
-   :time/local-date #(LocalDate/from %)
-   :time/local-date-time #(LocalDateTime/from %)
-   :time/offset-date-time #(OffsetDateTime/from %)
-   :time/zoned-date-time #(ZonedDateTime/from %)})
-
 (defn ->temporal-query
   ^TemporalQuery [f]
   (reify TemporalQuery
@@ -38,13 +22,6 @@
       (if (instance? CharSequence s)
         (.parse ^DateTimeFormatter formatter s query)
         s))))
-
-(def default-parsers
-  (reduce-kv
-   (fn [m k v] (assoc m k (->parser v (get queries k))))
-   {:time/duration #(Duration/parse %)
-    :time/zone-id #(ZoneId/of %)}
-   default-formats))
 
 (defn ->formatter
   [x]
@@ -61,6 +38,29 @@
       (catch Exception _
         x))))
 
+(def default-formats
+  {:time/instant DateTimeFormatter/ISO_INSTANT
+   :time/local-date DateTimeFormatter/ISO_LOCAL_DATE
+   :time/local-date-time DateTimeFormatter/ISO_LOCAL_DATE_TIME
+   :time/local-time DateTimeFormatter/ISO_LOCAL_TIME
+   :time/offset-date-time DateTimeFormatter/ISO_OFFSET_DATE_TIME
+   :time/zoned-date-time DateTimeFormatter/ISO_ZONED_DATE_TIME})
+
+(def queries
+  {:time/instant #(Instant/from %)
+   :time/local-time #(LocalTime/from %)
+   :time/local-date #(LocalDate/from %)
+   :time/local-date-time #(LocalDateTime/from %)
+   :time/offset-date-time #(OffsetDateTime/from %)
+   :time/zoned-date-time #(ZonedDateTime/from %)})
+
+(def default-parsers
+  (reduce-kv
+   (fn [m k v] (assoc m k (safe-fn (->parser v (get queries k)))))
+   {:time/duration (safe-fn #(Duration/parse %))
+    :time/zone-id (safe-fn #(ZoneId/of %))}
+   default-formats))
+
 (defn t<=
   [^Comparable x ^Comparable y]
   (if (pos? (.compareTo x y))
@@ -69,12 +69,9 @@
 
 (defn compile-parser
   [type formatter pattern]
-  (safe-fn
-   (or
-    (when-let [formatter (when-let [x (or formatter pattern)]
-                           (->formatter x))]
-      (->parser formatter (get queries type)))
-    (get default-parsers type))))
+  (when-let [formatter (when-let [x (or formatter pattern)]
+                         (->formatter x))]
+    (safe-fn (->parser formatter (get queries type)))))
 
 (defn time-decoders
   [formats]
@@ -85,7 +82,8 @@
          (fn [schema opts]
            (let [t (m/type schema opts)
                  {:keys [formatter pattern]} (m/properties schema)]
-             (compile-parser t formatter pattern)))}])))
+             (or (compile-parser t formatter pattern)
+                 (get default-parsers t))))}])))
 
 (defn time-encoders
   [formats]

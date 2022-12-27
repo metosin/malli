@@ -42,3 +42,22 @@
     (t/is (validate :time/offset-date-time "2022-12-18T12:00:25.840823567Z"))
     (t/is (validate :time/offset-date-time "2022-12-18T06:00:25.840823567-06:00"))
     (t/is (not (validate :time/offset-date-time "2_022-12-18T12:00:25.840823567Z")))))
+
+(defn -decode
+  [schema v]
+  (m/decode schema v {:registry r} time.transform/time-transformer))
+
+(defn -encode
+  [schema v]
+  (m/encode schema v {:registry r} time.transform/time-transformer))
+
+(t/deftest encode
+  (t/testing "Round trip with patterns"
+    (t/is (= "20200101" (->> "20200101"
+                             (-decode [:time/local-date {:pattern "yyyyMMdd"}])
+                             (-encode [:time/local-date {:pattern "yyyyMMdd"}]))))
+    (t/is (= "2020_01_01" (->> "20200101"
+                               (-decode [:time/local-date {:pattern "yyyyMMdd"}])
+                               (-encode [:time/local-date {:pattern "yyyy_MM_dd"}]))))))
+
+

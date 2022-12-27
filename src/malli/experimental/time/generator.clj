@@ -26,7 +26,7 @@
     (instance? LocalDateTime o)
     (unchecked-add
      (unchecked-multiply (.toEpochDay (.toLocalDate ^LocalDateTime o)) seconds-in-day)
-     (.toLocalTime ^LocalDateTime o))
+     (-to-long (.toLocalTime ^LocalDateTime o)))
     (instance? OffsetDateTime o) (.toEpochMilli (.toInstant ^OffsetDateTime o))
     (instance? ZonedDateTime o) (.toEpochMilli (.toInstant ^ZonedDateTime o))
     (int? o) (long o)))

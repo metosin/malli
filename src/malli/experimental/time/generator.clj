@@ -15,7 +15,7 @@
 
 (defmethod mg/-schema-generator :time/zone-id [_schema _options] zone-id-gen)
 
-(def ^:const seconds-in-day 86400)
+(def ^:const ^:private seconds-in-day 86400)
 
 (defn -to-long
   ^long [o]

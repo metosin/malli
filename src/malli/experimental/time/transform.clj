@@ -4,7 +4,7 @@
    (java.time.temporal TemporalAccessor TemporalQuery)
    (java.time.format DateTimeFormatter))
   (:require
-   [malli.transform :as mt]
+   [malli.transform :as mt :refer [-safe]]
    [malli.core :as m]))
 
 (set! *warn-on-reflection* true)
@@ -30,14 +30,6 @@
     (instance? String x) (DateTimeFormatter/ofPattern x)
     :else (throw (ex-info "Invalid formatter" {:formatter x :type (type x)}))))
 
-(defn safe-fn
-  [f]
-  (fn safe [x]
-    (try
-      (f x)
-      (catch Exception _
-        x))))
-
 (def default-formats
   {:time/instant DateTimeFormatter/ISO_INSTANT
    :time/local-date DateTimeFormatter/ISO_LOCAL_DATE
@@ -58,17 +50,17 @@
 
 (def default-parsers
   (reduce-kv
-   (fn [m k v] (assoc m k (safe-fn (->parser v (get queries k)))))
-   {:time/duration (safe-fn #(Duration/parse %))
-    :time/zone-offset (safe-fn #(ZoneOffset/of ^String %))
-    :time/zone-id (safe-fn #(ZoneId/of %))}
+   (fn [m k v] (assoc m k (-safe (->parser v (get queries k)))))
+   {:time/duration (-safe #(Duration/parse %))
+    :time/zone-offset (-safe #(ZoneOffset/of ^String %))
+    :time/zone-id (-safe #(ZoneId/of %))}
    default-formats))
 
 (defn compile-parser
   [type formatter pattern]
   (when-let [formatter (when-let [x (or formatter pattern)]
                          (->formatter x))]
-    (safe-fn (->parser formatter (get queries type)))))
+    (-safe (->parser formatter (get queries type)))))
 
 (defn time-decoders
   [formats]
@@ -93,7 +85,7 @@
            (let [t (m/type schema opts)
                  {:keys [formatter pattern]} (m/properties schema)
                  formatter (->formatter (or formatter pattern (get default-formats t)))]
-             (safe-fn
+             (-safe
               (fn [^TemporalAccessor ta]
                 (if (instance? TemporalAccessor ta)
                   (.format ^DateTimeFormatter formatter ta)

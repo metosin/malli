@@ -23,6 +23,14 @@ Malli is in well matured [alpha](README.md#alpha).
 * automatic type inferring with `:enum` and `:=` with `malli.transform` and `malli.json-schema` - detects homogenous `:string`, `:keyword`, `:symbol`, `:int` and `:double`), [#782](https://github.com/metosin/malli/pull/782) & [#784](https://github.com/metosin/malli/pull/784)
 * **BREAKING**: Prefer to real Schemas instead of predicates (e.g. `:int` over `'int?`)
 * New `:some` schema (like `some?`)
+* New `malli.experimental.describe` to describe Schemas in english:
+
+```clojure
+* (require '[malli.experimental.describe :as med])
+
+(med/describe [:map {:closed true} [:x int?]])
+; => "a map where {:x -> <integer>} with no other keys"
+```
 
 ## 0.9.2 (2022-10-18)
 

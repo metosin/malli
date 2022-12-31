@@ -22,7 +22,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
-- [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema) and [Swagger2](#swagger2)
+- [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
    - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
@@ -2933,6 +2933,20 @@ Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequenti
 ### `malli.util/schemas`
 
 `:merge`, `:union` and `:select-keys`.
+
+## Description
+
+You can call describe on a schema to get its description in english:
+
+```clojure
+(require '[malli.experimental.describe :as med])
+
+(med/describe [:map {:closed true}
+               [:x {:optional true} int?]
+               [:y :boolean]])
+
+;;=> "a map where {:x (optional) -> <integer>, :y -> <boolean>} with no other keys"
+```
 
 ## Links (and thanks)
 

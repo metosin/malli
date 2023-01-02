@@ -1,15 +1,12 @@
 (ns malli.experimental.time.generator-test
-  (:require
-   [malli.generator :as mg]
-   [malli.core :as m]
-   [malli.experimental.time-test :refer [r]]
-   [malli.experimental.time.generator]
-   [clojure.test :as t])
-  (:import
-   (java.time LocalDate LocalTime)))
+  (:require [malli.generator :as mg]
+            [malli.core :as m]
+            [malli.experimental.time-test :refer [r]]
+            [malli.experimental.time.generator]
+            [clojure.test :as t])
+  (:import (java.time LocalDate LocalTime)))
 
-(defn exercise
-  [schema]
+(defn exercise [schema]
   (let [schema (m/schema schema {:registry r})
         v (m/validator schema {:registry r})
         g (mg/generator schema {:registry r})]

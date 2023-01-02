@@ -1,12 +1,10 @@
 (ns malli.experimental.time.generator
-  (:require
-   [clojure.test.check.generators :as gen]
-   [clojure.spec.gen.alpha :as ga]
-   [malli.core :as m]
-   [malli.generator :as mg]
-   [malli.experimental.time :as time])
-  (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset)))
+  (:require [clojure.test.check.generators :as gen]
+            [clojure.spec.gen.alpha :as ga]
+            [malli.core :as m]
+            [malli.generator :as mg]
+            [malli.experimental.time :as time])
+  (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -17,8 +15,7 @@
 
 (def ^:const ^:private seconds-in-day 86400)
 
-(defn -to-long
-  ^long [o]
+(defn -to-long ^long [o]
   (cond
     (instance? Instant o) (.toEpochMilli ^Instant o)
     (instance? LocalDate o) (.toEpochDay ^LocalDate o)
@@ -56,15 +53,14 @@
 (defmethod mg/-schema-generator :time/zone-offset [schema options]
   (-zone-offset-gen schema options))
 
-(defn -instant-gen
-  [schema options]
+(defn -instant-gen [schema options]
   (ga/fmap #(Instant/ofEpochMilli %) (gen/large-integer* (-min-max schema options))))
 
 (defmethod mg/-schema-generator :time/instant [schema options]
   (-instant-gen schema options))
 
 (comment
-  (gen/sample (mg/-schema-generator (time/instant-schema) nil)))
+ (gen/sample (mg/-schema-generator (time/instant-schema) nil)))
 
 (defmethod mg/-schema-generator :time/local-date [schema options]
   (ga/fmap #(LocalDate/ofEpochDay %) (gen/large-integer* (-min-max schema options))))
@@ -76,7 +72,7 @@
   (-local-time-gen schema options))
 
 (comment
-  (gen/sample (mg/-schema-generator (time/local-time-schema) nil)))
+ (gen/sample (mg/-schema-generator (time/local-time-schema) nil)))
 
 (defn -offset-time-gen [schema options]
   (let [local-opts (assoc options :accessor #(.toLocalTime ^OffsetTime %))
@@ -91,7 +87,7 @@
   (-offset-time-gen schema options))
 
 (comment
-  (gen/sample (mg/-schema-generator (time/offset-time-schema) nil)))
+ (gen/sample (mg/-schema-generator (time/offset-time-schema) nil)))
 
 (defmethod mg/-schema-generator :time/local-date-time [schema options]
   (gen/fmap
@@ -102,7 +98,7 @@
    (gen/large-integer* (-min-max schema options))))
 
 (comment
-  (gen/sample (mg/-schema-generator (time/local-date-time-schema) nil) 1000))
+ (gen/sample (mg/-schema-generator (time/local-date-time-schema) nil) 1000))
 
 (defn -zoned-date-time-gen [schema options]
   (gen/bind
@@ -114,7 +110,7 @@
   (-zoned-date-time-gen schema options))
 
 (comment
-  (gen/sample (mg/-schema-generator (time/zoned-date-time-schema) nil) 100))
+ (gen/sample (mg/-schema-generator (time/zoned-date-time-schema) nil) 100))
 
 (defn -offset-date-time-gen [schema options]
   (gen/fmap #(OffsetDateTime/from %) (-zoned-date-time-gen schema options)))

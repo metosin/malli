@@ -1,11 +1,9 @@
 (ns malli.experimental.time-test
-  (:require
-   [malli.core :as m]
-   [malli.registry :as mr]
-   [malli.experimental.time :as time]
-   [clojure.test :as t])
-  (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime)))
+  (:require [malli.core :as m]
+            [malli.registry :as mr]
+            [malli.experimental.time :as time]
+            [clojure.test :as t])
+  (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime)))
 
 (t/deftest compare-dates
   (t/is
@@ -107,10 +105,8 @@
                 :max (ZonedDateTime/parse "2022-12-18T12:10:25.840823567Z[UTC]")}]
               (m/validate (ZonedDateTime/parse
                            "2022-12-18T06:00:25.840823567-06:00[America/Chicago]") {:registry r})))
-    #_
-    (t/is (not (m/validate :time/zoned-date-time "2022-12-18T12:00:25.840823567Z[UTC]" {:registry r}))))
-  #_
-  (t/testing "offset date time"
-    (t/is (m/validate :time/offset-date-time (OffsetDateTime/parse "2022-12-18T12:00:25.840823567Z") {:registry r}))
-    (t/is (m/validate :time/offset-date-time (OffsetDateTime/parse "2022-12-18T06:00:25.840823567-06:00") {:registry r}))
-    (t/is (not (m/validate :time/offset-date-time "2022-12-18T12:00:25.840823567Z" {:registry r})))))
+    #_(t/is (not (m/validate :time/zoned-date-time "2022-12-18T12:00:25.840823567Z[UTC]" {:registry r}))))
+  #_(t/testing "offset date time"
+      (t/is (m/validate :time/offset-date-time (OffsetDateTime/parse "2022-12-18T12:00:25.840823567Z") {:registry r}))
+      (t/is (m/validate :time/offset-date-time (OffsetDateTime/parse "2022-12-18T06:00:25.840823567-06:00") {:registry r}))
+      (t/is (not (m/validate :time/offset-date-time "2022-12-18T12:00:25.840823567Z" {:registry r})))))

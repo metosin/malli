@@ -1,15 +1,11 @@
 (ns malli.experimental.time
   (:refer-clojure :exclude [<=])
-  (:require
-   [malli.core :as m]
-   [malli.experimental.time :as time])
-  (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)))
+  (:require [malli.core :as m])
+  (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
-(defn <=
-  [^Comparable x ^Comparable y]
+(defn <= [^Comparable x ^Comparable y]
   (if (pos? (.compareTo x y))
     false
     true))
@@ -22,8 +18,7 @@
       min (fn [x] (<= min x))
       max (fn [x] (<= x max)))))
 
-(defn -temporal-schema
-  [{:keys [type class type-properties]}]
+(defn -temporal-schema [{:keys [type class type-properties]}]
   (m/-simple-schema
    (cond->
        {:type type
@@ -43,8 +38,7 @@
 (defn zone-id-schema [] (m/-simple-schema {:type :time/zone-id :pred #(instance? ZoneId %)}))
 (defn zone-offset-schema [] (m/-simple-schema {:type :time/zone-offset :pred #(instance? ZoneOffset %) :type-properties {:min ZoneOffset/MIN :max ZoneOffset/MAX}}))
 
-(defn -time-schemas
-  []
+(defn -time-schemas []
   {:time/zone-id (zone-id-schema)
    :time/instant (instant-schema)
    :time/duration (duration-schema)

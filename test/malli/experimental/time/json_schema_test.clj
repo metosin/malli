@@ -1,9 +1,8 @@
 (ns malli.experimental.time.json-schema-test
-  (:require
-   [malli.experimental.time-test :refer [r]]
-   [malli.experimental.time.json-schema]
-   [malli.json-schema :as json]
-   [clojure.test :as t]))
+  (:require [malli.experimental.time-test :refer [r]]
+            [malli.experimental.time.json-schema]
+            [malli.json-schema :as json]
+            [clojure.test :as t]))
 
 (t/deftest time-formats
   (t/is

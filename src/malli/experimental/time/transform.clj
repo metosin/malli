@@ -1,30 +1,25 @@
 (ns malli.experimental.time.transform
-  (:import
-   (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)
-   (java.time.temporal TemporalAccessor TemporalQuery)
-   (java.time.format DateTimeFormatter))
-  (:require
-   [malli.transform :as mt :refer [-safe]]
-   [malli.core :as m]))
+  (:require [malli.transform :as mt :refer [-safe]]
+            [malli.core :as m])
+  (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)
+           (java.time.temporal TemporalAccessor TemporalQuery)
+           (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
-(defn ->temporal-query
-  ^TemporalQuery [f]
+(defn ->temporal-query ^TemporalQuery [f]
   (reify TemporalQuery
     (queryFrom [_ t]
       (f t))))
 
-(defn ->parser
-  [formatter qf]
+(defn ->parser [formatter qf]
   (let [query (->temporal-query qf)]
     (fn [^CharSequence s]
       (if (instance? CharSequence s)
         (.parse ^DateTimeFormatter formatter s query)
         s))))
 
-(defn ->formatter
-  [x]
+(defn ->formatter [x]
   (cond
     (instance? DateTimeFormatter x) x
     (instance? String x) (DateTimeFormatter/ofPattern x)
@@ -56,14 +51,12 @@
     :time/zone-id (-safe #(ZoneId/of %))}
    default-formats))
 
-(defn compile-parser
-  [type formatter pattern]
+(defn compile-parser [type formatter pattern]
   (when-let [formatter (when-let [x (or formatter pattern)]
                          (->formatter x))]
     (-safe (->parser formatter (get queries type)))))
 
-(defn time-decoders
-  [formats]
+(defn time-decoders [formats]
   (into
    default-parsers
    (for [k (keys formats)]
@@ -74,8 +67,7 @@
              (or (compile-parser t formatter pattern)
                  (get default-parsers t))))}])))
 
-(defn time-encoders
-  [formats]
+(defn time-encoders [formats]
   (into
    {:time/duration str
     :time/zone-id str}

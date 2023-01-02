@@ -1,9 +1,8 @@
 (ns malli.experimental.time.transform-test
-  (:require
-   [malli.core :as m]
-   [malli.experimental.time-test :refer [r]]
-   [malli.experimental.time.transform :as time.transform]
-   [clojure.test :as t]))
+  (:require [malli.core :as m]
+            [malli.experimental.time-test :refer [r]]
+            [malli.experimental.time.transform :as time.transform]
+            [clojure.test :as t]))
 
 (defn validate
   ([schema v]
@@ -48,12 +47,10 @@
   (t/testing "Aggregates"
     (t/is (validate [:map [:date :time/local-date]] {:date "2020-01-01"}))))
 
-(defn -decode
-  [schema v]
+(defn -decode [schema v]
   (m/decode schema v {:registry r} time.transform/time-transformer))
 
-(defn -encode
-  [schema v]
+(defn -encode [schema v]
   (m/encode schema v {:registry r} time.transform/time-transformer))
 
 (t/deftest encode

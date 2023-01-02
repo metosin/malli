@@ -1,7 +1,6 @@
 (ns malli.experimental.time.json-schema
-  (:require
-   [malli.experimental.time]
-   [malli.json-schema :as json]))
+  (:require [malli.experimental.time]
+            [malli.json-schema :as json]))
 
 ;; date-time: A string instance is valid against this attribute if it is
 ;; a valid representation according to the "date-time' ABNF rule
@@ -33,7 +32,6 @@
 ;; these will likely either be promoted to fully specified attributes or
 ;; dropped.
 
-
 ;; date-fullyear   = 4DIGIT
 ;; date-month      = 2DIGIT  ; 01-12
 ;; date-mday       = 2DIGIT  ; 01-28, 01-29, 01-30, 01-31 based on
@@ -52,7 +50,6 @@
 ;; full-time       = partial-time time-offset
 
 ;; date-time       = full-date "T" full-time
-
 
 (defmethod json/accept :time/local-date [_ _ _ _] {:type "string" :format "date"})
 (defmethod json/accept :time/offset-time [_ _ _ _] {:type "string" :format "time"})

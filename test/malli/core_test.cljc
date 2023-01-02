@@ -22,6 +22,8 @@
                                              (update :message (fnil identity nil))
                                              (dissoc :check)))))))
 
+(defn as-data [x] (walk/prewalk (fn [x] (cond-> x (m/schema? x) (m/form))) x))
+
 (defn results= [& results]
   (apply = (map with-schema-forms results)))
 
@@ -2750,4 +2752,22 @@
         (is (= {:x :kikka} (m/coerce schema {:x "kikka"} mt/string-transformer nil))))
       (testing "fails"
         (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x 123} mt/string-transformer)))
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x 123} mt/string-transformer nil)))))))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/coerce schema {:x 123} mt/string-transformer nil)))))
+    (testing "cps"
+      (let [result (atom nil)
+            respond #(swap! result assoc :respond %)
+            raise #(swap! result assoc :raise %)
+            <result (fn [] (let [res @result] (reset! result nil) res))]
+        (testing "success"
+          (m/coerce schema {:x :kikka} nil respond raise)
+          (is (= {:respond {:x :kikka}} (<result))))
+        (testing "failure"
+          (m/coerce schema {:x "kikka"} nil respond raise)
+          (is (= {:raise {:explain {:errors [{:in [:x]
+                                              :path [:x]
+                                              :schema :keyword
+                                              :value "kikka"}]
+                                    :schema schema
+                                    :value {:x "kikka"}}
+                          :schema schema
+                          :value {:x "kikka"}}} (as-data (<result)))))))))

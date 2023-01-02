@@ -788,10 +788,13 @@ For performance, precompute the transformations with `m/decoder` and `m/encoder`
 
 ### Coercion
 
-For both decoding + validating the results (throwing exception on error), there is `m/coercer` and `m/coerce`:
+For both decoding + validating the results (throwing exception on error), there is `m/coerce` and `m/coercer`:
 
 ```clojure
 (m/coerce :int "42" mt/string-transformer)
+; 42
+
+((m/coercer :int mt/string-transformer) "42")
 ; 42
 
 (m/coerce :int "invalid" mt/string-transformer)
@@ -806,6 +809,13 @@ Coercion can be applied without transformer, doing just validation:
 
 (m/coerce :int "42")
 ; =throws=> :malli.core/invalid-input {:value "42", :schema :int, :explain {:schema :int, :value "42", :errors ({:path [], :in [], :schema :int, :value "42"})}}
+```
+
+Exception-free coercion with continuation-passing style:
+
+```clojure
+(m/coerce :int "fail" nil (partial prn "success:") (partial prn "error:"))
+; =prints=> "error:" {:value "fail", :schema :int, :explain ...}
 ```
 
 ### Advanced Transformations

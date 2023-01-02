@@ -7,7 +7,7 @@
             [malli.impl.util :as miu]
             [malli.registry :as mr]
             [malli.sci :as ms])
-  #?(:clj (:import #?(:bb (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector PersistentArrayMap)
+  #?(:clj (:import #?(:bb  (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector PersistentArrayMap)
                       :clj (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap))
                    (java.util.concurrent.atomic AtomicReference)
                    (java.util.regex Pattern))))
@@ -133,9 +133,13 @@
 
 (defn -deprecated! [x] (println "DEPRECATED:" x))
 
+(defn -exception
+  ([type] (-exception type nil))
+  ([type data] (ex-info (str type) {:type type, :message type, :data data})))
+
 (defn -fail!
   ([type] (-fail! type nil))
-  ([type data] (throw (ex-info (str type " " (pr-str data)) {:type type, :message type, :data data}))))
+  ([type data] (throw (-exception type data))))
 
 (defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
@@ -450,16 +454,16 @@
 
 (defn -eager-entry-parser [children props options]
   (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
-          (-map [^objects arr] #?(:bb (let [m (apply array-map arr)]
-                                        (when-not (= (* 2 (count m)) (count arr))
-                                          (-fail! ::duplicate-keys)) m)
+          (-map [^objects arr] #?(:bb   (let [m (apply array-map arr)]
+                                          (when-not (= (* 2 (count m)) (count arr))
+                                            (-fail! ::duplicate-keys)) m)
                                   :clj (PersistentArrayMap/createWithCheck arr)
                                   :cljs (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
                                             (-fail! ::duplicate-keys)) m)))
           (-arange [^objects arr to]
-            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
-               :cljs (.slice arr 0 to)))]
+           #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
+              :cljs (.slice arr 0 to)))]
     (let [{:keys [naked-keys lazy-refs]} props
           ca (object-array children)
           n (alength ca)
@@ -513,10 +517,10 @@
     (-intercepting parent-transformer child-transformer)))
 
 (defn -map-transformer [ts]
-  #?(:bb (fn [x] (reduce (fn child-transformer [m [k t]]
-                           (if-let [entry (find m k)]
-                             (assoc m k (t (val entry)))
-                             m)) x ts))
+  #?(:bb   (fn [x] (reduce (fn child-transformer [m [k t]]
+                             (if-let [entry (find m k)]
+                               (assoc m k (t (val entry)))
+                               m)) x ts))
      :clj  (apply -comp (map (fn child-transformer [[k t]]
                                (fn [^Associative x]
                                  (if-let [e ^MapEntry (.entryAt x k)]
@@ -529,7 +533,7 @@
 (defn -tuple-transformer [ts] (fn [x] (reduce-kv -update x ts)))
 
 (defn -collection-transformer [t empty]
-  #?(:bb (fn [x] (into (when x empty) (map t) x))
+  #?(:bb   (fn [x] (into (when x empty) (map t) x))
      :clj  (fn [x] (let [i (.iterator ^Iterable x)]
                      (loop [x ^IPersistentCollection empty]
                        (if (.hasNext i)
@@ -909,7 +913,7 @@
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent properties children options]
-       #_(-check-children! ::val properties children 1 1)
+      #_(-check-children! ::val properties children 1 1)
        (let [children (-vmap #(schema % options) children)
              form (delay (-simple-form parent properties children -form options))
              schema (first children)
@@ -993,7 +997,7 @@
                                        (fn [[key {:keys [optional]} value]]
                                          (let [valid? (-validator value)
                                                default (boolean optional)]
-                                           #?(:bb (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
+                                           #?(:bb   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
                                               :clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        (-children this))
@@ -1607,7 +1611,7 @@
            (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
-                                      (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                                (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
            (-deref [_] (-ref))
@@ -1670,7 +1674,7 @@
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
             (-set [this key value] (if (= key 0) (-set-children this [value])
-                                       (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
@@ -2163,29 +2167,29 @@
 
 (defn coercer
   "Creates a function to decode and validate a value, throws on validation error."
-  ([?schema]
-   (coercer ?schema nil nil))
-  ([?schema transformer]
-   (coercer ?schema transformer nil))
-  ([?schema transformer options]
+  ([?schema] (coercer ?schema nil nil))
+  ([?schema transformer] (coercer ?schema transformer nil))
+  ([?schema transformer options] (coercer ?schema transformer nil nil options))
+  ([?schema transformer respond raise] (coercer ?schema transformer respond raise nil))
+  ([?schema transformer respond raise options]
    (let [s (schema ?schema options)
          valid? (validator s)
          decode (decoder s transformer)
-         explain (explainer s)]
-     (fn [x] (let [value (decode x)]
-               (when-not (valid? value)
-                 (-fail! ::invalid-input {:value value, :schema s, :explain (explain value)}))
-               value)))))
+         explain (explainer s)
+         respond (or respond identity)
+         raise (or raise #(-fail! ::invalid-input %))]
+     (fn -coercer [x] (let [value (decode x)]
+                        (if (valid? value)
+                          (respond value)
+                          (raise {:value value, :schema s, :explain (explain value)})))))))
 
 (defn coerce
   "Decode and validate a value, throws on validation error."
-  ([?schema value]
-   (coerce ?schema value nil nil))
-  ([?schema value transformer]
-   (coerce ?schema value transformer nil))
-  ([?schema value transformer options]
-   (let [coerce (coercer ?schema transformer options)]
-     (coerce value))))
+  ([?schema value] (coerce ?schema value nil nil))
+  ([?schema value transformer] (coerce ?schema value transformer nil))
+  ([?schema value transformer options] (coerce ?schema value transformer nil nil options))
+  ([?schema value transformer respond raise] (coerce ?schema value transformer respond raise nil))
+  ([?schema value transformer respond raise options] ((coercer ?schema transformer respond raise options) value)))
 
 (defn entries
   "Returns `EntrySchema` children as a sequence of `clojure.lang/MapEntry`s
@@ -2307,7 +2311,7 @@
          (reduce -register-var {}))))
 
 (defn class-schemas []
-  {#?(:clj Pattern,
+  {#?(:clj  Pattern,
       ;; closure will complain if you reference the global RegExp object.
       :cljs (c/type #"")) (-re-schema true)})
 
@@ -2437,19 +2441,19 @@
 (defn -deregister-metadata-function-schemas!
   [key]
   (swap! -function-schemas* update key
-    (fn [fn-schemas-map]
-      (reduce-kv (fn [acc ns-sym fn-map]
-                   (assoc acc ns-sym
-                     (reduce-kv
-                       (fn [acc2 fn-sym fn-map]
-                         ;; rm metadata schemas
-                         (if (:metadata-schema? fn-map)
-                           acc2
-                           (assoc acc2 fn-sym fn-map)))
-                       {}
-                       fn-map)))
-        {}
-        fn-schemas-map))))
+         (fn [fn-schemas-map]
+           (reduce-kv (fn [acc ns-sym fn-map]
+                        (assoc acc ns-sym
+                               (reduce-kv
+                                (fn [acc2 fn-sym fn-map]
+                                  ;; rm metadata schemas
+                                  (if (:metadata-schema? fn-map)
+                                    acc2
+                                    (assoc acc2 fn-sym fn-map)))
+                                {}
+                                fn-map)))
+                      {}
+                      fn-schemas-map))))
 
 (defn function-schema
   ([?schema] (function-schema ?schema nil))
@@ -2466,13 +2470,13 @@
 
 #?(:clj
    (defmacro => [name value]
-     (let [cljs-resolve         (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve))
+     (let [cljs-resolve (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve))
            cljs-resolve-symbols (fn [env d]
                                   (walk/postwalk (fn [x] (cond->> x (symbol? x) (or (:name (cljs-resolve env x)))))
-                                    d))
-           name'  `'~(symbol (str name))
-           ns'    `'~(symbol (str *ns*))
-           sym    `'~(symbol (str *ns*) (str name))
+                                                 d))
+           name' `'~(symbol (str name))
+           ns' `'~(symbol (str *ns*))
+           sym `'~(symbol (str *ns*) (str name))
            value' (cond->> value (:ns &env) (cljs-resolve-symbols &env))]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.

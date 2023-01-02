@@ -18,7 +18,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 * Adds `:pred` option to `m/-map-schema` [#767](https://github.com/metosin/malli/pull/767)
 * **BREAKING**: Change default of `:malli.provider/map-of-threshold` from 3 to 8
-* New `malli.core/coercer` and `malli.core/coerce` to decode and validate a value, throws on validation error.
+* New `malli.core/coercer` and `malli.core/coerce` to decode and validate a value, throws on validation error. [Docs](README.md#coercion)
 * New `malli.core/-no-op-transformer`
 * automatic type inferring with `:enum` and `:=` with `malli.transform` and `malli.json-schema` - detects homogenous `:string`, `:keyword`, `:symbol`, `:int` and `:double`), [#782](https://github.com/metosin/malli/pull/782) & [#784](https://github.com/metosin/malli/pull/784)
 * **BREAKING**: Prefer to real Schemas instead of predicates (e.g. `:int` over `'int?`)

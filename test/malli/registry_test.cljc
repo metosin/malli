@@ -71,3 +71,15 @@
                   {:Type "AWS::ApiGateway::UsagePlan"})))
 
       (is (= 2 (count @loads))))))
+
+;; extend-protocol required (slow) call to satisfy?
+(deftype CustomRegistry [])
+(extend-protocol mr/Registry CustomRegistry)
+
+(deftype NotARegistry [])
+
+(deftest registry?-test
+  (is (= true (mr/registry? (mr/composite-registry {}))))
+  (is (= true (mr/registry? (->CustomRegistry))))
+  (is (= false (mr/registry? {})))
+  (is (= false (mr/registry? (->NotARegistry)))))

@@ -8,11 +8,13 @@
 #?(:cljs (goog-define type "default")
    :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
 
+(declare composite-registry)
+
 (defprotocol Registry
   (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
-(defn registry? [x] (#?(:clj instance?, :cljs implements?) malli.registry.Registry x))
+(defn registry? [x] (or (#?(:clj instance?, :cljs implements?) malli.registry.Registry x) (satisfies? Registry x)))
 
 (defn fast-registry [m]
   (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
@@ -29,9 +31,8 @@
 
 (defn registry [?registry]
   (cond (nil? ?registry) nil
-        (registry? ?registry) ?registry
         (map? ?registry) (simple-registry ?registry)
-        (satisfies? Registry ?registry) ?registry))
+        (registry? ?registry) ?registry))
 
 ;;
 ;; custom
@@ -39,9 +40,9 @@
 
 (def ^:private registry* (atom (simple-registry {})))
 
-(defn set-default-registry! [?registry]
+(defn set-default-registry! [& ?registries]
   (if-not (identical? mode "strict")
-    (reset! registry* (registry ?registry))
+    (reset! registry* (if (second ?registries) (apply composite-registry ?registries) (registry (first ?registries))))
     (throw (ex-info "can't set default registry, invalid mode" {:mode mode, :type type}))))
 
 (defn ^:no-doc custom-default-registry []

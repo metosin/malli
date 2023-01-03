@@ -2577,6 +2577,19 @@ Registries can be composed, a full example:
 ; => true
 ```
 
+`mr/set-default-registry!` also takes varargs, so you can write the previous as:
+
+```clojure
+;; linear search
+(mr/set-default-registry!
+ ;; immutable registry
+ {:map (m/-map-schema)}
+ ;; mutable (spec-like) registry
+ (mr/mutable-registry registry)
+ ;; on the perils of dynamic scope
+ (mr/dynamic-registry))
+```
+
 ## Function schemas
 
 See [Working with functions](docs/function-schemas.md).

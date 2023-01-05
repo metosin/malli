@@ -2944,6 +2944,76 @@ Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequenti
 
 `:merge`, `:union` and `:select-keys`.
 
+### `malli.experimental.time`
+
+The time namespace adds support for time formats as defined by [ISO 8601 - Date and time — Representations for information interchange](https://en.wikipedia.org/wiki/ISO_8601).
+
+Currently supported platform and providing implementations:
+
+- JVM: via the java.time package.
+
+The following schemas and their respective types are provided:
+
+| Schema                | Example                                              | JVM Type (`java.time`) |
+|:----------------------|:-----------------------------------------------------|:---------------------|
+| `:time/duration`         | PT0.01S                                              | `Duration`             |
+| `:time/instant`          | 2022-12-18T12:00:25.840823567Z                       | `Instant`              |
+| `:time/local-date`       | 2020-01-01                                           | `LocalDate`            |
+| `:time/local-date-time`  | 2020-01-01T12:00:00                                  | `LocalDateTime`        |
+| `:time/local-time`       | 12:00:00                                             | `LocalTime`            |
+| `:time/offset-date-time` | 2022-12-18T06:00:25.840823567-06:00                  | `OffsetDateTime`       |
+| `:time/offset-time`      | 12:00:00+00:00                                       | `OffsetTime`           |
+| `:time/zone-id`          | UTC                                                  | `ZoneId`               |
+| `:time/zone-offset`      | +15:00                                               | `ZoneOffset`           |
+| `:time/zoned-date-time`  | 2022-12-18T06:00:25.840823567-06:00[America/Chicago] | `ZonedDateTime`        |
+
+To use these schemas, add the schemas provided by `(malli.experimental.time/-time-schemas)` to your registry.
+
+#### min/max
+
+Time schemas respect min/max predicates for their respective types:
+
+```clojure
+[:time/local-time {:min (LocalTime/parse "12:00:00") :max (LocalTime/parse "13:00:00")}]
+```
+
+Will be valid only for local times between 12:00 and 13:00.
+
+#### Transformation - `malli.experimental.time.transform`
+
+The `malli.experimental.time.transform` namespace provides a `time-transformer` from string to the correct type.
+
+Formats can be configured by providing a `formatter` or a `pattern` property
+
+- pattern: should be a string
+- formatter: should be a DateTimeFormatter
+
+
+```clojure
+(= "2020_01_01"
+   (->> "20200101"
+        (-decode [:time/local-date {:pattern "yyyyMMdd"}])
+        (-encode [:time/local-date {:pattern "yyyy_MM_dd"}])))
+```
+
+#### Generators - `malli.experimental.time.generator`
+
+Require `malli.experimental.time.generator` to add support for time schema generators.
+
+Generated data also respects min/max properties.
+
+#### JSON Schema - `malli.experimental.time.json-schema`
+
+Require `malli.experimental.time.json-schema` to add support for json
+schema time formats.
+
+Json schema formats map to the following string formats:
+
+- time/local-date: date
+- time/offset-time: time
+- time/offset-date-time: date-time
+- time/duration: duration
+
 ## Description
 
 You can call describe on a schema to get its description in english:

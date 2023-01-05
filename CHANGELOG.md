@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* New optional time-schemas for the JVM: `:time/duration`, `:time/instant`, `:time/local-date`, `:time/local-date-time`, `:time/local-time`, `:time/offset-date-time`, `:time/offset-time`, `:time/zone-id`, `:time/zone-offset`, `:time/zoned-date-time`, see [README](README.md#malliexperimentaltime)
 * Adds `:pred` option to `m/-map-schema` [#767](https://github.com/metosin/malli/pull/767)
 * **BREAKING**: Change default of `:malli.provider/map-of-threshold` from 3 to 8
 * New `malli.core/coercer` and `malli.core/coerce` to decode and validate a value, throws on validation error. [Docs](README.md#coercion)

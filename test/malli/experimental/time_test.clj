@@ -6,24 +6,19 @@
   (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime)))
 
 (t/deftest compare-dates
-  (t/is
-   (time/<= (LocalDate/parse "2020-01-01")
-            (LocalDate/parse "2020-01-01")))
-  (t/is
-   (time/<= (LocalDate/parse "2020-01-01")
-            (LocalDate/parse "2020-01-02")))
-  (t/is
-   (time/<= (Duration/ofMillis 10)
-            (Duration/ofMillis 11)))
-  (t/is
-   (not
-    (time/<= (LocalDate/parse "2020-01-02")
-             (LocalDate/parse "2020-01-01")))))
+  (t/is (time/<= (LocalDate/parse "2020-01-01")
+                 (LocalDate/parse "2020-01-01")))
+  (t/is (time/<= (LocalDate/parse "2020-01-01")
+                 (LocalDate/parse "2020-01-02")))
+  (t/is (time/<= (Duration/ofMillis 10)
+                 (Duration/ofMillis 11)))
+  (t/is (not (time/<= (LocalDate/parse "2020-01-02")
+                      (LocalDate/parse "2020-01-01")))))
 
 (def r
   (mr/composite-registry
    m/default-registry
-   (mr/registry (time/-time-schemas))))
+   (mr/registry (time/schemas))))
 
 (t/deftest basic-types
   (t/testing "Duration"

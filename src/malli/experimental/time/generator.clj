@@ -60,7 +60,7 @@
   (-instant-gen schema options))
 
 (comment
- (gen/sample (mg/-schema-generator (time/instant-schema) nil)))
+ (gen/sample (mg/-schema-generator (time/-instant-schema) nil)))
 
 (defmethod mg/-schema-generator :time/local-date [schema options]
   (ga/fmap #(LocalDate/ofEpochDay %) (gen/large-integer* (-min-max schema options))))
@@ -72,7 +72,7 @@
   (-local-time-gen schema options))
 
 (comment
- (gen/sample (mg/-schema-generator (time/local-time-schema) nil)))
+ (gen/sample (mg/-schema-generator (time/-local-time-schema) nil)))
 
 (defn -offset-time-gen [schema options]
   (let [local-opts (assoc options :accessor #(.toLocalTime ^OffsetTime %))
@@ -87,7 +87,7 @@
   (-offset-time-gen schema options))
 
 (comment
- (gen/sample (mg/-schema-generator (time/offset-time-schema) nil)))
+ (gen/sample (mg/-schema-generator (time/-offset-time-schema) nil)))
 
 (defmethod mg/-schema-generator :time/local-date-time [schema options]
   (gen/fmap
@@ -98,7 +98,7 @@
    (gen/large-integer* (-min-max schema options))))
 
 (comment
- (gen/sample (mg/-schema-generator (time/local-date-time-schema) nil) 1000))
+ (gen/sample (mg/-schema-generator (time/-local-date-time-schema) nil) 1000))
 
 (defn -zoned-date-time-gen [schema options]
   (gen/bind
@@ -110,7 +110,7 @@
   (-zoned-date-time-gen schema options))
 
 (comment
- (gen/sample (mg/-schema-generator (time/zoned-date-time-schema) nil) 100))
+ (gen/sample (mg/-schema-generator (time/-zoned-date-time-schema) nil) 100))
 
 (defn -offset-date-time-gen [schema options]
   (gen/fmap #(OffsetDateTime/from %) (-zoned-date-time-gen schema options)))

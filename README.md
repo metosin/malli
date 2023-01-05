@@ -2967,13 +2967,26 @@ The following schemas and their respective types are provided:
 | `:time/zone-offset`      | +15:00                                               | `ZoneOffset`           |
 | `:time/zoned-date-time`  | 2022-12-18T06:00:25.840823567-06:00[America/Chicago] | `ZonedDateTime`        |
 
-To use these schemas, add the schemas provided by `(malli.experimental.time/-time-schemas)` to your registry.
+To use these schemas, add the schemas provided by `(malli.experimental.time/schemas)` to your registry.
+
+Using time-schemas to default registry:
+
+```clj
+(require '[malli.experimental.time :as met])
+
+(mr/set-default-registry!
+  (mr/composite-registry
+    (m/default-schemas)
+    (met/schemas)))
+```
 
 #### min/max
 
 Time schemas respect min/max predicates for their respective types:
 
 ```clojure
+(import (java.time LocalTime))
+
 [:time/local-time {:min (LocalTime/parse "12:00:00") :max (LocalTime/parse "13:00:00")}]
 ```
 
@@ -2988,12 +3001,14 @@ Formats can be configured by providing a `formatter` or a `pattern` property
 - pattern: should be a string
 - formatter: should be a DateTimeFormatter
 
-
 ```clojure
-(= "2020_01_01"
-   (->> "20200101"
-        (-decode [:time/local-date {:pattern "yyyyMMdd"}])
-        (-encode [:time/local-date {:pattern "yyyy_MM_dd"}])))
+(require '[malli.experimental.time.transform :as mett])
+
+(as-> "20200101" $
+  (m/decode [:time/local-date {:pattern "yyyyMMdd"}] $ (mett/time-transformer))
+  (m/encode [:time/local-date {:pattern "yyyy_MM_dd"}] $ (mett/time-transformer))
+  (= "2020_01_01" $))
+; => true
 ```
 
 #### Generators - `malli.experimental.time.generator`

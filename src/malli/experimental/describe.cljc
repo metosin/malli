@@ -171,7 +171,16 @@
 (defmethod accept :orn [_ _ children _] (str/join ", or " (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children)))
 
 (defmethod accept :cat [_ _ children _] (str/join ", " children))
-(defmethod accept :catn [_ _ children _] (str/join ", or " (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children)))
+(defmethod accept :catn [_ _ children _] (str/join ", and " (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children)))
+
+(defmethod accept :alt [_ _ children _] (str/join ", or " children))
+(defmethod accept :altn [_ _ children _] (str/join ", or " (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children)))
+
+(defmethod accept :+ [_ _ children _] (str "one or more of " (str/join ", " children)))
+(defmethod accept :* [_ _ children _] (str "zero or more of " (str/join ", " children)))
+(defmethod accept :? [_ _ children _] (str "zero or one of " (str/join ", " children)))
+
+(defmethod accept :repeat [_ schema children _] (str "more" (-min-max-suffix schema) " of " (str/join ", " children)))
 
 (defmethod accept 'boolean? [_ _ _ _] "boolean")
 (defmethod accept :boolean [_ _ _ _] "boolean")

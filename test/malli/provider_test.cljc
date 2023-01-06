@@ -59,20 +59,9 @@
 
    ;; explicit sample count for :map-of
    [[:map-of :string [:map [:name :string]]]
-    [{"1" {:name "1"}
-      "2" {:name "2"}}]
+    [{"1" {:name "1"}}
+     {"2" {:name "2"}}]
     {::mp/map-of-threshold 2}]
-
-   ;; implicit sample count for :map-of
-   [[:map-of :string [:map [:name :string]]]
-    [{"1" {:name "1"}
-      "2" {:name "2"}}
-     {"3" {:name "3"}}
-     {"4" {:name "4"}
-      "5" {:name "5"}
-      "6" {:name "6"}
-      "7" {:name "7"}
-      "8" {:name "8"}}]]
 
    ;; tuple-like without options
    [[:vector :some]
@@ -124,15 +113,15 @@
      {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}]
     {::mp/value-decoders {:string {:uuid mt/-string->uuid}}}]
    [[:map-of :uuid [:map [:id :uuid]]]
-    [{"0423191a-5fee-11ec-bf63-0242ac130002" {:id "0423191a-5fee-11ec-bf63-0242ac130002"}
-      "09e59de6-5fee-11ec-bf63-0242ac130002" {:id "09e59de6-5fee-11ec-bf63-0242ac130002"}
-      "15511020-5fee-11ec-bf63-0242ac130002" {:id "15511020-5fee-11ec-bf63-0242ac130002"}}]
+    [{"0423191a-5fee-11ec-bf63-0242ac130002" {:id "0423191a-5fee-11ec-bf63-0242ac130002"}}
+     {"09e59de6-5fee-11ec-bf63-0242ac130002" {:id "09e59de6-5fee-11ec-bf63-0242ac130002"}}
+     {"15511020-5fee-11ec-bf63-0242ac130002" {:id "15511020-5fee-11ec-bf63-0242ac130002"}}]
     {::mp/value-decoders {:string {:uuid mt/-string->uuid}}
      ::mp/map-of-threshold 3}]
    [[:map-of inst? :string]
-    [{"1901-03-02T22:20:11.000Z" "123"
-      "1902-04-03T22:20:11.000Z" "234"
-      "1904-06-05T22:20:11.000Z" "456"}]
+    [{"1901-03-02T22:20:11.000Z" "123"}
+     {"1902-04-03T22:20:11.000Z" "234"}
+     {"1904-06-05T22:20:11.000Z" "456"}]
     {::mp/value-decoders {:string {'inst? mt/-string->date}}
      ::mp/map-of-threshold 3}]
    ;; value-hints
@@ -149,19 +138,20 @@
        [:city :string]
        [:zip :int]
        [:lonlat [:vector :double]]]]
-     [:description {:optional true} :string]] [{:id "Lillan"
-                                                :tags #{:artesan :coffee :hotel}
-                                                :address {:street "Ahlmanintie 29"
-                                                          :city "Tampere"
-                                                          :zip 33100
-                                                          :lonlat [61.4858322, 23.7854658]}}
-                                               {:id "Huber",
-                                                :description "Beefy place"
-                                                :tags #{:beef :wine :beer}
-                                                :address {:street "Aleksis Kiven katu 13"
-                                                          :city "Tampere"
-                                                          :zip 33200
-                                                          :lonlat [61.4963599 23.7604916]}}]]])
+     [:description {:optional true} :string]]
+    [{:id "Lillan"
+      :tags #{:artesan :coffee :hotel}
+      :address {:street "Ahlmanintie 29"
+                :city "Tampere"
+                :zip 33100
+                :lonlat [61.4858322, 23.7854658]}}
+     {:id "Huber",
+      :description "Beefy place"
+      :tags #{:beef :wine :beer}
+      :address {:street "Aleksis Kiven katu 13"
+                :city "Tampere"
+                :zip 33200
+                :lonlat [61.4963599 23.7604916]}}]]])
 
 (deftest provider-test
   (doseq [[schema samples options] expectations]

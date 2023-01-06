@@ -16,13 +16,16 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* New optional time-schemas for the JVM: `:time/duration`, `:time/instant`, `:time/local-date`, `:time/local-date-time`, `:time/local-time`, `:time/offset-date-time`, `:time/offset-time`, `:time/zone-id`, `:time/zone-offset`, `:time/zoned-date-time`, see [README](README.md#malliexperimentaltime)
-* Adds `:pred` option to `m/-map-schema` [#767](https://github.com/metosin/malli/pull/767)
-* **BREAKING**: Change default of `:malli.provider/map-of-threshold` from 3 to 8
-* New `malli.core/coercer` and `malli.core/coerce` to decode and validate a value, throws on validation error. [Docs](README.md#coercion)
-* New `malli.core/-no-op-transformer`
+* New optional time-schemas for the JVM on top of `java.time`: 
+  * `:time/duration`, `:time/instant`, `:time/local-date`, `:time/local-date-time`, `:time/local-time`, `:time/offset-date-time`, `:time/offset-time`, `:time/zone-id`, `:time/zone-offset`, `:time/zoned-date-time`, see [README](README.md#malliexperimentaltime)
 * automatic type inferring with `:enum` and `:=` with `malli.transform` and `malli.json-schema` - detects homogenous `:string`, `:keyword`, `:symbol`, `:int` and `:double`), [#782](https://github.com/metosin/malli/pull/782) & [#784](https://github.com/metosin/malli/pull/784)
+* New `malli.core/coercer` and `malli.core/coerce` to both decode and validate a value, see [Docs](README.md#coercion)
+* New `malli.core/-no-op-transformer`
+* **BREAKING**: new implemenation for `:map-of` inferring via `malli.provider/provide`:
+  * Option `:malli.provider/map-of-threshold` default dropped (was 3)
+  * New and configurable (`malli.provider/map-of-accept`) function of `stats -> boolean` for identifying `:map-of`
 * **BREAKING**: Prefer to real Schemas instead of predicates (e.g. `:int` over `'int?`)
+* Adds `:pred` option to `m/-map-schema` [#767](https://github.com/metosin/malli/pull/767)
 * New `:some` schema (like `some?`)
 * New `malli.experimental.describe` to describe Schemas in english:
 

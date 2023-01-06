@@ -19,6 +19,9 @@
   (is (= "a function that takes input: [integer] and returns integer"
          (med/describe [:=> [:cat int?] int?])))
 
+  (is (= "a function that takes input: [integer, one or more of boolean] and returns integer"
+         (med/describe [:=> [:cat int? [:+ boolean?]] int?])))
+
   (is (= "a map where {:j-code -> <keyword, and has length 4>}"
          (med/describe [:map [:j-code [:and
                                        :keyword

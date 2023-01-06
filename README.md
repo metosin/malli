@@ -1728,29 +1728,28 @@ For better performance, use `mp/provider`:
 
 ### :map-of inferring
 
-Inferring `:map-of` requires 8 identical key & value schemas:
+By default, `:map-of` is not inferred:
 
 ```clojure
 (mp/provide
-  [{:a [1]
-    :b [1 2]
-    :c [1 2 3]
-    :d [1 2]
-    :e [1 2 3]
-    :f [1]
-    :g [1]
-    :h [1 2 3 4]}])
-; [:map-of :keyword [:vector :int]]
+ [{"1" [1]}
+  {"2" [1 2]}
+  {"3" [1 2 3]}])
+;[:map
+; ["1" {:optional true} [:vector :int]]
+; ["2" {:optional true} [:vector :int]]
+; ["3" {:optional true} [:vector :int]]]
 ```
 
-This can be configured via `::mp/map-of-threshold` options:
+With `::mp/map-of-threshold` option:
 
 ```clojure
 (mp/provide
-  [{:a [1]
-    :b [1 2]}]
-  {::mp/map-of-threshold 2})
-; [:map-of :keyword [:vector :int]]
+ [{"1" [1]}
+  {"2" [1 2]}
+  {"3" [1 2 3]}]
+ {::mp/map-of-threshold 3})
+; [:map-of :string [:vector :int]]
 ```
 
 Sample-data can be type-hinted with `::mp/hint`:
@@ -1781,7 +1780,7 @@ By default, tuples are not inferred:
 ; [:vector :some]
 ```
 
-There is `::mp/tuple-threshold` option:
+With `::mp/tuple-threshold` option:
 
 ```clojure
 (mp/provide

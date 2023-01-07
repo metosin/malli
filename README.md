@@ -2944,8 +2944,7 @@ You can call describe on a schema to get its description in english:
 (med/describe [:map {:closed true}
                [:x {:optional true} int?]
                [:y :boolean]])
-
-;;=> "a map where {:x (optional) -> <integer>, :y -> <boolean>} with no other keys"
+;; => "map where {:x (optional) -> <integer>, :y -> <boolean>} with no other keys"
 ```
 
 ## Links (and thanks)

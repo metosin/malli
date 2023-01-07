@@ -8,7 +8,7 @@
 
 Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 
-**STATUS**: well matured [*alpha*](#alpha)
+[Metosin Open Source Status: Active](https://github.com/metosin/open-source/blob/main/project-status.md#active). Stability: well matured [*alpha*](#alpha).
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
 
@@ -788,10 +788,13 @@ For performance, precompute the transformations with `m/decoder` and `m/encoder`
 
 ### Coercion
 
-For both decoding + validating the results (throwing exception on error), there is `m/coercer` and `m/coerce`:
+For both decoding + validating the results (throwing exception on error), there is `m/coerce` and `m/coercer`:
 
 ```clojure
 (m/coerce :int "42" mt/string-transformer)
+; 42
+
+((m/coercer :int mt/string-transformer) "42")
 ; 42
 
 (m/coerce :int "invalid" mt/string-transformer)
@@ -806,6 +809,13 @@ Coercion can be applied without transformer, doing just validation:
 
 (m/coerce :int "42")
 ; =throws=> :malli.core/invalid-input {:value "42", :schema :int, :explain {:schema :int, :value "42", :errors ({:path [], :in [], :schema :int, :value "42"})}}
+```
+
+Exception-free coercion with continuation-passing style:
+
+```clojure
+(m/coerce :int "fail" nil (partial prn "success:") (partial prn "error:"))
+; =prints=> "error:" {:value "fail", :schema :int, :explain ...}
 ```
 
 ### Advanced Transformations
@@ -1718,29 +1728,28 @@ For better performance, use `mp/provider`:
 
 ### :map-of inferring
 
-Inferring `:map-of` requires 8 identical key & value schemas:
+By default, `:map-of` is not inferred:
 
 ```clojure
 (mp/provide
-  [{:a [1]
-    :b [1 2]
-    :c [1 2 3]
-    :d [1 2]
-    :e [1 2 3]
-    :f [1]
-    :g [1]
-    :h [1 2 3 4]}])
-; [:map-of :keyword [:vector :int]]
+ [{"1" [1]}
+  {"2" [1 2]}
+  {"3" [1 2 3]}])
+;[:map
+; ["1" {:optional true} [:vector :int]]
+; ["2" {:optional true} [:vector :int]]
+; ["3" {:optional true} [:vector :int]]]
 ```
 
-This can be configured via `::mp/map-of-threshold` options:
+With `::mp/map-of-threshold` option:
 
 ```clojure
 (mp/provide
-  [{:a [1]
-    :b [1 2]}]
-  {::mp/map-of-threshold 2})
-; [:map-of :keyword [:vector :int]]
+ [{"1" [1]}
+  {"2" [1 2]}
+  {"3" [1 2 3]}]
+ {::mp/map-of-threshold 3})
+; [:map-of :string [:vector :int]]
 ```
 
 Sample-data can be type-hinted with `::mp/hint`:
@@ -1771,7 +1780,7 @@ By default, tuples are not inferred:
 ; [:vector :some]
 ```
 
-There is `::mp/tuple-threshold` option:
+With `::mp/tuple-threshold` option:
 
 ```clojure
 (mp/provide
@@ -2933,6 +2942,91 @@ Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequenti
 ### `malli.util/schemas`
 
 `:merge`, `:union` and `:select-keys`.
+
+### `malli.experimental.time`
+
+The time namespace adds support for time formats as defined by [ISO 8601 - Date and time — Representations for information interchange](https://en.wikipedia.org/wiki/ISO_8601).
+
+Currently supported platform and providing implementations:
+
+- JVM: via the java.time package.
+
+The following schemas and their respective types are provided:
+
+| Schema                | Example                                              | JVM Type (`java.time`) |
+|:----------------------|:-----------------------------------------------------|:---------------------|
+| `:time/duration`         | PT0.01S                                              | `Duration`             |
+| `:time/instant`          | 2022-12-18T12:00:25.840823567Z                       | `Instant`              |
+| `:time/local-date`       | 2020-01-01                                           | `LocalDate`            |
+| `:time/local-date-time`  | 2020-01-01T12:00:00                                  | `LocalDateTime`        |
+| `:time/local-time`       | 12:00:00                                             | `LocalTime`            |
+| `:time/offset-date-time` | 2022-12-18T06:00:25.840823567-06:00                  | `OffsetDateTime`       |
+| `:time/offset-time`      | 12:00:00+00:00                                       | `OffsetTime`           |
+| `:time/zone-id`          | UTC                                                  | `ZoneId`               |
+| `:time/zone-offset`      | +15:00                                               | `ZoneOffset`           |
+| `:time/zoned-date-time`  | 2022-12-18T06:00:25.840823567-06:00[America/Chicago] | `ZonedDateTime`        |
+
+To use these schemas, add the schemas provided by `(malli.experimental.time/schemas)` to your registry.
+
+Using time-schemas to default registry:
+
+```clj
+(require '[malli.experimental.time :as met])
+
+(mr/set-default-registry!
+  (mr/composite-registry
+    (m/default-schemas)
+    (met/schemas)))
+```
+
+#### min/max
+
+Time schemas respect min/max predicates for their respective types:
+
+```clojure
+(import (java.time LocalTime))
+
+[:time/local-time {:min (LocalTime/parse "12:00:00") :max (LocalTime/parse "13:00:00")}]
+```
+
+Will be valid only for local times between 12:00 and 13:00.
+
+#### Transformation - `malli.experimental.time.transform`
+
+The `malli.experimental.time.transform` namespace provides a `time-transformer` from string to the correct type.
+
+Formats can be configured by providing a `formatter` or a `pattern` property
+
+- pattern: should be a string
+- formatter: should be a DateTimeFormatter
+
+```clojure
+(require '[malli.experimental.time.transform :as mett])
+
+(as-> "20200101" $
+  (m/decode [:time/local-date {:pattern "yyyyMMdd"}] $ (mett/time-transformer))
+  (m/encode [:time/local-date {:pattern "yyyy_MM_dd"}] $ (mett/time-transformer))
+  (= "2020_01_01" $))
+; => true
+```
+
+#### Generators - `malli.experimental.time.generator`
+
+Require `malli.experimental.time.generator` to add support for time schema generators.
+
+Generated data also respects min/max properties.
+
+#### JSON Schema - `malli.experimental.time.json-schema`
+
+Require `malli.experimental.time.json-schema` to add support for json
+schema time formats.
+
+Json schema formats map to the following string formats:
+
+- time/local-date: date
+- time/offset-time: time
+- time/offset-date-time: date-time
+- time/duration: duration
 
 ## Description
 

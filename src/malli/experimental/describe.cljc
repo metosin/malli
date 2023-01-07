@@ -45,11 +45,11 @@
          (when (:registry (m/properties schema))
            (str " "
                 (when-not just-one "which is: ")
-                (diamond
-                  (str/join ", "
-                            (for [[name schema] (:registry (m/properties schema))]
-                              (str (when-not just-one (str name " is "))
-                                   (describe schema))))))))))
+                (-diamond
+                 (str/join ", "
+                           (for [[name schema] (:registry (m/properties schema))]
+                             (str (when-not just-one (str name " is "))
+                                  (describe schema))))))))))
 
 (defmethod accept :schema [_ schema children options] (-schema schema children options))
 (defmethod accept ::m/schema [_ schema children options] (-schema schema children options))
@@ -82,11 +82,11 @@
 (defmethod accept 'ifn? [_ _ _ _] "implmenets IFn")
 (defmethod accept 'fn? [_ _ _ _] "function")
 
-(defmethod accept :>  [_ _ [value] _] (str "> " value))
+(defmethod accept :> [_ _ [value] _] (str "> " value))
 (defmethod accept :>= [_ _ [value] _] (str ">= " value))
-(defmethod accept :<  [_ _ [value] _] (str "< " value))
+(defmethod accept :< [_ _ [value] _] (str "< " value))
 (defmethod accept :<= [_ _ [value] _] (str "<= " value))
-(defmethod accept :=  [_ _ [value] _] (str "must equal " value))
+(defmethod accept := [_ _ [value] _] (str "must equal " value))
 (defmethod accept :not= [_ _ [value] _] (str "not equal " value))
 (defmethod accept :not [_ _ children _] {:not (last children)})
 
@@ -94,8 +94,8 @@
   (let [dispatcher (or (-> s m/properties :dispatch-description)
                        (-> s m/properties :dispatch))]
     (str "one of "
-         (diamond
-           (str/join " | " (map (fn [[title _ shape]] (str title " = " shape)) children)))
+         (-diamond
+          (str/join " | " (map (fn [[title _ shape]] (str title " = " shape)) children)))
          " dispatched by " dispatcher)))
 
 (defmethod accept :map-of [_ schema children _]
@@ -153,8 +153,8 @@
 (defmethod accept :tuple [_ s children _] (str "vector " (titled s) "with exactly " (count children) " items of type: " (str/join ", " children)))
 (defmethod accept :re [_ s _ options] (str "regex pattern " (titled s) "matching " (pr-str (first (m/children s options)))))
 
-(defmethod accept 'any? [_ s _ _] (str "anything" (titled s)))
-(defmethod accept :any [_ s _ _] (str "anything" (titled s)))
+(defmethod accept 'any? [_ s _ _] (str "anything" (-titled s)))
+(defmethod accept :any [_ s _ _] (str "anything" (-titled s)))
 
 (defmethod accept 'some? [_ _ _ _] "anything but null")
 (defmethod accept :some [_ _ _ _] "anything but null")
@@ -225,14 +225,14 @@
 (defmethod accept 'map? [n schema children o] (-map n schema children o))
 (defmethod accept :map [n schema children o] (-map n schema children o))
 
-(defn- -descriptor-walker [schema _ children options]
+(defn -descriptor-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
     (or (get p :description)
         (if (satisfies? Descriptor schema)
           (-accept schema children options)
           (accept (m/type schema) schema children options)))))
 
-(defn- -describe [?schema options]
+(defn -describe [?schema options]
   (m/walk ?schema -descriptor-walker options))
 
 ;;

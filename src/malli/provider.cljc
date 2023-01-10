@@ -54,19 +54,22 @@
                      (when (apply = @vs*) (into [:tuple] (first @vs*)))))))
         [type (-> @vstats* :values (schema options))])))
 
-(defn -map-schema [{tc :count :as stats} schema {:keys [::infer ::map-of-threshold] :or {map-of-threshold 8} :as options}]
+(defn -map-of-accept [stats]
+  (let [ks (->> stats :data (mapcat keys))] (> (count (distinct ks)) (Math/pow (count ks) 0.7))))
+
+(defn -map-schema [{tc :count :as stats} schema {:keys [::infer ::map-of-threshold ::map-of-accept] :or {map-of-accept -map-of-accept} :as options}]
   (let [entries (map (fn [[key vstats]] {:key key, :vs (schema vstats options), :vc (:count vstats)}) (:keys stats))
         ks* (delay (schema (reduce infer {} (map :key entries)) options))
         ?ks* (delay (let [kss (map #(schema (infer {} (:key %)) options) entries)] (when (apply = kss) (first kss))))
         vs* (delay (schema (reduce infer {} (->> stats :data (mapcat vals))) options))
         vss (map :vs entries)]
     (or (when (some-> stats :hints (= #{:map-of})) [:map-of @ks* @vs*])
-        (when (and (>= (count entries) map-of-threshold) @?ks* (apply = vss)) [:map-of @?ks* (first vss)])
+        (when (and (some->> map-of-threshold (>= tc)) @?ks* (apply = vss) (map-of-accept stats)) [:map-of @?ks* (first vss)])
         (into [:map] (map (fn [{:keys [key vs vc]}] (if (not= tc vc) [key {:optional true} vs] [key vs])) entries)))))
 
 (defn -decoded [{:keys [values]} vp t]
-  (let [vs (keys values), -decode (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) false vs))]
-    (reduce-kv (fn [acc s f] (if (-decode f) (reduced s) acc)) t vp)))
+  (let [vs (keys values), << (fn [f] (reduce (fn [_ v] (let [v' (f v)] (or (not= v v') (reduced false)))) false vs))]
+    (reduce-kv (fn [acc s f] (if (<< f) (reduced s) acc)) t vp)))
 
 (defn -schema
   ([stats] (-schema stats nil))
@@ -93,8 +96,9 @@
 (defn provider
   "Returns a inferring function of `values -> schema`. Supports the following options:
 
-  - `:malli.provider/map-of-threshold (default 3), how many identical value schemas need for :map-of
   - `:malli.provider/tuple-threshold, how many identical value schemas need for :tuple
+  - `:malli.provider/map-of-threshold, how many identical value schemas need for :map-of
+  - `:malli.provider/map-of-accept, function of type `stats -> boolean` to identify :map-of
   - `:malli.provider/value-decoders, function of `type -> target-type -> value -> decoded-value`"
   ([] (provider nil))
   ([options] (let [infer (-inferrer options)]

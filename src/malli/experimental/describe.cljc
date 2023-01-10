@@ -112,36 +112,36 @@
 (defmethod accept 'set? [_ schema children _] (str "set" (titled schema) (length-suffix schema) (of-clause children)))
 (defmethod accept :set [_ schema children _] (str "set" (titled schema) (length-suffix schema) (of-clause children)))
 
-(defmethod accept 'string? [_ schema _ _] (str "string" (length-suffix schema)))
-(defmethod accept :string [_ schema _ _] (str "string" (length-suffix schema)))
+(defmethod accept 'string? [_ schema _ _] (str "string" (titled schema) (length-suffix schema)))
+(defmethod accept :string [_ schema _ _] (str "string" (titled schema) (length-suffix schema)))
 
-(defmethod accept 'number? [_ schema _ _] (str "number" (min-max-suffix schema)))
-(defmethod accept :number [_ schema _ _] (str "number" (min-max-suffix schema)))
+(defmethod accept 'number? [_ schema _ _] (str "number" (titled schema) (min-max-suffix schema)))
+(defmethod accept :number [_ schema _ _] (str "number" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'pos-int? [_ schema _ _] (str "integer greater than 0" (min-max-suffix schema)))
-(defmethod accept :pos-int [_ schema _ _] (str "integer greater than 0" (min-max-suffix schema)))
+(defmethod accept 'pos-int? [_ schema _ _] (str "integer greater than 0" (titled schema) (min-max-suffix schema)))
+(defmethod accept :pos-int [_ schema _ _] (str "integer greater than 0" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'neg-int? [_ schema _ _] (str "integer less than 0" (min-max-suffix schema)))
-(defmethod accept :neg-int [_ schema _ _] (str "integer less than 0" (min-max-suffix schema)))
+(defmethod accept 'neg-int? [_ schema _ _] (str "integer less than 0" (titled schema) (min-max-suffix schema)))
+(defmethod accept :neg-int [_ schema _ _] (str "integer less than 0" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'nat-int? [_ schema _ _] (str "natural integer" (min-max-suffix schema)))
-(defmethod accept :nat-int [_ schema _ _] (str "natural integer" (min-max-suffix schema)))
+(defmethod accept 'nat-int? [_ schema _ _] (str "natural integer" (titled schema) (min-max-suffix schema)))
+(defmethod accept :nat-int [_ schema _ _] (str "natural integer" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'float? [_ schema _ _] (str "float" (min-max-suffix schema)))
-(defmethod accept :float [_ schema _ _] (str "float" (min-max-suffix schema)))
+(defmethod accept 'float? [_ schema _ _] (str "float" (titled schema) (min-max-suffix schema)))
+(defmethod accept :float [_ schema _ _] (str "float" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'pos? [_ schema _ _] (str "number greater than 0" (min-max-suffix schema)))
-(defmethod accept :pos [_ schema _ _] (str "number greater than 0" (min-max-suffix schema)))
+(defmethod accept 'pos? [_ schema _ _] (str "number greater than 0" (titled schema) (min-max-suffix schema)))
+(defmethod accept :pos [_ schema _ _] (str "number greater than 0" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'neg? [_ schema _ _] (str "number less than 0" (min-max-suffix schema)))
-(defmethod accept :neg [_ schema _ _] (str "number less than 0" (min-max-suffix schema)))
+(defmethod accept 'neg? [_ schema _ _] (str "number less than 0" (titled schema) (min-max-suffix schema)))
+(defmethod accept :neg [_ schema _ _] (str "number less than 0" (titled schema) (min-max-suffix schema)))
 
-(defmethod accept 'integer? [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
-(defmethod accept 'int? [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
-(defmethod accept :int [_ schema _ _] (str "integer" (min-max-suffix-number schema)))
+(defmethod accept 'integer? [_ schema _ _] (str "integer" (titled schema)  (min-max-suffix-number schema)))
+(defmethod accept 'int? [_ schema _ _] (str "integer" (titled schema) (min-max-suffix-number schema)))
+(defmethod accept :int [_ schema _ _] (str "integer" (titled schema) (min-max-suffix-number schema)))
 
-(defmethod accept 'double? [_ schema _ _] (str "double" (min-max-suffix-number schema)))
-(defmethod accept :double [_ schema _ _] (str "double" (min-max-suffix-number schema)))
+(defmethod accept 'double? [_ schema _ _] (str "double" (titled schema) (min-max-suffix-number schema)))
+(defmethod accept :double [_ schema _ _] (str "double" (titled schema) (min-max-suffix-number schema)))
 
 (defmethod accept :merge [_ schema _ options] ((::describe options) (m/deref schema) options))
 (defmethod accept :union [_ schema _ options] ((::describe options) (m/deref schema) options))

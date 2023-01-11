@@ -35,9 +35,9 @@
         max-timez (-pluralize-times max)]
     (cond
       (and min max) (str " at least " min " " min-timez ", up to " max " " max-timez)
-      min           (str " at least " min " " min-timez)
-      max           (str " at most " max " " max-timez)
-      :else         "")))
+      min (str " at least " min " " min-timez)
+      max (str " at most " max " " max-timez)
+      :else "")))
 
 (defn -min-max-suffix-number [schema]
   (let [{:keys [min max]} (-> schema m/properties)]
@@ -47,9 +47,7 @@
       max (str " less than or equal to " max)
       :else "")))
 
-(defmulti accept
-  "Can this be accepted?"
-  (fn [name _schema _children _options] name) :default ::default)
+(defmulti accept "Can this be accepted?" (fn [name _schema _children _options] name) :default ::default)
 
 (defmethod accept ::default [name schema children {:keys [missing-fn]}] (if missing-fn (missing-fn name schema children) ""))
 
@@ -59,11 +57,9 @@
          (when (:registry (m/properties schema))
            (str " "
                 (when-not just-one "which is: ")
-                (-diamond
-                  (str/join ", "
-                            (for [[name schema] (:registry (m/properties schema))]
-                              (str (when-not just-one (str name " is "))
-                                   (describe schema))))))))))
+                (-diamond (str/join ", " (for [[name schema] (:registry (m/properties schema))]
+                                           (str (when-not just-one (str name " is "))
+                                                (describe schema))))))))))
 
 (defmethod accept :schema [_ schema children options] (-schema schema children options))
 (defmethod accept ::m/schema [_ schema children options] (-schema schema children options))
@@ -202,8 +198,7 @@
 (defmethod accept :function [_ _ _children _] "function")
 (defmethod accept :fn [_ _ _ _] "function")
 
-(defn -tagged [children]
-  (map (fn [[tag _ c]] (str c " (tag: " tag ")" )) children))
+(defn -tagged [children] (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children))
 
 (defmethod accept :or [_ _ children _] (str/join ", or " children))
 (defmethod accept :orn [_ _ children _] (str/join ", or " (-tagged children)))
@@ -230,11 +225,11 @@
 (defn -map [_n schema children _o]
   (let [optional (set (->> children (filter (m/-comp :optional second)) (mapv first)))
         additional-properties (:closed (m/properties schema))
-        kv-description (str/join ", " (map (fn [[k _ s]] (str k (when (contains? optional  k) " (optional)") " -> " (-diamond s))) children))]
+        kv-description (str/join ", " (map (fn [[k _ s]] (str k (when (contains? optional k) " (optional)") " -> " (-diamond s))) children))]
     (str/trim
-      (cond-> (str "map " (-titled schema))
-        (seq kv-description) (str "where {" kv-description "} ")
-        additional-properties (str "with no other keys ")))))
+     (cond-> (str "map " (-titled schema))
+       (seq kv-description) (str "where {" kv-description "} ")
+       additional-properties (str "with no other keys ")))))
 
 (defmethod accept ::m/val [_ _ children _] (first children))
 (defmethod accept 'map? [n schema children o] (-map n schema children o))
@@ -243,9 +238,9 @@
 (defn -descriptor-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
     (or (get p :description)
-      (if (satisfies? Descriptor schema)
-        (-accept schema children options)
-        (accept (m/type schema) schema children options)))))
+        (if (satisfies? Descriptor schema)
+          (-accept schema children options)
+          (accept (m/type schema) schema children options)))))
 
 (defn -describe [?schema options]
   (m/walk ?schema -descriptor-walker options))

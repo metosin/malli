@@ -33,7 +33,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * (require '[malli.experimental.describe :as med])
 
 (med/describe [:map {:closed true} [:x int?]])
-; => "a map where {:x -> <integer>} with no other keys"
+; => "map where {:x -> <integer>} with no other keys"
 ```
 
 ## 0.9.2 (2022-10-18)

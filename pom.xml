@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.9.2</version>
+  <version>0.10.0</version>
   <name>malli</name>
   <licenses>
     <license>
@@ -15,9 +15,19 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.9.2</tag>
+    <tag>0.10.0</tag>
   </scm>
   <dependencies>
+    <dependency>
+      <groupId>fipp</groupId>
+      <artifactId>fipp</artifactId>
+      <version>0.6.26</version>
+    </dependency>
+    <dependency>
+      <groupId>mvxcvi</groupId>
+      <artifactId>arrangement</artifactId>
+      <version>2.0.0</version>
+    </dependency>
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>dynaload</artifactId>
@@ -33,16 +43,6 @@
       <artifactId>test.check</artifactId>
       <version>1.1.1</version>
     </dependency>
-    <dependency>
-      <groupId>fipp</groupId>
-      <artifactId>fipp</artifactId>
-      <version>0.6.26</version>
-    </dependency>
-    <dependency>
-      <groupId>mvxcvi</groupId>
-      <artifactId>arrangement</artifactId>
-      <version>2.0.0</version>
-    </dependency>
   </dependencies>
   <build>
     <sourceDirectory>src</sourceDirectory>
@@ -55,7 +55,7 @@
   <repositories>
     <repository>
       <id>clojars</id>
-      <url>https://clojars.org/repo</url>
+      <url>https://repo.clojars.org/</url>
     </repository>
   </repositories>
   <distributionManagement>

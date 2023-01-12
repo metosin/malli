@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.10.0 (2023-01-12)
 
 * New optional time-schemas for the JVM on top of `java.time`: 
   * `:time/duration`, `:time/instant`, `:time/local-date`, `:time/local-date-time`, `:time/local-time`, `:time/offset-date-time`, `:time/offset-time`, `:time/zone-id`, `:time/zone-offset`, `:time/zoned-date-time`, see [README](README.md#malliexperimentaltime)
@@ -24,7 +24,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * **BREAKING**: new implemenation for `:map-of` inferring via `malli.provider/provide`:
   * Option `:malli.provider/map-of-threshold` default dropped (was 3)
   * New and configurable (`malli.provider/map-of-accept`) function of `stats -> boolean` for identifying `:map-of`
-* **BREAKING**: Prefer to real Schemas instead of predicates (e.g. `:int` over `'int?`)
+* **BREAKING**: Prefer to real Schemas instead of predicates in inferring (e.g. `:int` over `'int?`)
 * Adds `:pred` option to `m/-map-schema` [#767](https://github.com/metosin/malli/pull/767)
 * New `:some` schema (like `some?`)
 * New `malli.experimental.describe` to describe Schemas in english:

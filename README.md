@@ -32,6 +32,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 
 Presentations:
 
+- [Transforming Data With Malli and Meander](https://www.metosin.fi/blog/transforming-data-with-malli-and-meander/)
 - [High-Performance Schemas in Clojure/Script with Malli 1/2](https://www.metosin.fi/blog/high-performance-schemas-in-clojurescript-with-malli-1-2/)
 - [ClojureStream Podcast: Malli wtih Tommi Reiman](https://soundcloud.com/clojurestream/s4-e30-malli-wtih-tommi-reiman)
 - [Structure and Interpretation of Malli Regex Schemas](https://www.metosin.fi/blog/malli-regex-schemas/)

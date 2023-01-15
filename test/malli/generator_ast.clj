@@ -10,7 +10,8 @@
             ;; change the namespace
             (str/replace-first "(ns malli.generator" "(ns malli.generator-ast")
             ;; change the `gen` alias to the AST version
-            (str/replace-first "clojure.test.check.generators" "malli.generator-debug"))]
+            (str/replace-first "clojure.test.check.generators" "malli.generator-debug")
+            (str/replace #"::(\S[^\/]+?)" "::mg/$1"))]
   ;; eval ns form first so keywords can be resolved in the right namespace
   (eval (read-string {:read-cond :allow :features #{:clj}} s))
   (eval (read-string {:read-cond :allow :features #{:clj}} (str "(do " s ")"))))

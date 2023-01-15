@@ -1,3 +1,4 @@
+;; See also `malli.generator-ast` for viewing generators as data
 (ns malli.generator
   (:require [clojure.spec.gen.alpha :as ga]
             [clojure.string :as str]

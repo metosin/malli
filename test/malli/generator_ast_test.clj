@@ -1,6 +1,5 @@
 (ns malli.generator-ast-test
-  (:require [clojure.pprint :refer [pprint]]
-            [clojure.test :refer [are deftest is testing]]
+  (:require [clojure.test :refer [deftest is]]
             [clojure.test.check.generators :as tcgen]
             [malli.generator-ast :as ast]))
 

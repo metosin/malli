@@ -1,6 +1,4 @@
 ;; See also `malli.generator-ast` for viewing generators as data
-;; Note: use `::mg/foo` instead of `::foo` in this namespace
-;; to assist in generating `malli.generator-ast`.
 (ns malli.generator
   (:require [clojure.spec.gen.alpha :as ga]
             [clojure.string :as str]
@@ -11,7 +9,6 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
-            [malli.generator :as-alias mg]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
@@ -52,7 +49,7 @@
 
 (defn -never-gen
   "Return a generator of no values that is compatible with -unreachable-gen?."
-  [{::mg/keys [original-generator-schema] :as _options}]
+  [{::keys [original-generator-schema] :as _options}]
   (with-meta (gen/such-that (fn [_]
                               (throw (ex-info
                                       (str "Cannot generate values due to infinitely expanding schema: "
@@ -62,12 +59,12 @@
                                       (cond-> {}
                                         original-generator-schema (assoc :schema (m/form original-generator-schema))))))
                             gen/any)
-             {::mg/never-gen true
-              ::mg/original-generator-schema original-generator-schema}))
+             {::never-gen true
+              ::original-generator-schema original-generator-schema}))
 
 (defn -unreachable-gen?
   "Returns true iff generator g generators no values."
-  [g] (-> (meta g) ::mg/never-gen boolean))
+  [g] (-> (meta g) ::never-gen boolean))
 
 (defn -not-unreachable [g] (when-not (-unreachable-gen? g) g))
 
@@ -84,9 +81,9 @@
 (defn -min-max [schema options]
   (let [{:keys [min max] gen-min :gen/min gen-max :gen/max} (m/properties schema options)]
     (when (and min gen-min (< gen-min min))
-      (m/-fail! ::mg/invalid-property {:key :gen/min, :value gen-min, :min min}))
+      (m/-fail! ::invalid-property {:key :gen/min, :value gen-min, :min min}))
     (when (and max gen-max (> gen-max max))
-      (m/-fail! ::mg/invalid-property {:key :gen/max, :value gen-min, :max min}))
+      (m/-fail! ::invalid-property {:key :gen/max, :value gen-min, :max min}))
     {:min (or gen-min min)
      :max (or gen-max max)}))
 
@@ -94,10 +91,10 @@
 
 (defn- gen-vector-min [gen min options]
   (cond-> (gen/sized #(gen/vector gen min (+ min %)))
-    (::mg/generator-ast options) (vary-meta assoc ::mg/generator-ast
-                                            {:op :vector-min
-                                             :generator gen
-                                             :min min})))
+    (::generator-ast options) (vary-meta assoc ::generator-ast
+                                         {:op :vector-min
+                                          :generator gen
+                                          :min min})))
 
 (defn- -string-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)]
@@ -302,12 +299,12 @@
 
 (defn -ref-gen [schema options]
   (let [ref-id (-identify-ref-schema schema)]
-    (or (force (get-in options [::mg/rec-gen ref-id]))
+    (or (force (get-in options [::rec-gen ref-id]))
         (let [scalar-ref-gen (delay (-never-gen options))
               dschema (m/deref schema)]
-          (cond->> (generator dschema (assoc-in options [::mg/rec-gen ref-id] scalar-ref-gen))
+          (cond->> (generator dschema (assoc-in options [::rec-gen ref-id] scalar-ref-gen))
             (realized? scalar-ref-gen) (gen/recursive-gen
-                                        #(generator dschema (assoc-in options [::mg/rec-gen ref-id] %))))))))
+                                        #(generator dschema (assoc-in options [::rec-gen ref-id] %))))))))
 
 (defn -=>-gen [schema options]
   (let [output-generator (generator (:output (m/-function-info schema)) options)]
@@ -351,8 +348,8 @@
 
 (defn -*-gen [schema options]
   (let [child (m/-get schema 0 nil)
-        mode (::mg/-*-gen-mode options :*)
-        options (dissoc options ::mg/-*-gen-mode)]
+        mode (::-*-gen-mode options :*)
+        options (dissoc options ::-*-gen-mode)]
     (if-some [g (-not-unreachable (generator child options))]
       (cond->> (case mode
                  :* (gen/vector g)
@@ -364,7 +361,7 @@
         :+ (-never-gen options)))))
 
 (defn -+-gen [schema options]
-  (-*-gen schema (assoc options ::mg/-*-gen-mode :+)))
+  (-*-gen schema (assoc options ::-*-gen-mode :+)))
 
 (defn -repeat-gen [schema options]
   (let [child (m/-get schema 0 nil)]
@@ -390,9 +387,9 @@
     (gen/return (first es))
     (gen/elements es)))
 
-(defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::mg/default)
+(defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
-(defmethod -schema-generator ::mg/default [schema options] (ga/gen-for-pred (m/validator schema options)))
+(defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
 (defmethod -schema-generator :> [schema options] (-double-gen {:min (-> schema (m/children options) first inc)}))
 (defmethod -schema-generator :>= [schema options] (-double-gen {:min (-> schema (m/children options) first)}))
@@ -478,7 +475,7 @@
       (when-not (:gen/elements props)
         (if (satisfies? Generator schema)
           (-generator schema options)
-          (-schema-generator schema (assoc options ::mg/original-generator-schema schema))))))
+          (-schema-generator schema (assoc options ::original-generator-schema schema))))))
 
 (defn- -create-from-schema [props options]
   (some-> (:gen/schema props) (generator options)))
@@ -498,8 +495,8 @@
         (-create-from-elements props)
         (-create-from-schema props options)
         (-create-from-gen props schema options)
-        (m/-fail! ::mg/no-generator {:options options
-                                     :schema schema}))))
+        (m/-fail! ::no-generator {:options options
+                                  :schema schema}))))
 
 ;;
 ;; public api
@@ -509,7 +506,7 @@
   ([?schema]
    (generator ?schema nil))
   ([?schema options]
-   (if (::mg/rec-gen options)
+   (if (::rec-gen options)
      ;; disable cache while calculating recursive schemas. caches don't distinguish options.
      (-create (m/schema ?schema options) options)
      (m/-cached (m/schema ?schema options) :generator #(-create % options)))))
@@ -537,7 +534,7 @@
 
 (defn function-checker
   ([?schema] (function-checker ?schema nil))
-  ([?schema {::mg/keys [=>iterations] :or {=>iterations 100} :as options}]
+  ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
    (let [schema (m/schema ?schema options)
          check (fn [schema]
                  (let [{:keys [input output]} (m/-function-info schema)
@@ -554,15 +551,15 @@
                                           (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
                                explain-output (when-not explain-input (m/explain output response))]
                            (cond-> shrunk
-                             explain-input (assoc ::mg/explain-input explain-input)
-                             explain-output (assoc ::mg/explain-output explain-output)
+                             explain-input (assoc ::explain-input explain-input)
+                             explain-output (assoc ::explain-output explain-output)
                              (ex-message result) (-> (update :result ex-message)
                                                      (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]
                    (fn [x] (->> checkers (keep #(% x)) (seq))))
-       (m/-fail! ::mg/invalid-function-schema {:type (m/-type schema)})))))
+       (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
 
 (defn check
   ([?schema f] (check ?schema f nil))

@@ -9,7 +9,6 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
-            [malli.generator :as-alias mg]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)

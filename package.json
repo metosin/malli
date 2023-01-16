@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "@js-joda/core": "3.2.0",
     "isomorphic-ws": "^4.0.1",
     "shadow-cljs": "^2.20.20",
     "ws": "^7.4.6"

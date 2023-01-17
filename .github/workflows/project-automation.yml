@@ -1,0 +1,19 @@
+name: Add new PRs and issues to project
+
+on:
+  issues:
+    types:
+      - opened
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  add-to-project:
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v0.4.0
+        with:
+          project-url: ${{ secrets.OS_PROJECT }}
+          github-token: ${{ secrets.GHPROJECT_TOKEN }}

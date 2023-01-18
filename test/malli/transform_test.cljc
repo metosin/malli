@@ -401,12 +401,23 @@
               [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
               {"key_x" "18" "key_y" "john" "key_a" "doe"}
               transformer))))
+
     (testing "encode"
       (is (= {"key_x" "18" "key_y" "john"}
              (m/encode
               [:map [:x int?] [:y string?] [[:opt :z] boolean?]]
               {:x 18 :y "john" :a "doe"}
-              transformer))))))
+              transformer)))))
+
+  (testing "extra-keys-transformer shouldn't break non map values"
+    (is (= {:foo "bar"}
+           (m/decode
+             [:map {:decode/string (fn [s] {:foo s})}
+              [:foo :string]]
+             "bar"
+             (mt/transformer
+               (mt/strip-extra-keys-transformer)
+               (mt/string-transformer)))))))
 
 (deftest strip-extra-keys-transformer-test
   (let [strip-default (mt/strip-extra-keys-transformer)

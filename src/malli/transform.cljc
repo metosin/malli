@@ -373,7 +373,12 @@
    (let [transform {:compile (fn [schema _]
                                (when (accept schema)
                                  (when-let [ks (some->> schema m/entries (map first) seq set)]
-                                   (fn [x] (reduce-kv (fn [acc k _] (if-not (ks k) (dissoc acc k) acc)) x x)))))}]
+                                   (fn [x]
+                                     ;; accept checks if the schema is compatible with strip-extra-keys,
+                                     ;; but the value might not be compatible with reduce-kv, i.e. a string.
+                                     (if (map? x)
+                                       (reduce-kv (fn [acc k _] (if-not (ks k) (dissoc acc k) acc)) x x)
+                                       x)))))}]
      (transformer
       {:decoders {:map transform}
        :encoders {:map transform}}))))

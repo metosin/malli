@@ -3196,6 +3196,7 @@ or directly in a babashka script:
 - [malli-key-relations](https://github.com/bsless/malli-keys-relations) - Relational schemas about map keys for malli
 - [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
 - [malapropism](https://github.com/dpassen/malapropism) - malli-backed configuration library
+- [muotti](https://github.com/esuomi/muotti) - a graph based value transformer library with malli-support
 
 ## License
 

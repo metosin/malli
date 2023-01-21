@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 0.10.1 (2023-01-21)
+
+* Strip-extra-keys should not break on non-map values [#818](https://github.com/metosin/malli/pull/818)
+
 ## 0.10.0 (2023-01-12)
 
 * New optional time-schemas for the JVM on top of `java.time`: 

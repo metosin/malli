@@ -73,7 +73,7 @@
             [[1 "2"] ::throws]]
     :instrumented [[[1 2] 3]
                    [[-2 1] ::throws] ;; input
-                   [[-1 -1] ::throws] ;; ret
+                   [[2 -3] ::throws] ;; ret
                    [[1 "2"] ::throws]]}
    {:var #'f5
     :meta {:arglists '([[& {:keys [a b], :as m1}] & {:keys [c d], :as m2}])

@@ -1,5 +1,6 @@
 (ns malli.experimental-test
   (:require [clojure.test :refer [deftest is testing]]
+            [malli.dev]
             [malli.experimental :as mx]
             [malli.instrument :as mi]))
 
@@ -150,24 +151,21 @@
           (finally
             (-strument! :unstrument var)))))))
 
-(deftest always-check-test
-  ;; Defns inside this test for now to avoid malli.dev/start! ruining the instrumentation.
-  ;; Some other test can run start! between loading the defn and running this test.
 
-  (mx/defn ^:malli/always-check f4-checked :- [:int {:min 0}]
-    "int int -> int functions"
-    [x :- [:int {:min 0}], y :- :int]
-    (+ x y))
+(mx/defn ^:malli/always-check f4-checked :- [:int {:min 0}]
+  "int int -> int functions"
+  [x :- [:int {:min 0}], y :- :int]
+  (+ x y))
 
-  (mx/defn f4-checked-2 :- [:int {:min 0}]
-    "int int -> int functions"
-    {:malli/always-check true}
-    [x :- [:int {:min 0}], y :- :int]
-    (+ x y))
+(mx/defn f4-checked-2 :- [:int {:min 0}]
+  "int int -> int functions"
+  {:malli/always-check true}
+  [x :- [:int {:min 0}], y :- :int]
+  (+ x y))
 
-  (doseq [[f description]
-          [[f4-checked ":malli/always-check meta on var"]
-           [f4-checked-2 ":malli/always-check meta inside defn"]]]
+(defn always-check-assertions []
+  (doseq [[f description] [[f4-checked ":malli/always-check meta on var"]
+                           [f4-checked-2 ":malli/always-check meta inside defn"]]]
     (testing description
       (is (= 3 (f 1 2))
           "valid input works")
@@ -181,3 +179,15 @@
                   (catch Exception e
                     (:type (ex-data e)))))
           "invalid output throws"))))
+
+(deftest always-check-test
+  (testing "without malli.dev"
+    (always-check-assertions))
+  (testing "with malli.dev/start!"
+    (malli.dev/start!)
+    (try
+      (always-check-assertions)
+      (finally
+        (malli.dev/stop!))))
+  (testing "after malli.dev/stop!"
+    (always-check-assertions)))

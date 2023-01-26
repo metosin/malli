@@ -57,7 +57,7 @@
        (m/=> ~name ~schema)
        ~(when (or (:malli/always-check var-meta)
                   (:malli/always-check body-meta))
-          `(mi/instrument! {:filters [(mi/-filter-var #{(var ~name)})]}))
+          `(alter-var-root (var ~name) (fn [f#] (m/-instrument {:schema ~schema} f#))))
        defn#)))
 
 ;;

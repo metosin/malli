@@ -116,7 +116,7 @@
 
 (defn -strument! [mode v]
   (with-out-str
-    (mi/instrument!
+    (mi/-strument!
      {:mode mode
       :filters [(mi/-filter-var #(= % v))]})))
 
@@ -141,7 +141,7 @@
 
     (when instrumented
       (testing "instrumented calls"
-        (-strument! :instument var)
+        (-strument! :instrument var)
         (try
           (doseq [[arg ret] instrumented]
             (if (= ::throws ret)

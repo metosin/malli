@@ -3,7 +3,8 @@
   #?(:cljs (:require-macros malli.experimental))
   (:require [clojure.core :as c]
             [malli.core :as m]
-            [malli.destructure :as md]))
+            [malli.destructure :as md]
+            [malli.instrument :as mi]))
 
 (c/defn -schema [inline-schemas]
   (m/schema
@@ -36,7 +37,10 @@
 (def Params (-schema false))
 
 (c/defn -defn [schema args]
-  (let [{:keys [name return doc meta arities] :as parsed} (m/parse schema args)
+  (let [{:keys [name return doc arities]
+         body-meta :meta
+         :as parsed} (m/parse schema args)
+        var-meta (meta name)
         _ (when (= ::m/invalid parsed) (m/-fail! ::parse-error {:schema schema, :args args}))
         parse (fn [{:keys [args] :as parsed}] (merge (md/parse args) parsed))
         ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
@@ -47,10 +51,13 @@
     `(let [defn# (c/defn
                    ~name
                    ~@(some-> doc vector)
-                   ~(assoc meta :raw-arglists (list 'quote raw-arglists), :schema schema)
+                   ~(assoc body-meta :raw-arglists (list 'quote raw-arglists), :schema schema)
                    ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
                    ~@(when-not single (some->> arities val :meta vector)))]
        (m/=> ~name ~schema)
+       ~(when (or (:malli/always-check var-meta)
+                  (:malli/always-check body-meta))
+          `(mi/instrument! {:filters [(mi/-filter-var #{(var ~name)})]}))
        defn#)))
 
 ;;

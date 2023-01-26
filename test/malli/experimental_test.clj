@@ -149,3 +149,35 @@
               (is (= ret (apply var arg)))))
           (finally
             (-strument! :unstrument var)))))))
+
+(deftest always-check-test
+  ;; Defns inside this test for now to avoid malli.dev/start! ruining the instrumentation.
+  ;; Some other test can run start! between loading the defn and running this test.
+
+  (mx/defn ^:malli/always-check f4-checked :- [:int {:min 0}]
+    "int int -> int functions"
+    [x :- [:int {:min 0}], y :- :int]
+    (+ x y))
+
+  (mx/defn f4-checked-2 :- [:int {:min 0}]
+    "int int -> int functions"
+    {:malli/always-check true}
+    [x :- [:int {:min 0}], y :- :int]
+    (+ x y))
+
+  (doseq [[f description]
+          [[f4-checked ":malli/always-check meta on var"]
+           [f4-checked-2 ":malli/always-check meta inside defn"]]]
+    (testing description
+      (is (= 3 (f 1 2))
+          "valid input works")
+      (is (= :malli.core/invalid-input
+             (try (f -2 1)
+                  (catch Exception e
+                    (:type (ex-data e)))))
+          "invalid input throws")
+      (is (= :malli.core/invalid-output
+             (try (f 2 -3)
+                  (catch Exception e
+                    (:type (ex-data e)))))
+          "invalid output throws"))))

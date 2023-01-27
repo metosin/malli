@@ -54,8 +54,8 @@
                    ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
                    ~@(when-not single (some->> arities val :meta vector)))]
        (m/=> ~name ~schema)
-       ~(when (or (:malli/always-check var-meta)
-                  (:malli/always-check body-meta))
+       ~(when (or (:malli/always var-meta)
+                  (:malli/always body-meta))
           `(alter-var-root (var ~name) (fn [f#] (m/-instrument {:schema ~schema} f#))))
        defn#)))
 

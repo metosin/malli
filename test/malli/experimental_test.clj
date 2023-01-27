@@ -152,20 +152,20 @@
             (-strument! :unstrument var)))))))
 
 
-(mx/defn ^:malli/always-check f4-checked :- [:int {:min 0}]
+(mx/defn ^:malli/always f4-checked :- [:int {:min 0}]
   "int int -> int functions"
   [x :- [:int {:min 0}], y :- :int]
   (+ x y))
 
 (mx/defn f4-checked-2 :- [:int {:min 0}]
   "int int -> int functions"
-  {:malli/always-check true}
+  {:malli/always true}
   [x :- [:int {:min 0}], y :- :int]
   (+ x y))
 
-(defn always-check-assertions []
-  (doseq [[f description] [[f4-checked ":malli/always-check meta on var"]
-                           [f4-checked-2 ":malli/always-check meta inside defn"]]]
+(defn always-assertions []
+  (doseq [[f description] [[f4-checked ":malli/always meta on var"]
+                           [f4-checked-2 ":malli/always meta inside defn"]]]
     (testing description
       (is (= 3 (f 1 2))
           "valid input works")
@@ -180,14 +180,14 @@
                     (:type (ex-data e)))))
           "invalid output throws"))))
 
-(deftest always-check-test
+(deftest always-test
   (testing "without malli.dev"
-    (always-check-assertions))
+    (always-assertions))
   (testing "with malli.dev/start!"
     (malli.dev/start!)
     (try
-      (always-check-assertions)
+      (always-assertions)
       (finally
         (malli.dev/stop!))))
   (testing "after malli.dev/stop!"
-    (always-check-assertions)))
+    (always-assertions)))

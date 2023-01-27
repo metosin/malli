@@ -479,10 +479,10 @@ You can enable instrumentation with `mi/instrument!`:
 ; =throws=> :malli.core/invalid-input {:input [:cat :int [:int {:max 6}]], :args [10 10], :schema [:=> [:cat :int [:int {:max 6}]] :int]}
 ```
 
-... or by using metadata `^:malli/always-check`:
+... or by using metadata `^:malli/always`:
 
 ```clojure
-(mx/defn ^:malli/always-check times :- :int
+(mx/defn ^:malli/always times :- :int
   "x times y"
   [x :- :int, y :- small-int]
   (* x y))

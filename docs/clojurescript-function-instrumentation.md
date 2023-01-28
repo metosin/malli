@@ -80,6 +80,29 @@ the instrumented function is the one with the red rectangle around it in the ima
 
 If you click the filename (`instrument_app.cljs` in this example) the browser devtools will open a file viewer at the problematic call-site.
 
+# Clj-Kondo config
+
+Running `malli.dev` instrumentation also emits [clj-kondo](https://github.com/metosin/malli#clj-kondo) type configs for all `defn`s,
+enabling basic static type checking/linting for the instrumented functions.
+
+This is currently only supported when using shadow-cljs.
+
+The config is determined at runtime by the browser's JavaScript VM so cannot be performed statically. Your application must be
+executed in orer to deal with dynamic schemas that may show up in function metadata.
+
+To enable this feature, in your `shadow-cljs.edn` file add the following build [hook](https://shadow-cljs.github.io/docs/UsersGuide.html#build-hooks):
+
+```clojure
+:build-hooks [(malli.dev.shadow-cljs-hooks/kondo-hook :main)]
+```
+
+where `:main` is the module id of your application.
+
+The build id is used to handle cases where multiple shadow-cljs compilations are running simultaneously.
+Currently the setup only supports adding this hook to one running module at a time.
+
+After you setup dev-time instrumentation and hot-reload your app you should see your kondo config file present on the filesystem.
+
 # Releaes builds
 
 For optimized ClojureScript release builds which produce only the required JavaScript for your production release it is advised

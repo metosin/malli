@@ -200,9 +200,13 @@
      (for [[k vs] (m/function-schemas :cljs) :when (-collect k) [_ v] vs v (from v)] v))))
 
 #?(:cljs
+   (defn get-kondo-config []
+     (-> (collect-cljs) (linter-config))))
+
+#?(:cljs
    (defn- print!* [config]
      (js/console.log (with-out-str (fipp/pprint config {:width 120})))))
 
 #?(:cljs
    (defn print-cljs! []
-     (-> (collect-cljs) (linter-config) (print!*)) nil))
+     (-> (get-kondo-config) (print!*)) nil))

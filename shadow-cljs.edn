@@ -7,12 +7,13 @@
                                                    :depends-on #{:cljs}}
                                            :app   {:entries    [malli.app]
                                                    :depends-on #{:malli}}}}
-            :instrument {:target        :browser
-                         :build-options {:cache-level :off}
-                         :output-dir    "public/js/instrument"
-                         :asset-path    "/js/instrument"
-                         :modules       {:app {:entries [malli.instrument-app]
-                                                :init-fn malli.instrument-app/init}}}
+            :instrument {:target          :browser
+                         :build-options   {:cache-level :off}
+                         :build-hooks     [(malli.dev.shadow-cljs-hooks/kondo-hook :instrument)]
+                         :output-dir      "public/js/instrument"
+                         :asset-path      "/js/instrument"
+                         :modules         {:app {:entries [malli.instrument-app]
+                                                 :init-fn malli.instrument-app/init}}}
             :app-sci    {:target          :browser
                          :closure-defines {malli.registry/type "default"}
                          :devtools        {:preloads [sci.core]}

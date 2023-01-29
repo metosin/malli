@@ -2,6 +2,8 @@
   #?(:cljs (:require-macros [malli.dev.cljs]))
   #?(:cljs (:require [malli.instrument :as mi]
                      [malli.core :as m]
+                     ;; include kondo ns so the client build has it present to be called by a shadow-cljs hook
+                     [malli.clj-kondo :as clj-kondo]
                      [malli.dev.pretty :as pretty]))
   #?(:clj (:require [cljs.analyzer.api :as ana-api]
                     [malli.clj-kondo :as clj-kondo]
@@ -17,6 +19,11 @@
 
 #?(:clj (defmacro collect-all! [] (malli.instrument/collect! {:ns (ana-api/all-ns)})))
 
+;; This is used to track when compilation is finished and is read by the shadow-cljs hook that is used to fetch
+;; clj-kondo config data from the client.
+#?(:cljs (defonce build-number_ (volatile! 0)))
+#?(:cljs (defn get-build-number [] @build-number_))
+
 #?(:clj
    (defmacro start!
      "Collects defn schemas from all loaded namespaces and starts instrumentation for
@@ -26,7 +33,7 @@
       - Does not unstrument functions - this is handled by hot reloading.
       - Does not emit clj-kondo type annotations. See `malli.clj-kondo/print-cljs!` to print clj-kondo config.
       - Does not re-instrument functions if the function schemas change - use hot reloading to get a similar effect."
-     ([] `(start! {:report (malli.dev.pretty/thrower) :skip-instrumented? true}))
+     ([] `(start! {:report (malli.dev.pretty/thrower) :skip-instrumented? false}))
      ([options]
       ;; register all function schemas and instrument them based on the options
       ;; first clear out all metadata schemas to support dev-time removal of metadata schemas on functions - they should not be instrumented
@@ -37,7 +44,8 @@
                                             (vec (ana-api/all-ns)))})
          (js/console.groupCollapsed "Instrumentation done")
          (malli.instrument/instrument! (assoc ~options :data (m/function-schemas :cljs)))
-         (js/console.groupEnd)))))
+         (js/console.groupEnd)
+         (vswap! build-number_ inc)))))
 
 ;; only used by deprecated malli.instrument.cljs implementation
 #?(:clj (defmacro deregister-function-schemas! []

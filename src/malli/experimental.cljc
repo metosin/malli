@@ -46,17 +46,25 @@
         single (= :single (key arities))
         parglists (if single (->> arities val parse vector) (->> arities val :arities (map parse)))
         raw-arglists (map :raw-arglist parglists)
-        schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))]
-    `(let [defn# (c/defn
+        schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
+        bodies (map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+        validate? (or (:malli/always var-meta)
+                      (:malli/always body-meta))
+        instr-fn-sym (gensym (str name "-instrumented"))]
+    `(let [~@(when validate?
+               [instr-fn-sym `(m/-instrument
+                               {:schema ~schema}
+                               (fn ~instr-fn-sym ~@bodies))])
+           defn# (c/defn
                    ~name
                    ~@(some-> doc vector)
                    ~(assoc body-meta :raw-arglists (list 'quote raw-arglists), :schema schema)
-                   ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                   ~@(if validate?
+                       (for [{:keys [arglist prepost]} parglists]
+                         `(~arglist ~prepost (~instr-fn-sym ~@arglist)))
+                       bodies)
                    ~@(when-not single (some->> arities val :meta vector)))]
        (m/=> ~name ~schema)
-       ~(when (or (:malli/always var-meta)
-                  (:malli/always body-meta))
-          `(alter-var-root (var ~name) (fn [f#] (m/-instrument {:schema ~schema} f#))))
        defn#)))
 
 ;;

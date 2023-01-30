@@ -163,9 +163,17 @@
   [x :- [:int {:min 0}], y :- :int]
   (+ x y))
 
+(mx/defn f4-checked-multiarity :- [:int {:min 0}]
+  {:malli/always true}
+  ([x :- [:int {:min 0}], y :- :int]
+   (+ x y))
+  ([x :- [:int {:min 2}]]
+   x))
+
 (defn always-assertions []
   (doseq [[f description] [[f4-checked ":malli/always meta on var"]
-                           [f4-checked-2 ":malli/always meta inside defn"]]]
+                           [f4-checked-2 ":malli/always meta inside defn"]
+                           [f4-checked-multiarity "multiple arities"]]]
     (testing description
       (is (= 3 (f 1 2))
           "valid input works")
@@ -178,7 +186,15 @@
              (try (f 2 -3)
                   (catch Exception e
                     (:type (ex-data e)))))
-          "invalid output throws"))))
+          "invalid output throws")))
+  (testing "other arity of multiple arity function"
+    (is (= 3 (f4-checked-multiarity 3))
+        "valid input works")
+    (is (= :malli.core/invalid-input
+           (try (f4-checked-multiarity 1)
+                (catch Exception e
+                  (:type (ex-data e)))))
+        "invalid input throws")))
 
 (deftest always-test
   (testing "without malli.dev"

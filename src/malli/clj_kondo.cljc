@@ -152,13 +152,16 @@
    (-transform ?schema options)))
 
 #?(:clj
-   (defn save! [config]
-     (let [cfg-file (io/file ".clj-kondo" "metosin" "malli-types" "config.edn")]
-       ;; delete the old file if exists (does not throw)
-       (.delete (io/file ".clj-kondo" "configs" "malli" "config.edn"))
-       (io/make-parents cfg-file)
-       (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
-       config)))
+   (defn save!
+     ([config]
+      (save! config :clj))
+     ([config key]
+      (let [cfg-file (io/file ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")]
+        ;; delete the old file if exists (does not throw)
+        (.delete (io/file ".clj-kondo" "configs" "malli" "config.edn"))
+        (io/make-parents cfg-file)
+        (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
+        config))))
 
 (defn from [{:keys [schema ns name]}]
   (let [ns-name (-> ns str symbol)
@@ -200,9 +203,13 @@
      (for [[k vs] (m/function-schemas :cljs) :when (-collect k) [_ v] vs v (from v)] v))))
 
 #?(:cljs
+   (defn get-kondo-config []
+     (-> (collect-cljs) (linter-config))))
+
+#?(:cljs
    (defn- print!* [config]
      (js/console.log (with-out-str (fipp/pprint config {:width 120})))))
 
 #?(:cljs
    (defn print-cljs! []
-     (-> (collect-cljs) (linter-config) (print!*)) nil))
+     (-> (get-kondo-config) (print!*)) nil))

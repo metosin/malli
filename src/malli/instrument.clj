@@ -136,7 +136,7 @@
    | `:malli/scope`  | optional set of scope definitions, defaults to `#{:input :output}`
    | `:malli/report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:malli/gen`    | optional value `true` or function of `schema -> schema -> value` to be invoked on the args to get the return value"
-  ([] `(collect! ~{:ns (symbol (str *ns*))}))
+  ([] `(collect! {:ns (symbol (str ~'*ns*))}))
   ([opts]
    (if (:ns &env)
      `(cljs-collect! ~opts)

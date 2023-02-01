@@ -10,7 +10,6 @@
 
 (defn unstrument! [] (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument-test)]})))
 (defn instrument! [] (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument-test)]})))
-(defn collect! [] (mi/collect! {:ns *ns*}))
 
 (deftest instrument!-test
 
@@ -40,7 +39,7 @@
 
 (defn ->minus [] minus)
 
-(collect!)
+(mi/collect!)
 
 (deftest collect!-test
 

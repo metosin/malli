@@ -1,5 +1,6 @@
 (ns malli.experimental-test
   (:require [clojure.test :refer [deftest is testing]]
+            [malli.dev]
             [malli.experimental :as mx]
             [malli.instrument :as mi]))
 
@@ -73,7 +74,7 @@
             [[1 "2"] ::throws]]
     :instrumented [[[1 2] 3]
                    [[-2 1] ::throws] ;; input
-                   [[-1 -1] ::throws] ;; ret
+                   [[2 -3] ::throws] ;; ret
                    [[1 "2"] ::throws]]}
    {:var #'f5
     :meta {:arglists '([[& {:keys [a b], :as m1}] & {:keys [c d], :as m2}])
@@ -116,7 +117,7 @@
 
 (defn -strument! [mode v]
   (with-out-str
-    (mi/instrument!
+    (mi/-strument!
      {:mode mode
       :filters [(mi/-filter-var #(= % v))]})))
 
@@ -141,7 +142,7 @@
 
     (when instrumented
       (testing "instrumented calls"
-        (-strument! :instument var)
+        (-strument! :instrument var)
         (try
           (doseq [[arg ret] instrumented]
             (if (= ::throws ret)

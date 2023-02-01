@@ -467,7 +467,7 @@ Function schema is registered automatically:
 ; => 100
 ```
 
-with instrumentation:
+You can enable instrumentation with `mi/instrument!`:
 
 ```clojure
 (mi/instrument!)
@@ -477,6 +477,23 @@ with instrumentation:
 
 (times 10 10)
 ; =throws=> :malli.core/invalid-input {:input [:cat :int [:int {:max 6}]], :args [10 10], :schema [:=> [:cat :int [:int {:max 6}]] :int]}
+```
+
+... or by using metadata `^:malli/always`:
+
+```clojure
+(mx/defn ^:malli/always times :- :int
+  "x times y"
+  [x :- :int, y :- small-int]
+  (* x y))
+```
+
+```clojure
+user=> (times 10 5)
+50
+user=> (times 10 10)
+Execution error (ExceptionInfo) at malli.core/-exception (core.cljc:138).
+:malli.core/invalid-input
 ```
 
 ### Defn Instrumentation

@@ -1,18 +1,18 @@
 (ns malli.instrument-app
   (:require
     [malli.instrument :as mi-new]
-    ;[malli.clj-kondo :as mari]
-    ;[malli.helpers2 :as h2]
     malli.helpers
     [malli.core :as m]
-    [malli.dev.cljs :as dev]
     [malli.dev.pretty :as pretty]
     [malli.generator :as mg]
-    ;[malli.dev.cljs :as md]
+    [malli.experimental :as mx]))
 
-    [malli.instrument.cljs :as mi.old]
-    [malli.experimental :as mx]
-    ))
+(mx/defn my-ex-fn :- [:int]
+  [a :- :string] (+ 5 a))
+
+(mx/defn my-ex-fn2 :- [:double]
+  ([a :- :string] (+ 5 a))
+  ([a :- :string, b :- :double] (+ 5 a b)))
 
 (defn init [] (js/console.log "INIT!"))
 (defn x+y
@@ -33,7 +33,6 @@
   (m/-instrument {:schema (m/schema [:=> [:cat :int :int] :int])
                   :report (pretty/reporter)}
     sum))
-
 
 (defn minus
   "a normal clojure function, no dependencies to malli"
@@ -74,6 +73,9 @@
   ([a b & others]
    (apply + a b others)))
 
+(defn a-fun {:malli/schema [:=> [:cat :int] :int]} [a] (+ 5 a))
+(defn a-fun2 {:malli/schema [:=> [:cat :string] :int]} [a] (+ 5 a))
+
 ;(m/=> plus-many
 ;  [:function
 ;   [:=> [:cat :int] :int]
@@ -85,7 +87,6 @@
               [:=> [:cat :int] [:int {:max 6}]]
               [:=> [:cat :int :int] [:int {:max 6}]]]
      :gen mg/generate}))
-
 
 (defn minus2
   "kukka"
@@ -192,9 +193,10 @@
   ;                     ;:skip-instrumented? true
   ;
   ;                 :report (pretty/thrower)})
-  (dev/start!)
+  ;(dev/start!)
   ;(mi.old/instrument!)
-  (js/setTimeout try-it 100))
+  ;(js/setTimeout try-it 100)
+  )
 
 
 (comment

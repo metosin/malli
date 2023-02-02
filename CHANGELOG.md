@@ -16,6 +16,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Add clj-kondo support for cljs function schemas [#833](https://github.com/metosin/malli/pull/833)
+* Turn on instrumentation for `mx/defn` with `:malli/always` meta [#825](https://github.com/metosin/malli/pull/825)
 * FIX: `mi/collect!` without args doesn't work properly [#834](https://github.com/metosin/malli/issues/834)
 
 ## 0.10.1 (2023-01-21)

@@ -50,20 +50,22 @@
         bodies (map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
         validate? (or (:malli/always var-meta)
                       (:malli/always body-meta))
-        instr-fn-sym (gensym (str name "-instrumented"))]
-    `(let [~@(when validate?
-               [instr-fn-sym `(m/-instrument
-                               {:schema ~schema}
-                               (fn ~instr-fn-sym ~@bodies))])
-           defn# (c/defn
-                   ~name
-                   ~@(some-> doc vector)
-                   ~(assoc body-meta :raw-arglists (list 'quote raw-arglists), :schema schema)
-                   ~@(if validate?
-                       (for [{:keys [arglist prepost]} parglists]
-                         `(~arglist ~prepost (~instr-fn-sym ~@arglist)))
-                       bodies)
-                   ~@(when-not single (some->> arities val :meta vector)))]
+        enriched-meta (assoc body-meta :raw-arglists (list 'quote raw-arglists) :schema schema)]
+    `(let [defn# ~(if validate?
+                    `(def
+                       ~(with-meta name (merge var-meta
+                                               enriched-meta
+                                               {:arglists (list 'quote (map :arglist parglists))}))
+                       ~@(some-> doc vector)
+                       (m/-instrument
+                        {:schema ~schema}
+                        (fn ~(gensym (str name "-instrumented")) ~@bodies)))
+                    `(c/defn
+                       ~name
+                       ~@(some-> doc vector)
+                       ~enriched-meta
+                       ~@bodies
+                       ~@(when-not single (some->> arities val :meta vector))))]
        (m/=> ~name ~schema)
        defn#)))
 

@@ -89,3 +89,22 @@
           [:=> [:cat :int :int] :int]]
          (mi/-schema #'f2)))
   (is (= nil (mi/-schema #'f3))))
+
+(deftest instrument-external-test
+
+  (testing "Without instrumentation"
+    (is (thrown?
+          java.lang.IllegalArgumentException
+          #_:clj-kondo/ignore
+          (select-keys {:a 1} :a))))
+
+  (testing "With instrumentation"
+    (m/=> clojure.core/select-keys [:=> [:cat map? sequential?] map?])
+    (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'clojure.core)]}))
+    (is (thrown-with-msg?
+          Exception
+          #":malli.core/invalid-input"
+          #_:clj-kondo/ignore
+          (select-keys {:a 1} :a)))
+    (is (= {:a 1} (select-keys {:a 1} [:a])))
+    (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'clojure.core)]}))))

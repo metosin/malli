@@ -36,9 +36,7 @@
 (def Params (-schema false))
 
 (c/defn -defn [schema args]
-  (let [{:keys [name return doc arities]
-         body-meta :meta
-         :as parsed} (m/parse schema args)
+  (let [{:keys [name return doc arities] body-meta :meta :as parsed} (m/parse schema args)
         var-meta (meta name)
         _ (when (= ::m/invalid parsed) (m/-fail! ::parse-error {:schema schema, :args args}))
         parse (fn [{:keys [args] :as parsed}] (merge (md/parse args) parsed))
@@ -48,8 +46,7 @@
         raw-arglists (map :raw-arglist parglists)
         schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
         bodies (map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-        validate? (or (:malli/always var-meta)
-                      (:malli/always body-meta))
+        validate? (or (:malli/always var-meta) (:malli/always body-meta))
         enriched-meta (assoc body-meta :raw-arglists (list 'quote raw-arglists) :schema schema)]
     `(let [defn# ~(if validate?
                     `(def
@@ -57,9 +54,7 @@
                                                enriched-meta
                                                {:arglists (list 'quote (map :arglist parglists))}))
                        ~@(some-> doc vector)
-                       (m/-instrument
-                        {:schema ~schema}
-                        (fn ~(gensym (str name "-instrumented")) ~@bodies)))
+                       (m/-instrument {:schema ~schema} (fn ~(gensym (str name "-instrumented")) ~@bodies)))
                     `(c/defn
                        ~name
                        ~@(some-> doc vector)

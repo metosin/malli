@@ -454,7 +454,14 @@
            (-> schema
                (m/explain {:type "minuz"})
                (me/with-spell-checking)
-               (me/humanize))))))
+               (me/humanize)))))
+
+  (is (= ["invalid dispatch value"]
+         (-> (m/schema [:multi {:dispatch :x}
+                        [:y [:map [:x :keyword]]]])
+             (m/explain [])
+             (me/humanize)))
+      "explain works even when dispatch is a keyword but value is not a map"))
 
 (deftest explain-sequential
   (is (= [{:x ["missing required key"]}

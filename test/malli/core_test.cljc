@@ -1026,7 +1026,9 @@
           valid2 {:type :human :name "inkeri", :address {:country :PO}}
           invalid1 {:type :sized, :size "size"}
           invalid2 {:type :human :namez "inkeri"}
-          invalid3 {:type :worm}]
+          invalid3 {:type :worm}
+          invalid4 []
+          invalid5 "xxx"]
 
       (is (true? (m/validate schema valid1)))
       (is (true? (m/validate schema valid2)))
@@ -1066,18 +1068,38 @@
                                :type :malli.core/invalid-dispatch-value}]}
                     (m/explain schema invalid3)))
 
+      (is (results= {:schema schema,
+                     :value []
+                     :errors [{:path []
+                               :in []
+                               :schema schema
+                               :value []
+                               :type :malli.core/invalid-dispatch-value}]}
+                    (m/explain schema invalid4)))
+
+      (is (results= {:schema schema,
+                     :value "xxx"
+                     :errors [{:path []
+                               :in []
+                               :schema schema
+                               :value "xxx"
+                               :type :malli.core/invalid-dispatch-value}]}
+                    (m/explain schema invalid5)))
+
       (is (= (miu/-tagged :sized valid1) (m/parse schema valid1)))
       (is (= (miu/-tagged :human valid2) (m/parse schema valid2)))
       (is (= ::m/invalid (m/parse schema invalid1)))
       (is (= ::m/invalid (m/parse schema invalid2)))
       (is (= ::m/invalid (m/parse schema invalid3)))
-      (is (= ::m/invalid (m/parse schema "not-a-map")))
+      (is (= ::m/invalid (m/parse schema invalid4)))
+      (is (= ::m/invalid (m/parse schema invalid5)))
       (is (= valid1 (m/unparse schema (m/parse schema valid1))))
       (is (= valid2 (m/unparse schema (m/parse schema valid2))))
       (is (= ::m/invalid (m/unparse schema invalid1)))
       (is (= ::m/invalid (m/unparse schema invalid2)))
       (is (= ::m/invalid (m/unparse schema invalid3)))
-      (is (= ::m/invalid (m/unparse schema "not-a-map")))
+      (is (= ::m/invalid (m/unparse schema invalid4)))
+      (is (= ::m/invalid (m/unparse schema invalid5)))
 
       (is (= {:type :sized, :size 10}
              (m/decode schema {:type "sized", :size "10"} mt/string-transformer)))

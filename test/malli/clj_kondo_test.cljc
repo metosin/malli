@@ -15,6 +15,9 @@
     [:tags {:optional true} [:set qualified-keyword?]]
     [::y {:optional true} boolean?]
     [:select-keys [:maybe [:select-keys [:map [:x int?] [:y int?]] [:x]]]]
+    [:xyz :any]
+    [:xyz2 [:maybe :any]]
+    [:xyz3 [:maybe :int]]
     [:nested [:merge
               [:map [:id ::id]]
               [:map [:price ::price]]]]
@@ -45,6 +48,9 @@
                 :name :string,
                 :description :nilable/string,
                 :select-keys {:op :keys, :req {:x :int} :nilable true},
+                :xyz :any
+                :xyz2 :any
+                :xyz3 :nilable/int
                 :nested {:op :keys, :req {:id :string, :price :double}},
                 :string-type-enum :nilable/string
                 :keyword-type-enum :keyword

@@ -2315,6 +2315,8 @@
     [:cat int?] [1 1]
     [:cat int? [:cat]] [1 1]
     [:cat int? [:cat string? int?]] [3 3]
+    [:cat int? [:schema [:cat string? int?]]] [2 2]
+    [:cat int? [:schema [:catn [:s string?] [:i int?]]]] [2 2]
     [:catn] [0 0]
     [:catn [:n int?]] [1 1]
     [:catn [:n int?] [:named [:cat]]] [1 1]
@@ -2568,6 +2570,35 @@
 
         (is (= 0.5 (pow2 5 0.1)))
         (is (= [::m/invalid-input ::m/invalid-output] (<-report)))))
+
+    (testing "multi-arity, with sequence schemas"
+      (let [report* (atom [])
+            <-report #(let [report @report*] (reset! report* []) report)
+            fun (m/-instrument
+                 {:schema [:=> [:cat :int [:schema [:cat :keyword :int]] [:? [:cat :int :int]]] int<=6]
+                  :scope #{:input :output}
+                  :report (fn [error _] (swap! report* conj error))}
+                 (fn [x & _] x))]
+        (is (= 1 (fun 1 [:x 3])))
+        (is (= [] (<-report)))
+        (is (= 1 (fun 1 [:x 3] 4 5)))
+        (is (= [] (<-report)))
+        (is (= 16 (fun 16 [:x 3])))
+        (is (= [::m/invalid-output] (<-report)))
+        (testing "between min and max arity but invalid"
+          (is (= 16 (fun 16 [:x 3] 4)))
+          (is (= [::m/invalid-input ::m/invalid-output] (<-report))))
+        (testing "over max arity"
+          (is (= 1 (fun 1 [:x 3] 4 5 6)))
+          (is (= [::m/invalid-arity ::m/invalid-input] (<-report))))
+        (testing "under min arity"
+          (is (= 1 (fun 1)))
+          (is (= [::m/invalid-arity ::m/invalid-input] (<-report))))
+        (testing "invalid sub-sequence"
+          (is (= 1 (fun 1 [2 3] 4 5)))
+          (is (= [::m/invalid-input] (<-report)))
+          (is (= 1 (fun 1 [:x 2 3] 4 5)))
+          (is (= [::m/invalid-input] (<-report))))))
 
     (testing "generated function"
       (let [pow2 (m/-instrument

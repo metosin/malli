@@ -98,7 +98,7 @@
 (defmethod accept :maybe [_ _ [child] _]
   (cond
     (= :keys (:op child)) (assoc child :nilable true)
-    (keyword? child) (keyword "nilable" (name child))
+    (and (keyword? child) (not= :any child)) (keyword "nilable" (name child))
     :else child))
 (defmethod accept :tuple [_ _ children _] children)
 (defmethod accept :multi [_ _ _ _] :any) ;;??

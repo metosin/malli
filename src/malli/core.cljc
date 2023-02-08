@@ -267,7 +267,7 @@
 (defn- -lookup! [?schema f rec options]
   (or (and f (f ?schema) ?schema)
       (if-let [?schema (-lookup ?schema options)]
-        (cond-> ?schema rec (recur f rec options))
+        (if rec (recur (cond-> ?schema (vector? ?schema) first) f rec options) ?schema)
         (-fail! ::invalid-schema {:schema ?schema}))))
 
 (defn -properties-and-options [properties options f]

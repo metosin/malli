@@ -1949,6 +1949,12 @@
          #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-ref"
          (m/schema [:map {:registry {:kikka :int}} :int])))))
 
+(deftest properties-on-qualified-ref-map-schema
+  (let [opts {:registry {:map (m/-map-schema), :int (m/-int-schema), ::test :map, ::test-2 [:map [:x :int]]}}]
+    (testing "A qualified ref schema of a composite schema with properties is resolved correctly."
+      (is (m/schema [::test {:a-prop 5}] opts))
+      (is (m/schema [::test-2 {:a-prop 5}] opts)))))
+
 (deftest simple-schemas
   (testing "simple schemas"
     (doseq [[type {:keys [schema validate explain decode encode map-syntax ast form]}]

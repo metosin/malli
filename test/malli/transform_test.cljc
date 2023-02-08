@@ -348,6 +348,18 @@
         [:repeat {:min 2, :max 4} int?] [1 :kikka] [1 :kikka]
         [:repeat {:min 2, :max 4} int?] [1 2 3 4 5] [1 2 3 4 5]))))
 
+(deftest map-of-enum-transform-test-819
+  (let [schema [:map-of
+                [:enum {:encode/json name
+                        :decode/json keyword}
+                 :a :b :c]
+                int?]
+        m {:a 1 :b 2}
+        encoded (m/encode schema m mt/json-transformer)
+        decoded (m/decode schema encoded mt/json-transformer)]
+    (is (= {"a" 1 "b" 2} encoded))
+    (is (= m decoded))))
+
 (deftest collection-transform-test
   (testing "decode"
     (is (= #{1 2 3} (m/decode [:set int?] [1 2 3] mt/collection-transformer)))
@@ -879,11 +891,11 @@
                   {"0" "2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
                    "1" "820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
                    "2" "017de28f-5801-8c62-9ce9-cef70883794a"}]]
-
-      (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
-              1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
-              2 #uuid"017de28f-5801-8c62-9ce9-cef70883794a"}
-             (m/decode schema data mt/json-transformer))))))
+      (testing data
+        (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
+                1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
+                2 #uuid"017de28f-5801-8c62-9ce9-cef70883794a"}
+               (m/decode schema data mt/json-transformer)))))))
 
 #?(:clj
    (deftest -safe-test

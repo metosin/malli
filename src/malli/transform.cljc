@@ -355,6 +355,7 @@
      :decoders (-> (-json-decoders)
                    (assoc :map-of {:compile (fn [schema _]
                                               (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
+                                                          (-interceptor schema {}) m/-intercepting
                                                           (m/-comp m/-keyword->string) (-transform-map-keys))
                                                   (-transform-map-keys m/-keyword->string)))})
                    (cond-> json-vectors (assoc :vector -sequential->vector)))

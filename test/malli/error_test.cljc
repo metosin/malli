@@ -658,7 +658,7 @@
       [:and [:sequential :int] (f "1") (f "2")] [1 2] => ["1" "2"])))
 
 (deftest multi-humanize-test-428
-  (is (= {:user {:type ["invalid dispatch value"]}}
+  (is (= {:user ["invalid dispatch value"]}
          (-> (m/explain [:map [:user [:multi {:dispatch :type}]]] {:user nil})
              (me/humanize)))))
 

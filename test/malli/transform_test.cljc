@@ -230,6 +230,9 @@
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/json-transformer)))
+    (testing "keeps original value if decoding fails"
+      (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer)))
+      (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer))))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
     (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
 

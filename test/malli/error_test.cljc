@@ -440,6 +440,8 @@
   (is (= ["should be an ifn"]
          (me/humanize (m/explain ifn? 123)))))
 
+(defrecord Horror [])
+
 (deftest multi-error-test
   (let [schema [:multi {:dispatch :type}
                 ["plus" [:map [:value int?]]]
@@ -456,12 +458,18 @@
                (me/with-spell-checking)
                (me/humanize)))))
 
-  (is (= ["invalid dispatch value"]
-         (-> (m/schema [:multi {:dispatch :x}
-                        [:y [:map [:x :keyword]]]])
-             (m/explain [])
-             (me/humanize)))
-      "explain works even when dispatch is a keyword but value is not a map"))
+  (testing "explain works even when dispatch is a keyword but value is not a map"
+    (is (= ["invalid dispatch value"]
+           (-> (m/schema [:multi {:dispatch :x}
+                          [:y [:map [:x :keyword]]]])
+               (m/explain [])
+               (me/humanize))))
+
+    (is (= {:x ["invalid dispatch value"]}
+           (-> (m/schema [:multi {:dispatch :x}
+                          [:y [:map [:x :keyword]]]])
+               (m/explain (map->Horror {:foo :bar}))
+               (me/humanize))))))
 
 (deftest explain-sequential
   (is (= [{:x ["missing required key"]}
@@ -610,8 +618,6 @@
                :e [1.2]
                :f [1 2 3 4]})
              (me/humanize)))))
-
-(defrecord Horror [])
 
 (deftest robust-humanize-form
   (let [f (fn [s] [:fn {:error/message s} (constantly false)])

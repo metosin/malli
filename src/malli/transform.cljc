@@ -164,6 +164,14 @@
 (defn -transform-map-keys [f]
   #(cond->> % (map? %) (into {} (map (fn [[k v]] [(f k) v])))))
 
+(defn -transform-if-valid [f schema]
+  (let [validator (m/-validator schema)]
+    (fn [x]
+      (let [out (f x)]
+        (if (validator out)
+          out
+          x)))))
+
 ;;
 ;; sequential
 ;;
@@ -354,9 +362,13 @@
     {:name :json
      :decoders (-> (-json-decoders)
                    (assoc :map-of {:compile (fn [schema _]
-                                              (or (some-> schema (m/children) (first) (m/type) map-of-key-decoders
-                                                          (m/-comp m/-keyword->string) (-transform-map-keys))
-                                                  (-transform-map-keys m/-keyword->string)))})
+                                              (let [key-schema (some-> schema (m/children) (first))]
+                                                (or (some-> key-schema (m/type) map-of-key-decoders
+                                                            (-interceptor schema {}) m/-intercepting
+                                                            (m/-comp m/-keyword->string)
+                                                            (-transform-if-valid key-schema)
+                                                            (-transform-map-keys))
+                                                    (-transform-map-keys m/-keyword->string))))})
                    (cond-> json-vectors (assoc :vector -sequential->vector)))
      :encoders (-json-encoders)})))
 

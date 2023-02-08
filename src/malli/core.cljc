@@ -1513,12 +1513,12 @@
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} @dispatch-map))]
                (fn [x] (if-let [validator (find (dispatch x))] (validator x) false))))
            (-explainer [this path]
-             (let [find (finder (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} (-entries this)))
-                   ->path (if (keyword? dispatch) #(conj % dispatch) identity)]
+             (let [find (finder (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} (-entries this)))]
                (fn [x in acc]
                  (if-let [explainer (find (dispatch x))]
                    (explainer x in acc)
-                   (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value))))))
+                   (let [->path (if (and (map? x) (keyword? dispatch)) #(conj % dispatch) identity)]
+                     (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value)))))))
            (-parser [_]
              (let [parse (fn [k s] (let [p (-parser s)] (fn [x] (miu/-map-valid #(miu/-tagged k %) (p x)))))
                    find (finder (reduce-kv (fn [acc k s] (assoc acc k (parse k s))) {} @dispatch-map))]

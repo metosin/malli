@@ -116,6 +116,8 @@
              (m/walk [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
                      (m/schema-walker identity)))))
 
+(defrecord SomeRecord [])
+
 (deftest validation-test
 
   (testing "coercion"
@@ -1024,19 +1026,26 @@
                   [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
           valid1 {:type :sized, :size 10}
           valid2 {:type :human :name "inkeri", :address {:country :PO}}
+          valid3 (map->SomeRecord {:type :sized, :size 10})
           invalid1 {:type :sized, :size "size"}
           invalid2 {:type :human :namez "inkeri"}
-          invalid3 {:type :worm}]
+          invalid3 {:type :worm}
+          invalid4 []
+          invalid5 "xxx"
+          invalid6 (map->SomeRecord {:type :record})]
 
       (is (true? (m/validate schema valid1)))
       (is (true? (m/validate schema valid2)))
+      (is (true? (m/validate schema valid3)))
       (is (false? (m/validate schema invalid1)))
       (is (false? (m/validate schema invalid2)))
       (is (false? (m/validate schema invalid3)))
-      (is (false? (m/validate schema "not-a-map")))
+      (is (false? (m/validate schema invalid4)))
+      (is (false? (m/validate schema invalid5)))
 
       (is (nil? (m/explain schema valid1)))
       (is (nil? (m/explain schema valid2)))
+      (is (nil? (m/explain schema valid3)))
 
       (is (results= {:schema schema,
                      :value {:type :sized, :size "size"},
@@ -1066,18 +1075,51 @@
                                :type :malli.core/invalid-dispatch-value}]}
                     (m/explain schema invalid3)))
 
+      (is (results= {:schema schema,
+                     :value []
+                     :errors [{:path []
+                               :in []
+                               :schema schema
+                               :value []
+                               :type :malli.core/invalid-dispatch-value}]}
+                    (m/explain schema invalid4)))
+
+      (is (results= {:schema schema,
+                     :value "xxx"
+                     :errors [{:path []
+                               :in []
+                               :schema schema
+                               :value "xxx"
+                               :type :malli.core/invalid-dispatch-value}]}
+                    (m/explain schema invalid5)))
+
+      (is (results= {:schema schema,
+                     :value invalid6
+                     :errors [{:path [:type]
+                               :in [:type]
+                               :schema schema
+                               :value invalid6
+                               :type :malli.core/invalid-dispatch-value}]}
+                    (m/explain schema invalid6)))
+
       (is (= (miu/-tagged :sized valid1) (m/parse schema valid1)))
       (is (= (miu/-tagged :human valid2) (m/parse schema valid2)))
+      (is (= (miu/-tagged :sized valid3) (m/parse schema valid3)))
       (is (= ::m/invalid (m/parse schema invalid1)))
       (is (= ::m/invalid (m/parse schema invalid2)))
       (is (= ::m/invalid (m/parse schema invalid3)))
-      (is (= ::m/invalid (m/parse schema "not-a-map")))
+      (is (= ::m/invalid (m/parse schema invalid4)))
+      (is (= ::m/invalid (m/parse schema invalid5)))
+      (is (= ::m/invalid (m/parse schema invalid6)))
       (is (= valid1 (m/unparse schema (m/parse schema valid1))))
       (is (= valid2 (m/unparse schema (m/parse schema valid2))))
+      (is (= valid3 (m/unparse schema (m/parse schema valid3))))
       (is (= ::m/invalid (m/unparse schema invalid1)))
       (is (= ::m/invalid (m/unparse schema invalid2)))
       (is (= ::m/invalid (m/unparse schema invalid3)))
-      (is (= ::m/invalid (m/unparse schema "not-a-map")))
+      (is (= ::m/invalid (m/unparse schema invalid4)))
+      (is (= ::m/invalid (m/unparse schema invalid5)))
+      (is (= ::m/invalid (m/unparse schema invalid6)))
 
       (is (= {:type :sized, :size 10}
              (m/decode schema {:type "sized", :size "10"} mt/string-transformer)))

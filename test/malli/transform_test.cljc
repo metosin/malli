@@ -635,16 +635,26 @@
   (let [schema [string? {:title "lower-upper-string"
                          :decode/string 'str/upper-case
                          :encode/string 'str/lower-case}]
+        schema2 [string? {:title "lower-upper-string"
+                          :decode {:string 'str/upper-case}
+                          :encode {:string 'str/lower-case}}]
         value "KiKkA"]
     (testing "defined transformations"
       (is (= "KIKKA" (m/decode schema value mt/string-transformer)))
+      (is (= "KIKKA" (m/decode schema2 value mt/string-transformer)))
       (is (= "kikka" (m/encode schema value mt/string-transformer)))
+      (is (= "kikka" (m/encode schema2 value mt/string-transformer)))
       (is (= "kikka" (as-> value $
                        (m/decode schema $ mt/string-transformer)
-                       (m/encode schema $ mt/string-transformer)))))
+                       (m/encode schema $ mt/string-transformer))))
+      (is (= "kikka" (as-> value $
+                       (m/decode schema2 $ mt/string-transformer)
+                       (m/encode schema2 $ mt/string-transformer)))))
     (testing "undefined transformations"
       (is (= value (m/decode schema value mt/json-transformer)))
-      (is (= value (m/encode schema value mt/json-transformer)))))
+      (is (= value (m/decode schema2 value mt/json-transformer)))
+      (is (= value (m/encode schema value mt/json-transformer)))
+      (is (= value (m/encode schema2 value mt/json-transformer)))))
 
   (let [transformer (mt/transformer
                      {:name :before}

@@ -3,9 +3,20 @@
     [malli.instrument :as mi-new]
     malli.helpers
     [malli.core :as m]
+    [clojure.test.check.generators :as gen]
+    [malli.experimental.time.generator]
     [malli.dev.pretty :as pretty]
     [malli.generator :as mg]
-    [malli.experimental :as mx]))
+    [malli.experimental :as mx]
+    [malli.experimental.time :as time]))
+
+(js/console.log "now: " (time/LocalDate.now))
+(js/console.log "generated: "
+  (gen/sample (mg/-schema-generator (time/-local-date-time-schema) nil) 10))
+
+(js/console.log
+  (into-array
+    (mg/sample :time/zoned-date-time {:registry (merge (m/default-schemas) (time/schemas))})))
 
 (mx/defn my-ex-fn :- [:int]
   [a :- :string] (+ 5 a))
@@ -19,6 +30,10 @@
   {:malli/schema [:=> [:cat float? float?] :double]}
   [x y]
   (+ x y))
+
+;(defn add-dates [a b]
+;  {:malli/schema [:=> [:cat :time/local-date :time/local-date] :time/local-date]}
+
 
 (defn sum [a b] (+ a b))
 

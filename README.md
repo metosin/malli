@@ -2946,26 +2946,27 @@ Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequenti
 
 ### `malli.experimental.time`
 
-The time namespace adds support for time formats as defined by [ISO 8601 - Date and time — Representations for information interchange](https://en.wikipedia.org/wiki/ISO_8601).
+The `time` namespace adds support for time formats as defined by [ISO 8601 - Date and time — Representations for information interchange](https://en.wikipedia.org/wiki/ISO_8601).
 
 Currently supported platform and providing implementations:
 
 - JVM: via the java.time package.
+- JS:  via the js-joda [package](https://github.com/js-joda/js-joda)
 
 The following schemas and their respective types are provided:
 
-| Schema                | Example                                              | JVM Type (`java.time`) |
-|:----------------------|:-----------------------------------------------------|:---------------------|
-| `:time/duration`         | PT0.01S                                              | `Duration`             |
-| `:time/instant`          | 2022-12-18T12:00:25.840823567Z                       | `Instant`              |
-| `:time/local-date`       | 2020-01-01                                           | `LocalDate`            |
-| `:time/local-date-time`  | 2020-01-01T12:00:00                                  | `LocalDateTime`        |
-| `:time/local-time`       | 12:00:00                                             | `LocalTime`            |
-| `:time/offset-date-time` | 2022-12-18T06:00:25.840823567-06:00                  | `OffsetDateTime`       |
-| `:time/offset-time`      | 12:00:00+00:00                                       | `OffsetTime`           |
-| `:time/zone-id`          | UTC                                                  | `ZoneId`               |
-| `:time/zone-offset`      | +15:00                                               | `ZoneOffset`           |
-| `:time/zoned-date-time`  | 2022-12-18T06:00:25.840823567-06:00[America/Chicago] | `ZonedDateTime`        |
+| Schema                   | Example                                              | JVM/js-joda Type (`java.time`) |
+|:-------------------------|:-----------------------------------------------------|:-------------------------------|
+| `:time/duration`         | PT0.01S                                              | `Duration`                     |
+| `:time/instant`          | 2022-12-18T12:00:25.840823567Z                       | `Instant`                      |
+| `:time/local-date`       | 2020-01-01                                           | `LocalDate`                    |
+| `:time/local-date-time`  | 2020-01-01T12:00:00                                  | `LocalDateTime`                |
+| `:time/local-time`       | 12:00:00                                             | `LocalTime`                    |
+| `:time/offset-date-time` | 2022-12-18T06:00:25.840823567-06:00                  | `OffsetDateTime`               |
+| `:time/offset-time`      | 12:00:00+00:00                                       | `OffsetTime`                   |
+| `:time/zone-id`          | UTC                                                  | `ZoneId`                       |
+| `:time/zone-offset`      | +15:00                                               | `ZoneOffset`                   |
+| `:time/zoned-date-time`  | 2022-12-18T06:00:25.840823567-06:00[America/Chicago] | `ZonedDateTime`                |
 
 To use these schemas, add the schemas provided by `(malli.experimental.time/schemas)` to your registry.
 
@@ -2978,6 +2979,12 @@ Using time-schemas to default registry:
   (mr/composite-registry
     (m/default-schemas)
     (met/schemas)))
+```
+
+To use these schemas in ClojureScript you will need to install the npm packages `@js-joda/core` and `@js-joda/timezone`.
+
+```bash
+npm install @js-joda/core @js-joda/timezone
 ```
 
 #### min/max

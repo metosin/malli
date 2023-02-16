@@ -3,8 +3,9 @@
             [malli.core :as m]
             [malli.experimental.time-test :refer [r]]
             [malli.experimental.time.generator]
-            [clojure.test :as t])
-  (:import (java.time LocalDate LocalTime)))
+            [clojure.test :as t]
+            #?(:cljs [malli.experimental.time :refer [LocalDate LocalTime]]))
+  #?(:clj (:import (java.time LocalDate LocalTime))))
 
 (defn exercise [schema]
   (let [schema (m/schema schema {:registry r})
@@ -25,5 +26,5 @@
     (t/is (exercise :time/local-time))
     (t/is (exercise :time/local-date-time)))
   (t/testing "min max"
-    (t/is (exercise [:time/local-date {:min (LocalDate/parse "1980-01-02") :max (LocalDate/parse "1982-03-02")}]))
-    (t/is (exercise [:time/local-time {:min (LocalTime/parse "12:00:00") :max (LocalTime/parse "18:00:00")}]))))
+    (t/is (exercise [:time/local-date {:min (. LocalDate parse "1980-01-02") :max (. LocalDate parse "1982-03-02")}]))
+    (t/is (exercise [:time/local-time {:min (. LocalTime parse "12:00:00") :max (. LocalTime parse "18:00:00")}]))))

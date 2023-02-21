@@ -959,7 +959,7 @@
      (-from-ast [parent ast options] (-from-entry-ast parent ast options))
      IntoSchema
      (-type [_] :map)
-     (-type-properties [_])
+     (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
      (-into-schema [parent {:keys [closed] :as properties} children options]

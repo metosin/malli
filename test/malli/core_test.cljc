@@ -2796,6 +2796,15 @@
       (is (= type-properties (m/type-properties data-schema)))
       (is (= [error-message] (me/humanize (m/explain data-schema [])))))))
 
+(deftest -tuple-schema-test
+  (testing "returns tuple schema with type-properties as provided in opts"
+    (let [error-message "custom-error-message"
+          type-properties {:error/message error-message}
+          TupleSchemaWithTypeProperties (m/-tuple-schema {:type-properties type-properties})
+          data-schema (m/schema [TupleSchemaWithTypeProperties])]
+      (is (= type-properties (m/type-properties data-schema)))
+      (is (= [error-message] (me/humanize (m/explain data-schema {})))))))
+
 (deftest coerce-test
   (let [schema [:map [:x :keyword]]]
     (testing "without transformer, just validates"

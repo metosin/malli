@@ -2475,22 +2475,24 @@
    (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))))
 
 #?(:clj
-   (defmacro => [name value]
+   (defmacro => [given-sym value]
      (let [cljs-resolve (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve))
            cljs-resolve-symbols (fn [env d]
                                   (walk/postwalk (fn [x] (cond->> x (symbol? x) (or (:name (cljs-resolve env x)))))
                                                  d))
-           name' `'~(symbol (str name))
-           ns' `'~(symbol (str *ns*))
-           sym `'~(symbol (str *ns*) (str name))
+           name-str (name given-sym)
+           ns-str (str (or (not-empty (namespace given-sym)) *ns*))
+           name' `'~(symbol name-str)
+           ns' `'~(symbol ns-str)
+           sym `'~(symbol ns-str name-str)
            value' (cond->> value (:ns &env) (cljs-resolve-symbols &env))]
        ;; in cljs we need to register the schema in clojure (the cljs compiler)
        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
        (if (:ns &env)
          (do
-           (-register-function-schema! (symbol (str *ns*)) name value' (meta name) :cljs identity)
-           `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name) :cljs identity) ~sym))
-         `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta name)) ~sym)))))
+           (-register-function-schema! (symbol ns-str) (symbol name-str) value' (meta given-sym) :cljs identity)
+           `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta given-sym) :cljs identity) ~sym))
+         `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta given-sym)) ~sym)))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,

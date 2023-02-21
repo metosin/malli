@@ -2785,6 +2785,17 @@
         (is (= type-properties (m/type-properties data-schema)))
         (is (= [error-message] (me/humanize (m/explain data-schema []))))))))
 
+(deftest -map-of-schema-test
+  (testing "returns map-of schema with type-properties as provided in opts"
+    (let [error-message "custom-error-message"
+          type-properties {:error/message error-message}
+          MapOfSchemaWithTypeProperties (m/-map-of-schema {:type-properties type-properties})
+          data-schema (m/schema [MapOfSchemaWithTypeProperties
+                                 [:string]
+                                 [:double]])]
+      (is (= type-properties (m/type-properties data-schema)))
+      (is (= [error-message] (me/humanize (m/explain data-schema [])))))))
+
 (deftest coerce-test
   (let [schema [:map [:x :keyword]]]
     (testing "without transformer, just validates"

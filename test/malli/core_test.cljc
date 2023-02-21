@@ -6,6 +6,7 @@
             [malli.core :as m]
             [malli.edn :as edn]
             [malli.generator :as mg]
+            [malli.error :as me]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
             [malli.transform :as mt]
@@ -2775,7 +2776,34 @@
                                                    [:id uuid?]
                                                    [:name {:optional true} string?]
                                                    [:code int?]]]])]
-        (is (m/validate data-schema test-data))))))
+        (is (m/validate data-schema test-data))))
+    (testing "returns map schema with type-properties as provided in opts"
+      (let [error-message "error message coming from type-properties"
+            type-properties {:error/message error-message}
+            MapSchemaWithTypeProperties (m/-map-schema {:type-properties type-properties})
+            data-schema (m/schema [MapSchemaWithTypeProperties])]
+        (is (= type-properties (m/type-properties data-schema)))
+        (is (= [error-message] (me/humanize (m/explain data-schema []))))))))
+
+(deftest -map-of-schema-test
+  (testing "returns map-of schema with type-properties as provided in opts"
+    (let [error-message "custom-error-message"
+          type-properties {:error/message error-message}
+          MapOfSchemaWithTypeProperties (m/-map-of-schema {:type-properties type-properties})
+          data-schema (m/schema [MapOfSchemaWithTypeProperties
+                                 [:string]
+                                 [:double]])]
+      (is (= type-properties (m/type-properties data-schema)))
+      (is (= [error-message] (me/humanize (m/explain data-schema [])))))))
+
+(deftest -tuple-schema-test
+  (testing "returns tuple schema with type-properties as provided in opts"
+    (let [error-message "custom-error-message"
+          type-properties {:error/message error-message}
+          TupleSchemaWithTypeProperties (m/-tuple-schema {:type-properties type-properties})
+          data-schema (m/schema [TupleSchemaWithTypeProperties])]
+      (is (= type-properties (m/type-properties data-schema)))
+      (is (= [error-message] (me/humanize (m/explain data-schema {})))))))
 
 (deftest coerce-test
   (let [schema [:map [:x :keyword]]]

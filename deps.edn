@@ -25,7 +25,9 @@
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "3d32b5e571b98e2930a7b2ed1dd9551bb269375a"}}}
-           :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}}
+           :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}
+                                           ; used only to pull in its externs file needed to compile js-joda types under advanced compilation
+                                           com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.3.31"}}}

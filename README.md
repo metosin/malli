@@ -209,6 +209,18 @@ Validating values against a schema:
 (m/validate :int "1")
 ; => false
 
+(m/validate [:= 1] 1)
+; => true
+
+(m/validate [:= 1] 2)
+; => false
+
+(m/validate [:enum 1 2] 1)
+; => true
+
+(m/validate [:enum 1 2] 0)
+; => false
+
 (m/validate [:and :int [:> 6]] 7)
 ; => true
 

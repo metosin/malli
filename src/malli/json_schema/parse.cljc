@@ -97,7 +97,7 @@
                     (:properties v))
                   (with-min-max-poperties-size v)))))
 
-(defmethod type->malli "string" [{:keys [pattern minLength maxLength enum]}]
+(defmethod type->malli "string" [{:keys [pattern minLength maxLength enum format]}]
   ;; `format` metadata is deliberately not considered.
   ;; String enums are stricter, so they're also implemented here.
   (cond
@@ -105,6 +105,7 @@
     enum [:and
           :string
           (into [:enum] enum)]
+    (= format "uuid") uuid?
     :else [:string (cond-> {}
                minLength (assoc :min minLength)
                maxLength (assoc :max maxLength))]))

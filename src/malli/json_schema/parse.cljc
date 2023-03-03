@@ -137,6 +137,13 @@
                                        :else (throw (ex-info "Not Supported" {:json-schema p
                                                                               :reason ::array-items})))))
 
+(defmethod type->malli :default [{:keys [type] :as p}]
+  (cond
+    (vector? type) (into [:or] (map #(type->malli {:type %}) type))
+    :else
+    (throw (ex-info "Not Supported" {:json-schema p
+                                     :reason ::unparseable-type}))))
+
 (defn json-schema-document->malli [obj]
   [:schema {:registry (into {}
                             (map-values schema->malli)

@@ -1,23 +1,23 @@
 (ns malli.dot
-  (:require [malli.core :as m]
-            [malli.util :as mu]
+  (:require [clojure.string :as str]
+            [malli.core :as m]
             [malli.registry :as mr]
-            [clojure.string :as str]))
+            [malli.util :as mu]))
 
 (defn -lift [?schema]
   (let [schema (m/schema ?schema)]
-    (if (and (satisfies? m/RefSchema schema) (-> schema m/deref m/type (= ::m/schema)))
+    (if (and (m/-ref-schema? schema) (-> schema m/deref m/type (= ::m/schema)))
       ?schema [:schema {:registry {::schema ?schema}} ?schema])))
 
 (defn -collect [schema]
   (let [state (atom {})]
     (m/walk
-      schema
-      (fn [schema _ _ _]
-        (let [properties (m/properties schema)]
-          (doseq [[k v] (-> (m/-properties-and-options properties (m/options schema) identity) first :registry)]
-            (swap! state assoc-in [:registry k] v))
-          (swap! state assoc :schema schema))))
+     schema
+     (fn [schema _ _ _]
+       (let [properties (m/properties schema)]
+         (doseq [[k v] (-> (m/-properties-and-options properties (m/options schema) identity) first :registry)]
+           (swap! state assoc-in [:registry k] v))
+         (swap! state assoc :schema schema))))
     @state))
 
 (defn -schema-name [base path]
@@ -29,7 +29,7 @@
       (swap! registry* assoc k
              (m/walk v (fn [schema path children _]
                          (let [options (update (m/options schema) :registry #(mr/composite-registry @registry* %))
-                               schema (m/into-schema (m/type schema) (m/properties schema) children options)]
+                               schema (m/into-schema (m/parent schema) (m/properties schema) children options)]
                            (if (and (seq path) (= :map (m/type schema)))
                              (let [ref (-schema-name k path)]
                                (swap! registry* assoc ref (mu/update-properties schema assoc ::entity k))
@@ -41,10 +41,10 @@
   (let [links (atom {})]
     (doseq [[from schema] registry]
       (m/walk
-        schema
-        (fn [schema _ _ _]
-          (when-let [to (if (satisfies? m/RefSchema schema) (m/-ref schema))]
-            (swap! links update from (fnil conj #{}) to)))))
+       schema
+       (fn [schema _ _ _]
+         (when-let [to (when (m/-ref-schema? schema) (m/-ref schema))]
+           (swap! links update from (fnil conj #{}) to)))))
     @links))
 
 ;;
@@ -57,7 +57,7 @@
    (let [registry (-> ?schema (m/schema options) -lift -collect -normalize :registry)
          entity? #(->> % (get registry) m/properties ::entity)
          props #(str "[" (str/join ", " (map (fn [[k v]] (str (name k) "=" (if (fn? v) (v) (pr-str v)))) %)) "]")
-         esc #(str/escape (str %) {\> ">", \{ "\\{", \} "\\}", \< "<", \" "\\\""})
+         esc #(str/escape (str %) {\> "\\>", \{ "\\{", \} "\\}", \< "\\<", \" "\\\""})
          sorted #(sort-by (m/-comp str first) %)
          wrap #(str "\"" % "\"")
          label (fn [k v] (str "\"{" k "|"

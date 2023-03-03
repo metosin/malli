@@ -1,0 +1,3 @@
+{:cljfmt {:indents {for-all [[:inner 0]]
+                    are [[:inner 0]]}}
+ :clean {:ns-inner-blocks-indentation :same-line}}

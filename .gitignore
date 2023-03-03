@@ -10,5 +10,11 @@ cljs-test-runner-out
 *.jar
 classes
 /demo
+/demosci
 /target
 .clj-kondo
+.clerk
+.shadow-cljs
+public/*
+!public/index.html
+.cache

@@ -1,0 +1,20 @@
+{:deps {current/deps {:local/root "."}}
+ :tasks
+ {test-clj {:doc "Run JVM Clojure tests with kaocha"
+            :task (apply clojure (str "-A:" (System/getenv "CLOJURE"))
+                         "-M:test" "-m" "kaocha.runner" *command-line-args*)}
+
+  test-cljs {:doc "Run ClojureScript tests"
+             :task (do
+                     (println "Running CLJS tests without optimizations")
+                     (apply clojure "-M:test:cljs-test-runner" "-c" "{:optimizations :none, :preloads [sci.core]}"
+                            *command-line-args*)
+                     (println "Running CLJS tests with optimizations advanced")
+                     (apply clojure "-M:test:cljs-test-runner" "-c" "{:optimizations :none, :preloads [sci.core]}"
+                            *command-line-args*))}
+
+  test-bb {:doc "Run Babashka tests"
+           :extra-deps {org.babashka/spec.alpha {:git/url "https://github.com/babashka/spec.alpha"
+                                                 :git/sha "1a841c4cc1d4f6dab7505a98ed2d532dd9d56b78"}}
+           :extra-paths ["src" "test"]
+           :task bb-test-runner/run-tests}}}

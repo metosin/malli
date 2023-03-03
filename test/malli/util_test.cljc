@@ -1,7 +1,19 @@
 (ns malli.util-test
-  (:require [clojure.test :refer [deftest testing is are]]
-            [malli.util :as mu]
-            [malli.core :as m]))
+  (:require [clojure.test :refer [are deftest is testing]]
+            #?(:bb [cheshire.core :as json]
+               :clj [jsonista.core :as json])
+            [malli.core :as m]
+            [malli.impl.util :as miu]
+            [malli.registry :as mr]
+            [malli.util :as mu]))
+
+#?(:clj (defn from-json [s]
+          #?(:bb (json/parse-string s)
+             :clj (json/read-value s))))
+
+#?(:clj (defn to-json [x]
+          #?(:bb (json/generate-string x)
+             :clj (json/write-value-as-string x))))
 
 (defn form= [& ?schemas]
   (apply = (map #(if (m/schema? %) (m/form %) %) ?schemas)))
@@ -13,7 +25,7 @@
 
 (deftest simplify-map-entry-test
   (are [entry expected]
-    (is (= expected (mu/-simplify-map-entry entry)))
+    (= expected (mu/-simplify-map-entry entry))
 
     [:x 'int?] [:x 'int?]
     [:x nil 'int?] [:x 'int?]
@@ -65,7 +77,47 @@
 
     [:schema [:schema [:map [:x int?]]]]
     [:schema [:schema [:schema [:map [:y int?]]]]]
-    [:map [:x int?] [:y int?]]))
+    [:map [:x int?] [:y int?]]
+
+    [:map {:title "x", :x true} [:x :int]]
+    [:map {:title "y", :y true} [:y :int]]
+    [:map {:title "y", :x true, :y true}
+     [:x :int] [:y :int]]
+
+    [:map {:title "x", :x true} [:x :int]]
+    [:and {:and "y", :y false}
+     [:map {:title "y", :y true}
+      [:y :int]]
+     map?]
+    [:and {:and "y", :y false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int]
+      [:y :int]]
+     map?]
+
+    [:and {:and "x", :x false} [:map {:title "x", :x true} [:x :int]] map?]
+    [:map {:title "y", :y true} [:y :int]]
+    [:and {:and "x", :x false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int]
+      [:y :int]]
+     map?]
+
+    [:and {:and "x", :x false} [:map {:title "x", :x true} [:x :int]] map?]
+    [:and {:and "y", :y false} [:map {:title "y", :y true} [:y :int]] map?]
+    [:and {:and "y", :x false, :y false}
+     [:map {:title "y", :x true, :y true}
+      [:x :int] [:y :int]]
+     map?
+     map?]
+
+    [:and {:and "x"} [:map {:title "x", :x true} [:x :int]] map?]
+    map?
+    map?
+
+    [:and boolean? int?]
+    [:and map?]
+    [:and map? int?]))
 
 (deftest union-test
   (are [?s1 ?s2 expected]
@@ -124,29 +176,37 @@
                    (mu/update-properties schema assoc :joulu "loma")))))
 
 (deftest open-closed-schema-test
-  (let [open [:map {:title "map"}
-              [:a int?]
-              [:b {:optional true} int?]
-              [:c [:map
-                   [:d int?]]]]
+  (let [implicitly-open [:map {:title "map"}
+                         [:a int?]
+                         [:b {:optional true} int?]
+                         [:c [:map
+                              [:d int?]]]]
         closed [:map {:title "map", :closed true}
                 [:a int?]
                 [:b {:optional true} int?]
                 [:c [:map {:closed true}
                      [:d int?]]]]]
 
-    (is (mu/equals closed (mu/closed-schema open)))
-    (is (mu/equals open (mu/open-schema closed))))
+    (is (true? (#'mu/-ok-to-close-or-open? implicitly-open {})))
+    (is (true? (#'mu/-ok-to-close-or-open? closed {})))
 
-  (testing "explicitely open maps not effected"
-    (let [schema [:map {:title "map", :closed false}
-                  [:a int?]
-                  [:b {:optional true} int?]
-                  [:c [:map {, :closed false}
-                       [:d int?]]]]]
+    (is (mu/equals closed (mu/closed-schema implicitly-open)))
+    (is (mu/equals implicitly-open (mu/open-schema closed)))
+    (is (some? (m/explain (mu/closed-schema implicitly-open) {:a 2 :c {:d 1} :d "lol"})))
+    (is (nil? (m/explain (mu/open-schema closed) {:a 2 :c {:d 1} :d "lol"}))))
 
-      (is (mu/equals schema (mu/closed-schema schema)))
-      (is (mu/equals schema (mu/open-schema schema))))))
+  (testing "explicitly open maps not effected"
+    (let [explicitly-open [:map {:title "map", :closed false}
+                           [:a int?]
+                           [:b {:optional true} int?]
+                           [:c [:map {:closed false}
+                                [:d int?]]]]]
+      (is (false? (#'mu/-ok-to-close-or-open? explicitly-open {})))
+
+      (is (mu/equals explicitly-open (mu/closed-schema explicitly-open)))
+      (is (mu/equals explicitly-open (mu/open-schema explicitly-open)))
+      (is (nil? (m/explain (mu/closed-schema explicitly-open) {:a 2 :c {:d 1} :d "lol"})))
+      (is (nil? (m/explain (mu/open-schema explicitly-open) {:a 2 :c {:d 1} :d "lol"}))))))
 
 (deftest select-key-test
   (let [schema [:map {:title "map"}
@@ -166,15 +226,33 @@
 
     (testing "derefs automatically"
       (is (mu/equals (mu/select-keys
-                       [:schema
-                        [:map [:a int?] [:b int?]]]
-                       [:a])
+                      [:schema
+                       [:map [:a int?] [:b int?]]]
+                      [:a])
                      [:map [:a int?]])))))
+
+(deftest rename-keys-test
+  (let [schema [:map {:title "map"}
+                [:a int?]
+                [:b {:optional true} int?]
+                [:c string?]]]
+    (is (mu/equals (mu/rename-keys schema {}) schema))
+    (is (mu/equals (mu/rename-keys schema nil) schema))
+    (is (mu/equals (mu/rename-keys schema {:a :a}) schema))
+    (is (mu/equals (mu/rename-keys schema {:extra :k}) schema))
+    (is (mu/equals (mu/rename-keys schema {:a :b}) [:map {:title "map"}
+                                                    [:b int?]
+                                                    [:c string?]]))
+    (is (mu/equals (mu/rename-keys schema {:a :b
+                                           :b :c
+                                           :c :a}) [:map {:title "map"}
+                                                    [:b int?]
+                                                    [:c {:optional true} int?]
+                                                    [:a string?]]))))
 
 ;;
 ;; LensSchemas
 ;;
-
 
 (deftest basic-lens-schema-test
   (let [re #"kikka"
@@ -182,10 +260,10 @@
 
     (testing "get"
       (are [schema key expected]
-        (is (form= (try
-                     (mu/get (m/schema schema) key)
-                     (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
-                   expected))
+        (form= (try
+                 (mu/get (m/schema schema) key)
+                 (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
+               expected)
 
         nil 0 ::throws
 
@@ -242,10 +320,10 @@
 
     (testing "assoc"
       (are [schema key value expected]
-        (is (form= (try
-                     (mu/assoc (m/schema schema) key value)
-                     (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
-                   expected))
+        (form= (try
+                 (mu/assoc (m/schema schema) key value)
+                 (catch #?(:clj Exception, :cljs js/Error) _ ::throws))
+               expected)
 
         nil 0 'int? ::throws
 
@@ -264,9 +342,9 @@
         [:enum "A" "B"] 3 "C" ::throws
 
         [:map [:x string?]] :x int? [:map [:x 'int?]]
-        [:map [:x {:optional true} string?]] :x int? [:map [:x 'int?]]
+        [:map [:x {:optional true} string?]] :x int? [:map [:x {:optional true} 'int?]]
         [:map [:x string?]] [:x {:optional true}] int? [:map [:x {:optional true} 'int?]]
-        ;[:map [:x {:optional true} string?]] [:x] int? [:map [:x {:optional true} 'int?]]
+        [:map [:x {:optional true} string?]] [:x] int? [:map [:x 'int?]]
         [:map [:x string?]] :y string? [:map [:x 'string?] [:y 'string?]]
         [:map [:x {:optional true} string?]] :y string? [:map [:x {:optional true} 'string?] [:y 'string?]]
         [:map [:x string?]] [:y {:optional true}] string? [:map [:x 'string?] [:y {:optional true} 'string?]]
@@ -301,6 +379,11 @@
         [:ref {:registry {::a int?, ::b string?}} ::a] 0 "invalid" ::throws
         [:ref {:registry {::a int?, ::b string?}} ::a] 1 ::b ::throws
 
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 0 [:=> [:cat :int] :int] ::throws
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 3 [:=> [:cat :int :int] :int] ::throws
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 1 [:=> [:cat :int :int] :int] [:function [:=> :cat :int] [:=> [:cat :int :int] :int]]
+        [:function [:=> :cat :int] [:=> [:cat :int] :int]] 2 [:=> [:cat :int :int] :int] [:function [:=> :cat :int] [:=> [:cat :int] :int] [:=> [:cat :int :int] :int]]
+
         [:schema string?] 0 int? [:schema 'int?]
         [:schema string?] 0 "invalid" ::throws
         [:schema string?] 1 int? ::throws))))
@@ -308,20 +391,20 @@
 (deftest get-in-test
   (is (mu/equals boolean?
                  (mu/get-in
-                   (m/schema [:map
-                              [:x [:vector
-                                   [:set
-                                    [:sequential
-                                     [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]])
-                   [:x 0 0 0 1 :y 0])))
+                  (m/schema [:map
+                             [:x [:vector
+                                  [:set
+                                   [:sequential
+                                    [:tuple int? [:map [:y [:maybe [:schema [::m/schema boolean?]]]]]]]]]]])
+                  [:x 0 0 0 1 :y 0 0 0])))
   (is (mu/equals (mu/get-in
-                   [:map
-                    [:x [:vector
-                         [:set
-                          [:sequential
-                           [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]
-                   [:x 0 0 0 1 :y 9]
-                   pos-int?)
+                  [:map
+                   [:x [:vector
+                        [:set
+                         [:sequential
+                          [:tuple int? [:map [:y [:maybe boolean?]]]]]]]]]
+                  [:x 0 0 0 1 :y 9]
+                  pos-int?)
                  pos-int?))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
                  (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
@@ -350,6 +433,7 @@
 
 (deftest update-test
   (is (mu/equals (mu/update (m/schema [:vector int?]) 0 (constantly string?)) [:vector string?]))
+  (is (mu/equals (mu/update [:vector int?] 0 (constantly string?)) [:vector string?]))
   (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 1 (constantly string?)) [:tuple int? string?]))
   (is (mu/equals (mu/update (m/schema [:tuple int? int?]) 2 (constantly string?)) [:tuple int? int? string?]))
   (is (mu/equals (mu/update (m/schema [:or int? int?]) 1 (constantly string?)) [:or int? string?]))
@@ -362,10 +446,10 @@
   (is (mu/equals (mu/update (m/schema [:schema int?]) 0 (constantly string?)) [:schema string?]))
 
   (let [schema (m/schema
-                 [:map {:title "map"}
-                  [:a int?]
-                  [:b {:optional true} int?]
-                  [:c string?]])]
+                [:map {:title "map"}
+                 [:a int?]
+                 [:b {:optional true} int?]
+                 [:c string?]])]
     (is (mu/equals (mu/update schema :a mu/update-properties assoc :title "a")
                    [:map {:title "map"}
                     [:a [int? {:title "a"}]]
@@ -384,8 +468,20 @@
     (is (mu/equals (mu/update schema :b (constantly string?))
                    [:map {:title "map"}
                     [:a int?]
-                    [:b string?]
-                    [:c string?]]))))
+                    [:b {:optional true} string?]
+                    [:c string?]]))
+    (is (mu/equals (mu/update schema :d #(or % boolean?))
+                   [:map {:title "map"}
+                    [:a int?]
+                    [:b {:optional true} int?]
+                    [:c string?]
+                    [:d boolean?]]))
+
+    (testing "Optional property is maintained when optional key is updated"
+      (is (true? (m/validate
+                  (mu/update schema :b identity)
+                  {:a 1
+                   :c "a string"}))))))
 
 (deftest assoc-in-test
   (is (mu/equals (mu/assoc-in (m/schema [:vector int?]) [0] string?) [:vector string?]))
@@ -413,7 +509,51 @@
   (is (mu/equals (mu/update-in (m/schema [:map]) [:a :b :c :d] (constantly int?))
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/update-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?])))
+  (is (mu/equals (mu/update-in (m/schema [:schema int?]) [0] (constantly string?)) [:schema string?]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [:a] (constantly any?))
+                 [:map [:a {:optional true} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} int?] [:b string?]]) [[:a {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} any?] [:b string?]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [:a :x] (constantly any?))
+                 [:map [:a {:optional true} [:map [:x {:optional true} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a {:optional false}] [:x {:optional false}]] (constantly any?))
+                 [:map [:a {:optional false} [:map [:x {:optional false} any?]]]]))
+  (is (mu/equals (mu/update-in (m/schema [:map [:a {:optional true} [:map [:x {:optional true} int?]]]])
+                               [[:a] [:x {:optional false}]] (constantly any?))
+                 [:map [:a [:map [:x {:optional false} any?]]]]))
+
+  (testing "Optional property is maintained when optional key is updated"
+    (let [schema [:map {:title "map"}
+                  [:a int?]
+                  [:b {:optional true} int?]
+                  [:c string?]]]
+      (is (true? (m/validate
+                  (mu/update-in schema [:b] identity)
+                  {:a 1
+                   :c "a string"}))))))
+
+(deftest transform-entries-test
+  (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))
+        options            {:registry registry}
+        key->key-transform #(map (fn [[k m _]] [k m k]) %)
+
+        schema              [:map [:a/x {:m true} int?]]
+        schema-with-options (m/schema schema options)
+        result-schema       (m/schema [:map [:a/x {:m true} :a/x]] options)]
+
+    (testing "manual options are preserved in output type from the transform"
+      (is (mu/equals
+           (mu/transform-entries schema key->key-transform options)
+           result-schema
+           options)))
+
+    (testing "schema-attached-options are preserved in output type from the transform"
+      (is (mu/equals
+           (mu/transform-entries schema-with-options key->key-transform nil)
+           result-schema
+           options)))))
 
 (deftest optional-keys-test
   (let [schema [:map [:x int?] [:y int?]]]
@@ -444,18 +584,18 @@
 
     (let [walked-properties (atom [])]
       (is (= "turvassa" (mu/find-first
-                          schema
-                          (fn [s _in _options]
-                            (some->> s m/properties (swap! walked-properties conj))
-                            (some-> s m/properties :salaisuus)))))
+                         schema
+                         (fn [s _in _options]
+                           (some->> s m/properties (swap! walked-properties conj))
+                           (some-> s m/properties :salaisuus)))))
       (is (= [{:salaisuus "turvassa"}] @walked-properties)))
 
     (let [walked-properties (atom [])]
       (is (= "vaarassa" (mu/find-first
-                          schema
-                          (fn [s _in _options]
-                            (some->> s m/properties (swap! walked-properties conj))
-                            (some-> s m/properties :salaisuus #{"vaarassa"})))))
+                         schema
+                         (fn [s _in _options]
+                           (some->> s m/properties (swap! walked-properties conj))
+                           (some-> s m/properties :salaisuus #{"vaarassa"})))))
       (is (= [{:salaisuus "turvassa"}
               {:salaisuus "vaarassa"}] @walked-properties)))))
 
@@ -764,7 +904,6 @@
                                                          :children [{:type :ref
                                                                      :children ["Address"]}]}]]}]}
 
-
                  (mu/to-map-syntax schema {::m/walk-refs true
                                            ::m/walk-schema-refs true}))))))))
 
@@ -773,52 +912,59 @@
 
     (testing "merge"
       (let [s (->> [:merge
-                    [:map [:x :string]]
+                    [:map [:x [:orn [:str :string]]]]
                     [:map [:y :int]]
                     [:schema [:map [:z {:optional true} :boolean]]]])]
         (is (= [:merge
-                [:map [:x :string]]
+                [:map [:x [:orn [:str :string]]]]
                 [:map [:y :int]]
                 [:schema [:map [:z {:optional true} :boolean]]]]
                (m/form s)))
-        (is (= [:map [:x :string] [:y :int] [:z {:optional true} :boolean]] (m/form (m/deref s))))
+        (is (= [:map
+                [:x [:orn [:str :string]]]
+                [:y :int]
+                [:z {:optional true} :boolean]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :y 1, :z true})))
-        (is (= false (m/validate s {:x "x", :y "y"})))))
+        (is (= false (m/validate s {:x "x", :y "y"})))
+        (is (= {:x [:str "x"], :y 1, :z true} (m/parse s {:x "x", :y 1, :z true})))))
 
     (testing "union"
       (let [s (->> [:union
-                    [:map [:x :string]]
+                    [:map [:x [:orn [:str :string]]]]
                     [:schema [:map [:x :int]]]])]
         (is (= [:union
-                [:map [:x :string]]
+                [:map [:x [:orn [:str :string]]]]
                 [:schema [:map [:x :int]]]]
                (m/form s)))
-        (is (= [:map [:x [:or :string :int]]] (m/form (m/deref s))))
+        (is (= [:map [:x [:or [:orn [:str :string]] :int]]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x"}) (m/validate s {:x 1})))
-        (is (= false (m/validate s {:x true})))))
+        (is (= false (m/validate s {:x true})))
+        (is (= {:x [:str "x"]} (m/parse s {:x "x"})))
+        (is (= {:x 1} (m/parse s {:x 1})))))
 
     (testing "select-keys"
       (let [s (->> [:select-keys
                     [:schema
                      [:map {:closed true}
-                      [:x :string]
+                      [:x [:orn [:str :string]]]
                       [:y :string]
                       [:z :string]]]
                     [:x :z]])]
         (is (= [:select-keys
                 [:schema
                  [:map {:closed true}
-                  [:x :string]
+                  [:x [:orn [:str :string]]]
                   [:y :string]
                   [:z :string]]]
                 [:x :z]]
                (m/form s)))
         (is (= [:map {:closed true}
-                [:x :string]
+                [:x [:orn [:str :string]]]
                 [:z :string]]
                (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :z "z"})))
-        (is (= false (m/validate s {:x "x", :y "y" :z "z"})))))))
+        (is (= false (m/validate s {:x "x", :y "y" :z "z"})))
+        (is (= {:x [:str "x"], :z "z"} (m/parse s {:x "x", :z "z"})))))))
 
 (def Int (m/schema int?))
 
@@ -840,3 +986,91 @@
   (is (= [:b {:optional true} Int]
          (-> [:map [:a [:map [:b {:optional true} Int]]]]
              (mu/get-in [:a [::m/find :b]])))))
+
+(deftest keys-test
+  (is (= [:a :b :c]
+         (mu/keys (m/schema [:map
+                             [:a {:optional true} :string]
+                             [:b {:optional false} any?]
+                             [:c [:vector double?]]]))))
+  (is (= []
+         (mu/keys (m/schema [:map]))))
+  (is (nil?
+       (mu/keys (m/schema :string))))
+  (is (nil?
+       (mu/keys (m/schema [:vector :int])))))
+
+#?(:clj
+   (deftest composers
+     (let [-t (constantly true)
+           -f (constantly false)
+           t (into [] (repeat 16 -t))
+           f (into [] (repeat 16 -f))
+           t+f (conj t -f)
+           f+t (conj f -t)
+           tf (into [-t] f)
+           ft (into [-f] t)
+           ff (conj f -f)
+           tt (conj t -t)]
+       (testing "every pred behaves like and: one false => result is false"
+         (is (true?  ((miu/-every-pred [-t]) nil)))
+         (is (false? ((miu/-every-pred [-f]) nil)))
+         (is (true?  ((miu/-every-pred t) nil)))
+         (is (false? ((miu/-every-pred f) nil)))
+         (is (false? ((miu/-every-pred t+f) nil)))
+         (is (false? ((miu/-every-pred f+t) nil)))
+         (is (false? ((miu/-every-pred tf) nil)))
+         (is (false? ((miu/-every-pred ft) nil)))
+         (is (false? ((miu/-every-pred ff) nil)))
+         (is (true?  ((miu/-every-pred tt) nil))))
+       (testing "some pred behaves like or: one true => result is true"
+         (is (true?  ((miu/-some-pred [-t]) nil)))
+         (is (false? ((miu/-some-pred [-f]) nil)))
+         (is (true?  ((miu/-some-pred t) nil)))
+         (is (false? ((miu/-some-pred f) nil)))
+         (is (true?  ((miu/-some-pred t+f) nil)))
+         (is (true?  ((miu/-some-pred f+t) nil)))
+         (is (true?  ((miu/-some-pred tf) nil)))
+         (is (true?  ((miu/-some-pred ft) nil)))
+         (is (false? ((miu/-some-pred ff) nil)))
+         (is (true?  ((miu/-some-pred tt) nil)))))))
+
+(deftest explain-data-test
+  (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])
+        input-1 {:a 1}
+        input-2 {:a [true]}
+        input-3 {:a ["kikka"]}]
+    (testing "explain-data output is plain data"
+      (is (= nil (mu/explain-data schema input-3)))
+      (is (= {:errors [{:in [:a]
+                        :path [:a]
+                        :schema [:vector [:maybe :string]]
+                        :type :malli.core/invalid-type
+                        :value 1}]
+              :schema [:map [:a [:vector [:maybe :string]]]]
+              :value {:a 1}}
+             (mu/explain-data schema input-1)))
+      (is (= {:errors [{:in [:a 0]
+                        :path [:a 0 0]
+                        :schema :string
+                        :value true}]
+              :schema [:map [:a [:vector [:maybe :string]]]]
+              :value {:a [true]}}
+             (mu/explain-data schema input-2))))
+    #?(:clj
+       (testing "explain-data output can be printed as json"
+         (is (= {"errors" [{"in" ["a"]
+                            "path" ["a"]
+                            "schema" ["vector" ["maybe" "string"]]
+                            "type" "malli.core/invalid-type"
+                            "value" 1}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" 1}}
+                (from-json (to-json (mu/explain-data schema input-1)))))
+         (is (= {"errors" [{"in" ["a" 0]
+                            "path" ["a" 0 0]
+                            "schema" "string"
+                            "value" true}]
+                 "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
+                 "value" {"a" [true]}}
+                (from-json (to-json (mu/explain-data schema input-2)))))))))

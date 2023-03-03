@@ -24,7 +24,7 @@ If you have questions about contributing or about malli in general, join the [#m
 * Create a topic branch from where you want to base your work (usually the master branch)
 * Check the formatting rules from existing code (no trailing whitespace, mostly default indentation)
 * Ensure any new code is well-tested, and if possible, any issue fixed is covered by one or more new tests
-* Verify that all tests pass using `./bin/kaocha`
+* Verify that all tests pass using `./bin/kaocha` and `./bin/node`
 * Push your code to your fork of the repository
 * Make a Pull Request
 

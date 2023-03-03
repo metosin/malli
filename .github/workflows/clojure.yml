@@ -1,54 +1,83 @@
+---
 name: Run tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build-clj:
     strategy:
       matrix:
-        # Supported Java versions: LTS releases 8 and 11 and the latest release
-        jdk: [8, 11, 15]
+        # Supported Java versions: LTS releases and latest
+        # TODO: Replace 19=>20 when available
+        jdk: [8, 11, 17, 19]
+        clojure: [10, 11]
 
-    name: Clojure (Java ${{ matrix.jdk }})
+    name: Clojure ${{ matrix.clojure }} (Java ${{ matrix.jdk }})
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Java ${{ matrix.jdk }}
-      uses: actions/setup-java@v1.4.3
-      with:
-        java-version: ${{ matrix.jdk }}
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        cli: latest
-    - name: Run tests
-      run: bin/kaocha
+      - uses: actions/checkout@v3
+      - name: Setup Java ${{ matrix.jdk }}
+        uses: actions/setup-java@v3.5.1
+        with:
+          distribution: zulu
+          java-version: ${{ matrix.jdk }}
+          cache: maven
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          cli: latest
+      - name: Run tests
+        run: CLOJURE_ALIAS=clojure-${{ matrix.clojure }} bin/kaocha
 
   build-cljs:
     name: ClojureScript
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Java 11
-        uses: actions/setup-java@v1.4.3
+        uses: actions/setup-java@v3.5.1
         with:
+          distribution: zulu
           java-version: 11
+          cache: maven
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: latest
       - name: Setup Node.js
-        uses: actions/setup-node@v2.1.2
+        uses: actions/setup-node@v3.5.1
         with:
-          node-version: 12
+          node-version: 16
       - name: Install dependencies
         run: npm ci
       - name: Run tests
         run: bin/node
+
+  build-bb:
+    name: Babashka
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Java 11
+        uses: actions/setup-java@v3.5.1
+        with:
+          distribution: zulu
+          java-version: 11
+          cache: maven
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          cli: latest
+          # bb: latest
+      - name: Download bb master
+        run: bash <(curl -s https://raw.githubusercontent.com/babashka/babashka/master/install) --version 0.8.157-SNAPSHOT
+      - name: Run tests
+        run: bb test-bb

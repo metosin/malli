@@ -1,44 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.2.1</version>
+  <version>0.10.1</version>
   <name>malli</name>
-
   <licenses>
     <license>
       <name>Eclipse Public License 2.0</name>
       <url>https://www.eclipse.org/legal/epl-2.0/</url>
     </license>
   </licenses>
-
   <scm>
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.2.1</tag>
+    <tag>0.10.1</tag>
   </scm>
-
   <dependencies>
+    <dependency>
+      <groupId>fipp</groupId>
+      <artifactId>fipp</artifactId>
+      <version>0.6.26</version>
+    </dependency>
+    <dependency>
+      <groupId>mvxcvi</groupId>
+      <artifactId>arrangement</artifactId>
+      <version>2.0.0</version>
+    </dependency>
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>dynaload</artifactId>
-      <version>0.2.2</version>
+      <version>0.3.5</version>
     </dependency>
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>0.0.11-alpha.15</version>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>test.check</artifactId>
-      <version>1.1.0</version>
+      <version>1.1.1</version>
     </dependency>
   </dependencies>
-
   <build>
     <sourceDirectory>src</sourceDirectory>
     <resources>
@@ -47,14 +52,12 @@
       </resource>
     </resources>
   </build>
-
   <repositories>
     <repository>
       <id>clojars</id>
-      <url>https://clojars.org/repo</url>
+      <url>https://repo.clojars.org/</url>
     </repository>
   </repositories>
-
   <distributionManagement>
     <repository>
       <id>clojars</id>

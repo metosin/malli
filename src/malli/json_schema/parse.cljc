@@ -156,9 +156,13 @@
                                        :else (throw (ex-info "Not Supported" {:json-schema p
                                                                               :reason ::array-items})))))
 
+(defmethod type->malli "file" [p]
+  [:map {:json-schema {:type "file"}} [:file any?]])
+
 (defmethod type->malli :default [{:keys [type] :as p}]
   (cond
     (vector? type) (into [:or] (map #(type->malli {:type %}) type))
+    (and type (= 1 (count (keys p)))) {:json-schema/type type}
     :else
     (throw (ex-info "Not Supported" {:json-schema p
                                      :reason ::unparseable-type}))))

@@ -7,10 +7,10 @@
             [malli.util :as mu]))
 
 (def expectations
-  [;; predicates
-   [(m/schema pos-int?) {:type "integer", :minimum 1}]
-   [pos? {:type "number" :exclusiveMinimum 0}]
-   [number? {:type "number"}]
+  [ ;; predicates
+   [[:and :int [:>= 1]] {:type "integer", :minimum 1}]
+   [[:> 0] {:type "number" :exclusiveMinimum 0}]
+   [:double {:type "number"}]
    ;; comparators
    [[:> 6] {:type "number", :exclusiveMinimum 6}]
    [[:>= 6] {:type "number", :minimum 6}]
@@ -19,9 +19,9 @@
    [[:= "x"] {:const "x"}]
    ;; base
    [[:not :string] {:not {:type "string"}}]
-   [[:and int? pos-int?] {:allOf [{:type "integer"}
-                                  {:type "integer", :minimum 1}]}]
-   [[:or int? :string] {:anyOf [{:type "integer"} {:type "string"}]}]
+   [[:and :int [:and :int [:>= 1]]] {:allOf [{:type "integer"}
+                                             {:type "integer", :minimum 1}]}]
+   [[:or :int :string] {:anyOf [{:type "integer"} {:type "string"}]}]
    [[:map
      [:a :string]
      [:b {:optional true} :string]
@@ -30,7 +30,7 @@
                   :b {:type "string"}
                   :c {:type "string"}}
      :required [:a :c]}]
-   [[:or [:map [:type :string] [:size int?]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
+   [[:or [:map [:type :string] [:size :int]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
     {:anyOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"}},
@@ -43,7 +43,7 @@
                                      :required [:country]}},
               :required [:type :name :address]}
              {:type "string"}]}]
-   [[:or [:map [:type :string] [:size int?]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
+   [[:or [:map [:type :string] [:size :int]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"}},
@@ -63,7 +63,7 @@
                     :items {:type "string"}
                     :uniqueItems true}]
    [[:enum 1 2 "3"] {:enum [1 2 "3"]}]
-   [[:enum 1 2 3] {:type "integer" :enum [1 2 3]}]
+   [[:and :int [:enum 1 2 3]] {:type "integer" :enum [1 2 3]}]
    [[:enum 1.1 2.2 3.3] {:type "number" :enum [1.1 2.2 3.3]}]
    [[:enum "kikka" "kukka"] {:type "string" :enum ["kikka" "kukka"]}]
    [[:enum :kikka :kukka] {:type "string" :enum [:kikka :kukka]}]
@@ -76,14 +76,14 @@
    [:any {}]
    [:nil {:type "null"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
-   [[:and [:<= 4] pos-int?] {:type "integer", :minimum 1, :maximum 4}]
+   [[:and :int [:<= 4] [:>= 1]] {:type "integer", :minimum 1, :maximum 4}]
    [[:and [:<= 4] [:>= 1]] {:type "number", :minimum 1, :maximum 4}]
    [:uuid {:type "string", :format "uuid"}]
 
-   [int? {:type "integer"}]
+   [:int {:type "integer"}]
    ;; type-properties
-   [[:>= 6] {:type "integer", :format "int64", :minimum 6}]
-   [[:>= {:json-schema/example 42} 6] {:type "integer", :format "int64", :minimum 6, :example 42}]])
+   [[:and :int [:>= 6]] {:type "integer", :format "int64", :minimum 6}]
+   [[:and {:json-schema/example 42} :int [:>= 6]] {:type "integer", :format "int64", :minimum 6, :example 42}]])
 
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]

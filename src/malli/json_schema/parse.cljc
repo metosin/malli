@@ -119,21 +119,16 @@
                               multipleOf enum type]
                        :as schema}]
   (let [integer (= type "integer")
+        explicit-double (not (or minimum maximum integer enum
+                                 (number? exclusiveMaximum) (number? exclusiveMinimum)))
         maximum (if (number? exclusiveMaximum) exclusiveMaximum maximum)
         minimum (if (number? exclusiveMinimum) exclusiveMinimum minimum)]
-    (cond-> (cond
-              (or minimum maximum) []
-              enum    [(into [:enum] enum)]
-              integer [int?]
-              :else [number?])
-      maximum (into (cond
-                      (and (zero? maximum) exclusiveMaximum) [(if integer neg-int? neg?)]
-                      (and (= -1 maximum) integer) [neg-int?]
-                      :else [[(if exclusiveMaximum :< :<=) maximum]]))
-      minimum (into (cond
-                      (and (zero? minimum) exclusiveMinimum) [(if integer pos-int? pos?)]
-                      (and (= 1 minimum) integer) [pos-int?]
-                      :else [[(if exclusiveMinimum :> :>=) minimum]])))))
+    (cond-> (if integer [:int] [])
+      (or minimum maximum) identity
+      enum    (into [(into [:enum] enum)])
+      maximum (into [[(if exclusiveMaximum :< :<=) maximum]])
+      minimum (into [[(if exclusiveMinimum :> :>=) minimum]])
+      explicit-double (into [[:double]]))))
 
 (defmethod type->malli "integer" [p]
   ;; TODO Implement multipleOf support

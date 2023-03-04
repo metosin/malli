@@ -106,9 +106,12 @@
           :string
           (into [:enum] enum)]
     (= format "uuid") uuid?
-    :else [:string (cond-> {}
-               minLength (assoc :min minLength)
-               maxLength (assoc :max maxLength))]))
+    :else (let [attrs (cond-> nil
+                        minLength (assoc :min minLength)
+                        maxLength (assoc :max maxLength))]
+            (if attrs
+              [:string attrs]
+              string?))))
 
 (defn- number->malli [{:keys [minimum maximum exclusiveMinimum exclusiveMaximum
                               multipleOf enum type]

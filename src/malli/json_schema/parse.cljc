@@ -71,7 +71,7 @@
 (defn- min-properties [-min] (prop-size (partial <= -min)))
 (defn- max-properties [-max] (prop-size (partial >= -max)))
 
-(defn with-min-max-poperties-size [malli v]
+(defn with-min-max-properties-size [malli v]
   (let [predicates [(some->> v
                              (:minProperties)
                              (min-properties)
@@ -99,7 +99,7 @@
                   (into
                     (map (partial properties->malli required))
                     (:properties v))
-                  (with-min-max-poperties-size v)))))
+                  (with-min-max-properties-size v)))))
 
 (defmethod type->malli "string" [{:keys [pattern minLength maxLength enum format]}]
   ;; `format` metadata is deliberately not considered.

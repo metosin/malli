@@ -147,7 +147,7 @@
       (first ranges-logic))))
 
 (defmethod type->malli "boolean" [p] boolean?)
-(defmethod type->malli "null" [p] nil?)
+(defmethod type->malli "null" [p] :nil)
 (defmethod type->malli "object" [p] (object->malli p))
 (defmethod type->malli "array" [p] (let [items (:items p)]
                                      (cond

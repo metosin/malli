@@ -86,13 +86,15 @@
                   (filter some?)
                   predicates)))))
 
-(defn object->malli [v]
+(defn object->malli [{:keys [additionalProperties] :as v}]
   (let [required (into #{}
                        ;; TODO Should use the same fn as $ref
                        (map keyword)
                        (:required v))
-        closed? (false? (:additionalProperties v))]
-    (m/schema (-> [:map]
+        closed? (false? additionalProperties)]
+    (m/schema (-> (if (:type additionalProperties)
+                    (let [va (schema->malli additionalProperties)] [:map-of va va])
+                    [:map])
                   (cond-> closed? (conj {:closed :true}))
                   (into
                     (map (partial properties->malli required))

@@ -4,12 +4,16 @@
             [clojure.set :as set]
             [clojure.string :as str]))
 
-(def annotations #{:title :description :default :examples})
+(def annotations #{:title :description :default :examples :example})
 
 (defn annotations->properties [js-schema]
   (-> js-schema
       (select-keys annotations)
-      (set/rename-keys {:examples :json-schema/examples})))
+      (set/rename-keys {:examples    :json-schema/examples
+                        :example     :json-schema/example
+                        :title       :json-schema/title
+                        :description :json-schema/description
+                        :default     :json-schema/default})))
 
 ;; Utility Functions
 (defn- map-values

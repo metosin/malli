@@ -32,7 +32,7 @@
         (-keys :enum) (into [:enum]
                             (:enum js-schema))
 
-        (-keys :const) [:enum (:const js-schema)]
+       (-keys :const) [:= (:const js-schema)]
 
         ;; Aggregates
         (-keys :oneOf) (into

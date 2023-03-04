@@ -88,28 +88,36 @@
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]
     (testing json-schema
-      (is (mu/equals (m/schema schema)
-                     (sut/schema->malli json-schema)))))
+      (is (= schema
+             (m/form (sut/schema->malli json-schema))))))
 
-  #_(testing "with properties"
-      (is (= {:allOf [{:type "integer"}]
-              :title "age"
-              :description "blabla"
-              :default 42}
-             (json-schema/transform
-              [:and {:title "age"
-                     :description "blabla"
-                     :default 42} int?])))
-      (is (= {:allOf [{:type "integer"}]
-              :title "age2"
-              :description "blabla2"
-              :default 422
-              :example 422}
-             (json-schema/transform
-              [:and {:title "age"
-                     :json-schema/title "age2"
-                     :description "blabla"
-                     :json-schema/description "blabla2"
-                     :default 42
-                     :json-schema/default 422
-                     :json-schema/example 422} int?])))))
+  (testing "full override"
+    (is (= [:map {:json-schema {:type "file"}} [:file :any]]
+           (m/form (sut/schema->malli {:type "file"})))))
+
+  (testing "with properties"
+    (is (= [:map
+            [:x1 [:string {:json-schema/title "x"}]]
+            [:x2 [:any #:json-schema{:default "x" :title "x"}]]
+            [:x3 [:string #:json-schema{:title "x" :default "x"}]]
+            [:x4 {:optional true} [:any #:json-schema{:title "x-string" :default "x2"}]]]
+
+           (m/form (sut/schema->malli {:type "object",
+                                       :properties {:x1 {:title "x", :type "string"}
+                                                    :x2 {:title "x", :default "x"}
+                                                    :x3 {:title "x", :type "string", :default "x"}
+                                                    :x4 {:title "x-string", :default "x2"}},
+                                       :required [:x1 :x2 :x3]}))))
+
+    #_(testing "custom type"
+        (is (= [:map
+                [:x5 {:json-schema/type "x-string"} :string]]
+               (m/form (sut/schema->malli {:type "object", :properties {:x5 {:type "x-string"}}, :required [:x5]})))))
+
+    (is (= [:and {:json-schema/title "age"
+                  :json-schema/description "blabla"
+                  :json-schema/default 42} :int]
+           (m/form (sut/schema->malli {:allOf [{:type "integer"}]
+                                       :title "age"
+                                       :description "blabla"
+                                       :default 42}))))))

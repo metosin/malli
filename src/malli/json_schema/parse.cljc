@@ -157,7 +157,7 @@
                                                                               :reason ::array-items})))))
 
 (defmethod type->malli "file" [p]
-  [:map {:json-schema {:type "file"}} [:file any?]])
+  [:map {:json-schema {:type "file"}} [:file :any]])
 
 (defmethod type->malli :default [{:keys [type] :as p}]
   (cond

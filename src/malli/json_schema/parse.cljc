@@ -110,21 +110,39 @@
                minLength (assoc :min minLength)
                maxLength (assoc :max maxLength))]))
 
-(defmethod type->malli "integer" [{:keys [minimum maximum exclusiveMinimum exclusiveMaximum multipleOf]
-                                   :or {minimum Integer/MIN_VALUE
-                                        maximum Integer/MAX_VALUE}}]
-  ;; On draft 4, exclusive{Minimum,Maximum} is a boolean.
-  ;; TODO Decide on whether draft 4 will be supported
-  ;; TODO Implement exclusive{Minimum,Maximum} support
-  ;; TODO Implement multipleOf support
-  ;; TODO Wrap, when it makes sense, the values below with range checkers, i.e. [:< maximum]
-  ;; TODO extract ranges logic and reuse with number
-  (cond
-    (pos? minimum) pos-int?
-    (neg? maximum) neg-int?
-    :else int?))
+(defn- number->malli [{:keys [minimum maximum exclusiveMinimum exclusiveMaximum
+                              multipleOf enum type]
+                       :as schema}]
+  (let [integer (= type "integer")
+        maximum (if (number? exclusiveMaximum) exclusiveMaximum maximum)
+        minimum (if (number? exclusiveMinimum) exclusiveMinimum minimum)]
+    (cond-> (cond
+              (or minimum maximum) []
+              enum    [(into [:enum] enum)]
+              integer [int?]
+              :else [number?])
+      maximum (into (cond
+                      (and (zero? maximum) exclusiveMaximum) [(if integer neg-int? neg?)]
+                      (and (= -1 maximum) integer) [neg-int?]
+                      :else [[(if exclusiveMaximum :< :<=) maximum]]))
+      minimum (into (cond
+                      (and (zero? minimum) exclusiveMinimum) [(if integer pos-int? pos?)]
+                      (and (= 1 minimum) integer) [pos-int?]
+                      :else [[(if exclusiveMinimum :> :>=) minimum]])))))
 
-(defmethod type->malli "number" [p] number?)
+(defmethod type->malli "integer" [p]
+  ;; TODO Implement multipleOf support
+  (let [ranges-logic (number->malli p)]
+    (if (> (count ranges-logic) 1)
+      (into [:and] ranges-logic)
+      (first ranges-logic))))
+
+(defmethod type->malli "number" [{:keys [exclusiveMinimum exclusiveMaximum minimum maximum] :as p}]
+  (let [ranges-logic (number->malli p)]
+    (if (> (count ranges-logic) 1)
+      (into [:and] ranges-logic)
+      (first ranges-logic))))
+
 (defmethod type->malli "boolean" [p] boolean?)
 (defmethod type->malli "null" [p] nil?)
 (defmethod type->malli "object" [p] (object->malli p))

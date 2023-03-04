@@ -69,7 +69,7 @@
    [[:enum "kikka" "kukka"] {:type "string" :enum ["kikka" "kukka"]}]
    [[:enum :kikka :kukka] {:type "string" :enum [:kikka :kukka]}]
    [[:enum 'kikka 'kukka] {:type "string" :enum ['kikka 'kukka]}]
-   [[:maybe string?] {:oneOf [{:type "string"} {:type "null"}]}]
+   [[:or string? :nil] {:oneOf [{:type "string"} {:type "null"}]}]
    [[:tuple string? string?] {:type "array"
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
@@ -81,10 +81,6 @@
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:and [:<= 4] pos-int?] {:type "integer", :minimum 1, :maximum 4}]
    [[:and [:<= 4] [:>= 1]] {:type "number", :minimum 1, :maximum 4}]
-   [:keyword {:type "string"}]
-   [:qualified-keyword {:type "string"}]
-   [:symbol {:type "string"}]
-   [:qualified-symbol {:type "string"}]
    [:uuid {:type "string", :format "uuid"}]
 
    [[:=> :cat int?] {} :fn]

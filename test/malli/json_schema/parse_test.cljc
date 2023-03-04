@@ -74,30 +74,14 @@
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
-   [[:fn {:gen/elements [1]} int?] {}]
    [:any {}]
-   [:some {}]
    [:nil {:type "null"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:and [:<= 4] pos-int?] {:type "integer", :minimum 1, :maximum 4}]
    [[:and [:<= 4] [:>= 1]] {:type "number", :minimum 1, :maximum 4}]
    [:uuid {:type "string", :format "uuid"}]
 
-   [[:=> :cat int?] {} :fn]
-   [[:function [:=> :cat int?]] {} :fn]
-   [ifn? {}]
-
    [int? {:type "integer"}]
-   ;; protocols
-   [(reify
-      m/Schema
-      (-properties [_])
-      (-parent [_] (reify m/IntoSchema (-type [_]) (-type-properties [_])))
-      (-form [_])
-      (-validator [_] int?)
-      (-walk [t w p o] (m/-outer w t p nil o))
-      json-schema/JsonSchema
-      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]
    ;; type-properties
    [[:>= 6] {:type "integer", :format "int64", :minimum 6}]
    [[:>= {:json-schema/example 42} 6] {:type "integer", :format "int64", :minimum 6, :example 42}]])

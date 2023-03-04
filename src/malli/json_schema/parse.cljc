@@ -113,7 +113,7 @@
                         maxLength (assoc :max maxLength))]
             (if attrs
               [:string attrs]
-              string?))))
+              :string))))
 
 (defn- number->malli [{:keys [minimum maximum exclusiveMinimum exclusiveMaximum
                               multipleOf enum type]

@@ -18,19 +18,19 @@
    [[:<= 6] {:type "number", :maximum 6}]
    [[:= "x"] {:const "x"}]
    ;; base
-   [[:not string?] {:not {:type "string"}}]
+   [[:not :string] {:not {:type "string"}}]
    [[:and int? pos-int?] {:allOf [{:type "integer"}
                                   {:type "integer", :minimum 1}]}]
-   [[:or int? string?] {:anyOf [{:type "integer"} {:type "string"}]}]
+   [[:or int? :string] {:anyOf [{:type "integer"} {:type "string"}]}]
    [[:map
-     [:a string?]
-     [:b {:optional true} string?]
-     [:c string?]] {:type "object"
+     [:a :string]
+     [:b {:optional true} :string]
+     [:c :string]] {:type "object"
      :properties {:a {:type "string"}
                   :b {:type "string"}
                   :c {:type "string"}}
      :required [:a :c]}]
-   [[:or [:map [:type string?] [:size int?]] [:map [:type string?] [:name string?] [:address [:map [:country string?]]]] string?]
+   [[:or [:map [:type :string] [:size int?]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
     {:anyOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"}},
@@ -43,7 +43,7 @@
                                      :required [:country]}},
               :required [:type :name :address]}
              {:type "string"}]}]
-   [[:or [:map [:type string?] [:size int?]] [:map [:type string?] [:name string?] [:address [:map [:country string?]]]] string?]
+   [[:or [:map [:type :string] [:size int?]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
                            :size {:type "integer"}},
@@ -56,10 +56,10 @@
                                      :required [:country]}},
               :required [:type :name :address]}
              {:type "string"}]}]
-   [[:map-of string? string?] {:type "object"
+   [[:map-of :string :string] {:type "object"
                                :additionalProperties {:type "string"}}]
-   [[:vector string?] {:type "array", :items {:type "string"}}]
-   [[:set string?] {:type "array"
+   [[:vector :string] {:type "array", :items {:type "string"}}]
+   [[:set :string] {:type "array"
                     :items {:type "string"}
                     :uniqueItems true}]
    [[:enum 1 2 "3"] {:enum [1 2 "3"]}]
@@ -68,8 +68,8 @@
    [[:enum "kikka" "kukka"] {:type "string" :enum ["kikka" "kukka"]}]
    [[:enum :kikka :kukka] {:type "string" :enum [:kikka :kukka]}]
    [[:enum 'kikka 'kukka] {:type "string" :enum ['kikka 'kukka]}]
-   [[:or string? :nil] {:oneOf [{:type "string"} {:type "null"}]}]
-   [[:tuple string? string?] {:type "array"
+   [[:or :string :nil] {:oneOf [{:type "string"} {:type "null"}]}]
+   [[:tuple :string :string] {:type "array"
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]

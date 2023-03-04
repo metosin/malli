@@ -154,6 +154,7 @@
                                        (vector? items) (into [:tuple]
                                                         (map schema->malli)
                                                         items)
+                                       (:uniqueItems p) [:set (schema->malli items)]
                                        (map? items) [:vector (schema->malli items)]
                                        :else (throw (ex-info "Not Supported" {:json-schema p
                                                                               :reason ::array-items})))))

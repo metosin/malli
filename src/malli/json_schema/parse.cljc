@@ -55,6 +55,8 @@
 
         (-keys :$ref) ($ref (:$ref js-schema))
 
+        (empty -keys) :any
+
         :else (throw (ex-info "Not supported" {:json-schema js-schema
                                                :reason ::schema-type})))
       merge

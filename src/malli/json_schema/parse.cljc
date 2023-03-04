@@ -102,10 +102,8 @@
   ;; String enums are stricter, so they're also implemented here.
   (cond
     pattern [:re pattern]
-    enum [:and
-          :string
-          (into [:enum] enum)]
-    (= format "uuid") uuid?
+    enum (into [:enum] enum)
+    (= format "uuid") :uuid
     :else (let [attrs (cond-> nil
                         minLength (assoc :min minLength)
                         maxLength (assoc :max maxLength))]

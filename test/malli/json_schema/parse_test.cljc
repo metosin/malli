@@ -8,7 +8,8 @@
 
 (def expectations
   [ ;; predicates
-   [[:and :int [:>= 1]] {:type "integer", :minimum 1}]
+   [[:and :int [:>= 1]] {:type "integer", :minimum 1} :one-way true]
+   [[:and :int [:>= 1]] {:allOf [{:type "integer"} {:type "number", :minimum 1}]}]
    [[:> 0] {:type "number" :exclusiveMinimum 0}]
    [:double {:type "number"}]
    ;; comparators
@@ -20,7 +21,7 @@
    ;; base
    [[:not :string] {:not {:type "string"}}]
    [[:and :int [:and :int [:>= 1]]] {:allOf [{:type "integer"}
-                                             {:type "integer", :minimum 1}]}]
+                                             {:type "integer", :minimum 1}]} :one-way true]
    [[:or :int :string] {:anyOf [{:type "integer"} {:type "string"}]}]
    [[:map
      [:a :string]
@@ -30,19 +31,6 @@
                   :b {:type "string"}
                   :c {:type "string"}}
      :required [:a :c]}]
-   [[:or [:map [:type :string] [:size :int]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
-    {:anyOf [{:type "object",
-              :properties {:type {:type "string"}
-                           :size {:type "integer"}},
-              :required [:type :size]}
-             {:type "object",
-              :properties {:type {:type "string"},
-                           :name {:type "string"},
-                           :address {:type "object"
-                                     :properties {:country {:type "string"}}
-                                     :required [:country]}},
-              :required [:type :name :address]}
-             {:type "string"}]}]
    [[:or [:map [:type :string] [:size :int]] [:map [:type :string] [:name :string] [:address [:map [:country :string]]]] :string]
     {:oneOf [{:type "object",
               :properties {:type {:type "string"}
@@ -55,7 +43,7 @@
                                      :properties {:country {:type "string"}}
                                      :required [:country]}},
               :required [:type :name :address]}
-             {:type "string"}]}]
+             {:type "string"}]} :one-way true]
    [[:map-of :string :string] {:type "object"
                                :additionalProperties {:type "string"}}]
    [[:vector :string] {:type "array", :items {:type "string"}}]
@@ -63,12 +51,13 @@
                     :items {:type "string"}
                     :uniqueItems true}]
    [[:enum 1 2 "3"] {:enum [1 2 "3"]}]
-   [[:and :int [:enum 1 2 3]] {:type "integer" :enum [1 2 3]}]
+   [[:and :int [:enum 1 2 3]] {:type "integer" :enum [1 2 3]} :one-way true]
    [[:enum 1.1 2.2 3.3] {:type "number" :enum [1.1 2.2 3.3]}]
    [[:enum "kikka" "kukka"] {:type "string" :enum ["kikka" "kukka"]}]
    [[:enum :kikka :kukka] {:type "string" :enum [:kikka :kukka]}]
    [[:enum 'kikka 'kukka] {:type "string" :enum ['kikka 'kukka]}]
-   [[:or :string :nil] {:oneOf [{:type "string"} {:type "null"}]}]
+   [[:or :string :nil] {:oneOf [{:type "string"} {:type "null"}]} :one-way true]
+   [[:or :string :nil] {:anyOf [{:type "string"} {:type "null"}]}]
    [[:tuple :string :string] {:type "array"
                               :items [{:type "string"} {:type "string"}]
                               :additionalItems false}]
@@ -76,20 +65,25 @@
    [:any {}]
    [:nil {:type "null"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
-   [[:and :int [:<= 4] [:>= 1]] {:type "integer", :minimum 1, :maximum 4}]
-   [[:and [:<= 4] [:>= 1]] {:type "number", :minimum 1, :maximum 4}]
+   [[:and :int [:<= 4] [:>= 1]] {:type "integer", :minimum 1, :maximum 4} :one-way true]
+   [[:and [:<= 4] [:>= 1]] {:type "number", :minimum 1, :maximum 4} :one-way true]
    [:uuid {:type "string", :format "uuid"}]
 
    [:int {:type "integer"}]
    ;; type-properties
-   [[:and :int [:>= 6]] {:type "integer", :format "int64", :minimum 6}]
-   [[:and {:json-schema/example 42} :int [:>= 6]] {:type "integer", :format "int64", :minimum 6, :example 42}]])
+   [[:and :int [:>= 6]] {:type "integer", :format "int64", :minimum 6} :one-way true]
+   [[:and {:json-schema/example 42} :int [:>= 6]] {:type "integer", :format "int64", :minimum 6, :example 42} :one-way true]])
 
 (deftest json-schema-test
-  (doseq [[schema json-schema] expectations]
+  (doseq [[schema json-schema & {:keys [one-way]}] expectations]
     (testing json-schema
       (is (= schema
-             (m/form (sut/schema->malli json-schema))))))
+             (m/form (sut/schema->malli json-schema)))))
+
+    (when-not one-way
+      (testing (str "round trip " json-schema "\n" schema)
+        (is (= json-schema
+               (-> json-schema sut/schema->malli malli.json-schema/transform))))))
 
   (testing "full override"
     (is (= [:map {:json-schema {:type "file"}} [:file :any]]

@@ -26,6 +26,13 @@ Malli is in well matured [alpha](README.md#alpha).
 * FIX: Malli generates `:nilable/any` which is not a valid type in clj-kondo [#821](https://github.com/metosin/malli/issues/821)
 * FIX: `mi/collect!` without args doesn't work properly [#834](https://github.com/metosin/malli/issues/834)
 
+* Updated dependencies:
+
+```clojure
+mvxcvi/mvxcvi 2.0.0 -> 2.1.0
+borkdude/edamame 1.0.0 -> 1.1.17
+```
+
 ## 0.10.1 (2023-01-21)
 
 * Strip-extra-keys should not break on non-map values [#818](https://github.com/metosin/malli/pull/818)

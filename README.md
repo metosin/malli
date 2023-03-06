@@ -3173,7 +3173,7 @@ Without sci (11Mb)
 
 With sci (18Mb):
 
-```clojure
+```bash
 ./bin/native-image demosci
 ./demosci '[:fn (fn [x] (and (int? x) (> x 10)))]]' '12'
 ```

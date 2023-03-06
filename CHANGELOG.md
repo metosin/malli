@@ -14,11 +14,24 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.10.2 (2023-03-05)
 
+* Implement `malli.experimental.time` schemas for clojurescript using js-joda [#853](https://github.com/metosin/malli/pull/853)
+* Allow instrumenting external functions [#841](https://github.com/metosin/malli/pull/841)
 * Add clj-kondo support for cljs function schemas [#833](https://github.com/metosin/malli/pull/833)
 * Turn on instrumentation for `mx/defn` with `:malli/always` meta [#825](https://github.com/metosin/malli/pull/825)
+* Support type-properties in `m/-map-schema`, `m/-map-of-schema` and `m/-tuple-schema` [#856](https://github.com/metosin/malli/pull/856)
+* FIX: properly compose interceptors in :map-of json-transformer [#849](https://github.com/metosin/malli/pull/849)
+* FIX: error paths for `:multi` schemas when value is not a map [#845](https://github.com/metosin/malli/pull/845)
+* FIX: Malli generates `:nilable/any` which is not a valid type in clj-kondo [#821](https://github.com/metosin/malli/issues/821)
 * FIX: `mi/collect!` without args doesn't work properly [#834](https://github.com/metosin/malli/issues/834)
+
+* Updated dependencies:
+
+```clojure
+mvxcvi/mvxcvi 2.0.0 -> 2.1.0
+borkdude/edamame 1.0.0 -> 1.1.17
+```
 
 ## 0.10.1 (2023-01-21)
 

@@ -7,7 +7,12 @@
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
-(defn -ref [x] {:$ref (str "#/definitions/" x)})
+(defn -ref [x] {:$ref (apply str "#/definitions/"
+                             (cond
+                               (qualified-keyword? x) [(namespace x) "~1"
+                                                       (name x)]
+                               (keyword? x) [(name x)]
+                               :else [x]))})
 
 (defn -schema [schema {::keys [transform definitions] :as options}]
   (let [result (transform (m/deref schema) options)]

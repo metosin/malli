@@ -18,11 +18,10 @@
 (defn -schema [schema {::keys [transform definitions] :as options}]
   (let [result (transform (m/deref schema) options)]
     (if-let [ref (m/-ref schema)]
-      (do
-        (when-not (and (contains? result :$ref)
-                       (= (:$ref result) ref)) ; don't create circular defs
+      (let [ref* (-ref ref)]
+        (when-not (= ref* result) ; don't create circular definitions
           (swap! definitions assoc ref result))
-        (-ref ref))
+        ref*)
       result)))
 
 (defn select [m] (select-keys m [:title :description :default]))

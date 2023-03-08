@@ -55,6 +55,10 @@
 
 (defn -transform [?schema options] (m/walk ?schema -swagger-walker options))
 
+(defn -remove-empty-keys
+  [m]
+  (into (empty m) (filter (comp not nil? val) m)))
+
 ;;
 ;; public api
 ;;
@@ -68,10 +72,6 @@
                                  ::json-schema/definitions definitions
                                  ::json-schema/transform -transform})]
      (cond-> (-transform ?schema options) (seq @definitions) (assoc :definitions @definitions)))))
-
-(defn remove-empty-keys
-  [m]
-  (into (empty m) (filter (comp not nil? val) m)))
 
 (defmulti extract-parameter (fn [in _] in))
 
@@ -108,7 +108,7 @@
        [status (-> response
                    (update :schema transform {:type :schema})
                    (update :description (fnil identity ""))
-                   remove-empty-keys)]))})
+                   -remove-empty-keys)]))})
 
 (defmethod expand ::parameters [_ v acc _]
   (let [old    (or (:parameters acc) [])

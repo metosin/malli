@@ -100,13 +100,6 @@
 
 (defmulti expand (fn [k _ _ _] k))
 
-#_(defn lift-response-definitions
-    [response]
-    (if-let [definitions (get-in response [:schema :definitions])]
-      (-> response
-          (update :schema dissoc :definitions)
-          (assoc :definitions definitions))))
-
 (defmethod expand ::responses [_ v acc _]
   {:responses
    (into
@@ -145,17 +138,11 @@
               (if (accept? k)
                 (let [expanded    (expand k v acc options)
                       parameters  (:parameters expanded)
-                      _           (println "\nPARAMETERS:"
-                                           (with-out-str (clojure.pprint/pprint parameters)))
                       responses   (:responses expanded)
-                      _           (println "\nRESPONSES:"
-                                           (with-out-str (clojure.pprint/pprint responses)))
                       definitions (if parameters
                                     (-> parameters first :schema :definitions)
                                     (->> responses vals (map :schema)
-                                         (map :definitions) (apply merge)))
-                      _           (println "\nDEFINITIONS:"
-                                           (with-out-str (clojure.pprint/pprint definitions)))]
+                                         (map :definitions) (apply merge)))]
                   (-> acc (dissoc k) (merge expanded) (update :definitions merge definitions)))
                 acc))
             x x)

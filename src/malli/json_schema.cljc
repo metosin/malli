@@ -9,6 +9,7 @@
 
 (defn -ref [x] {:$ref (apply str "#/definitions/"
                              (cond
+                               ;; / must be encoded as ~1 in JSON Schema
                                (qualified-keyword? x) [(namespace x) "~1"
                                                        (name x)]
                                (keyword? x) [(name x)]

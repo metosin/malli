@@ -8,10 +8,10 @@
   (t/is
    (= {:type "object",
        :properties
-       {:date {:$ref "#/definitions/:time/local-date"},
-        :time {:$ref "#/definitions/:time/offset-time"},
-        :date-time {:$ref "#/definitions/:time/offset-date-time"},
-        :duration {:$ref "#/definitions/:time/duration"}},
+       {:date {:$ref "#/definitions/time~1local-date"},
+        :time {:$ref "#/definitions/time~1offset-time"},
+        :date-time {:$ref "#/definitions/time~1offset-date-time"},
+        :duration {:$ref "#/definitions/time~1duration"}},
        :required [:date :time :date-time :duration],
        :definitions
        #:time{:local-date {:type "string", :format "date"},

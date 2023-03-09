@@ -72,6 +72,26 @@
               [::y {:optional true} ::y]
               [:y {:optional true, :title "boolean"} 'boolean?]]
              (map #(update % 2 m/form) (m/-entry-children entry-parser))))))
+  (testing "invalid entries fail"
+    (is (thrown? #?(:clj Exception, :cljs js/Error)
+                 (m/-create-entry-parser
+                  [[:x]
+                   [:y boolean?]] {:naked-keys true} nil)))
+    (is (thrown? #?(:clj Exception, :cljs js/Error)
+                 (m/-create-entry-parser
+                  [[:x boolean?]
+                   [:y]] {:naked-keys true} nil)))
+    (is (thrown? #?(:clj Exception, :cljs js/Error)
+                 (m/-create-entry-parser
+                  [[:x boolean?]
+                   [:y]
+                   [:z boolean?]] {:naked-keys true} nil)))
+    (is (thrown? #?(:clj Exception, :cljs js/Error)
+                 (m/-create-entry-parser
+                  [[:x boolean?]
+                   [:y [:map
+                        [:x]
+                        [:y :int]]]] {:naked-keys true} nil))))
   (testing "duplicate keys"
     (is (thrown? #?(:clj Exception, :cljs js/Error)
                  (m/-create-entry-parser

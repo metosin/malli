@@ -232,14 +232,6 @@
   (let [{min'' :min max'' :max} (-regex-min-max child)]
     (cond-> {:min (f (or min' 0) min'')} (and max' max'') (assoc :max (f max' max'')))))
 
-(defn- -re-cat-min-max
-  "Special treatment of :schema inside :cat"
-  [{min' :min, max' :max} child]
-  (let [{min'' :min max'' :max} (if (= :schema (type child))
-                                  {:min 1 :max 1}
-                                  (-regex-min-max child))]
-    (cond-> {:min (+ (or min' 0) min'')} (and max' max'') (assoc :max (+ max' max'')))))
-
 (defn- -re-alt-min-max [{min' :min, max' :max} child]
   (let [{min'' :min max'' :max} (-regex-min-max child)]
     (cond-> {:min (min (or min' miu/+max-size+) min'')} (and max' max'') (assoc :max (max max' max'')))))
@@ -1687,7 +1679,10 @@
             (-ref [_] id)
             (-deref [_] child)
             RegexSchema
-            (-regex-op? [_] false)
+            (-regex-op? [_]
+              (if internal
+                (-regex-op? child)
+                false))
             (-regex-validator [_]
               (if internal
                 (-regex-validator child)
@@ -1709,7 +1704,10 @@
                 (-regex-transformer child transformer method options)
                 (re/item-transformer method (-validator child)
                                      (or (-transformer child transformer method options) identity))))
-            (-regex-min-max [_] (-regex-min-max child))))))))
+            (-regex-min-max [_]
+              (if internal
+                (-regex-min-max child)
+                {:min 1, :max 1}))))))))
 
 (defn -=>-schema []
   ^{:type ::into-schema}
@@ -2383,7 +2381,7 @@
                            :re-parser (fn [_ children] (apply re/cat-parser children))
                            :re-unparser (fn [_ children] (apply re/cat-unparser children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))
-                           :re-min-max (fn [_ children] (reduce -re-cat-min-max {:min 0, :max 0} children))})
+                           :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} children))})
    :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}
                            :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
@@ -2397,7 +2395,7 @@
                                   :re-parser (fn [_ children] (apply re/catn-parser children))
                                   :re-unparser (fn [_ children] (apply re/catn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
-                                  :re-min-max (fn [_ children] (reduce -re-cat-min-max {:min 0, :max 0} (-vmap last children)))})
+                                  :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (-vmap last children)))})
    :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))

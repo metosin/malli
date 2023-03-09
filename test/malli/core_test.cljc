@@ -2315,7 +2315,10 @@
     [:cat int?] [1 1]
     [:cat int? [:cat]] [1 1]
     [:cat int? [:cat string? int?]] [3 3]
+    [:schema [:cat int? [:cat string? int?]]] [1 1]
+    [::m/schema [:cat int? [:cat string? int?]]] [3 3]
     [:cat int? [:schema [:cat string? int?]]] [2 2]
+    [:cat int? [::m/schema [:cat string? int?]]] [3 3]
     [:cat int? [:schema [:catn [:s string?] [:i int?]]]] [2 2]
     [:catn] [0 0]
     [:catn [:n int?]] [1 1]
@@ -2331,12 +2334,13 @@
     [:+ [:? int?]] [0 nil]
     [:repeat {:min 5, :max 15} [:cat string? int?]] [10 30]
     [:repeat {:min 5, :max 15} [:* int?]] [0 nil]
-    [:schema {:registry {:named [:cat string? int?]}} :named] [2 2]
-    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30])
+    [:cat {:registry {:named [:cat string? int?]}} :named] [2 2]
+    [:cat {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30]
+    [:cat {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} [:schema :named]]] [5 15])
 
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                         (m/-regex-min-max
-                         (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
+                         (m/schema [:cat {:registry {::ints [:cat int? [:ref ::ints]]}}
                                     ::ints])))))
 
 (defn single-arity

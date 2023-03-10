@@ -618,9 +618,10 @@
 ;; Schemas
 ;;
 
-(defn -simple-schema [?props]
-  (let [{:keys [type type-properties pred property-pred min max from-ast to-ast]
-         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (when (map? ?props) ?props)]
+(defn -simple-schema [props]
+  (let [{:keys [type type-properties pred property-pred min max from-ast to-ast compile]
+         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} props]
+    (when (fn? props) (-deprecated! "-simple-schema doesn't take fn-props, use :compiled property instead"))
     ^{:type ::into-schema}
     (reify
       AST
@@ -631,8 +632,8 @@
       (-properties-schema [_ _])
       (-children-schema [_ _])
       (-into-schema [parent properties children options]
-        (if (fn? ?props)
-          (-into-schema (-simple-schema (?props properties children)) properties children options)
+        (if compile
+          (-into-schema (-simple-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
           (let [form (delay (-simple-form parent properties children identity options))
                 cache (-create-cache options)]
             (-check-children! type properties children min max)
@@ -2331,13 +2332,8 @@
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
-       (-vmap (fn [[k v]] [k (-simple-schema (fn [_ [child]]
-                                               {:type k
-                                                :pred (-safe-pred #(v % child))
-                                                :from-ast -from-value-ast
-                                                :to-ast -to-value-ast
-                                                :min 1
-                                                :max 1}))]))
+       (-vmap (fn [[k v]] [k (-simple-schema {:type k :from-ast -from-value-ast :to-ast -to-value-ast :min 1 :max 1
+                                              :compile (fn [_ [child] _] {:pred (-safe-pred #(v % child))})})]))
        (into {}) (reduce-kv assoc nil)))
 
 (defn type-schemas []

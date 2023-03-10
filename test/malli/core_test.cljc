@@ -2277,18 +2277,20 @@
 
   (testing "with instance-based type-properties"
     (let [Over (m/-simple-schema
-                (fn [{:keys [value]} _]
-                  (assert (int? value))
-                  {:type :user/over
-                   :pred #(and (int? %) (> % value))
-                   :type-properties {:error/message (str "should be over " value)
-                                     :decode/string mt/-string->long
-                                     :json-schema/type "integer"
-                                     :json-schema/format "int64"
-                                     :json-schema/minimum value}}))]
+                {:type :user/over
+                 :compile (fn [{:keys [value]} _ _]
+                            (assert (int? value))
+                            {:pred #(and (int? %) (> % value))
+                             :type-properties {:error/message (str "should be over " value)
+                                               :decode/string mt/-string->long
+                                               :json-schema/type "integer"
+                                               :json-schema/format "int64"
+                                               :json-schema/minimum value}})})]
 
       (testing "over6"
         (let [schema [Over {:value 6}]]
+          (testing "type"
+            (is (= :user/over (m/-type Over) (m/type schema))))
           (testing "form"
             (is (= [:user/over {:value 6}] (m/form schema))))
           (testing "validation"

@@ -2541,16 +2541,17 @@
 
 (deftest custom-collection-test
   (let [List (m/-collection-schema
-              (fn [properties [child]]
-                {:type :list
-                 :pred list?
-                 :empty '()
-                 :type-properties {:error/message "should be a list"
-                                   :gen/schema [:vector properties child]
-                                   :gen/fmap #(or (list* %) '())}}))]
-
+              {:type :list
+               :compile (fn [properties [child] _options]
+                          {:pred list?
+                           :empty '()
+                           :type-properties {:error/message "should be a list"
+                                             :gen/schema [:vector properties child]
+                                             :gen/fmap #(or (list* %) '())}})})]
     (is (m/validate [List :int] '(1 2)))
-    (is (not (m/validate [List :int] [1 2])))))
+    (is (not (m/validate [List :int] [1 2])))
+    (is (= :list (m/-type List)))
+    (is (= :list (m/type [List :int])))))
 
 (defn function-schema-registry-test-fn [])
 

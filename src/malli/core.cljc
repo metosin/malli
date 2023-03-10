@@ -1149,89 +1149,88 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
-(defn -collection-schema [?props]
-  (let [props* (atom (when (map? ?props) ?props))]
-    ^{:type ::into-schema}
-    (reify
-      AST
-      (-from-ast [parent ast options] (-from-child-ast parent ast options))
-      IntoSchema
-      (-type [_] (:type @props*))
-      (-type-properties [_] (:type-properties @props*))
-      (-properties-schema [_ _])
-      (-children-schema [_ _])
-      (-into-schema [parent {:keys [min max] :as properties} children options]
-        (if (fn? ?props)
-          (-into-schema (-collection-schema (?props properties children)) properties children options)
-          (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
-            (reset! props* ?props)
-            (-check-children! type properties children 1 1)
-            (let [[schema :as children] (-vmap #(schema % options) children)
-                  form (delay (-simple-form parent properties children -form options))
-                  cache (-create-cache options)
-                  validate-limits (-validate-limits min max)
-                  ->parser (fn [f g] (let [child-parser (f schema)]
-                                       (fn [x]
-                                         (cond
-                                           (not (fpred x)) ::invalid
-                                           (not (validate-limits x)) ::invalid
-                                           :else (let [x' (reduce
-                                                           (fn [acc v]
-                                                             (let [v' (child-parser v)]
-                                                               (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                           [] x)]
-                                                   (cond
-                                                     (miu/-invalid? x') x'
-                                                     g (g x')
-                                                     fempty (into fempty x')
-                                                     :else x'))))))]
-              ^{:type ::schema}
-              (reify
-                AST
-                (-to-ast [this _] (-to-child-ast this))
-                Schema
-                (-validator [_]
-                  (let [validator (-validator schema)]
-                    (fn [x] (and (fpred x)
-                                 (validate-limits x)
-                                 (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
-                (-explainer [this path]
-                  (let [explainer (-explainer schema (conj path 0))]
-                    (fn [x in acc]
-                      (cond
-                        (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
-                        (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                        :else (let [size (count x)]
-                                (loop [acc acc, i 0, [x & xs] x]
-                                  (if (< i size)
-                                    (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
-                                    acc)))))))
-                (-parser [_] (->parser -parser parse))
-                (-unparser [_] (->parser -unparser unparse))
-                (-transformer [this transformer method options]
-                  (let [collection? #(or (sequential? %) (set? %))
-                        this-transformer (-value-transformer transformer this method options)
-                        child-transformer (-transformer schema transformer method options)
-                        ->child (when child-transformer
-                                  (if fempty
-                                    (-collection-transformer child-transformer fempty)
-                                    #(-vmap child-transformer %)))
-                        ->child (-guard collection? ->child)]
-                    (-intercepting this-transformer ->child)))
-                (-walk [this walker path options]
-                  (when (-accept walker this path options)
-                    (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
-                (-properties [_] properties)
-                (-options [_] options)
-                (-children [_] children)
-                (-parent [_] parent)
-                (-form [_] @form)
-                Cached
-                (-cache [_] cache)
-                LensSchema
-                (-keep [_] true)
-                (-get [_ _ _] schema)
-                (-set [this _ value] (-set-children this [value]))))))))))
+(defn -collection-schema [props]
+  (when (fn? props) (-deprecated! "-collection-schema doesn't take fn-props, use :compiled property instead"))
+  ^{:type ::into-schema}
+  (reify
+    AST
+    (-from-ast [parent ast options] (-from-child-ast parent ast options))
+    IntoSchema
+    (-type [_] (:type props))
+    (-type-properties [_] (:type-properties props))
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent {:keys [min max] :as properties} children options]
+      (if-let [compile (:compile props)]
+        (-into-schema (-collection-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
+        (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} props]
+          (-check-children! type properties children 1 1)
+          (let [[schema :as children] (-vmap #(schema % options) children)
+                form (delay (-simple-form parent properties children -form options))
+                cache (-create-cache options)
+                validate-limits (-validate-limits min max)
+                ->parser (fn [f g] (let [child-parser (f schema)]
+                                     (fn [x]
+                                       (cond
+                                         (not (fpred x)) ::invalid
+                                         (not (validate-limits x)) ::invalid
+                                         :else (let [x' (reduce
+                                                         (fn [acc v]
+                                                           (let [v' (child-parser v)]
+                                                             (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                         [] x)]
+                                                 (cond
+                                                   (miu/-invalid? x') x'
+                                                   g (g x')
+                                                   fempty (into fempty x')
+                                                   :else x'))))))]
+            ^{:type ::schema}
+            (reify
+              AST
+              (-to-ast [this _] (-to-child-ast this))
+              Schema
+              (-validator [_]
+                (let [validator (-validator schema)]
+                  (fn [x] (and (fpred x)
+                               (validate-limits x)
+                               (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
+              (-explainer [this path]
+                (let [explainer (-explainer schema (conj path 0))]
+                  (fn [x in acc]
+                    (cond
+                      (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
+                      (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
+                      :else (let [size (count x)]
+                              (loop [acc acc, i 0, [x & xs] x]
+                                (if (< i size)
+                                  (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
+                                  acc)))))))
+              (-parser [_] (->parser -parser parse))
+              (-unparser [_] (->parser -unparser unparse))
+              (-transformer [this transformer method options]
+                (let [collection? #(or (sequential? %) (set? %))
+                      this-transformer (-value-transformer transformer this method options)
+                      child-transformer (-transformer schema transformer method options)
+                      ->child (when child-transformer
+                                (if fempty
+                                  (-collection-transformer child-transformer fempty)
+                                  #(-vmap child-transformer %)))
+                      ->child (-guard collection? ->child)]
+                  (-intercepting this-transformer ->child)))
+              (-walk [this walker path options]
+                (when (-accept walker this path options)
+                  (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
+              (-properties [_] properties)
+              (-options [_] options)
+              (-children [_] children)
+              (-parent [_] parent)
+              (-form [_] @form)
+              Cached
+              (-cache [_] cache)
+              LensSchema
+              (-keep [_] true)
+              (-get [_ _ _] schema)
+              (-set [this _ value] (-set-children this [value])))))))))
 
 (defn -tuple-schema
   ([]

@@ -1636,6 +1636,7 @@
   ^{:type ::into-schema}
   (let [internal (or id raw)
         type (if internal ::schema :schema)]
+    ^{:type ::into-schema}
     (reify
       AST
       (-from-ast [parent ast options] ((if internal -from-value-ast -from-child-ast) parent ast options))

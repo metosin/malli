@@ -2329,13 +2329,18 @@
 
 (deftest -regex-min-max-size-test
   (are [s min-max]
-    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))
+    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s) false)))
 
     int? [1 1]
     [:cat] [0 0]
     [:cat int?] [1 1]
     [:cat int? [:cat]] [1 1]
     [:cat int? [:cat string? int?]] [3 3]
+    [:schema [:cat int? [:cat string? int?]]] [3 3]
+    [::m/schema [:cat int? [:cat string? int?]]] [3 3]
+    [:cat int? [:schema [:cat string? int?]]] [2 2]
+    [:cat int? [::m/schema [:cat string? int?]]] [3 3]
+    [:cat int? [:schema [:catn [:s string?] [:i int?]]]] [2 2]
     [:catn] [0 0]
     [:catn [:n int?]] [1 1]
     [:catn [:n int?] [:named [:cat]]] [1 1]
@@ -2346,17 +2351,24 @@
     [:altn [:n int?] [:empty [:cat]]] [0 1]
     [:* int?] [0 nil]
     [:? int?] [0 1]
+    [:? [:cat int? int?]] [0 2]
+    [:? [:schema [:cat int? int?]]] [0 1]
+    [:? [::m/schema [:cat int? int?]]] [0 2]
     [:+ [:cat string? int?]] [2 nil]
+    [:+ [:schema [:cat string? int?]]] [1 nil]
+    [:+ [::m/schema [:cat string? int?]]] [2 nil]
     [:+ [:? int?]] [0 nil]
     [:repeat {:min 5, :max 15} [:cat string? int?]] [10 30]
     [:repeat {:min 5, :max 15} [:* int?]] [0 nil]
-    [:schema {:registry {:named [:cat string? int?]}} :named] [2 2]
-    [:schema {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30])
+    [:cat {:registry {:named [:cat string? int?]}} :named] [2 2]
+    [:cat {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} :named]] [10 30]
+    [:cat {:registry {:named [:cat string? int?]}} [:repeat {:min 5 :max 15} [:schema :named]]] [5 15])
 
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                         (m/-regex-min-max
-                         (m/schema [:schema {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                    ::ints])))))
+                         (m/schema [:cat {:registry {::ints [:cat int? [:ref ::ints]]}}
+                                    ::ints])
+                         false))))
 
 (defn single-arity
   ([x] x)
@@ -2589,6 +2601,35 @@
 
         (is (= 0.5 (pow2 5 0.1)))
         (is (= [::m/invalid-input ::m/invalid-output] (<-report)))))
+
+    (testing "multi-arity, with sequence schemas"
+      (let [report* (atom [])
+            <-report #(let [report @report*] (reset! report* []) report)
+            fun (m/-instrument
+                 {:schema [:=> [:cat :int [:schema [:cat :keyword :int]] [:? [:cat :int :int]]] int<=6]
+                  :scope #{:input :output}
+                  :report (fn [error _] (swap! report* conj error))}
+                 (fn [x & _] x))]
+        (is (= 1 (fun 1 [:x 3])))
+        (is (= [] (<-report)))
+        (is (= 1 (fun 1 [:x 3] 4 5)))
+        (is (= [] (<-report)))
+        (is (= 16 (fun 16 [:x 3])))
+        (is (= [::m/invalid-output] (<-report)))
+        (testing "between min and max arity but invalid"
+          (is (= 16 (fun 16 [:x 3] 4)))
+          (is (= [::m/invalid-input ::m/invalid-output] (<-report))))
+        (testing "over max arity"
+          (is (= 1 (fun 1 [:x 3] 4 5 6)))
+          (is (= [::m/invalid-arity ::m/invalid-input] (<-report))))
+        (testing "under min arity"
+          (is (= 1 (fun 1)))
+          (is (= [::m/invalid-arity ::m/invalid-input] (<-report))))
+        (testing "invalid sub-sequence"
+          (is (= 1 (fun 1 [2 3] 4 5)))
+          (is (= [::m/invalid-input] (<-report)))
+          (is (= 1 (fun 1 [:x 2 3] 4 5)))
+          (is (= [::m/invalid-input] (<-report))))))
 
     (testing "generated function"
       (let [pow2 (m/-instrument

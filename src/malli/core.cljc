@@ -84,7 +84,7 @@
   (-regex-unparser [this] "returns the raw internal regex unparser implementation")
   (-regex-parser [this] "returns the raw internal regex parser implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
-  (-regex-min-max [this] [this nested?] "returns size of the sequence as {:min min :max max}. nil max means unbounded. nested? is true when this schema is nested inside an outer regex schema."))
+  (-regex-min-max [this nested?] "returns size of the sequence as {:min min :max max}. nil max means unbounded. nested? is true when this schema is nested inside an outer regex schema."))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
@@ -122,9 +122,7 @@
       (-regex-transformer (-deref this) transformer method options)
       (re/item-transformer method (-validator this) (or (-transformer this transformer method options) identity))))
 
-  (-regex-min-max
-    ([_] {:min 1, :max 1})
-    ([_ _] {:min 1, :max 1})))
+  (-regex-min-max [_ _] {:min 1, :max 1}))
 
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
@@ -207,7 +205,7 @@
 (defn -function-info [schema]
   (when (= (type schema) :=>)
     (let [[input output] (-children schema)
-          {:keys [min max]} (-regex-min-max input)]
+          {:keys [min max]} (-regex-min-max input false)]
       (cond-> {:min min
                :arity (if (= min max) min :varargs)
                :input input
@@ -1624,7 +1622,6 @@
            (-regex-parser [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-unparser [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))
-           (-regex-min-max [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-min-max [this _] (-fail! ::potentially-recursive-seqex this))))))))
 
 (defn -schema-schema [{:keys [id raw]}]
@@ -1707,12 +1704,10 @@
                 (-regex-transformer child transformer method options)
                 (re/item-transformer method (-validator child)
                                      (or (-transformer child transformer method options) identity))))
-            (-regex-min-max [_]
-              (-regex-min-max child))
             (-regex-min-max [_ nested?]
               (if (and nested? (not internal))
                 {:min 1 :max 1}
-                (-regex-min-max child)))))))))
+                (-regex-min-max child nested?)))))))))
 
 (defn -=>-schema []
   ^{:type ::into-schema}
@@ -1876,7 +1871,6 @@
           (-regex-unparser [_] (re-unparser properties (-vmap -regex-unparser children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (-vmap #(-regex-transformer % transformer method options) children)))
-          (-regex-min-max [_] (re-min-max properties children))
           (-regex-min-max [_ _] (re-min-max properties children)))))))
 
 (defn -sequence-entry-schema
@@ -1929,7 +1923,6 @@
           (-regex-unparser [this] (re-unparser properties (-vmap (fn [[k _ s]] [k (-regex-unparser s)]) (-children this))))
           (-regex-transformer [this transformer method options]
             (re-transformer properties (-vmap (fn [[k _ s]] [k (-regex-transformer s transformer method options)]) (-children this))))
-          (-regex-min-max [this] (re-min-max properties (-children this)))
           (-regex-min-max [this _] (re-min-max properties (-children this))))))))
 
 ;;

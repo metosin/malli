@@ -2308,7 +2308,7 @@
 
 (deftest -regex-min-max-size-test
   (are [s min-max]
-    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s))))
+    (= min-max ((juxt :min :max) (m/-regex-min-max (m/schema s) false)))
 
     int? [1 1]
     [:cat] [0 0]
@@ -2346,7 +2346,8 @@
   (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error) #":malli.core/potentially-recursive-seqex"
                         (m/-regex-min-max
                          (m/schema [:cat {:registry {::ints [:cat int? [:ref ::ints]]}}
-                                    ::ints])))))
+                                    ::ints])
+                         false))))
 
 (defn single-arity
   ([x] x)

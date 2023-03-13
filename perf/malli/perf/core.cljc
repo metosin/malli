@@ -13,10 +13,10 @@
   `(cc/quick-bench ~@body))
 
 (defmacro profile [& body]
-  `(let [start# (System/currentTimeMillis)]
+  `(let [start# (System/nanoTime)]
      (dotimes [_# 10000] ~@body)
-     (let [ms# (- (System/currentTimeMillis) start#)
-           times# (int (/ 100000000 ms#))]
+     (let [ns# (- (System/nanoTime) start#)
+           times# (long (/ 100000000000000 ns#))]
        (println "invoking" times# "times")
        (time (prof/profile (dotimes [_# times#] ~@body))))))
 

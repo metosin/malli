@@ -2304,7 +2304,7 @@ You can also build content-dependent schemas by using a callback function `:comp
 ```clojure
 (def Between
   (m/-simple-schema
-   {:type :user/between
+   {:type `Between
     :compile (fn [_properties [min max] _options]
                (when-not (and (int? min) (int? max))
                  (m/-fail! ::invalid-children {:min min, :max max}))
@@ -2320,7 +2320,7 @@ You can also build content-dependent schemas by using a callback function `:comp
                                   :gen/gen (gen/large-integer* {:min (inc min), :max max})}})}))
 
 (m/form [Between 10 20])
-; => [:user/between 10 20]
+; => [user/Between 10 20]
 
 (-> [Between 10 20]
     (m/explain 8)

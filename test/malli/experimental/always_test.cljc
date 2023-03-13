@@ -1,7 +1,8 @@
 (ns malli.experimental.always-test
+  (:refer-clojure :exclude [destructure])
   (:require [clojure.test :refer [deftest testing is]]
             [malli.experimental :as mx])
-  #?(:clj(:require [malli.dev])))
+  #?(:clj (:require [malli.dev])))
 
 (mx/defn ^:malli/always addition :- [:int {:min 0}]
   [x :- [:int {:min 0}], y :- :int]
@@ -69,10 +70,10 @@
                         {:foo 4 :bar 5}))
         "valid input works")
     (is (= :malli.core/invalid-input
-             (try (destructure [1 {:a 2 :b 3}]
-                               {:foo 4 :bar 5})
-                  (catch #?(:clj Exception :cljs js/Error) e
-                    (:type (ex-data e)))))
+           (try (destructure [1 {:a 2 :b 3}]
+                             {:foo 4 :bar 5})
+                (catch #?(:clj Exception :cljs js/Error) e
+                  (:type (ex-data e)))))
         "invalid input throws")
     (is (= :malli.core/invalid-input
            (try (destructure [1 {:a "foo" :b 3}]

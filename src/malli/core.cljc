@@ -618,54 +618,58 @@
 ;; Schemas
 ;;
 
-(defn -simple-schema [?props]
-  (let [{:keys [type type-properties pred property-pred min max from-ast to-ast]
-         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} (when (map? ?props) ?props)]
-    ^{:type ::into-schema}
-    (reify
-      AST
-      (-from-ast [parent ast options] (from-ast parent ast options))
-      IntoSchema
-      (-type [_] type)
-      (-type-properties [_] type-properties)
-      (-properties-schema [_ _])
-      (-children-schema [_ _])
-      (-into-schema [parent properties children options]
-        (if (fn? ?props)
-          (-into-schema (-simple-schema (?props properties children)) properties children options)
-          (let [form (delay (-simple-form parent properties children identity options))
-                cache (-create-cache options)]
-            (-check-children! type properties children min max)
-            ^{:type ::schema}
-            (reify
-              AST
-              (-to-ast [this _] (to-ast this))
-              Schema
-              (-validator [_]
-                (if-let [pvalidator (when property-pred (property-pred properties))]
-                  (fn [x] (and (pred x) (pvalidator x))) pred))
-              (-explainer [this path]
-                (let [validator (-validator this)]
-                  (fn explain [x in acc]
-                    (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
-              (-parser [this]
-                (let [validator (-validator this)]
-                  (fn [x] (if (validator x) x ::invalid))))
-              (-unparser [this] (-parser this))
-              (-transformer [this transformer method options]
-                (-intercepting (-value-transformer transformer this method options)))
-              (-walk [this walker path options] (-walk-leaf this walker path options))
-              (-properties [_] properties)
-              (-options [_] options)
-              (-children [_] children)
-              (-parent [_] parent)
-              (-form [_] @form)
-              Cached
-              (-cache [_] cache)
-              LensSchema
-              (-keep [_])
-              (-get [_ _ default] default)
-              (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key})))))))))
+(defn -simple-schema [props]
+  (let [{:keys [type type-properties pred property-pred min max from-ast to-ast compile]
+         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} props]
+    (if (fn? props)
+      (do
+        (-deprecated! "-simple-schema doesn't take fn-props, use :compiled property instead")
+        (-simple-schema {:compile (fn [c p _] (props c p))}))
+      ^{:type ::into-schema}
+      (reify
+        AST
+        (-from-ast [parent ast options] (from-ast parent ast options))
+        IntoSchema
+        (-type [_] type)
+        (-type-properties [_] type-properties)
+        (-properties-schema [_ _])
+        (-children-schema [_ _])
+        (-into-schema [parent properties children options]
+          (if compile
+            (-into-schema (-simple-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
+            (let [form (delay (-simple-form parent properties children identity options))
+                  cache (-create-cache options)]
+              (-check-children! type properties children min max)
+              ^{:type ::schema}
+              (reify
+                AST
+                (-to-ast [this _] (to-ast this))
+                Schema
+                (-validator [_]
+                  (if-let [pvalidator (when property-pred (property-pred properties))]
+                    (fn [x] (and (pred x) (pvalidator x))) pred))
+                (-explainer [this path]
+                  (let [validator (-validator this)]
+                    (fn explain [x in acc]
+                      (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
+                (-parser [this]
+                  (let [validator (-validator this)]
+                    (fn [x] (if (validator x) x ::invalid))))
+                (-unparser [this] (-parser this))
+                (-transformer [this transformer method options]
+                  (-intercepting (-value-transformer transformer this method options)))
+                (-walk [this walker path options] (-walk-leaf this walker path options))
+                (-properties [_] properties)
+                (-options [_] options)
+                (-children [_] children)
+                (-parent [_] parent)
+                (-form [_] @form)
+                Cached
+                (-cache [_] cache)
+                LensSchema
+                (-keep [_])
+                (-get [_ _ default] default)
+                (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))))))))))
 
 (defn -nil-schema [] (-simple-schema {:type :nil, :pred nil?}))
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))
@@ -1148,22 +1152,23 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
-(defn -collection-schema [?props]
-  (let [props* (atom (when (map? ?props) ?props))]
+(defn -collection-schema [props]
+  (if (fn? props)
+    (do (-deprecated! "-collection-schema doesn't take fn-props, use :compiled property instead")
+        (-collection-schema {:compile (fn [c p _] (props c p))}))
     ^{:type ::into-schema}
     (reify
       AST
       (-from-ast [parent ast options] (-from-child-ast parent ast options))
       IntoSchema
-      (-type [_] (:type @props*))
-      (-type-properties [_] (:type-properties @props*))
+      (-type [_] (:type props))
+      (-type-properties [_] (:type-properties props))
       (-properties-schema [_ _])
       (-children-schema [_ _])
       (-into-schema [parent {:keys [min max] :as properties} children options]
-        (if (fn? ?props)
-          (-into-schema (-collection-schema (?props properties children)) properties children options)
-          (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} ?props]
-            (reset! props* ?props)
+        (if-let [compile (:compile props)]
+          (-into-schema (-collection-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
+          (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} props]
             (-check-children! type properties children 1 1)
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
@@ -1636,6 +1641,7 @@
   ^{:type ::into-schema}
   (let [internal (or id raw)
         type (if internal ::schema :schema)]
+    ^{:type ::into-schema}
     (reify
       AST
       (-from-ast [parent ast options] ((if internal -from-value-ast -from-child-ast) parent ast options))
@@ -2331,13 +2337,8 @@
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
-       (-vmap (fn [[k v]] [k (-simple-schema (fn [_ [child]]
-                                               {:type k
-                                                :pred (-safe-pred #(v % child))
-                                                :from-ast -from-value-ast
-                                                :to-ast -to-value-ast
-                                                :min 1
-                                                :max 1}))]))
+       (-vmap (fn [[k v]] [k (-simple-schema {:type k :from-ast -from-value-ast :to-ast -to-value-ast :min 1 :max 1
+                                              :compile (fn [_ [child] _] {:pred (-safe-pred #(v % child))})})]))
        (into {}) (reduce-kv assoc nil)))
 
 (defn type-schemas []

@@ -2299,26 +2299,36 @@ register the types:
 
 ### Content dependent simple schema
 
-You can also build content-dependent schemas by using a callback function of `properties children -> opts` instead of static `opts`:
+You can also build content-dependent schemas by using a callback function `:compile` of type `properties children options -> opts`:
 
 ```clojure
-(def Over
+(def Between
   (m/-simple-schema
-    (fn [{:keys [value]} _]
-      (assert (int? value))
-      {:type :user/over
-       :pred #(and (int? %) (> % value))
-       :type-properties {:error/fn (fn [error _] (str "should be over " value ", was " (:value error)))
-                         :decode/string mt/-string->long
-                         :json-schema/type "integer"
-                         :json-schema/format "int64"
-                         :json-schema/minimum value
-                         :gen/gen (gen/large-integer* {:min (inc value)})}})))
+   {:type `Between
+    :compile (fn [_properties [min max] _options]
+               (when-not (and (int? min) (int? max))
+                 (m/-fail! ::invalid-children {:min min, :max max}))
+               {:pred #(and (int? %) (>= min % max))
+                :min 2 ;; at least 1 child
+                :max 2 ;; at most 1 child
+                :type-properties {:error/fn (fn [error _] (str "should be betweeb " min " and " max ", was " (:value error)))
+                                  :decode/string mt/-string->long
+                                  :json-schema {:type "integer"
+                                                :format "int64"
+                                                :minimum min
+                                                :maximum max}
+                                  :gen/gen (gen/large-integer* {:min (inc min), :max max})}})}))
 
-(-> [Over {:value 12}]
-    (m/explain 10)
+(m/form [Between 10 20])
+; => [user/Between 10 20]
+
+(-> [Between 10 20]
+    (m/explain 8)
     (me/humanize))
-; => ["should be over 12, was 10"]
+; => ["should be betweeb 10 and 20, was 8"]
+
+(mg/sample [Between -10 10])
+; => (-1 0 -2 -4 -4 0 -2 7 1 0)
 ```
 
 ## Schema registry

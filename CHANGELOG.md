@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Simplify content-dependent schema creation with `m/-simple-schema` and `m/-collection-schema` via new 3-arity `:compile` function of type `children properties options -> props`. Old 2-arity top-level callback function is `m/deprecated!` and support for it will be removed in future versions. [#866](https://github.com/metosin/malli/pull/866)
+
 ## 0.10.2 (2023-03-05)
 
 * Implement `malli.experimental.time` schemas for clojurescript using js-joda [#853](https://github.com/metosin/malli/pull/853)

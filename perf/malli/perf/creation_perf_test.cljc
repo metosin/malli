@@ -41,6 +41,7 @@
   ;; 750ns (...)
   ;; 680ns (-vmap, don't check children)
   ;; 180ns (M1-JDK17)
+  ;; 160ns (-type-cache)
   (p/bench (m/schema [:or :int :string]))
 
   ;; 730ns
@@ -56,6 +57,7 @@
   ;; 750ns (...)
   ;; 680ns (-vmap, don't check children)
   ;; 190ns (M1-JDK17)
+  ;; 160ns (-type-cache)
   (p/bench (m/schema [:and :int :string]))
 
   ;; 730ns
@@ -102,6 +104,7 @@
 
   ;; 480ns -> 400ns -> 340ns -> 280ns -> 240ns -> 170ns (registry) -> 160ns (recur)
   ;; 55ns (M1-JDK17)
+  ;; 34ns (-type-cache)
   (p/bench (m/schema :int))
 
   ;; 180ns
@@ -113,10 +116,12 @@
   ;; 2.9µs (-entry-parser)
   ;; 2.5µs (no entries, object-arraus)
   ;; 1.0µs (M1-JDK17)
+  ;; 840ns (-type-cache)
   (p/bench (m/schema ?schema))
 
   ;; 44µs -> 240ns
   ;; 110ns (M1-JDK17)
+  ;;  95ns (-type-cache)
   (p/bench (m/schema ?schema {::m/lazy-entries true}))
 
   ;; 147ns
@@ -125,6 +130,7 @@
 
   ;; 3.7µs
   ;; 1.4µs (M1-JDK17)
+  ;; 1.3ns (-type-cache)
   (p/bench (m/validator (m/schema ?schema)))
 
   ;; 2.5µs

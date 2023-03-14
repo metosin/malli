@@ -52,9 +52,15 @@
   (is (= "abba" (mt/-string->boolean "abba"))))
 
 (deftest string->uuid
-  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
-  (is (= #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce")))
-  (is (= "abba" (mt/-string->uuid "abba"))))
+  (is (= #uuid "5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= #uuid "5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid #uuid"5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= "abba" (mt/-string->uuid "abba")))
+
+  ;; Regression tests: we should ensure that invalid or incomplete
+  ;; uuids are handled unformly in CLJ and CLJS
+  (is (= "5f60751d-9bf7-4344-97ee-48643c"             (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c")))
+  (is (= "1-1-1-1-1"                                  (mt/-string->uuid "1-1-1-1-1"))))
+
 
 (deftest string->date
   (is (= #inst "2018-04-27T18:25:37Z" (mt/-string->date "2018-04-27T18:25:37Z")))

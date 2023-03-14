@@ -5,6 +5,8 @@
    [clojure.tools.namespace.repl :as r]
    [clojure.walk :refer [macroexpand-all]]))
 
+(r/set-refresh-dirs "src" "test")
+
 (defn- run-test
   ([] (run-test #"^malli.*test$"))
   ([o]

@@ -147,7 +147,12 @@
 
   ;; does not work with direct linking
   (with-redefs [m/-check-children? (constantly false)]
-    (p/bench (m/schema ?schema))))
+    (p/bench (m/schema ?schema)))
+
+  ;; memory allocation, THIS IS NOT CORRECT as it follows parents, which are shared
+  (p/measure (m/schema ?schema)) ;; => 5.7KiB
+
+  )
 
 (def ref-schema (m/schema [:schema :int]))
 

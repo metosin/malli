@@ -1,5 +1,6 @@
 (ns malli.perf.core
   (:require [criterium.core :as cc]
+            [clj-memory-meter.core :as mm]
             [clj-async-profiler.core :as prof]))
 
 (defn serve! []
@@ -18,10 +19,12 @@
      (let [ns# (- (System/nanoTime) start#)
            times# (long (/ 100000000000000 ns#))]
        (println "invoking" times# "times")
-       (time (prof/profile (dotimes [_# times#] ~@body))))))
+       (time (prof/profile {:event :cpu} (dotimes [_# times#] ~@body))))))
 
 (defmacro bench [& body]
   `(do (serve!) (-bench ~@body) (profile ~@body)))
+
+(def measure mm/measure)
 
 (comment (clear!))
 

@@ -89,15 +89,15 @@
       :else x)
     x))
 
+(def ^:private uuid-re
+  #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+
 (defn -string->uuid [x]
   (if (string? x)
-    (try
-      #?(:clj  (UUID/fromString x)
-         ;; http://stackoverflow.com/questions/7905929/how-to-test-valid-uuid-guid
-         :cljs (if (re-find #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" x)
-                 (uuid x)
-                 x))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    (if-let [x (re-matches uuid-re x)]
+      #?(:clj (UUID/fromString x)
+         :cljs (uuid x))
+      x)
     x))
 
 #?(:clj

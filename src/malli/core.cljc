@@ -1037,7 +1037,7 @@
                                         (default-explainer
                                          (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))
                                          in acc)))
-                                (and closed not default-explainer)
+                                (and closed (not default-explainer))
                                 (conj (fn [x in acc]
                                         (reduce-kv
                                          (fn [acc k v]

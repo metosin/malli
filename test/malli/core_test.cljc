@@ -888,8 +888,8 @@
                           [:y {:optional true} int?]
                           [:z {:optional false} string?]])
           valid {:x true, :y 1, :z "kikka"}
-          valid-with-extras {:x true, :y 1, :z "kikka", :extra "key"}
           valid2 {:x false, :y 1, :z "kikka"}
+          valid-with-extras {:x true, :y 1, :z "kikka", :extra "key"}
           invalid {:x true, :y "invalid", :z "kikka", :extra "ok"}]
 
       (is (true? (m/validate schema valid)))
@@ -2905,3 +2905,110 @@
                                     :value {:x "kikka"}}
                           :schema schema
                           :value {:x "kikka"}}} (as-data (<result)))))))))
+
+(deftest extra-entries-in-map-test
+  (let [schema (m/schema
+                [:map
+                 [:x :boolean]
+                 [:y {:optional true} :int]
+                 [::m/default [:map-of :int :int]]])
+        valid {:x true, :y 1}
+        valid2 {:x true, :y 1, 123 123, 456 456}
+        invalid {:x true, :y 1, 123 "123", "456" 456}]
+
+    (is (true? (m/validate schema valid)))
+    (is (true? (m/validate schema valid2)))
+    (is (false? (m/validate schema invalid)))
+    (is (false? (m/validate schema "not-a-map")))
+
+    (is (nil? (m/explain schema valid)))
+    (is (nil? (m/explain schema valid2)))
+
+    (is (schema= [[:x nil :boolean]
+                  [:y {:optional true} :int]
+                  [::m/default nil [:map-of :int :int]]]
+                 (m/children schema)))
+
+    (is (true? (every? map-entry? (m/entries schema))))
+    (is (= [:x :y ::m/default] (map key (m/entries schema))))
+
+    (is (schema= [[:x [::m/val :boolean]]
+                  [:y [::m/val {:optional true} :int]]
+                  [::m/default [::m/val [:map-of :int :int]]]]
+                 (m/entries schema)))
+
+    (is (results= {:schema schema,
+                   :value {:y "invalid", "123" "123"},
+                   :errors [{:path [:x],
+                             :in [:x],
+                             :schema schema,
+                             :value nil,
+                             :type :malli.core/missing-key}
+                            {:path [:y], :in [:y], :schema :int, :value "invalid"}
+                            {:path [::m/default 0], :in ["123"], :schema :int, :value "123"}
+                            {:path [::m/default 1], :in ["123"], :schema :int, :value "123"}]}
+                  (m/explain schema {:y "invalid", "123" "123"})))
+
+    #_(is (= valid (m/parse schema valid)))
+    #_(is (= valid2 (m/parse schema valid2)))
+    #_(is (= ::m/invalid (m/parse schema invalid)))
+    #_(is (= ::m/invalid (m/parse schema "not-a-map")))
+    #_(is (= valid (m/unparse schema valid)))
+    #_(is (= valid2 (m/unparse schema valid2)))
+    #_(is (= ::m/invalid (m/unparse schema invalid)))
+    #_(is (= ::m/invalid (m/unparse schema "not-a-map")))
+
+    #_(is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} mt/strip-extra-keys-transformer)))
+    #_(is (= {:x_key true, :y_key 2} (m/decode schema {:x true, :y 2}
+                                               (mt/key-transformer
+                                                {:decode #(-> % name (str "_key") keyword)}))))
+
+    (testing "::m/default transforming doesn't effect defined keys"
+      (is (= {:id 12
+              :name :kikka
+              "age" 13
+              "ABBA" "jabba"
+              "KIKKA" "kukka"}
+             (m/decode
+              [:map
+               [:id :int]
+               [:name :keyword]
+               ["age" :int]
+               [::m/default [:map-of [:string {:decode/test str/upper-case}] :string]]]
+              {:id 12, :name :kikka, "age" "13", "abba" "jabba", "kikka" "kukka"}
+              (mt/transformer
+               (mt/string-transformer)
+               (mt/transformer {:name :test}))))))
+
+    (testing "nil-punning tranformers"
+      (is (= identity
+             (m/decoder
+              [:map
+               [:id :int]
+               [:name :keyword]
+               ["age" :int]
+               [::m/default [:map-of :keyword :keyword]]]
+              (mt/transformer)))))
+
+    (is (true? (m/validate (over-the-wire schema) valid)))
+
+    (testing "ast"
+      (is (= {:type :map,
+              :keys {:x {:order 0
+                         :value {:type :boolean}},
+                     :y {:order 1
+                         :value {:type :int}
+                         :properties {:optional true}},
+                     :malli.core/default {:order 2
+                                          :value {:type :map-of
+                                                  :key {:type :int}
+                                                  :value {:type :int}}}}}
+
+             (m/ast schema)))
+      (is (true? (m/validate (m/from-ast (m/ast schema)) valid))))
+
+    (is (= [:map
+            [:x :boolean]
+            [:y {:optional true} :int]
+            [::m/default [:map-of :int :int]]]
+           (m/form schema)))))

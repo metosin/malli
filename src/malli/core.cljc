@@ -493,6 +493,7 @@
         :else (-eager-entry-parser ?children props options)))
 
 (defn -default-entry [e] (-equals (nth e 0) ::default))
+(defn -default-entry-schema [children] (some (fn [e] (when (-default-entry e) (nth e 2))) children))
 
 ;;
 ;; transformers
@@ -994,7 +995,7 @@
                                                         (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                         m (keys m)))))]
                           (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))
-             default-schema (delay (some-> entry-parser (-entry-entries) (->> (into {})) ::default (schema options)))
+             default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
              explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))]
          ^{:type ::schema}
          (reify
@@ -1054,11 +1055,16 @@
            (-parser [this] (->parser this -parser))
            (-unparser [this] (->parser this -unparser))
            (-transformer [this transformer method options]
-             (let [this-transformer (-value-transformer transformer this method options)
+             (let [keyset (-entry-keyset (-entry-parser this))
+                   this-transformer (-value-transformer transformer this method options)
                    ->children (reduce (fn [acc [k s]]
                                         (let [t (-transformer s transformer method options)]
-                                          (cond-> acc t (conj [k t])))) [] (-entries this))
+                                          (cond-> acc t (conj [k t]))))
+                                      [] (cond->> (-entries this) @default-schema (remove -default-entry)))
                    apply->children (when (seq ->children) (-map-transformer ->children))
+                   apply->default (when-let [dt (some-> @default-schema (-transformer transformer method options))]
+                                    (fn [x] (merge (dt (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))) (select-keys x (keys keyset)))))
+                   apply->children (some->> [apply->default apply->children] (keep identity) (seq) (apply -comp))
                    apply->children (-guard pred? apply->children)]
                (-intercepting this-transformer apply->children)))
            (-walk [this walker path options] (-walk-entries this walker path options))

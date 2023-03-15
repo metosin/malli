@@ -349,7 +349,7 @@
                    (assoc :map-of {:compile (fn [schema _]
                                               (let [key-schema (some-> schema (m/children) (first))]
                                                 (or (some-> key-schema (m/type) map-of-key-decoders
-                                                            (-interceptor schema {}) m/-intercepting
+                                                            (-interceptor schema {}) (m/-intercepting)
                                                             (m/-comp m/-keyword->string)
                                                             (-transform-if-valid key-schema)
                                                             (-transform-map-keys))

@@ -492,6 +492,8 @@
         (or (:lazy props) (::lazy-entries options)) (-lazy-entry-parser ?children props options)
         :else (-eager-entry-parser ?children props options)))
 
+(defn -default-entry [e] (-equals (nth e 0) ::default))
+
 ;;
 ;; transformers
 ;;
@@ -991,7 +993,9 @@
                                                        (reduce
                                                         (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                         m (keys m)))))]
-                          (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
+                          (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))
+             default-schema (delay (some-> entry-parser (-entry-entries) (->> (into {})) ::default (schema options)))
+             explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))]
          ^{:type ::schema}
          (reify
            AST
@@ -999,6 +1003,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
+                   default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
                                          (let [valid? (-validator value)
@@ -1006,12 +1011,16 @@
                                            #?(:bb   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
                                               :clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
-                                       (-children this))
-                                closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
+                                       @explicit-children)
+                                default-validator
+                                (conj (fn [m] (default-validator (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))))
+                                (and closed (not default-validator))
+                                (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
                    validate (miu/-every-pred validators)]
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
+                   default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]
                                          (let [explainer (-explainer schema (conj path key))]
@@ -1021,14 +1030,20 @@
                                                (if-not optional
                                                  (conj acc (miu/-error (conj path key) (conj in key) this nil ::missing-key))
                                                  acc)))))
-                                       (-children this))
-                                closed (conj (fn [x in acc]
-                                               (reduce-kv
-                                                (fn [acc k v]
-                                                  (if (contains? keyset k)
-                                                    acc
-                                                    (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
-                                                acc x))))]
+                                       @explicit-children)
+                                default-explainer
+                                (conj (fn [x in acc]
+                                        (default-explainer
+                                         (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))
+                                         in acc)))
+                                (and closed not default-explainer)
+                                (conj (fn [x in acc]
+                                        (reduce-kv
+                                         (fn [acc k v]
+                                           (if (contains? keyset k)
+                                             acc
+                                             (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
+                                         acc x))))]
                (fn [x in acc]
                  (if-not (pred? x)
                    (conj acc (miu/-error path in this x ::invalid-type))

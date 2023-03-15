@@ -976,8 +976,11 @@
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
+             default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
+             explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
+                              default-parser (some-> @default-schema (f))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -989,14 +992,20 @@
                                                                 (identical? v* v) m
                                                                 :else (assoc m key v*)))
                                                         (if optional m (reduced ::invalid))))))
-                                                (-children this))
-                                        closed (cons (fn [m]
-                                                       (reduce
-                                                        (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                        m (keys m)))))]
-                          (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))
-             default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
-             explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))]
+                                                @explicit-children)
+                                        default-parser
+                                        (cons (fn [m]
+                                                (let [m' (default-parser
+                                                          (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))]
+                                                  (if (miu/-invalid? m')
+                                                    (reduced m')
+                                                    (merge (select-keys m (keys keyset)) m')))))
+                                        closed
+                                        (cons (fn [m]
+                                                (reduce
+                                                 (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
+                                                 m (keys m)))))]
+                          (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
            AST

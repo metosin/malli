@@ -2949,14 +2949,20 @@
                             {:path [::m/default 1], :in ["123"], :schema :int, :value "123"}]}
                   (m/explain schema {:y "invalid", "123" "123"})))
 
-    #_(is (= valid (m/parse schema valid)))
-    #_(is (= valid2 (m/parse schema valid2)))
-    #_(is (= ::m/invalid (m/parse schema invalid)))
-    #_(is (= ::m/invalid (m/parse schema "not-a-map")))
-    #_(is (= valid (m/unparse schema valid)))
-    #_(is (= valid2 (m/unparse schema valid2)))
-    #_(is (= ::m/invalid (m/unparse schema invalid)))
-    #_(is (= ::m/invalid (m/unparse schema "not-a-map")))
+    (testing "parsing and unparsing"
+      (let [schema [:map {:registry {'int [:orn ['int :int]]
+                                     'str [:orn ['str :string]]}}
+                    [:id 'int]
+                    ["name" 'str]
+                    [::m/default [:map-of 'str 'str]]]
+            valid {:id 1, "name" "tommi", "kikka" "kukka", "abba" "jabba"}]
+        (is (= {:id ['int 1],
+                "name" ['str "tommi"],
+                ['str "kikka"] ['str "kukka"]
+                ['str "abba"] ['str "jabba"]}
+               (m/parse schema valid)))
+        (is (= valid (->> valid (m/parse schema) (m/unparse schema))))
+        (is (= ::m/invalid (m/parse schema {"kukka" 42})))))
 
     #_(is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} mt/strip-extra-keys-transformer)))
     #_(is (= {:x_key true, :y_key 2} (m/decode schema {:x true, :y 2}

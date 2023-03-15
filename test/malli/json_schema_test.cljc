@@ -205,58 +205,64 @@
               {:registry registry}))))))
 
 (deftest references-test
-  (is (= {:$ref "#/definitions/Order",
-          :definitions {"Country" {:type "object",
-                                   :properties {:name {:type "string"
-                                                       :enum [:FI :PO]},
-                                                :neighbors {:type "array"
-                                                            :items {:$ref "#/definitions/Country"}}},
-                                   :required [:name :neighbors]},
-                        "Burger" {:type "object",
-                                  :properties {:name {:type "string"},
-                                               :description {:type "string"},
-                                               :origin {:oneOf [{:$ref "#/definitions/Country"} {:type "null"}]},
-                                               :price {:type "integer"
-                                                       :minimum 1}},
-                                  :required [:name :origin :price]},
-                        "OrderLine" {:type "object",
-                                     :properties {:burger {:$ref "#/definitions/Burger"},
-                                                  :amount {:type "integer"}},
-                                     :required [:burger :amount]},
-                        "Order" {:type "object",
-                                 :properties {:lines {:type "array"
-                                                      :items {:$ref "#/definitions/OrderLine"}},
-                                              :delivery {:type "object",
-                                                         :properties {:delivered {:type "boolean"},
-                                                                      :address {:type "object",
-                                                                                :properties {:street {:type "string"},
-                                                                                             :zip {:type "integer"},
-                                                                                             :country {:$ref "#/definitions/Country"}},
-                                                                                :required [:street :zip :country]}},
-                                                         :required [:delivered :address]}},
-                                 :required [:lines :delivery]}}}
-         (json-schema/transform
-          [:schema
-           {:registry {"Country" [:map
-                                  [:name [:enum :FI :PO]]
-                                  [:neighbors [:vector [:ref "Country"]]]]
-                       "Burger" [:map
-                                 [:name string?]
-                                 [:description {:optional true} string?]
-                                 [:origin [:maybe "Country"]]
-                                 [:price pos-int?]]
-                       "OrderLine" [:map
-                                    [:burger "Burger"]
-                                    [:amount int?]]
-                       "Order" [:map
-                                [:lines [:vector "OrderLine"]]
-                                [:delivery [:map
-                                            [:delivered boolean?]
-                                            [:address [:map
-                                                       [:street string?]
-                                                       [:zip int?]
-                                                       [:country "Country"]]]]]]}}
-           "Order"]))))
+  (testing "absolute doc root definitions are created for ref schemas"
+    (is (= {:$ref "#/definitions/Order",
+            :definitions {"Country" {:type "object",
+                                     :properties {:name {:type "string"
+                                                         :enum [:FI :PO]},
+                                                  :neighbors {:type "array"
+                                                              :items {:$ref "#/definitions/Country"}}},
+                                     :required [:name :neighbors]},
+                          "Burger" {:type "object",
+                                    :properties {:name {:type "string"},
+                                                 :description {:type "string"},
+                                                 :origin {:oneOf [{:$ref "#/definitions/Country"} {:type "null"}]},
+                                                 :price {:type "integer"
+                                                         :minimum 1}},
+                                    :required [:name :origin :price]},
+                          "OrderLine" {:type "object",
+                                       :properties {:burger {:$ref "#/definitions/Burger"},
+                                                    :amount {:type "integer"}},
+                                       :required [:burger :amount]},
+                          "Order" {:type "object",
+                                   :properties {:lines {:type "array"
+                                                        :items {:$ref "#/definitions/OrderLine"}},
+                                                :delivery {:type "object",
+                                                           :properties {:delivered {:type "boolean"},
+                                                                        :address {:type "object",
+                                                                                  :properties {:street {:type "string"},
+                                                                                               :zip {:type "integer"},
+                                                                                               :country {:$ref "#/definitions/Country"}},
+                                                                                  :required [:street :zip :country]}},
+                                                           :required [:delivered :address]}},
+                                   :required [:lines :delivery]}}}
+           (json-schema/transform
+            [:schema
+             {:registry {"Country" [:map
+                                    [:name [:enum :FI :PO]]
+                                    [:neighbors [:vector [:ref "Country"]]]]
+                         "Burger" [:map
+                                   [:name string?]
+                                   [:description {:optional true} string?]
+                                   [:origin [:maybe "Country"]]
+                                   [:price pos-int?]]
+                         "OrderLine" [:map
+                                      [:burger "Burger"]
+                                      [:amount int?]]
+                         "Order" [:map
+                                  [:lines [:vector "OrderLine"]]
+                                  [:delivery [:map
+                                              [:delivered boolean?]
+                                              [:address [:map
+                                                         [:street string?]
+                                                         [:zip int?]
+                                                         [:country "Country"]]]]]]}}
+             "Order"]))))
+
+  (testing "circular definitions are not created"
+    (is (= {:$ref "#/definitions/Foo", :definitions {"Foo" {:type "integer"}}}
+           (json-schema/transform
+             (mu/closed-schema [:schema {:registry {"Foo" :int}} "Foo"]))))))
 
 (deftest function-schema-test
   (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))

@@ -2916,38 +2916,40 @@
         valid2 {:x true, :y 1, 123 123, 456 456}
         invalid {:x true, :y 1, 123 "123", "456" 456}]
 
-    (is (true? (m/validate schema valid)))
-    (is (true? (m/validate schema valid2)))
-    (is (false? (m/validate schema invalid)))
-    (is (false? (m/validate schema "not-a-map")))
+    (testing "validation"
+      (is (true? (m/validate schema valid)))
+      (is (true? (m/validate schema valid2)))
+      (is (false? (m/validate schema invalid)))
+      (is (false? (m/validate schema "not-a-map"))))
 
-    (is (nil? (m/explain schema valid)))
-    (is (nil? (m/explain schema valid2)))
+    (testing "explain"
+      (is (nil? (m/explain schema valid)))
+      (is (nil? (m/explain schema valid2)))
+      (is (results= {:schema schema,
+                     :value {:y "invalid", "123" "123"},
+                     :errors [{:path [:x],
+                               :in [:x],
+                               :schema schema,
+                               :value nil,
+                               :type :malli.core/missing-key}
+                              {:path [:y], :in [:y], :schema :int, :value "invalid"}
+                              {:path [::m/default 0], :in ["123"], :schema :int, :value "123"}
+                              {:path [::m/default 1], :in ["123"], :schema :int, :value "123"}]}
+                    (m/explain schema {:y "invalid", "123" "123"}))))
 
-    (is (schema= [[:x nil :boolean]
-                  [:y {:optional true} :int]
-                  [::m/default nil [:map-of :int :int]]]
-                 (m/children schema)))
+    (testing "children"
+      (is (schema= [[:x nil :boolean]
+                    [:y {:optional true} :int]
+                    [::m/default nil [:map-of :int :int]]]
+                   (m/children schema))))
 
-    (is (true? (every? map-entry? (m/entries schema))))
-    (is (= [:x :y ::m/default] (map key (m/entries schema))))
-
-    (is (schema= [[:x [::m/val :boolean]]
-                  [:y [::m/val {:optional true} :int]]
-                  [::m/default [::m/val [:map-of :int :int]]]]
-                 (m/entries schema)))
-
-    (is (results= {:schema schema,
-                   :value {:y "invalid", "123" "123"},
-                   :errors [{:path [:x],
-                             :in [:x],
-                             :schema schema,
-                             :value nil,
-                             :type :malli.core/missing-key}
-                            {:path [:y], :in [:y], :schema :int, :value "invalid"}
-                            {:path [::m/default 0], :in ["123"], :schema :int, :value "123"}
-                            {:path [::m/default 1], :in ["123"], :schema :int, :value "123"}]}
-                  (m/explain schema {:y "invalid", "123" "123"})))
+    (testing "entries"
+      (is (true? (every? map-entry? (m/entries schema))))
+      (is (= [:x :y ::m/default] (map key (m/entries schema))))
+      (is (schema= [[:x [::m/val :boolean]]
+                    [:y [::m/val {:optional true} :int]]
+                    [::m/default [::m/val [:map-of :int :int]]]]
+                   (m/entries schema))))
 
     (testing "parsing and unparsing"
       (let [schema [:map {:registry {'int [:orn ['int :int]]
@@ -2996,7 +2998,8 @@
                [::m/default [:map-of :keyword :keyword]]]
               (mt/transformer)))))
 
-    (is (true? (m/validate (over-the-wire schema) valid)))
+    (testing "over the wire"
+      (is (true? (m/validate (over-the-wire schema) valid))))
 
     (testing "ast"
       (is (= {:type :map,
@@ -3013,8 +3016,9 @@
              (m/ast schema)))
       (is (true? (m/validate (m/from-ast (m/ast schema)) valid))))
 
-    (is (= [:map
-            [:x :boolean]
-            [:y {:optional true} :int]
-            [::m/default [:map-of :int :int]]]
-           (m/form schema)))))
+    (testing "form"
+      (is (= [:map
+              [:x :boolean]
+              [:y {:optional true} :int]
+              [::m/default [:map-of :int :int]]]
+             (m/form schema))))))

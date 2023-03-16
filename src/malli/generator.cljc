@@ -154,8 +154,10 @@
     (gen-one-of gs)
     (-never-gen options)))
 
+;; TODO: handle ::m/default
 (defn -map-gen [schema options]
-  (let [entries (m/entries schema)
+  (let [eks (set (m/explicit-keys schema))
+        entries (filter (m/-comp eks key) (m/entries schema))
         value-gen (fn [k s] (let [g (generator s options)]
                               (cond->> g
                                 (-not-unreachable g)

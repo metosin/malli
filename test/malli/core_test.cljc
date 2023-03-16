@@ -1240,6 +1240,9 @@
                                 {:path [::m/default 1], :in [1], :schema :string, :value :invalid}]}
                       (m/explain schema [:so :invalid]))))
 
+      (testing "default schema"
+        (is (schema= [:tuple :string :string] (m/default-schema schema))))
+
       (testing "parser"
         (is (= (miu/-tagged :human [:human]) (m/parse schema [:human])))
         (is (= (miu/-tagged :bear [:bear [1 2 3]]) (m/parse schema [:bear 1 2 3])))
@@ -2951,6 +2954,9 @@
                     [:y [::m/val {:optional true} :int]]
                     [::m/default [::m/val [:map-of :int :int]]]]
                    (m/entries schema))))
+
+    (testing "default-schema"
+      (is (schema= [:map-of :int :int] (m/default-schema schema))))
 
     (testing "parsing and unparsing"
       (let [schema [:map {:registry {'int [:orn ['int :int]]

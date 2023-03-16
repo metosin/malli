@@ -2283,6 +2283,13 @@
         (fn [acc [k :as e]] (cond-> acc (not (-default-entry e)) (conj k)))
         [] (-entries schema))))))
 
+(defn default-schema
+  ([?schema] (default-schema ?schema nil))
+  ([?schema options]
+   (let [schema (schema ?schema options)]
+     (when (-entry-schema? schema)
+       (-default-entry-schema (-children schema))))))
+
 (defn deref
   "Derefs top-level `RefSchema`s or returns original Schema."
   ([?schema]

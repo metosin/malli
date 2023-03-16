@@ -911,6 +911,7 @@
 
       (is (true? (every? map-entry? (m/entries schema))))
       (is (= [:x :y :z] (map key (m/entries schema))))
+      (is (= [:x :y :z] (m/explicit-keys schema)))
 
       (is (schema= [[:x [::m/val 'boolean?]]
                     [:y [::m/val {:optional true} 'int?]]
@@ -2945,6 +2946,7 @@
     (testing "entries"
       (is (true? (every? map-entry? (m/entries schema))))
       (is (= [:x :y ::m/default] (map key (m/entries schema))))
+      (is (= [:x :y] (m/explicit-keys schema)))
       (is (schema= [[:x [::m/val :boolean]]
                     [:y [::m/val {:optional true} :int]]
                     [::m/default [::m/val [:map-of :int :int]]]]

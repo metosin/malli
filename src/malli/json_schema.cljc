@@ -82,14 +82,21 @@
 (defmethod accept :orn [_ _ children _] {:anyOf (map last children)})
 
 (defmethod accept ::m/val [_ _ children _] (first children))
+
 (defmethod accept :map [_ schema children _]
-  (let [required (->> children (filter (m/-comp not :optional second)) (mapv first))
-        additional-properties (:closed (m/properties schema))
+  (let [ks (set (m/explicit-keys schema))
+        default (some->> children (remove (m/-comp ks first)) first last)
+        children (filter (m/-comp ks first) children)
+        required (->> children (filter (m/-comp not :optional second)) (mapv first))
+        cloased (:closed (m/properties schema))
         object {:type "object"
                 :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))}]
-    (cond-> object
+    ;; should do a deep-merge instead? e.g. [:map [:x :int] [::m/default [:map [:y :int]]]]
+    (cond-> (merge default object)
       (seq required) (assoc :required required)
-      additional-properties (assoc :additionalProperties false))))
+      cloased (assoc :additionalProperties false)
+      default (-> (merge (select-keys default [:additionalProperties]))
+                  (->> (merge default))))))
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 

@@ -2274,6 +2274,15 @@
    (when-let [schema (schema ?schema options)]
      (when (-entry-schema? schema) (-entries schema)))))
 
+(defn explicit-keys
+  ([?schema] (explicit-keys ?schema nil))
+  ([?schema options]
+   (let [schema (schema ?schema options)]
+     (when (-entry-schema? schema)
+       (reduce
+        (fn [acc [k :as e]] (cond-> acc (not (-default-entry e)) (conj k)))
+        [] (-entries schema))))))
+
 (defn deref
   "Derefs top-level `RefSchema`s or returns original Schema."
   ([?schema]

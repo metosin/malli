@@ -156,8 +156,7 @@
 
 ;; TODO: handle ::m/default
 (defn -map-gen [schema options]
-  (let [eks (set (m/explicit-keys schema))
-        entries (filter (m/-comp eks key) (m/entries schema))
+  (let [entries (m/entries schema)
         value-gen (fn [k s] (let [g (generator s options)]
                               (cond->> g
                                 (-not-unreachable g)
@@ -168,11 +167,13 @@
         gen-opt (->> entries
                      (filter #(-> % last m/properties :optional))
                      (map (fn [[k s]] (let [g (-not-unreachable (value-gen k s))]
-                                        (gen-one-of (cond-> [(gen/return nil)]
-                                                      g (conj g))))))
-                     (apply gen/tuple))]
+                                        (gen-one-of (cond-> [(gen/return nil)] g (conj g)))))))
+        undefault (fn [kvs] (reduce (fn [acc [k v]] (if (and (= k ::m/default) (map? v))
+                                                      (into acc (map identity v))
+                                                      (conj acc [k v]))) [] kvs))]
     (if (not-any? -unreachable-gen? gens-req)
-      (gen/fmap (fn [[req opt]] (into {} (concat req opt))) (gen/tuple (apply gen/tuple gens-req) gen-opt))
+      (gen/fmap (fn [[req opt]] (into {} (concat (undefault req) (undefault opt))))
+                (gen/tuple (apply gen/tuple gens-req) (apply gen/tuple gen-opt)))
       (-never-gen options))))
 
 (defn -map-of-gen [schema options]

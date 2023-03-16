@@ -92,7 +92,7 @@
 (defn -string->uuid [x]
   (if (string? x)
     (if-let [x (re-matches uuid-re x)]
-      #?(:clj (UUID/fromString x)
+      #?(:clj  (UUID/fromString x)
          :cljs (uuid x))
       x)
     x))

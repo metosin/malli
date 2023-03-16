@@ -25,11 +25,29 @@
    [[:map
      [:a string?]
      [:b {:optional true} string?]
-     [:c {:optional false} string?]] {:type "object"
-                                      :properties {:a {:type "string"}
-                                                   :b {:type "string"}
-                                                   :c {:type "string"}}
-                                      :required [:a :c]}]
+     [:c {:optional false} string?]]
+    {:type "object"
+     :properties {:a {:type "string"}
+                  :b {:type "string"}
+                  :c {:type "string"}}
+     :required [:a :c]}]
+   [[:map
+     [:x :int]
+     [::m/default [:map-of :int :int]]]
+    {:type "object"
+     :properties {:x {:type "integer"}}
+     :required [:x]
+     :additionalProperties {:type "integer"}}]
+   [[:map
+     [:x :int]
+     [::m/default [:fn {:json-schema/default {:x 1}} map?]]]
+    {:type "object"
+     :properties {:x {:type "integer"}}
+     :required [:x]
+     :default {:x 1}}]
+   ;; TODO: :map does not deep-merge ::m/default contents
+   #_[[:map [:x :int] [::m/default [:map [:y :int]]]]
+      {:type "object", :properties {:x {:type "integer"}, :y {:type "integer"}}, :required [:x :y]}]
    [[:multi {:dispatch :type
              :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]
@@ -83,8 +101,8 @@
    [ifn? {}]
 
    [integer? {:type "integer"}]
-   #?@(:clj [[ratio? {:type "number"}]
-             [rational? {:type "number"}]]
+   #?@(:clj  [[ratio? {:type "number"}]
+              [rational? {:type "number"}]]
        :cljs [])
    ;; protocols
    [(reify
@@ -120,10 +138,10 @@
                          :x5 {:type "x-string"}}}
            (json-schema/transform
             [:map
-             [:x1 {:json-schema/title "x"          :optional true} :string]
-             [:x2 {:json-schema {:title "x"}       :optional true} [:string {:json-schema/default "x"}]]
-             [:x3 {:json-schema/title "x"          :optional true} [:string {:json-schema/default "x"}]]
-             [:x4 {:json-schema/title "x-string"   :optional true} [:string {:json-schema {:default "x2"}}]]
+             [:x1 {:json-schema/title "x" :optional true} :string]
+             [:x2 {:json-schema {:title "x"} :optional true} [:string {:json-schema/default "x"}]]
+             [:x3 {:json-schema/title "x" :optional true} [:string {:json-schema/default "x"}]]
+             [:x4 {:json-schema/title "x-string" :optional true} [:string {:json-schema {:default "x2"}}]]
              [:x5 {:json-schema {:type "x-string"} :optional true} [:string {:json-schema {:default "x"}}]]]))))
 
   (testing "map-entry overrides"

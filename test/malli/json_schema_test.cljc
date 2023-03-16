@@ -45,9 +45,11 @@
      :properties {:x {:type "integer"}}
      :required [:x]
      :default {:x 1}}]
-   ;; TODO: :map does not deep-merge ::m/default contents
-   #_[[:map [:x :int] [::m/default [:map [:y :int]]]]
-      {:type "object", :properties {:x {:type "integer"}, :y {:type "integer"}}, :required [:x :y]}]
+   [[:map [:x :int] [::m/default [:map [:y :int]]]]
+      {:type "object"
+       :properties {:x {:type "integer"}
+                    :y {:type "integer"}}
+       :required [:x :y]}]
    [[:multi {:dispatch :type
              :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]

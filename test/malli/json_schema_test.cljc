@@ -45,11 +45,19 @@
      :properties {:x {:type "integer"}}
      :required [:x]
      :default {:x 1}}]
-   [[:map [:x :int] [::m/default [:map [:y :int]]]]
-      {:type "object"
-       :properties {:x {:type "integer"}
-                    :y {:type "integer"}}
-       :required [:x :y]}]
+   [[:map
+     [:x :int]
+     [::m/default [:map
+                   [:y :int]
+                   [::m/default [:map
+                                 [:z :int]
+                                 [::m/default [:map-of :int :int]]]]]]]
+    {:type "object",
+     :additionalProperties {:type "integer"},
+     :properties {:x {:type "integer"}
+                  :y {:type "integer"}
+                  :z {:type "integer"}},
+     :required [:x :y :z]}]
    [[:multi {:dispatch :type
              :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]

@@ -168,11 +168,12 @@
                      (filter #(-> % last m/properties :optional))
                      (map (fn [[k s]] (let [g (-not-unreachable (value-gen k s))]
                                         (gen-one-of (cond-> [(gen/return nil)] g (conj g)))))))
-        undefault (fn [kvs] (reduce (fn [acc [k v]] (if (and (= k ::m/default) (map? v))
-                                                      (into acc (map identity v))
-                                                      (conj acc [k v]))) [] kvs))]
+        undefault (fn [kvs] (reduce (fn [acc [k v]]
+                                      (cond (and (= k ::m/default) (map? v)) (into acc (map identity v))
+                                            (and (nil? k) (nil? v)) acc
+                                            :else (conj acc [k v]))) [] kvs))]
     (if (not-any? -unreachable-gen? gens-req)
-      (gen/fmap (fn [[req opt]] (into {} (concat (undefault req) (undefault opt))))
+      (gen/fmap (fn [[req opt]] (into {} (undefault (concat req opt))))
                 (gen/tuple (apply gen/tuple gens-req) (apply gen/tuple gen-opt)))
       (-never-gen options))))
 

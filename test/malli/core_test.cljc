@@ -2907,11 +2907,10 @@
                           :value {:x "kikka"}}} (as-data (<result)))))))))
 
 (deftest extra-entries-in-map-test
-  (let [schema (m/schema
-                [:map
-                 [:x :boolean]
-                 [:y {:optional true} :int]
-                 [::m/default [:map-of :int :int]]])
+  (let [schema [:map
+                [:x :boolean]
+                [:y {:optional true} :int]
+                [::m/default [:map-of :int :int]]]
         valid {:x true, :y 1}
         valid2 {:x true, :y 1, 123 123, 456 456}
         invalid {:x true, :y 1, 123 "123", "456" 456}]
@@ -2959,9 +2958,9 @@
                     [::m/default [:map-of 'str 'str]]]
             valid {:id 1, "name" "tommi", "kikka" "kukka", "abba" "jabba"}]
         (is (= {:id ['int 1],
-                "name" ['str "tommi"],
-                ['str "kikka"] ['str "kukka"]
-                ['str "abba"] ['str "jabba"]}
+                "name" ['str "tommi"]
+                ::m/default {['str "kikka"] ['str "kukka"]
+                             ['str "abba"] ['str "jabba"]}}
                (m/parse schema valid)))
         (is (= valid (->> valid (m/parse schema) (m/unparse schema))))
         (is (= ::m/invalid (m/parse schema {"kukka" 42})))))

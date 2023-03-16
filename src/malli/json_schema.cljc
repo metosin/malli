@@ -89,12 +89,12 @@
         {additionalProperties' :additionalProperties properties' :properties required' :required} default
         children (filter (m/-comp ks first) children)
         required (->> children (filter (m/-comp not :optional second)) (mapv first))
-        cloased (:closed (m/properties schema))
+        closed (:closed (m/properties schema))
         object {:type "object"
                 :properties (apply array-map (mapcat (fn [[k _ s]] [k s]) children))}]
     (cond-> (merge default object)
       (seq required) (assoc :required required)
-      cloased (assoc :additionalProperties false)
+      closed (assoc :additionalProperties false)
       default (cond->
                 additionalProperties' (assoc :additionalProperties additionalProperties')
                 properties' (update :properties merge properties')

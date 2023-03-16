@@ -278,7 +278,22 @@
            "Order"]))))
 
 (deftest swagger-spec-test
-  (testing "generates swagger for ::parameters w/ basic schema"
+  (testing "generates swagger for ::parameters and ::responses w/ basic schema"
+    (is (= {:definitions nil,
+            :parameters [{:description "",
+                          :in "body",
+                          :name "body",
+                          :required true,
+                          :schema {:properties {:foo {:type "string"}}
+                                   :required [:foo], :type "object"}}],
+            :responses {200 {:description "",
+                             :schema {:properties {:bar {:type "string"}}
+                                      :required [:bar], :type "object"}}}}
+           (swagger/swagger-spec {::swagger/parameters
+                                  {:body [:map [:foo :string]]}
+                                  ::swagger/responses
+                                  {200 {:schema [:map [:bar :keyword]]}}}))))
+  (testing "generates swagger for ::parameters w/ basic schema + registry"
     (let [registry (merge (m/type-schemas)
                           {::body [:string {:min 1}]})]
       (is (= {:definitions {::body {:minLength 1, :type "string"}},
@@ -292,7 +307,7 @@
                                     {:body (m/schema ::body
                                                      {:registry registry})}})))))
 
-  (testing "generates swagger for ::responses w/ basic schema"
+  (testing "generates swagger for ::responses w/ basic schema + registry"
     (let [registry (merge (m/base-schemas) (m/type-schemas)
                           {::success [:map-of :keyword :string]
                            ::error   [:string {:min 1}]})]
@@ -312,7 +327,7 @@
                                      400 {:schema (m/schema ::error
                                                             {:registry registry})}}})))))
 
-  (testing "generates swagger for ::parameters and ::responses w/ basic schema"
+  (testing "generates swagger for ::parameters and ::responses w/ basic schema + registry"
     (let [registry (merge (m/base-schemas) (m/type-schemas) (m/comparator-schemas)
                           {::req-body     [:map-of :keyword :any]
                            ::success-resp [:map [:it [:= "worked"]]]
@@ -349,7 +364,7 @@
 
   ;; This test currently fails due to https://github.com/metosin/malli/issues/464
   ;; TODO: Uncomment it when #464 is fixed
-  #_(testing "generates swagger for ::parameters and ::responses w/ recursive schema"
+  #_(testing "generates swagger for ::parameters and ::responses w/ recursive schema + registry"
       (let [registry (merge (m/base-schemas) (m/type-schemas)
                             (m/comparator-schemas) (m/sequence-schemas)
                             {::a            [:or

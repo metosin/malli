@@ -1,5 +1,6 @@
 (ns malli.json-schema-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test.check.generators :as gen]
+            [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
@@ -40,7 +41,7 @@
      :additionalProperties {:type "integer"}}]
    [[:map
      [:x :int]
-     [::m/default [:fn {:json-schema/default {:x 1}} map?]]]
+     [::m/default [:fn {:json-schema/default {:x 1}, :gen/gen (gen/return {})} map?]]]
     {:type "object"
      :properties {:x {:type "integer"}}
      :required [:x]

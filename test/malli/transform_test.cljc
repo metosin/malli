@@ -58,8 +58,8 @@
 
   ;; Regression tests: we should ensure that invalid or incomplete
   ;; uuids are handled unformly in CLJ and CLJS
-  (is (= "5f60751d-9bf7-4344-97ee-48643c"             (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c")))
-  (is (= "1-1-1-1-1"                                  (mt/-string->uuid "1-1-1-1-1"))))
+  (is (= "5f60751d-9bf7-4344-97ee-48643c" (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c")))
+  (is (= "1-1-1-1-1" (mt/-string->uuid "1-1-1-1-1"))))
 
 
 (deftest string->date
@@ -433,12 +433,12 @@
   (testing "extra-keys-transformer shouldn't break non map values"
     (is (= {:foo "bar"}
            (m/decode
-             [:map {:decode/string (fn [s] {:foo s})}
-              [:foo :string]]
-             "bar"
-             (mt/transformer
-               (mt/strip-extra-keys-transformer)
-               (mt/string-transformer)))))))
+            [:map {:decode/string (fn [s] {:foo s})}
+             [:foo :string]]
+            "bar"
+            (mt/transformer
+             (mt/strip-extra-keys-transformer)
+             (mt/string-transformer)))))))
 
 (deftest strip-extra-keys-transformer-test
   (let [strip-default (mt/strip-extra-keys-transformer)

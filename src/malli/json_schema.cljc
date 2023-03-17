@@ -93,14 +93,8 @@
 
 (defmethod accept :multi [_ _ children _] {:oneOf (mapv last children)})
 
-(defn- minmax-properties
-  [m schema kmin kmax]
-  (merge
-   m
-   (-> schema
-       m/properties
-       (select-keys [:min :max])
-       (set/rename-keys {:min kmin, :max kmax}))))
+(defn- minmax-properties [m schema kmin kmax]
+  (merge m (-> schema (m/properties) (select-keys [:min :max]) (set/rename-keys {:min kmin, :max kmax}))))
 
 (defmethod accept :map-of [_ schema children _]
   (minmax-properties

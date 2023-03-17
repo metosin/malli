@@ -10,6 +10,8 @@
 (defn -ref [x] {:$ref (apply str "#/definitions/"
                              (cond
                                ;; / must be encoded as ~1 in JSON Schema
+                               ;; https://json-schema.org/draft/2019-09/relative-json-pointer.html
+                               ;; https://www.rfc-editor.org/rfc/rfc6901
                                (qualified-keyword? x) [(namespace x) "~1"
                                                        (name x)]
                                (keyword? x) [(name x)]

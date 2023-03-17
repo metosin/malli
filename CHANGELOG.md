@@ -16,7 +16,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* Allow additional entries in `:map` schemas via `::m/default` key [#871](https://github.com/metosin/malli/pull/871), [docs](README.md#map-with-default-schemas)
+* Add support for default/fallback branch for `:map`
+  [#871](https://github.com/metosin/malli/pull/871), [docs](README.md#map-with-default-schemas)
 * `m/default-schema` to pull the `::m/default` schema from entry schemas
 * `m/explicit-keys` to get a vector of explicit keys from entry schemas (no `::m/default`
 * `mt/strip-extra-keys-transformer` works with `:map-of` schemas

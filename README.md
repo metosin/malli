@@ -212,14 +212,8 @@ Validating values against a schema:
 (m/validate [:= 1] 1)
 ; => true
 
-(m/validate [:= 1] 2)
-; => false
-
 (m/validate [:enum 1 2] 1)
 ; => true
-
-(m/validate [:enum 1 2] 0)
-; => false
 
 (m/validate [:and :int [:> 6]] 7)
 ; => true
@@ -325,6 +319,31 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
   {"oslo" {:lat 60 :long 11}
    "helsinki" {:lat 60 :long 24}})
 ;; => true
+```
+## Map with default schemas
+
+Map schemas can define a special `:malli.core/default` key to handle extra keys:
+
+```clojure
+(m/validate
+ [:map
+  [:x :int]
+  [:y :int]
+  [::m/default [:map-of :int :int]]]
+ {:x 1, :y 2, 1 1, 2 2})
+; => true
+```
+default branching can be arbitraty nested:
+
+```clojure
+(m/validate
+ [:map
+  [:x :int]
+  [::m/default [:map
+                [:y :int]
+                [::m/default [:map-of :int :int]]]]]
+ {:x 1, :y 2, 1 1, 2 2})
+; => true
 ```
 
 ## Sequence schemas

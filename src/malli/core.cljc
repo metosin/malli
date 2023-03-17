@@ -2275,6 +2275,7 @@
      (when (-entry-schema? schema) (-entries schema)))))
 
 (defn explicit-keys
+  "Returns a vector of explicit (not ::m/default) keys from EntrySchema"
   ([?schema] (explicit-keys ?schema nil))
   ([?schema options]
    (let [schema (schema ?schema options)]
@@ -2284,6 +2285,7 @@
         [] (-entries schema))))))
 
 (defn default-schema
+  "Returns the default (::m/default) schema from EntrySchema"
   ([?schema] (default-schema ?schema nil))
   ([?schema options]
    (let [schema (schema ?schema options)]

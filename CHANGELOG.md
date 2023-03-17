@@ -16,6 +16,9 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Allow additional entries in `:map` schemas via `::m/default` key [#871](https://github.com/metosin/malli/pull/871), [docs](README.md#map-with-default-schemas)
+* new `m/default-schmea` and `m/explicit-keys` helpers
+* `mt/strip-extra-keys-transformer` works with `:map-of` schemas
 * Simplify content-dependent schema creation with `m/-simple-schema` and `m/-collection-schema` via new 3-arity `:compile` function of type `children properties options -> props`. Old 2-arity top-level callback function is `m/deprecated!` and support for it will be removed in future versions. [#866](https://github.com/metosin/malli/pull/866)
 
 ## 0.10.2 (2023-03-05)

@@ -56,23 +56,21 @@
 
 (defn -string->long [x]
   (if (string? x)
-    (try
-      #?(:clj  (Long/parseLong x)
-         :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))]
-                 (cond
-                   (js/isNaN x') x
-                   (> x' js/Number.MAX_SAFE_INTEGER) x
-                   (< x' js/Number.MIN_SAFE_INTEGER) x
-                   :else x')))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    (try #?(:clj  (Long/parseLong x)
+            :cljs (let [x' (if (re-find #"\D" (subs x 1)) ##NaN (js/parseInt x 10))]
+                    (cond
+                      (js/isNaN x') x
+                      (> x' js/Number.MAX_SAFE_INTEGER) x
+                      (< x' js/Number.MIN_SAFE_INTEGER) x
+                      :else x')))
+         (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
 (defn -string->double [x]
   (if (string? x)
-    (try
-      #?(:clj  (Double/parseDouble x)
-         :cljs (let [x' (js/parseFloat x)] (if (js/isNaN x') x x')))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    (try #?(:clj  (Double/parseDouble x)
+            :cljs (let [x' (js/parseFloat x)] (if (js/isNaN x') x x')))
+         (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
 (defn -number->double [x]
@@ -83,10 +81,9 @@
 
 (defn -string->boolean [x]
   (if (string? x)
-    (cond
-      (= "true" x) true
-      (= "false" x) false
-      :else x)
+    (cond (= "true" x) true
+          (= "false" x) false
+          :else x)
     x))
 
 (def ^:private uuid-re
@@ -119,18 +116,16 @@
 
 (defn -string->date [x]
   (if (string? x)
-    (try
-      #?(:clj  (Date/from (Instant/from (.parse +string->date-format+ x)))
-         :cljs (js/Date. (.getTime (goog.date.UtcDateTime/fromIsoString x))))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    (try #?(:clj  (Date/from (Instant/from (.parse +string->date-format+ x)))
+            :cljs (js/Date. (.getTime (goog.date.UtcDateTime/fromIsoString x))))
+         (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
 #?(:clj
    (defn -string->decimal [x]
      (if (string? x)
-       (try
-         (BigDecimal. ^String x)
-         (catch Exception _ x))
+       (try (BigDecimal. ^String x)
+            (catch Exception _ x))
        x)))
 
 (defn -string->symbol [x]
@@ -155,10 +150,9 @@
 
 (defn -date->string [x]
   (if (inst? x)
-    (try
-      #?(:clj  (.format +date->string-format+ (Instant/ofEpochMilli (inst-ms x)))
-         :cljs (.toISOString x))
-      (catch #?(:clj Exception, :cljs js/Error) _ x))
+    (try #?(:clj  (.format +date->string-format+ (Instant/ofEpochMilli (inst-ms x)))
+            :cljs (.toISOString x))
+         (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
 (defn -transform-map-keys [f]
@@ -166,44 +160,36 @@
 
 (defn -transform-if-valid [f schema]
   (let [validator (m/-validator schema)]
-    (fn [x]
-      (let [out (f x)]
-        (if (validator out)
-          out
-          x)))))
+    (fn [x] (let [out (f x)] (if (validator out) out x)))))
 
 ;;
 ;; sequential
 ;;
 
 (defn -sequential->set [x]
-  (cond
-    (set? x) x
-    (sequential? x) (set x)
-    :else x))
+  (cond (set? x) x
+        (sequential? x) (set x)
+        :else x))
 
 (defn -sequential->vector [x]
-  (cond
-    (vector? x) x
-    (sequential? x) (vec x)
-    :else x))
+  (cond (vector? x) x
+        (sequential? x) (vec x)
+        :else x))
 
 ;;
 ;; sequential or set
 ;;
 
 (defn -sequential-or-set->vector [x]
-  (cond
-    (vector? x) x
-    (set? x) (vec x)
-    (sequential? x) (vec x)
-    :else x))
+  (cond (vector? x) x
+        (set? x) (vec x)
+        (sequential? x) (vec x)
+        :else x))
 
 (defn -sequential-or-set->seq [x]
-  (cond
-    (vector? x) (seq x)
-    (set? x) (seq x)
-    :else x))
+  (cond (vector? x) (seq x)
+        (set? x) (seq x)
+        :else x))
 
 (defn -infer-child-decoder-compiler [schema _]
   (-> schema (m/children) (m/-infer) {:keyword -string->keyword
@@ -355,8 +341,7 @@
                  acc))) nil chain'))))))
 
 (defn json-transformer
-  ([]
-   (json-transformer nil))
+  ([] (json-transformer nil))
   ([{::keys [json-vectors map-of-key-decoders] :or {map-of-key-decoders (-string-decoders)}}]
    (transformer
     {:name :json
@@ -403,8 +388,7 @@
                                            :default-encoder (transform encode :leave)}))))
 
 (defn default-value-transformer
-  ([]
-   (default-value-transformer nil))
+  ([] (default-value-transformer nil))
   ([{:keys [key default-fn defaults ::add-optional-keys] :or {key :default, default-fn (fn [_ x] x)}}]
    (let [get-default (fn [schema]
                        (if-some [e (some-> schema m/properties (find key))]

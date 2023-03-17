@@ -364,21 +364,27 @@
     :encoders (-string-encoders)}))
 
 (defn strip-extra-keys-transformer
-  ([]
-   (strip-extra-keys-transformer nil))
+  ([] (strip-extra-keys-transformer nil))
   ([{:keys [accept] :or {accept (m/-comp #(or (nil? %) (true? %)) :closed m/properties)}}]
-   (let [transform {:compile (fn [schema _]
-                               (when (accept schema)
-                                 (when-let [ks (some->> schema m/entries (map first) seq set)]
-                                   (fn [x]
-                                     ;; accept checks if the schema is compatible with strip-extra-keys,
-                                     ;; but the value might not be compatible with reduce-kv, i.e. a string.
-                                     (if (map? x)
-                                       (reduce-kv (fn [acc k _] (if-not (ks k) (dissoc acc k) acc)) x x)
-                                       x)))))}]
+   (let [strip-map {:compile (fn [schema _]
+                               (let [default-schema (m/default-schema schema)
+                                     ks (some->> schema (m/explicit-keys) (set))]
+                                 (cond-> nil
+                                   (accept schema)
+                                   (assoc :enter (fn [x]
+                                                   (if (and (map? x) (not default-schema))
+                                                     (reduce-kv (fn [acc k _] (if-not (ks k) (dissoc acc k) acc)) x x)
+                                                     x))))))}
+         strip-map-of {:compile (fn [schema options]
+                                  (let [entry-schema (m/into-schema :tuple nil (m/children schema) options)
+                                        valid? (m/validator entry-schema options)]
+                                    {:leave (fn [x] (reduce (fn [acc entry]
+                                                              (if (valid? entry)
+                                                                (apply assoc acc entry)
+                                                                acc)) (empty x) x))}))}]
      (transformer
-      {:decoders {:map transform}
-       :encoders {:map transform}}))))
+      {:decoders {:map strip-map, :map-of strip-map-of}
+       :encoders {:map strip-map, :map-of strip-map-of}}))))
 
 (defn key-transformer [{:keys [decode encode types] :or {types #{:map}}}]
   (let [transform (fn [f stage] (when f {stage (-transform-map-keys f)}))]

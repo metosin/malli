@@ -441,6 +441,78 @@
              (mt/string-transformer)))))))
 
 (deftest strip-extra-keys-transformer-test
+
+  (testing "extra keys from :map are stripped"
+    (is (= {:x 1, :y 2}
+           (m/decode
+            [:map [:x :int] [:y :int]]
+            {:x 1, :y 2, :z 3}
+            (mt/strip-extra-keys-transformer)))))
+
+  (testing "extra keys from :map-of are stripped"
+    (is (= {1 1}
+           (m/decode
+            [:map-of :int :int]
+            {1 1, "2" 2, 3 "3", "4" "4"}
+            (mt/strip-extra-keys-transformer))))
+
+    (testing "composing with other transformers"
+      (is (= {1 1, 2 2, 3 3, 4 4}
+             (m/decode
+              [:map-of :int :int]
+              {1 1, "2" 2, 3 "3", "4" "4"}
+              (mt/transformer
+               (mt/strip-extra-keys-transformer)
+               (mt/string-transformer)))))))
+
+  (testing "::m/default defines how extra keys are stripped"
+    (let [value {:x 1, :y 2, :z 3, 1 1, "2" 2, 3 "3", "4" "4"}
+          expected {1 1, :x 1, :y 2}]
+
+      (testing "explicit and default values are both stripped"
+        (is (= expected
+               (m/decode
+                [:map
+                 [:x :int]
+                 [:y :int]
+                 [::m/default [:map-of :int :int]]]
+                value
+                (mt/strip-extra-keys-transformer)))))
+
+      (testing "explictly open map works the same way"
+        (is (= expected
+               (m/decode
+                [:map {:closed false}
+                 [:x :int]
+                 [:y :int]
+                 [::m/default [:map-of :int :int]]]
+                value
+                (mt/strip-extra-keys-transformer)))))
+
+      (testing "default schemas can be arbitrary nested"
+        (is (= expected
+               (m/decode
+                [:map
+                 [:x :int]
+                 [::m/default [:map
+                               [:y :int]
+                               [::m/default [:map-of :int :int]]]]]
+                value
+                (mt/strip-extra-keys-transformer))))
+
+        (testing "composing with other transformers"
+          (is (= {:x 1, :y 2, 1 1, 2 2, 3 3, 4 4}
+                 (m/decode
+                  [:map
+                   [:x :int]
+                   [::m/default [:map
+                                 [:y :int]
+                                 [::m/default [:map-of :int :int]]]]]
+                  value
+                  (mt/transformer
+                   (mt/strip-extra-keys-transformer)
+                   (mt/string-transformer)))))))))
+
   (let [strip-default (mt/strip-extra-keys-transformer)
         strip-closed (mt/strip-extra-keys-transformer {:accept (comp :closed m/properties)})
         strip-all (mt/strip-extra-keys-transformer {:accept (constantly true)})]

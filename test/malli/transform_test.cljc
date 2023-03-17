@@ -466,7 +466,7 @@
                (mt/string-transformer)))))))
 
   (testing "::m/default defines how extra keys are stripped"
-    (let [value {:x 1, :y 2, :z 3, 1 1, "2" 2, 3 "3", "4" "4"}
+    (let [value {:x 1, :y 2, :z 3, 1 1, "2" 2, 3 "3", "4" "4", "string" 5}
           expected {1 1, :x 1, :y 2}]
 
       (testing "stripping applies for both explicit and default values"

@@ -996,14 +996,10 @@
                                         default-parser
                                         (cons (fn [m]
                                                 (let [m' (default-parser
-                                                          (if (= f -parser)
-                                                            (reduce (fn [acc k] (dissoc acc k)) m (keys keyset))
-                                                            (::default m)))]
+                                                          (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))]
                                                   (if (miu/-invalid? m')
                                                     (reduced m')
-                                                    (if (= f -parser)
-                                                      (assoc (select-keys m (keys keyset)) ::default m')
-                                                      (dissoc (merge (select-keys m (keys keyset)) m') ::default))))))
+                                                    (merge (select-keys m (keys keyset)) m')))))
                                         closed
                                         (cons (fn [m]
                                                 (reduce

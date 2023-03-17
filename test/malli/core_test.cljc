@@ -2917,7 +2917,7 @@
                 [::m/default [:map-of :int :int]]]
         valid {:x true, :y 1}
         valid2 {:x true, :y 1, 123 123, 456 456}
-        invalid {:x true, :y 1, 123 "123", "456" 456}]
+        invalid {:x true, :y 1, 42 42, 123 "123", "456" 456}]
 
     (testing "validation"
       (is (true? (m/validate schema valid)))
@@ -2959,24 +2959,23 @@
       (is (schema= [:map-of :int :int] (m/default-schema schema))))
 
     (testing "parsing and unparsing"
-      (let [schema [:map {:registry {'int [:orn ['int :int]]
-                                     'str [:orn ['str :string]]}}
+      (let [schema [:map {:registry {'int [:orn [::int :int]]
+                                     'str [:orn [::str :string]]}}
                     [:id 'int]
                     ["name" 'str]
                     [::m/default [:map-of 'str 'str]]]
             valid {:id 1, "name" "tommi", "kikka" "kukka", "abba" "jabba"}]
-        (is (= {:id ['int 1],
-                "name" ['str "tommi"]
-                ::m/default {['str "kikka"] ['str "kukka"]
-                             ['str "abba"] ['str "jabba"]}}
+        (is (= {:id [::int 1],
+                "name" [::str "tommi"]
+                [::str "kikka"] [::str "kukka"]
+                [::str "abba"] [::str "jabba"]}
                (m/parse schema valid)))
         (is (= valid (->> valid (m/parse schema) (m/unparse schema))))
         (is (= ::m/invalid (m/parse schema {"kukka" 42})))))
 
-    #_(is (= {:x true, :y 1} (m/decode schema {:x true, :y 1, :a 1} mt/strip-extra-keys-transformer)))
-    #_(is (= {:x_key true, :y_key 2} (m/decode schema {:x true, :y 2}
-                                               (mt/key-transformer
-                                                {:decode #(-> % name (str "_key") keyword)}))))
+    (testing "stripping keys"
+      (is (= {:x true, :y 1, 42 42}
+             (m/decode schema invalid (mt/strip-extra-keys-transformer)))))
 
     (testing "::m/default transforming doesn't effect defined keys"
       (is (= {:id 12

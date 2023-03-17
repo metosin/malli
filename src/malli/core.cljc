@@ -492,6 +492,9 @@
         (or (:lazy props) (::lazy-entries options)) (-lazy-entry-parser ?children props options)
         :else (-eager-entry-parser ?children props options)))
 
+(defn -default-entry [e] (-equals (nth e 0) ::default))
+(defn -default-entry-schema [children] (some (fn [e] (when (-default-entry e) (nth e 2))) children))
+
 ;;
 ;; transformers
 ;;
@@ -973,8 +976,11 @@
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
+             default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
+             explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
+                              default-parser (some-> @default-schema (f))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -986,11 +992,19 @@
                                                                 (identical? v* v) m
                                                                 :else (assoc m key v*)))
                                                         (if optional m (reduced ::invalid))))))
-                                                (-children this))
-                                        closed (cons (fn [m]
-                                                       (reduce
-                                                        (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                        m (keys m)))))]
+                                                @explicit-children)
+                                        default-parser
+                                        (cons (fn [m]
+                                                (let [m' (default-parser
+                                                          (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))]
+                                                  (if (miu/-invalid? m')
+                                                    (reduced m')
+                                                    (merge (select-keys m (keys keyset)) m')))))
+                                        closed
+                                        (cons (fn [m]
+                                                (reduce
+                                                 (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
+                                                 m (keys m)))))]
                           (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
@@ -999,6 +1013,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
+                   default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
                                          (let [valid? (-validator value)
@@ -1006,12 +1021,16 @@
                                            #?(:bb   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
                                               :clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
-                                       (-children this))
-                                closed (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
+                                       @explicit-children)
+                                default-validator
+                                (conj (fn [m] (default-validator (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))))
+                                (and closed (not default-validator))
+                                (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
                    validate (miu/-every-pred validators)]
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
+                   default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]
                                          (let [explainer (-explainer schema (conj path key))]
@@ -1021,14 +1040,20 @@
                                                (if-not optional
                                                  (conj acc (miu/-error (conj path key) (conj in key) this nil ::missing-key))
                                                  acc)))))
-                                       (-children this))
-                                closed (conj (fn [x in acc]
-                                               (reduce-kv
-                                                (fn [acc k v]
-                                                  (if (contains? keyset k)
-                                                    acc
-                                                    (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
-                                                acc x))))]
+                                       @explicit-children)
+                                default-explainer
+                                (conj (fn [x in acc]
+                                        (default-explainer
+                                         (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))
+                                         in acc)))
+                                (and closed (not default-explainer))
+                                (conj (fn [x in acc]
+                                        (reduce-kv
+                                         (fn [acc k v]
+                                           (if (contains? keyset k)
+                                             acc
+                                             (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
+                                         acc x))))]
                (fn [x in acc]
                  (if-not (pred? x)
                    (conj acc (miu/-error path in this x ::invalid-type))
@@ -1039,11 +1064,16 @@
            (-parser [this] (->parser this -parser))
            (-unparser [this] (->parser this -unparser))
            (-transformer [this transformer method options]
-             (let [this-transformer (-value-transformer transformer this method options)
+             (let [keyset (-entry-keyset (-entry-parser this))
+                   this-transformer (-value-transformer transformer this method options)
                    ->children (reduce (fn [acc [k s]]
                                         (let [t (-transformer s transformer method options)]
-                                          (cond-> acc t (conj [k t])))) [] (-entries this))
+                                          (cond-> acc t (conj [k t]))))
+                                      [] (cond->> (-entries this) @default-schema (remove -default-entry)))
                    apply->children (when (seq ->children) (-map-transformer ->children))
+                   apply->default (when-let [dt (some-> @default-schema (-transformer transformer method options))]
+                                    (fn [x] (merge (dt (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))) (select-keys x (keys keyset)))))
+                   apply->children (some->> [apply->default apply->children] (keep identity) (seq) (apply -comp))
                    apply->children (-guard pred? apply->children)]
                (-intercepting this-transformer apply->children)))
            (-walk [this walker path options] (-walk-entries this walker path options))
@@ -2239,6 +2269,24 @@
   ([?schema options]
    (when-let [schema (schema ?schema options)]
      (when (-entry-schema? schema) (-entries schema)))))
+
+(defn explicit-keys
+  "Returns a vector of explicit (not ::m/default) keys from EntrySchema"
+  ([?schema] (explicit-keys ?schema nil))
+  ([?schema options]
+   (let [schema (schema ?schema options)]
+     (when (-entry-schema? schema)
+       (reduce
+        (fn [acc [k :as e]] (cond-> acc (not (-default-entry e)) (conj k)))
+        [] (-entries schema))))))
+
+(defn default-schema
+  "Returns the default (::m/default) schema from EntrySchema"
+  ([?schema] (default-schema ?schema nil))
+  ([?schema options]
+   (let [schema (schema ?schema options)]
+     (when (-entry-schema? schema)
+       (-default-entry-schema (-children schema))))))
 
 (defn deref
   "Derefs top-level `RefSchema`s or returns original Schema."

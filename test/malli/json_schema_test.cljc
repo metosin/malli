@@ -1,5 +1,6 @@
 (ns malli.json-schema-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test.check.generators :as gen]
+            [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
@@ -25,11 +26,39 @@
    [[:map
      [:a string?]
      [:b {:optional true} string?]
-     [:c {:optional false} string?]] {:type "object"
-                                      :properties {:a {:type "string"}
-                                                   :b {:type "string"}
-                                                   :c {:type "string"}}
-                                      :required [:a :c]}]
+     [:c {:optional false} string?]]
+    {:type "object"
+     :properties {:a {:type "string"}
+                  :b {:type "string"}
+                  :c {:type "string"}}
+     :required [:a :c]}]
+   [[:map
+     [:x :int]
+     [::m/default [:map-of :int :int]]]
+    {:type "object"
+     :properties {:x {:type "integer"}}
+     :required [:x]
+     :additionalProperties {:type "integer"}}]
+   [[:map
+     [:x :int]
+     [::m/default [:fn {:json-schema/default {:x 1}, :gen/gen (gen/return {})} map?]]]
+    {:type "object"
+     :properties {:x {:type "integer"}}
+     :required [:x]
+     :default {:x 1}}]
+   [[:map
+     [:x :int]
+     [::m/default [:map
+                   [:y :int]
+                   [::m/default [:map
+                                 [:z :int]
+                                 [::m/default [:map-of :int :int]]]]]]]
+    {:type "object",
+     :additionalProperties {:type "integer"},
+     :properties {:x {:type "integer"}
+                  :y {:type "integer"}
+                  :z {:type "integer"}},
+     :required [:x :y :z]}]
    [[:multi {:dispatch :type
              :decode/string '(fn [x] (update x :type keyword))}
      [:sized [:map {:gen/fmap '#(assoc % :type :sized)} [:type keyword?] [:size int?]]]
@@ -83,8 +112,8 @@
    [ifn? {}]
 
    [integer? {:type "integer"}]
-   #?@(:clj [[ratio? {:type "number"}]
-             [rational? {:type "number"}]]
+   #?@(:clj  [[ratio? {:type "number"}]
+              [rational? {:type "number"}]]
        :cljs [])
    ;; protocols
    [(reify
@@ -120,10 +149,10 @@
                          :x5 {:type "x-string"}}}
            (json-schema/transform
             [:map
-             [:x1 {:json-schema/title "x"          :optional true} :string]
-             [:x2 {:json-schema {:title "x"}       :optional true} [:string {:json-schema/default "x"}]]
-             [:x3 {:json-schema/title "x"          :optional true} [:string {:json-schema/default "x"}]]
-             [:x4 {:json-schema/title "x-string"   :optional true} [:string {:json-schema {:default "x2"}}]]
+             [:x1 {:json-schema/title "x" :optional true} :string]
+             [:x2 {:json-schema {:title "x"} :optional true} [:string {:json-schema/default "x"}]]
+             [:x3 {:json-schema/title "x" :optional true} [:string {:json-schema/default "x"}]]
+             [:x4 {:json-schema/title "x-string" :optional true} [:string {:json-schema {:default "x2"}}]]
              [:x5 {:json-schema {:type "x-string"} :optional true} [:string {:json-schema {:default "x"}}]]]))))
 
   (testing "map-entry overrides"

@@ -154,7 +154,6 @@
     (gen-one-of gs)
     (-never-gen options)))
 
-;; TODO: handle ::m/default
 (defn -map-gen [schema options]
   (let [entries (m/entries schema)
         value-gen (fn [k s] (let [g (generator s options)]
@@ -170,7 +169,7 @@
                                         (gen-one-of (cond-> [(gen/return nil)] g (conj g)))))))
         undefault (fn [kvs] (reduce (fn [acc [k v]]
                                       (cond (and (= k ::m/default) (map? v)) (into acc (map identity v))
-                                            (and (nil? k) (nil? v)) acc
+                                            (nil? k) acc
                                             :else (conj acc [k v]))) [] kvs))]
     (if (not-any? -unreachable-gen? gens-req)
       (gen/fmap (fn [[req opt]] (into {} (undefault (concat req opt))))

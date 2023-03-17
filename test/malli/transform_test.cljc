@@ -469,7 +469,7 @@
     (let [value {:x 1, :y 2, :z 3, 1 1, "2" 2, 3 "3", "4" "4"}
           expected {1 1, :x 1, :y 2}]
 
-      (testing "explicit and default values are both stripped"
+      (testing "stripping applies for both explicit and default values"
         (is (= expected
                (m/decode
                 [:map

@@ -43,6 +43,11 @@ Malli is in well matured [alpha](README.md#alpha).
 * `m/explicit-keys` to get a vector of explicit keys from entry schemas (no `::m/default`)
 * Simplify content-dependent schema creation with `m/-simple-schema` and `m/-collection-schema` via new 3-arity `:compile` function of type `children properties options -> props`. Old 2-arity top-level callback function is `m/deprecated!` and support for it will be removed in future versions. [#866](https://github.com/metosin/malli/pull/866)
 * FIX Repeated calls to `malli.util/assoc-in` referencing non-existing maps fail [#874](https://github.com/metosin/malli/issues/874)
+* Updated dependencies:
+
+```clojure
+borkdude/edamame 1.1.17 -> 1.3.20
+```
 
 ## 0.10.2 (2023-03-05)
 

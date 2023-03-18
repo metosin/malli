@@ -385,8 +385,7 @@
           ;; update
           (-simple-entry-parser keyset (assoc children i c) (assoc forms i f))
           ;; assoc
-          (let [size (inc (count keyset))]
-            (-simple-entry-parser (assoc keyset k size) (conj children c) (conj forms f))))))))
+          (-simple-entry-parser (assoc keyset k {:order (count keyset)}) (conj children c) (conj forms f)))))))
 
 (defn -set-entries
   ([schema ?key value]

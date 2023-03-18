@@ -1,6 +1,6 @@
 (ns malli.util-test
   (:require [clojure.test :refer [are deftest is testing]]
-            #?(:bb [cheshire.core :as json]
+            #?(:bb  [cheshire.core :as json]
                :clj [jsonista.core :as json])
             [malli.core :as m]
             [malli.impl.util :as miu]
@@ -8,11 +8,11 @@
             [malli.util :as mu]))
 
 #?(:clj (defn from-json [s]
-          #?(:bb (json/parse-string s)
+          #?(:bb  (json/parse-string s)
              :clj (json/read-value s))))
 
 #?(:clj (defn to-json [x]
-          #?(:bb (json/generate-string x)
+          #?(:bb  (json/generate-string x)
              :clj (json/write-value-as-string x))))
 
 (defn form= [& ?schemas]
@@ -535,13 +535,13 @@
                    :c "a string"}))))))
 
 (deftest transform-entries-test
-  (let [registry           (mr/composite-registry {:a/x int?} (m/default-schemas))
-        options            {:registry registry}
+  (let [registry (mr/composite-registry {:a/x int?} (m/default-schemas))
+        options {:registry registry}
         key->key-transform #(map (fn [[k m _]] [k m k]) %)
 
-        schema              [:map [:a/x {:m true} int?]]
+        schema [:map [:a/x {:m true} int?]]
         schema-with-options (m/schema schema options)
-        result-schema       (m/schema [:map [:a/x {:m true} :a/x]] options)]
+        result-schema (m/schema [:map [:a/x {:m true} :a/x]] options)]
 
     (testing "manual options are preserved in output type from the transform"
       (is (mu/equals
@@ -1013,27 +1013,27 @@
            ff (conj f -f)
            tt (conj t -t)]
        (testing "every pred behaves like and: one false => result is false"
-         (is (true?  ((miu/-every-pred [-t]) nil)))
+         (is (true? ((miu/-every-pred [-t]) nil)))
          (is (false? ((miu/-every-pred [-f]) nil)))
-         (is (true?  ((miu/-every-pred t) nil)))
+         (is (true? ((miu/-every-pred t) nil)))
          (is (false? ((miu/-every-pred f) nil)))
          (is (false? ((miu/-every-pred t+f) nil)))
          (is (false? ((miu/-every-pred f+t) nil)))
          (is (false? ((miu/-every-pred tf) nil)))
          (is (false? ((miu/-every-pred ft) nil)))
          (is (false? ((miu/-every-pred ff) nil)))
-         (is (true?  ((miu/-every-pred tt) nil))))
+         (is (true? ((miu/-every-pred tt) nil))))
        (testing "some pred behaves like or: one true => result is true"
-         (is (true?  ((miu/-some-pred [-t]) nil)))
+         (is (true? ((miu/-some-pred [-t]) nil)))
          (is (false? ((miu/-some-pred [-f]) nil)))
-         (is (true?  ((miu/-some-pred t) nil)))
+         (is (true? ((miu/-some-pred t) nil)))
          (is (false? ((miu/-some-pred f) nil)))
-         (is (true?  ((miu/-some-pred t+f) nil)))
-         (is (true?  ((miu/-some-pred f+t) nil)))
-         (is (true?  ((miu/-some-pred tf) nil)))
-         (is (true?  ((miu/-some-pred ft) nil)))
+         (is (true? ((miu/-some-pred t+f) nil)))
+         (is (true? ((miu/-some-pred f+t) nil)))
+         (is (true? ((miu/-some-pred tf) nil)))
+         (is (true? ((miu/-some-pred ft) nil)))
          (is (false? ((miu/-some-pred ff) nil)))
-         (is (true?  ((miu/-some-pred tt) nil)))))))
+         (is (true? ((miu/-some-pred tt) nil)))))))
 
 (deftest explain-data-test
   (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])

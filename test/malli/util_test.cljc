@@ -1074,3 +1074,13 @@
                  "schema" ["map" ["a" ["vector" ["maybe" "string"]]]]
                  "value" {"a" [true]}}
                 (from-json (to-json (mu/explain-data schema input-2)))))))))
+
+(deftest test-874
+  (is (form= [:map {:closed true}
+              [:foo [:map {:closed true}
+                     [:bar :int]
+                     [:baz :int]]]]
+             (-> [:map]
+                 (mu/assoc-in [:foo :bar] :int)
+                 (mu/assoc-in [:foo :baz] :int)
+                 (mu/closed-schema)))))

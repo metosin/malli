@@ -14,15 +14,35 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.10.3 (2023-03-18)
 
-* Add support for default/fallback branch for `:map`
-  [#871](https://github.com/metosin/malli/pull/871), [docs](README.md#map-with-default-schemas)
+* Add support for default branch `::m/default` for `:map` schema
+  [#871](https://github.com/metosin/malli/pull/871), see [docs](README.md#map-with-default-schemas).
+
+```clojure
+(m/validate
+ [:map
+  [:x :int]
+  [:y :int]
+  [::m/default [:map-of :string :string]]]
+ {:x 1, :y 2, "kikka" "kukka"})
+; => true
+```
+
+* `mt/strip-extra-keys-transformer` works with `:map-of`.
+
+```clojure
+(m/decode
+ [:map-of :int :int]
+ {1 1, 2 "2", "3" 3, "4" "4"}
+ (mt/strip-extra-keys-transformer))
+; => {1 1}
+```
+
 * `m/default-schema` to pull the `::m/default` schema from entry schemas
-* `m/explicit-keys` to get a vector of explicit keys from entry schemas (no `::m/default`
-* `mt/strip-extra-keys-transformer` works with `:map-of` schemas
+* `m/explicit-keys` to get a vector of explicit keys from entry schemas (no `::m/default`)
 * Simplify content-dependent schema creation with `m/-simple-schema` and `m/-collection-schema` via new 3-arity `:compile` function of type `children properties options -> props`. Old 2-arity top-level callback function is `m/deprecated!` and support for it will be removed in future versions. [#866](https://github.com/metosin/malli/pull/866)
-* FIX Repeated calls to `malli.util/assoc-`in referencing non-existing maps fail [#874](https://github.com/metosin/malli/issues/874)
+* FIX Repeated calls to `malli.util/assoc-in` referencing non-existing maps fail [#874](https://github.com/metosin/malli/issues/874)
 
 ## 0.10.2 (2023-03-05)
 

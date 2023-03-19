@@ -35,15 +35,15 @@
                                    :else
                                    ;; a cljs.core var, do not qualify it
                                    form))
-                               (let [ns-part   (symbol (namespace form))
+                               (let [ns-part (symbol (namespace form))
                                      name-part (name form)
-                                     full-ns   (get-in (ana-api/find-ns ns) [:requires ns-part])]
+                                     full-ns (get-in (ana-api/find-ns ns) [:requires ns-part])]
                                  (symbol (str full-ns) name-part)))
                              form))
             schema* (walk/postwalk -qualify-sym schema)
-            metadata     (assoc
-                           (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
-                           :metadata-schema? true)]
+            metadata (assoc
+                       (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
+                       :metadata-schema? true)]
         (m/-register-function-schema! ns simple-name schema* metadata :cljs identity)
         `(do
            (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)
@@ -54,14 +54,14 @@
 (defn -collect!*
   [{:keys [ns]}]
   (reduce (fn [acc [var-name var-map]] (let [v (-collect! var-name var-map)] (cond-> acc v (conj v))))
-    #{}
-    (mapcat (fn [n]
-              (let [ns-sym (cond (symbol? n) n
-                                 ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
-                                 (list? n) (second n)
-                                 :else (symbol (str n)))]
-                (ana-api/ns-publics ns-sym)))
-      (-sequential ns))))
+          #{}
+          (mapcat (fn [n]
+                    (let [ns-sym (cond (symbol? n) n
+                                       ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
+                                       (list? n) (second n)
+                                       :else (symbol (str n)))]
+                      (ana-api/ns-publics ns-sym)))
+                  (-sequential ns))))
 
 ;; intended to be called from a cljs macro
 (defn -collect-all-ns []
@@ -80,33 +80,33 @@
   [schema]
   (walk/postwalk (fn [form] (if (or (coll? form) (contains? -default-schema-keys form))
                               form :any))
-    schema))
+                 schema))
 
 (defn -emit-variadic-instrumented-fn [fn-sym schema-map max-fixed-args]
   `(set! (.-cljs$core$IFn$_invoke$arity$variadic ~fn-sym)
-     (let [orig-fn#      (.-cljs$core$IFn$_invoke$arity$variadic ~fn-sym)
-           instrumented# (meta-fn
-                           (m/-instrument ~schema-map
-                             (fn [& args#]
-                               (let [[fixed-args# rest-args#] (split-at ~max-fixed-args (vec args#))]
-                                 ;; the shape of the argument in this apply call is needed to match the call style of the  cljs compiler
-                                 ;; so the user's function get the arguments as expected
-                                 (apply orig-fn# (into (vec fixed-args#) [(not-empty rest-args#)])))))
-                           {:instrumented-symbol '~fn-sym})]
-       (fn ~(symbol (str (name fn-sym) "-variadic")) [& args#]
-         (apply instrumented# (apply list* args#))))))
+         (let [orig-fn# (.-cljs$core$IFn$_invoke$arity$variadic ~fn-sym)
+               instrumented# (meta-fn
+                              (m/-instrument ~schema-map
+                                             (fn [& args#]
+                                               (let [[fixed-args# rest-args#] (split-at ~max-fixed-args (vec args#))]
+                                                 ;; the shape of the argument in this apply call is needed to match the call style of the  cljs compiler
+                                                 ;; so the user's function get the arguments as expected
+                                                 (apply orig-fn# (into (vec fixed-args#) [(not-empty rest-args#)])))))
+                              {:instrumented-symbol '~fn-sym})]
+           (fn ~(symbol (str (name fn-sym) "-variadic")) [& args#]
+             (apply instrumented# (apply list* args#))))))
 
 (defn -emit-multi-arity-instrumentation-code
   [fn-sym schema-map schema max-fixed-args]
   (when-not (= (first schema) :function) (throw (IllegalArgumentException. (str "Multi-arity function " fn-sym " must have :function schema. You provided: "
-                                                                             (pr-str schema)))))
+                                                                                (pr-str schema)))))
   ;; Here we pair up each function schema with a mocked version that can safely be parsed in malli Clojure during compilation
   ;; this is so we can use malli.core helper functions to get the arities for each function schema.
   (let [schema-tuples (map (fn [s] [(-mock-cljs-schema s) s]) (rest schema))
         arity->schema (into {} (map (fn [[mock-schema schema]]
                                       (let [arity (:arity (m/-function-info (m/schema mock-schema)))]
                                         [arity schema]))
-                                 schema-tuples))]
+                                    schema-tuples))]
     ;; ClojureScript produces one JS function per arity, we instrument each one if a schema for that arity is present.
     `(do
        ~@(map (fn [[arity fn-schema]]
@@ -114,15 +114,15 @@
                   (-emit-variadic-instrumented-fn fn-sym schema-map max-fixed-args)
                   (let [arity-fn-sym `(~(symbol (str ".-cljs$core$IFn$_invoke$arity$" arity)) ~fn-sym)]
                     `(set! ~arity-fn-sym (meta-fn (m/-instrument ~(assoc schema-map :schema fn-schema) ~arity-fn-sym)
-                                           {:instrumented-symbol '~fn-sym})))))
-           arity->schema))))
+                                                  {:instrumented-symbol '~fn-sym})))))
+              arity->schema))))
 
 (defn -emit-replace-var-code [fn-sym fn-var-meta schema-map schema]
-  (let [variadic?      (-> fn-var-meta :top-fn :variadic?)
+  (let [variadic? (-> fn-var-meta :top-fn :variadic?)
         max-fixed-args (-> fn-var-meta :top-fn :max-fixed-arity)
         ; parse arglists, it comes in with this shape: (quote ([a b]))
-        [_ arglists]   (:arglists fn-var-meta)
-        single-arity?  (= (count arglists) 1)]
+        [_ arglists] (:arglists fn-var-meta)
+        single-arity? (= (count arglists) 1)]
     `(do
        (swap! instrumented-vars #(assoc % '~fn-sym ~fn-sym))
        ~(cond
@@ -145,14 +145,14 @@
                        (select-keys [:gen :scope :report])
                        ;; The schema passed in may contain cljs vars that have to be resolved at runtime in cljs.
                        (assoc :schema `(m/function-schema ~schema))
-                     (cond-> report
-                       (assoc :report `(cljs.core/fn [type# data#] (~report type# (assoc data# :fn-name '~fn-sym))))))
+                       (cond-> report
+                         (assoc :report `(cljs.core/fn [type# data#] (~report type# (assoc data# :fn-name '~fn-sym))))))
         schema-map-with-gen
-                   (as-> (merge (select-keys instrument-opts [:scope :report :gen]) schema-map) $
-                     ;; use the passed in gen fn to generate a value
-                     (if (and gen (true? (:gen schema-map)))
-                       (assoc $ :gen gen)
-                       (dissoc $ :gen)))
+        (as-> (merge (select-keys instrument-opts [:scope :report :gen]) schema-map) $
+          ;; use the passed in gen fn to generate a value
+          (if (and gen (true? (:gen schema-map)))
+            (assoc $ :gen gen)
+            (dissoc $ :gen)))
 
         replace-var-code (when-let [fn-var (ana-api/resolve env fn-sym)]
                            (-emit-replace-var-code fn-sym (:meta fn-var) schema-map-with-gen schema))]

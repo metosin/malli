@@ -51,20 +51,20 @@
 ;; CLJS macro for collecting function schemas
 ;;
 
-(let [cljs-find-ns    (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'find-ns)))
+(let [cljs-find-ns (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'find-ns)))
       cljs-ns-interns (fn [env] (when (:ns env) (ns-resolve 'cljs.analyzer.api 'ns-interns)))]
   (defn -cljs-collect!* [env simple-name {:keys [meta] :as var-map}]
     ;; when collecting google closure or other js code symbols will not have namespaces
     (when (namespace (:name var-map))
-      (let [ns          (symbol (namespace (:name var-map)))
-            find-ns'    (cljs-find-ns env)
+      (let [ns (symbol (namespace (:name var-map)))
+            find-ns' (cljs-find-ns env)
             ns-interns' (cljs-ns-interns env)
-            schema      (:malli/schema meta)]
+            schema (:malli/schema meta)]
         (when schema
           (let [-qualify-sym (fn [form]
                                (if (symbol? form)
                                  (if (simple-symbol? form)
-                                   (let [ns-data     (find-ns' ns)
+                                   (let [ns-data (find-ns' ns)
                                          intern-keys (set (keys (ns-interns' ns)))]
                                      (cond
                                        ;; a referred symbol
@@ -79,15 +79,15 @@
                                        :else
                                        ;; a cljs.core var, do not qualify it
                                        form))
-                                   (let [ns-part   (symbol (namespace form))
+                                   (let [ns-part (symbol (namespace form))
                                          name-part (name form)
-                                         full-ns   (get-in (find-ns' ns) [:requires ns-part])]
+                                         full-ns (get-in (find-ns' ns) [:requires ns-part])]
                                      (symbol (str full-ns) name-part)))
                                  form))
-                schema*      (walk/postwalk -qualify-sym schema)
-                metadata     (assoc
-                               (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
-                               :metadata-schema? true)]
+                schema* (walk/postwalk -qualify-sym schema)
+                metadata (assoc
+                           (walk/postwalk -qualify-sym (m/-unlift-keys meta "malli"))
+                           :metadata-schema? true)]
             `(do
                (m/-register-function-schema! '~ns '~simple-name ~schema* ~metadata :cljs identity)
                '~(:name var-map))))))))
@@ -97,19 +97,19 @@
   ([opts]
    (let [ns-publics' (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'ns-publics))]
      (reduce (fn [acc [var-name var-map]] (let [v (-cljs-collect!* &env var-name var-map)] (cond-> acc v (conj v))))
-       #{}
-       (mapcat (fn [n]
-                 (let [ns-sym (cond (symbol? n) n
-                                    ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
-                                    (list? n) (second n)
-                                    :else (symbol (str n)))]
-                   (ns-publics' ns-sym)))
-         ;; support quoted vectors of ns symbols in cljs
-         (let [nses (:ns opts)
-               nses (if (and (= 'quote (first nses)) (coll? (second nses)))
-                      (second nses)
-                      nses)]
-           (-sequential nses)))))))
+             #{}
+             (mapcat (fn [n]
+                       (let [ns-sym (cond (symbol? n) n
+                                          ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
+                                          (list? n) (second n)
+                                          :else (symbol (str n)))]
+                         (ns-publics' ns-sym)))
+                     ;; support quoted vectors of ns symbols in cljs
+                     (let [nses (:ns opts)
+                           nses (if (and (= 'quote (first nses)) (coll? (second nses)))
+                                  (second nses)
+                                  nses)]
+                       (-sequential nses)))))))
 
 ;;
 ;; public api

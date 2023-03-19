@@ -53,7 +53,7 @@
 #?(:cljs
    (defn createTemporalQuery [f]
      (let [parent (TemporalQuery. "")
-           query  (js/Object.create parent)]
+           query (js/Object.create parent)]
        (set! (.-queryFrom query) (fn [t] (f t)))
        query)))
 

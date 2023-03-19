@@ -77,7 +77,7 @@
      (-> (ex-info (str type) {:type type :data data})
          (v/-exception-doc printer)
          (v/-print-doc printer)
-       #?(:cljs (-> with-out-str println))))))
+         #?(:cljs (-> with-out-str println))))))
 
 (defn thrower
   ([] (thrower (-printer)))

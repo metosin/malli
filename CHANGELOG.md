@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 0.10.4 (2023-03-19)
+
+* FIX `malli.swagger` ns, broken test on reitit.
+
 ## 0.10.3 (2023-03-18)
 
 * Add support for default branch `::m/default` for `:map` schema

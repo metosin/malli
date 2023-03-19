@@ -84,9 +84,7 @@
       :schema      swagger-schema}]))
 
 (defmethod extract-parameter :default [in schema]
-  (let [{:keys [properties required definitions]} (transform schema {:in in, :type :parameter})]
-    (println "\nextract-parameter definitions:"
-             (with-out-str (clojure.pprint/pprint definitions)))
+  (let [{:keys [properties required]} (transform schema {:in in, :type :parameter})]
     (mapv
       (fn [[k {:keys [type] :as schema}]]
         (merge

@@ -35,7 +35,7 @@
 
   (:refer-clojure :exclude [+ * repeat cat])
   (:require [malli.impl.util :as miu])
-  #?(:bb (:import [java.util ArrayDeque])
+  #?(:bb  (:import [java.util ArrayDeque])
      :clj (:import [java.util ArrayDeque]
                    [clojure.lang Util Murmur3]
                    [java.lang.reflect Array])))
@@ -453,14 +453,14 @@
 ;; Custom hash set so that Cljs Malli users can have decent perf without having to to set up Closure ES6 Set polyfill.
 ;; Uses quadratic probing with power-of-two sizes and triangular numbers, what a nice trick!
 (deftype Cache
-         #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
-            :cljs [^:mutable values, ^:mutable size])
+  #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
+     :cljs [^:mutable values, ^:mutable size])
   ICache
   (ensure-cached! [_ f pos regs]
     (when (> (unchecked-inc size) (bit-shift-right (alength values) 1)) ; potential new load factor > 0.5
       ;; Rehash:
       (let [capacity* (bit-shift-left (alength values) 1)
-            ^objects values* #?(:bb (object-array capacity*)
+            ^objects values* #?(:bb   (object-array capacity*)
                                 :clj (Array/newInstance Object capacity*)
                                 :cljs (object-array capacity*))
             max-index (unchecked-dec capacity*)]
@@ -485,8 +485,8 @@
           max-index (unchecked-dec capacity)
           #?@(:clj [pos (.longValue ^Long pos)])
           ;; Unfortunately `hash-combine` hashes its second argument on clj and neither argument on cljs:
-          h #?(:bb (-> (hash f) (hash-combine pos) (hash-combine regs))
-               :clj (-> (.hashCode ^Object f)  (Util/hashCombine (Murmur3/hashLong pos)) (Util/hashCombine (Util/hash regs)))
+          h #?(:bb   (-> (hash f) (hash-combine pos) (hash-combine regs))
+               :clj (-> (.hashCode ^Object f) (Util/hashCombine (Murmur3/hashLong pos)) (Util/hashCombine (Util/hash regs)))
                :cljs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs))))]
       (loop [i (bit-and h max-index), collisions 0]
         (if-some [^CacheEntry entry (aget values i)]
@@ -507,8 +507,8 @@
 #?(:clj (set! *unchecked-math* false))
 
 (deftype ^:private CheckDriver
-         #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
-            :cljs [^:mutable success, stack, cache])
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
+     :cljs [^:mutable success, stack, cache])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -522,9 +522,9 @@
       (noncaching-park-validator! self validator regs pos coll k))))
 
 (deftype ^:private ParseDriver
-         #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
-                   ^:unsynchronized-mutable result]
-            :cljs [^:mutable success, stack, cache, ^:mutable result])
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
+            ^:unsynchronized-mutable result]
+     :cljs [^:mutable success, stack, cache, ^:mutable result])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -565,9 +565,9 @@
 ;;;; # Explainer
 
 (deftype ^:private ExplanationDriver
-         #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
-                   in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
-            :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
+  #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
+            in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+     :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
 
   Driver
   (succeed! [_] (set! success (boolean true)))

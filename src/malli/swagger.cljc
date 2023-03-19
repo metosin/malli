@@ -77,51 +77,49 @@
 
 (defmethod extract-parameter :body [_ schema]
   (let [swagger-schema (transform schema {:in :body, :type :parameter})]
-    [{:in          "body"
-      :name        (:title swagger-schema "body")
+    [{:in "body"
+      :name (:title swagger-schema "body")
       :description (:description swagger-schema "")
-      :required    (not= :maybe (m/type schema))
-      :schema      swagger-schema}]))
+      :required (not= :maybe (m/type schema))
+      :schema swagger-schema}]))
 
 (defmethod extract-parameter :default [in schema]
-  (let [{:keys [properties required definitions]} (transform schema {:in in, :type :parameter})]
-    (println "\nextract-parameter definitions:"
-             (with-out-str (clojure.pprint/pprint definitions)))
+  (let [{:keys [properties required]} (transform schema {:in in, :type :parameter})]
     (mapv
-      (fn [[k {:keys [type] :as schema}]]
-        (merge
-          {:in          (name in)
-           :name        k
-           :description (:description schema "")
-           :type        type
-           :required    (contains? (set required) k)}
-          schema))
-      properties)))
+     (fn [[k {:keys [type] :as schema}]]
+       (merge
+        {:in (name in)
+         :name k
+         :description (:description schema "")
+         :type type
+         :required (contains? (set required) k)}
+        schema))
+     properties)))
 
 (defmulti expand (fn [k _ _ _] k))
 
 (defmethod expand ::responses [_ v acc _]
   {:responses
    (into
-     (or (:responses acc) {})
-     (for [[status response] v]
-       [status (-> response
-                   (update :schema transform {:type :schema})
-                   (update :description (fnil identity ""))
-                   -remove-empty-keys)]))})
+    (or (:responses acc) {})
+    (for [[status response] v]
+      [status (-> response
+                  (update :schema transform {:type :schema})
+                  (update :description (fnil identity ""))
+                  -remove-empty-keys)]))})
 
 (defmethod expand ::parameters [_ v acc _]
-  (let [old    (or (:parameters acc) [])
-        new    (mapcat (fn [[in spec]] (extract-parameter in spec)) v)
+  (let [old (or (:parameters acc) [])
+        new (mapcat (fn [[in spec]] (extract-parameter in spec)) v)
         merged (->> (into old new)
                     reverse
                     (reduce
-                      (fn [[ps cache :as acc] p]
-                        (let [c (select-keys p [:in :name])]
-                          (if (cache c)
-                            acc
-                            [(conj ps p) (conj cache c)])))
-                      [[] #{}])
+                     (fn [[ps cache :as acc] p]
+                       (let [c (select-keys p [:in :name])]
+                         (if (cache c)
+                           acc
+                           [(conj ps p) (conj cache c)])))
+                     [[] #{}])
                     first
                     reverse
                     vec)]
@@ -131,23 +129,23 @@
   [x options]
   (let [accept? (-> expand methods keys set)]
     (walk/postwalk
-      (fn [x]
-        (if (map? x)
-          (reduce-kv
-            (fn [acc k v]
-              (if (accept? k)
-                (let [expanded    (expand k v acc options)
-                      parameters  (:parameters expanded)
-                      responses   (:responses expanded)
-                      definitions (if parameters
-                                    (-> parameters first :schema :definitions)
-                                    (->> responses vals (map :schema)
-                                         (map :definitions) (apply merge)))]
-                  (-> acc (dissoc k) (merge expanded) (update :definitions merge definitions)))
-                acc))
-            x x)
-          x))
-      x)))
+     (fn [x]
+       (if (map? x)
+         (reduce-kv
+          (fn [acc k v]
+            (if (accept? k)
+              (let [expanded (expand k v acc options)
+                    parameters (:parameters expanded)
+                    responses (:responses expanded)
+                    definitions (if parameters
+                                  (-> parameters first :schema :definitions)
+                                  (->> responses vals (map :schema)
+                                       (map :definitions) (apply merge)))]
+                (-> acc (dissoc k) (merge expanded) (update :definitions merge definitions)))
+              acc))
+          x x)
+         x))
+     x)))
 
 (defn swagger-spec
   ([x]

@@ -29,14 +29,14 @@
 (defn -arity->schema
   [fn-schema]
   (into {} (map (fn [schema] [(:arity (m/-function-info (m/schema schema))) schema])
-             (rest fn-schema))))
+                (rest fn-schema))))
 
 (defn -variadic? [f] (g/get f "cljs$core$IFn$_invoke$arity$variadic"))
 (defn -max-fixed-arity [f] (g/get f "cljs$lang$maxFixedArity"))
 (defn -pure-variadic? [f]
   (let [max-fixed-arity (-max-fixed-arity f)]
     (and max-fixed-arity (-variadic? f)
-      (every? #(not (fn? (g/get f (str "cljs$core$IFn$_invoke$arity$" %)))) (range 20)))))
+         (every? #(not (fn? (g/get f (str "cljs$core$IFn$_invoke$arity$" %)))) (range 20)))))
 
 (defn -replace-variadic-fn [original-fn n s opts]
   (let [accessor "cljs$core$IFn$_invoke$arity$variadic"
@@ -45,15 +45,15 @@
       (g/set original-fn "malli$instrument$instrumented?" true)
       ;; the shape of the argument in the following apply calls are needed to match the call style of the cljs compiler
       ;; so the user's function gets the arguments as expected
-      (let [max-fixed-arity          (-max-fixed-arity original-fn)
+      (let [max-fixed-arity (-max-fixed-arity original-fn)
             instrumented-variadic-fn (m/-instrument opts (fn [& args]
                                                            (let [[fixed-args rest-args] (split-at max-fixed-arity (vec args))
                                                                  final-args (into (vec fixed-args) [(not-empty rest-args)])]
                                                              (apply arity-fn final-args))))
-            instrumented-wrapper     (fn [& args]
-                                       (let [[fixed-args rest-args] (split-at max-fixed-arity (vec args))
-                                             final-args (vec (apply list* (into (vec fixed-args) (not-empty rest-args))))]
-                                         (apply instrumented-variadic-fn final-args)))]
+            instrumented-wrapper (fn [& args]
+                                   (let [[fixed-args rest-args] (split-at max-fixed-arity (vec args))
+                                         final-args (vec (apply list* (into (vec fixed-args) (not-empty rest-args))))]
+                                     (apply instrumented-variadic-fn final-args)))]
         (g/set instrumented-wrapper "malli$instrument$original" arity-fn)
         (g/set (-get-prop n s) "malli$instrument$instrumented?" true)
         (g/set (-get-prop n s) accessor instrumented-wrapper)
@@ -66,8 +66,8 @@
     (doseq [[arity f-schema] (-arity->schema schema)]
       (if (= arity :varargs)
         (-replace-variadic-fn original-fn n s opts)
-        (let [accessor        (str "cljs$core$IFn$_invoke$arity$" arity)
-              arity-fn        (g/get original-fn accessor)]
+        (let [accessor (str "cljs$core$IFn$_invoke$arity$" arity)
+              arity-fn (g/get original-fn accessor)]
           (when arity-fn
             (let [instrumented-fn (m/-instrument (assoc opts :schema f-schema) arity-fn)]
               (g/set instrumented-fn "malli$instrument$original" arity-fn)
@@ -87,9 +87,9 @@
     (catch :default e
       (if (instance? ExceptionInfo e)
         (throw
-          (ex-info
-            (str "Schema error when instrumenting function: " (symbol (name n) (name s)) " - " (ex-message e))
-            (ex-data e)))
+         (ex-info
+          (str "Schema error when instrumenting function: " (symbol (name n) (name s)) " - " (ex-message e))
+          (ex-data e)))
         (throw (js/Error. (str "Schema error when instrumenting function: " (symbol (name n) (name s)) ". " e)))))))
 
 (defn -strument!
@@ -101,12 +101,12 @@
        (when-let [v (-find-var n s)]
          (case mode
            :instrument (let [original-fn (or (-original v) v)
-                             dgen        (as-> (select-keys options [:scope :report :gen]) $
-                                           (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
-                                           (merge $ d)
-                                           (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
-                                                 (true? (:gen d)) (dissoc $ :gen)
-                                                 :else $))]
+                             dgen (as-> (select-keys options [:scope :report :gen]) $
+                                        (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
+                                        (merge $ d)
+                                        (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
+                                              (true? (:gen d)) (dissoc $ :gen)
+                                              :else $))]
                          (if (and skip-instrumented? (-instrumented? v))
                            (println "skipping" (symbol n s) "already instrumented")
                            (when original-fn
@@ -117,8 +117,8 @@
                          (let [original-fn (or (-original v) v)]
                            (cond
                              (-pure-variadic? original-fn)
-                             (let [accessor         "cljs$core$IFn$_invoke$arity$variadic"
-                                   variadic-fn      (g/get v accessor)
+                             (let [accessor "cljs$core$IFn$_invoke$arity$variadic"
+                                   variadic-fn (g/get v accessor)
                                    orig-variadic-fn (g/get variadic-fn "malli$instrument$original")]
                                (g/set original-fn accessor orig-variadic-fn))
 
@@ -146,7 +146,7 @@
    (let [res* (atom {})]
      (-strument! (assoc options :mode (fn [v {:keys [schema ns name]}]
                                         (some->> (mg/check schema (-original v))
-                                          (swap! res* assoc (symbol ns name))))))
+                                                 (swap! res* assoc (symbol ns name))))))
      (not-empty @res*))))
 
 (defn instrument!

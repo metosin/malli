@@ -1,9 +1,9 @@
 (ns malli.experimental.time.transform
   (:require [malli.transform :as mt :refer [-safe]]
             [malli.core :as m]
-   #?(:cljs [malli.experimental.time :as time
-               :refer [Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset
-                       TemporalAccessor TemporalQuery DateTimeFormatter createTemporalQuery]]))
+            #?(:cljs [malli.experimental.time :as time
+                      :refer [Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset
+                              TemporalAccessor TemporalQuery DateTimeFormatter createTemporalQuery]]))
   #?(:clj
      (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)
               (java.time.temporal TemporalAccessor TemporalQuery)
@@ -30,7 +30,7 @@
 (defn ->formatter [x]
   (cond
     (instance? DateTimeFormatter x) x
-    #?(:clj (instance? String x)
+    #?(:clj  (instance? String x)
        :cljs (string? x)) (. DateTimeFormatter ofPattern x)
     :else (throw (ex-info "Invalid formatter" {:formatter x :type (type x)}))))
 

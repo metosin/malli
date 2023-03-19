@@ -81,8 +81,8 @@
    [:uuid {:type "string", :format "uuid"}]
 
    [integer? {:type "integer" :format "int32"}]
-   #?@(:clj [[ratio? {:type "number"}]
-             [rational? {:type "number"}]]
+   #?@(:clj  [[ratio? {:type "number"}]
+              [rational? {:type "number"}]]
        :cljs [])
    ;; protocols
    [(reify
@@ -310,7 +310,7 @@
   (testing "generates swagger for ::responses w/ basic schema + registry"
     (let [registry (merge (m/base-schemas) (m/type-schemas)
                           {::success [:map-of :keyword :string]
-                           ::error   [:string {:min 1}]})]
+                           ::error [:string {:min 1}]})]
       (is (= {:definitions {::error {:minLength 1, :type "string"},
                             ::success {:additionalProperties {:type "string"},
                                        :type "object"}},
@@ -329,9 +329,9 @@
 
   (testing "generates swagger for ::parameters and ::responses w/ basic schema + registry"
     (let [registry (merge (m/base-schemas) (m/type-schemas) (m/comparator-schemas)
-                          {::req-body     [:map-of :keyword :any]
+                          {::req-body [:map-of :keyword :any]
                            ::success-resp [:map [:it [:= "worked"]]]
-                           ::error-resp   [:string {:min 1}]})]
+                           ::error-resp [:string {:min 1}]})]
       (is (= {:definitions {::error-resp {:minLength 1, :type "string"},
                             ::req-body {:additionalProperties {}, :type "object"},
                             ::success-resp {:properties {:it {:const "worked"}},
@@ -367,22 +367,22 @@
   #_(testing "generates swagger for ::parameters and ::responses w/ recursive schema + registry"
       (let [registry (merge (m/base-schemas) (m/type-schemas)
                             (m/comparator-schemas) (m/sequence-schemas)
-                            {::a            [:or
-                                             :string
-                                             [:ref ::b]]
-                             ::b            [:or
-                                             :keyword
-                                             [:ref ::c]]
-                             ::c            [:or
-                                             :symbol
-                                             [:ref ::a]]
+                            {::a [:or
+                                  :string
+                                  [:ref ::b]]
+                             ::b [:or
+                                  :keyword
+                                  [:ref ::c]]
+                             ::c [:or
+                                  :symbol
+                                  [:ref ::a]]
                              ;; test would pass if the schema below were e.g.
                              ;; [:map [:a ::a] [:b ::b] [:c ::c]] (and the
                              ;; ::req-body expected adjusted accordingly)
                              ;; b/c then ::b & ::c would be directly used, not just refs
-                             ::req-body     [:map [:a ::a]]
+                             ::req-body [:map [:a ::a]]
                              ::success-resp [:map-of :keyword :string]
-                             ::error-resp   :string})]
+                             ::error-resp :string})]
         (is (= {:definitions {::a {:type "string",
                                    :x-anyOf [{:type "string"}
                                              {:$ref "#/definitions/malli.swagger-test~1b"}]},

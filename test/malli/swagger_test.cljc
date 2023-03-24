@@ -362,6 +362,15 @@
                                      400 {:schema (m/schema ::error-resp
                                                             {:registry registry})}}})))))
 
+  (testing "no schema in responses ignored"
+    (is (= {:definitions nil
+            :responses {200 {:description "" :schema {:type "string"}}}}
+           (swagger/swagger-spec {#_::swagger/parameters
+                                  #_{:body {:description "just a body"}}
+                                  ::swagger/responses
+                                  {500 {:description "fail"}
+                                   200 {:schema [:string]}}}))))
+
   ;; This test currently fails due to https://github.com/metosin/malli/issues/464
   ;; TODO: Uncomment it when #464 is fixed
   #_(testing "generates swagger for ::parameters and ::responses w/ recursive schema + registry"

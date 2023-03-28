@@ -287,11 +287,34 @@
                                                          [:zip int?]
                                                          [:country "Country"]]]]]]}}
              "Order"]))))
-
   (testing "circular definitions are not created"
     (is (= {:$ref "#/definitions/Foo", :definitions {"Foo" {:type "integer"}}}
            (json-schema/transform
-             (mu/closed-schema [:schema {:registry {"Foo" :int}} "Foo"]))))))
+            [:schema {:registry {"Foo" :int}} "Foo"]))))
+  (testing "circular definitions are not created for closed schemas"
+    (is (= {:$ref "#/definitions/Foo", :definitions {"Foo" {:type "integer"}}}
+           (json-schema/transform
+            (mu/closed-schema [:schema {:registry {"Foo" :int}} "Foo"]))))))
+
+(deftest mutual-recursion-test
+  (is (= {:$ref "#/definitions/Foo"
+          :definitions {"Bar" {:$ref "#/definitions/Foo"}
+                        "Foo" {:items {:$ref "#/definitions/Bar"} :type "array"}}}
+         (json-schema/transform [:schema {:registry {"Foo" [:vector [:schema "Bar"]] ;; NB! :schema instead of :ref
+                                                     "Bar" [:ref "Foo"]}}
+                                 "Foo"])))
+  (is (= {:$ref "#/definitions/Foo"
+          :definitions {"Bar" {:$ref "#/definitions/Foo"}
+                        "Foo" {:items {:$ref "#/definitions/Bar"} :type "array"}}}
+         (json-schema/transform [:schema {:registry {"Foo" [:vector [:ref "Bar"]]
+                                                     "Bar" [:ref "Foo"]}}
+                                 "Foo"])))
+  (is (= {:$ref "#/definitions/Bar",
+          :definitions {"Bar" {:$ref "#/definitions/Foo"},
+                        "Foo" {:items {:$ref "#/definitions/Bar"}, :type "array"}}}
+         (json-schema/transform [:schema {:registry {"Foo" [:vector [:ref "Bar"]]
+                                                     "Bar" [:ref "Foo"]}}
+                                 "Bar"]))))
 
 (deftest function-schema-test
   (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))

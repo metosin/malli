@@ -208,6 +208,27 @@
       (is (nil? (m/explain (mu/closed-schema explicitly-open) {:a 2 :c {:d 1} :d "lol"})))
       (is (nil? (m/explain (mu/open-schema explicitly-open) {:a 2 :c {:d 1} :d "lol"}))))))
 
+;; regression test for #884
+(deftest closed-pointer-schema-regression-test
+  (let [schema (m/schema [:schema {:registry {"Foo" :int}} "Foo"])
+        closed (mu/closed-schema schema)
+        reopen (mu/open-schema closed)
+        closed2 (mu/closed-schema schema {:option "option"})
+        reopen2 (mu/open-schema closed2 {:option "option"})]
+    (is (= :int (-> schema m/deref m/deref m/form)))
+    ;; these used to be "Foo" instead of :int
+    (is (= :int (-> closed m/deref m/deref m/form)))
+    (is (= :int (-> reopen m/deref m/deref m/form)))
+    (is (= :int (-> closed2 m/deref m/deref m/form)))
+    (is (= :int (-> reopen2 m/deref m/deref m/form))))
+  (let [schema (m/schema [:schema {:registry {"Foo" :int}} [:ref "Foo"]])
+        closed (mu/closed-schema schema)
+        reopen (mu/open-schema closed)]
+    (is (= :int (-> schema m/deref m/deref m/form)))
+    ;; these used to be "Foo" instead of :int
+    (is (= :int (-> closed m/deref m/deref m/form)))
+    (is (= :int (-> reopen m/deref m/deref m/form)))))
+
 (deftest select-key-test
   (let [schema [:map {:title "map"}
                 [:a int?]

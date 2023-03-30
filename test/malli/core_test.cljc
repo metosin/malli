@@ -131,11 +131,19 @@
              (m/into-schema :map {:closed true} [[:x int?]]))))
 
 (deftest schema-walker-test
-  (is (form= [:map {:closed true} [:x int?]]
-             (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity))))
-  (is (form= [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
-             (m/walk [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
-                     (m/schema-walker identity)))))
+  (testing "no-op schema-walker"
+    (is (form= [:map {:closed true} [:x int?]]
+               (m/walk [:map {:closed true} [:x int?]] (m/schema-walker identity))))
+    (is (form= [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
+               (m/walk [:map {:registry {::age [:and int? [:> 18]]}} [:age ::age]]
+                       (m/schema-walker identity))))
+    (testing "doesn't affect deref behaviour"
+      (let [schema [:schema {:registry {"Foo" :int}} "Foo"]
+            walked (m/walk [:schema {:registry {"Foo" :int}} "Foo"]
+                           (m/schema-walker identity))]
+        (is (form= schema walked))
+        (is (form= (-> schema m/deref) (-> walked m/deref)))
+        (is (form= (-> schema m/deref m/deref) (-> walked m/deref m/deref)))))))
 
 (defrecord SomeRecord [])
 

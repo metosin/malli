@@ -2494,7 +2494,7 @@ Just a `Map`.
 
 ### Mutable registry
 
-[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. The mutable registry in malli forced you to bring in your own state atom and functions how to work with it:
+[clojure.spec](https://clojure.org/guides/spec) introduces a mutable global registry for specs. The mutable registry in malli forces you to bring in your own state atom and functions how to work with it:
 
 Using a custom registry atom:
 

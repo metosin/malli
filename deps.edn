@@ -25,12 +25,19 @@
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "46b183d19984cafb655647f212bfa286b4d0dc63"}}}
+           :test-sci {:extra-deps {org.clojure/clojurescript {:mvn/version "1.11.60"}}
+                      :extra-paths ["test-sci"]
+                      :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
+           :test-cherry {:extra-paths ["test-cherry"]
+                         :extra-deps {io.github.squint-cljs/cherry
+                                      {:git/sha "de53b5d4ab65118b67c501bbd7475c8a17997187"}
+                                      org.clojure/clojurescript {:mvn/version "1.11.60"}}
+                         :main-opts ["-m" "cljs-test-runner.main" "-d" "test-cherry" "-d" "test"]}
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}
                                            ; used only to pull in its externs file needed to compile js-joda types under advanced compilation
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.7.39"}}}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.4" :git/sha "76b78fe"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]

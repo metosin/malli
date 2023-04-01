@@ -3,7 +3,14 @@
 set -eo pipefail
 
 echo 'Running CLJS test in Node with optimizations :none'
-clojure -M:test:cljs-test-runner -c '{:optimizations :none, :preloads [sci.core]}' "$@"
+TEST_SCI=true clojure -M:test:cljs-test-runner:test-sci -c '{:optimizations :none}' "$@"
 
 echo 'Running CLJS test in Node with optimizations :advanced'
-clojure -M:test:cljs-test-runner -c '{:optimizations :advanced, :preloads [sci.core]}' -e :simple "$@"
+TEST_SCI=true clojure -M:test:cljs-test-runner:test-sci -c '{:optimizations :advanced}' -e :simple "$@"
+
+echo 'Running CLJS test in Node with cherry + optimizations :none'
+clojure -M:test:cljs-test-runner:test-cherry -c '{:optimizations :none}' "$@"
+
+echo 'Running CLJS test in Node with cherry + optimizations :advanced'
+# :optimize-constants is set to false until https://clojure.atlassian.net/browse/CLJS-3401 is fixed
+clojure -M:test:cljs-test-runner:test-cherry -c '{:optimizations :advanced :optimize-constants false}' -e :simple "$@"

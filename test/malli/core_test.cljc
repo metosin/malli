@@ -10,8 +10,10 @@
             [malli.impl.util :as miu]
             [malli.registry :as mr]
             [malli.transform :as mt]
-            [malli.util :as mu])
-  #?(:clj (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))))
+            [malli.util :as mu]
+            #?(:clj [malli.test-macros :refer [when-env]]))
+  #?(:clj (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))
+     :cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
 (defn with-schema-forms [result]
   (some-> result
@@ -102,6 +104,7 @@
                  (m/-create-entry-parser
                   [::x] nil nil)))))
 
+;;
 (deftest eval-test
   (testing "with defaults"
     (is (= 2 ((m/eval inc) 1)))
@@ -117,14 +120,15 @@
     (is (schema= [[:x nil 'int?] [:y nil 'string?]] (m/eval "(m/children [:map [:x int?] [:y string?]])"))))
   #?(:bb nil
      :default
-     (testing "with options"
-       (testing "disabling sci"
-         (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
-         (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1))))
-       (testing "custom bindings"
-         (let [f '(fn [schema] (m/form schema))]
-           (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval f) :string)))
-           (is (= :string ((m/eval f {::m/sci-options {:namespaces {'malli.core {'form m/form}}}}) :string))))))))
+     (when-env "TEST_SCI"
+       (testing "with options"
+         (testing "disabling sci"
+           (is (= 2 ((m/eval inc {::m/disable-sci true}) 1)))
+           (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval 'inc {::m/disable-sci true}) 1))))
+         (testing "custom bindings"
+           (let [f '(fn [schema] (m/form schema))]
+             (is (thrown? #?(:clj Exception, :cljs js/Error) ((m/eval f) :string)))
+             (is (= :string ((m/eval f {::m/sci-options {:namespaces {'malli.core {'form m/form}}}}) :string)))))))))
 
 (deftest into-schema-test
   (is (form= [:map {:closed true} [:x int?]]
@@ -177,25 +181,26 @@
               [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
               "kerran" mt/string-transformer)))
 
-      (testing "sci not available"
-        (let [schema (m/schema
-                      [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-                      {::m/disable-sci true})]
+      (when-env "TEST_SCI"
+        (testing "sci not available"
+          (let [schema (m/schema
+                        [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+                        {::m/disable-sci true})]
 
-          (is (thrown-with-msg?
-               #?(:clj Exception, :cljs js/Error)
-               #":malli.core/sci-not-available"
-               (m/decoder schema mt/string-transformer)))
+            (is (thrown-with-msg?
+                 #?(:clj Exception, :cljs js/Error)
+                 #":malli.core/sci-not-available"
+                 (m/decoder schema mt/string-transformer)))
 
-          (is (thrown-with-msg?
-               #?(:clj Exception, :cljs js/Error)
-               #":malli.core/sci-not-available"
-               (m/decoder
-                [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
-                {::m/disable-sci true} mt/string-transformer)))
+            (is (thrown-with-msg?
+                 #?(:clj Exception, :cljs js/Error)
+                 #":malli.core/sci-not-available"
+                 (m/decoder
+                  [string? {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}}]
+                  {::m/disable-sci true} mt/string-transformer)))
 
-          (testing "direct options win"
-            (is (m/decoder schema {::m/disable-sci false} mt/string-transformer)))))
+            (testing "direct options win"
+              (is (m/decoder schema {::m/disable-sci false} mt/string-transformer))))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 

@@ -102,11 +102,11 @@
   {:responses
    (into
     (or (:responses acc) {})
-    (for [[status response] (filter #(-> % second :schema) v)]
-      [status (-> response
-                  (update :schema transform {:type :schema})
-                  (update :description (fnil identity ""))
-                  -remove-empty-keys)]))})
+    (for [[status response] v]
+      [status (cond-> response
+                      (:schema response) (update :schema transform {:type :schema})
+                      true (update :description (fnil identity ""))
+                      true -remove-empty-keys)]))})
 
 (defmethod expand ::parameters [_ v acc _]
   (let [old (or (:parameters acc) [])

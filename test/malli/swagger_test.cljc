@@ -364,10 +364,9 @@
 
   (testing "no schema in responses ignored"
     (is (= {:definitions nil
-            :responses {200 {:description "" :schema {:type "string"}}}}
-           (swagger/swagger-spec {#_::swagger/parameters
-                                  #_{:body {:description "just a body"}}
-                                  ::swagger/responses
+            :responses {200 {:description "" :schema {:type "string"}}
+                        500 {:description "fail"}}}
+           (swagger/swagger-spec {::swagger/responses
                                   {500 {:description "fail"}
                                    200 {:schema [:string]}}}))))
 

@@ -1,5 +1,51 @@
 # Tips
 
+## Accessing both schema and value in transformation
+
+```clojure
+(require '[malli.core :as m])
+(require '[malli.transform :as mt])
+
+(def Address
+  [:map
+   [:id :string]
+   [:tags [:set :keyword]]
+   [:address [:map
+              [:street :string]
+              [:city :string]]]])
+
+(def lillan
+  {:id "Lillan"
+   :tags #{:artesan :coffee :hotel}
+   :address {:street "Ahlmanintie 29"
+             :city "Tampere"}})
+
+(m/decode
+ Address
+ lillan
+ (mt/transformer
+  {:default-decoder
+   {:compile (fn [schema _]
+               (fn [value]
+                 (prn [value (m/form schema)])
+                 value))}}))
+;[{:id "Lillan", :tags #{:coffee :artesan :hotel}, :address {:street "Ahlmanintie 29", :city "Tampere"}} [:map [:id :string] [:tags [:set :keyword]] [:address [:map [:street :string] [:city :string]]]]]
+;["Lillan" [:malli.core/val :string]]
+;["Lillan" :string]
+;[#{:coffee :artesan :hotel} [:malli.core/val [:set :keyword]]]
+;[#{:coffee :artesan :hotel} [:set :keyword]]
+;[:coffee :keyword]
+;[:artesan :keyword]
+;[:hotel :keyword]
+;[{:street "Ahlmanintie 29", :city "Tampere"} [:malli.core/val [:map [:street :string] [:city :string]]]]
+;[{:street "Ahlmanintie 29", :city "Tampere"} [:map [:street :string] [:city :string]]]
+;["Ahlmanintie 29" [:malli.core/val :string]]
+;["Ahlmanintie 29" :string]
+;["Tampere" [:malli.core/val :string]]
+;["Tampere" :string]
+; => {:id "Lillan", :tags #{:coffee :artesan :hotel}, :address {:street "Ahlmanintie 29", :city "Tampere"}}
+```
+
 ## Removing Schemas based on a property
 
 Schemas can be walked over recursively using `m/walk`:

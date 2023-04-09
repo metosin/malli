@@ -52,7 +52,7 @@
                          org.clojure/tools.namespace {:mvn/version "RELEASE"}}}
 
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.22.2"}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.22.10"}
                                  binaryage/devtools {:mvn/version "1.0.6"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"

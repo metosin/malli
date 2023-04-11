@@ -19,11 +19,11 @@
 
   test-cherry {:doc "Run CLJS tests with cherry"
                :task (do (println "Running CLJS tests with cherry, without optimizations")
-                         (apply clojure "-M:test:cljs-test-runner:test-cherry" "-c"
+                         (apply clojure "-M:test:cljs-test-runner:cherry:test-cherry" "-c"
                                 (str {:optimizations :none})
                                 *command-line-args*)
                          (println "Running CLJS tests with cherry, with optimizations")
-                         (apply clojure "-M:test:cljs-test-runner:test-cherry" "-c"
+                         (apply clojure "-M:test:cljs-test-runner:cherry:test-cherry" "-c"
                                 (str {:optimizations :advanced,
                                        ;; see https://clojure.atlassian.net/browse/CLJS-3401
                                       :optimize-constants false})

@@ -1,4 +1,4 @@
-{:deps     {:aliases [:shadow :sci]}
+{:deps     {:aliases [:shadow :sci :cherry]}
  :dev-http {8000 "public"}
  :builds   {:app        {:target          :browser
                          :closure-defines {malli.registry/type "default"}
@@ -24,6 +24,17 @@
                                                    :depends-on #{:cljs :sci}}
                                            :app   {:entries    [malli.app]
                                                    :depends-on #{:malli}}}}
+            :app-cherry {:target          :browser
+                         :closure-defines {malli.registry/type "default"}
+                         :devtools        {:preloads [malli.cherry]}
+                         :modules         {:cljs  {:entries [cljs.core]}
+                                           :malli {:entries    [malli.core]
+                                                   :depends-on #{:cljs}}
+                                           :cherry {:entries    [malli.cherry]
+                                                    :depends-on #{:cljs :malli}}
+                                           :app   {:entries    [malli.app]
+                                                   :depends-on #{:malli :cherry}}}}
+
             :app2       {:target          :browser
                          :closure-defines {malli.registry/type "custom"}
                          :modules         {:cljs  {:entries [cljs.core]}

@@ -1449,7 +1449,10 @@ Merged
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
 
-Following example requires [sci](https://github.com/borkdude/sci) as external dependency because it includes a function definition. See [Serializable functions](#serializable-functions).
+Following example requires [SCI](https://github.com/babashka/sci) or
+[cherry](https://github.com/squint-cljs/cherry) as external dependency because
+it includes a (quoted) function definition. See [Serializable
+functions](#serializable-functions).
 
 ```clojure
 (require '[malli.edn :as edn])
@@ -2017,10 +2020,10 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 
 ## Serializable functions
 
-Enabling serializable function schemas requires [sci](https://github.com/borkdude/sci) as external dependency. If
+Enabling serializable function schemas requires [SCI](https://github.com/borkdude/sci) or [cherry](https://github.com/squint-cljs/cherry) (for client side) as external dependency. If
 it is not present, the malli function evaluator throws `:sci-not-available` exception.
 
-For ClojureScript, you also need to require `sci.core` manually, either directly or via [`:preloads`](https://clojurescript.org/reference/compiler-options#preloads).
+For ClojureScript, you need to require `sci.core` or `malli.cherry` manually.
 
 For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
 

@@ -4,7 +4,9 @@
             [malli.core-test]
             [malli.error :as me]
             [malli.generator :as mg]
-            [malli.util :as mu]))
+            [malli.util :as mu]
+            #?(:clj [malli.test-macros :refer [when-env]]))
+  #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
 (deftest error-message-test
   (let [msg "should be an int"
@@ -200,32 +202,33 @@
                                (assoc-in ['int? :error/message :fi] "NUMERO")
                                (assoc-in [::m/missing-key :error/message :fi] "PUUTTUVA AVAIN"))})))))))
 
-(deftest sci-not-available-test
-  (testing "sci not available"
-    (let [schema (m/schema [:string {:error/fn '(constantly "FAIL")}] {::m/disable-sci true})]
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/sci-not-available"
-           (-> schema (m/explain ::invalid) (me/with-error-messages))))
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/sci-not-available"
-           (-> schema (m/explain ::invalid) (me/humanize))))
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/sci-not-available"
-           (-> [:string {:error/fn '(constantly "FAIL")}]
-               (m/explain ::invalid)
-               (me/with-error-messages {::m/disable-sci true}))))
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/sci-not-available"
-           (-> [:string {:error/fn '(constantly "FAIL")}]
-               (m/explain ::invalid)
-               (me/humanize {::m/disable-sci true}))))
-      (testing "direct options win"
-        (is (-> schema (m/explain ::invalid) (me/with-error-messages {::m/disable-sci false})))
-        (is (-> schema (m/explain ::invalid) (me/humanize {::m/disable-sci false})))))))
+(when-env "TEST_SCI"
+  (deftest sci-not-available-test
+    (testing "sci not available"
+      (let [schema (m/schema [:string {:error/fn '(constantly "FAIL")}] {::m/disable-sci true})]
+        (is (thrown-with-msg?
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/sci-not-available"
+             (-> schema (m/explain ::invalid) (me/with-error-messages))))
+        (is (thrown-with-msg?
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/sci-not-available"
+             (-> schema (m/explain ::invalid) (me/humanize))))
+        (is (thrown-with-msg?
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/sci-not-available"
+             (-> [:string {:error/fn '(constantly "FAIL")}]
+                 (m/explain ::invalid)
+                 (me/with-error-messages {::m/disable-sci true}))))
+        (is (thrown-with-msg?
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/sci-not-available"
+             (-> [:string {:error/fn '(constantly "FAIL")}]
+                 (m/explain ::invalid)
+                 (me/humanize {::m/disable-sci true}))))
+        (testing "direct options win"
+          (is (-> schema (m/explain ::invalid) (me/with-error-messages {::m/disable-sci false})))
+          (is (-> schema (m/explain ::invalid) (me/humanize {::m/disable-sci false}))))))))
 
 (deftest composing-with-and-test
 

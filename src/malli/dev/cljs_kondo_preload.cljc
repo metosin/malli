@@ -1,4 +1,4 @@
-(ns malli.dev.cljs-kondo-preload
+(ns ^:no-doc malli.dev.cljs-kondo-preload
   "Shadow-cljs preload for browser builds, used to persist clj-kondo config collected from function schemas to disk during development."
   #?(:cljs (:require-macros [malli.dev.cljs-kondo-preload]))
   (:require [malli.clj-kondo :as clj-kondo]

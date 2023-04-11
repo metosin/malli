@@ -28,12 +28,12 @@
                          :closure-defines {malli.registry/type "default"}
                          :devtools        {:preloads [malli.cherry]}
                          :modules         {:cljs  {:entries [cljs.core]}
-                                           :cherry {:entries    [malli.cherry]
-                                                    :depends-on #{:cljs}}
                                            :malli {:entries    [malli.core]
-                                                   :depends-on #{:cljs :cherry}}
+                                                   :depends-on #{:cljs}}
+                                           :cherry {:entries    [malli.cherry]
+                                                    :depends-on #{:cljs :malli}}
                                            :app   {:entries    [malli.app]
-                                                   :depends-on #{:malli}}}}
+                                                   :depends-on #{:malli :cherry}}}}
 
             :app2       {:target          :browser
                          :closure-defines {malli.registry/type "custom"}

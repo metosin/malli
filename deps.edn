@@ -43,10 +43,9 @@
                         jmh-clojure/task {:mvn/version "0.1.1"}}
                  :main-opts ["-m" "jmh.main"]}
 
-           :rebel
-           {:extra-paths ["dev"]
-            :extra-deps {com.bhauman/rebel-readline #_:clj-kondo/ignore {:mvn/version "RELEASE"}
-                         org.clojure/tools.namespace #_:clj-kondo/ignore {:mvn/version "RELEASE"}}}
+           :rebel {:extra-paths ["dev"]
+                   :extra-deps {com.bhauman/rebel-readline #_:clj-kondo/ignore {:mvn/version "RELEASE"}
+                                org.clojure/tools.namespace #_:clj-kondo/ignore {:mvn/version "RELEASE"}}}
 
            :shadow {:extra-paths ["app"]
                     :extra-deps {thheller/shadow-cljs {:mvn/version "2.22.10"}

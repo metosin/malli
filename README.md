@@ -3169,6 +3169,9 @@ npx shadow-cljs run shadow.cljs.build-report app /tmp/report.html
 
 # with sci
 npx shadow-cljs run shadow.cljs.build-report app-sci /tmp/report.html
+
+# with cherry
+npx shadow-cljs run shadow.cljs.build-report app-cherry /tmp/report.html
 ```
 
 With minimal registry (2.4KB+ Gzipped)
@@ -3179,6 +3182,9 @@ npx shadow-cljs run shadow.cljs.build-report app2 /tmp/report.html
 
 # with sci
 npx shadow-cljs run shadow.cljs.build-report app2-sci /tmp/report.html
+
+# with cherry
+npx shadow-cljs run shadow.cljs.build-report app2-cherry /tmp/report.html
 ```
 
 ## Formatting the code

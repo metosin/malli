@@ -36,7 +36,6 @@
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.7.39"}}}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.4" :git/sha "76b78fe"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]

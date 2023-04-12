@@ -1705,7 +1705,7 @@
               (when (-accept walker this path options)
                 (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
                   (-outer walker this path (-inner-indexed walker path children options) options)
-                  (-outer walker this path [id] options))))
+                  (-outer walker this path children options))))
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)
@@ -2360,15 +2360,8 @@
 ;;
 
 (defn schema-walker [f]
-  (fn [schema _ children options]
-    ;; Workaround for #884. The -walk method of -schema-schema passes
-    ;; in children=[id], which would cause us to (-set-children s [id]),
-    ;; overwriting the actual child.
-    (f (if (and (#{:schema ::schema} (-> schema -parent -type))
-                (-ref schema)
-                (not ((-boolean-fn (::walk-schema-refs options false)) (-ref schema))))
-         schema
-         (-set-children schema children)))))
+  (fn [schema _ children _]
+    (f (-set-children schema children))))
 
 ;;
 ;; registry

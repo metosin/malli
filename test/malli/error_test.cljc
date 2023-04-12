@@ -671,6 +671,13 @@
          (-> (m/explain [:map [:user [:multi {:dispatch :type}]]] {:user nil})
              (me/humanize)))))
 
+(deftest push-assoc-keyword-on-vector-775
+  (let [x []
+        k :rong
+        v ["should be :wrong"]
+        fill nil]
+    (is (= [["should be :wrong"]] (me/-push x k v fill)))))
+
 (deftest in-error-test
   (let [Address [:map {:closed true}
                  [:id :string]

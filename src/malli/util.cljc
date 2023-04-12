@@ -359,32 +359,6 @@
     (up schema ks f args)))
 
 ;;
-;; map-syntax
-;;
-
-(defn -map-syntax-walker [schema _ children _]
-  (let [properties (m/properties schema)
-        options (m/options schema)
-        r (when properties (properties :registry))
-        properties (if r (c/assoc properties :registry (m/-property-registry r options m/-form)) properties)]
-    (cond-> {:type (m/type schema)}
-      (seq properties) (clojure.core/assoc :properties properties)
-      (seq children) (clojure.core/assoc :children children))))
-
-(defn to-map-syntax
-  ([?schema] (to-map-syntax ?schema nil))
-  ([?schema options] (m/walk ?schema -map-syntax-walker options)))
-
-(defn from-map-syntax
-  ([m] (from-map-syntax m nil))
-  ([{:keys [type properties children] :as m} options]
-   (if (map? m)
-     (let [<-child (if (-> children first vector?) (fn [f] #(clojure.core/update % 2 f)) identity)
-           [properties options] (m/-properties-and-options properties options m/-form)]
-       (m/into-schema type properties (mapv (<-child #(from-map-syntax % options)) children) options))
-     m)))
-
-;;
 ;; Schemas
 ;;
 

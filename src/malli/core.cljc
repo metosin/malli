@@ -1705,7 +1705,7 @@
               (when (-accept walker this path options)
                 (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
                   (-outer walker this path (-inner-indexed walker path children options) options)
-                  (-outer walker this path [id] options))))
+                  (-outer walker this path children options))))
             (-properties [_] properties)
             (-options [_] options)
             (-children [_] children)

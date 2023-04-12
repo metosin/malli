@@ -53,7 +53,7 @@
 
 (defn -schema [schema children _options]
   (let [just-one (= 1 (count (:registry (m/properties schema))))]
-    (str (last children)
+    (str (or (m/-ref schema) (last children))
          (when (:registry (m/properties schema))
            (str " "
                 (when-not just-one "which is: ")

@@ -17,6 +17,8 @@ Malli is in well matured [alpha](README.md#alpha).
 ## UNRELEASED
 
 * BREAKING: remove map syntax: `mu/from-map-syntax`, `mu/to-map-syntax`. Note that AST syntax and lite syntax remain unchanged.
+* BREAKING: walking a `:schema` with an `id` no longer passes `[id]` instead of `children` to the walker function [#884](https://github.com/metosin/malli/issues/884)
+* Support converting recursive malli schemas to json-schema [#464](https://github.com/metosin/malli/issues/464) [#868](https://github.com/metosin/malli/issues/868)
 
 ## 0.10.4 (2023-03-19)
 

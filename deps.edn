@@ -8,7 +8,7 @@
         mvxcvi/arrangement {:mvn/version "2.1.0"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.14"}
-                               lambdaisland/kaocha {:mvn/version "1.80.1274"}
+                               lambdaisland/kaocha {:mvn/version "1.82.1306"}
                                lambdaisland/kaocha-cljs {:mvn/version "1.4.130"}
                                org.babashka/sci {:mvn/version "0.7.39"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "1.17.101"}
@@ -49,7 +49,7 @@
 
            :shadow {:extra-paths ["app"]
                     :extra-deps {thheller/shadow-cljs {:mvn/version "2.22.10"}
-                                 binaryage/devtools {:mvn/version "1.0.6"}}}
+                                 binaryage/devtools {:mvn/version "1.0.7"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
                                 :sha "f68d66d99d95f4d2bfd61f001e28a8ad7c4d3a12"}}
@@ -59,7 +59,7 @@
                                :sha "b093f79420fef019faf62a75b888b5e10f4e8cc9"}}
                  :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
                              "--project-path" "malli.jar"]}
-           :deploy {:extra-deps {slipset/deps-deploy {:mvn/version "0.2.0"}}
+           :deploy {:extra-deps {slipset/deps-deploy {:mvn/version "0.2.1"}}
                     :exec-fn deps-deploy.deps-deploy/deploy
                     :exec-args {:installer :remote
                                 :artifact "malli.jar"}}

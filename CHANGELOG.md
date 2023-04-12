@@ -14,11 +14,16 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.11.0 (2023-04-12)
 
 * BREAKING: remove map syntax: `mu/from-map-syntax`, `mu/to-map-syntax`. Note that AST syntax and lite syntax remain unchanged.
 * BREAKING: walking a `:schema` with an `id` no longer passes `[id]` instead of `children` to the walker function [#884](https://github.com/metosin/malli/issues/884)
 * Support converting recursive malli schemas to json-schema [#464](https://github.com/metosin/malli/issues/464) [#868](https://github.com/metosin/malli/issues/868)
+* Add cherry as alternative CLJS evaluator [#888](https://github.com/metosin/malli/pull/888)
+* Replace `goog/mixin` with `Object.assign` [#890](https://github.com/metosin/malli/pull/890)
+* Simplify uuid regex for accept non-standard and zero uuids [#889](https://github.com/metosin/malli/pull/889)
+* Fix clj-doc API import [#887](https://github.com/metosin/malli/pull/887)
+* Fix Repeated calls to `malli.util/assoc-in` referencing non-existing maps fail [#874](https://github.com/metosin/malli/issues/874)
 
 ## 0.10.4 (2023-03-19)
 

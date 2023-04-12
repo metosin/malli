@@ -23,7 +23,6 @@ Malli is in well matured [alpha](README.md#alpha).
 * Replace `goog/mixin` with `Object.assign` [#890](https://github.com/metosin/malli/pull/890)
 * Simplify uuid regex for accept non-standard and zero uuids [#889](https://github.com/metosin/malli/pull/889)
 * Fix clj-doc API import [#887](https://github.com/metosin/malli/pull/887)
-* Fix Repeated calls to `malli.util/assoc-in` referencing non-existing maps fail [#874](https://github.com/metosin/malli/issues/874)
 
 ## 0.10.4 (2023-03-19)
 

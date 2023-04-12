@@ -25,12 +25,17 @@
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "46b183d19984cafb655647f212bfa286b4d0dc63"}}}
+           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.7.39"}}}
+           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/sha "0e12c4a0289b094c800b54e7e97889c786109ad3"}}}
+           :test-sci {:extra-paths ["test-sci"]
+                      :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
+           :test-cherry {:extra-paths ["test-cherry"]
+                         :main-opts ["-m" "cljs-test-runner.main" "-d" "test-cherry" "-d" "test"]}
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.0"}
                                            ; used only to pull in its externs file needed to compile js-joda types under advanced compilation
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.7.39"}}}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.4" :git/sha "76b78fe"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]
@@ -38,13 +43,12 @@
                         jmh-clojure/task {:mvn/version "0.1.1"}}
                  :main-opts ["-m" "jmh.main"]}
 
-           :rebel
-           {:extra-paths ["dev"]
-            :extra-deps {com.bhauman/rebel-readline {:mvn/version "RELEASE"}
-                         org.clojure/tools.namespace {:mvn/version "RELEASE"}}}
+           :rebel {:extra-paths ["dev"]
+                   :extra-deps {com.bhauman/rebel-readline #_:clj-kondo/ignore {:mvn/version "RELEASE"}
+                                org.clojure/tools.namespace #_:clj-kondo/ignore {:mvn/version "RELEASE"}}}
 
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.22.2"}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.22.10"}
                                  binaryage/devtools {:mvn/version "1.0.6"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
@@ -59,7 +63,7 @@
                     :exec-fn deps-deploy.deps-deploy/deploy
                     :exec-args {:installer :remote
                                 :artifact "malli.jar"}}
-           :install {:extra-deps {deps-deploy/deps-deploy {:mvn/version "RELEASE"}}
+           :install {:extra-deps {deps-deploy/deps-deploy #_:clj-kondo/ignore {:mvn/version "RELEASE"}}
                      :main-opts ["-m" "deps-deploy.deps-deploy" "install"
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]

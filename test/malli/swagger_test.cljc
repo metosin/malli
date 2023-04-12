@@ -362,6 +362,14 @@
                                      400 {:schema (m/schema ::error-resp
                                                             {:registry registry})}}})))))
 
+  (testing "no schema in responses ignored"
+    (is (= {:definitions nil
+            :responses {200 {:description "" :schema {:type "string"}}
+                        500 {:description "fail"}}}
+           (swagger/swagger-spec {::swagger/responses
+                                  {500 {:description "fail"}
+                                   200 {:schema [:string]}}}))))
+
   (testing "generates swagger for ::parameters and ::responses w/ recursive schema + registry"
     (let [registry (merge (m/base-schemas) (m/type-schemas)
                           (m/comparator-schemas) (m/sequence-schemas)

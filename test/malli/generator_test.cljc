@@ -6,7 +6,9 @@
             [malli.core :as m]
             [malli.generator :as mg]
             [malli.json-schema-test :as json-schema-test]
-            [malli.util :as mu]))
+            [malli.util :as mu]
+            #?(:clj [malli.test-macros :refer [when-env]]))
+  #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
@@ -184,18 +186,19 @@
          #":malli.generator/no-generator"
          (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
 
-  (testing "sci not available"
-    (let [schema (m/schema [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})]
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/sci-not-available"
-           (mg/generator schema)))
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/sci-not-available"
-           (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
-      (testing "direct options win"
-        (is (mg/generator schema {::m/disable-sci false})))))
+  (when-env "TEST_SCI"
+    (testing "sci not available"
+      (let [schema (m/schema [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})]
+        (is (thrown-with-msg?
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/sci-not-available"
+             (mg/generator schema)))
+        (is (thrown-with-msg?
+             #?(:clj Exception, :cljs js/Error)
+             #":malli.core/sci-not-available"
+             (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
+        (testing "direct options win"
+          (is (mg/generator schema {::m/disable-sci false}))))))
 
   (testing "generator override"
     (testing "without generator"

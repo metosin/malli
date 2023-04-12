@@ -1,17 +1,34 @@
-{:deps {current/deps {:local/root "."}}
+{:deps {metosin/malli {:local/root "."}}
  :tasks
  {test-clj {:doc "Run JVM Clojure tests with kaocha"
-            :task (apply clojure (str "-A:" (System/getenv "CLOJURE"))
+            :task (apply clojure {:extra-env {"TEST_SCI" "true"}}
+                         (str "-A:" (System/getenv "CLOJURE"))
                          "-M:test" "-m" "kaocha.runner" *command-line-args*)}
 
   test-cljs {:doc "Run ClojureScript tests"
              :task (do
                      (println "Running CLJS tests without optimizations")
-                     (apply clojure "-M:test:cljs-test-runner" "-c" "{:optimizations :none, :preloads [sci.core]}"
+                     (apply clojure {:extra-env {"TEST_SCI" "true"}}
+                            "-M:test:cljs-test-runner:test-sci" "-c" "{:optimizations :none}"
                             *command-line-args*)
-                     (println "Running CLJS tests with optimizations advanced")
-                     (apply clojure "-M:test:cljs-test-runner" "-c" "{:optimizations :none, :preloads [sci.core]}"
+                     (println "Running CLJS tests with optimizations")
+                     (apply clojure {:extra-env {"TEST_SCI" "true"}}
+                            "-M:test:cljs-test-runner:test-sci" "-c" "{:optimizations :advanced}"
+                            "-e" ":simple"
                             *command-line-args*))}
+
+  test-cherry {:doc "Run CLJS tests with cherry"
+               :task (do (println "Running CLJS tests with cherry, without optimizations")
+                         (apply clojure "-M:test:cljs-test-runner:cherry:test-cherry" "-c"
+                                (str {:optimizations :none})
+                                *command-line-args*)
+                         (println "Running CLJS tests with cherry, with optimizations")
+                         (apply clojure "-M:test:cljs-test-runner:cherry:test-cherry" "-c"
+                                (str {:optimizations :advanced,
+                                       ;; see https://clojure.atlassian.net/browse/CLJS-3401
+                                      :optimize-constants false})
+                                "-e" ":simple"
+                                *command-line-args*))}
 
   test-bb {:doc "Run Babashka tests"
            :extra-deps {org.babashka/spec.alpha {:git/url "https://github.com/babashka/spec.alpha"

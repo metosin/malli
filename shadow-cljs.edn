@@ -1,43 +1,63 @@
-{:deps     {:aliases [:shadow :sci]}
+{:deps {:aliases [:shadow :sci :cherry]}
  :dev-http {8000 "public"}
- :builds   {:app        {:target          :browser
-                         :closure-defines {malli.registry/type "default"}
-                         :modules         {:cljs  {:entries [cljs.core]}
-                                           :malli {:entries    [malli.core]
-                                                   :depends-on #{:cljs}}
-                                           :app   {:entries    [malli.app]
-                                                   :depends-on #{:malli}}}}
-            :instrument {:target        :browser
-                         :build-options {:cache-level :off}
-                         :output-dir    "public/js/instrument"
-                         :asset-path    "/js/instrument"
-                         :modules       {:app {:entries [malli.instrument-app]
-                                               :preloads [malli.dev.cljs-kondo-preload malli.dev-preload]
-                                               :init-fn malli.instrument-app/init}}}
-            :app-sci    {:target          :browser
-                         :closure-defines {malli.registry/type "default"}
-                         :devtools        {:preloads [sci.core]}
-                         :modules         {:cljs  {:entries [cljs.core]}
-                                           :sci   {:entries    [sci.core]
-                                                   :depends-on #{:cljs}}
-                                           :malli {:entries    [malli.core]
-                                                   :depends-on #{:cljs :sci}}
-                                           :app   {:entries    [malli.app]
-                                                   :depends-on #{:malli}}}}
-            :app2       {:target          :browser
-                         :closure-defines {malli.registry/type "custom"}
-                         :modules         {:cljs  {:entries [cljs.core]}
-                                           :malli {:entries    [malli.core]
-                                                   :depends-on #{:cljs}}
-                                           :app   {:entries    [malli.app2]
-                                                   :depends-on #{:malli :cljs}}}}
-            :app2-sci   {:target          :browser
-                         :closure-defines {malli.registry/type "custom"}
-                         :devtools        {:preloads [sci.core]}
-                         :modules         {:cljs  {:entries [cljs.core]}
-                                           :sci   {:entries    [sci.core]
-                                                   :depends-on #{:cljs}}
-                                           :malli {:entries    [malli.core]
-                                                   :depends-on #{:cljs :sci}}
-                                           :app   {:entries    [malli.app2]
-                                                   :depends-on #{:malli}}}}}}
+ :builds {:app {:target :browser
+                :closure-defines {malli.registry/type "default"}
+                :modules {:cljs {:entries [cljs.core]}
+                          :malli {:entries [malli.core]
+                                  :depends-on #{:cljs}}
+                          :app {:entries [malli.app]
+                                :depends-on #{:malli}}}}
+          :instrument {:target :browser
+                       :build-options {:cache-level :off}
+                       :output-dir "public/js/instrument"
+                       :asset-path "/js/instrument"
+                       :modules {:app {:entries [malli.instrument-app]
+                                       :preloads [malli.dev.cljs-kondo-preload malli.dev-preload]
+                                       :init-fn malli.instrument-app/init}}}
+          :app-sci {:target :browser
+                    :closure-defines {malli.registry/type "default"}
+                    :devtools {:preloads [sci.core]}
+                    :modules {:cljs {:entries [cljs.core]}
+                              :sci {:entries [sci.core]
+                                    :depends-on #{:cljs}}
+                              :malli {:entries [malli.core]
+                                      :depends-on #{:cljs :sci}}
+                              :app {:entries [malli.app]
+                                    :depends-on #{:malli}}}}
+          :app-cherry {:target :browser
+                       :closure-defines {malli.registry/type "default"}
+                       :devtools {:preloads [malli.cherry]}
+                       :modules {:cljs {:entries [cljs.core]}
+                                 :malli {:entries [malli.core]
+                                         :depends-on #{:cljs}}
+                                 :cherry {:entries [malli.cherry]
+                                          :depends-on #{:cljs :malli}}
+                                 :app {:entries [malli.app]
+                                       :depends-on #{:malli :cherry}}}}
+          :app2 {:target :browser
+                 :closure-defines {malli.registry/type "custom"}
+                 :modules {:cljs {:entries [cljs.core]}
+                           :malli {:entries [malli.core]
+                                   :depends-on #{:cljs}}
+                           :app {:entries [malli.app2]
+                                 :depends-on #{:malli :cljs}}}}
+          :app2-sci {:target :browser
+                     :closure-defines {malli.registry/type "custom"}
+                     :devtools {:preloads [sci.core]}
+                     :modules {:cljs {:entries [cljs.core]}
+                               :sci {:entries [sci.core]
+                                     :depends-on #{:cljs}}
+                               :malli {:entries [malli.core]
+                                       :depends-on #{:cljs :sci}}
+                               :app {:entries [malli.app2]
+                                     :depends-on #{:malli}}}}
+          :app2-cherry {:target :browser
+                        :closure-defines {malli.registry/type "default"}
+                        :devtools {:preloads [malli.cherry]}
+                        :modules {:cljs {:entries [cljs.core]}
+                                  :malli {:entries [malli.core]
+                                          :depends-on #{:cljs}}
+                                  :cherry {:entries [malli.cherry]
+                                           :depends-on #{:cljs :malli}}
+                                  :app {:entries [malli.app2]
+                                        :depends-on #{:cherry}}}}}}

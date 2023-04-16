@@ -1,4 +1,4 @@
-(ns malli.cherry
+(ns ^:no-doc malli.cherry
   (:refer-clojure :exclude [eval])
   (:require [cherry.embed :as cherry]
             [malli.core]))

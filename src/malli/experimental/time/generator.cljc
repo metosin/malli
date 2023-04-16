@@ -11,7 +11,7 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (def zone-id-gen
-  (mg/generator (into [:enum] (map #(. ZoneId of ^String %)) (. ZoneId getAvailableZoneIds))))
+  (mg/generator (m/into-schema (m/-enum-schema) nil (map #(. ZoneId of ^String %) (. ZoneId getAvailableZoneIds)))))
 
 (defmethod mg/-schema-generator :time/zone-id [_schema _options] zone-id-gen)
 

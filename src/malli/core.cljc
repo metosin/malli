@@ -2528,7 +2528,12 @@
 (defn -register-function-schema!
   ([ns name ?schema data] (-register-function-schema! ns name ?schema data :clj function-schema))
   ([ns name ?schema data key f]
-   (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))))
+   (try
+     (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))
+     (catch #?(:clj Throwable :cljs :default) ex
+       (throw (ex-info
+                (str "Schema error when insrumenting function: " ns "/" name " - " (ex-message ex))
+                (ex-data ex)))))))
 
 #?(:clj
    (defmacro => [given-sym value]

@@ -3031,6 +3031,21 @@ To use these schemas in ClojureScript you will need to install the npm packages 
 npm install @js-joda/core @js-joda/timezone
 ```
 
+Because historical timezone data can add ~500kb to your ClojureScript build malli does not require the `@js-joda/timezone`
+package directly. You must require timezone data before requiring the `malli.experimental.time` namespace if you want
+to make use of zone related time objects.
+
+For example, to include only timezone data for +/- 5 years from the time the library was released, use:
+
+```clojure
+(ns com.my-co.my-app
+  (:require ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
+```
+
+For more info see:
+
+https://github.com/js-joda/js-joda/tree/main/packages/timezone
+
 #### min/max
 
 Time schemas respect min/max predicates for their respective types:

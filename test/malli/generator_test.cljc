@@ -7,7 +7,8 @@
             [malli.generator :as mg]
             [malli.json-schema-test :as json-schema-test]
             [malli.util :as mu]
-            #?(:clj [malli.test-macros :refer [when-env]]))
+            #?(:clj [malli.test-macros :refer [when-env]]
+               :cljs ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
   #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
 (deftest generator-test

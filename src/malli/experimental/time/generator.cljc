@@ -10,10 +10,10 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
-(def zone-id-gen
+(defn zone-id-gen []
   (mg/generator (m/into-schema (m/-enum-schema) nil (map #(. ZoneId of ^String %) (. ZoneId getAvailableZoneIds)))))
 
-(defmethod mg/-schema-generator :time/zone-id [_schema _options] zone-id-gen)
+(defmethod mg/-schema-generator :time/zone-id [_schema _options] (zone-id-gen))
 
 #?(:clj  (def ^:const ^:private seconds-in-day 86400)
    :cljs (def ^:private seconds-in-day 86400))
@@ -109,7 +109,7 @@
   (gen/bind
    (-instant-gen schema options)
    (fn [instant]
-     (gen/fmap #(. ZonedDateTime ofInstant instant %) zone-id-gen))))
+     (gen/fmap #(. ZonedDateTime ofInstant instant %) (zone-id-gen)))))
 
 (defmethod mg/-schema-generator :time/zoned-date-time [schema options]
   (-zoned-date-time-gen schema options))

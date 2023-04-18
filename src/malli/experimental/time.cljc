@@ -1,9 +1,7 @@
 (ns malli.experimental.time
   (:refer-clojure :exclude [<=])
   (:require [malli.core :as m]
-            #?@(:cljs
-                [["@js-joda/core" :as js-joda]
-                 ["@js-joda/timezone"]]))
+            #?(:cljs ["@js-joda/core" :as js-joda]))
   #?(:clj (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset))))
 
 (defn <= [^Comparable x ^Comparable y] (not (pos? (.compareTo x y))))

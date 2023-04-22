@@ -12,7 +12,8 @@
             [malli.transform :as mt]
             [malli.util :as mu]
             #?(:clj [malli.test-macros :refer [when-env]]))
-  #?(:clj (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))
+  #?(:clj (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap)
+                   (java.util Date))
      :cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
 (defn with-schema-forms [result]
@@ -2763,7 +2764,31 @@
             MapSchemaWithTypeProperties (m/-map-schema {:type-properties type-properties})
             data-schema (m/schema [MapSchemaWithTypeProperties])]
         (is (= type-properties (m/type-properties data-schema)))
-        (is (= [error-message] (me/humanize (m/explain data-schema []))))))))
+        (is (= [error-message] (me/humanize (m/explain data-schema []))))))
+
+    (testing "uses transform function when present"
+      #?(:clj
+         (let [date-schema [(m/-map-schema {:naked-keys true :pred #(instance? Date %) :xf bean})
+                            [:day [:int]]
+                            [:date :int]
+                            [:month :int]]
+               a-date (Date.)
+               parsed (m/parse date-schema a-date)]
+           (is (m/validate date-schema a-date))
+           (is (every? #(contains? parsed %) [:day :date :time :month :seconds :year :class :timezoneOffset :hours :minutes]))
+           (is (= (:type (first (:errors (m/explain date-schema (Object.))))) ::m/invalid-type))
+           (is (nil? (m/walk date-schema (fn [_ _ _ _])))))
+         :cljs
+         (let [obj-schema [(m/-map-schema {:naked-keys true :pred object? :xf (fn [x] (js->clj x :keywordize-keys true))})
+                           [:a :int]
+                           [:b :string]]
+               obj #js{"a" 50 "b" "a string"}
+               parsed (m/parse obj-schema obj)]
+           (is (m/validate obj-schema obj))
+           (is (every? #(contains? parsed %) [:a :b]))
+           (is (= (:type (first (:errors (m/explain obj-schema [])))) ::m/invalid-type))
+           (is (every? #(= (:type %) ::m/missing-key) (:errors (m/explain obj-schema #js{"c" 5 "d" 10}))))
+           (is (nil? (m/walk obj-schema (fn [_ _ _ _])))))))))
 
 (deftest -map-of-schema-test
   (testing "returns map-of schema with type-properties as provided in opts"

@@ -301,8 +301,7 @@
                             :in "body"
                             :name "body"
                             :required true
-                            :schema {:$ref "#/definitions/malli.swagger-test~1body"
-                                     :definitions {::body {:minLength 1, :type "string"}}}}]}
+                            :schema {:$ref "#/definitions/malli.swagger-test~1body"}}]}
              (swagger/swagger-spec {::swagger/parameters
                                     {:body (m/schema ::body
                                                      {:registry registry})}})))))
@@ -315,12 +314,9 @@
                             ::success {:additionalProperties {:type "string"}
                                        :type "object"}}
               :responses {200 {:description ""
-                               :schema {:$ref "#/definitions/malli.swagger-test~1success"
-                                        :definitions {::success {:additionalProperties {:type "string"}
-                                                                 :type "object"}}}}
+                               :schema {:$ref "#/definitions/malli.swagger-test~1success"}}
                           400 {:description ""
-                               :schema {:$ref "#/definitions/malli.swagger-test~1error"
-                                        :definitions {::error {:minLength 1, :type "string"}}}}}}
+                               :schema {:$ref "#/definitions/malli.swagger-test~1error"}}}}
              (swagger/swagger-spec {::swagger/responses
                                     {200 {:schema (m/schema ::success
                                                             {:registry registry})}
@@ -341,18 +337,11 @@
                             :in "body"
                             :name "body"
                             :required true
-                            :schema {:$ref "#/definitions/malli.swagger-test~1req-body"
-                                     :definitions {::req-body {:additionalProperties {}
-                                                               :type "object"}}}}]
+                            :schema {:$ref "#/definitions/malli.swagger-test~1req-body"}}]
               :responses {200 {:description ""
-                               :schema {:$ref "#/definitions/malli.swagger-test~1success-resp"
-                                        :definitions {::success-resp {:properties {:it {:const "worked"}}
-                                                                      :required [:it]
-                                                                      :type "object"}}}}
+                               :schema {:$ref "#/definitions/malli.swagger-test~1success-resp"}}
                           400 {:description ""
-                               :schema {:$ref "#/definitions/malli.swagger-test~1error-resp"
-                                        :definitions {::error-resp {:minLength 1
-                                                                    :type "string"}}}}}}
+                               :schema {:$ref "#/definitions/malli.swagger-test~1error-resp"}}}}
              (swagger/swagger-spec {::swagger/parameters
                                     {:body (m/schema ::req-body
                                                      {:registry registry})}
@@ -404,26 +393,11 @@
                             :in "body"
                             :name "body"
                             :required true
-                            :schema {:$ref "#/definitions/malli.swagger-test~1req-body"
-                                     :definitions {::a {:type "string"
-                                                        :x-anyOf [{:type "string"}
-                                                                  {:$ref "#/definitions/malli.swagger-test~1b"}]}
-                                                   ::b {:type "string"
-                                                        :x-anyOf [{:type "string"}
-                                                                  {:$ref "#/definitions/malli.swagger-test~1c"}]}
-                                                   ::c {:type "string"
-                                                        :x-anyOf [{:type "string"}
-                                                                  {:$ref "#/definitions/malli.swagger-test~1a"}]}
-                                                   ::req-body {:properties {:a {:$ref "#/definitions/malli.swagger-test~1a"}}
-                                                               :required [:a]
-                                                               :type "object"}}}}]
+                            :schema {:$ref "#/definitions/malli.swagger-test~1req-body"}}]
               :responses {200 {:description ""
-                               :schema {:$ref "#/definitions/malli.swagger-test~1success-resp"
-                                        :definitions {:malli.swagger-test/success-resp {:additionalProperties {:type "string"}
-                                                                                        :type "object"}}}}
+                               :schema {:$ref "#/definitions/malli.swagger-test~1success-resp"}}
                           400 {:description ""
-                               :schema {:$ref "#/definitions/malli.swagger-test~1error-resp"
-                                        :definitions {:malli.swagger-test/error-resp {:type "string"}}}}}}
+                               :schema {:$ref "#/definitions/malli.swagger-test~1error-resp"}}}}
              (swagger/swagger-spec {::swagger/parameters
                                     {:body (m/schema ::req-body
                                                      {:registry registry})}

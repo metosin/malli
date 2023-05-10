@@ -621,6 +621,17 @@ Explain results can be humanized with `malli.error/humanize`:
 ;           :lonlat [nil ["should be a double"]]}}
 ```
 
+Or if you already have a malli validation exception (e.g. in a catch form):
+
+```clojure
+(require '[malli.error :as me])
+
+(try
+  (m/validate Address {:not "an address"})
+  (catch Exception e
+    (-> e ex-data :data :explain me/humanize)))
+```
+
 ## Custom error messages
 
 Error messages can be customized with `:error/message` and `:error/fn` properties:

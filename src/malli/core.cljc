@@ -189,8 +189,8 @@
              ([f1 f2 f3 f4 f5 f6] (fn [x] (-> x f6 f5 f4 f3 f2 f1)))
              ([f1 f2 f3 f4 f5 f6 f7] (fn [x] (-> x f7 f6 f5 f4 f3 f2 f1)))
              ([f1 f2 f3 f4 f5 f6 f7 f8] (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)))
-             ([f1 f2 f3 f4 f5 f6 f7 f8 & fs] (-comp (apply -comp fs) (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1))))]
-      :cljs [([f1 f2 f3 & fs] (-comp (apply -comp fs) (fn [x] (-> x f3 f2 f1))))]))
+             ([f1 f2 f3 f4 f5 f6 f7 f8 & fs] (-comp (fn [x] (-> x f8 f7 f6 f5 f4 f3 f2 f1)) (apply -comp fs)))]
+      :cljs [([f1 f2 f3 & fs] (-comp (fn [x] (-> x f3 f2 f1)) (apply -comp fs)))]))
 
 (defn -update [x k f] (assoc x k (f (get x k))))
 

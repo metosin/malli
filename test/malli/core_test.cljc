@@ -2940,3 +2940,22 @@
               [:y {:optional true} :int]
               [::m/default [:map-of :int :int]]]
              (m/form schema))))))
+
+(deftest -comp-test
+  (let [prefixer (fn [prefix]
+                   (fn [s] (str prefix s)))]
+    (testing "the order of function applications"
+      (is (= "abcxxx"
+             ((m/-comp (prefixer "a")
+                       (prefixer "b")
+                       (prefixer "c")) "xxx")))
+      (is (= "abcdefghixxx"
+             ((m/-comp (prefixer "a")
+                       (prefixer "b")
+                       (prefixer "c")
+                       (prefixer "d")
+                       (prefixer "e")
+                       (prefixer "f")
+                       (prefixer "g")
+                       (prefixer "h")
+                       (prefixer "i")) "xxx"))))))

@@ -333,7 +333,7 @@ Map schemas can define a special `:malli.core/default` key to handle extra keys:
  {:x 1, :y 2, 1 1, 2 2})
 ; => true
 ```
-default branching can be arbitraty nested:
+default branching can be arbitrarily nested:
 
 ```clojure
 (m/validate

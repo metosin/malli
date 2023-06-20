@@ -14,24 +14,24 @@
 (defn -strument!
   ([] (-strument! nil))
   ([{:keys [mode data filters gen report] :or {mode :instrument, data (m/function-schemas)} :as options}]
-   (doseq [[n d] data, [s d] d]
-     (when (or (not filters) (some #(% n s d) filters))
-       (when-let [v (-find-var n s)]
-         (case mode
-           :instrument (let [original-fn (or (-original v) (deref v))
-                             dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
-                                    (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
-                                    (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
-                                          (true? (:gen d)) (dissoc $ :gen)
-                                          :else $))]
-                         (alter-meta! v assoc ::original-fn original-fn)
-                         (alter-var-root v (constantly (m/-instrument dgen original-fn)))
-                         (println "..instrumented" v))
-           :unstrument (when-let [original-fn (-original v)]
-                         (alter-meta! v dissoc ::original-fn)
-                         (alter-var-root v (constantly original-fn))
-                         (println "..unstrumented" v))
-           (mode v d)))))))
+   (doall
+    (for [[n d] data, [s d] d]
+      (when (or (not filters) (some #(% n s d) filters))
+        (when-let [v (-find-var n s)]
+          (case mode
+            :instrument (let [original-fn (or (-original v) (deref v))
+                              dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
+                                     (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
+                                     (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
+                                           (true? (:gen d)) (dissoc $ :gen)
+                                           :else $))]
+                          (alter-meta! v assoc ::original-fn original-fn)
+                          (alter-var-root v (constantly (m/-instrument dgen original-fn))))
+            :unstrument (when-let [original-fn (-original v)]
+                          (alter-meta! v dissoc ::original-fn)
+                          (alter-var-root v (constantly original-fn)))
+            (mode v d))
+          v))))))
 
 (defn -schema [v]
   (let [{:keys [malli/schema arglists]} (meta v)]
@@ -146,10 +146,14 @@
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).
    See [[malli.core/-instrument]] for possible options."
   ([] (instrument! nil))
-  ([options] (-strument! (assoc options :mode :instrument))))
+  ([options]
+    (doto (-strument! (assoc options :mode :instrument))
+      (->> count (format "Instrumented %d vars") println))))
 
 (defn unstrument!
   "Removes instrumentation from a filtered set of function Vars (e.g. `defn`s).
    See [[malli.core/-instrument]] for possible options."
   ([] (unstrument! nil))
-  ([options] (-strument! (assoc options :mode :unstrument))))
+  ([options]
+    (doto (-strument! (assoc options :mode :unstrument))
+      (->> count (format "Unstrumented %d vars") println))))

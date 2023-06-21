@@ -146,14 +146,10 @@
   "Applies instrumentation for a filtered set of function Vars (e.g. `defn`s).
    See [[malli.core/-instrument]] for possible options."
   ([] (instrument! nil))
-  ([options]
-    (doto (-strument! (assoc options :mode :instrument))
-      (->> count (format "Instrumented %d vars") println))))
+  ([options] (-strument! (assoc options :mode :instrument))))
 
 (defn unstrument!
   "Removes instrumentation from a filtered set of function Vars (e.g. `defn`s).
    See [[malli.core/-instrument]] for possible options."
   ([] (unstrument! nil))
-  ([options]
-    (doto (-strument! (assoc options :mode :unstrument))
-      (->> count (format "Unstrumented %d vars") println))))
+  ([options] (-strument! (assoc options :mode :unstrument))))

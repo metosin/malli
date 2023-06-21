@@ -8,7 +8,10 @@
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
   []
   (remove-watch @#'m/-function-schemas* ::watch)
-  (mi/unstrument!)
+  (->> (mi/unstrument!)
+       count
+       (format "unstrumented %d vars")
+       println)
   (clj-kondo/save! {})
   (println "stopped instrumentation"))
 
@@ -22,13 +25,18 @@
    (with-out-str (stop!))
    (mi/collect! {:ns (all-ns)})
    (let [watch (fn [_ _ old new]
-                 (mi/instrument! (assoc options :data (->> (for [[n d] (:clj new)
-                                                                 :let [no (get-in old [:clj n])]
-                                                                 [s d] d
-                                                                 :when (not= d (get no s))]
-                                                             [[n s] d])
-                                                           (into {})
-                                                           (reduce-kv assoc-in {}))))
+                 (->> (for [[n d] (:clj new)
+                            :let [no (get-in old [:clj n])]
+                            [s d] d
+                            :when (not= d (get no s))]
+                        [[n s] d])
+                      (into {})
+                      (reduce-kv assoc-in {})
+                      (assoc options :data)
+                      mi/instrument!
+                      count
+                      (format "instrumented %d vars")
+                      println)
                  (clj-kondo/emit!))]
      (add-watch @#'m/-function-schemas* ::watch watch))
    (mi/instrument! options)

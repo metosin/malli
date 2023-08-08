@@ -192,7 +192,7 @@
         :malli.core/invalid))))
 
 (defn catn-unparser [& unparsers]
-  (let [unparsers (into {} unparsers)]
+  (let [unparsers (apply array-map (mapcat identity unparsers))]
     (fn [m]
       (if (and (map? m) (= (count m) (count unparsers)))
         (miu/-reduce-kv-valid (fn [coll tag unparser]

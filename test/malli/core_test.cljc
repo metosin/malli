@@ -2959,3 +2959,18 @@
                        (prefixer "g")
                        (prefixer "h")
                        (prefixer "i")) "xxx"))))))
+
+(deftest -issue-925-test
+  (testing "order is retained with catn parse+unparse"
+    (let [schema [:catn
+                  [:a :int]
+                  [:b :int]
+                  [:c :int]
+                  [:d :int]
+                  [:e :int]
+                  [:f :int]
+                  [:g :int]
+                  [:h :int]
+                  [:i :int]]
+          input [1 2 3 4 5 6 7 8 9]]
+      (is (= input (->> input (m/parse schema) (m/unparse schema)))))))

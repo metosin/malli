@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+*  FIX: retain order with `:catn` unparse, fixes [#925](https://github.com/metosin/malli/issues/925)
+
 ## 0.11.0 (2023-04-12)
 
 * BREAKING: remove map syntax: `mu/from-map-syntax`, `mu/to-map-syntax`. Note that AST syntax and lite syntax remain unchanged.

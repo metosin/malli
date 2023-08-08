@@ -16,7 +16,10 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-*  FIX: retain order with `:catn` unparse, fixes [#925](https://github.com/metosin/malli/issues/925)
+* retain order with `:catn` unparse, fixes [#925](https://github.com/metosin/malli/issues/925)
+* **BREAKING**: Do not require timezone data directly for cljs [#898](https://github.com/metosin/malli/pull/898) with `malli.experimental.time`
+* Remove non-root swagger definitions [#900](https://github.com/metosin/malli/pull/900)
+* Fixes a bug in `malli.core/-comp` to keep interceptor order [#905](https://github.com/metosin/malli/pull/905)
 
 ## 0.11.0 (2023-04-12)
 

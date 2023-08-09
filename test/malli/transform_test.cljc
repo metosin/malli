@@ -971,7 +971,11 @@
             seen (atom [])
             transformer (mt/default-value-transformer {:key :name, :default-fn (fn [_ x] (swap! seen conj x) x)})]
         (is (= {:first 'one, :second 'two} (m/encode schema {} transformer)))
-        (is (= ['one 'two] @seen))))))
+        (is (= ['one 'two] @seen)))))
+
+  (testing ":default/fn property on schema"
+    (let [schema [:string {:default/fn (fn [] "called")}]]
+      (is (= "called" (m/decode schema nil mt/default-value-transformer))))))
 
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))

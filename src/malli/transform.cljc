@@ -397,9 +397,10 @@
   ([] (default-value-transformer nil))
   ([{:keys [key default-fn defaults ::add-optional-keys] :or {key :default, default-fn (fn [_ x] x)}}]
    (let [get-default (fn [schema]
-                       (if-some [e (some-> schema m/properties (find key))]
-                         (constantly (val e))
-                         (some->> schema m/type (get defaults) (#(constantly (% schema))))))
+                       (or (some-> schema m/properties :default/fn m/eval)
+                           (if-some [e (some-> schema m/properties (find key))]
+                             (constantly (val e))
+                             (some->> schema m/type (get defaults) (#(constantly (% schema)))))))
          set-default {:compile (fn [schema _]
                                  (when-some [f (get-default schema)]
                                    (fn [x] (if (nil? x) (default-fn schema (f)) x))))}

@@ -54,6 +54,8 @@
 (deftest string->uuid
   (is (= #uuid "5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
   (is (= #uuid "5f60751d-9bf7-4344-97ee-48643c9949ce" (mt/-string->uuid #uuid "5f60751d-9bf7-4344-97ee-48643c9949ce")))
+  (is (= #uuid "b3c4e6b4-6304-4a52-99c3-cb50e737bb94" (mt/-string->uuid "B3C4E6B4-6304-4A52-99C3-CB50E737BB94")))
+
   (is (= "abba" (mt/-string->uuid "abba")))
 
   ;; Regression tests: we should ensure that invalid or incomplete

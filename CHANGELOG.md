@@ -61,6 +61,17 @@ Malli is in well matured [alpha](README.md#alpha).
 ; => {1 1}
 ```
 
+* **BREAKING** (post-note 16.8.2023, this should have been a MINOR version bump). `mt/strip-extra-keys-transformer` strips non-defined keys of implicitely open `:map`:
+
+```clojure
+;; explicitly open map
+(m/decode
+ [:map [:x :int]]
+ {:x 1, :y 2, :z 3}
+ (mt/strip-extra-keys-transformer))
+; => {:x 1}
+```
+
 * `m/default-schema` to pull the `::m/default` schema from entry schemas
 * `m/explicit-keys` to get a vector of explicit keys from entry schemas (no `::m/default`)
 * Simplify content-dependent schema creation with `m/-simple-schema` and `m/-collection-schema` via new 3-arity `:compile` function of type `children properties options -> props`. Old 2-arity top-level callback function is `m/deprecated!` and support for it will be removed in future versions. [#866](https://github.com/metosin/malli/pull/866)

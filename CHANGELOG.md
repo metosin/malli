@@ -64,7 +64,6 @@ Malli is in well matured [alpha](README.md#alpha).
 * **BREAKING** (post-note 16.8.2023, this should have been a MINOR version bump). `mt/strip-extra-keys-transformer` strips non-defined keys of implicitely open `:map`:
 
 ```clojure
-;; explicitly open map
 (m/decode
  [:map [:x :int]]
  {:x 1, :y 2, :z 3}

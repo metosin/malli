@@ -123,10 +123,14 @@
   (testing "map entries"
     (is (= {:korppu "koira"
             :piilomaan "pikku aasi"
-            :muuli "mukkelis"}
+            :muuli "mukkelis"
+            :aasi "isaskarin"
+            :kissa "pikimustan kissan"}
            (mg/generate [:map {:gen/fmap '#(assoc % :korppu "koira")}
                          [:piilomaan {:gen/fmap '(partial str "pikku ")} [:string {:gen/elements ["aasi"]}]]
-                         [:muuli {:gen/elements ["mukkelis"]} [:string {:gen/elements ["???"]}]]]))))
+                         [:muuli {:gen/elements ["mukkelis"]} [:string {:gen/elements ["???"]}]]
+                         [:aasi {:gen/return "isaskarin"} [:string {:gen/return "???"}]]
+                         [:kissa {:gen/fmap '(partial str "pikimustan ")} [:string {:gen/return "kissan"}]]]))))
 
   (testing "ref"
     (testing "recursion"
@@ -172,6 +176,10 @@
                             #"abc"]))
         "Using :gen/gen")
     (is (= 42 (mg/generate [:re
+                            {:gen/return 42}
+                            #"abc"]))
+        "Using :gen/return")
+    (is (= 42 (mg/generate [:re
                             {:gen/fmap (fn [_] 42)
                              :gen/schema :int}
                             #"abc"]))
@@ -210,6 +218,11 @@
           (m/validate schema (mg/generate generator)))))
     (testing "with generator"
       (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
+
+  (testing "gen/return"
+    (is (every? nil? (mg/sample [:and {:gen/return nil} int?] {:size 1000})))
+    (is (every? #{1} (mg/sample [:and {:gen/return 1} int?] {:size 1000})))
+    (is (every? #{"1"} (mg/sample [:and {:gen/return 1, :gen/fmap 'str} int?] {:size 1000}))))
 
   (testing "gen/elements"
     (is (every? #{1 2} (mg/sample [:and {:gen/elements [1 2]} int?] {:size 1000})))

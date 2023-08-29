@@ -72,6 +72,7 @@
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                org.clojure/clojure {:mvn/version "1.11.1"}
+                               com.clojure-goes-fast/clj-memory-meter {:mvn/version "0.2.2"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

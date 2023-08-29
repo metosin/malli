@@ -623,8 +623,9 @@
 ;;
 
 (defn -simple-schema [props]
-  (let [{:keys [type type-properties pred property-pred min max from-ast to-ast compile]
-         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} props]
+  (let [{:keys [type type-properties pred property-pred min max from-ast to-ast compile options]
+         :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} props
+        type-cache (-create-cache options)]
     (if (fn? props)
       (do
         (-deprecated! "-simple-schema doesn't take fn-props, use :compiled property instead")
@@ -633,6 +634,8 @@
       (reify
         AST
         (-from-ast [parent ast options] (from-ast parent ast options))
+        Cached
+        (-cache [_] type-cache)
         IntoSchema
         (-type [_] type)
         (-type-properties [_] type-properties)
@@ -2034,9 +2037,9 @@
   [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
 
 (defn schema
-  "Creates a Schema object from any of the following:
+  "Creates a Schema instance from any of the following:
 
-   - Schema instance (just returns it)
+   - Schema instance
    - IntoSchema instance
    - Schema vector syntax, e.g. [:string {:min 1}]
    - Qualified Keyword or String, using a registry lookup"
@@ -2045,7 +2048,9 @@
   ([?schema options]
    (cond
      (schema? ?schema) ?schema
-     (into-schema? ?schema) (-into-schema ?schema nil nil options)
+     (into-schema? ?schema) (if (nil? options)
+                              (-cached ?schema :schema #(-into-schema % nil nil nil))
+                              (-into-schema ?schema nil nil options))
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))

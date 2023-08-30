@@ -2344,7 +2344,7 @@ You can also build content-dependent schemas by using a callback function `:comp
                {:pred #(and (int? %) (>= min % max))
                 :min 2 ;; at least 1 child
                 :max 2 ;; at most 1 child
-                :type-properties {:error/fn (fn [error _] (str "should be betweeb " min " and " max ", was " (:value error)))
+                :type-properties {:error/fn (fn [error _] (str "should be between " min " and " max ", was " (:value error)))
                                   :decode/string mt/-string->long
                                   :json-schema {:type "integer"
                                                 :format "int64"
@@ -2358,7 +2358,7 @@ You can also build content-dependent schemas by using a callback function `:comp
 (-> [Between 10 20]
     (m/explain 8)
     (me/humanize))
-; => ["should be betweeb 10 and 20, was 8"]
+; => ["should be between 10 and 20, was 8"]
 
 (mg/sample [Between -10 10])
 ; => (-1 0 -2 -4 -4 0 -2 7 1 0)

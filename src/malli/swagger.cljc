@@ -130,7 +130,9 @@
   (cond-> x
           parameters (update :parameters
                              #(mapv (fn [p]
-                                      (update p :schema dissoc :definitions))
+                                      (if (contains? p :schema)
+                                        (update p :schema dissoc :definitions)
+                                        p))
                                     %))
           responses (update :responses
                             #(reduce-kv (fn [rs k v]

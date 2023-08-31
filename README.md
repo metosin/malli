@@ -1638,6 +1638,11 @@ Schemas can be used to generate values:
   {:seed 42, :size 10})
 ; => "CaR@MavCk70OHiX.yZ"
 
+;; :gen/return (note, not validated)
+(mg/generate
+ [:and {:gen/return 42} :int])
+; => 42
+
 ;; :gen/elements (note, are not validated)
 (mg/generate
   [:and {:gen/elements ["kikka" "kukka" "kakka"]} string?]

@@ -1,5 +1,5 @@
 (ns malli.impl.util
-  #?(:clj (:import #?(:bb (clojure.lang MapEntry)
+  #?(:clj (:import #?(:bb  (clojure.lang MapEntry)
                       :clj (clojure.lang MapEntry LazilyPersistentVector))
                    (java.util.concurrent TimeoutException TimeUnit FutureTask))))
 
@@ -23,7 +23,7 @@
                      (if-not (zero? c)
                        (let [oa (object-array c), iter (.iterator ^Iterable os)]
                          (loop [n 0] (when (.hasNext iter) (aset oa n (f (.next iter))) (recur (unchecked-inc n))))
-                         #?(:bb (vec oa)
+                         #?(:bb  (vec oa)
                             :clj (LazilyPersistentVector/createOwning oa))) []))
              :cljs (into [] (map f) os))))
 
@@ -32,8 +32,8 @@
      (let [task (FutureTask. f), t (Thread. task)]
        (try
          (.start t) (.get task ms TimeUnit/MILLISECONDS)
-         (catch TimeoutException _ (.cancel task true) (.stop t) ::timeout)
-         (catch Exception e (.cancel task true) (.stop t) (throw e))))))
+         (catch TimeoutException _ (.cancel task true) ::timeout)
+         (catch Exception e (.cancel task true) (throw e))))))
 
 #?(:clj
    (defmacro -combine-n
@@ -62,9 +62,9 @@
             ~else)))))
 
 (def ^{:arglists '([[& preds]])} -every-pred
-  #?(:clj (-pred-composer and 16)
+  #?(:clj  (-pred-composer and 16)
      :cljs (fn [preds] (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true preds))))))
 
 (def ^{:arglists '([[& preds]])} -some-pred
-  #?(:clj (-pred-composer or 16)
+  #?(:clj  (-pred-composer or 16)
      :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))

@@ -25,6 +25,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * Add `:gen/return` support in malli.generator [#933](https://github.com/metosin/malli/pull/933)
 * Make uuid transformer to be case insensitive [#929](https://github.com/metosin/malli/pull/929)
 * Add `:default/fn` prop for default-value-transformer [#927](https://github.com/metosin/malli/pull/927)
+* Updated dependencies:
 
 ```clojure
 borkdude/edamame 1.3.20 -> 1.3.23

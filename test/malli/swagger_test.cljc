@@ -285,12 +285,29 @@
                           :name "body"
                           :required true
                           :schema {:properties {:foo {:type "string"}}
-                                   :required [:foo], :type "object"}}]
+                                   :required [:foo] :type "object"}}
+                         {:description ""
+                          :in "query"
+                          :name :a
+                          :required true
+                          :type "string"}
+                         {:description ""
+                          :in "query"
+                          :name :b
+                          :required true
+                          :type "string"}
+                         {:description ""
+                          :in "header"
+                          :name :c
+                          :required true
+                          :type "string"}]
             :responses {200 {:description ""
                              :schema {:properties {:bar {:type "string"}}
                                       :required [:bar], :type "object"}}}}
            (swagger/swagger-spec {::swagger/parameters
-                                  {:body [:map [:foo :string]]}
+                                  {:body [:map [:foo :string]]
+                                   :query [:map [:a :string] [:b :string]]
+                                   :header [:map [:c :string]]}
                                   ::swagger/responses
                                   {200 {:schema [:map [:bar :keyword]]}}}))))
   (testing "generates swagger for ::parameters w/ basic schema + registry"

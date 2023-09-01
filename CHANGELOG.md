@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## Unreleased
+
+* **BREAKING**: `decode` for `:double` and `double?` in cljs doesn't allow trailing garbage any more [#942](https://github.com/metosin/malli/pull/942)
+
 ## 0.12.0 (2023-08-31)
 
 * FIX: retain order with `:catn` unparse, fixes [#925](https://github.com/metosin/malli/issues/925)

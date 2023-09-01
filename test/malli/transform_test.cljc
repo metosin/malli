@@ -40,6 +40,7 @@
   (is (= 1.0 (mt/-string->double "1")))
   (is (= 1.0 (mt/-string->double 1.0)))
   (is (= 1 (mt/-string->double 1)))
+  (is (= "1.0abba" (mt/-string->double "1.0abba")))
   (is (= "abba" (mt/-string->double "abba"))))
 
 (deftest string->keyword
@@ -134,6 +135,7 @@
       (is (= "1" (m/decode int? "1" mt/json-transformer)))
       (is (= 1.0 (m/decode double? 1 mt/json-transformer)))
       (is (= 1 (m/decode double? 1 mt/string-transformer)))
+      (is (= "1.0x" (m/decode double? "1.0x" mt/string-transformer)))
       (is (= :user/kikka (m/decode keyword? "user/kikka" mt/string-transformer))))
     (testing "encode"
       (is (= "1" (m/encode int? 1 mt/string-transformer)))

@@ -68,9 +68,7 @@
 
 (defn -string->double [x]
   (if (string? x)
-    (try #?(:clj  (Double/parseDouble x)
-            :cljs (let [x' (js/Number x)] (if (js/isNaN x') x x')))
-         (catch #?(:clj Exception, :cljs js/Error) _ x))
+    (or (parse-double x) x)
     x))
 
 (defn -number->double [x]

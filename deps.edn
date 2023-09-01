@@ -77,5 +77,4 @@
                   :jvm-opts ["-server"
                              "-Xmx4096m"
                              "-Dclojure.compiler.direct-linking=true"]}
-           :clojure-10 {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
            :clojure-11 {}}}

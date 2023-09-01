@@ -67,7 +67,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 [![Clojars Project](http://clojars.org/metosin/malli/latest-version.svg)](http://clojars.org/metosin/malli)
 
-Malli requires Clojure 1.10+ and is tested against 1.10 and 1.11.
+Malli requires Clojure 1.11.
 
 ## Syntax
 

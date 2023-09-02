@@ -214,21 +214,21 @@
 
 ;;;; ## Alternation
 
-(defn alt-validator [& ?krs]
-  (reduce (fn [acc ?kr]
-            (let [r (entry->regex acc), r* (entry->regex ?kr)]
+(defn alt-validator [?kr & ?krs]
+  (reduce (fn [r ?kr]
+            (let [r* (entry->regex ?kr)]
               (fn [driver regs pos coll k]
                 (park-validator! driver r* regs pos coll k) ; remember fallback
                 (park-validator! driver r regs pos coll k))))
-          ?krs))
+          (entry->regex ?kr) ?krs))
 
-(defn alt-explainer [& ?krs]
-  (reduce (fn [acc ?kr]
-            (let [r (entry->regex acc), r* (entry->regex ?kr)]
+(defn alt-explainer [?kr & ?krs]
+  (reduce (fn [r ?kr]
+            (let [r* (entry->regex ?kr)]
               (fn [driver regs pos coll k]
                 (park-explainer! driver r* regs pos coll k) ; remember fallback
                 (park-explainer! driver r regs pos coll k))))
-          ?krs))
+          (entry->regex ?kr) ?krs))
 
 (defn alt-parser [& rs]
   (reduce (fn [r r*]
@@ -261,13 +261,13 @@
           :malli.core/invalid)
         :malli.core/invalid))))
 
-(defn alt-transformer [& ?krs]
-  (reduce (fn [acc ?kr]
-            (let [r (entry->regex acc), r* (entry->regex ?kr)]
+(defn alt-transformer [?kr & ?krs]
+  (reduce (fn [r ?kr]
+            (let [r* (entry->regex ?kr)]
               (fn [driver regs coll* pos coll k]
                 (park-transformer! driver r* regs coll* pos coll k) ; remember fallback
                 (park-transformer! driver r regs coll* pos coll k))))
-          ?krs))
+          (entry->regex ?kr) ?krs))
 
 ;;;; ## Option
 

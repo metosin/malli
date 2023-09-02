@@ -2977,9 +2977,10 @@
 
 (deftest -issue-937-test
   (testing ":altn can handle just one child entry when nested"
-    (let [schema [:* [:altn [:a [:= :a]]]]]
-      (is (= true (m/validate schema [:a])))
-      (is (= nil (m/explain schema [:a])))
-      (is (= [[:a :a]] (m/parse schema [:a])))
-      (is (= [:a] (m/unparse schema (m/parse schema [:a]))))
-      (is (= [:a] (m/decode [:* [:altn [:a [:= :a]]]] [:a] nil))))))
+    (let [schema [:* [:altn [:a [:= :a]]]]
+          value [:a]]
+      (is (= true (m/validate schema value)))
+      (is (= nil (m/explain schema value)))
+      (is (= [[:a :a]] (m/parse schema value)))
+      (is (= value (m/unparse schema (m/parse schema value))))
+      (is (= value (m/decode schema [:a] nil))))))

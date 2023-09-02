@@ -2983,4 +2983,4 @@
       (is (= nil (m/explain schema value)))
       (is (= [[:a :a]] (m/parse schema value)))
       (is (= value (m/unparse schema (m/parse schema value))))
-      (is (= value (m/decode schema [:a] nil))))))
+      (is (= value (m/decode schema value nil))))))

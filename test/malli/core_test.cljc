@@ -2974,3 +2974,12 @@
                   [:i :int]]
           input [1 2 3 4 5 6 7 8 9]]
       (is (= input (->> input (m/parse schema) (m/unparse schema)))))))
+
+(deftest -issue-937-test
+  (testing ":altn can handle just one child entry when nested"
+    (let [schema [:* [:altn [:a [:= :a]]]]]
+      (is (= true (m/validate schema [:a])))
+      (is (= nil (m/explain schema [:a])))
+      (is (= [[:a :a]] (m/parse schema [:a])))
+      (is (= [:a] (m/unparse schema (m/parse schema [:a]))))
+      (is (= [:a] (m/decode [:* [:altn [:a [:= :a]]]] [:a] nil))))))

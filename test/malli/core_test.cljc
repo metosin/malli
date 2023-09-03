@@ -330,15 +330,44 @@
                                 [:y keyword?]
                                 [:enter boolean?]]]]]]
           (are [input result]
-            (= (m/decode (mu/closed-schema schema) input mt/string-transformer) result)
+            (= (m/decode (mu/closed-schema schema) input (mt/string-transformer)) result)
 
-            {:x "true"} {:x :true, :enter true, :leave true}
-            {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
+            {:x "true"} {:x :true, :enter true, :leave true} ;; first
+            {:x "true", :enter "invalid"} {:x :true, :enter "invalid", :leave true} ;; first (fallback)
+            {:y "true"} {:y :true, :enter true, :leave true} ;; second
+            {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"} ;; no match
+            {:x "true", :y "true"} {:x :true, :y "true", :enter true, :leave true}))) ;; first (fallback))
 
-            {:y "true"} {:y :true, :enter true, :leave true}
-            {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
+      (testing "branch short-circuit"
 
-            {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true}))))
+        (let [math (mt/transformer {:name :math})
+              math-string [:string {:decode/math (partial str "math_")}]
+              math-kw-string [:and math-string [:any {:decode/math keyword}]]
+              bono-string [:string {:decode/math (partial str "such_")}]]
+
+          (testing "first successful branch is selected"
+            (is (= "math_1"
+                   (m/decode math-string 1 math)
+                   (m/decode [:and math-string] 1 math)
+                   (m/decode [:or math-string] 1 math)
+                   (m/decode [:or
+                              math-kw-string
+                              math-string
+                              bono-string] 1 math)
+                   (m/decode [:orn ["string" math-string]] 1 math)
+                   (m/decode [:orn
+                              ["kw-math" math-kw-string]
+                              ["math" math-string]
+                              ["bono" bono-string]] 1 math))))
+
+          (testing "first branch is selected, even if invalid"
+            (is (= :math_1
+                   (m/decode [:or
+                              math-kw-string
+                              :string] 1 math)
+                   (m/decode [:orn
+                              ["kw-math" math-kw-string]
+                              ["string" :string]] 1 math)))))))
 
     (testing "explain with branches"
       (let [schema [:and pos-int? neg-int?]]

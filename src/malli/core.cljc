@@ -764,11 +764,13 @@
                   (-intercepting this-transformer
                                  (if (= :decode method)
                                    (fn [x]
-                                     (reduce-kv
-                                      (fn [x i transformer]
-                                        (let [x* (transformer x)]
-                                          (if ((nth validators i) x*) (reduced x*) x)))
-                                      x transformers))
+                                     (key (reduce-kv
+                                           (fn [acc i transformer]
+                                             (let [x* (transformer (val acc))]
+                                               (if ((nth validators i) x*)
+                                                 (reduced (miu/-tagged x*))
+                                                 (miu/-tagged (or (key acc) x*) x))))
+                                           (miu/-tagged nil x) transformers)))
                                    (fn [x]
                                      (reduce-kv
                                       (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
@@ -839,11 +841,13 @@
                   (-intercepting this-transformer
                                  (if (= :decode method)
                                    (fn [x]
-                                     (reduce-kv
-                                      (fn [x i transformer]
-                                        (let [x* (transformer x)]
-                                          (if ((nth validators i) x*) (reduced x*) x)))
-                                      x transformers))
+                                     (key (reduce-kv
+                                           (fn [acc i transformer]
+                                             (let [x* (transformer (val acc))]
+                                               (if ((nth validators i) x*)
+                                                 (reduced (miu/-tagged x*))
+                                                 (miu/-tagged (or (key acc) x*) x))))
+                                           (miu/-tagged nil x) transformers)))
                                    (fn [x]
                                      (reduce-kv
                                       (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))

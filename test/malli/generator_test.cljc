@@ -7,7 +7,7 @@
             [malli.generator :as mg]
             [malli.json-schema-test :as json-schema-test]
             [malli.util :as mu]
-            #?(:clj [malli.test-macros :refer [when-env]]
+            #?(:clj  [malli.test-macros :refer [when-env]]
                :cljs ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
   #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
@@ -158,7 +158,7 @@
                               [:int [:map [:type [:= :int]] [:int int?]]]
                               [:multi [:map [:type [:= :multi]] [:multi {:optional true} [:ref ::multi]]]]]}} ::multi])))
 
-  #?(:bb nil ;; test.chuck doesn't work in bb
+  #?(:bb  nil ;; test.chuck doesn't work in bb
      :clj (testing "regex"
             (let [re #"^\d+ \d+$"]
               (m/validate re (mg/generate re)))
@@ -195,19 +195,20 @@
          #":malli.generator/no-generator"
          (mg/generate [:fn '(fn [x] (<= 0 x 10))]))))
 
-  (when-env "TEST_SCI"
-    (testing "sci not available"
-      (let [schema (m/schema [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})]
-        (is (thrown-with-msg?
-             #?(:clj Exception, :cljs js/Error)
-             #":malli.core/sci-not-available"
-             (mg/generator schema)))
-        (is (thrown-with-msg?
-             #?(:clj Exception, :cljs js/Error)
-             #":malli.core/sci-not-available"
-             (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
-        (testing "direct options win"
-          (is (mg/generator schema {::m/disable-sci false}))))))
+  (when-env
+   "TEST_SCI"
+   (testing "sci not available"
+     (let [schema (m/schema [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})]
+       (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/sci-not-available"
+            (mg/generator schema)))
+       (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/sci-not-available"
+            (mg/generator [:string {:gen/fmap '(partial str "kikka_")}] {::m/disable-sci true})))
+       (testing "direct options win"
+         (is (mg/generator schema {::m/disable-sci false}))))))
 
   (testing "generator override"
     (testing "without generator"
@@ -392,11 +393,11 @@
                      [:ref ::cons]]
                     {:seed 1})
          (mg/sample (gen/recursive-gen
-                      (fn [rec]
-                        (gen/one-of [(gen/return nil)
-                                     (gen/vector (gen/tuple (gen/large-integer* {:min 1}) rec))]))
-                      (gen/one-of [(gen/return nil)
-                                   (gen/return [])]))
+                     (fn [rec]
+                       (gen/one-of [(gen/return nil)
+                                    (gen/vector (gen/tuple (gen/large-integer* {:min 1}) rec))]))
+                     (gen/one-of [(gen/return nil)
+                                  (gen/return [])]))
                     {:seed 1})))
   (is (= '(-1 0 [-1 -1] [] 0 [[]] [] [[] []] -1 [])
          (mg/sample [:schema
@@ -409,27 +410,27 @@
                      [:ref ::data]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [rec] (gen/one-of [(gen/large-integer* {})
-                                             (gen/vector rec)]))
-                      (gen/one-of [(gen/large-integer* {})
-                                   (gen/return [])]))
+                     (fn [rec] (gen/one-of [(gen/large-integer* {})
+                                            (gen/vector rec)]))
+                     (gen/one-of [(gen/large-integer* {})
+                                  (gen/return [])]))
                     {:seed 0})))
   (is (= '(-1 [[]] [] [[]] 1 0 -14 2 -1 [[0 1] [] 0 [] -1 -1 [] [-1] []])
          (mg/sample [:schema
-                     {:registry {::data    [:or
-                                            ::int
-                                            ::vector]
-                                 ::int     :int
-                                 ::vector  [:vector
-                                            [:ref ::data]]}}
+                     {:registry {::data [:or
+                                         ::int
+                                         ::vector]
+                                 ::int :int
+                                 ::vector [:vector
+                                           [:ref ::data]]}}
                      ::data]
                     {:seed 0})
          (mg/sample (gen/one-of [(gen/large-integer* {})
                                  (gen/vector (gen/recursive-gen
-                                               (fn [rec] (gen/one-of [(gen/large-integer* {})
-                                                                      (gen/vector rec)]))
-                                               (gen/one-of [(gen/large-integer* {})
-                                                            (gen/return [])])))])
+                                              (fn [rec] (gen/one-of [(gen/large-integer* {})
+                                                                     (gen/vector rec)]))
+                                              (gen/one-of [(gen/large-integer* {})
+                                                           (gen/return [])])))])
                     {:seed 0})))
   (is (= '(nil nil ["ping" ["pong" nil]] ["ping" nil] nil ["ping" ["pong" nil]] ["ping" nil] ["ping" ["pong" nil]] nil ["ping" nil])
          (mg/sample [:schema
@@ -438,18 +439,18 @@
                      [:ref ::ping]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [ping]
-                        (gen/one-of [(gen/return nil)
-                                     (gen/tuple (gen/return "ping")
-                                                (gen/one-of [(gen/return nil)
-                                                             (gen/tuple (gen/return "pong")
-                                                                        ping)]))]))
-                      (gen/one-of [(gen/return nil)
-                                   (gen/tuple (gen/return "ping")
-                                              (gen/one-of
-                                                [(gen/return nil)
-                                                 (gen/tuple (gen/return "pong")
-                                                            (gen/return nil))]))]))
+                     (fn [ping]
+                       (gen/one-of [(gen/return nil)
+                                    (gen/tuple (gen/return "ping")
+                                               (gen/one-of [(gen/return nil)
+                                                            (gen/tuple (gen/return "pong")
+                                                                       ping)]))]))
+                     (gen/one-of [(gen/return nil)
+                                  (gen/tuple (gen/return "ping")
+                                             (gen/one-of
+                                              [(gen/return nil)
+                                               (gen/tuple (gen/return "pong")
+                                                          (gen/return nil))]))]))
                     {:seed 0})))
   (is (= '([["ping" ["pong" ["ping" ["pong" nil]]]] ["pong" ["ping" nil]]] [["ping" nil] ["pong" ["ping" ["pong" ["ping" nil]]]]]
            [["ping" ["pong" nil]] ["pong" ["ping" nil]]] [["ping" nil] ["pong" ["ping" nil]]] [["ping" nil] ["pong" nil]]
@@ -461,29 +462,29 @@
                      [:tuple [:ref ::ping] [:ref ::pong]]]
                     {:seed 0})
          (mg/sample (gen/tuple (gen/recursive-gen
-                                 (fn [ping]
-                                   (gen/tuple (gen/return "ping")
-                                              (gen/one-of [(gen/return nil)
-                                                           (gen/tuple (gen/return "pong")
-                                                                      (gen/one-of [(gen/return nil)
-                                                                                   ping]))])))
-                                 (gen/tuple (gen/return "ping")
-                                            (gen/one-of
-                                              [(gen/return nil)
-                                               (gen/tuple (gen/return "pong")
-                                                          (gen/return nil))])))
+                                (fn [ping]
+                                  (gen/tuple (gen/return "ping")
+                                             (gen/one-of [(gen/return nil)
+                                                          (gen/tuple (gen/return "pong")
+                                                                     (gen/one-of [(gen/return nil)
+                                                                                  ping]))])))
+                                (gen/tuple (gen/return "ping")
+                                           (gen/one-of
+                                            [(gen/return nil)
+                                             (gen/tuple (gen/return "pong")
+                                                        (gen/return nil))])))
                                (gen/recursive-gen
-                                 (fn [pong]
-                                   (gen/tuple (gen/return "pong")
-                                              (gen/one-of [(gen/return nil)
-                                                           (gen/tuple (gen/return "ping")
-                                                                      (gen/one-of [(gen/return nil)
-                                                                                   pong]))])))
-                                 (gen/tuple (gen/return "pong")
-                                            (gen/one-of
-                                              [(gen/return nil)
-                                               (gen/tuple (gen/return "ping")
-                                                          (gen/return nil))]))))
+                                (fn [pong]
+                                  (gen/tuple (gen/return "pong")
+                                             (gen/one-of [(gen/return nil)
+                                                          (gen/tuple (gen/return "ping")
+                                                                     (gen/one-of [(gen/return nil)
+                                                                                  pong]))])))
+                                (gen/tuple (gen/return "pong")
+                                           (gen/one-of
+                                            [(gen/return nil)
+                                             (gen/tuple (gen/return "ping")
+                                                        (gen/return nil))]))))
                     {:seed 0})))
   (is (= '([["A" ["B" ["C" ["A" nil]]]] ["B" ["C" nil]]] [["A" nil] ["B" ["C" ["A" ["B" nil]]]]] [["A" ["B" nil]] ["B" ["C" nil]]]
            [["A" nil] ["B" ["C" nil]]] [["A" nil] ["B" nil]] [["A" ["B" nil]] ["B" nil]] [["A" nil] ["B" ["C" ["A" nil]]]]
@@ -494,38 +495,38 @@
                                  ::C [:tuple [:= "C"] [:maybe [:ref ::A]]]}}
                      [:tuple [:ref ::A] [:ref ::B]]]
                     {:seed 0})
-        (mg/sample (gen/tuple
+         (mg/sample (gen/tuple
                      (gen/recursive-gen
-                       (fn [A]
-                         (gen/tuple (gen/return "A")
-                                    (gen/one-of [(gen/return nil)
-                                                 (gen/tuple (gen/return "B")
-                                                            (gen/one-of [(gen/return nil)
-                                                                         (gen/tuple (gen/return "C")
-                                                                                    (gen/one-of [(gen/return nil)
-                                                                                                 A]))]))])))
-                       (gen/tuple (gen/return "A")
-                                  (gen/one-of [(gen/return nil)
-                                               (gen/tuple (gen/return "B")
-                                                          (gen/one-of [(gen/return nil)
-                                                                       (gen/tuple (gen/return "C")
-                                                                                  (gen/return nil))]))])))
+                      (fn [A]
+                        (gen/tuple (gen/return "A")
+                                   (gen/one-of [(gen/return nil)
+                                                (gen/tuple (gen/return "B")
+                                                           (gen/one-of [(gen/return nil)
+                                                                        (gen/tuple (gen/return "C")
+                                                                                   (gen/one-of [(gen/return nil)
+                                                                                                A]))]))])))
+                      (gen/tuple (gen/return "A")
+                                 (gen/one-of [(gen/return nil)
+                                              (gen/tuple (gen/return "B")
+                                                         (gen/one-of [(gen/return nil)
+                                                                      (gen/tuple (gen/return "C")
+                                                                                 (gen/return nil))]))])))
                      (gen/recursive-gen
-                       (fn [B]
-                         (gen/tuple (gen/return "B")
-                                    (gen/one-of [(gen/return nil)
-                                                 (gen/tuple (gen/return "C")
-                                                            (gen/one-of [(gen/return nil)
-                                                                         (gen/tuple (gen/return "A")
-                                                                                    (gen/one-of [(gen/return nil)
-                                                                                                 B]))]))])))
-                       (gen/tuple (gen/return "B")
-                                  (gen/one-of [(gen/return nil)
-                                               (gen/tuple (gen/return "C")
-                                                          (gen/one-of [(gen/return nil)
-                                                                       (gen/tuple (gen/return "A")
-                                                                                  (gen/return nil))]))]))))
-                   {:seed 0})))
+                      (fn [B]
+                        (gen/tuple (gen/return "B")
+                                   (gen/one-of [(gen/return nil)
+                                                (gen/tuple (gen/return "C")
+                                                           (gen/one-of [(gen/return nil)
+                                                                        (gen/tuple (gen/return "A")
+                                                                                   (gen/one-of [(gen/return nil)
+                                                                                                B]))]))])))
+                      (gen/tuple (gen/return "B")
+                                 (gen/one-of [(gen/return nil)
+                                              (gen/tuple (gen/return "C")
+                                                         (gen/one-of [(gen/return nil)
+                                                                      (gen/tuple (gen/return "A")
+                                                                                 (gen/return nil))]))]))))
+                    {:seed 0})))
   ;; linked list of ABC that never repeats
   (is (= '(["A" ["B" nil]] ["A" nil] ["A" nil] ["A" ["C" ["B" nil]]] ["A" ["C" nil]] ["A" nil] ["A" ["C" ["B" ["C" ["B" nil]]]]] ["A" nil] ["A" ["B" nil]] ["A" nil])
          (mg/sample [:schema
@@ -535,67 +536,67 @@
                      [:ref ::A]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [A]
-                        (gen/tuple (gen/return "A")
-                                   (gen/one-of [(gen/return nil)
-                                                (gen/one-of
-                                                  [(gen/recursive-gen
-                                                     (fn [B]
-                                                       (gen/tuple (gen/return "B")
-                                                                  (gen/one-of [(gen/return nil)
-                                                                               (gen/one-of
-                                                                                 [(gen/tuple (gen/return "C")
-                                                                                             (gen/one-of [(gen/return nil)
-                                                                                                          (gen/one-of [A B])]))
-                                                                                  A])])))
-                                                     (gen/tuple (gen/return "B")
-                                                                (gen/one-of [(gen/return nil)
-                                                                             (gen/one-of
-                                                                               [(gen/tuple (gen/return "C")
-                                                                                           (gen/one-of [(gen/return nil)
-                                                                                                        A]))
-                                                                                A])])))
-                                                   (gen/recursive-gen
-                                                     (fn [C]
-                                                       (gen/tuple (gen/return "C")
-                                                                  (gen/one-of [(gen/return nil)
-                                                                               (gen/one-of
-                                                                                 [A
-                                                                                  (gen/tuple (gen/return "B")
-                                                                                             (gen/one-of [(gen/return nil)
-                                                                                                          (gen/one-of [C A])]))])])))
-                                                     (gen/tuple (gen/return "C")
-                                                                (gen/one-of [(gen/return nil)
-                                                                             (gen/one-of
-                                                                               [A
-                                                                                (gen/tuple (gen/return "B")
-                                                                                           (gen/one-of [(gen/return nil)
-                                                                                                        A]))])])))])])))
-                      (gen/tuple (gen/return "A")
-                                 (gen/one-of [(gen/return nil)
-                                              (gen/one-of
+                     (fn [A]
+                       (gen/tuple (gen/return "A")
+                                  (gen/one-of [(gen/return nil)
+                                               (gen/one-of
                                                 [(gen/recursive-gen
-                                                   (fn [B]
-                                                     (gen/tuple (gen/return "B")
-                                                                (gen/one-of [(gen/return nil)
-                                                                             (gen/tuple (gen/return "C")
-                                                                                        (gen/one-of [(gen/return nil)
-                                                                                                     B]))])))
-                                                   (gen/tuple (gen/return "B")
-                                                              (gen/one-of [(gen/return nil)
-                                                                           (gen/tuple (gen/return "C")
-                                                                                      (gen/return nil))])))
+                                                  (fn [B]
+                                                    (gen/tuple (gen/return "B")
+                                                               (gen/one-of [(gen/return nil)
+                                                                            (gen/one-of
+                                                                             [(gen/tuple (gen/return "C")
+                                                                                         (gen/one-of [(gen/return nil)
+                                                                                                      (gen/one-of [A B])]))
+                                                                              A])])))
+                                                  (gen/tuple (gen/return "B")
+                                                             (gen/one-of [(gen/return nil)
+                                                                          (gen/one-of
+                                                                           [(gen/tuple (gen/return "C")
+                                                                                       (gen/one-of [(gen/return nil)
+                                                                                                    A]))
+                                                                            A])])))
                                                  (gen/recursive-gen
-                                                   (fn [C]
-                                                     (gen/tuple (gen/return "C")
-                                                                (gen/one-of [(gen/return nil)
-                                                                             (gen/tuple (gen/return "B")
-                                                                                        (gen/one-of [(gen/return nil)
-                                                                                                     C]))])))
-                                                   (gen/tuple (gen/return "C")
-                                                              (gen/one-of [(gen/return nil)
-                                                                           (gen/tuple (gen/return "B")
-                                                                                      (gen/return nil))])))])])))
+                                                  (fn [C]
+                                                    (gen/tuple (gen/return "C")
+                                                               (gen/one-of [(gen/return nil)
+                                                                            (gen/one-of
+                                                                             [A
+                                                                              (gen/tuple (gen/return "B")
+                                                                                         (gen/one-of [(gen/return nil)
+                                                                                                      (gen/one-of [C A])]))])])))
+                                                  (gen/tuple (gen/return "C")
+                                                             (gen/one-of [(gen/return nil)
+                                                                          (gen/one-of
+                                                                           [A
+                                                                            (gen/tuple (gen/return "B")
+                                                                                       (gen/one-of [(gen/return nil)
+                                                                                                    A]))])])))])])))
+                     (gen/tuple (gen/return "A")
+                                (gen/one-of [(gen/return nil)
+                                             (gen/one-of
+                                              [(gen/recursive-gen
+                                                (fn [B]
+                                                  (gen/tuple (gen/return "B")
+                                                             (gen/one-of [(gen/return nil)
+                                                                          (gen/tuple (gen/return "C")
+                                                                                     (gen/one-of [(gen/return nil)
+                                                                                                  B]))])))
+                                                (gen/tuple (gen/return "B")
+                                                           (gen/one-of [(gen/return nil)
+                                                                        (gen/tuple (gen/return "C")
+                                                                                   (gen/return nil))])))
+                                               (gen/recursive-gen
+                                                (fn [C]
+                                                  (gen/tuple (gen/return "C")
+                                                             (gen/one-of [(gen/return nil)
+                                                                          (gen/tuple (gen/return "B")
+                                                                                     (gen/one-of [(gen/return nil)
+                                                                                                  C]))])))
+                                                (gen/tuple (gen/return "C")
+                                                           (gen/one-of [(gen/return nil)
+                                                                        (gen/tuple (gen/return "B")
+                                                                                   (gen/return nil))])))])])))
                     {:seed 0})))
   (is (= '([:E [:B]] [:E [:G [:D]]] [:E [:B]] [:E [:C]] [:E [:F [:D]]] [:E [:G [:B]]] [:E [:C]] [:E [:G [:C]]] [:E [:A]] [:E [:B]])
          (mg/sample [:schema {:registry {::A [:tuple [:= :A]]
@@ -618,18 +619,18 @@
                     {:seed 0})
          (mg/sample (gen/tuple (gen/return :E)
                                (gen/recursive-gen
-                                 (fn [item]
-                                   (gen/one-of [(gen/tuple (gen/return :A))
-                                                (gen/tuple (gen/return :B))
-                                                (gen/tuple (gen/return :C))
-                                                (gen/tuple (gen/return :D))
-                                                (gen/tuple (gen/return :E) item)
-                                                (gen/tuple (gen/return :F) item)
-                                                (gen/tuple (gen/return :G) item)]))
-                                 (gen/one-of [(gen/tuple (gen/return :A))
-                                              (gen/tuple (gen/return :B))
-                                              (gen/tuple (gen/return :C))
-                                              (gen/tuple (gen/return :D))])))
+                                (fn [item]
+                                  (gen/one-of [(gen/tuple (gen/return :A))
+                                               (gen/tuple (gen/return :B))
+                                               (gen/tuple (gen/return :C))
+                                               (gen/tuple (gen/return :D))
+                                               (gen/tuple (gen/return :E) item)
+                                               (gen/tuple (gen/return :F) item)
+                                               (gen/tuple (gen/return :G) item)]))
+                                (gen/one-of [(gen/tuple (gen/return :A))
+                                             (gen/tuple (gen/return :B))
+                                             (gen/tuple (gen/return :C))
+                                             (gen/tuple (gen/return :D))])))
                     {:seed 0})))
   (is (= '([:not true] [:not false] [:and [[:not false]]] [:or [[:not false]]] false [:and [true [:not true]]] [:and ()] [:or [[:or ()] false]] [:not true] [:and [[:not true]]])
          (mg/sample [:schema
@@ -639,19 +640,19 @@
                         :boolean
                         [:tuple [:enum :not] :boolean]
                         [:tuple [:enum :and] [:* [:ref ::formula]]]
-                        [:tuple [:enum :or]  [:* [:ref ::formula]]]]}}
+                        [:tuple [:enum :or] [:* [:ref ::formula]]]]}}
                      [:ref ::formula]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [formula]
-                        (gen/one-of [gen/boolean
-                                     (gen/tuple (gen/return :not) gen/boolean)
-                                     (gen/tuple (gen/return :and) (gen/vector formula))
-                                     (gen/tuple (gen/return :or) (gen/vector formula))]))
-                      (gen/one-of [gen/boolean
-                                   (gen/tuple (gen/return :not) gen/boolean)
-                                   (gen/tuple (gen/return :and) (gen/return ()))
-                                   (gen/tuple (gen/return :or) (gen/return ()))]))
+                     (fn [formula]
+                       (gen/one-of [gen/boolean
+                                    (gen/tuple (gen/return :not) gen/boolean)
+                                    (gen/tuple (gen/return :and) (gen/vector formula))
+                                    (gen/tuple (gen/return :or) (gen/vector formula))]))
+                     (gen/one-of [gen/boolean
+                                  (gen/tuple (gen/return :not) gen/boolean)
+                                  (gen/tuple (gen/return :and) (gen/return ()))
+                                  (gen/tuple (gen/return :or) (gen/return ()))]))
                     {:seed 0})))
   (is (= '([:not true] [:not false] [:and [true true]] [:or [true [:not true]]] false [:and [true [:not true] [:not true]]] [:not false] [:or [[:not true] [:not true] false]] [:not true] [:and [[:and [[:not false]]] [:not true]]])
          (mg/sample [:schema
@@ -661,17 +662,17 @@
                         :boolean
                         [:tuple [:enum :not] :boolean]
                         [:tuple [:enum :and] [:+ [:ref ::formula]]]
-                        [:tuple [:enum :or]  [:+ [:ref ::formula]]]]}}
+                        [:tuple [:enum :or] [:+ [:ref ::formula]]]]}}
                      [:ref ::formula]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [formula]
-                        (gen/one-of [gen/boolean
-                                     (gen/tuple (gen/return :not) gen/boolean)
-                                     (gen/tuple (gen/return :and) (#'mg/gen-vector-min formula 1 {}))
-                                     (gen/tuple (gen/return :or) (#'mg/gen-vector-min formula 1 {}))]))
-                      (gen/one-of [gen/boolean
-                                   (gen/tuple (gen/return :not) gen/boolean)]))
+                     (fn [formula]
+                       (gen/one-of [gen/boolean
+                                    (gen/tuple (gen/return :not) gen/boolean)
+                                    (gen/tuple (gen/return :and) (#'mg/gen-vector-min formula 1 {}))
+                                    (gen/tuple (gen/return :or) (#'mg/gen-vector-min formula 1 {}))]))
+                     (gen/one-of [gen/boolean
+                                  (gen/tuple (gen/return :not) gen/boolean)]))
                     {:seed 0}))))
 
 (deftest infinite-generator-test
@@ -713,11 +714,11 @@
   ;; this incorrect strategy.
   (is (= 42
          (mg/generate
-           [:schema {:registry {::a [:ref ::b] ;; (1)
-                                ::b [:schema {:registry {::a [:ref ::b] ;; (2)
-                                                         ::b [:= 42]}}
-                                     [:ref ::a]]}}
-            [:ref ::a]])))
+          [:schema {:registry {::a [:ref ::b] ;; (1)
+                               ::b [:schema {:registry {::a [:ref ::b] ;; (2)
+                                                        ::b [:= 42]}}
+                                    [:ref ::a]]}}
+           [:ref ::a]])))
   ;; if the outer ::a shadowed the inner one, it would be equivalent to
   ;; [:maybe :never] == [:maybe [:maybe :never]] == ..., which is just :nil
   (is (not-every? nil? (mg/sample [:schema {:registry {::a [:schema {:registry {::a :int}} [:maybe [:ref ::a]]]}}
@@ -731,41 +732,41 @@
 
 (deftest recursive-gen-depth-test
   (is (some some? (mg/sample
-                    [:schema {:registry {::cons [:or :nil [:tuple pos-int? [:ref ::cons]]]}}
-                     [:ref ::cons]]
-                    {:seed 0}))))
+                   [:schema {:registry {::cons [:or :nil [:tuple pos-int? [:ref ::cons]]]}}
+                    [:ref ::cons]]
+                   {:seed 0}))))
 
 (deftest recursiven-gen-correspondence-test
   (dotimes [seed 10]
     (testing seed
       (testing "initial :ref"
         (is (= (mg/sample
-                 (mg/generator
-                   [:schema {:registry {::cons [:or :nil [:tuple [:ref ::cons]]]}}
-                    [:ref ::cons]])
-                 {:seed seed
-                  :size 10})
+                (mg/generator
+                 [:schema {:registry {::cons [:or :nil [:tuple [:ref ::cons]]]}}
+                  [:ref ::cons]])
+                {:seed seed
+                 :size 10})
                (mg/sample (gen/recursive-gen
-                            (fn [rec]
-                              (gen/one-of [(gen/return nil)
-                                           (gen/tuple rec)]))
-                            (gen/return nil))
+                           (fn [rec]
+                             (gen/one-of [(gen/return nil)
+                                          (gen/tuple rec)]))
+                           (gen/return nil))
                           {:seed seed
                            :size 10}))))
       (testing "no initial :ref"
         (is (= (mg/sample
-                 (mg/generator
-                   [:schema {:registry {::cons [:or :nil [:tuple [:ref ::cons]]]}}
-                    ::cons])
-                 {:seed seed
-                  :size 10})
+                (mg/generator
+                 [:schema {:registry {::cons [:or :nil [:tuple [:ref ::cons]]]}}
+                  ::cons])
+                {:seed seed
+                 :size 10})
                (mg/sample (gen/one-of
-                            [(gen/return nil)
-                             (gen/tuple (gen/recursive-gen
-                                          (fn [rec]
-                                            (gen/one-of [(gen/return nil)
-                                                         (gen/tuple rec)]))
-                                          (gen/return nil)))])
+                           [(gen/return nil)
+                            (gen/tuple (gen/recursive-gen
+                                        (fn [rec]
+                                          (gen/one-of [(gen/return nil)
+                                                       (gen/tuple rec)]))
+                                        (gen/return nil)))])
                           {:seed seed
                            :size 10})))))))
 
@@ -784,13 +785,13 @@
          (for [size-pow (range 5)]
            (into (sorted-map)
                  (frequencies
-                   (map
-                     (comp count flatten)
-                     (mg/sample
-                       [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
-                        ::cons]
-                       {:seed 0
-                        :size (Math/pow 10 size-pow)}))))))))
+                  (map
+                   (comp count flatten)
+                   (mg/sample
+                    [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
+                     ::cons]
+                    {:seed 0
+                     :size (Math/pow 10 size-pow)}))))))))
 
 ;; tests gen/sized usage
 (deftest generator-min-only-test
@@ -809,11 +810,11 @@
                      [:ref ::A]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [A]
-                        (gen/one-of [(gen/large-integer* {})
-                                     (gen/vector (gen/such-that vector? A 100))]))
-                      (gen/one-of [(gen/large-integer* {})
-                                   (gen/return [])]))
+                     (fn [A]
+                       (gen/one-of [(gen/large-integer* {})
+                                    (gen/vector (gen/such-that vector? A 100))]))
+                     (gen/one-of [(gen/large-integer* {})
+                                  (gen/return [])]))
                     {:seed 0}))))
 
 (deftest map-schema-simplify-test
@@ -822,25 +823,25 @@
            (mg/sample [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
-                        (fn [rec]
-                          (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
-                                    (gen/tuple (gen/tuple) (gen/tuple
-                                                             (gen/one-of [(gen/return nil)
-                                                                          (gen/fmap (fn [v] [:rec v]) rec)])))))
-                        (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
-                                  (gen/tuple (gen/tuple) (gen/tuple (gen/one-of [(gen/return nil)])))))
+                       (fn [rec]
+                         (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
+                                   (gen/tuple (gen/tuple) (gen/tuple
+                                                           (gen/one-of [(gen/return nil)
+                                                                        (gen/fmap (fn [v] [:rec v]) rec)])))))
+                       (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
+                                 (gen/tuple (gen/tuple) (gen/tuple (gen/one-of [(gen/return nil)])))))
                       {:seed 0}))))
   (testing "simplify required key"
     (is (= '([] [] [{:rec []} {:rec []}] [{:rec []} {:rec []}] [] [{:rec []}] [] [{:rec []} {:rec []}] [{:rec []}] [{:rec [{:rec []} {:rec []}]} {:rec [{:rec []}]}])
            (mg/sample [:schema {:registry {::rec [:vector [:map [:rec [:ref ::rec]]]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
-                        (fn [rec]
-                          (gen/vector
-                            (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
-                                      (gen/tuple (gen/tuple (gen/fmap (fn [v] [:rec v]) rec))
-                                                 (gen/tuple)))))
-                        (gen/return []))
+                       (fn [rec]
+                         (gen/vector
+                          (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
+                                    (gen/tuple (gen/tuple (gen/fmap (fn [v] [:rec v]) rec))
+                                               (gen/tuple)))))
+                       (gen/return []))
                       {:seed 0})))))
 
 (deftest map-of-schema-simplify-test
@@ -848,10 +849,10 @@
          (mg/sample [:schema {:registry {::rec [:map-of [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                      (fn [rec]
-                        (gen/fmap #(into {} %)
-                                  (gen/vector-distinct (gen/tuple rec rec))))
-                      (gen/return {}))
+                     (fn [rec]
+                       (gen/fmap #(into {} %)
+                                 (gen/vector-distinct (gen/tuple rec rec))))
+                     (gen/return {}))
                     {:seed 0}))))
 
 (deftest vector-schema-simplify-test
@@ -860,19 +861,19 @@
            (mg/sample [:schema {:registry {::rec [:vector [:ref ::rec]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
-                        (fn [rec]
-                          (gen/vector rec))
-                        (gen/return []))
+                       (fn [rec]
+                         (gen/vector rec))
+                       (gen/return []))
                       {:seed 0}))))
   (testing "no empty vectors allowed"
     (is (= [nil nil [nil nil nil] [nil] nil [nil nil] nil [nil nil nil] nil [[nil nil nil]]]
            (mg/sample [:schema {:registry {::rec [:maybe [:vector {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
-                        (fn [rec]
-                          (gen/one-of [(gen/return nil)
-                                       (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
-                        (gen/one-of [(gen/return nil)]))
+                       (fn [rec]
+                         (gen/one-of [(gen/return nil)
+                                      (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
+                       (gen/one-of [(gen/return nil)]))
                       {:seed 0})))))
 
 (defn alphanumeric-char? [c]
@@ -891,23 +892,23 @@
     (testing (pr-str seed)
       (testing "(and min (= min max))"
         (is (alphanumeric-string?
-              (mg/generate [:string {:min 10
-                                     :max 10}]
-                           {:seed seed}))))
+             (mg/generate [:string {:min 10
+                                    :max 10}]
+                          {:seed seed}))))
       (testing "(and min max)"
         (is (alphanumeric-string?
-              (mg/generate [:string {:min 10
-                                     :max 20}]
-                           {:seed seed}))))
+             (mg/generate [:string {:min 10
+                                    :max 20}]
+                          {:seed seed}))))
       (testing "min"
         (is (alphanumeric-string?
-              (mg/generate [:string {:min 10}]
-                           {:seed seed}))))
+             (mg/generate [:string {:min 10}]
+                          {:seed seed}))))
       (testing "max"
         (is (alphanumeric-string?
-              (mg/generate [:string {:max 20}]
-                           {:seed seed}))))
+             (mg/generate [:string {:max 20}]
+                          {:seed seed}))))
       (testing ":else"
         (is (alphanumeric-string?
-              (mg/generate [:string {}]
-                           {:seed seed})))))))
+             (mg/generate [:string {}]
+                          {:seed seed})))))))

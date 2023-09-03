@@ -22,12 +22,12 @@
    (generator-ast ?schema nil))
   ([?schema options]
    (walk/postwalk
-     (fn [g]
-       (if (mg/-unreachable-gen? g)
-         {:op :unreachable}
-         (or (-> g meta ::mg/generator-ast)
-             g)))
-     (generator ?schema (assoc options ::mg/generator-ast true)))))
+    (fn [g]
+      (if (mg/-unreachable-gen? g)
+        {:op :unreachable}
+        (or (-> g meta ::mg/generator-ast)
+            g)))
+    (generator ?schema (assoc options ::mg/generator-ast true)))))
 
 (defn- qualify-in-ns [q]
   {:pre [(qualified-symbol? q)]}
@@ -65,7 +65,7 @@
   (list* (qualify-in-ns `tcgen/tuple)
          (mapv #(-generator-code % options) generators)))
 
-(defn generator-code 
+(defn generator-code
   "Return pretty code that can be evaluated in the current namespace
   to create a generator for schema."
   ([?schema] (generator-code ?schema nil))

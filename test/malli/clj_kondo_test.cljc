@@ -21,7 +21,7 @@
     [:nested [:merge
               [:map [:id ::id]]
               [:map [:price ::price]]]]
-    [:string-type-enum  [:maybe [:enum "b" "c"]]]
+    [:string-type-enum [:maybe [:enum "b" "c"]]]
     [:keyword-type-enum [:enum :a :b]]
     [:any-type-enum [:enum :a "b" "c"]]
     [:z [:vector [:map-of int? int?]]]]
@@ -61,26 +61,26 @@
   (let [expected-out
         {'malli.clj-kondo-test
          {'kikka
-          {:arities {1        {:args [:int],
-                               :ret  :int},
-                     :varargs {:args      [:int :int {:op :rest, :spec :int}],
-                               :ret       :int,
+          {:arities {1 {:args [:int],
+                        :ret :int},
+                     :varargs {:args [:int :int {:op :rest, :spec :int}],
+                               :ret :int,
                                :min-arity 2}}}
           'siren
           {:arities {2 {:args [:ifn :coll], :ret :map}}}}}]
     #?(:clj
        (is (= expected-out
-             (-> 'malli.clj-kondo-test
-               (clj-kondo/collect)
-               (clj-kondo/linter-config)
-               (get-in [:linters :type-mismatch :namespaces])))))
+              (-> 'malli.clj-kondo-test
+                  (clj-kondo/collect)
+                  (clj-kondo/linter-config)
+                  (get-in [:linters :type-mismatch :namespaces])))))
 
     #?(:cljs
        (is (= expected-out
-             (-> 'malli.clj-kondo-test
-               (clj-kondo/collect-cljs)
-               (clj-kondo/linter-config)
-               (get-in [:linters :type-mismatch :namespaces]))))))
+              (-> 'malli.clj-kondo-test
+                  (clj-kondo/collect-cljs)
+                  (clj-kondo/linter-config)
+                  (get-in [:linters :type-mismatch :namespaces]))))))
   (testing "sequential elements"
     (is (= {:op :rest :spec :int}
            (clj-kondo/transform [:repeat :int])))

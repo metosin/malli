@@ -15,30 +15,32 @@
      "During development sends the clj-kondo config data for all collected functions with malli schemas to the shadow-cljs clojure runtime which writes it to disk."
      {:dev/after-load true}
      []
-     (runtime/relay-msg @client.shared/runtime-ref
-       {:op       ::clj-kondo/write-config
-        :to       env/worker-client-id
-        :build-id (keyword env/build-id)
-        :data     (clj-kondo/get-kondo-config)})))
+     (runtime/relay-msg
+      @client.shared/runtime-ref
+      {:op ::clj-kondo/write-config
+       :to env/worker-client-id
+       :build-id (keyword env/build-id)
+       :data (clj-kondo/get-kondo-config)})))
 
 ;; The following sends the config on first load of the app, the above function handles hot-reloads.
 
 #?(:cljs
-   (client.shared/add-plugin! ::client #{}
-     (fn [{:keys [runtime] :as env}]
-       (api/add-extension runtime ::client
-         {:on-welcome
-          (fn [] (send-kondo-config-to-shadow!))
+   (client.shared/add-plugin!
+    ::client #{}
+    (fn [{:keys [runtime] :as env}]
+      (api/add-extension runtime ::client
+                         {:on-welcome
+                          (fn [] (send-kondo-config-to-shadow!))
 
-          :on-disconnect
-          (fn [e])
+                          :on-disconnect
+                          (fn [e])
 
-          :on-reconnect
-          (fn [e] (send-kondo-config-to-shadow!))})
-       env)
+                          :on-reconnect
+                          (fn [e] (send-kondo-config-to-shadow!))})
+      env)
 
-     (fn [{:keys [runtime]}]
-       (api/del-extension runtime ::client))))
+    (fn [{:keys [runtime]}]
+      (api/del-extension runtime ::client))))
 
 #?(:clj
    (defmethod worker/do-relay-msg ::clj-kondo/write-config

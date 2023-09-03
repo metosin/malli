@@ -10,11 +10,11 @@
            [:zip :int]]]])
 
 (comment
-  (pretty/explain
-   Adult
-   {:name "Endy"
-    :age 17
-    :home {:zip 33100}}))
+ (pretty/explain
+  Adult
+  {:name "Endy"
+   :age 17
+   :home {:zip 33100}}))
 
 (comment
  (pretty/explain

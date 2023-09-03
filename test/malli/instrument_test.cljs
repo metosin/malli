@@ -14,7 +14,7 @@
 (defn minus
   "kukka"
   {:malli/schema [:=> [:cat :int] [:int {:min 6}]]
-   :malli/scope  #{:input :output}}
+   :malli/scope #{:input :output}}
   [x] (dec x))
 
 (defn multi-arity-fn
@@ -50,7 +50,7 @@
 (defn minus-small-int
   "kukka"
   {:malli/schema [:=> [:cat :int] small-int]
-   :malli/scope  #{:input :output}}
+   :malli/scope #{:input :output}}
   [x] (dec x))
 
 (defn plus-small-int [x] (inc x))
@@ -70,77 +70,77 @@
   (apply str args))
 
 (deftest ^:simple instrument!-test
-    (testing "with instrumentation"
-      (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})
+  (testing "with instrumentation"
+    (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (plus "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (plus "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (plus-small-int "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus-small-int 8)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (plus-small-int "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus-small-int 8)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (plus-over-100 "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus-over-100 8)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (plus-over-100 "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (plus-over-100 8)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (power "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (power 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (power "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (power 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join-mx ["2"])))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (str-join-mx [6])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (str-join-mx ["2"])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (str-join-mx [6])))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/str-join-mx2 ["2"])))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/str-join-mx2 [6])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/str-join-mx2 ["2"])))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/str-join-mx2 [6])))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-ret-refer "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-ret-refer 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-ret-refer "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-ret-refer 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-ret-ns "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-ret-ns 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-ret-ns "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-ret-ns 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-arg-refer "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-arg-refer 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-arg-refer "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-arg-refer 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-arg-ns "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-arg-ns 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-arg-ns "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-arg-ns 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-full "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-full 6)))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-full "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-full 6)))
 
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-int? "2")))
-      (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-int? 6))))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-int? "2")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-int? 6))))
 
-    (testing "without instrumentation"
-      (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})
+  (testing "without instrumentation"
+    (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})
 
-      (is (= "21" (plus "2")))
-      (is (= 7 (plus 6)))
+    (is (= "21" (plus "2")))
+    (is (= 7 (plus 6)))
 
-      (is (= (plus-small-int 8) 9))
-      (is (= (plus-over-100 8) 9))
+    (is (= (plus-small-int 8) 9))
+    (is (= (plus-over-100 8) 9))
 
-      (is (= 4 (power "2")))
-      (is (= 36 (power 6)))
+    (is (= 4 (power "2")))
+    (is (= 36 (power 6)))
 
-      (is (= "2" (str-join-mx ["2"])))
-      (is (= "6" (str-join-mx [6])))
+    (is (= "2" (str-join-mx ["2"])))
+    (is (= "6" (str-join-mx [6])))
 
-      (is (= "2" (schemas/str-join-mx2 ["2"])))
-      (is (= "6" (schemas/str-join-mx2 [6])))
+    (is (= "2" (schemas/str-join-mx2 ["2"])))
+    (is (= "6" (schemas/str-join-mx2 [6])))
 
-      (is (= 4 (schemas/power-ret-refer "2")))
-      (is (= 36 (schemas/power-ret-refer 6)))
+    (is (= 4 (schemas/power-ret-refer "2")))
+    (is (= 36 (schemas/power-ret-refer 6)))
 
-      (is (= 4 (schemas/power-ret-ns "2")))
-      (is (= 36 (schemas/power-ret-ns 6)))
+    (is (= 4 (schemas/power-ret-ns "2")))
+    (is (= 36 (schemas/power-ret-ns 6)))
 
-      (is (= 4 (schemas/power-arg-refer "2")))
-      (is (= 36 (schemas/power-arg-refer 6)))
+    (is (= 4 (schemas/power-arg-refer "2")))
+    (is (= 36 (schemas/power-arg-refer 6)))
 
-      (is (= 4 (schemas/power-arg-ns "2")))
-      (is (= 36 (schemas/power-arg-ns 6)))
+    (is (= 4 (schemas/power-arg-ns "2")))
+    (is (= 36 (schemas/power-arg-ns 6)))
 
-      (is (= 4 (schemas/power-full "2")))
-      (is (= 36 (schemas/power-full 6)))))
+    (is (= 4 (schemas/power-full "2")))
+    (is (= 36 (schemas/power-full 6)))))
 
 (deftest ^:simple collect!-test
 
@@ -201,17 +201,17 @@
 
   (testing "Without instrumentation"
     (is (thrown?
-          js/Error
-          #_:clj-kondo/ignore
-          (select-keys {:a 1} :a))))
+         js/Error
+         #_:clj-kondo/ignore
+         (select-keys {:a 1} :a))))
 
   (testing "With instrumentation"
     (m/=> cljs.core/select-keys [:=> [:cat map? sequential?] map?])
     (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'cljs.core)]}))
     (is (thrown-with-msg?
-          js/Error
-          #":malli.core/invalid-input"
-          #_:clj-kondo/ignore
-          (select-keys {:a 1} :a)))
+         js/Error
+         #":malli.core/invalid-input"
+         #_:clj-kondo/ignore
+         (select-keys {:a 1} :a)))
     (is (= {:a 1} (select-keys {:a 1} [:a])))
     (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'cljs.core)]}))))

@@ -1,7 +1,7 @@
 (ns malli.instrument.fn-schemas
   (:require
-    [malli.experimental :as mx]
-    [malli.instrument.fn-schemas2 :as schemas :refer [small-int int-arg VecOfStrings]]))
+   [malli.experimental :as mx]
+   [malli.instrument.fn-schemas2 :as schemas :refer [small-int int-arg VecOfStrings]]))
 
 (def VecOfInts [:vector :int])
 

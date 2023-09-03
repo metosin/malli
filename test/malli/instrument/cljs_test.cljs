@@ -14,7 +14,7 @@
 (defn minus
   "kukka"
   {:malli/schema [:=> [:cat :int] [:int {:min 6}]]
-   :malli/scope  #{:input :output}}
+   :malli/scope #{:input :output}}
   [x] (dec x))
 
 (defn multi-arity-fn
@@ -50,7 +50,7 @@
 (defn minus-small-int
   "kukka"
   {:malli/schema [:=> [:cat :int] small-int]
-   :malli/scope  #{:input :output}}
+   :malli/scope #{:input :output}}
   [x] (dec x))
 
 (defn plus-small-int [x] (inc x))
@@ -200,17 +200,17 @@
 
   (testing "Without instrumentation"
     (is (thrown?
-          js/Error
-          #_:clj-kondo/ignore
-          (select-keys {:a 1} :a))))
+         js/Error
+         #_:clj-kondo/ignore
+         (select-keys {:a 1} :a))))
 
   (testing "With instrumentation"
     (m/=> clojure.core/select-keys [:=> [:cat map? sequential?] map?])
     (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'clojure.core)]}))
     (is (thrown-with-msg?
-          js/Error
-          #":malli.core/invalid-input"
-          #_:clj-kondo/ignore
-          (select-keys {:a 1} :a)))
+         js/Error
+         #":malli.core/invalid-input"
+         #_:clj-kondo/ignore
+         (select-keys {:a 1} :a)))
     (is (= {:a 1} (select-keys {:a 1} [:a])))
     (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'clojure.core)]}))))

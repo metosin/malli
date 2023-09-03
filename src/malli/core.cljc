@@ -547,6 +547,27 @@
                          x))))
      :cljs (fn [x] (into (when x empty) (map t) x))))
 
+(defn -or-transformer [this transformer child-schemas method options]
+  (let [this-transformer (-value-transformer transformer this method options)]
+    (if (seq child-schemas)
+      (let [transformers (-vmap #(or (-transformer % transformer method options) identity) child-schemas)
+            validators (-vmap -validator child-schemas)]
+        (-intercepting this-transformer
+                       (if (= :decode method)
+                         (fn [x]
+                           (key (reduce-kv
+                                 (fn [acc i transformer]
+                                   (let [x* (transformer (val acc))]
+                                     (if ((nth validators i) x*)
+                                       (reduced (miu/-tagged x*))
+                                       (miu/-tagged (or (key acc) x*) x))))
+                                 (miu/-tagged nil x) transformers)))
+                         (fn [x]
+                           (reduce-kv
+                            (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                            x validators)))))
+      (-intercepting this-transformer))))
+
 ;;
 ;; ast
 ;;
@@ -726,28 +747,6 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
-
-(defn -or-transformer [this transformer child-schemas method options]
-  (let [this-transformer (-value-transformer transformer this method options)]
-    (if (seq child-schemas)
-      (let [transformers (-vmap #(or (-transformer % transformer method options) identity) child-schemas)
-            validators (-vmap -validator child-schemas)]
-        (-intercepting this-transformer
-                       (if (= :decode method)
-                         (fn [x]
-                           (key (reduce-kv
-                                 (fn [acc i transformer]
-                                   (let [x* (transformer (val acc))]
-                                     (if ((nth validators i) x*)
-                                       (reduced (miu/-tagged x*))
-                                       (miu/-tagged (or (key acc) x*) x))))
-                                 (miu/-tagged nil x) transformers)))
-                         (fn [x]
-                           (reduce-kv
-                            (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
-                            x validators)))))
-      (-intercepting this-transformer))))
-
 
 (defn -or-schema []
   ^{:type ::into-schema}

@@ -559,7 +559,7 @@
                                  (fn [acc i transformer]
                                    (let [x* (transformer (val acc))]
                                      (if ((nth validators i) x*)
-                                       (reduced (miu/-tagged x*))
+                                       (reduced (miu/-tagged x* nil))
                                        (miu/-tagged (or (key acc) x*) x))))
                                  (miu/-tagged nil x) transformers)))
                          (fn [x]

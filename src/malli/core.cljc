@@ -555,13 +555,13 @@
         (-intercepting this-transformer
                        (if (= :decode method)
                          (fn [x]
-                           (key (reduce-kv
-                                 (fn [acc i transformer]
-                                   (let [x* (transformer (val acc))]
-                                     (if ((nth validators i) x*)
-                                       (reduced (miu/-tagged x* nil))
-                                       (miu/-tagged (or (key acc) x*) x))))
-                                 (miu/-tagged nil x) transformers)))
+                           (reduce-kv
+                            (fn [acc i transformer]
+                              (let [x* (transformer x)]
+                                (if ((nth validators i) x*)
+                                  (reduced x*)
+                                  (or acc x*))))
+                            nil transformers))
                          (fn [x]
                            (reduce-kv
                             (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))

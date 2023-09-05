@@ -435,7 +435,7 @@
 
 (defmethod -schema-generator :maybe [schema options]
   (let [g (-> schema (m/children options) first (generator options) -not-unreachable)]
-    (gen-one-of (cond-> [(gen/return nil)]
+    (gen-one-of (cond-> [nil-gen]
                   g (conj g)))))
 
 (defmethod -schema-generator :tuple [schema options]
@@ -446,7 +446,7 @@
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :any [_ _] (ga/gen-for-pred any?))
 (defmethod -schema-generator :some [_ _] gen/any-printable)
-(defmethod -schema-generator :nil [_ _] (gen/return nil))
+(defmethod -schema-generator :nil [_ _] nil-gen)
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
 (defmethod -schema-generator :double [schema options]
@@ -514,7 +514,7 @@
                   (-create-from-elements props)
                   (-create-from-schema props options)
                   (-create-from-gen props schema options)
-                  (gen/return nil)))))
+                  nil-gen))))
 
 (defn- -create [schema options]
   (let [props (-merge (m/type-properties schema)

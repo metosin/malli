@@ -292,25 +292,42 @@
       (is (= [:and 'int? [:orn [:pos 'pos-int?] [:neg 'neg-int?]]] (m/form schema*))))
 
     (testing "transforming :or"
-      (testing "first valid transformed branch is used"
-        (doseq [schema [[:or
-                         [:map [:x keyword?]]
-                         int?
-                         [:map [:y keyword?]]
-                         keyword?]
-                        [:orn
-                         [:äxy [:map [:x keyword?]]]
-                         [:n int?]
-                         [:yxy [:map [:y keyword?]]]
-                         [:kw keyword?]]]]
-          (are [input result]
-            (= (m/decode schema input mt/string-transformer) result)
+      (let [math (mt/transformer {:name :math})
+            math-string [:string {:decode/math (partial str "math_")}]
+            math-kw-string [:and math-string [:any {:decode/math keyword}]]
+            bono-string [:string {:decode/math (partial str "such_")}]]
 
-            {:x "true", :y "true"} {:x :true, :y "true"}
-            {:x false, :y "true"} {:x false, :y :true}
-            {:x false, :y false} {:x false, :y false}
-            1 1
-            "kikka" :kikka)))
+        (testing "first successful branch is selected"
+          (is (= "math_1"
+                 (m/decode math-string 1 math)
+                 (m/decode [:and math-string] 1 math)
+                 (m/decode [:or math-string] 1 math)
+                 (m/decode [:or
+                            math-kw-string
+                            math-string
+                            bono-string] 1 math)
+                 (m/decode [:orn ["string" math-string]] 1 math)
+                 (m/decode [:orn
+                            ["kw-math" math-kw-string]
+                            ["math" math-string]
+                            ["bono" bono-string]] 1 math))))
+
+        (testing "first branch value is selected as fallback, even if invalid"
+          (is (= :math_1
+                 (m/decode [:or
+                            math-kw-string
+                            :string] 1 math)
+                 (m/decode [:orn
+                            ["kw-math" math-kw-string]
+                            ["string" :string]] 1 math))))
+
+        (testing "first branch nil can be selected as a fallback"
+          (is (= nil (m/decode
+                      [:or
+                       [:keyword {:decode/math (constantly nil)}]
+                       :keyword]
+                      "kikka"
+                      (mt/transformer {:name :math}))))))
 
       (testing "top-level transformations are retained"
         (doseq [schema [[:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))
@@ -330,15 +347,13 @@
                                 [:y keyword?]
                                 [:enter boolean?]]]]]]
           (are [input result]
-            (= (m/decode (mu/closed-schema schema) input mt/string-transformer) result)
+            (= (m/decode (mu/closed-schema schema) input (mt/string-transformer)) result)
 
-            {:x "true"} {:x :true, :enter true, :leave true}
-            {:x "true", :enter "invalid"} {:x "true", :enter "invalid", :leave true}
-
-            {:y "true"} {:y :true, :enter true, :leave true}
-            {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"}
-
-            {:x "true", :y "true"} {:x "true", :y "true", :enter true, :leave true}))))
+            {:x "true"} {:x :true, :enter true, :leave true} ;; first
+            {:x "true", :enter "invalid"} {:x :true, :enter "invalid", :leave true} ;; first (fallback)
+            {:y "true"} {:y :true, :enter true, :leave true} ;; second
+            {:y "true", :leave "invalid"} {:y "true", :enter true, :leave "invalid"} ;; no match
+            {:x "true", :y "true"} {:x :true, :y "true", :enter true, :leave true})))) ;; first (fallback))
 
     (testing "explain with branches"
       (let [schema [:and pos-int? neg-int?]]

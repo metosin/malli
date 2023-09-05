@@ -547,6 +547,27 @@
                          x))))
      :cljs (fn [x] (into (when x empty) (map t) x))))
 
+(defn -or-transformer [this transformer child-schemas method options]
+  (let [this-transformer (-value-transformer transformer this method options)]
+    (if (seq child-schemas)
+      (let [transformers (-vmap #(or (-transformer % transformer method options) identity) child-schemas)
+            validators (-vmap -validator child-schemas)]
+        (-intercepting this-transformer
+                       (if (= :decode method)
+                         (fn [x]
+                           (reduce-kv
+                            (fn [acc i transformer]
+                              (let [x* (transformer x)]
+                                (if ((nth validators i) x*)
+                                  (reduced x*)
+                                  (if (-equals acc ::nil) x* acc))))
+                            ::nil transformers))
+                         (fn [x]
+                           (reduce-kv
+                            (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                            x validators)))))
+      (-intercepting this-transformer))))
+
 ;;
 ;; ast
 ;;
@@ -757,23 +778,7 @@
           (-parser [_] (->parser -parser))
           (-unparser [_] (->parser -unparser))
           (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)]
-              (if (seq children)
-                (let [transformers (-vmap #(or (-transformer % transformer method options) identity) children)
-                      validators (-vmap -validator children)]
-                  (-intercepting this-transformer
-                                 (if (= :decode method)
-                                   (fn [x]
-                                     (reduce-kv
-                                      (fn [x i transformer]
-                                        (let [x* (transformer x)]
-                                          (if ((nth validators i) x*) (reduced x*) x)))
-                                      x transformers))
-                                   (fn [x]
-                                     (reduce-kv
-                                      (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
-                                      x validators)))))
-                (-intercepting this-transformer))))
+            (-or-transformer this transformer children method options))
           (-walk [this walker path options] (-walk-indexed this walker path options))
           (-properties [_] properties)
           (-options [_] options)
@@ -831,24 +836,7 @@
                     ::invalid)
                   ::invalid))))
           (-transformer [this transformer method options]
-            (let [this-transformer (-value-transformer transformer this method options)]
-              (if (seq (-children this))
-                (let [transformers (-vmap (fn [[_ _ c]] (or (-transformer c transformer method options) identity))
-                                          (-children this))
-                      validators (-vmap (fn [[_ _ c]] (-validator c)) (-children this))]
-                  (-intercepting this-transformer
-                                 (if (= :decode method)
-                                   (fn [x]
-                                     (reduce-kv
-                                      (fn [x i transformer]
-                                        (let [x* (transformer x)]
-                                          (if ((nth validators i) x*) (reduced x*) x)))
-                                      x transformers))
-                                   (fn [x]
-                                     (reduce-kv
-                                      (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
-                                      x validators)))))
-                (-intercepting this-transformer))))
+            (-or-transformer this transformer (-vmap #(nth % 2) (-children this)) method options))
           (-walk [this walker path options] (-walk-entries this walker path options))
           (-properties [_] properties)
           (-options [_] options)

@@ -494,7 +494,7 @@
   (some-> (:gen/elements props) gen-elements))
 
 (extend-protocol Generator
-  Object
+  #?(:clj Object, :cljs default)
   (-generator [schema options]
     (-schema-generator schema (assoc options ::original-generator-schema schema))))
 

@@ -501,8 +501,8 @@
                   (gen/return nil)))))
 
 (defn- -create [schema options]
-  (let [props (merge (m/type-properties schema)
-                     (m/properties schema))]
+  (let [props (-merge (m/type-properties schema)
+                      (m/properties schema))]
     (or (-create-from-fmap props schema options)
         (-create-from-return props)
         (-create-from-elements props)

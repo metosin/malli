@@ -48,6 +48,8 @@
 ;;   [:vector M] would generate like [:= []] if M were unreachable.
 ;;   [:vector {:min 1} M] would itself be unreachable if M were unreachable.
 
+(def nil-gen (gen/return nil))
+
 (defn -never-gen
   "Return a generator of no values that is compatible with -unreachable-gen?."
   [{::keys [original-generator-schema] :as _options}]

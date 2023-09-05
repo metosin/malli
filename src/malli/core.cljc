@@ -560,8 +560,8 @@
                               (let [x* (transformer x)]
                                 (if ((nth validators i) x*)
                                   (reduced x*)
-                                  (or acc x*))))
-                            nil transformers))
+                                  (if (-equals acc ::nil) x* acc))))
+                            ::nil transformers))
                          (fn [x]
                            (reduce-kv
                             (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))

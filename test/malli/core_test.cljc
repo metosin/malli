@@ -319,7 +319,15 @@
                             :string] 1 math)
                  (m/decode [:orn
                             ["kw-math" math-kw-string]
-                            ["string" :string]] 1 math)))))
+                            ["string" :string]] 1 math))))
+
+        (testing "first branch nil can be selected as a fallback"
+          (is (= nil (m/decode
+                      [:or
+                       [:keyword {:decode/math (constantly nil)}]
+                       :keyword]
+                      "kikka"
+                      (mt/transformer {:name :math}))))))
 
       (testing "top-level transformations are retained"
         (doseq [schema [[:or {:decode/string {:enter (fn [m] (update m :enter #(or % true)))

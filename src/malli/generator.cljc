@@ -476,13 +476,16 @@
 (defn- -create-from-elements [props]
   (some-> (:gen/elements props) gen-elements))
 
+(extend-protocol Generator
+  Object
+  (-generator [schema options]
+    (-schema-generator schema (assoc options ::original-generator-schema schema))))
+
 (defn- -create-from-gen
   [props schema options]
   (or (:gen/gen props)
       (when-not (:gen/elements props)
-        (if (satisfies? Generator schema)
-          (-generator schema options)
-          (-schema-generator schema (assoc options ::original-generator-schema schema))))))
+        (-generator schema options))))
 
 (defn- -create-from-schema [props options]
   (some-> (:gen/schema props) (generator options)))

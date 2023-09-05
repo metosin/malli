@@ -157,27 +157,41 @@
     (gen-one-of gs)
     (-never-gen options)))
 
+(defn- -build-map
+  [[req opt]]
+  (persistent!
+   (reduce
+    (fn [acc [k v]]
+      (cond (and (= k ::m/default) (map? v)) (reduce-kv assoc! acc v)
+            (nil? k) acc
+            :else (assoc! acc k v)))
+    (transient {})
+    (->Eduction cat [req opt]))))
+
 (defn -map-gen [schema options]
-  (let [entries (m/entries schema)
-        value-gen (fn [k s] (let [g (generator s options)]
-                              (cond->> g
-                                (-not-unreachable g)
-                                (gen/fmap (fn [v] [k v])))))
-        gens-req (->> entries
-                      (remove #(-> % last m/properties :optional))
-                      (map (fn [[k s]] (value-gen k s))))
-        gen-opt (->> entries
-                     (filter #(-> % last m/properties :optional))
-                     (map (fn [[k s]] (let [g (-not-unreachable (value-gen k s))]
-                                        (gen-one-of (cond-> [(gen/return nil)] g (conj g)))))))
-        undefault (fn [kvs] (reduce (fn [acc [k v]]
-                                      (cond (and (= k ::m/default) (map? v)) (into acc (map identity v))
-                                            (nil? k) acc
-                                            :else (conj acc [k v]))) [] kvs))]
-    (if (not-any? -unreachable-gen? gens-req)
-      (gen/fmap (fn [[req opt]] (into {} (undefault (concat req opt))))
-                (gen/tuple (apply gen/tuple gens-req) (apply gen/tuple gen-opt)))
-      (-never-gen options))))
+  (let [value-gen (fn [k s] (let [g (generator s options)]
+                             (cond->> g
+                               (-not-unreachable g)
+                               (gen/fmap (fn [v] [k v])))))]
+    (loop [[[k s :as e] & entries] (m/entries schema)
+           req []
+           opt []]
+      (if (nil? e)
+        (if (-not-any? -unreachable-gen? req)
+          (gen/fmap -build-map (gen/tuple (apply gen/tuple req) (apply gen/tuple opt)))
+          (-never-gen options))
+        (if (-> e -last m/properties :optional)
+          (recur
+           entries
+           req
+           (conj opt
+                 (if-let [g (-not-unreachable (value-gen k s))]
+                   (gen-one-of [nil-gen g])
+                   nil-gen)))
+          (recur
+           entries
+           (conj req (value-gen k s))
+           opt))))))
 
 (defn -map-of-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)

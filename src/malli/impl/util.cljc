@@ -68,3 +68,23 @@
 (def ^{:arglists '([[& preds]])} -some-pred
   #?(:clj  (-pred-composer or 16)
      :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+
+(defn -last [x]
+  (if (vector? x)
+    (peek x)
+    (last x)))
+
+(defn -some
+  [pred coll]
+  (reduce
+   (fn [ret x] (if (pred x) (reduced true) ret))
+   nil
+   coll))
+
+(defn -not-any? [pred coll] (not (-some pred coll)))
+
+(defn -merge
+  [m1 m2]
+  (if m1
+    (persistent! (reduce-kv assoc! (transient m1) m2))
+    m2))

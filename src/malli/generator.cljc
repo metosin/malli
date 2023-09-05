@@ -9,6 +9,7 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
+            [malli.impl.util :refer [-not-any? -last -merge]]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)

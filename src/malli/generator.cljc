@@ -9,6 +9,7 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
+            [malli.impl.util :refer [-not-any? -last -merge]]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
@@ -46,6 +47,8 @@
 ;;   [:map [:a {:optional true} M]] would generate like [:map] if M were unreachable.
 ;;   [:vector M] would generate like [:= []] if M were unreachable.
 ;;   [:vector {:min 1} M] would itself be unreachable if M were unreachable.
+
+(def nil-gen (gen/return nil))
 
 (defn -never-gen
   "Return a generator of no values that is compatible with -unreachable-gen?."
@@ -154,27 +157,41 @@
     (gen-one-of gs)
     (-never-gen options)))
 
+(defn- -build-map
+  [[req opt]]
+  (persistent!
+   (reduce
+    (fn [acc [k v]]
+      (cond (and (= k ::m/default) (map? v)) (reduce-kv assoc! acc v)
+            (nil? k) acc
+            :else (assoc! acc k v)))
+    (transient {})
+    (->Eduction cat [req opt]))))
+
 (defn -map-gen [schema options]
-  (let [entries (m/entries schema)
-        value-gen (fn [k s] (let [g (generator s options)]
-                              (cond->> g
-                                (-not-unreachable g)
-                                (gen/fmap (fn [v] [k v])))))
-        gens-req (->> entries
-                      (remove #(-> % last m/properties :optional))
-                      (map (fn [[k s]] (value-gen k s))))
-        gen-opt (->> entries
-                     (filter #(-> % last m/properties :optional))
-                     (map (fn [[k s]] (let [g (-not-unreachable (value-gen k s))]
-                                        (gen-one-of (cond-> [(gen/return nil)] g (conj g)))))))
-        undefault (fn [kvs] (reduce (fn [acc [k v]]
-                                      (cond (and (= k ::m/default) (map? v)) (into acc (map identity v))
-                                            (nil? k) acc
-                                            :else (conj acc [k v]))) [] kvs))]
-    (if (not-any? -unreachable-gen? gens-req)
-      (gen/fmap (fn [[req opt]] (into {} (undefault (concat req opt))))
-                (gen/tuple (apply gen/tuple gens-req) (apply gen/tuple gen-opt)))
-      (-never-gen options))))
+  (let [value-gen (fn [k s] (let [g (generator s options)]
+                             (cond->> g
+                               (-not-unreachable g)
+                               (gen/fmap (fn [v] [k v])))))]
+    (loop [[[k s :as e] & entries] (m/entries schema)
+           req []
+           opt []]
+      (if (nil? e)
+        (if (-not-any? -unreachable-gen? req)
+          (gen/fmap -build-map (gen/tuple (apply gen/tuple req) (apply gen/tuple opt)))
+          (-never-gen options))
+        (if (-> e -last m/properties :optional)
+          (recur
+           entries
+           req
+           (conj opt
+                 (if-let [g (-not-unreachable (value-gen k s))]
+                   (gen-one-of [nil-gen g])
+                   nil-gen)))
+          (recur
+           entries
+           (conj req (value-gen k s))
+           opt))))))
 
 (defn -map-of-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)
@@ -418,7 +435,7 @@
 
 (defmethod -schema-generator :maybe [schema options]
   (let [g (-> schema (m/children options) first (generator options) -not-unreachable)]
-    (gen-one-of (cond-> [(gen/return nil)]
+    (gen-one-of (cond-> [nil-gen]
                   g (conj g)))))
 
 (defmethod -schema-generator :tuple [schema options]
@@ -429,7 +446,7 @@
 #?(:clj (defmethod -schema-generator :re [schema options] (-re-gen schema options)))
 (defmethod -schema-generator :any [_ _] (ga/gen-for-pred any?))
 (defmethod -schema-generator :some [_ _] gen/any-printable)
-(defmethod -schema-generator :nil [_ _] (gen/return nil))
+(defmethod -schema-generator :nil [_ _] nil-gen)
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
 (defmethod -schema-generator :double [schema options]
@@ -476,13 +493,16 @@
 (defn- -create-from-elements [props]
   (some-> (:gen/elements props) gen-elements))
 
+(extend-protocol Generator
+  #?(:clj Object, :cljs default)
+  (-generator [schema options]
+    (-schema-generator schema (assoc options ::original-generator-schema schema))))
+
 (defn- -create-from-gen
   [props schema options]
   (or (:gen/gen props)
       (when-not (:gen/elements props)
-        (if (satisfies? Generator schema)
-          (-generator schema options)
-          (-schema-generator schema (assoc options ::original-generator-schema schema))))))
+        (-generator schema options))))
 
 (defn- -create-from-schema [props options]
   (some-> (:gen/schema props) (generator options)))
@@ -494,11 +514,11 @@
                   (-create-from-elements props)
                   (-create-from-schema props options)
                   (-create-from-gen props schema options)
-                  (gen/return nil)))))
+                  nil-gen))))
 
 (defn- -create [schema options]
-  (let [props (merge (m/type-properties schema)
-                     (m/properties schema))]
+  (let [props (-merge (m/type-properties schema)
+                      (m/properties schema))]
     (or (-create-from-fmap props schema options)
         (-create-from-return props)
         (-create-from-elements props)

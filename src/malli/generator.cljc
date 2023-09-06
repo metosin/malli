@@ -9,7 +9,7 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
-            [malli.impl.util :refer [-not-any? -last -merge]]
+            [malli.impl.util :refer [-last -merge]]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
@@ -158,7 +158,7 @@
     (-never-gen options)))
 
 (defn- -build-map
-  [[req opt]]
+  [kvs]
   (persistent!
    (reduce
     (fn [acc [k v]]
@@ -166,32 +166,34 @@
             (nil? k) acc
             :else (assoc! acc k v)))
     (transient {})
-    (->Eduction cat [req opt]))))
+    kvs)))
 
+(defn- -value-gen
+  [k s options]
+  (let [g (generator s options)]
+    (cond->> g
+      (-not-unreachable g)
+      (gen/fmap (fn [v] [k v])))))
+
+;;; after
 (defn -map-gen [schema options]
-  (let [value-gen (fn [k s] (let [g (generator s options)]
-                             (cond->> g
-                               (-not-unreachable g)
-                               (gen/fmap (fn [v] [k v])))))]
-    (loop [[[k s :as e] & entries] (m/entries schema)
-           req []
-           opt []]
-      (if (nil? e)
-        (if (-not-any? -unreachable-gen? req)
-          (gen/fmap -build-map (gen/tuple (apply gen/tuple req) (apply gen/tuple opt)))
-          (-never-gen options))
-        (if (-> e -last m/properties :optional)
-          (recur
-           entries
-           req
-           (conj opt
-                 (if-let [g (-not-unreachable (value-gen k s))]
-                   (gen-one-of [nil-gen g])
-                   nil-gen)))
-          (recur
-           entries
-           (conj req (value-gen k s))
-           opt))))))
+  (loop [[[k s :as e] & entries] (m/entries schema)
+         gens []]
+    (if (nil? e)
+      (gen/fmap -build-map (apply gen/tuple gens))
+      (if (-> e -last m/properties :optional)
+        ;; opt
+        (recur
+         entries
+         (conj gens
+               (if-let [g (-not-unreachable (-value-gen k s options))]
+                 (gen-one-of [nil-gen g])
+                 nil-gen)))
+          ;;; req
+        (let [g (-value-gen k s options)]
+          (if (-unreachable-gen? g)
+            (-never-gen options)
+            (recur entries (conj gens g))))))))
 
 (defn -map-of-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)

@@ -819,28 +819,27 @@
 
 (deftest map-schema-simplify-test
   (testing "simplify optional key"
-    (is (= '({:rec {}} {} {} {:rec {}} {:rec {}} {} {} {} {:rec {}} {})
+    (is (= '({} {} {:rec {}} {:rec {}} {} {:rec {}} {} {:rec {}} {} {:rec {}})
            (mg/sample [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
                        (fn [rec]
-                         (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
-                                   (gen/tuple (gen/tuple) (gen/tuple
-                                                           (gen/one-of [(gen/return nil)
-                                                                        (gen/fmap (fn [v] [:rec v]) rec)])))))
-                       (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
-                                 (gen/tuple (gen/tuple) (gen/tuple (gen/one-of [(gen/return nil)])))))
+                         (gen/fmap (fn [opt] (into {} opt))
+                                   (gen/tuple
+                                    (gen/one-of [(gen/return nil)
+                                                 (gen/fmap (fn [v] [:rec v]) rec)]))))
+                       (gen/fmap (fn [opt] (into {} opt))
+                                 (gen/return nil)))
                       {:seed 0}))))
   (testing "simplify required key"
-    (is (= '([] [] [{:rec []} {:rec []}] [{:rec []} {:rec []}] [] [{:rec []}] [] [{:rec []} {:rec []}] [{:rec []}] [{:rec [{:rec []} {:rec []}]} {:rec [{:rec []}]}])
+    (is (= '([] [] [{:rec []} {:rec []}] [{:rec []} {:rec []}] [] [{:rec []}] [] [{:rec []} {:rec []}] [{:rec []}] [{:rec [{:rec []} {:rec []}]} {:rec [{:rec []} {:rec []}]}])
            (mg/sample [:schema {:registry {::rec [:vector [:map [:rec [:ref ::rec]]]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
                        (fn [rec]
                          (gen/vector
-                          (gen/fmap (fn [[req opt]] (into {} (concat req opt)))
-                                    (gen/tuple (gen/tuple (gen/fmap (fn [v] [:rec v]) rec))
-                                               (gen/tuple)))))
+                          (gen/fmap (fn [req] (into {} req))
+                                    (gen/tuple (gen/fmap (fn [v] [:rec v]) rec)))))
                        (gen/return []))
                       {:seed 0})))))
 

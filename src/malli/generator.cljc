@@ -73,11 +73,11 @@
 
 (defn- -random [seed] (if seed (random/make-random seed) (random/make-random)))
 
-(defn ^:deprecated -recur [schema options]
+(defn ^:deprecated -recur [_schema options]
   (println (str `-recur " is deprecated, please update your generators. See instructions in malli.generator."))
   [true options])
 
-(defn ^:deprecated -maybe-recur [schema options]
+(defn ^:deprecated -maybe-recur [_schema options]
   (println (str `-maybe-recur " is deprecated, please update your generators. See instructions in malli.generator."))
   options)
 
@@ -157,25 +157,19 @@
     (gen-one-of gs)
     (-never-gen options)))
 
-(defn- -build-map
-  [kvs]
+(defn- -build-map [kvs]
   (persistent!
    (reduce
     (fn [acc [k v]]
       (cond (and (= k ::m/default) (map? v)) (reduce-kv assoc! acc v)
             (nil? k) acc
             :else (assoc! acc k v)))
-    (transient {})
-    kvs)))
+    (transient {}) kvs)))
 
-(defn- -value-gen
-  [k s options]
+(defn- -value-gen [k s options]
   (let [g (generator s options)]
-    (cond->> g
-      (-not-unreachable g)
-      (gen/fmap (fn [v] [k v])))))
+    (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
-;;; after
 (defn -map-gen [schema options]
   (loop [[[k s :as e] & entries] (m/entries schema)
          gens []]
@@ -189,7 +183,7 @@
                (if-let [g (-not-unreachable (-value-gen k s options))]
                  (gen-one-of [nil-gen g])
                  nil-gen)))
-          ;;; req
+        ;;; req
         (let [g (-value-gen k s options)]
           (if (-unreachable-gen? g)
             (-never-gen options)

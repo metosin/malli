@@ -189,11 +189,17 @@
         (set? x) (seq x)
         :else x))
 
-(defn -infer-child-decoder-compiler [schema _]
-  (-> schema (m/children) (m/-infer) {:keyword -string->keyword
-                                      :symbol -string->symbol
-                                      :int -string->long
-                                      :double -string->double}))
+(defn -infer-child-compiler [method]
+  (fn [schema _]
+    (some-> schema
+            (m/children)
+            (m/-infer)
+            {:keyword {:decode -string->keyword
+                       :encode m/-keyword->string}
+             :symbol {:decode -string->symbol}
+             :int {:decode -string->long}
+             :double {:decode -string->double}}
+            (method -any->string))))
 
 ;;
 ;; decoders
@@ -216,8 +222,8 @@
    'double? -number->double
    'inst? -string->date
 
-   :enum {:compile -infer-child-decoder-compiler}
-   := {:compile -infer-child-decoder-compiler}
+   :enum {:compile (-infer-child-compiler :decode)}
+   := {:compile (-infer-child-compiler :decode)}
 
    :double -number->double
    :keyword -string->keyword
@@ -238,6 +244,9 @@
    'qualified-symbol? -any->string
 
    'uuid? -any->string
+
+   :enum {:compile (-infer-child-compiler :encode)}
+   := {:compile (-infer-child-compiler :encode)}
 
    :keyword m/-keyword->string
    :symbol -any->string
@@ -301,7 +310,6 @@
     :>= -any->string
     :< -any->string
     :<= -any->string
-    := -any->string
     :not= -any->string
 
     'double -any->string}))

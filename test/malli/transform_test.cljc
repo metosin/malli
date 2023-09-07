@@ -1039,8 +1039,15 @@
                   :equals2 'kikka
                   :equals3 1
                   :equals4 1.1}]
-    (testing "is not enabled by default"
-      (is (= value (m/decode schema value nil))))
-    (testing "works with json and string transformers"
-      (is (= expected (m/decode schema value (mt/json-transformer))))
-      (is (= expected (m/decode schema value (mt/string-transformer)))))))
+    (testing "decoding"
+      (testing "is not enabled by default"
+        (is (= value (m/decode schema value nil))))
+      (testing "works with json and string transformers"
+        (is (= expected (m/decode schema value (mt/json-transformer))))
+        (is (= expected (m/decode schema value (mt/string-transformer))))))
+    (testing "encoding"
+      (testing "is not enabled by default"
+        (is (= expected (m/encode schema expected nil))))
+      (testing "works with json and string transformers"
+        (is (= value (m/encode schema expected (mt/json-transformer))))
+        (is (= value (m/encode schema expected (mt/string-transformer))))))))

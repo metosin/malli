@@ -37,6 +37,9 @@ jobs:
 
   build-cljs:
     name: ClojureScript
+    strategy:
+      matrix:
+        mode: [none, advanced, cherry-none, cherry-advanced]
 
     runs-on: ubuntu-latest
     steps:
@@ -57,8 +60,8 @@ jobs:
           node-version: 16
       - name: Install dependencies
         run: npm ci
-      - name: Run tests
-        run: bin/node
+      - name: Run tests on ${{ matrix.mode }}
+        run: bin/node ${{ matrix.mode }}
 
   build-bb:
     name: Babashka

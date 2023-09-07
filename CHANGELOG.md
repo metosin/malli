@@ -21,6 +21,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * Faster generators for `:map`, [#948](https://github.com/metosin/malli/pull/948) & [#949](https://github.com/metosin/malli/pull/949)
 * FIX: `:altn` can't handle just one child entry when nested in sequence schema [#945](https://github.com/metosin/malli/pull/945)
 * Officially drop Clojure 1.10 support. Tests haven't passed for some time with Clojure 1.10, but this was not noticed due to a faulty CI setup.
+* Use type inferrer when encoding enums [#951](https://github.com/metosin/malli/pull/951) 
 
 ## 0.12.0 (2023-08-31)
 

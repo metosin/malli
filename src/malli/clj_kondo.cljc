@@ -124,9 +124,9 @@
 (defmethod accept :qualified-symbol [_ _ _ _] :symbol)
 (defmethod accept :uuid [_ _ _ _] :any) ;;??
 
-(defmethod accept :+ [_ _ [child] _] {:op :rest, :spec child})
-(defmethod accept :* [_ _ [child] _] {:op :rest, :spec child})
-(defmethod accept :? [_ _ [child] _] {:op :rest, :spec child})
+(defmethod accept :+ [_ _ _ _] :seqable)
+(defmethod accept :* [_ _ _ _] :seqable)
+(defmethod accept :? [_ _ _ _] :seqable)
 (defmethod accept :repeat [_ _ [child] _] {:op :rest, :spec child})
 (defmethod accept :cat [_ _ children _] children)
 (defmethod accept :catn [_ _ children _] (mapv last children))

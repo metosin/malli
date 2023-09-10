@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [eval type -deref deref -lookup -key])
+  (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
   #?(:cljs (:require-macros malli.core))
   (:require #?(:clj [clojure.walk :as walk])
             [clojure.core :as c]
@@ -2229,6 +2229,18 @@
   ([?schema value transformer options] (coerce ?schema value transformer nil nil options))
   ([?schema value transformer respond raise] (coerce ?schema value transformer respond raise nil))
   ([?schema value transformer respond raise options] ((coercer ?schema transformer respond raise options) value)))
+
+(defmacro assert
+  "Assert that `value` validates against schema `?schema`, or throws ExceptionInfo.
+   The var clojure.core/*assert* determines whether assertion are checked."
+
+  ([?schema value]
+   `(assert ~?schema ~value nil))
+
+  ([?schema value options]
+   (if *assert*
+     `(coerce ~?schema ~value nil ~options)
+     value)))
 
 (defn entries
   "Returns `EntrySchema` children as a sequence of `clojure.lang/MapEntry`s

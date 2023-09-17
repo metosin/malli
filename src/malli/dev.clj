@@ -24,7 +24,7 @@
   ([options]
    (with-out-str (stop!))
    (mi/collect! {:ns (all-ns)})
-   (let [watch (fn [_ _ old new]
+   (let [watch (bound-fn [_ _ old new]
                  (->> (for [[n d] (:clj new)
                             :let [no (get-in old [:clj n])]
                             [s d] d

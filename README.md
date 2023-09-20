@@ -3018,6 +3018,7 @@ The following schemas and their respective types are provided:
 | Schema                   | Example                                              | JVM/js-joda Type (`java.time`) |
 |:-------------------------|:-----------------------------------------------------|:-------------------------------|
 | `:time/duration`         | PT0.01S                                              | `Duration`                     |
+| `:time/period`           | P-1Y100D                                             | `Period`                       |
 | `:time/instant`          | 2022-12-18T12:00:25.840823567Z                       | `Instant`                      |
 | `:time/local-date`       | 2020-01-01                                           | `LocalDate`                    |
 | `:time/local-date-time`  | 2020-01-01T12:00:00                                  | `LocalDateTime`                |
@@ -3074,6 +3075,13 @@ Time schemas respect min/max predicates for their respective types:
 
 Will be valid only for local times between 12:00 and 13:00.
 
+For the comparison of `Period`s, units are compared to corresponding units and never between.
+
+For example a Period of 1 year will always compare greater than a period of 13 months; that is, conceptually `(< P13M P1Y)`
+
+If you want to add further constraints you can transform your `Period`s before being used in `min` and `max` per your use-case
+or combine the schema with `:and` and `:fn` for example.
+
 #### Transformation - `malli.experimental.time.transform`
 
 The `malli.experimental.time.transform` namespace provides a `time-transformer` from string to the correct type.
@@ -3098,6 +3106,15 @@ Formats can be configured by providing a `formatter` or a `pattern` property
 Require `malli.experimental.time.generator` to add support for time schema generators.
 
 Generated data also respects min/max properties.
+
+When generating `Period`s there is no way distinguish between `nil` values and zero for each unit, so zero units will
+not constrain the generator, if you need some of the units to be zero in generated `Period`s you can always `gen/fmap` the data:
+
+```clojure
+[:time/period {:gen/fmap #(. % withMonths 0) :min (. Period of -10 0 1)}]
+```
+This would generate `Period`s with a minimum years unit of -10, minimum days unit of 1 and months unit always equal to zero.
+Without the fmap the months unit could be any negative or positive integer.
 
 #### JSON Schema - `malli.experimental.time.json-schema`
 

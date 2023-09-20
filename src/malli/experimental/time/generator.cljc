@@ -5,8 +5,8 @@
             [malli.generator :as mg]
             #?(:clj  [malli.experimental.time :as time]
                :cljs [malli.experimental.time :as time
-                      :refer [Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset]]))
-  #?(:clj (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset))))
+                      :refer [Duration Period LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset]]))
+  #?(:clj (:import (java.time Duration Period LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset))))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -125,3 +125,32 @@
 
 (defmethod mg/-schema-generator :time/duration [schema options]
   (gen/fmap #(. Duration ofNanos %) (gen/large-integer* (-min-max schema options))))
+
+;; Years, Months, Days of periods are never nil, they just return zero, so we treat zero as nil.
+(defmethod mg/-schema-generator :time/period [schema options]
+  (let [zero->nil (fn [v] (if (zero? v) nil v))
+        max-int #?(:clj Integer/MAX_VALUE :cljs (.-MAX_SAFE_INTEGER js/Number))
+        min-int #?(:clj Integer/MIN_VALUE :cljs (.-MIN_SAFE_INTEGER js/Number))
+        ceil-max (fn [v] (if (nil? v) max-int (min max-int v)))
+        floor-min (fn [v] (if (nil? v) min-int (max min-int v)))
+        {^Period mn :min ^Period mx :max ^Period gen-min :gen/min ^Period gen-max :gen/max}
+        (merge
+          (m/type-properties schema options)
+          (m/properties schema options))
+        _ (when (and mn gen-min (not (pos? (time/compare-periods gen-min min))))
+            (m/-fail! ::mg/invalid-property {:key :gen/min, :value gen-min, :min min}))
+        _ (when (and mx gen-max (not (pos? (time/compare-periods  max gen-max))))
+            (m/-fail! ::mg/invalid-property {:key :gen/max, :value gen-min, :max min}))
+        mn (or mn gen-min)
+        mx (or mx gen-max)
+        min-years  (when mn (zero->nil (.getYears mn))), max-years  (when mx (zero->nil (.getYears mx)))
+        min-months (when mn (zero->nil (.getMonths mn))), max-months (when mx (zero->nil (.getMonths mx)))
+        min-days   (when mn (zero->nil (.getDays mn))), max-days   (when mx (zero->nil (.getDays mx)))]
+    (->>
+      (gen/tuple
+        ;; Period constructor only accepts java type `int` not `long`, clamp the values
+        (gen/large-integer* {:min (floor-min min-years) :max (ceil-max max-years)})
+        (gen/large-integer* {:min (floor-min min-months) :max (ceil-max max-months)})
+        (gen/large-integer* {:min (floor-min min-days) :max (ceil-max max-days)}))
+      (gen/fmap (fn [[years months days]]
+                  (. Period of years months days))))))

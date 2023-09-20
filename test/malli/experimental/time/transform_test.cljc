@@ -16,6 +16,10 @@
   (t/testing "Duration"
     (t/is (validate :time/duration "PT0.01S"))
     (t/is (not (validate :time/duration 10))))
+  (t/testing "Period"
+    (t/is (validate :time/period "P-1Y10D"))
+    (t/is (validate :time/period "P-1Y8M"))
+    (t/is (not (validate :time/period 10))))
   (t/testing "zone id"
     (t/is (validate :time/zone-id "UTC"))
     (t/is (not (validate :time/zone-id "UTC'"))))

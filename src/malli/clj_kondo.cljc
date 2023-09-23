@@ -124,15 +124,15 @@
 (defmethod accept :qualified-symbol [_ _ _ _] :symbol)
 (defmethod accept :uuid [_ _ _ _] :any) ;;??
 
-(defn -seqable-or-rest [_ _ [child] {:keys [arity]}]
+(defn -seqable-or-rest [[child] {:keys [arity]}]
   (if (= arity :varargs)
     {:op :rest :spec child}
     :seqable))
 
-(defmethod accept :+ [_ _  children options] (-seqable-or-rest nil nil children options))
-(defmethod accept :* [_ _  children options] (-seqable-or-rest nil nil children options))
-(defmethod accept :? [_ _  children options] (-seqable-or-rest nil nil children options))
-(defmethod accept :repeat [_ _  children options] (-seqable-or-rest nil nil children options))
+(defmethod accept :+ [_ _  children options] (-seqable-or-rest children options))
+(defmethod accept :* [_ _  children options] (-seqable-or-rest children options))
+(defmethod accept :? [_ _  children options] (-seqable-or-rest children options))
+(defmethod accept :repeat [_ _  children options] (-seqable-or-rest children options))
 
 (defmethod accept :cat [_ _ children _] children)
 (defmethod accept :catn [_ _ children _] (mapv last children))

@@ -40,6 +40,24 @@
 
 (m/=> siren [:=> [:cat ifn? coll?] map?])
 
+(defn clj-kondo-issue-1922-1 [_x])
+(m/=> clj-kondo-issue-1922-1
+      [:=> [:cat [:map [:keys [:+ :keyword]]]] :nil])
+
+(defn clj-kondo-issue-1922-2 [_x])
+(m/=> clj-kondo-issue-1922-2
+      [:=> [:cat [:map [:keys [:* :int]]]] :nil])
+
+(defn clj-kondo-issue-1922-3 [_x])
+(m/=> clj-kondo-issue-1922-3
+      [:=> [:cat [:map [:keys [:? :string]]]] :nil])
+
+(defn clj-kondo-issue-1922-4 [_x])
+(m/=> clj-kondo-issue-1922-4
+      [:function
+       [:=> [:cat :int :int] :nil]
+       [:=> [:cat :int :int [:repeat :int]] :nil]])
+
 (deftest clj-kondo-integration-test
 
   (is (= {:op :keys,
@@ -63,11 +81,34 @@
          {'kikka
           {:arities {1 {:args [:int],
                         :ret :int},
-                     :varargs {:args [:int :int {:op :rest, :spec :int}],
+                     :varargs {:args [:int :int {:op :rest :spec :int}],
                                :ret :int,
                                :min-arity 2}}}
           'siren
-          {:arities {2 {:args [:ifn :coll], :ret :map}}}}}]
+          {:arities {2 {:args [:ifn :coll], :ret :map}}}
+
+          'clj-kondo-issue-1922-1
+          {:arities {1 {:args [{:op :keys
+                                :req {:keys :seqable}}]
+                        :ret :nil}}}
+
+          'clj-kondo-issue-1922-2
+          {:arities {1 {:args [{:op :keys
+                                :req {:keys :seqable}}]
+                        :ret :nil}}}
+
+          'clj-kondo-issue-1922-3
+          {:arities {1 {:args [{:op :keys
+                                :req {:keys :seqable}}]
+                        :ret :nil}}}
+
+          'clj-kondo-issue-1922-4
+          {:arities {2 {:args [:int :int]
+                        :ret :nil}
+                     :varargs {:args [:int :int {:op :rest :spec :int}]
+                               :ret :nil
+                               :min-arity 2}}}}}]
+
     #?(:clj
        (is (= expected-out
               (-> 'malli.clj-kondo-test
@@ -82,11 +123,11 @@
                   (clj-kondo/linter-config)
                   (get-in [:linters :type-mismatch :namespaces]))))))
   (testing "sequential elements"
-    (is (= {:op :rest :spec :int}
+    (is (= :seqable
            (clj-kondo/transform [:repeat :int])))
-    (is (= {:op :rest :spec {:op :keys :req {:price :int}}}
+    (is (= :seqable
            (clj-kondo/transform [:repeat [:map [:price :int]]])))
-    (is (= {:op :rest :spec [:int]}
+    (is (= :seqable
            (clj-kondo/transform [:repeat [:tuple :int]]))))
 
   (testing "regular expressions"

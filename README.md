@@ -3285,6 +3285,7 @@ or directly in a babashka script:
 - [malli-cli](https://github.com/piotr-yuxuan/malli-cli) - Command-line processing
 - [malapropism](https://github.com/dpassen/malapropism) - malli-backed configuration library
 - [muotti](https://github.com/esuomi/muotti) - a graph based value transformer library with malli-support
+- [malli-select](https://github.com/eval/malli-select) - spec2 selection for Malli (for when you only need part of the herd 🐑)
 
 ## License
 

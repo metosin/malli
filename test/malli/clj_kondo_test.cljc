@@ -18,6 +18,7 @@
     [:xyz :any]
     [:xyz2 [:maybe :any]]
     [:xyz3 [:maybe :int]]
+    [:tuple-of-ints [:maybe [:tuple :int :int]]]
     [:nested [:merge
               [:map [:id ::id]]
               [:map [:price ::price]]]]
@@ -73,7 +74,8 @@
                 :string-type-enum :nilable/string
                 :keyword-type-enum :keyword
                 :any-type-enum :any
-                :z :vector}}
+                :z :vector
+                :tuple-of-ints :nilable/seqable}}
          (clj-kondo/transform Schema)))
 
   (let [expected-out

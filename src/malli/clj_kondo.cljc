@@ -100,7 +100,7 @@
     (= :keys (:op child)) (assoc child :nilable true)
     (and (keyword? child) (not= :any child)) (keyword "nilable" (name child))
     :else child))
-(defmethod accept :tuple [_ _ children _] children)
+(defmethod accept :tuple [_ _ _ _] :seqable)
 (defmethod accept :multi [_ _ _ _] :any) ;;??
 (defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :fn)

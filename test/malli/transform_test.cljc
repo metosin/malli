@@ -414,10 +414,33 @@
       (is (= {:x :kikka} (m/decode [:map [:x keyword?]] {:x "kikka", :y "kukka"} strict-json-transformer))))
     (testing "encode"
       (is (= "kikka" (m/encode keyword? :kikka strict-json-transformer)))
-      (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))))
+      (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))
+
+      (testing "nested map encode"
+        (is (= {:x {:a {:b {}}}}
+               (m/encode [:map
+                          [:x [:map
+                               [:a [:map [:b [:map]]]]]]]
+                         {:x          {:a {:b {}
+                                           :c {}}}
+                          :additional 1}
+                         strict-json-transformer))))
+
+      (testing "recursive map encode"
+        (is (= {:x {"a" {"b" {}}}}
+               (m/encode [:map {:registry {::kw-map [:map-of :keyword [:ref ::kw-map]]}}
+                          [:x [:ref ::kw-map]]]
+
+                         {:x          {:a {:b {}
+                                           ;; TODO: Additional invalid param invalidates the recursive map
+                                           ;;"c" {}
+                                           }}
+                          :additional 1}
+                         strict-json-transformer
+                         ))))))
 
   (let [transformer (mt/transformer
-                     (mt/key-transformer
+                      (mt/key-transformer
                       {:decode #(-> % (subs 4) keyword)
                        :encode #(->> % name (str "key_"))})
                      (mt/string-transformer)

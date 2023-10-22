@@ -599,6 +599,36 @@ Detailed errors with `m/explain`:
 ;           :value nil})}
 ```
 
+Under `:errors`, you get a list of errors with the following keys:
+
+* `:path`, error location in Schema
+* `:in`, error location in value
+* `:schema`, schema in error
+* `:value`, value in error
+
+```clojure
+(def Schema [:map [:x [:maybe [:tuple :string]]]])
+
+(def value {:x [1]})
+
+(def error (-> Schema
+               (m/explain value)
+               :errors
+               first))
+
+error
+;{:path [:x 0 0]
+; :in [:x 0]
+; :schema :string
+; :value 1}
+
+(get-in value (:in error))
+; => 1
+
+(mu/get-in Schema (:path error))
+; => :string
+```
+
 Note! If you need error messages that serialize neatly to EDN/JSON, use `malli.util/explain-data` instead.
 
 ## Humanized error messages

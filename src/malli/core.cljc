@@ -956,7 +956,7 @@
      AST
      (-from-ast [parent ast options] (-from-entry-ast parent ast options))
      IntoSchema
-     (-type [_] :map)
+     (-type [_] (:type opts :map))
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
@@ -1091,7 +1091,7 @@
      (-from-ast [parent ast options]
        (-into-schema parent (:properties ast) [(from-ast (:key ast) options) (from-ast (:value ast) options)] options))
      IntoSchema
-     (-type [_] :map-of)
+     (-type [_] (:type opts :map-of))
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])

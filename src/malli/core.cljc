@@ -849,7 +849,7 @@
           Cached
           (-cache [_] cache)
           LensSchema
-          (-keep [_] true)
+          (-keep [_])
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value)))))))
 
@@ -1907,7 +1907,7 @@
           (-regex-min-max [_ _] (re-min-max properties children)))))))
 
 (defn -sequence-entry-schema
-  [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
+  [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max keep]} :child-bounds :as opts}]
   ^{:type ::into-schema}
   (reify
     AST
@@ -1941,7 +1941,7 @@
           Cached
           (-cache [_] cache)
           LensSchema
-          (-keep [_] true)
+          (-keep [_] keep)
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value))
           EntrySchema
@@ -2393,56 +2393,56 @@
    :uuid (-uuid-schema)})
 
 (defn sequence-schemas []
-  {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}
+  {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/+-validator child))
                          :re-explainer (fn [_ [child]] (re/+-explainer child))
                          :re-parser (fn [_ [child]] (re/+-parser child))
                          :re-unparser (fn [_ [child]] (re/+-unparser child))
                          :re-transformer (fn [_ [child]] (re/+-transformer child))
                          :re-min-max (fn [_ [child]] {:min (:min (-regex-min-max child true))})})
-   :* (-sequence-schema {:type :*, :child-bounds {:min 1, :max 1}
+   :* (-sequence-schema {:type :*, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/*-validator child))
                          :re-explainer (fn [_ [child]] (re/*-explainer child))
                          :re-parser (fn [_ [child]] (re/*-parser child))
                          :re-unparser (fn [_ [child]] (re/*-unparser child))
                          :re-transformer (fn [_ [child]] (re/*-transformer child))
                          :re-min-max (fn [_ _] {:min 0})})
-   :? (-sequence-schema {:type :?, :child-bounds {:min 1, :max 1}
+   :? (-sequence-schema {:type :?, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/?-validator child))
                          :re-explainer (fn [_ [child]] (re/?-explainer child))
                          :re-parser (fn [_ [child]] (re/?-parser child))
                          :re-unparser (fn [_ [child]] (re/?-unparser child))
                          :re-transformer (fn [_ [child]] (re/?-transformer child))
                          :re-min-max (fn [_ [child]] {:min 0, :max (:max (-regex-min-max child true))})})
-   :repeat (-sequence-schema {:type :repeat, :child-bounds {:min 1, :max 1}
+   :repeat (-sequence-schema {:type :repeat, :child-bounds {:min 1, :max 1}, :keep true
                               :re-validator (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-validator min max child))
                               :re-explainer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-explainer min max child))
                               :re-parser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-parser min max child))
                               :re-unparser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-unparser min max child))
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-transformer min max child))
                               :re-min-max (fn [props [child]] (-re-min-max * props child))})
-   :cat (-sequence-schema {:type :cat, :child-bounds {}
+   :cat (-sequence-schema {:type :cat, :child-bounds {}, :keep true
                            :re-validator (fn [_ children] (apply re/cat-validator children))
                            :re-explainer (fn [_ children] (apply re/cat-explainer children))
                            :re-parser (fn [_ children] (apply re/cat-parser children))
                            :re-unparser (fn [_ children] (apply re/cat-unparser children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))
                            :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} children))})
-   :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}
+   :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}, :keep true
                            :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
                            :re-parser (fn [_ children] (apply re/alt-parser children))
                            :re-unparser (fn [_ children] (apply re/alt-unparser children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))
                            :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} children))})
-   :catn (-sequence-entry-schema {:type :catn, :child-bounds {}
+   :catn (-sequence-entry-schema {:type :catn, :child-bounds {}, :keep false
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
                                   :re-parser (fn [_ children] (apply re/catn-parser children))
                                   :re-unparser (fn [_ children] (apply re/catn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
                                   :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (-vmap last children)))})
-   :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}
+   :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}, :keep false
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
                                   :re-parser (fn [_ children] (apply re/altn-parser children))

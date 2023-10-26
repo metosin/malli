@@ -772,7 +772,20 @@
                   [:a [:maybe [:sequential [:maybe [:map [:b [:and [:or int?]]]]]]]]]]
                 [:fn '(constantly true)]]
                (m/schema)
-               (mu/in->paths [:a 0 :b]))))))
+               (mu/in->paths [:a 0 :b])))))
+  (testing "orn, catn and altn don't contribute to :in"
+    (are [type value]
+      (= [:a]
+         (let [schema (m/schema [type [:a-branch [:map [:a :int]]]])]
+           (->> (m/explain schema value)
+                :errors
+                first
+                :path
+                (mu/path->in schema))))
+
+      :orn {:a "2"}
+      :catn [{:a "2"}]
+      :altn [{:a "2"}])))
 
 (deftest declarative-schemas
   (let [->> #(m/schema % {:registry (merge (mu/schemas) (m/default-schemas))})]

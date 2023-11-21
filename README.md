@@ -1493,14 +1493,14 @@ For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:o
 ```clojure
 (def OrMaps
   (m/schema
-    [:merge
+    [:or
      [:map [:x :int] [:x :string]]
      [:map [:x :string] [:x :int]]]
     {:registry registry}))
 
 (def UnionMaps
   (m/schema
-    [:merge
+    [:union
      [:map [:x :int] [:x :string]]
      [:map [:x :string] [:x :int]]]
     {:registry registry}))
@@ -1527,7 +1527,7 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 
 (def UnionCommon
   (m/schema
-    [:merge
+    [:union
      [:map [:x :string]]
      [:map [:x :int]]]
     {:registry registry}))

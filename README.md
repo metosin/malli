@@ -1486,8 +1486,7 @@ Merged
 ; => true
 ```
 
-`:union` is similar to `:or`, except map schemas in different disjuncts are merged
-together with `:or`.
+`:union` is similar to `:or`, except `:union` combines map schemas in different disjuncts with `:or`.
 For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:or :int :string]]]`.
 
 ```clojure
@@ -1512,8 +1511,8 @@ For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:o
 ; => true
 ```
 
-`:merge` and `:union` differ on schemas with common keys: right-most
-map schemas win with `:merge`, and schemas are joined with `:or` with `:union`.
+`:merge` and `:union` differ on schemas with common keys. `:merge` chooses the right-most
+schema of common keys, and `:union` combines them with `:or`.
 For example, `MergedCommon` is equivalent to `[:map [:x :int]]`, and `UnionCommon`
 is equivalent to `[:map [:x [:or :string :int]]]`.
 

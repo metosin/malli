@@ -1514,7 +1514,7 @@ For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:o
 
 `:merge` and `:union` differ on schemas with common keys: right-most
 map schemas win with `:merge`, and schemas are joined with `:or` with `:union`.
-For example, `MergedCommon` is equivalent to `[:map [:x :int]]`, and UnionCommon
+For example, `MergedCommon` is equivalent to `[:map [:x :int]]`, and `UnionCommon`
 is equivalent to `[:map [:x [:or :string :int]]]`.
 
 ```clojure

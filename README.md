@@ -1486,6 +1486,63 @@ Merged
 ; => true
 ```
 
+`:union` is similar to `:or`, except map schemas in different disjuncts are merged
+together with `:or`.
+For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:or :int :string]]]`.
+
+```clojure
+(def OrMaps
+  (m/schema
+    [:merge
+     [:map [:x :int] [:x :string]]
+     [:map [:x :string] [:x :int]]]
+    {:registry registry}))
+
+(def UnionMaps
+  (m/schema
+    [:merge
+     [:map [:x :int] [:x :string]]
+     [:map [:x :string] [:x :int]]]
+    {:registry registry}))
+
+(m/validate OrMaps {:x "kikka" :y "kikka"})
+; => false
+
+(m/validate UnionMaps {:x "kikka" :y "kikka"})
+; => true
+```
+
+`:merge` and `:union` differ on schemas with common keys: right-most
+map schemas win with `:merge`, and schemas are joined with `:or` with `:union`.
+For example, `MergedCommon` is equivalent to `[:map [:x :int]]`, and UnionCommon
+is equivalent to `[:map [:x [:or :string :int]]]`.
+
+```clojure
+(def MergedCommon
+  (m/schema
+    [:merge
+     [:map [:x :string]]
+     [:map [:x :int]]]
+    {:registry registry}))
+
+(def UnionCommon
+  (m/schema
+    [:merge
+     [:map [:x :string]]
+     [:map [:x :int]]]
+    {:registry registry}))
+
+(m/validate MergedCommon {:x "kikka"})
+; => true
+(m/validate MergedCommon {:x 1})
+; => false
+(m/validate UnionCommon {:x "kikka"})
+; => true
+(m/validate UnionCommon {:x 1})
+; => true
+```
+
+
 ## Persisting schemas
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.

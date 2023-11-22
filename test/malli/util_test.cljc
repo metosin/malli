@@ -822,6 +822,32 @@
         (is (= {:x [:str "x"]} (m/parse s {:x "x"})))
         (is (= {:x 1} (m/parse s {:x 1})))))
 
+    (testing "merge vs union"
+      (let [->s #(->> [%
+                       [:map [:x :string]]
+                       [:map [:x :int]]])
+            u (->s :union)
+            m (->s :merge)]
+        (is (m/validate u {:x 1}))
+        (is (m/validate u {:x "a"}))
+        (is (m/validate m {:x 1}))
+        (is (m/explain m {:x "a"}))))
+
+    (testing "union vs or"
+      (let [->s #(->> [%
+                       [:map [:x :string] [:y :int]]
+                       [:map [:x :int] [:y :string]]])
+            u (->s :union)
+            o (->s :or)]
+        (is (m/validate u {:x 1 :y 1}))
+        (is (m/validate u {:x 1 :y "a"}))
+        (is (m/validate u {:x "a" :y 1}))
+        (is (m/validate u {:x "a" :y "a"}))
+        (is (m/explain o {:x 1 :y 1}))
+        (is (m/validate o {:x 1 :y "a"}))
+        (is (m/validate o {:x "a" :y 1}))
+        (is (m/explain o {:x "a" :y "a"}))))
+
     (testing "select-keys"
       (let [s (->> [:select-keys
                     [:schema

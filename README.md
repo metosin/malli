@@ -1957,8 +1957,8 @@ Adding custom decoding via `::mp/value-decoders` option:
    :time "2021-01-01T00:00:00Z"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"
    :time "2022-01-01T00:00:00Z"}]
- {::mp/value-decoders {'string? {:uuid mt/-string->uuid
-                                 'inst? mt/-string->date}}})
+ {::mp/value-decoders {:string {:uuid mt/-string->uuid
+                                'inst? mt/-string->date}}})
 ; => [:map [:id :uuid] [:time inst?]
 ```
 

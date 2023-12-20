@@ -2534,7 +2534,7 @@
      (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))
      (catch #?(:clj Throwable :cljs :default) ex
        (throw (ex-info
-               (str "Schema error when insrumenting function: " ns "/" name " - " (ex-message ex))
+               (str "Schema error when instrumenting function: " ns "/" name " - " (ex-message ex))
                (ex-data ex)))))))
 
 #?(:clj

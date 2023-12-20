@@ -19,7 +19,7 @@
       (alter-meta! #'plus-err #(assoc % :malli/schema [:=> [:cat [:vector]] [:int {:max 6}]]))
       (try
         (is (thrown-with-msg?
-             Exception #"Schema error when insrumenting function: malli.dev-err-test/plus-err - :malli.core/child-error"
+             Exception #"Schema error when instrumenting function: malli.dev-err-test/plus-err - :malli.core/child-error"
              (md/start! {:ns *ns*})))
         (catch Throwable _
           (md/stop!)))

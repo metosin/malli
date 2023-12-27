@@ -5,7 +5,6 @@
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
-(defn -original [v] (::original-fn (meta v)))
 
 (defn -filter-ns [& ns] (fn [n _ _] ((set ns) n)))
 (defn -filter-var [f] (fn [n s _] (f (-find-var n s))))
@@ -19,17 +18,13 @@
       (when (or (not filters) (some #(% n s d) filters))
         (when-let [v (-find-var n s)]
           (case mode
-            :instrument (let [original-fn (or (-original v) (deref v))
-                              dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
+            :instrument (let [dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
                                      (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
                                      (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
                                            (true? (:gen d)) (dissoc $ :gen)
                                            :else $))]
-                          (alter-meta! v assoc ::original-fn original-fn)
-                          (alter-var-root v (constantly (m/-instrument dgen original-fn))))
-            :unstrument (when-let [original-fn (-original v)]
-                          (alter-meta! v dissoc ::original-fn)
-                          (alter-var-root v (constantly original-fn)))
+                          (alter-var-root v (fn [f] (-> (m/-instrument dgen f) (with-meta {::original f})))))
+            :unstrument (alter-var-root v (fn [f] (-> f meta ::original (or f))))
             (mode v d))
           v))))))
 
@@ -122,7 +117,7 @@
   ([options]
    (let [res* (atom {})]
      (-strument! (assoc options :mode (fn [v {:keys [schema]}]
-                                        (some->> (mg/check schema (or (-original v) (deref v)))
+                                        (some->> (mg/check schema v)
                                                  (swap! res* assoc (symbol v))))))
      (not-empty @res*))))
 

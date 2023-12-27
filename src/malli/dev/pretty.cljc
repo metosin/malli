@@ -21,12 +21,6 @@
 
 (defn -explain [schema value printer] (-errors (m/explain schema value) printer))
 
-(defn -block [text body printer]
-  [:group (v/-text text printer) :break :break [:align 2 body]])
-
-(defn -link [link printer]
-  (v/-color :link link printer))
-
 ;;
 ;; formatters
 ;;
@@ -34,37 +28,37 @@
 (defmethod v/-format ::m/explain [_ _ {:keys [schema] :as explanation} printer]
   {:body
    [:group
-    (-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
-    (-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
-    (-block "Schema:" (v/-visit schema printer) printer) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+    (v/-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
+    (v/-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
+    (v/-block "Schema:" (v/-visit schema printer) printer) :break :break
+    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-input [_ _ {:keys [args input fn-name]} printer]
   {:body
    [:group
-    (-block "Invalid function arguments:" (v/-visit args printer) printer) :break :break
-    (-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
-    (-block "Input Schema:" (v/-visit input printer) printer) :break :break
-    (-block "Errors:" (-explain input args printer) printer) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+    (v/-block "Invalid function arguments:" (v/-visit args printer) printer) :break :break
+    (v/-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
+    (v/-block "Input Schema:" (v/-visit input printer) printer) :break :break
+    (v/-block "Errors:" (-explain input args printer) printer) :break :break
+    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-output [_ _ {:keys [value args output fn-name]} printer]
   {:body
    [:group
-    (-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
-    (-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
-    (-block "Function arguments:" (v/-visit args printer) printer) :break :break
-    (-block "Output Schema:" (v/-visit output printer) printer) :break :break
-    (-block "Errors:" (-explain output value printer) printer) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+    (v/-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
+    (v/-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
+    (v/-block "Function arguments:" (v/-visit args printer) printer) :break :break
+    (v/-block "Output Schema:" (v/-visit output printer) printer) :break :break
+    (v/-block "Errors:" (-explain output value printer) printer) :break :break
+    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-arity [_ _ {:keys [args arity schema fn-name]} printer]
   {:body
    [:group
-    (-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
-    (-block "Function Schema:" (v/-visit schema printer) printer) :break :break
-    #?(:cljs (-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
-    (-block "More information:" (-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+    (v/-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
+    (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
+    #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
+    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 ;;
 ;; public api

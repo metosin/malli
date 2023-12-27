@@ -4,6 +4,16 @@
             [malli.dev.pretty :as pretty]
             [malli.instrument :as mi]))
 
+(defn -capture-exceptions!
+  []
+  (alter-var-root
+   #'m/-exception
+   (let [report (pretty/reporter)]
+     (fn [f] (-> (fn [type data] (report type data) (f type data)) (with-meta {::original f}))))))
+
+(defn -uncapture-exceptions! []
+  (alter-var-root #'m/-exception (fn [f] (-> f meta ::original (or f)))))
+
 (defn stop!
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
   []
@@ -13,6 +23,7 @@
        (format "unstrumented %d vars")
        println)
   (clj-kondo/save! {})
+  (-uncapture-exceptions!)
   (println "stopped instrumentation"))
 
 (defn start!
@@ -23,6 +34,7 @@
   ([] (start! {:report (pretty/reporter)}))
   ([options]
    (with-out-str (stop!))
+   (-capture-exceptions!)
    (mi/collect! {:ns (all-ns)})
    (let [watch (bound-fn [_ _ old new]
                  (->> (for [[n d] (:clj new)

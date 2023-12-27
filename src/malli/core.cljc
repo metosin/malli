@@ -133,9 +133,7 @@
 
 (defn -deprecated! [x] (println "DEPRECATED:" x))
 
-(defn -exception
-  ([type] (-exception type nil))
-  ([type data] (ex-info (str type) {:type type, :message type, :data data})))
+(defn -exception [type data] (ex-info (str type) {:type type, :message type, :data data}))
 
 (defn -fail!
   ([type] (-fail! type nil))

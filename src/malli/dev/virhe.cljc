@@ -162,6 +162,12 @@
 (defn -section [title location body printer]
   [:group (-title title location printer) :break :break body :break :break (-footer printer)])
 
+(defn -block [text body printer]
+  [:group (-text text printer) :break :break [:align 2 body]])
+
+(defn -link [link printer]
+  (-color :link link printer))
+
 ;;
 ;; formatting
 ;;
@@ -169,7 +175,10 @@
 (defmulti -format (fn [type _ _ _] type) :default ::default)
 
 (defmethod -format ::default [_ message data printer]
-  {:body (into [:group (-text (or (:message data) message) printer)] (when data [:break :break (-visit data printer)]))})
+  {:body
+   [:group
+    (-block "Message:" (-color :string message printer) printer) :break :break
+    (-block "Ex-data:" (-visit data printer) printer)]})
 
 ;;
 ;; documents

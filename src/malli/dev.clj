@@ -4,8 +4,7 @@
             [malli.dev.pretty :as pretty]
             [malli.instrument :as mi]))
 
-(defn -capture-exceptions!
-  []
+(defn -capture-exceptions! []
   (alter-var-root
    #'m/-exception
    (let [report (pretty/reporter)]
@@ -13,6 +12,10 @@
 
 (defn -uncapture-exceptions! []
   (alter-var-root #'m/-exception (fn [f] (-> f meta ::original (or f)))))
+
+;;
+;; Public API
+;;
 
 (defn stop!
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."

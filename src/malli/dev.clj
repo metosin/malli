@@ -51,7 +51,7 @@
                       (mi/instrument!)
                       (count)
                       (format "instrumented %d vars")
-                      println)
+                      (println))
                  (clj-kondo/emit!))]
      (add-watch @#'m/-function-schemas* ::watch watch))
    (mi/instrument! options)

@@ -48,8 +48,8 @@
                       (into {})
                       (reduce-kv assoc-in {})
                       (assoc options :data)
-                      mi/instrument!
-                      count
+                      (mi/instrument!)
+                      (count)
                       (format "instrumented %d vars")
                       println)
                  (clj-kondo/emit!))]

@@ -264,11 +264,11 @@
     (or (mr/-schema registry ?schema)
         (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
 
-(defn- -lookup! [?schema f rec options]
+(defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
       (if-let [?schema (-lookup ?schema options)]
-        (cond-> ?schema rec (recur f rec options))
-        (-fail! ::invalid-schema {:schema ?schema}))))
+        (cond-> ?schema rec (recur ?form f rec options))
+        (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -1975,11 +1975,11 @@
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (let [properties (when properties (when (pos? (count properties)) properties))
-         r (when properties (properties :registry))
+   (let [properties' (when properties (when (pos? (count properties)) properties))
+         r (when properties' (properties' :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties :registry (-property-registry r options identity)) properties)]
-     (-into-schema (-lookup! type into-schema? false options) properties children options))))
+         properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
+     (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -2035,7 +2035,7 @@
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) into-schema? true options)
+                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
@@ -2043,7 +2043,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-lookup! nil false options) (recur options))))))
+             (-> ?schema (-lookup! ?schema nil false options) (recur options))))))
 
 (defn form
   "Returns the Schema form"

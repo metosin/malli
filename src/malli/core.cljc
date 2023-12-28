@@ -293,8 +293,7 @@
 ;;
 
 (defn -raw-form [type properties children]
-  (let [has-children (seq children)
-        has-properties (seq properties)]
+  (let [has-children (seq children), has-properties (seq properties)]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
           has-children (reduce conj [type] children)

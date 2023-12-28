@@ -1,7 +1,8 @@
 (ns malli.dev.pretty
   (:require [malli.core :as m]
             [malli.dev.virhe :as v]
-            [malli.error :as me]))
+            [malli.error :as me]
+            [malli.registry :as mr]))
 
 (defn -printer
   ([] (-printer nil))
@@ -60,11 +61,15 @@
     #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-schema [_ _ {:keys [form]} printer]
-  {:body
-   [:group
-    (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+(defmethod v/-format ::m/invalid-schema [_ _ {:keys [schema form]} printer]
+  (let [proposals (seq (me/-most-similar-to #{schema} schema (set (keys (mr/schemas m/default-registry)))))]
+    {:body
+     [:group
+      (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
+      (when proposals
+        [:group (v/-block "Did you mean" (->> (for [proposal proposals] (v/-visit proposal printer)) (interpose :break)) printer)
+         :break :break])
+      (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 (defmethod v/-format ::m/child-error [_ _ {:keys [type children properties] :as data} printer]
   (let [form (m/-raw-form type properties children)

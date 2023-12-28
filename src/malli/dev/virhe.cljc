@@ -178,7 +178,7 @@
   {:body
    [:group
     (-block "Message:" (-color :string message printer) printer) :break :break
-    (-block "Ex-data:" (-visit data printer) printer)]})
+    (-block "Data:" (-visit data printer) printer)]})
 
 ;;
 ;; documents

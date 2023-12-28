@@ -1964,7 +1964,7 @@
 
   (testing "invalid ref"
     (is (thrown-with-msg?
-         #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-ref"
+         #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-entry"
          (m/schema [:map {:registry {:kikka :int}} :int])))))
 
 (deftest simple-schemas

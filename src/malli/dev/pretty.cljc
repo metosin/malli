@@ -60,6 +60,30 @@
     #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
+(defmethod v/-format ::m/invalid-schema [_ _ {:keys [form]} printer]
+  {:body
+   [:group
+    (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
+    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+
+(defmethod v/-format ::m/child-error [_ _ {:keys [type children properties] :as data} printer]
+  (let [form (m/-raw-form type properties children)
+        constraints (reduce (fn [acc k] (if-let [v (get data k)] (assoc acc k v) acc)) nil [:min :max])
+        size (count children)]
+    {:body
+     [:group
+      (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
+      (v/-block "Reason" [:group "Schema has " (v/-visit size printer)
+                          (if (= 1 size) " child" " children")
+                          ", expected " (v/-visit constraints printer)] printer) :break :break
+      (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
+
+(defmethod v/-format ::m/invalid-entry [_ _ {:keys [entry naked-keys]} printer]
+  {:body
+   [:group
+    (v/-block "Invalid Entry" (v/-visit (vec entry) printer) printer) :break :break
+    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+
 ;;
 ;; public api
 ;;

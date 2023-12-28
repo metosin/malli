@@ -292,16 +292,19 @@
 ;; forms
 ;;
 
-(defn -create-form [type properties children options]
+(defn -raw-form [type properties children]
   (let [has-children (seq children)
-        has-properties (seq properties)
-        properties (when has-properties
-                     (let [registry (:registry properties)]
-                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+        has-properties (seq properties)]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
           has-children (reduce conj [type] children)
           :else type)))
+
+(defn -create-form [type properties children options]
+  (let [properties (when (seq properties)
+                     (let [registry (:registry properties)]
+                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+    (-raw-form type properties children)))
 
 (defn -simple-form [parent properties children f options]
   (-create-form (-type parent) properties (-vmap f children) options))
@@ -441,7 +444,7 @@
         (if (== n 1)
           (if (and (-reference? e0) naked-keys)
             (-parse-ref-vector1 e e0)
-            (-fail! ::invalid-children {:children -children}))
+            (-fail! ::invalid-entry {:entry ea}))
           (let [e1 (aget ea 1)]
             (if (== n 2)
               (if (and (-reference? e0) (map? e1))
@@ -451,7 +454,7 @@
                 (-parse-entry-else3 e0 e1 e2))))))
       (if (and naked-keys (-reference? e))
         (-parse-ref-entry e)
-        (-fail! ::invalid-ref {:ref e})))))
+        (-fail! ::invalid-entry {:entry e})))))
 
 (defn -eager-entry-parser [children props options]
   (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))

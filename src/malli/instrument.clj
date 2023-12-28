@@ -5,6 +5,7 @@
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
+(defn -original [v] (let [f (deref v)] (-> f meta ::original (or f))))
 
 (defn -filter-ns [& ns] (fn [n _ _] ((set ns) n)))
 (defn -filter-var [f] (fn [n s _] (f (-find-var n s))))
@@ -117,7 +118,7 @@
   ([options]
    (let [res* (atom {})]
      (-strument! (assoc options :mode (fn [v {:keys [schema]}]
-                                        (some->> (mg/check schema v)
+                                        (some->> (mg/check schema (-original v))
                                                  (swap! res* assoc (symbol v))))))
      (not-empty @res*))))
 

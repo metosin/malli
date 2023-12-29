@@ -25,9 +25,9 @@
   (let [colors (:colors printer -dark-colors)
         color (get colors color (:error colors))]
     #?(:cljs [:span body]
-       :clj (if color
-              [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]]
-              [:span body]))))
+       :clj  (if color
+               [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]]
+               [:span body]))))
 
 ;;
 ;; EDN
@@ -131,16 +131,24 @@
 
 #?(:clj
    (defn -location [e ss]
-     (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
-           [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
-                                  (cond (start-with f s) (recur (rest fs) ss)
-                                        (seq (rest ss)) (recur fs (rest ss))
-                                        :else f))]
-       (try (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
-                  target-name (name target)
-                  ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
-              (str ns ":" line))
-            (catch Exception _)))))
+     (try
+       (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
+             [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
+                                    (cond (start-with f s) (recur (rest fs) ss)
+                                          (seq (rest ss)) (recur fs (rest ss))
+                                          :else f))]
+         (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
+               target-name (name target)
+               ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
+           (str ns ":" line)))
+       (catch Exception _))))
+
+#?(:clj
+   (defn hierarchy [^Class k]
+     (loop [sk (.getSuperclass k), ks [k]]
+       (if-not (= sk Object)
+         (recur (.getSuperclass sk) (conj ks sk))
+         ks))))
 
 (defn -title [message source {:keys [width] :as printer}]
   (let [between (- width (count message) 8 (count source))]
@@ -172,20 +180,23 @@
 ;; formatting
 ;;
 
-(defmulti -format (fn [type _ _ _] type) :default ::default)
+(defmulti -format (fn [e _ _] (-> e (ex-data) :type)) :default ::default)
 
-(defmethod -format ::default [_ message data printer]
-  {:body
-   [:group
-    (-block "Message:" (-color :string message printer) printer) :break :break
-    (-block "Data:" (-visit data printer) printer)]})
+(defmethod -format ::default [e data printer]
+  (if-let [format #(:clj (some (methods -format) (hierarchy (class e))), :cljs nil)]
+    (format e data printer)
+    {:body
+     [:group
+      (-block "Type:" (-visit (type e) printer) printer) :break :break
+      (-block "Message:" (-color :string (ex-message e) printer) printer)
+      (when-let [data (ex-data e)]
+        [:group :break :break (-block "Ex-data:" (-visit data printer) printer)])]}))
 
 ;;
 ;; documents
 ;;
 
 (defn -exception-doc [e printer]
-  (let [{:keys [type data]} (ex-data e)
-        {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
+  (let [{:keys [title body] :or {title (:title printer)}} (-format e (-> e (ex-data) :data) printer)
         location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)), :cljs nil)]
     (-section title location body printer)))

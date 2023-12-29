@@ -26,7 +26,7 @@
 ;; formatters
 ;;
 
-(defmethod v/-format ::m/explain [_ _ {:keys [schema] :as explanation} printer]
+(defmethod v/-format ::m/explain [_ {:keys [schema] :as explanation} printer]
   {:body
    [:group
     (v/-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
@@ -34,7 +34,7 @@
     (v/-block "Schema:" (v/-visit schema printer) printer) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-input [_ _ {:keys [args input fn-name]} printer]
+(defmethod v/-format ::m/invalid-input [_ {:keys [args input fn-name]} printer]
   {:body
    [:group
     (v/-block "Invalid function arguments:" (v/-visit args printer) printer) :break :break
@@ -43,7 +43,7 @@
     (v/-block "Errors:" (-explain input args printer) printer) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-output [_ _ {:keys [value args output fn-name]} printer]
+(defmethod v/-format ::m/invalid-output [_ {:keys [value args output fn-name]} printer]
   {:body
    [:group
     (v/-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
@@ -53,7 +53,7 @@
     (v/-block "Errors:" (-explain output value printer) printer) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-arity [_ _ {:keys [args arity schema fn-name]} printer]
+(defmethod v/-format ::m/invalid-arity [_ {:keys [args arity schema fn-name]} printer]
   {:body
    [:group
     (v/-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
@@ -61,7 +61,7 @@
     #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-schema [_ _ {:keys [schema form]} printer]
+(defmethod v/-format ::m/invalid-schema [_ {:keys [schema form]} printer]
   (let [proposals (seq (me/-most-similar-to #{schema} schema (set (keys (mr/schemas m/default-registry)))))]
     {:body
      [:group
@@ -71,7 +71,7 @@
          :break :break])
       (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
-(defmethod v/-format ::m/child-error [_ _ {:keys [type children properties] :as data} printer]
+(defmethod v/-format ::m/child-error [_ {:keys [type children properties] :as data} printer]
   (let [form (m/-raw-form type properties children)
         constraints (reduce (fn [acc k] (if-let [v (get data k)] (assoc acc k v) acc)) nil [:min :max])
         size (count children)]
@@ -83,7 +83,7 @@
                           ", expected " (v/-visit constraints printer)] printer) :break :break
       (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
-(defmethod v/-format ::m/invalid-entry [_ _ {:keys [entry naked-keys]} printer]
+(defmethod v/-format ::m/invalid-entry [_ {:keys [entry]} printer]
   {:body
    [:group
     (v/-block "Invalid Entry" (v/-visit (vec entry) printer) printer) :break :break

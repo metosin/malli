@@ -101,7 +101,7 @@
   ([printer]
    (fn [type data]
      (-> (ex-info (str type) {:type type :data data})
-         (v/format-exception printer)
+         (v/exception-document printer)
          (v/-print-doc printer)
          #?(:cljs (-> with-out-str println))))))
 

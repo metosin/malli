@@ -200,7 +200,7 @@
 (defn format [e printer]
   (-format e (-> e (ex-data) :data) printer))
 
-(defn format-exception [e printer]
+(defn exception-document [e printer]
   (let [{:keys [title body] :or {title (:title printer)}} (format e printer)
         location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)), :cljs nil)]
     (-section title location body printer)))

@@ -145,7 +145,7 @@
        (catch Exception _))))
 
 #?(:clj
-   (defn hierarchy [^Class k]
+   (defn -hierarchy [^Class k]
      (loop [sk (.getSuperclass k), ks [k]]
        (if-not (= sk Object)
          (recur (.getSuperclass sk) (conj ks sk))
@@ -184,7 +184,7 @@
 (defmulti -format (fn [e _ _] (-> e (ex-data) :type)) :default ::default)
 
 (defmethod -format ::default [e data printer]
-  (if-let [-format #?(:clj (some (methods -format) (hierarchy (class e))), :cljs nil)]
+  (if-let [-format #?(:clj (some (methods -format) (-hierarchy (class e))), :cljs nil)]
     (-format e data printer)
     {:body
      [:group

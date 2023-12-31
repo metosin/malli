@@ -32,7 +32,7 @@
        println)
   (clj-kondo/save! {})
   (-uncapture-fail!)
-  (println "stopped instrumentation"))
+  (println "malli development mode disabled"))
 
 (defn start!
   "Collects defn schemas from all loaded namespaces and starts instrumentation for
@@ -61,4 +61,4 @@
      (add-watch @#'m/-function-schemas* ::watch watch))
    (mi/instrument! options)
    (clj-kondo/emit!)
-   (println "started instrumentation")))
+   (println "malli development mode enabled")))

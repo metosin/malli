@@ -30,7 +30,7 @@
   {:body
    [:group
     (v/-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
-    (v/-block "Errors:" (v/-visit (me/humanize explanation) printer) printer) :break :break
+    (v/-block "Errors:" (v/-visit (me/humanize (me/with-spell-checking explanation)) printer) printer) :break :break
     (v/-block "Schema:" (v/-visit schema printer) printer) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 

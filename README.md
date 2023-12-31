@@ -810,6 +810,22 @@ Masking irrelevant parts:
 
 ## Pretty errors
 
+There are two ways to get pretty errors:
+
+### Development mode
+
+Any exception thrown via `malli.core/-fail!` is being captures in development mode and pretty printed. Pretty printing is extendable using [virhe](https://github.com/metosin/virhe).
+
+Pretty Coercion:
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-coerce.png" width=800>
+
+Any Exception thrown:
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/bats-in-the-attic.png" width=800>
+
+### pretty/explain
+
 For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 <img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>

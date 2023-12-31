@@ -16,6 +16,12 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Better development-time tooling
+  * `malli.dev/start!` captures all malli-thrown exceptions, see [README](README.md#development-mode) for details
+  * does not log individual re-instrumentation of function vars
+  * **BREAKING**: changes in `malli.dev.virhe` and `malli.pretty` extension apis, wee [#980](https://github.com/metosin/malli/pull/980) for details
+* Fixing `mt/strip-extra-keys-transformer` for recursive map encoding [#963](https://github.com/metosin/malli/pull/963)
+* Support passing custom `:type` in into-schema opt for `:map` and `:map-of` [#968](https://github.com/metosin/malli/pull/968)
 * `mu/path->in` works with `:orn`, `:catn` and `:altn`.
 
 ## 0.13.0 (2023-09-24)

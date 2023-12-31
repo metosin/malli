@@ -4,6 +4,10 @@
             [malli.dev.pretty :as pretty]
             [malli.instrument :as mi]))
 
+(defn -log!
+  ([text] (-log! text (pretty/-printer)))
+  ([text printer] (pretty/-log! text printer)))
+
 (defn -capture-fail! []
   (alter-var-root
    #'m/-fail!
@@ -26,13 +30,10 @@
   "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
   []
   (remove-watch @#'m/-function-schemas* ::watch)
-  (->> (mi/unstrument!)
-       count
-       (format "unstrumented %d vars")
-       println)
+  (->> (mi/unstrument!) (count) (format "unstrumented %d function vars") (-log!))
   (clj-kondo/save! {})
   (-uncapture-fail!)
-  (println "malli development mode disabled"))
+  (-log! "dev-mode stopped"))
 
 (defn start!
   "Collects defn schemas from all loaded namespaces and starts instrumentation for
@@ -53,12 +54,9 @@
                       (into {})
                       (reduce-kv assoc-in {})
                       (assoc options :data)
-                      (mi/instrument!)
-                      (count)
-                      (format "instrumented %d vars")
-                      (println))
+                      (mi/instrument!))
                  (clj-kondo/emit!))]
      (add-watch @#'m/-function-schemas* ::watch watch))
-   (mi/instrument! options)
+   (->> (mi/instrument! options) (count) (format "instrumented %s function vars") (-log!))
    (clj-kondo/emit!)
-   (println "malli development mode enabled")))
+   (-log! "dev-mode started")))

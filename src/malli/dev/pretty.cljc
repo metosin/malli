@@ -22,6 +22,10 @@
 
 (defn -explain [schema value printer] (-errors (m/explain schema value) printer))
 
+(defn -log! [text printer]
+  (-> [:group (v/-color :title "malli: " printer) text]
+      (v/-print-doc printer)))
+
 ;;
 ;; formatters
 ;;

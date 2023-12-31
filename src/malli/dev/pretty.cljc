@@ -34,6 +34,9 @@
     (v/-block "Schema:" (v/-visit schema printer) printer) :break :break
     (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
+(defmethod v/-format ::m/coercion [_ {:keys [explain]} printer]
+  (v/format (m/-exception ::m/explain explain) printer))
+
 (defmethod v/-format ::m/invalid-input [_ {:keys [args input fn-name]} printer]
   {:body
    [:group
@@ -98,7 +101,7 @@
   ([printer]
    (fn [type data]
      (-> (ex-info (str type) {:type type :data data})
-         (v/-exception-doc printer)
+         (v/format-exception printer)
          (v/-print-doc printer)
          #?(:cljs (-> with-out-str println))))))
 

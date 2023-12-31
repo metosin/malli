@@ -2216,7 +2216,7 @@
          decode (decoder s transformer)
          explain (explainer s)
          respond (or respond identity)
-         raise (or raise #(-fail! ::invalid-input %))]
+         raise (or raise #(-fail! ::coercion %))]
      (fn -coercer [x] (let [value (decode x)]
                         (if (valid? value)
                           (respond value)

@@ -1,5 +1,6 @@
 (ns malli.dev.virhe
   "initial code for https://github.com/metosin/virhe"
+  (:refer-clojure :exclude [format])
   (:require [arrangement.core]
             [fipp.edn]
             [fipp.ednize]
@@ -193,10 +194,13 @@
         [:group :break :break (-block "Ex-data:" (-visit data printer) printer)])]}))
 
 ;;
-;; documents
+;; public api
 ;;
 
-(defn -exception-doc [e printer]
-  (let [{:keys [title body] :or {title (:title printer)}} (-format e (-> e (ex-data) :data) printer)
+(defn format [e printer]
+  (-format e (-> e (ex-data) :data) printer))
+
+(defn format-exception [e printer]
+  (let [{:keys [title body] :or {title (:title printer)}} (format e printer)
         location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)), :cljs nil)]
     (-section title location body printer)))

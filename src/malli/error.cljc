@@ -201,7 +201,7 @@
 ;;
 
 (defn- -length->threshold [len]
-  (condp #(<= %2 %1) len, 3 0, 5 1, 6 2, 11 3, 20 4 (int (* 0.2 len))))
+  (condp #(<= %2 %1) len, 2 0, 5 1, 6 2, 11 3, 20 4 (int (* 0.2 len))))
 
 (defn- -next-row [previous current other-seq]
   (reduce

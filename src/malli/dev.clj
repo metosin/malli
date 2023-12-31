@@ -4,14 +4,19 @@
             [malli.dev.pretty :as pretty]
             [malli.instrument :as mi]))
 
-(defn -capture-exceptions! []
+(defn -capture-fail! []
   (alter-var-root
-   #'m/-exception
+   #'m/-fail!
    (let [report (pretty/reporter)]
-     (fn [f] (-> (fn [type data] (report type data) (f type data)) (with-meta {::original f}))))))
+     (fn [f] (-> (fn -fail!
+                   ([type] (-fail! type nil))
+                   ([type data] (let [e (m/-exception type data)]
+                                  (report type data)
+                                  (throw e))))
+                 (with-meta {::original f}))))))
 
-(defn -uncapture-exceptions! []
-  (alter-var-root #'m/-exception (fn [f] (-> f meta ::original (or f)))))
+(defn -uncapture-fail! []
+  (alter-var-root #'m/-fail! (fn [f] (-> f meta ::original (or f)))))
 
 ;;
 ;; Public API
@@ -26,7 +31,7 @@
        (format "unstrumented %d vars")
        println)
   (clj-kondo/save! {})
-  (-uncapture-exceptions!)
+  (-uncapture-fail!)
   (println "stopped instrumentation"))
 
 (defn start!
@@ -37,7 +42,7 @@
   ([] (start! {:report (pretty/reporter)}))
   ([options]
    (with-out-str (stop!))
-   (-capture-exceptions!)
+   (-capture-fail!)
    (mi/collect! {:ns (all-ns)})
    (let [watch (bound-fn [_ _ old new]
                  (->> (for [[n d] (:clj new)

@@ -57,6 +57,7 @@
                       (mi/instrument!))
                  (clj-kondo/emit!))]
      (add-watch @#'m/-function-schemas* ::watch watch))
-   (->> (mi/instrument! options) (count) (format "instrumented %s function vars") (-log!))
+   (let [count (->> (mi/instrument! options) (count))]
+     (when (pos? count) (-log! (format "instrumented %d function vars" count))))
    (clj-kondo/emit!)
    (-log! "dev-mode started")))

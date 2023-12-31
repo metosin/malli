@@ -12,7 +12,7 @@
             :width 80
             :colors v/-dark-colors
             :unknown (fn [x] (when (m/schema? x) (m/form x)))
-            :throwing-fn-top-level-ns-names ["malli" "clojure"]
+            :throwing-fn-top-level-ns-names ["malli" "clojure" "malli"]
             ::me/mask-valid-values '...}
            options))))
 

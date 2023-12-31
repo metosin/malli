@@ -9,7 +9,7 @@
   ([options]
    (v/-printer
     (merge {:title "Schema Error"
-            :width 100
+            :width 80
             :colors v/-dark-colors
             :unknown (fn [x] (when (m/schema? x) (m/form x)))
             :throwing-fn-top-level-ns-names ["malli" "clojure"]

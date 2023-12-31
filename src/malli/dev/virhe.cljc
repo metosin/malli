@@ -184,8 +184,8 @@
 (defmulti -format (fn [e _ _] (-> e (ex-data) :type)) :default ::default)
 
 (defmethod -format ::default [e data printer]
-  (if-let [format #(:clj (some (methods -format) (hierarchy (class e))), :cljs nil)]
-    (format e data printer)
+  (if-let [-format #?(:clj (some (methods -format) (hierarchy (class e))), :cljs nil)]
+    (-format e data printer)
     {:body
      [:group
       (-block "Type:" (-visit (type e) printer) printer) :break :break

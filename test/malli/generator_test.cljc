@@ -891,13 +891,11 @@
     (testing (pr-str seed)
       (testing "(and min (= min max))"
         (is (alphanumeric-string?
-             (mg/generate [:string {:min 10
-                                    :max 10}]
+             (mg/generate [:string {:min 10, :max 10}]
                           {:seed seed}))))
       (testing "(and min max)"
         (is (alphanumeric-string?
-             (mg/generate [:string {:min 10
-                                    :max 20}]
+             (mg/generate [:string {:min 10, :max 20}]
                           {:seed seed}))))
       (testing "min"
         (is (alphanumeric-string?

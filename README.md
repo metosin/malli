@@ -830,16 +830,16 @@ Custom exception (with default layout):
 
 <img src="https://github.com/metosin/malli/blob/master/docs/img/bats-in-the-attic.png" width=800>
 
-Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `(-> exception (ex-data) :data)` as the default dispatch key. As fallback, exception class - or any exception subclass can be used, eg.
+Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `(-> exception (ex-data) :data)` as the default dispatch key. As fallback, exception class - or exception subclass can be used, e.g. the following will handle all `java.sql.SQLException` and it's parent exceptions:
 
 ```clojure
 (require '[malli.dev.virhe :as v])
 
 (defmethod v/-format java.sql.SQLException [e _ printer]
-  {:body
-   [:group
-    (v/-block "SQL Exception" (v/-color :string (ex-message e) printer) printer) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+  {:title "Exception thrown"
+   :body [:group
+          (v/-block "SQL Exception" (v/-color :string (ex-message e) printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 ```
 
 ### pretty/explain

@@ -186,12 +186,12 @@
 (defmethod -format ::default [e data printer]
   (if-let [-format #?(:clj (some (methods -format) (-hierarchy (class e))), :cljs nil)]
     (-format e data printer)
-    {:body
-     [:group
-      (-block "Type:" (-visit (type e) printer) printer) :break :break
-      (-block "Message:" (-color :string (ex-message e) printer) printer)
-      (when-let [data (ex-data e)]
-        [:group :break :break (-block "Ex-data:" (-visit data printer) printer)])]}))
+    {:title "Uknown Error"
+     :body [:group
+            (-block "Type:" (-visit (type e) printer) printer) :break :break
+            (-block "Message:" (-color :string (ex-message e) printer) printer)
+            (when-let [data (ex-data e)]
+              [:group :break :break (-block "Ex-data:" (-visit data printer) printer)])]}))
 
 ;;
 ;; public api

@@ -31,70 +31,66 @@
 ;;
 
 (defmethod v/-format ::m/explain [_ {:keys [schema] :as explanation} printer]
-  {:body
-   [:group
-    (v/-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
-    (v/-block "Errors:" (v/-visit (me/humanize (me/with-spell-checking explanation)) printer) printer) :break :break
-    (v/-block "Schema:" (v/-visit schema printer) printer) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+  {:body [:group
+          (v/-block "Value:" (v/-visit (me/error-value explanation printer) printer) printer) :break :break
+          (v/-block "Errors:" (v/-visit (me/humanize (me/with-spell-checking explanation)) printer) printer) :break :break
+          (v/-block "Schema:" (v/-visit schema printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
 (defmethod v/-format ::m/coercion [_ {:keys [explain]} printer]
   (v/format (m/-exception ::m/explain explain) printer))
 
 (defmethod v/-format ::m/invalid-input [_ {:keys [args input fn-name]} printer]
-  {:body
-   [:group
-    (v/-block "Invalid function arguments:" (v/-visit args printer) printer) :break :break
-    (v/-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
-    (v/-block "Input Schema:" (v/-visit input printer) printer) :break :break
-    (v/-block "Errors:" (-explain input args printer) printer) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+  {:body [:group
+          (v/-block "Invalid function arguments:" (v/-visit args printer) printer) :break :break
+          (v/-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
+          (v/-block "Input Schema:" (v/-visit input printer) printer) :break :break
+          (v/-block "Errors:" (-explain input args printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-output [_ {:keys [value args output fn-name]} printer]
-  {:body
-   [:group
-    (v/-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
-    (v/-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
-    (v/-block "Function arguments:" (v/-visit args printer) printer) :break :break
-    (v/-block "Output Schema:" (v/-visit output printer) printer) :break :break
-    (v/-block "Errors:" (-explain output value printer) printer) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+  {:body [:group
+          (v/-block "Invalid function return value:" (v/-visit value printer) printer) :break :break
+          (v/-block "Function Var:" (v/-visit fn-name printer) printer) :break :break
+          (v/-block "Function arguments:" (v/-visit args printer) printer) :break :break
+          (v/-block "Output Schema:" (v/-visit output printer) printer) :break :break
+          (v/-block "Errors:" (-explain output value printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-arity [_ {:keys [args arity schema fn-name]} printer]
-  {:body
-   [:group
-    (v/-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
-    (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
-    #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+  {:body [:group
+          (v/-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
+          (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
+          #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-schema [_ {:keys [schema form]} printer]
   (let [proposals (seq (me/-most-similar-to #{schema} schema (set (keys (mr/schemas m/default-registry)))))]
-    {:body
-     [:group
-      (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
-      (when proposals
-        [:group (v/-block "Did you mean" (->> (for [proposal proposals] (v/-visit proposal printer)) (interpose :break)) printer)
-         :break :break])
-      (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
+    {:title "Schema Creation Error"
+     :body [:group
+            (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
+            (when proposals
+              [:group (v/-block "Did you mean" (->> (for [proposal proposals] (v/-visit proposal printer)) (interpose :break)) printer)
+               :break :break])
+            (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 (defmethod v/-format ::m/child-error [_ {:keys [type children properties] :as data} printer]
   (let [form (m/-raw-form type properties children)
         constraints (reduce (fn [acc k] (if-let [v (get data k)] (assoc acc k v) acc)) nil [:min :max])
         size (count children)]
-    {:body
-     [:group
-      (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
-      (v/-block "Reason" [:group "Schema has " (v/-visit size printer)
-                          (if (= 1 size) " child" " children")
-                          ", expected " (v/-visit constraints printer)] printer) :break :break
-      (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
+    {:title "Schema Creation Error"
+     :body [:group
+            (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
+            (v/-block "Reason" [:group "Schema has " (v/-visit size printer)
+                                (if (= 1 size) " child" " children")
+                                ", expected " (v/-visit constraints printer)] printer) :break :break
+            (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 (defmethod v/-format ::m/invalid-entry [_ {:keys [entry]} printer]
-  {:body
-   [:group
-    (v/-block "Invalid Entry" (v/-visit (vec entry) printer) printer) :break :break
-    (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+  {:title "Schema Creation Error"
+   :body [:group
+          (v/-block "Invalid Entry" (v/-visit (vec entry) printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
 ;;
 ;; public api

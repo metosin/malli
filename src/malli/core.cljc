@@ -443,7 +443,7 @@
         (if (== n 1)
           (if (and (-reference? e0) naked-keys)
             (-parse-ref-vector1 e e0)
-            (-fail! ::invalid-entry {:entry ea}))
+            (-fail! ::invalid-entry {:entry e}))
           (let [e1 (aget ea 1)]
             (if (== n 2)
               (if (and (-reference? e0) (map? e1))

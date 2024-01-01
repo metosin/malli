@@ -87,10 +87,14 @@
             (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 (defmethod v/-format ::m/invalid-entry [_ {:keys [entry]} printer]
-  {:title "Schema Creation Error"
-   :body [:group
-          (v/-block "Invalid Entry" (v/-visit (vec entry) printer) printer) :break :break
-          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+  (let [wrap (if (sequential? entry) vec vector)
+        wrapped (wrap entry)
+        example (cond-> wrapped (= 1 (count wrapped)) (conj :any))]
+    {:title "Schema Creation Error"
+     :body [:group
+            (v/-block "Invalid Entry" (v/-visit entry printer) printer) :break :break
+            (v/-block "Did you mean" (v/-visit example printer) printer) :break :break
+            (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 ;;
 ;; public api

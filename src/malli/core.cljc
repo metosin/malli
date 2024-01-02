@@ -1598,14 +1598,14 @@
        (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
-       (let [-ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
-                      (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
-                      (when-not allow-invalid-refs
-                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
+       (let [rf (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
+                    (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+                    (when-not allow-invalid-refs
+                      (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
-             ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
+             ->parser (fn [f] (let [parser (-memoize (fn [] (f (rf))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
          (reify
@@ -1613,19 +1613,19 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [_]
-             (let [validator (-memoize (fn [] (-validator (-ref))))]
+             (let [validator (-memoize (fn [] (-validator (rf))))]
                (fn [x] ((validator) x))))
            (-explainer [_ path]
-             (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
+             (let [explainer (-memoize (fn [] (-explainer (rf) (conj path 0))))]
                (fn [x in acc] ((explainer) x in acc))))
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
+                   deref-transformer (-memoize (fn [] (-transformer (rf) transformer method options)))]
                (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
            (-walk [this walker path options]
-             (let [accept (fn [] (-inner walker (-ref) (into path [0 0])
+             (let [accept (fn [] (-inner walker (rf) (into path [0 0])
                                          (-update options ::walked-refs #(conj (or % #{}) ref))))]
                (when (-accept walker this path options)
                  (if (or (not ((-boolean-fn (::walk-refs options false)) ref))
@@ -1640,13 +1640,13 @@
            Cached
            (-cache [_] cache)
            LensSchema
-           (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
+           (-get [_ key default] (if (= key 0) (-pointer ref (rf) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
-           (-deref [_] (-ref))
+           (-deref [_] (rf))
            RegexSchema
            (-regex-op? [_] false)
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))

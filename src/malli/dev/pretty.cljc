@@ -108,6 +108,13 @@
             (v/-block "Did you mean" (v/-visit example printer) printer) :break :break
             (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
+(defmethod v/-format ::m/duplicate-keys [_ {:keys [arr]} printer]
+  (let [keys (->> arr (vec) (take-nth 2))]
+    {:title "Schema Creation Error"
+     :body [:group
+            (v/-block "Duplicate Keys" (v/-visit keys printer) printer) :break :break
+            (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
+
 ;;
 ;; public api
 ;;

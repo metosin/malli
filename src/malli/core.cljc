@@ -459,11 +459,12 @@
   (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
           (-map [^objects arr] #?(:bb   (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys)) m)
-                                  :clj (PersistentArrayMap/createWithCheck arr)
+                                            (-fail! ::duplicate-keys {:arr arr})) m)
+                                  :clj (try (PersistentArrayMap/createWithCheck arr)
+                                            (catch Exception _ (-fail! ::duplicate-keys {:arr arr})))
                                   :cljs (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys)) m)))
+                                            (-fail! ::duplicate-keys {:arr arr})) m)))
           (-arange [^objects arr to]
            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
               :cljs (.slice arr 0 to)))]

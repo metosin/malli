@@ -26,6 +26,12 @@
   (-> [:group (v/-color :title "malli: " printer) text]
       (v/-print-doc printer)))
 
+(defn -ref-text [printer]
+  [:group "Reference should be one of the following:" :break :break
+   "- a qualified keyword, " (v/-visit [:ref :user/id] printer) :break
+   "- a qualified symbol,  " (v/-visit [:ref 'user/id] printer) :break
+   "- a string,            " (v/-visit [:ref "user/id"] printer)])
+
 ;;
 ;; formatters
 ;;
@@ -63,6 +69,12 @@
           (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
           #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
           (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+
+(defmethod v/-format ::m/invalid-ref [_ {:keys [ref]} printer]
+  {:body [:group
+          (v/-block "Invalid Reference" (v/-visit [:ref ref] printer) printer) :break :break
+          (v/-block "Reason" (-ref-text printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-schema [_ {:keys [schema form]} printer]
   (let [proposals (seq (me/-most-similar-to #{schema} schema (set (keys (mr/schemas m/default-registry)))))]

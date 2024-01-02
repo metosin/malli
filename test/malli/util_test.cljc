@@ -1007,4 +1007,4 @@
                   [:name :string]
                   [:friends {:optional true} [:set [:ref :user/user]]]
                   [:address [:map [:street :string] [:lonlat {:optional true} [:tuple :double :double]]]]]]
-    (= expected (m/form (mu/deref-recursive schema)))))
+    (is (= expected (m/form (mu/deref-recursive schema))))))

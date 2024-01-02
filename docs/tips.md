@@ -539,33 +539,3 @@ Example utility to convert schemas recursively:
 ;                [:int {:gen/elements [1 2 3]}]
 ;                :string]]]]]
 ```
-
-## De-reference schemas from a registry
-
-When transforming schemas, if they are provided by a registry, it's useful to dereference them first.
-
-```clojure
-(defn deref-recursive
-  "deref all schemas at all levels so the resulting schema has no registry references"
-  [schema]
-  (m/walk schema
-          (m/schema-walker m/deref-all)
-          {::m/walk-schema-refs true
-           ::m/walk-refs        true}))
-
-(def smart-phone
-  (m/schema "smart-phone"
-            {:registry (merge (m/default-schemas)
-                              {"smart-phone" [:map
-                                              [:type [:enum :android :iphone]]
-                                              [:connector "connector"]]
-                               "connector"   [:enum :usb-c :micro-usb :lightning]})}))
-
-(deref-recursive smart-phone)
-=> [:map 
-    [:type [:enum :android :iphone]] 
-    [:connector [:enum :usb-c :micro-usb :lightning]]]
-```
-
-The fully de-referenced schema is plain data which is much easier to transform. 
-

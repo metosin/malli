@@ -1005,6 +1005,6 @@
         expected [:map
                   [:id :uuid]
                   [:name :string]
-                  [:friends {:optional true} [:set [:ref :user/user]]]
+                  [:friends {:optional true} [:set [:ref ::user]]]
                   [:address [:map [:street :string] [:lonlat {:optional true} [:tuple :double :double]]]]]]
     (is (= expected (m/form (mu/deref-recursive schema))))))

@@ -820,7 +820,7 @@ Start development mode:
 ((requiring-resolve 'malli.dev/start!))
 ```
 
-Now, any exception thrown via `malli.core/-fail!` is being captured and pretty printed before being throen. Pretty printing is extendable using [virhe](https://github.com/metosin/virhe).
+Now, any exception thrown via `malli.core/-fail!` is being captured and pretty printed before being thrown. Pretty printing is extendable using [virhe](https://github.com/metosin/virhe).
 
 Pretty Coercion:
 

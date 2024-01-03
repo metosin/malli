@@ -190,7 +190,7 @@ Here's a comparison matrix of the two different ways:
 
 You should pick the way what works best for your project. 
 
-[My](https://gist.github.com/ikitommi) preference is the Var-style - it's simple and Plumatic proved it works well even with large codebases.
+[My](https://gist.github.com/ikitommi) personal preference is the Var-style - it's simple and Plumatic proved it works well even with large codebases.
 
 # Future Work
 

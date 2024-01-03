@@ -107,13 +107,10 @@ We can recursively deref the Schema to get the values:
 
 ### Decomplect Maps, Keys and Values
 
-Clojure Spec defines [maps as sets of keys where the key indicates also the value](https://clojure.org/about/spec#_map_specs_should_be_of_keysets_only).
-
-> Defining specifications of every subset/union/intersection, and then redundantly stating the semantic of each key is both an antipattern and unworkable in the most dynamic cases.
-
-Malli supports this too:
+Clojure Spec declared [map specs should be of keysets only](https://clojure.org/about/spec#_map_specs_should_be_of_keysets_only). Malli supports this too:
 
 ```clojure
+;; (╯°□°)╯︵ ┻━┻
 (reset! *registry {})
 
 (register! ::street :string)
@@ -132,6 +129,7 @@ Malli supports this too:
 ;                 [:user/street :string] 
 ;                 [:user/latlon [:tuple :double :double]]]]]
 
+;; data has a different shape now
 (m/validate ::user {::id (random-uuid)
                     ::name "Maija"
                     ::address {::street "Kuninkaankatu 13"
@@ -141,7 +139,7 @@ Malli supports this too:
 
 ## Schemas via Local Registries
 
-Schemas can be defined as a id->schema map:
+Schemas can be defined as a `ref->?schema` map:
 
 ```clojure
 (def registry
@@ -155,7 +153,7 @@ Schemas can be defined as a id->schema map:
            [:address ::address]]})
 ```
 
-Schema-scoped registry:
+Using registry via Schema properties:
 
 ```clojure
 (m/schema [:schema {:registry registry} ::user])
@@ -190,7 +188,9 @@ Here's a comparison matrix of the two different ways:
 | Explicit require of Schemas      |  ✅   |        ❌        |       ✅        |
 | Decomplect Maps, Keys and Values |  ❌   |        ✅        |       ✅        |
 
-You should pick the way what works best for your project. [My](https://gist.github.com/ikitommi) preference is the Var-style - it's simple and Plumatic proved it works well even with large codebases.
+You should pick the way what works best for your project. 
+
+[My](https://gist.github.com/ikitommi) preference is the Var-style - it's simple and Plumatic proved it works well even with large codebases.
 
 # Future Work
 

@@ -201,7 +201,7 @@
 ;;
 
 (defn- -length->threshold [len]
-  (condp #(<= %2 %1) len, 4 0, 5 1, 6 2, 11 3, 20 4 (int (* 0.2 len))))
+  (condp #(<= %2 %1) len, 2 0, 5 1, 6 2, 11 3, 20 4 (int (* 0.2 len))))
 
 (defn- -next-row [previous current other-seq]
   (reduce
@@ -225,7 +225,7 @@
   (when-not (known-keys key)
     (->> known-keys (filter #(-similar-key % key)) (remove keys) (not-empty))))
 
-(defn- -most-similar-to [keys key known-keys]
+(defn -most-similar-to [keys key known-keys]
   (->> (-likely-misspelled keys known-keys key)
        (map (juxt #(-levenshtein (str %) (str key)) identity))
        (filter first)

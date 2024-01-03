@@ -133,9 +133,7 @@
 
 (defn -deprecated! [x] (println "DEPRECATED:" x))
 
-(defn -exception
-  ([type] (-exception type nil))
-  ([type data] (ex-info (str type) {:type type, :message type, :data data})))
+(defn -exception [type data] (ex-info (str type) {:type type, :message type, :data data}))
 
 (defn -fail!
   ([type] (-fail! type nil))
@@ -266,11 +264,11 @@
     (or (mr/-schema registry ?schema)
         (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
 
-(defn- -lookup! [?schema f rec options]
+(defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
       (if-let [?schema (-lookup ?schema options)]
-        (cond-> ?schema rec (recur f rec options))
-        (-fail! ::invalid-schema {:schema ?schema}))))
+        (cond-> ?schema rec (recur ?form f rec options))
+        (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -294,16 +292,18 @@
 ;; forms
 ;;
 
-(defn -create-form [type properties children options]
-  (let [has-children (seq children)
-        has-properties (seq properties)
-        properties (when has-properties
-                     (let [registry (:registry properties)]
-                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+(defn -raw-form [type properties children]
+  (let [has-children (seq children), has-properties (seq properties)]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
           has-children (reduce conj [type] children)
           :else type)))
+
+(defn -create-form [type properties children options]
+  (let [properties (when (seq properties)
+                     (let [registry (:registry properties)]
+                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+    (-raw-form type properties children)))
 
 (defn -simple-form [parent properties children f options]
   (-create-form (-type parent) properties (-vmap f children) options))
@@ -443,7 +443,7 @@
         (if (== n 1)
           (if (and (-reference? e0) naked-keys)
             (-parse-ref-vector1 e e0)
-            (-fail! ::invalid-children {:children -children}))
+            (-fail! ::invalid-entry {:entry e}))
           (let [e1 (aget ea 1)]
             (if (== n 2)
               (if (and (-reference? e0) (map? e1))
@@ -453,17 +453,18 @@
                 (-parse-entry-else3 e0 e1 e2))))))
       (if (and naked-keys (-reference? e))
         (-parse-ref-entry e)
-        (-fail! ::invalid-ref {:ref e})))))
+        (-fail! ::invalid-entry {:entry e})))))
 
 (defn -eager-entry-parser [children props options]
   (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
           (-map [^objects arr] #?(:bb   (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys)) m)
-                                  :clj (PersistentArrayMap/createWithCheck arr)
+                                            (-fail! ::duplicate-keys {:arr arr})) m)
+                                  :clj (try (PersistentArrayMap/createWithCheck arr)
+                                            (catch Exception _ (-fail! ::duplicate-keys {:arr arr})))
                                   :cljs (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys)) m)))
+                                            (-fail! ::duplicate-keys {:arr arr})) m)))
           (-arange [^objects arr to]
            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
               :cljs (.slice arr 0 to)))]
@@ -1598,14 +1599,14 @@
        (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
-       (let [-ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
-                      (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
-                      (when-not allow-invalid-refs
-                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
+       (let [rf (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
+                    (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+                    (when-not allow-invalid-refs
+                      (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
-             ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
+             ->parser (fn [f] (let [parser (-memoize (fn [] (f (rf))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
          (reify
@@ -1613,19 +1614,19 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [_]
-             (let [validator (-memoize (fn [] (-validator (-ref))))]
+             (let [validator (-memoize (fn [] (-validator (rf))))]
                (fn [x] ((validator) x))))
            (-explainer [_ path]
-             (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
+             (let [explainer (-memoize (fn [] (-explainer (rf) (conj path 0))))]
                (fn [x in acc] ((explainer) x in acc))))
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
+                   deref-transformer (-memoize (fn [] (-transformer (rf) transformer method options)))]
                (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
            (-walk [this walker path options]
-             (let [accept (fn [] (-inner walker (-ref) (into path [0 0])
+             (let [accept (fn [] (-inner walker (rf) (into path [0 0])
                                          (-update options ::walked-refs #(conj (or % #{}) ref))))]
                (when (-accept walker this path options)
                  (if (or (not ((-boolean-fn (::walk-refs options false)) ref))
@@ -1640,13 +1641,13 @@
            Cached
            (-cache [_] cache)
            LensSchema
-           (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
+           (-get [_ key default] (if (= key 0) (-pointer ref (rf) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
-           (-deref [_] (-ref))
+           (-deref [_] (rf))
            RegexSchema
            (-regex-op? [_] false)
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
@@ -1975,11 +1976,11 @@
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (let [properties (when properties (when (pos? (count properties)) properties))
-         r (when properties (properties :registry))
+   (let [properties' (when properties (when (pos? (count properties)) properties))
+         r (when properties' (properties' :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties :registry (-property-registry r options identity)) properties)]
-     (-into-schema (-lookup! type into-schema? false options) properties children options))))
+         properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
+     (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -2035,7 +2036,7 @@
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) into-schema? true options)
+                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
@@ -2043,7 +2044,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-lookup! nil false options) (recur options))))))
+             (-> ?schema (-lookup! ?schema nil false options) (recur options))))))
 
 (defn form
   "Returns the Schema form"
@@ -2216,7 +2217,7 @@
          decode (decoder s transformer)
          explain (explainer s)
          respond (or respond identity)
-         raise (or raise #(-fail! ::invalid-input %))]
+         raise (or raise #(-fail! ::coercion %))]
      (fn -coercer [x] (let [value (decode x)]
                         (if (valid? value)
                           (respond value)

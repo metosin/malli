@@ -810,6 +810,40 @@ Masking irrelevant parts:
 
 ## Pretty errors
 
+There are two ways to get pretty errors:
+
+### Development mode
+
+Start development mode:
+
+```clojure
+((requiring-resolve 'malli.dev/start!))
+```
+
+Now, any exception thrown via `malli.core/-fail!` is being captured and pretty printed before being throen. Pretty printing is extendable using [virhe](https://github.com/metosin/virhe).
+
+Pretty Coercion:
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-coerce.png" width=800>
+
+Custom exception (with default layout):
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/bats-in-the-attic.png" width=800>
+
+Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `(-> exception (ex-data) :data)` as the default dispatch key. As fallback, exception class - or exception subclass can be used, e.g. the following will handle all `java.sql.SQLException` and it's parent exceptions:
+
+```clojure
+(require '[malli.dev.virhe :as v])
+
+(defmethod v/-format java.sql.SQLException [e _ printer]
+  {:title "Exception thrown"
+   :body [:group
+          (v/-block "SQL Exception" (v/-color :string (ex-message e) printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+```
+
+### pretty/explain
+
 For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 <img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>

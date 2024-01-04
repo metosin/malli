@@ -40,18 +40,17 @@
    [:friends {:optional true} [:set [:ref #'User]]]])
 
 (deftest var-registry-test
-  (let [var-registry (mr/var-registry)
-        registry (mr/composite-registry
+  (let [registry (mr/composite-registry
                   (m/default-schemas)
-                  var-registry)
+                  (mr/var-registry))
         schema (m/schema User {:registry registry})]
 
     (testing "getting schema over Var works"
-      (is (= UserId (mr/-schema var-registry #'UserId)))
-      (is (= User (mr/-schema var-registry #'User))))
+      (is (= UserId (mr/-schema (mr/var-registry) #'UserId)))
+      (is (= User (mr/-schema (mr/var-registry) #'User))))
 
     (testing "we do not list all Var schemas (yet)"
-      (is (= nil (mr/-schemas var-registry))))
+      (is (= nil (mr/-schemas (mr/var-registry)))))
 
     (testing "it works"
       (is (= User (m/form schema)))

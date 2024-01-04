@@ -21,7 +21,7 @@ Malli is in well matured [alpha](README.md#alpha).
   * does not log individual re-instrumentation of function vars
   * **BREAKING**: changes in `malli.dev.virhe` and `malli.pretty` extension apis, wee [#980](https://github.com/metosin/malli/pull/980) for details
 * **BREAKING**: `m/coerce` and `m/coercer` throw `::m/coercion` instead of `::m/invalid-input`
-* **BREAKING**: qualified symbols are valid reference types 
+* **BREAKING**: qualified symbols are valid reference types [#984](https://github.com/metosin/malli/pull/984) 
 * Fixing `mt/strip-extra-keys-transformer` for recursive map encoding [#963](https://github.com/metosin/malli/pull/963)
 * Support passing custom `:type` in into-schema opt for `:map` and `:map-of` [#968](https://github.com/metosin/malli/pull/968)
 * `mu/path->in` works with `:orn`, `:catn` and `:altn`.

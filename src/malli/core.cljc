@@ -167,7 +167,7 @@
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
-(defn -reference? [?schema] (or (string? ?schema) (qualified-ident? ?schema)))
+(defn -reference? [?schema] (or (string? ?schema) (qualified-ident? ?schema) (var? ?schema)))
 
 (defn -lazy [ref options] (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 

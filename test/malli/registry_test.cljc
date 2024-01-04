@@ -1,6 +1,7 @@
 (ns malli.registry-test
   (:require [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
+            [malli.generator :as mg]
             [malli.registry :as mr]))
 
 (deftest mutable-test
@@ -30,6 +31,31 @@
                   {:maybe "sheep"}
                   {:registry registry})))
       (is (= #{:string :map :maybe} (-> registry (mr/-schemas) (keys) (set)))))))
+
+(def UserId :string)
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:friends {:optional true} [:set [:ref #'User]]]])
+
+(deftest var-registry-test
+  (let [var-registry (mr/var-registry)
+        registry (mr/composite-registry
+                  (m/default-schemas)
+                  var-registry)
+        schema (m/schema User {:registry registry})]
+    (testing "getting schema over Var works"
+      (is (= UserId (mr/-schema var-registry #'UserId)))
+      (is (= User (mr/-schema var-registry #'User))))
+    (testing "we do not list all Var schemas (yet)"
+      (is (= nil (mr/-schemas var-registry))))
+    (testing "works!"
+      (is (= [:map
+              [:id #'malli.registry-test/UserId]
+              [:friends {:optional true} [:set [:ref #'malli.registry-test/User]]]]
+             (m/form schema)))
+      (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
 
 (deftest lazy-registry-test
   (let [loads (atom #{})

@@ -63,6 +63,12 @@
     (-schema [_ type] (-schema (registry @db) type))
     (-schemas [_] (-schemas (registry @db)))))
 
+(defn var-registry []
+  (reify
+    Registry
+    (-schema [_ type] (if (var? type) @type))
+    (-schemas [_])))
+
 (def ^:dynamic *registry* {})
 
 (defn dynamic-registry []

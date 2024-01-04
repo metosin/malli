@@ -45,15 +45,18 @@
                   (m/default-schemas)
                   var-registry)
         schema (m/schema User {:registry registry})]
+
     (testing "getting schema over Var works"
       (is (= UserId (mr/-schema var-registry #'UserId)))
       (is (= User (mr/-schema var-registry #'User))))
+
     (testing "we do not list all Var schemas (yet)"
       (is (= nil (mr/-schemas var-registry))))
-    (testing "works!"
+
+    (testing "it works"
       (is (= [:map
-              [:id #'malli.registry-test/UserId]
-              [:friends {:optional true} [:set [:ref #'malli.registry-test/User]]]]
+              [:id #'UserId]
+              [:friends {:optional true} [:set [:ref #'User]]]]
              (m/form schema)))
       (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
 

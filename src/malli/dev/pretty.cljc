@@ -29,8 +29,9 @@
 (defn -ref-text [printer]
   [:group "Reference should be one of the following:" :break :break
    "- a qualified keyword, " (v/-visit [:ref :user/id] printer) :break
-   "- a qualified symbol,  " (v/-visit [:ref 'user/id] printer) :break
-   "- a string,            " (v/-visit [:ref "user/id"] printer)])
+   "- a qualified symbol,  " (v/-visit [:ref (symbol "'user" "id")] printer) :break
+   "- a string,            " (v/-visit [:ref "user/id"] printer) :break
+   "- a Var,               " (v/-visit [:ref (symbol "#'user" "id")] printer)])
 
 ;;
 ;; formatters

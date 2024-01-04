@@ -186,6 +186,7 @@ Here's a comparison matrix of the two different ways:
 |----------------------------------|:----:|:---------------:|:--------------:|
 | Supported by Malli               |  ✅   |        ✅        |       ✅        |
 | Explicit require of Schemas      |  ✅   |        ❌        |       ✅        |
+| Support Recursive Schemas        |  ✅   |        ✅        |       ✅        |
 | Decomplect Maps, Keys and Values |  ❌   |        ✅        |       ✅        |
 
 You should pick the way what works best for your project. 

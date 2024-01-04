@@ -313,7 +313,7 @@
   (testing "generates swagger for ::parameters w/ basic schema + registry"
     (let [registry (merge (m/type-schemas)
                           {::body [:string {:min 1}]})]
-      (is (= {:definitions {::body {:minLength 1, :type "string"}}
+      (is (= {:definitions {"malli.swagger-test/body" {:minLength 1, :type "string"}}
               :parameters [{:description ""
                             :in "body"
                             :name "body"
@@ -327,9 +327,9 @@
     (let [registry (merge (m/base-schemas) (m/type-schemas)
                           {::success [:map-of :keyword :string]
                            ::error [:string {:min 1}]})]
-      (is (= {:definitions {::error {:minLength 1, :type "string"}
-                            ::success {:additionalProperties {:type "string"}
-                                       :type "object"}}
+      (is (= {:definitions {"malli.swagger-test/error" {:minLength 1, :type "string"}
+                            "malli.swagger-test/success" {:additionalProperties {:type "string"}
+                                                          :type "object"}}
               :responses {200 {:description ""
                                :schema {:$ref "#/definitions/malli.swagger-test~1success"}}
                           400 {:description ""
@@ -345,11 +345,11 @@
                           {::req-body [:map-of :keyword :any]
                            ::success-resp [:map [:it [:= "worked"]]]
                            ::error-resp [:string {:min 1}]})]
-      (is (= {:definitions {::error-resp {:minLength 1, :type "string"}
-                            ::req-body {:additionalProperties {}, :type "object"}
-                            ::success-resp {:properties {:it {:const "worked"}}
-                                            :required [:it]
-                                            :type "object"}}
+      (is (= {:definitions {"malli.swagger-test/error-resp" {:minLength 1, :type "string"}
+                            "malli.swagger-test/req-body" {:additionalProperties {}, :type "object"}
+                            "malli.swagger-test/success-resp" {:properties {:it {:const "worked"}}
+                                                               :required [:it]
+                                                               :type "object"}}
               :parameters [{:description ""
                             :in "body"
                             :name "body"
@@ -391,21 +391,21 @@
                            ::req-body [:map [:a ::a]]
                            ::success-resp [:map-of :keyword :string]
                            ::error-resp :string})]
-      (is (= {:definitions {::a {:type "string"
-                                 :x-anyOf [{:type "string"}
-                                           {:$ref "#/definitions/malli.swagger-test~1b"}]}
-                            ::b {:type "string"
-                                 :x-anyOf [{:type "string"}
-                                           {:$ref "#/definitions/malli.swagger-test~1c"}]}
-                            ::c {:type "string"
-                                 :x-anyOf [{:type "string"}
-                                           {:$ref "#/definitions/malli.swagger-test~1a"}]}
-                            ::error-resp {:type "string"}
-                            ::req-body {:properties {:a {:$ref "#/definitions/malli.swagger-test~1a"}}
-                                        :required [:a]
-                                        :type "object"}
-                            ::success-resp {:additionalProperties {:type "string"}
-                                            :type "object"}}
+      (is (= {:definitions {"malli.swagger-test/a" {:type "string"
+                                                    :x-anyOf [{:type "string"}
+                                                              {:$ref "#/definitions/malli.swagger-test~1b"}]}
+                            "malli.swagger-test/b" {:type "string"
+                                                    :x-anyOf [{:type "string"}
+                                                              {:$ref "#/definitions/malli.swagger-test~1c"}]}
+                            "malli.swagger-test/c" {:type "string"
+                                                    :x-anyOf [{:type "string"}
+                                                              {:$ref "#/definitions/malli.swagger-test~1a"}]}
+                            "malli.swagger-test/error-resp" {:type "string"}
+                            "malli.swagger-test/req-body" {:properties {:a {:$ref "#/definitions/malli.swagger-test~1a"}}
+                                                           :required [:a]
+                                                           :type "object"}
+                            "malli.swagger-test/success-resp" {:additionalProperties {:type "string"}
+                                                               :type "object"}}
               :parameters [{:description ""
                             :in "body"
                             :name "body"

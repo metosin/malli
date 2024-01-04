@@ -1948,21 +1948,21 @@
                  options))))))
 
 (deftest custom-registry-qualified-keyword-in-map-test
-  (let [schema [:map {:registry {::id int?
-                                 ::location [:tuple :int :int]
-                                 ::country string?}}
-                ::id
-                [::location]
+  (let [schema [:map {:registry {:user/id int?
+                                 "user/location" [:tuple :int :int]
+                                 'user/country string?}}
+                :user/id
+                ["user/location"]
                 [:name string?]
-                [::country {:optional true}]]]
+                ['user/country {:optional true}]]]
 
-    (testing "Example with qualified keyword + optional, regular key"
-      (is (m/validate schema {::id 123 ::location [1 1] ::country "Finland" :name "Malli"})))
+    (testing "Example with references + optional, regular key"
+      (is (m/validate schema {:user/id 123 "user/location" [1 1] 'user/country "Finland" :name "Malli"})))
 
     (testing "Optional qualified keyword is optional"
-      (is (m/validate schema {::id 123 ::location [1 1] :name "Malli"}))))
+      (is (m/validate schema {:user/id 123 "user/location" [1 1] :name "Malli"}))))
 
-  (testing "invalid ref"
+  (testing "invalid entry"
     (is (thrown-with-msg?
          #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-entry"
          (m/schema [:map {:registry {:kikka :int}} :int])))))

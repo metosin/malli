@@ -54,10 +54,7 @@
       (is (= nil (mr/-schemas var-registry))))
 
     (testing "it works"
-      (is (= [:map
-              [:id #'UserId]
-              [:friends {:optional true} [:set [:ref #'User]]]]
-             (m/form schema)))
+      (is (= User (m/form schema)))
       (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
 
 (deftest lazy-registry-test

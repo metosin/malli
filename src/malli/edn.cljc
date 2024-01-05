@@ -4,7 +4,7 @@
             [malli.core :as m]))
 
 (defn -parse-string [x]
-  (edamame/parse-string x {:dispatch {\# {\" #(re-pattern %)}}}))
+  (edamame/parse-string x {:var resolve, :regex true, :fn true}))
 
 (defn write-string
   ([?schema]

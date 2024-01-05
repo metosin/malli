@@ -71,6 +71,15 @@
           #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
           (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
+(defmethod v/-format ::m/register-function-schema [_ {:keys [ns name schema _data key _exception]} printer]
+  {:title "Error in registering a Function Schema"
+   :body [:group
+          (v/-block "Function Var:" [:group
+                                     (v/-visit (symbol (str ns) (str name)) printer)
+                                     " (" (v/-visit key printer) ")"] printer) :break :break
+          (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+
 (defmethod v/-format ::m/invalid-ref [_ {:keys [ref]} printer]
   {:body [:group
           (v/-block "Invalid Reference" (v/-visit [:ref ref] printer) printer) :break :break

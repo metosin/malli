@@ -8,16 +8,17 @@
   ([text] (-log! text (pretty/-printer)))
   ([text printer] (pretty/-log! text printer)))
 
-(defn -capture-fail! []
-  (alter-var-root
-   #'m/-fail!
-   (let [report (pretty/reporter)]
-     (fn [f] (-> (fn -fail!
-                   ([type] (-fail! type nil))
-                   ([type data] (let [e (m/-exception type data)]
-                                  (report type data)
-                                  (throw e))))
-                 (with-meta {::original f}))))))
+(defn -capture-fail!
+  ([] (-capture-fail! nil))
+  ([{:keys [report] :or {report (pretty/reporter)}}]
+   (alter-var-root
+    #'m/-fail!
+    (fn [f] (-> (fn -fail!
+                  ([type] (-fail! type nil))
+                  ([type data] (let [e (m/-exception type data)]
+                                 (report type data)
+                                 (throw e))))
+                (with-meta {::original f}))))))
 
 (defn -uncapture-fail! []
   (alter-var-root #'m/-fail! (fn [f] (-> f meta ::original (or f)))))
@@ -43,7 +44,7 @@
   ([] (start! {:report (pretty/reporter)}))
   ([options]
    (with-out-str (stop!))
-   (-capture-fail!)
+   (-capture-fail! options)
    (mi/collect! {:ns (all-ns)})
    (let [watch (bound-fn [_ _ old new]
                  (->> (for [[n d] (:clj new)

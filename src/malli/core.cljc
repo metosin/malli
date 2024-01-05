@@ -2535,9 +2535,7 @@
    (try
      (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))
      (catch #?(:clj Throwable :cljs :default) ex
-       (throw (ex-info
-               (str "Schema error when instrumenting function: " ns "/" name " - " (ex-message ex))
-               (ex-data ex)))))))
+       (-fail! ::register-function-schema {:ns ns, :name name, :schema ?schema, :data data, :key key, :exception ex})))))
 
 #?(:clj
    (defmacro => [given-sym value]

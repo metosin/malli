@@ -10,7 +10,8 @@
 
 (defn -ref [schema {::keys [transform definitions] :as options}]
   (let [ref (as-> (m/-ref schema) $
-              (cond (var? $) (str (.toSymbol $))
+              (cond (var? $) (let [{:keys [ns name]} (meta $)]
+                               (str (symbol (str ns) (str name))))
                     (qualified-ident? $) (str (namespace $) "/" (name $))
                     :else (str $)))]
     (when-not (contains? @definitions ref)

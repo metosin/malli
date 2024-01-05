@@ -3009,7 +3009,7 @@
    [:id #'UserId]
    [:friends {:optional true} [:set [:ref #'User]]]])
 
-(deftest roundrobin-var-references
+#_(deftest roundrobin-var-references
   (let [registry (mr/composite-registry
                   (m/default-schemas)
                   (mr/var-registry))

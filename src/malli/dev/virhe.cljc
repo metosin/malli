@@ -169,7 +169,9 @@
   [:group (-title title location printer) :break :break body :break :break (-footer printer)])
 
 (defn -block [text body printer]
-  [:group (-text text printer) :break :break [:align 2 body]])
+  [:group (-text text printer) :break :break
+   (into [:align 2] (map (fn [x] (if (string? x) (-text x printer) x))
+                         (if (sequential? body) body (vector body))))])
 
 (defn -link [link printer]
   (-color :link link printer))

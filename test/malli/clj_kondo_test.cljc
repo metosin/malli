@@ -4,15 +4,6 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
-(defn- cljk-collect-for-test
-  "Collect up all of the clj-kondo linters generated for fn's in this test ns."
-  []
-  (-> 'malli.clj-kondo-test
-      #?(:clj (clj-kondo/collect))
-      #?(:cljs (clj-kondo/collect-cljs))
-      (clj-kondo/linter-config)
-      (get-in [:linters :type-mismatch :namespaces])))
-
 (def Schema
   (m/schema
    [:map {:registry {::id string?
@@ -68,8 +59,21 @@
        [:=> [:cat :int :int] :nil]
        [:=> [:cat :int :int [:repeat :int]] :nil]])
 
-(deftest clj-kondo-integration-test
+(defn clj-kondo-issue-836-1
+  "Predicate `:fn` schema's should be type-checked as expecting to be passed `:any`, not a fn."
+  [x y z] (* x y z))
+(m/=> clj-kondo-issue-836-1 [:=> [:cat int? [:fn #(int? %)] int?] [:fn #(int? %)]])
 
+(defn- cljk-collect-for-test
+  "Collect up all of the clj-kondo linters generated for fn's in this test ns."
+  []
+  (-> 'malli.clj-kondo-test
+      #?(:clj (clj-kondo/collect))
+      #?(:cljs (clj-kondo/collect-cljs))
+      (clj-kondo/linter-config)
+      (get-in [:linters :type-mismatch :namespaces])))
+
+(deftest clj-kondo-integration-test
   (is (= {:op :keys,
           :opt {::price :double, :tags :set, ::y :boolean},
           :req {::id :string,
@@ -87,13 +91,7 @@
                 :tuple-of-ints :nilable/seqable}}
          (clj-kondo/transform Schema)))
 
-  (let [it-fn-defs ['kikka
-                    'siren
-                    'clj-kondo-issue-1922-1
-                    'clj-kondo-issue-1922-2
-                    'clj-kondo-issue-1922-3
-                    'clj-kondo-issue-1922-4]
-        expected-out
+  (let [expected-out
         {'malli.clj-kondo-test
          {'kikka
           {:arities {1 {:args [:int],
@@ -124,17 +122,14 @@
                         :ret :nil}
                      :varargs {:args [:int :int {:op :rest :spec :int}]
                                :ret :nil
-                               :min-arity 2}}}}}]
-
+                               :min-arity 2}}}
+          ;; should output `:any` for `:fn` predicate schema's, not `:fn`
+          'clj-kondo-issue-836-1
+          {:arities {3 {:args [:int :any :int], :ret :any}}}}}]
     #?(:clj
-       (is (= expected-out
-              (-> (cljk-collect-for-test)
-                  (update 'malli.clj-kondo-test #(select-keys % it-fn-defs))))))
-
+       (is (= expected-out (cljk-collect-for-test))))
     #?(:cljs
-       (is (= expected-out
-              (-> (cljk-collect-for-test)
-                  (update 'malli.clj-kondo-test #(select-keys % it-fn-defs)))))))
+       (is (= expected-out (cljk-collect-for-test)))))
   (testing "sequential elements"
     (is (= :seqable
            (clj-kondo/transform [:repeat :int])))
@@ -146,11 +141,3 @@
   (testing "regular expressions"
     (is (= :string (clj-kondo/transform [:re "kikka"]))
         "the :re schema models a string, clj-kondo's :regex a Pattern object")))
-
-(defn clj-kondo-issue-836-1 [x y z] (* x y z))
-(m/=> clj-kondo-issue-836-1 [:=> [:cat int? [:fn #(int? %)] int?] [:fn #(int? %)]])
-
-(deftest fn-predicate-schema-generation
-  (is (= {:arities {3 {:args [:int :any :int], :ret :any}}}
-         (get-in (cljk-collect-for-test) ['malli.clj-kondo-test 'clj-kondo-issue-836-1]))
-      "should output `:any` for `:fn` predicate schema's, not `:fn`"))

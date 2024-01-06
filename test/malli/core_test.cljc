@@ -3009,12 +3009,8 @@
    [:id #'UserId]
    [:friends {:optional true} [:set [:ref #'User]]]])
 
-(def registry (mr/composite-registry
-               (m/default-schemas)
-               (mr/var-registry)))
-
 (deftest var-registry-test
-  (let [schema (m/schema User {:registry registry})]
+  (let [schema (m/schema User)]
 
     (testing "getting schema over Var works"
       (is (= UserId (mr/-schema (mr/var-registry) #'UserId)))
@@ -3029,23 +3025,19 @@
 
 #?(:clj
    (deftest roundrobin-var-references
+     (let [schema (m/schema User)]
 
-     (testing "default options with var-registry fails"
-       (let [options {:registry registry}
-             schema (m/schema User options)]
+       (testing "default options with var-registry fails"
          (is (thrown? Exception
                       (as-> schema $
                         (edn/write-string $)
-                        (edn/read-string $ options)
-                        (every? (m/validator $) (mg/sample schema)))))))
+                        (edn/read-string $)
+                        (every? (m/validator $) (mg/sample schema))))))
 
-     (testing "with custom edamame options with var-registry succeeds"
-       (let [options {:registry registry
-                      ::edn/edamame-options {:fn true,
-                                             :regex true,
-                                             :var resolve}}
-             schema (m/schema User options)]
+       (testing "with custom edamame options with var-registry succeeds"
          (is (as-> schema $
                (edn/write-string $)
-               (edn/read-string $ options)
+               (edn/read-string $ {::edn/edamame-options {:fn true,
+                                                          :regex true,
+                                                          :var resolve}})
                (every? (m/validator $) (mg/sample schema))))))))

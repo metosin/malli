@@ -2632,16 +2632,7 @@ Just a `Map`.
 ```
 ### Var registry
 
-Var is a valid reference type in Malli. To support auto-resolving Var references to Vars, `mr/var-registry` is needed.
-
-```clojure
-(mr/set-default-registry!
- (mr/composite-registry
-  (m/default-schemas)
-  (mr/var-registry)))
-```
-
-Vars can be usedlike any other reference, recursion included:
+Var is a valid reference type in Malli. To support auto-resolving Var references to Vars, `mr/var-registry` is needed. It is enabled by default.
 
 ```clojure
 (def UserId :string)

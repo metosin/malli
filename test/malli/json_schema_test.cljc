@@ -358,8 +358,4 @@
                                                                               :uniqueItems true}},
                                                        :required [:id ::location `description]}}}
 
-         (json-schema/transform
-          User
-          {:registry (mr/composite-registry
-                      (m/default-schemas)
-                      (mr/var-registry))}))))
+         (json-schema/transform User))))

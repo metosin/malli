@@ -2491,7 +2491,7 @@
 (def default-registry
   (let [strict (identical? mr/mode "strict")
         custom (identical? mr/type "custom")
-        registry (mr/fast-registry (if custom {} (default-schemas)))]
+        registry (if custom (mr/fast-registry {}) (mr/composite-registry (mr/fast-registry (default-schemas)) (mr/var-registry)))]
     (when-not strict (mr/set-default-registry! registry))
     (mr/registry (if strict registry (mr/custom-default-registry)))))
 

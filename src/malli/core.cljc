@@ -167,7 +167,7 @@
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
-(defn -reference? [?schema] (or (string? ?schema) (qualified-ident? ?schema)))
+(defn -reference? [?schema] (or (string? ?schema) (qualified-ident? ?schema) (var? ?schema)))
 
 (defn -lazy [ref options] (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 
@@ -2490,7 +2490,8 @@
 
 (def default-registry
   (let [strict (identical? mr/mode "strict")
-        registry (mr/fast-registry (if (identical? mr/type "custom") {} (default-schemas)))]
+        custom (identical? mr/type "custom")
+        registry (if custom (mr/fast-registry {}) (mr/composite-registry (mr/fast-registry (default-schemas)) (mr/var-registry)))]
     (when-not strict (mr/set-default-registry! registry))
     (mr/registry (if strict registry (mr/custom-default-registry)))))
 
@@ -2534,9 +2535,7 @@
    (try
      (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))
      (catch #?(:clj Throwable :cljs :default) ex
-       (throw (ex-info
-               (str "Schema error when instrumenting function: " ns "/" name " - " (ex-message ex))
-               (ex-data ex)))))))
+       (-fail! ::register-function-schema {:ns ns, :name name, :schema ?schema, :data data, :key key, :exception ex})))))
 
 #?(:clj
    (defmacro => [given-sym value]

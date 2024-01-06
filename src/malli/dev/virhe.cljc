@@ -133,11 +133,8 @@
 #?(:clj
    (defn -location [e ss]
      (try
-       (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
-             [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
-                                    (cond (start-with f s) (recur (rest fs) ss)
-                                          (seq (rest ss)) (recur fs (rest ss))
-                                          :else f))]
+       (let [[target _ file line] (some (fn [[s :as line]] (if (not-any? #(str/starts-with? (str s) %) ss) line))
+                                        (-> e Throwable->map :trace))]
          (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
                target-name (name target)
                ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]

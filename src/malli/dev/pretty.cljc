@@ -2,6 +2,7 @@
   (:require [malli.core :as m]
             [malli.dev.virhe :as v]
             [malli.error :as me]
+            [malli.edn :as edn]
             [malli.registry :as mr]))
 
 (defn -printer
@@ -29,8 +30,9 @@
 (defn -ref-text [printer]
   [:group "Reference should be one of the following:" :break :break
    "- a qualified keyword, " (v/-visit [:ref :user/id] printer) :break
-   "- a qualified symbol,  " (v/-visit [:ref 'user/id] printer) :break
-   "- a string,            " (v/-visit [:ref "user/id"] printer)])
+   "- a qualified symbol,  " (v/-visit [:ref (symbol "'user" "id")] printer) :break
+   "- a string,            " (v/-visit [:ref "user/id"] printer) :break
+   "- a Var,               " (v/-visit [:ref (symbol "#'user" "id")] printer)])
 
 ;;
 ;; formatters
@@ -68,6 +70,15 @@
           (v/-block (str "Invalid function arity (" arity "):") (v/-visit args printer) printer) :break :break
           (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
           #?(:cljs (v/-block "Function Var:" (v/-visit fn-name printer) printer)) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
+
+(defmethod v/-format ::m/register-function-schema [_ {:keys [ns name schema _data key _exception]} printer]
+  {:title "Error in registering a Function Schema"
+   :body [:group
+          (v/-block "Function Var:" [:group
+                                     (v/-visit (symbol (str ns) (str name)) printer)
+                                     " (" (v/-visit key printer) ")"] printer) :break :break
+          (v/-block "Function Schema:" (v/-visit schema printer) printer) :break :break
           (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
 (defmethod v/-format ::m/invalid-ref [_ {:keys [ref]} printer]
@@ -113,6 +124,26 @@
     {:title "Schema Creation Error"
      :body [:group
             (v/-block "Duplicate Keys" (v/-visit keys printer) printer) :break :break
+            (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
+
+(defmethod v/-format :malli.edn/var-parsing-not-supported [_ {:keys [string var]} printer]
+  (let [parse (fn [string]
+                (try (edn/-parse-string string {:regex true, :fn true, :var edn/-var-symbol})
+                     (catch #?(:clj Exception, :cljs js/Error) _ string)))]
+    {:title "Deserialization Error"
+     :body [:group
+            (v/-block "Var" (v/-visit var printer) printer) :break :break
+            (v/-block "Data" (v/-visit (parse string) printer) printer) :break :break
+            (v/-block "Reason" [:group
+                                "Var deserialization is disabled by default, because:" :break :break
+                                "- Vars don't work at runtime in ClojureScript" :break
+                                "- Var resolutions has overhead with GraalVM Native Image"] printer) :break :break
+            (v/-block "Resolution" [:group
+                                    "To deserialize Var with Clojure:" :break :break
+                                    (v/-visit `(malli.edn/read-string
+                                                ~string
+                                                {:malli.edn/edamame-options {:regex true, :fn true, :var resolve}})
+                                              printer)] printer) :break :break
             (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]}))
 
 ;;

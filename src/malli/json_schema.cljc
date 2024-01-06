@@ -1,5 +1,6 @@
 (ns malli.json-schema
   (:require [clojure.set :as set]
+            [clojure.string :as str]
             [malli.core :as m]))
 
 (declare -transform)
@@ -8,20 +9,17 @@
   (-accept [this children options] "transforms schema to JSON Schema"))
 
 (defn -ref [schema {::keys [transform definitions] :as options}]
-  (let [x (m/-ref schema)]
-    (when-not (contains? @definitions x)
+  (let [ref (as-> (m/-ref schema) $
+              (cond (var? $) (let [{:keys [ns name]} (meta $)]
+                               (str (symbol (str ns) (str name))))
+                    (qualified-ident? $) (str (namespace $) "/" (name $))
+                    :else (str $)))]
+    (when-not (contains? @definitions ref)
       (let [child (m/deref schema)]
-        (swap! definitions assoc x ::recursion-stopper)
-        (swap! definitions assoc x (transform child options))))
-    {:$ref (apply str "#/definitions/"
-                  (cond
-                    ;; / must be encoded as ~1 in JSON Schema
-                    ;; https://json-schema.org/draft/2019-09/relative-json-pointer.html
-                    ;; https://www.rfc-editor.org/rfc/rfc6901
-                    (qualified-keyword? x) [(namespace x) "~1"
-                                            (name x)]
-                    (keyword? x) [(name x)]
-                    :else [x]))}))
+        (swap! definitions assoc ref ::recursion-stopper)
+        (swap! definitions assoc ref (transform child options))))
+    ;; '/' must be encoded as '~1' in JSON Schema - https://www.rfc-editor.org/rfc/rfc6901
+    {:$ref (apply str "#/definitions/" (str/replace ref #"/" "~1"))}))
 
 (defn -schema [schema {::keys [transform] :as options}]
   (if (m/-ref schema)

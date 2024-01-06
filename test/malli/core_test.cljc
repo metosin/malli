@@ -2977,7 +2977,7 @@
                        (prefixer "h")
                        (prefixer "i")) "xxx"))))))
 
-(deftest -issue-925-test
+(deftest issue-925-test
   (testing "order is retained with catn parse+unparse"
     (let [schema [:catn
                   [:a :int]
@@ -2992,7 +2992,7 @@
           input [1 2 3 4 5 6 7 8 9]]
       (is (= input (->> input (m/parse schema) (m/unparse schema)))))))
 
-(deftest -issue-937-test
+(deftest issue-937-test
   (testing ":altn can handle just one child entry when nested"
     (let [schema [:* [:altn [:a [:= :a]]]]
           value [:a]]
@@ -3001,3 +3001,43 @@
       (is (= [[:a :a]] (m/parse schema value)))
       (is (= value (m/unparse schema (m/parse schema value))))
       (is (= value (m/decode schema value nil))))))
+
+(def UserId :string)
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:friends {:optional true} [:set [:ref #'User]]]])
+
+(deftest var-registry-test
+  (let [schema (m/schema User)]
+
+    (testing "getting schema over Var works"
+      (is (= UserId (mr/-schema (mr/var-registry) #'UserId)))
+      (is (= User (mr/-schema (mr/var-registry) #'User))))
+
+    (testing "we do not list all Var schemas (yet)"
+      (is (= nil (mr/-schemas (mr/var-registry)))))
+
+    (testing "it works"
+      (is (= User (m/form schema)))
+      (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
+
+#?(:clj
+   (deftest roundrobin-var-references
+     (let [schema (m/schema User)]
+
+       (testing "default options with var-registry fails"
+         (is (thrown? Exception
+                      (as-> schema $
+                        (edn/write-string $)
+                        (edn/read-string $)
+                        (every? (m/validator $) (mg/sample schema))))))
+
+       (testing "with custom edamame options with var-registry succeeds"
+         (is (as-> schema $
+               (edn/write-string $)
+               (edn/read-string $ {::edn/edamame-options {:fn true,
+                                                          :regex true,
+                                                          :var resolve}})
+               (every? (m/validator $) (mg/sample schema))))))))

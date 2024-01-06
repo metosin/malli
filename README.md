@@ -2630,6 +2630,39 @@ Just a `Map`.
   {:maybe "sheep"})
 ; => true
 ```
+### Var registry
+
+Var is a valid reference type in Malli. To support auto-resolving Var references to Vars, `mr/var-registry` is needed.
+
+```clojure
+(mr/set-default-registry!
+ (mr/composite-registry
+  (m/default-schemas)
+  (mr/var-registry)))
+```
+
+Vars can be usedlike any other reference, recursion included:
+
+```clojure
+(def UserId :string)
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:friends {:optional true} [:set [:ref #'User]]]])
+
+(mg/sample User {:seed 0})
+;({:id ""}
+; {:id "6", :friends #{{:id ""}}}
+; {:id ""}
+; {:id "4", :friends #{}}
+; {:id "24b7"}
+; {:id "Uo"}
+; {:id "8"}
+; {:id "z5b"}
+; {:id "R9f"}
+; {:id "lUm6Wj9gR"})
+```
 
 ### Mutable registry
 

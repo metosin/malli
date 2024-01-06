@@ -3009,28 +3009,43 @@
    [:id #'UserId]
    [:friends {:optional true} [:set [:ref #'User]]]])
 
+(def registry (mr/composite-registry
+               (m/default-schemas)
+               (mr/var-registry)))
+
+(deftest var-registry-test
+  (let [schema (m/schema User {:registry registry})]
+
+    (testing "getting schema over Var works"
+      (is (= UserId (mr/-schema (mr/var-registry) #'UserId)))
+      (is (= User (mr/-schema (mr/var-registry) #'User))))
+
+    (testing "we do not list all Var schemas (yet)"
+      (is (= nil (mr/-schemas (mr/var-registry)))))
+
+    (testing "it works"
+      (is (= User (m/form schema)))
+      (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
+
 #?(:clj
    (deftest roundrobin-var-references
-     (let [registry (mr/composite-registry
-                     (m/default-schemas)
-                     (mr/var-registry))]
 
-       (testing "default options with var-registry fails"
-         (let [options {:registry registry}
-               schema (m/schema User options)]
-           (is (thrown? Exception
-                        (as-> schema $
-                          (edn/write-string $)
-                          (edn/read-string $ options)
-                          (every? (m/validator $) (mg/sample schema)))))))
+     (testing "default options with var-registry fails"
+       (let [options {:registry registry}
+             schema (m/schema User options)]
+         (is (thrown? Exception
+                      (as-> schema $
+                        (edn/write-string $)
+                        (edn/read-string $ options)
+                        (every? (m/validator $) (mg/sample schema)))))))
 
-       (testing "with custom edamame options with var-registry succeeds"
-         (let [options {:registry registry
-                        ::edn/edamame-options {:fn true,
-                                               :regex true,
-                                               :var resolve}}
-               schema (m/schema User options)]
-           (is (as-> schema $
-                 (edn/write-string $)
-                 (edn/read-string $ options)
-                 (every? (m/validator $) (mg/sample schema)))))))))
+     (testing "with custom edamame options with var-registry succeeds"
+       (let [options {:registry registry
+                      ::edn/edamame-options {:fn true,
+                                             :regex true,
+                                             :var resolve}}
+             schema (m/schema User options)]
+         (is (as-> schema $
+               (edn/write-string $)
+               (edn/read-string $ options)
+               (every? (m/validator $) (mg/sample schema))))))))

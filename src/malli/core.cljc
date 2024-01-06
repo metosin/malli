@@ -2306,6 +2306,20 @@
    (let [schema (deref ?schema options)]
      (cond-> schema (-ref-schema? schema) (recur options)))))
 
+(defn deref-recursive
+  "Derefs all schemas at all levels. Does not walk over `:ref`s."
+  ([?schema]
+   (deref-recursive ?schema nil))
+  ([?schema options]
+   (let [schema (schema ?schema options)]
+     (-> (walk schema (fn [schema _ children _]
+                        (cond
+                          (= :ref (type schema)) schema
+                          (-ref-schema? schema) (first children)
+                          :else (-set-children schema children)))
+               {::walk-schema-refs true})
+         (deref-all)))))
+
 (defn from-ast
   "Creates a Schema from AST"
   ([?ast] (from-ast ?ast nil))

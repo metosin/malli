@@ -3041,3 +3041,23 @@
                                                           :regex true,
                                                           :var resolve}})
                (every? (m/validator $) (mg/sample schema))))))))
+
+(deftest deref-recursive-test
+  (let [schema [:schema {:registry {::user-id :uuid
+                                    ::address [:map
+                                               [:street :string]
+                                               [:lonlat {:optional true} [:tuple :double :double]]]
+                                    ::user [:map
+                                            [:id ::user-id]
+                                            [:name :string]
+                                            [:friends {:optional true} [:set [:ref ::user]]]
+                                            [:address ::address]]}}
+                ::user]
+        expected [:map
+                  [:id :uuid]
+                  [:name :string]
+                  [:friends {:optional true} [:set [:ref ::user]]]
+                  [:address [:map
+                             [:street :string]
+                             [:lonlat {:optional true} [:tuple :double :double]]]]]]
+    (is (= expected (m/form (m/deref-recursive schema))))))

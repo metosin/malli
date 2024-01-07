@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.14.0-SNAPSHOT
 
 * Better development-time tooling
   * `malli.dev/start!` captures all malli-thrown exceptions, see [README](README.md#development-mode) for details

@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.13.0</version>
+  <version>0.14.0-SNAPSHOT</version>
   <name>malli</name>
   <licenses>
     <license>

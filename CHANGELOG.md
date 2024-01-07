@@ -21,6 +21,7 @@ Malli is in well matured [alpha](README.md#alpha).
   * does not log individual re-instrumentation of function vars
   * **BREAKING**: changes in `malli.dev.virhe` and `malli.pretty` extension apis, wee [#980](https://github.com/metosin/malli/pull/980) for details
 * new `m/deref-recursive` to recursive deref all schemas (not `:ref`s)
+* FIX: Malli generates incorrect clj-kondo spec for :fn schemas [#836](https://github.com/metosin/malli/issues/836) via [#987](https://github.com/metosin/malli/pull/987)
 * Support for Var references [#985](https://github.com/metosin/malli/pull/985), see [guide](README.md#var-registry) for details.
 * **BREAKING**: `m/coerce` and `m/coercer` throw `::m/coercion` instead of `::m/invalid-input`
 * New Guide for [Reusable Schemas](docs/reusable-schemas.md)

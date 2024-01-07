@@ -15,14 +15,14 @@
    :map (m/-map-schema)})
 
 (m/validate
-  [:map [:maybe [:maybe :string]]]
-  {:maybe "sheep"}
-  {:registry registry})
+ [:map [:maybe [:maybe :string]]]
+ {:maybe "sheep"}
+ {:registry registry})
 ; => true
 
 (mr/set-default-registry! registry)
 
 (m/validate
-  [:map [:maybe [:maybe :string]]]
-  {:maybe "sheep"})
+ [:map [:maybe [:maybe :string]]]
+ {:maybe "sheep"})
 ; => true

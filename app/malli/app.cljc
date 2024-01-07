@@ -5,6 +5,6 @@
   (:require [malli.core :as m]))
 
 (m/validate
-  [:map [:maybe [:maybe :string]]]
-  {:maybe "sheep"})
+ [:map [:maybe [:maybe :string]]]
+ {:maybe "sheep"})
 ; => true

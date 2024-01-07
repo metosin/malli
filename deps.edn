@@ -8,26 +8,26 @@
         mvxcvi/arrangement {:mvn/version "2.1.0"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.14"}
-                               lambdaisland/kaocha {:mvn/version "1.86.1355"}
+                               lambdaisland/kaocha {:mvn/version "1.87.1366"}
                                lambdaisland/kaocha-cljs {:mvn/version "1.5.154"}
-                               org.babashka/sci {:mvn/version "0.8.40"}
+                               org.babashka/sci {:mvn/version "0.8.41"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "1.17.101"}
                                metosin/spec-tools {:mvn/version "0.10.6"}
                                spec-provider/spec-provider {:mvn/version "0.4.14"}
                                metosin/schema-tools {:mvn/version "0.13.1"}
-                               metosin/jsonista {:mvn/version "0.3.7"}
+                               metosin/jsonista {:mvn/version "0.3.8"}
                                prismatic/schema {:mvn/version "1.4.1"}
                                minimallist/minimallist {:mvn/version "0.0.10"}
                                net.cgrand/seqexp {:mvn/version "0.6.2"}
-                               djblue/portal {:mvn/version "0.46.0"}
+                               djblue/portal {:mvn/version "0.51.0"}
                                meta-merge/meta-merge {:mvn/version "1.0.0"}
                                expound/expound {:mvn/version "0.9.0"}
                                lambdaisland/deep-diff {:mvn/version "0.0-47"}
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "4cbfa677c4cd66339f18e1c122222c05c69e0d8e"}}}
-           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.8.40"}}}
-           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/sha "24635085f3a268e624dee5f6b7ec049323a01173"}}}
+           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.8.41"}}}
+           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/sha "21ec3e33d7cc5df88ba75bbb563522f843e846fd"}}}
            :test-sci {:extra-paths ["test-sci"]
                       :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
            :test-cherry {:extra-paths ["test-cherry"]
@@ -37,7 +37,7 @@
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.5" :git/sha "24f2894"}}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.6" :git/sha "8e78bcc"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]
                  :deps {jmh-clojure/jmh-clojure {:mvn/version "0.4.1"}
@@ -49,7 +49,7 @@
                                 org.clojure/tools.namespace #_:clj-kondo/ignore {:mvn/version "RELEASE"}}}
 
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.25.3"}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.26.2"}
                                  binaryage/devtools {:mvn/version "1.0.7"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
@@ -60,7 +60,7 @@
                                :sha "b093f79420fef019faf62a75b888b5e10f4e8cc9"}}
                  :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
                              "--project-path" "malli.jar"]}
-           :deploy {:extra-deps {slipset/deps-deploy {:mvn/version "0.2.1"}}
+           :deploy {:extra-deps {slipset/deps-deploy {:mvn/version "0.2.2"}}
                     :exec-fn deps-deploy.deps-deploy/deploy
                     :exec-args {:installer :remote
                                 :artifact "malli.jar"}}
@@ -69,12 +69,11 @@
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
                      :extra-deps {org.clojure/clojure {:mvn/version "1.11.1"}
-                                  org.babashka/sci {:mvn/version "0.8.40"}}}
+                                  org.babashka/sci {:mvn/version "0.8.41"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                org.clojure/clojure {:mvn/version "1.11.1"}
-                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.5"}}
+                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.1.1"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"
-                             "-Dclojure.compiler.direct-linking=true"]}
-           :clojure-11 {}}}
+                             "-Dclojure.compiler.direct-linking=true"]}}}

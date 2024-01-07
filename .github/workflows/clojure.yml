@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Java ${{ matrix.jdk }}
-        uses: actions/setup-java@v3.12.0
+        uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: ${{ matrix.jdk }}
@@ -42,9 +42,9 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Java 11
-        uses: actions/setup-java@v3.12.0
+        uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 11
@@ -54,7 +54,7 @@ jobs:
         with:
           cli: latest
       - name: Setup Node.js
-        uses: actions/setup-node@v3.8.1
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: 16
       - name: Install dependencies
@@ -67,9 +67,9 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Java 11
-        uses: actions/setup-java@v3.12.0
+        uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 11

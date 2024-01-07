@@ -194,8 +194,9 @@
     (is (= 9 (minus-small-int 10)))))
 
 (deftest ^:simple check-test
-  (let [results (mi/check)]
-    (is (map? results))))
+  (testing "all registered function schemas in this namespace"
+    (let [results (mi/check {:filters [(mi/-filter-ns 'malli.instrument-test)]})]
+      (is (map? results)))))
 
 (deftest ^:simple instrument-external-test
 

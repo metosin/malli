@@ -103,7 +103,7 @@
 (defmethod accept :tuple [_ _ _ _] :seqable)
 (defmethod accept :multi [_ _ _ _] :any) ;;??
 (defmethod accept :re [_ _ _ _] :string)
-(defmethod accept :fn [_ _ _ _] :fn)
+(defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
 (defmethod accept :=> [_ _ _ _] :fn)
 (defmethod accept :function [_ _ _ _] :fn)

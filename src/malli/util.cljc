@@ -217,20 +217,6 @@
   ([?schema value options]
    ((data-explainer ?schema options) value [] [])))
 
-(defn deref-recursive
-  "derefs all schemas at all levels. Does not walk over `:ref`s."
-  ([?schema]
-   (deref-recursive ?schema nil))
-  ([?schema options]
-   (let [schema (m/schema ?schema options)]
-     (-> (m/walk schema (fn [schema _ children _]
-                          (cond
-                            (= :ref (m/type schema)) schema
-                            (m/-ref-schema? schema) (first children)
-                            :else (m/-set-children schema children)))
-                 {::m/walk-schema-refs true})
-         (m/deref-all)))))
-
 ;;
 ;; EntrySchemas
 ;;

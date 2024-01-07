@@ -990,23 +990,3 @@
                  (mu/assoc-in [:foo :bar] :int)
                  (mu/assoc-in [:foo :baz] :int)
                  (mu/closed-schema)))))
-
-(deftest deref-recursive-test
-  (let [schema [:schema {:registry {::user-id :uuid
-                                    ::address [:map
-                                               [:street :string]
-                                               [:lonlat {:optional true} [:tuple :double :double]]]
-                                    ::user [:map
-                                            [:id ::user-id]
-                                            [:name :string]
-                                            [:friends {:optional true} [:set [:ref ::user]]]
-                                            [:address ::address]]}}
-                ::user]
-        expected [:map
-                  [:id :uuid]
-                  [:name :string]
-                  [:friends {:optional true} [:set [:ref ::user]]]
-                  [:address [:map
-                             [:street :string]
-                             [:lonlat {:optional true} [:tuple :double :double]]]]]]
-    (is (= expected (m/form (mu/deref-recursive schema))))))

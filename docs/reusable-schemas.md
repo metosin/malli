@@ -94,9 +94,7 @@ By default, reference keys are used instead of values:
 We can recursively deref the Schema to get the values:
 
 ```clojure
-(require '[malli.util :as mu])
-
-(mu/deref-recursive ::user)
+(m/deref-recursive ::user)
 ;[:map
 ; [:id :uuid]
 ; [:name :string]
@@ -121,7 +119,7 @@ Clojure Spec declared [map specs should be of keysets only](https://clojure.org/
 (register! ::name :string)
 (register! ::user [:map ::id ::name ::address])
 
-(mu/deref-recursive ::user)
+(m/deref-recursive ::user)
 ;[:map
 ; [:user/id :uuid]
 ; [:user/name :string]
@@ -169,7 +167,7 @@ Using registry via options:
 Works with both:
 
 ```clojure
-(mu/deref-recursive *1)
+(m/deref-recursive *1)
 ;[:map
 ; [:id :uuid]
 ; [:name :string]

@@ -134,10 +134,10 @@
      :body [:group
             (v/-block "Var" (v/-visit var printer) printer) :break :break
             (v/-block "Data" (v/-visit (parse string) printer) printer) :break :break
-            (v/-block "Reason" [:group
-                                "Var deserialization is disabled by default, because:" :break :break
-                                "- Vars don't work at runtime in ClojureScript" :break
-                                "- Var resolutions has overhead with GraalVM Native Image"] printer) :break :break
+            (v/-block "Error" [:group
+                               "Var deserialization is disabled by default, because:" :break :break
+                               "- Vars don't work at runtime in ClojureScript" :break
+                               "- Var resolutions has overhead with GraalVM Native Image"] printer) :break :break
             (v/-block "Resolution" [:group
                                     "To deserialize Var with Clojure:" :break :break
                                     (v/-visit `(malli.edn/read-string

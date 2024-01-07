@@ -135,7 +135,6 @@
           ;; multi-arity
           :else
           (-emit-multi-arity-instrumentation-code fn-sym schema-map schema max-fixed-args))
-       (.log js/console "..instrumented" '~fn-sym)
        '~fn-sym)))
 
 (defn -emit-instrument-fn [env {:keys [gen filters report] :as instrument-opts}
@@ -184,7 +183,6 @@
                             `(when-let [orig-fn# (get @instrumented-vars '~fn-sym)]
                                (swap! instrumented-vars #(dissoc % '~fn-sym))
                                (set! ~fn-sym orig-fn#)
-                               (.log js/console "..unstrumented" '~fn-sym)
                                '~fn-sym))]
     (if filters
       `(when (some #(% '~ns-sym (resolve '~fn-sym) ~opts) ~filters)

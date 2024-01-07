@@ -107,9 +107,8 @@
                                         (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
                                               (true? (:gen d)) (dissoc $ :gen)
                                               :else $))]
-                         (if (and skip-instrumented? (-instrumented? v))
-                           (when original-fn
-                             (-replace-fn original-fn n s dgen))))
+                         (if (and original-fn (not (and skip-instrumented? (-instrumented? v))))
+                           (-replace-fn original-fn n s dgen)))
 
            :unstrument (when (-instrumented? v)
                          (let [original-fn (or (-original v) v)]

@@ -27,7 +27,7 @@
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "4cbfa677c4cd66339f18e1c122222c05c69e0d8e"}}}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.8.41"}}}
-           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/sha "21ec3e33d7cc5df88ba75bbb563522f843e846fd"}}}
+           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/sha "24635085f3a268e624dee5f6b7ec049323a01173"}}}
            :test-sci {:extra-paths ["test-sci"]
                       :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
            :test-cherry {:extra-paths ["test-cherry"]

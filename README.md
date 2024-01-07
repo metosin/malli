@@ -69,6 +69,37 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 Malli requires Clojure 1.11.
 
+## Quickstart
+
+```clojure
+(require '[malli.core :as m])
+
+(def UserId :string)
+
+(def Address
+  [:map
+   [:street :string]
+   [:country [:enum "FI" "UA"]]])
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:address #'Address]
+   [:friends [:set {:gen/max 2} [:ref #'User]]]])
+
+(require '[malli.generator :as mg])
+
+(mg/generate User)
+;{:id "AC",
+; :address {:street "mf", :country "UA"},
+; :friends #{{:id "1dm",
+;             :address {:street "8", :country "UA"},
+;             :friends #{}}}}
+
+(m/validate User *1)
+; => true
+```
+
 ## Syntax
 
 Malli supports [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) syntaxes.

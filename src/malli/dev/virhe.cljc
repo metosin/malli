@@ -128,7 +128,7 @@
   (fipp.engine/pprint-document doc printer))
 
 (defn -visit [x printer]
-  (fipp.visit/visit printer x))
+  [:span (fipp.visit/visit printer x)])
 
 #?(:clj
    (defn -location [e ss]

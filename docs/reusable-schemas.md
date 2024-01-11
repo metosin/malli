@@ -194,8 +194,7 @@ You should pick the way what works best for your project.
 # Future Work
 
 1. Could we also decomplect the Maps, Keys and Values with the Var Style?
-2. Clear separation of [Entities and Values](https://martinfowler.com/bliki/EvansClassification.html)
-3. Utilities for transforming between inlined and referenced models (why? why not!)
+2. Utilities for transforming between inlined and referenced models (why? why not!)
 
 ```clojure
 (-flatten-refs

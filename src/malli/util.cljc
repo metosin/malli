@@ -109,7 +109,7 @@
   "Returns a Schema instance with updated properties."
   [?schema f & args]
   (let [schema (m/schema ?schema)]
-    (m/-set-properties schema (not-empty (apply f (m/-properties schema) args)))))
+    (apply m/-update-properties schema f args)))
 
 (defn closed-schema
   "Maps are implicitly open by default. They can be explicitly closed or

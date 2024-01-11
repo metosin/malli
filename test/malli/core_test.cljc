@@ -3052,12 +3052,21 @@
                                             [:name :string]
                                             [:friends {:optional true} [:set [:ref ::user]]]
                                             [:address ::address]]}}
-                ::user]
-        expected [:map
-                  [:id :uuid]
-                  [:name :string]
-                  [:friends {:optional true} [:set [:ref ::user]]]
-                  [:address [:map
-                             [:street :string]
-                             [:lonlat {:optional true} [:tuple :double :double]]]]]]
-    (is (= expected (m/form (m/deref-recursive schema))))))
+                ::user]]
+    (is (= [:map
+            [:id :uuid]
+            [:name :string]
+            [:friends {:optional true} [:set [:ref ::user]]]
+            [:address [:map
+                       [:street :string]
+                       [:lonlat {:optional true} [:tuple :double :double]]]]]
+           (m/form (m/deref-recursive schema))
+           (m/form (m/deref-recursive schema {::m/ref-key nil}))))
+    (is (= [:map {:id ::user}
+            [:id [:uuid {:id ::user-id}]]
+            [:name :string]
+            [:friends {:optional true} [:set [:ref ::user]]]
+            [:address [:map {:id ::address}
+                       [:street :string]
+                       [:lonlat {:optional true} [:tuple :double :double]]]]]
+           (m/form (m/deref-recursive schema {::m/ref-key :id}))))))

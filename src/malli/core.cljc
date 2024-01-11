@@ -345,6 +345,9 @@
   (if (-equals properties (-properties schema))
     schema (-into-schema (-parent schema) properties (or (and (-entry-schema? schema) (-entry-parser schema)) (-children schema)) (-options schema))))
 
+(defn -update-properties [schema f & args]
+  (-set-properties schema (not-empty (apply f (-properties schema) args))))
+
 (defn -update-options [schema f]
   (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
 
@@ -2310,12 +2313,13 @@
   "Derefs all schemas at all levels. Does not walk over `:ref`s."
   ([?schema]
    (deref-recursive ?schema nil))
-  ([?schema options]
-   (let [schema (schema ?schema options)]
+  ([?schema {::keys [ref-key] :as options}]
+   (let [schema (schema ?schema options)
+         maybe-set-ref (fn [s r] (if (and ref-key r) (-update-properties s assoc ref-key r) s))]
      (-> (walk schema (fn [schema _ children _]
                         (cond
                           (= :ref (type schema)) schema
-                          (-ref-schema? schema) (first children)
+                          (-ref-schema? schema) (-> children (first) (maybe-set-ref (-ref schema)))
                           :else (-set-children schema children)))
                {::walk-schema-refs true})
          (deref-all)))))

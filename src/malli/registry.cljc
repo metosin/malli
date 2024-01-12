@@ -63,15 +63,10 @@
     (-schema [_ type] (-schema (registry @db) type))
     (-schemas [_] (-schemas (registry @db)))))
 
-(defn -find-loaded-var [s]
-  (->> (all-ns) (mapcat ns-publics) (some (fn [[_ v]] (if (= s (.toSymbol v)) v)))))
-
 (defn var-registry []
   (reify
     Registry
-    (-schema [_ type] (cond
-                        (var? type) @type
-                        (and (list? type) (= 'var (first type)) (= 2 (count type))) (-find-loaded-var (second type))))
+    (-schema [_ type] (if (var? type) @type))
     (-schemas [_])))
 
 (def ^:dynamic *registry* {})

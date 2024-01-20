@@ -1558,15 +1558,15 @@ For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:o
 (def OrMaps
   (m/schema
     [:or
-     [:map [:x :int] [:x :string]]
-     [:map [:x :string] [:x :int]]]
+     [:map [:x :int] [:y :string]]
+     [:map [:x :string] [:y :int]]]
     {:registry registry}))
 
 (def UnionMaps
   (m/schema
     [:union
-     [:map [:x :int] [:x :string]]
-     [:map [:x :string] [:x :int]]]
+     [:map [:x :int] [:y :string]]
+     [:map [:x :string] [:y :int]]]
     {:registry registry}))
 
 (m/validate OrMaps {:x "kikka" :y "kikka"})

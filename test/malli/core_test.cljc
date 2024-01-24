@@ -3069,4 +3069,23 @@
             [:address [:map {:id ::address}
                        [:street :string]
                        [:lonlat {:optional true} [:tuple :double :double]]]]]
-           (m/form (m/deref-recursive schema {::m/ref-key :id}))))))
+           (m/form (m/deref-recursive schema {::m/ref-key :id}))))
+    (testing "util schemas"
+      (let [registry (merge (m/default-schemas) (mu/schemas))]
+        (is (= [:map [:x :int] [:y :int]]
+               (m/form (m/deref-recursive
+                        [:merge
+                         [:map [:x :int]]
+                         [:map [:y :int]]]
+                        {:registry registry}))))
+        (is (= [:map {:id ::xymap}
+                [::x [:int {:id ::x}]]
+                [::y [:int {:id ::y}]]]
+               (m/form (m/deref-recursive
+                        [:schema {:registry {::x :int
+                                             ::y :int
+                                             ::xmap [:map ::x]
+                                             ::ymap [:map ::y]
+                                             ::xymap [:merge ::xmap ::ymap]}}
+                         ::xymap]
+                        {:registry registry, ::m/ref-key :id}))))))))

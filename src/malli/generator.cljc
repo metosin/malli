@@ -561,25 +561,26 @@
   ([?schema] (function-checker ?schema nil))
   ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
    (let [schema (m/schema ?schema options)
+         -try (fn [f] (try (f) (catch #?(:clj Exception, :cljs js/Error) e e)))
          check (fn [schema]
-                 (let [{:keys [input output]} (m/-function-info schema)
+                 (let [{:keys [input output guard]} (m/-function-info schema)
                        input-generator (generator input options)
-                       output-validator (m/validator output options)
-                       validate (fn [f args] (output-validator (apply f args)))]
+                       validate (m/validator output options)
+                       valid? (fn [f args] (as-> (apply f args) $ (and (validate $) (if guard (guard args $) true))))]
                    (fn [f]
-                     (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
+                     (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(valid? f %))
                                                         (check/quick-check =>iterations))
                            smallest (-> shrunk :smallest first)]
                        (when-not (true? result)
                          (let [explain-input (m/explain input smallest)
-                               response (when-not explain-input
-                                          (try (apply f smallest) (catch #?(:clj Exception, :cljs js/Error) e e)))
-                               explain-output (when-not explain-input (m/explain output response))]
+                               response (when-not explain-input (-try (fn [] (apply f smallest))))
+                               explain-output (when-not explain-input (m/explain output response))
+                               explain-guard (when guard (-try (fn [] (guard smallest response))))]
                            (cond-> shrunk
                              explain-input (assoc ::explain-input explain-input)
                              explain-output (assoc ::explain-output explain-output)
-                             (ex-message result) (-> (update :result ex-message)
-                                                     (dissoc :result-data)))))))))]
+                             guard (assoc ::response response, ::guard explain-guard)
+                             (ex-message result) (-> (update :result ex-message) (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]

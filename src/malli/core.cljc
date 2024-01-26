@@ -204,12 +204,13 @@
 
 (defn -function-info [schema]
   (when (= (type schema) :=>)
-    (let [[input output] (-children schema)
+    (let [[input output guard] (-children schema)
           {:keys [min max]} (-regex-min-max input false)]
       (cond-> {:min min
                :arity (if (= min max) min :varargs)
                :input input
                :output output}
+        guard (assoc :guard guard)
         max (assoc :max max)))))
 
 (defn -group-by-arity! [infos]
@@ -1750,15 +1751,16 @@
   ^{:type ::into-schema}
   (reify
     AST
-    (-from-ast [parent {:keys [input output properties]} options]
-      (-into-schema parent properties [(from-ast input options) (from-ast output options)] options))
+    (-from-ast [parent {:keys [input output guard properties]} options]
+      (-into-schema parent properties [(from-ast input options) (from-ast output options) guard] options))
     IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
-      (-check-children! :=> properties children 2 2)
-      (let [[input output :as children] (-vmap #(schema % options) children)
-            form (delay (-simple-form parent properties children -form options))
+      (-check-children! :=> properties children 2 3)
+      (let [-vmapc (fn [f c] (cond-> (-vmap f (take 2 c)) (= 3 (count c)) (conj (last c))))
+            [input output guard :as children] (-vmapc #(schema % options) children )
+            form (delay (-create-form (-type parent) properties (-vmapc -form children) options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
@@ -1768,7 +1770,7 @@
           AST
           (-to-ast [_ _]
             (cond-> {:type :=>, :input (ast input), :output (ast output)}
-              properties (assoc :properties properties)))
+              guard (assoc :guard guard), properties (assoc :properties properties)))
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]

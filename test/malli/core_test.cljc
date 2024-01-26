@@ -2447,6 +2447,30 @@
                                  :value invalid-f}]}
                       (m/explain schema2 invalid-f))))
 
+      (testing "guards"
+        (let [guard (fn [[x y] z] (> (+ x y) z))
+              schema (m/schema
+                      [:=> [:cat :int :int] :int guard]
+                      {::m/function-checker mg/function-checker})
+              valid (fn [x y] (dec (+ x y)))
+              invalid (fn [x y] (+ x y))]
+
+          (is (= {:type :=>,
+                  :input {:type :cat, :children [{:type :int} {:type :int}]},
+                  :output {:type :int},
+                  :guard guard}
+                 (m/ast schema)))
+
+          (is (= nil (m/explain schema valid)))
+
+          (is (results= {:schema schema,
+                         :value invalid
+                         :errors [{:path [],
+                                   :in [],
+                                   :schema schema
+                                   :value invalid}]}
+                        (m/explain schema invalid)))))
+
       (testing "non-accumulating errors"
         (let [schema (m/schema
                       [:tuple :int [:function [:=> [:cat :int] :int]]]

@@ -16,7 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## Unreleased
 
-* `:=>` takes optional 3rd child, the guard schema validating vector of arguments and return value `[args ret]`. See [Function Guards](docs/function-schemas.md#function-guards) for more details. 
+* `:=>` takes optional 3rd child, the guard schema validating vector of arguments and return value `[args ret]`. See [Function Guards](docs/function-schemas.md#function-guards) for more details. Fixes [#764](https://github.com/metosin/malli/issues/764) and [#764](https://github.com/metosin/malli/issues/764).
 
 ```clojure
 ;; function of arg:int -> ret:int, where arg < ret

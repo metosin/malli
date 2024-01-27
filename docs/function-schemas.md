@@ -78,7 +78,10 @@ Examples of function definitions:
 [:=> [:catn 
       [:x :int] 
       [:xs [:+ :int]]] :int]
-      
+
+;; arg:int -> ret:int, arg > ret
+[:=> [:cat :int] :int [:fn (fn [[arg] ret] (> arg ret))]]
+
 ;; multi-arity function
 [:function
  [:=> [:cat :int] :int]
@@ -155,6 +158,65 @@ Explanation why it is not valid:
 Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not an `:int`. Looks good.
 
 But, why `mg/function-checker` is not enabled by default? The reason is that it uses generartive testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be expecially bad for CLJS bundle size.
+
+### Function Guards
+
+`:=>` accepts optional third child, a guard schema that is used to validate a vector of function arguments and return value.
+
+```clojure
+;; function schema of arg:int -> ret:int, where arg < ret
+;; with generative function checking always enabled
+(def arg<ret
+  (m/schema
+   [:=>
+    [:cat :int]
+    :int
+    [:fn {:error/message "argument should be less than return"}
+     (fn [[[arg] ret]] (< arg ret))]]
+   {::m/function-checker mg/function-checker}))
+
+(m/explain arg<ret (fn [x] (inc x)))
+; nil
+
+(m/explain arg<ret (fn [x] x))
+;{:schema ...
+; :value #object[user$eval19073$fn__19074],
+; :errors ({:path [],
+;           :in [],
+;           :schema ...,
+;           :value #object[user$eval19073$fn__19074],
+;           :check {:total-nodes-visited 1,
+;                   :result false,
+;                   :result-data nil,
+;                   :smallest [(0)],
+;                   :time-shrinking-ms 0,
+;                   :pass? false,
+;                   :depth 0,
+;                   :malli.core/result 0}},
+;          {:path [2],
+;           :in [],
+;           :schema [:fn
+;                    #:error{:message "argument should be less than return"}
+;                    (fn [[[arg] ret]] (< arg ret))],
+;           :value [(0) 0]})}
+
+(me/humanize *1)
+; ["invalid function" "argument should be less than return"]
+```
+
+Identical schema using the Schema AST syntax:
+
+```clojure
+(m/from-ast
+ {:type :=>
+  :input {:type :cat
+          :children [{:type :int}]}
+  :output {:type :int}
+  :guard {:type :fn
+          :value (fn [[[arg] ret]] (< arg ret))
+          :properties {:error/message "argument should be less than return"}}}
+ {::m/function-checker mg/function-checker})
+```
 
 ### Generating Functions
 
@@ -620,8 +682,8 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 (m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
 
 (dev/start!)
-; =prints=> ..instrumented #'user/plus1
-; =prints=> started instrumentation
+; malli: instrumented 1 function var
+; malli: dev-mode started
 
 (plus1 "6")
 ; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
@@ -636,8 +698,8 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 ; => 7
 
 (dev/stop!)
-; =prints=> ..unstrumented #'user/plus1
-; =prints=> stopped instrumentation
+; malli: unstrumented 1 function vars
+; malli: dev-mode stopped
 ```
 
 ## ClojureScript support

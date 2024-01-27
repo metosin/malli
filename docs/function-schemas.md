@@ -166,7 +166,7 @@ But, why `mg/function-checker` is not enabled by default? The reason is that it 
 ```clojure
 ;; function schema of arg:int -> ret:int, where arg < ret
 ;; with generative function checking always enabled
-(def input<output
+(def arg<ret
   (m/schema
    [:=>
     [:cat :int]
@@ -175,10 +175,10 @@ But, why `mg/function-checker` is not enabled by default? The reason is that it 
      (fn [[[arg] ret]] (< arg ret))]]
    {::m/function-checker mg/function-checker}))
 
-(m/explain input<output (fn [x] (inc x)))
+(m/explain arg<ret (fn [x] (inc x)))
 ; nil
 
-(m/explain input<output (fn [x] x))
+(m/explain arg<ret (fn [x] x))
 ;{:schema ...
 ; :value #object[user$eval19073$fn__19074],
 ; :errors ({:path [],
@@ -204,7 +204,7 @@ But, why `mg/function-checker` is not enabled by default? The reason is that it 
 ; ["invalid function" "argument should be less than return"]
 ```
 
-Idetical schema using the Schema AST syntax:
+Identical schema using the Schema AST syntax:
 
 ```clojure
 (m/from-ast

@@ -14,6 +14,18 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## Unreleased
+
+* `:=>` takes optional 3rd child, the guard schema validating vector of arguments and return value `[args ret]`. See [Function Guards](docs/function-schemas.md#function-guards) for more details. 
+
+```clojure
+;; function of arg:int -> ret:int, where arg < ret
+[:=> 
+ [:cat :int] 
+ :int 
+ [:fn (fn [[[arg] ret]] (< arg ret))]]
+```
+
 ## 0.14.0 (2024-01-16)
 
 * Better development-time tooling

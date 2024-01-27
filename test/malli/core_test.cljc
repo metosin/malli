@@ -2363,13 +2363,29 @@
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
         (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
-        (is (results= {:schema [:=> [:cat int? int?] int?]
-                       :value single-arity
-                       :errors [{:path []
-                                 :in []
-                                 :schema [:=> [:cat int? int?] int?]
-                                 :value single-arity}]}
-                      (m/explain schema2 single-arity)))
+
+        (testing "exception in execution causes single error to root schema path"
+         (is (results= {:schema [:=> [:cat int? int?] int?]
+                        :value single-arity
+                        :errors [{:path []
+                                  :in []
+                                  :schema [:=> [:cat int? int?] int?]
+                                  :value single-arity}]}
+                       (m/explain schema2 single-arity))))
+
+        (testing "error in output adds error to child in path 1"
+          (let [f (fn [x y] (str x y))]
+            (is (results= {:schema [:=> [:cat int? int?] int?]
+                           :value f
+                           :errors [{:path []
+                                     :in []
+                                     :schema [:=> [:cat int? int?] int?]
+                                     :value f}
+                                    {:path [1]
+                                     :in []
+                                     :schema int?
+                                     :value "00"}]}
+                          (m/explain schema2 f)))))
 
         (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
@@ -2465,13 +2481,18 @@
 
           (is (= nil (m/explain schema valid)))
 
-          (is (results= {:schema schema,
-                         :value invalid
-                         :errors [{:path [],
-                                   :in [],
-                                   :schema schema
-                                   :value invalid}]}
-                        (m/explain schema invalid)))
+          (testing "error in guard adds error on path 2"
+            (is (results= {:schema schema,
+                           :value invalid
+                           :errors [{:path [],
+                                     :in [],
+                                     :schema schema
+                                     :value invalid}
+                                    {:path [2]
+                                     :in []
+                                     :schema [:fn guard]
+                                     :value ['(0 0) 0]}]}
+                          (m/explain schema invalid))))
 
           (testing "instrument"
             (let [schema [:=> [:cat :int] :int [:fn (fn [[[arg] ret]] (< arg ret))]]

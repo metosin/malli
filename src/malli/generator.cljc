@@ -561,7 +561,7 @@
   ([?schema] (function-checker ?schema nil))
   ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
    (let [schema (m/schema ?schema options)
-         -try (fn [f] (try (f) (catch #?(:clj Exception, :cljs js/Error) e e)))
+         -try (fn [f] (try [(f) true] (catch #?(:clj Exception, :cljs js/Error) e [e false])))
          check (fn [schema]
                  (let [{:keys [input output guard]} (m/-function-info schema)
                        input-generator (generator input options)
@@ -574,13 +574,13 @@
                            smallest (-> shrunk :smallest first)]
                        (when-not (true? result)
                          (let [explain-input (m/explain input smallest)
-                               result (when-not explain-input (-try (fn [] (apply f smallest))))
-                               explain-output (when-not explain-input (m/explain output result))
-                               explain-guard (when (and guard (not explain-input)) (m/explain guard [smallest result]))]
-                           (cond-> (assoc shrunk ::result result)
-                             explain-input (assoc ::explain-input explain-input)
-                             explain-output (assoc ::explain-output explain-output)
-                             explain-guard (assoc ::explain-guard explain-guard)
+                               [result success] (when-not explain-input (-try (fn [] (apply f smallest))))
+                               explain-output (when (and success (not explain-input)) (m/explain output result))
+                               explain-guard (when (and success guard (not explain-output)) (m/explain guard [smallest result]))]
+                           (cond-> (assoc shrunk ::m/result result)
+                             explain-input (assoc ::m/explain-input explain-input)
+                             explain-output (assoc ::m/explain-output explain-output)
+                             explain-guard (assoc ::m/explain-guard explain-guard)
                              (ex-message result) (-> (update :result ex-message) (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)

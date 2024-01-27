@@ -1752,7 +1752,8 @@
   (reify
     AST
     (-from-ast [parent {:keys [input output guard properties]} options]
-      (-into-schema parent properties [(from-ast input options) (from-ast output options) guard] options))
+      (-into-schema parent properties (cond-> [(from-ast input options) (from-ast output options)]
+                                        guard (conj (from-ast guard))) options))
     IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
@@ -1781,7 +1782,12 @@
                 (if (not (fn? x))
                   (conj acc (miu/-error path in this x))
                   (if-let [res (checker x)]
-                    (conj acc (assoc (miu/-error path in this x) :check res))
+                    (let [{::keys [explain-input explain-output explain-guard]} res
+                          res (dissoc res ::explain-input ::explain-output ::explain-guard)
+                          {:keys [path in] :as error} (assoc (miu/-error path in this x) :check res)
+                          -push (fn [acc i e]
+                                  (cond-> acc e (into (map #(assoc % :path (conj path i), :in in) (:errors e)))))]
+                      (-> (conj acc error) (-push 0 explain-input) (-push 1 explain-output) (-push 2 explain-guard)))
                     acc)))
               (let [validator (-validator this)]
                 (fn explain [x in acc]

@@ -26,6 +26,12 @@ Malli is in well matured [alpha](README.md#alpha).
  [:fn (fn [[[arg] ret]] (< arg ret))]]
 ```
 
+* **BREAKING**: `malli.generator/function-checker` returns explanations under new keys:
+  * `::mg/explain-input` -> `::m/explain-input`
+  * `::mg/explain-output` -> `::m/explain-output`
+  * new `::m/explain-guard` to return guard explanation, if any
+* `m/explain` for `:=>` returns also errors for args, return and guard if they exist
+
 ## 0.14.0 (2024-01-16)
 
 * Better development-time tooling

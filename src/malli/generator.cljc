@@ -565,21 +565,22 @@
          check (fn [schema]
                  (let [{:keys [input output guard]} (m/-function-info schema)
                        input-generator (generator input options)
-                       validate (m/validator output options)
-                       valid? (fn [f args] (as-> (apply f args) $ (and (validate $) (if guard (guard args $) true))))]
+                       valid-output? (m/validator output options)
+                       valid-guard? (if guard (m/validator guard options) (constantly true))
+                       validate (fn [f args] (as-> (apply f args) $ (and (valid-output? $) (valid-guard? [args $]))))]
                    (fn [f]
-                     (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(valid? f %))
+                     (let [{:keys [result shrunk]} (->> (prop/for-all* [input-generator] #(validate f %))
                                                         (check/quick-check =>iterations))
                            smallest (-> shrunk :smallest first)]
                        (when-not (true? result)
                          (let [explain-input (m/explain input smallest)
-                               response (when-not explain-input (-try (fn [] (apply f smallest))))
-                               explain-output (when-not explain-input (m/explain output response))
-                               explain-guard (when guard (-try (fn [] (guard smallest response))))]
-                           (cond-> shrunk
+                               result (when-not explain-input (-try (fn [] (apply f smallest))))
+                               explain-output (when-not explain-input (m/explain output result))
+                               explain-guard (when (and guard (not explain-input)) (m/explain guard [smallest result]))]
+                           (cond-> (assoc shrunk ::result result)
                              explain-input (assoc ::explain-input explain-input)
                              explain-output (assoc ::explain-output explain-output)
-                             guard (assoc ::response response, ::guard explain-guard)
+                             explain-guard (assoc ::explain-guard explain-guard)
                              (ex-message result) (-> (update :result ex-message) (dissoc :result-data)))))))))]
      (condp = (m/type schema)
        :=> (check schema)

@@ -1758,9 +1758,8 @@
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children 2 3)
-      (let [-vmapc (fn [f c] (cond-> (-vmap f (take 2 c)) (= 3 (count c)) (conj (last c))))
-            [input output guard :as children] (-vmapc #(schema % options) children )
-            form (delay (-create-form (-type parent) properties (-vmapc -form children) options))
+      (let [[input output guard :as children] (-vmap #(schema % options) children)
+            form (delay (-create-form (-type parent) properties (-vmap -form children) options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
@@ -1770,7 +1769,7 @@
           AST
           (-to-ast [_ _]
             (cond-> {:type :=>, :input (ast input), :output (ast output)}
-              guard (assoc :guard guard), properties (assoc :properties properties)))
+              guard (assoc :guard (ast guard)), properties (assoc :properties properties)))
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]
@@ -2584,19 +2583,19 @@
    | key       | description |
    | ----------|-------------|
    | `:schema` | function schema
-   | `:scope`  | optional set of scope definitions, defaults to `#{:input :output}`
+   | `:scope`  | optional set of scope definitions, defaults to `#{:input :output :guard}`
    | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([props]
    (-instrument props nil nil))
   ([props f]
    (-instrument props f nil))
-  ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options]
+  ([{:keys [scope report gen] :or {scope #{:input :output :guard}, report -fail!} :as props} f options]
    (let [schema (-> props :schema (schema options))]
      (case (type schema)
-       :=> (let [{:keys [min max input output]} (-function-info schema)
-                 [validate-input validate-output] (-vmap validator [input output])
-                 [wrap-input wrap-output] (-vmap (partial contains? scope) [:input :output])
+       :=> (let [{:keys [min max input output guard]} (-function-info schema)
+                 [validate-input validate-output validate-guard] (-vmap validator [input output (or guard :any)])
+                 [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
                  f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
              (fn [& args]
                (let [args (vec args), arity (count args)]
@@ -2606,9 +2605,10 @@
                    (when-not (validate-input args)
                      (report ::invalid-input {:input input, :args args, :schema schema})))
                  (let [value (apply f args)]
-                   (when wrap-output
-                     (when-not (validate-output value)
-                       (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
+                   (when (and wrap-output (not (validate-output value)))
+                     (report ::invalid-output {:output output, :value value, :args args, :schema schema}))
+                   (when (and wrap-guard (not (validate-guard [args value])))
+                     (report ::invalid-guard {:guard guard, :value value, :args args, :schema schema}))
                    value))))
        :function (let [arity->info (->> (children schema)
                                         (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))

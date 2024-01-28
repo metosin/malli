@@ -4,6 +4,7 @@
 * [Predicate Schemas](#predicate-schemas)
 * [Function Schemas](#function-schemas)
   * [Generative Testing](#generative-testing)
+  * [Function Guards](#function-guards)
   * [Generating Functions](#generating-functions)
   * [Multi-arity Functions](#multi-arity-functions)
   * [Instrumentation](#instrumentation)

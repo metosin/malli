@@ -133,11 +133,11 @@
 
 (defn -deprecated! [x] (println "DEPRECATED:" x))
 
-(defn -exception [type data cause] (ex-info (str type) {:type type, :message type, :data data} cause))
+(defn -exception [type data & [cause]] (ex-info (str type) {:type type, :message type, :data data} cause))
 
 (defn -fail!
   ([type] (-fail! type nil))
-  ([type data] (-fail type data nil))
+  ([type data] (-fail! type data nil))
   ([type data cause] (throw (-exception type data cause))))
 
 (defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))

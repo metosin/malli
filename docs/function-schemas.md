@@ -158,7 +158,7 @@ Explanation why it is not valid:
 
 Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not an `:int`. Looks good.
 
-But, why `mg/function-checker` is not enabled by default? The reason is that it uses generartive testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be expecially bad for CLJS bundle size.
+But, why `mg/function-checker` is not enabled by default? The reason is that it uses generative testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be especially bad for CLJS bundle size.
 
 ### Function Guards
 
@@ -315,9 +315,9 @@ Generating multi-arity functions:
 
 ### Instrumentation
 
-Besides testing function schemas as values, we can also intrument functions to enable runtime validation of arguments and return values.
+Besides testing function schemas as values, we can also instrument functions to enable runtime validation of arguments and return values.
 
-Simplest way to do this is to use `m/-instrument` which takes options map and a function and returns a instrumented function. Valid options include:
+Simplest way to do this is to use `m/-instrument` which takes an options map and a function and returns an instrumented function. Valid options include:
 
 | key       | description |
 | ----------|-------------|
@@ -561,7 +561,7 @@ Execution error (ExceptionInfo) at malli.core/-exception (core.cljc:138).
 
 ### Defn Instrumentation
 
-The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentations focus is for development time, but can also be used for production builds.
+The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentation  is intended for development time, but can also be used for production builds.
 
 ```clojure
 (require '[malli.instrument :as mi])
@@ -804,4 +804,4 @@ Here's the same code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo]
 ## Future work
 
 * [support Schema defn syntax](https://github.com/metosin/malli/issues/125)
-* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for enchanced DX.
+* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for enhanced DX.

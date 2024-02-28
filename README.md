@@ -1917,7 +1917,7 @@ Integration with test.check:
 
 ### :and generation
 
-`:and` schemas generate values by generating values from the first child, filtering
+`:and` schemas generators work by generating values from the first child, and then filtering
 out any values that do not pass the overall `:and` schema.
 
 For the most reliable results, place the schema that is most likely to generate valid

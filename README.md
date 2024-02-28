@@ -518,12 +518,12 @@ To create a vector schema based on a seqex, use `:and`.
 ```clojure
 ;; non-empty vector starting with a keyword
 (m/validate [:and [:cat :keyword [:* :any]]
-                   vector?]
+                  vector?]
             [:a 1])
 ; => true
 
 (m/validate [:and [:cat :keyword [:* :any]]
-                   vector?]
+                  vector?]
             (:a 1))
 ; => false
 ```

@@ -909,3 +909,13 @@
         (is (alphanumeric-string?
              (mg/generate [:string {}]
                           {:seed seed})))))))
+
+(deftest non-empty-vector-generator-test
+  (is (= [:.+ [1]]
+         (mg/generate [:and [:cat {:gen/fmap vec} :keyword [:* :any]] vector?]
+                      {:size 1
+                       :seed 2})))
+  (doseq [v (mg/sample [:and [:cat {:gen/fmap vec} :keyword [:* :any]] vector?]
+                       {:seed 2})]
+    (is (vector? v))
+    (is (seq v))))

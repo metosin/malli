@@ -515,7 +515,7 @@ A `:tuple` schema describes a fixed length Clojure vector of heterogeneous eleme
 
 To create a vector schema based on a seqex, use `:and`.
 
-```
+```clojure
 ;; non-empty vector starting with a keyword
 (m/validate [:and [:cat :keyword [:* :any]]
                    vector?]
@@ -528,13 +528,13 @@ To create a vector schema based on a seqex, use `:and`.
 ; => false
 ```
 
-Note: To generate values from a vector seqex, see [:and generation](#:and-generation)
+Note: To generate values from a vector seqex, see [:and generation](#and-generation).
 
 ## Set schemas
 
 You can use `:set` to describe homogeneous Clojure sets.
 
-```
+```clojure
 (m/validate [:set int?] #{42 105})
 ;; => true
 

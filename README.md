@@ -506,7 +506,7 @@ You can use `:vector` to describe homogeneous Clojure vectors.
 ;; => false
 ```
 
-A `:tuple` describes a fixed length Clojure vector of heterogeneous elements:
+A `:tuple` schema describes a fixed length Clojure vector of heterogeneous elements:
 
 ```clojure
 (m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
@@ -1923,7 +1923,7 @@ out any values that do not pass the overall `:and` schema.
 For the most reliable results, place the schema that is most likely to generate valid
 values for the entire schema as the first child of an `:and` schema.
 
-```
+```clojure
 ;; BAD: :string is unlikely to generate values satisfying the schema
 (mg/generate [:and :string [:enum "a" "b" "c"]] {:seed 42})
 ; Execution error
@@ -1941,7 +1941,7 @@ For example, a schema for non-empty heterogeneous vectors can validate values
 by combining `:cat` and `vector?`, but since `:cat` generates sequences
 we need to use `:gen/fmap` to make it generate vectors:
 
-```
+```clojure
 ;; generate a non-empty vector starting with a keyword
 (mg/generate [:and [:cat {:gen/fmap vec}
                     :keyword [:* :any]]

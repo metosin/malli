@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.14.0</version>
+  <version>0.15.0</version>
   <name>malli</name>
   <licenses>
     <license>
@@ -36,7 +36,7 @@
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>1.3.23</version>
+      <version>1.4.25</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>

@@ -3,7 +3,8 @@
             [clojure.test :refer [are deftest is testing]]
             [malli.core :as m]
             [malli.core-test]
-            [malli.transform :as mt]))
+            [malli.transform :as mt])
+  #?(:clj (:import (java.net URI))))
 
 (deftest ->interceptor-test
   (are [?interceptor expected]
@@ -67,6 +68,11 @@
   ;; Ensure that uuid0 is also a valid uuid
   (is (= #uuid "00000000-0000-0000-0000-000000000000" (mt/-string->uuid "00000000-0000-0000-0000-000000000000"))))
 
+#?(:clj
+   (deftest string->uri
+     (is (= (URI. "http://example.com") (mt/-string->uri "http://example.com")))
+     (is (= "broken link" (mt/-string->uri "broken link")))))
+
 (deftest string->date
   (is (= #inst "2018-04-27T18:25:37Z" (mt/-string->date "2018-04-27T18:25:37Z")))
   (is (= #inst "2018-04-27T18:25:37.100Z" (mt/-string->date "2018-04-27T18:25:37.1Z")))
@@ -115,6 +121,7 @@
 
 (deftest any->string
   #?(:clj (is (= "1/2" (mt/-any->string 1/2))))
+  #?(:clj (is (= "http://example.com" (mt/-any->string (URI. "http://example.com")))))
   (is (= "0.5" (mt/-any->string 0.5)))
   (is (= nil (mt/-any->string nil))))
 
@@ -414,10 +421,33 @@
       (is (= {:x :kikka} (m/decode [:map [:x keyword?]] {:x "kikka", :y "kukka"} strict-json-transformer))))
     (testing "encode"
       (is (= "kikka" (m/encode keyword? :kikka strict-json-transformer)))
-      (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))))
+      (is (= {:x "kikka"} (m/encode [:map [:x keyword?]] {:x :kikka, :y :kukka} strict-json-transformer)))
+
+      (testing "nested map encode"
+        (is (= {:x {:a {:b {}}}}
+               (m/encode [:map
+                          [:x [:map
+                               [:a [:map [:b [:map]]]]]]]
+                         {:x          {:a {:b {}
+                                           :c {}}}
+                          :additional 1}
+                         strict-json-transformer))))
+
+      (testing "recursive map encode"
+        (is (= {:x {"a" {"b" {}}}}
+               (m/encode [:map {:registry {::kw-map [:map-of :keyword [:ref ::kw-map]]}}
+                          [:x [:ref ::kw-map]]]
+
+                         {:x          {:a {:b {}
+                                           ;; TODO: Additional invalid param invalidates the recursive map
+                                           ;;"c" {}
+                                           }}
+                          :additional 1}
+                         strict-json-transformer
+                         ))))))
 
   (let [transformer (mt/transformer
-                     (mt/key-transformer
+                      (mt/key-transformer
                       {:decode #(-> % (subs 4) keyword)
                        :encode #(->> % name (str "key_"))})
                      (mt/string-transformer)
@@ -996,7 +1026,17 @@
         (is (= {0 #uuid"2ac307dc-4ec8-4046-9b7e-57716b7ecfd2"
                 1 #uuid"820e5003-6fff-480b-9e2b-ec3cdc5d2f78"
                 2 #uuid"017de28f-5801-8c62-9ce9-cef70883794a"}
-               (m/decode schema data mt/json-transformer)))))))
+               (m/decode schema data mt/json-transformer))))))
+  #?(:clj
+     (let [schema [:map-of uri? uri?]
+           good "http://example.com"
+           bad "invalid url"
+           data {good good
+                 bad bad}]
+       (testing data
+         (is (= {(URI. good) (URI. good)
+                 bad bad}
+                (m/decode schema data mt/json-transformer)))))))
 
 #?(:clj
    (deftest -safe-test

@@ -1,22 +1,22 @@
 (ns malli.instrument-app
   (:require
-    [malli.instrument :as mi-new]
-    malli.helpers
-    [malli.core :as m]
-    [clojure.test.check.generators :as gen]
-    [malli.experimental.time.generator]
-    [malli.dev.pretty :as pretty]
-    [malli.generator :as mg]
-    [malli.experimental :as mx]
-    [malli.experimental.time :as time]))
+   [malli.instrument :as mi-new]
+   malli.helpers
+   [malli.core :as m]
+   [clojure.test.check.generators :as gen]
+   [malli.experimental.time.generator]
+   [malli.dev.pretty :as pretty]
+   [malli.generator :as mg]
+   [malli.experimental :as mx]
+   [malli.experimental.time :as time]))
 
 (js/console.log "now: " (time/LocalDate.now))
 (js/console.log "generated: "
-  (gen/sample (mg/-schema-generator (time/-local-date-time-schema) nil) 10))
+                (gen/sample (mg/-schema-generator (time/-local-date-time-schema) nil) 10))
 
 (js/console.log
-  (into-array
-    (mg/sample :time/zoned-date-time {:registry (merge (m/default-schemas) (time/schemas))})))
+ (into-array
+  (mg/sample :time/zoned-date-time {:registry (merge (m/default-schemas) (time/schemas))})))
 
 (mx/defn my-ex-fn :- [:int]
   [a :- :string] (+ 5 a))
@@ -34,20 +34,19 @@
 ;(defn add-dates [a b]
 ;  {:malli/schema [:=> [:cat :time/local-date :time/local-date] :time/local-date]}
 
-
 (defn sum [a b] (+ a b))
 
 (def sum2
   (m/-instrument {:schema (m/schema [:=> [:cat :int :int] :int])
                   :report (pretty/reporter)}
-    sum))
+                 sum))
 
 ;(m/=> sum [:=> [:cat :int :int] :int])
 
 (set! sum
-  (m/-instrument {:schema (m/schema [:=> [:cat :int :int] :int])
-                  :report (pretty/reporter)}
-    sum))
+      (m/-instrument {:schema (m/schema [:=> [:cat :int :int] :int])
+                      :report (pretty/reporter)}
+                     sum))
 
 (defn minus
   "a normal clojure function, no dependencies to malli"
@@ -57,7 +56,6 @@
   [x]
   (dec x))
 
-
 (defn plus-gen
   ;{:malli/schema [:=> [:cat :int] [:int {:min 6}]]}
   [x]
@@ -66,7 +64,6 @@
 ;(comment
 ;  @mi/instrumented-vars
 ;  ((get @mi/instrumented-vars `sum) 1 "2"))
-
 
 (defn plus1 [a] (inc a))
 ;(m/=> plus1 [:=> [:cat :int] :int])
@@ -98,10 +95,10 @@
 
 (def pow-gen
   (m/-instrument
-    {:schema [:function
-              [:=> [:cat :int] [:int {:max 6}]]
-              [:=> [:cat :int :int] [:int {:max 6}]]]
-     :gen mg/generate}))
+   {:schema [:function
+             [:=> [:cat :int] [:int {:max 6}]]
+             [:=> [:cat :int :int] [:int {:max 6}]]]
+    :gen mg/generate}))
 
 (defn minus2
   "kukka"
@@ -119,7 +116,6 @@
 (comment (meta sum3))
 
 (m/=> sum3 [:=> [:cat :int :int] :int])
-
 
 (def small-int [:int {:max 6}])
 
@@ -142,11 +138,11 @@
 
 (defn multi-arity-variadic-fn
   {:malli/schema
-     [:function
+   [:function
       ;[:=> [:cat] [:int]]
-      [:=> [:cat :int] [:int]]
-      [:=> [:cat :string :string] [:string]]
-      [:=> [:cat :string :string :string [:* :string]] [:string]]]}
+    [:=> [:cat :int] [:int]]
+    [:=> [:cat :string :string] [:string]]
+    [:=> [:cat :string :string :string [:* :string]] [:string]]]}
   ([] 500)
   ([a] (inc a))
   ([a b] (str a b))
@@ -182,11 +178,8 @@
   ;; fails as it hits the last fn schema
   (multi-arity-variadic-fn 'a "b" "b")
   ;(multi-arity-variadic-fn "a" "b" "c" :x)
-
   )
-
-(macroexpand '(mi-new/collect! {:ns ['malli.instrument-app 'malli.instrument-test 'malli.instrument.fn-schemas
-                                     ]}))
+(macroexpand '(mi-new/collect! {:ns ['malli.instrument-app 'malli.instrument-test 'malli.instrument.fn-schemas]}))
 (defn ^:dev/after-load x []
   (println "AFTER LOAD - malli.dev.cljs/start!")
   ;(m/-deregister-metadata-function-schemas! :cljs)
@@ -212,15 +205,13 @@
   ;(mi.old/instrument!)
   ;(js/setTimeout try-it 100)
   )
-
-
 (comment
   (macroexpand
-    '(dev/start!))
+   '(dev/start!))
   (m/function)
   (@(Var. (constantly str-join) 'str-join {:metadata 'here}) [1 2])
   (= (Var. (constantly str-join) `str-join {:metadata 'here})
-    #'str-join)
+     #'str-join)
   (macroexpand '(dev/collect-all!))
 
   (macroexpand '(mi-new/collect-all!))

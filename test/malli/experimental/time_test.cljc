@@ -3,9 +3,9 @@
             [malli.registry :as mr]
             #?(:clj  [malli.experimental.time :as time]
                :cljs [malli.experimental.time :as time
-                      :refer [Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime]])
+                      :refer [Duration Period LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime]])
             [clojure.test :as t])
-  #?(:clj (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime))))
+  #?(:clj (:import (java.time Duration Period LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime))))
 
 (t/deftest compare-dates
   (t/is (time/<= (. LocalDate parse "2020-01-01")
@@ -26,6 +26,9 @@
   (t/testing "Duration"
     (t/is (m/validate :time/duration (. Duration ofMillis 10) {:registry r}))
     (t/is (not (m/validate :time/duration 10 {:registry r}))))
+  (t/testing "Period"
+    (t/is (m/validate :time/period (. Period of 10 1 2) {:registry r}))
+    (t/is (not (m/validate :time/period 10 {:registry r}))))
   (t/testing "zone id"
     (t/is (m/validate :time/zone-id (. ZoneId of "UTC") {:registry r}))
     (t/is (not (m/validate :time/zone-id "UTC" {:registry r}))))
@@ -60,6 +63,38 @@
     (t/is (-> [:time/duration {:min (. Duration ofMillis 9) :max (. Duration ofMillis 10)}]
               (m/validate (. Duration ofMillis 12) {:registry r})
               not)))
+  (t/testing "Period"
+    (t/is (-> [:time/period {:min (. Period ofYears 9) :max (. Period ofYears 10)}]
+            (m/validate (. Period ofYears 10) {:registry r})))
+    (t/is (-> [:time/period {:min (. Period ofMonths 9) :max (. Period ofMonths 10)}]
+            (m/validate (. Period ofMonths 12) {:registry r})
+            not))
+    (t/is (-> [:time/period {:min (. Period ofMonths 9) :max (. Period ofMonths 10)}]
+            (m/validate (. Period ofDays 12) {:registry r})
+            not))
+    (t/is (-> [:time/period {:min (. Period ofYears 9)}]
+            (m/validate (. Period ofYears 9) {:registry r})))
+    (t/is (-> [:time/period {:min (. Period ofYears 9)}]
+            (m/validate (. Period ofYears 10) {:registry r})))
+    (t/is (-> [:time/period {:min (. Period ofYears 9)}]
+            (m/validate (. Period ofYears 8) {:registry r})
+            not))
+    (t/is (-> [:time/period {:min (. Period of 0 10 2)}]
+            (m/validate (. Period of 1 9 3) {:registry r})))
+    (t/is (-> [:time/period {:max (. Period ofYears 9)}]
+            (m/validate (. Period ofYears 9) {:registry r})))
+    (t/is (-> [:time/period {:max (. Period ofYears 9)}]
+            (m/validate (. Period ofYears 8) {:registry r})))
+    (t/is (-> [:time/period {:max (. Period ofYears 9)}]
+            (m/validate (. Period ofDays 8) {:registry r})))
+    (t/is (-> [:time/period {:max (. Period ofYears 1)}]
+            (m/validate (. Period ofMonths 23) {:registry r})))
+    (t/is (-> [:time/period {:max (. Period ofYears 9)}]
+            (m/validate (. Period ofYears 10) {:registry r})
+            not))
+    (t/is (-> [:time/period {:max (. Period of 0 10 2)}]
+            (m/validate (. Period of 1 9 3) {:registry r})
+            not)))
   (t/testing "local date"
     (t/is (-> [:time/local-date {:min (. LocalDate parse "2020-01-01") :max (. LocalDate parse "2020-01-03")}]
               (m/validate (. LocalDate parse "2020-01-01") {:registry r})))

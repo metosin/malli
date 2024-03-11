@@ -772,7 +772,20 @@
                   [:a [:maybe [:sequential [:maybe [:map [:b [:and [:or int?]]]]]]]]]]
                 [:fn '(constantly true)]]
                (m/schema)
-               (mu/in->paths [:a 0 :b]))))))
+               (mu/in->paths [:a 0 :b])))))
+  (testing "orn, catn and altn don't contribute to :in"
+    (are [type value]
+      (= [:a]
+         (let [schema (m/schema [type [:a-branch [:map [:a :int]]]])]
+           (->> (m/explain schema value)
+                :errors
+                first
+                :path
+                (mu/path->in schema))))
+
+      :orn {:a "2"}
+      :catn [{:a "2"}]
+      :altn [{:a "2"}])))
 
 (deftest declarative-schemas
   (let [->> #(m/schema % {:registry (merge (mu/schemas) (m/default-schemas))})]
@@ -808,6 +821,32 @@
         (is (= false (m/validate s {:x true})))
         (is (= {:x [:str "x"]} (m/parse s {:x "x"})))
         (is (= {:x 1} (m/parse s {:x 1})))))
+
+    (testing "merge vs union"
+      (let [->s #(->> [%
+                       [:map [:x :string]]
+                       [:map [:x :int]]])
+            u (->s :union)
+            m (->s :merge)]
+        (is (m/validate u {:x 1}))
+        (is (m/validate u {:x "a"}))
+        (is (m/validate m {:x 1}))
+        (is (m/explain m {:x "a"}))))
+
+    (testing "union vs or"
+      (let [->s #(->> [%
+                       [:map [:x :string] [:y :int]]
+                       [:map [:x :int] [:y :string]]])
+            u (->s :union)
+            o (->s :or)]
+        (is (m/validate u {:x 1 :y 1}))
+        (is (m/validate u {:x 1 :y "a"}))
+        (is (m/validate u {:x "a" :y 1}))
+        (is (m/validate u {:x "a" :y "a"}))
+        (is (m/explain o {:x 1 :y 1}))
+        (is (m/validate o {:x 1 :y "a"}))
+        (is (m/validate o {:x "a" :y 1}))
+        (is (m/explain o {:x "a" :y "a"}))))
 
     (testing "select-keys"
       (let [s (->> [:select-keys

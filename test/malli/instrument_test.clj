@@ -90,6 +90,11 @@
          (mi/-schema #'f2)))
   (is (= nil (mi/-schema #'f3))))
 
+(deftest check-test
+  (testing "all registered function schemas in this namespace"
+    (let [results (mi/check {:filters [(mi/-filter-ns 'malli.instrument-test)]})]
+      (is (map? results)))))
+
 (deftest instrument-external-test
 
   (testing "Without instrumentation"

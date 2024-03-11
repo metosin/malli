@@ -2,10 +2,10 @@
   (:require [malli.transform :as mt :refer [-safe]]
             [malli.core :as m]
             #?(:cljs [malli.experimental.time :as time
-                      :refer [Duration LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset
+                      :refer [Duration Period LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset
                               TemporalAccessor TemporalQuery DateTimeFormatter createTemporalQuery]]))
   #?(:clj
-     (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)
+     (:import (java.time Duration Period LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset)
               (java.time.temporal TemporalAccessor TemporalQuery)
               (java.time.format DateTimeFormatter))))
 
@@ -56,6 +56,7 @@
   (reduce-kv
    (fn [m k v] (assoc m k (-safe (->parser v (get queries k)))))
    {:time/duration (-safe #(. Duration parse %))
+    :time/period (-safe #(. Period parse %))
     :time/zone-offset (-safe #(. ZoneOffset of ^String %))
     :time/zone-id (-safe #(. ZoneId of %))}
    default-formats))
@@ -79,6 +80,7 @@
 (defn time-encoders [formats]
   (into
    {:time/duration str
+    :time/period str
     :time/zone-id str}
    (for [k (keys formats)]
      [k {:compile

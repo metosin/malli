@@ -105,7 +105,7 @@
                (fn [xs] (-> (reduce infer {} xs) (-schema (assoc options ::infer infer)))))))
 
 (defn provide
-  "Given an sequence of example values, returms a Schema that can all values are valid against.
-   For better performance, user [[provider]] instead. see [[provider]] for available options."
+  "Given an sequence of example values, returns a Schema that can all values are valid against.
+   For better performance, use [[provider]] instead. See [[provider]] for available options."
   ([xs] (provide xs nil))
   ([xs options] ((provider options) xs)))

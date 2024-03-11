@@ -1,5 +1,6 @@
 (ns malli.dev.virhe
   "initial code for https://github.com/metosin/virhe"
+  (:refer-clojure :exclude [format])
   (:require [arrangement.core]
             [fipp.edn]
             [fipp.ednize]
@@ -25,7 +26,9 @@
   (let [colors (:colors printer -dark-colors)
         color (get colors color (:error colors))]
     #?(:cljs [:span body]
-       :clj  [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]])))
+       :clj  (if color
+               [:span [:pass (str "\033[38;5;" color "m")] body [:pass "\u001B[0m"]]
+               [:span body]))))
 
 ;;
 ;; EDN
@@ -125,20 +128,25 @@
   (fipp.engine/pprint-document doc printer))
 
 (defn -visit [x printer]
-  (fipp.visit/visit printer x))
+  [:span (fipp.visit/visit printer x)])
 
 #?(:clj
    (defn -location [e ss]
-     (let [start-with (fn [f s] (-> f first str (str/starts-with? s)))
-           [target _ file line] (loop [[f :as fs] (-> e Throwable->map :trace), [s :as ss] ss]
-                                  (cond (start-with f s) (recur (rest fs) ss)
-                                        (seq (rest ss)) (recur fs (rest ss))
-                                        :else f))]
-       (try (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
-                  target-name (name target)
-                  ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
-              (str ns ":" line))
-            (catch Exception _)))))
+     (try
+       (let [[target _ file line] (some (fn [[s :as line]] (if (not-any? #(str/starts-with? (str s) %) ss) line))
+                                        (-> e Throwable->map :trace))]
+         (let [file-name (str/replace file #"(.*?)\.\S[^\.]+" "$1")
+               target-name (name target)
+               ns (str (subs target-name 0 (or (str/index-of target-name (str file-name "$")) 0)) file-name)]
+           (str ns ":" line)))
+       (catch Exception _))))
+
+#?(:clj
+   (defn -hierarchy [^Class k]
+     (loop [sk (.getSuperclass k), ks [k]]
+       (if-not (= sk Object)
+         (recur (.getSuperclass sk) (conj ks sk))
+         ks))))
 
 (defn -title [message source {:keys [width] :as printer}]
   (let [between (- width (count message) 8 (count source))]
@@ -160,21 +168,38 @@
 (defn -section [title location body printer]
   [:group (-title title location printer) :break :break body :break :break (-footer printer)])
 
+(defn -block [text body printer]
+  [:group (-text text printer) :break :break
+   (into [:align 2] (map (fn [x] (if (string? x) (-text x printer) x))
+                         (if (sequential? body) body (vector body))))])
+
+(defn -link [link printer]
+  (-color :link link printer))
+
 ;;
 ;; formatting
 ;;
 
-(defmulti -format (fn [type _ _ _] type) :default ::default)
+(defmulti -format (fn [e _ _] (-> e (ex-data) :type)) :default ::default)
 
-(defmethod -format ::default [_ message data printer]
-  {:body (into [:group (-text (or (:message data) message) printer)] (when data [:break :break (-visit data printer)]))})
+(defmethod -format ::default [e data printer]
+  (if-let [-format #?(:clj (some (methods -format) (-hierarchy (class e))), :cljs nil)]
+    (-format e data printer)
+    {:title "Unknown Error"
+     :body [:group
+            (-block "Type:" (-visit (type e) printer) printer) :break :break
+            (-block "Message:" (-color :string (ex-message e) printer) printer)
+            (when-let [data (ex-data e)]
+              [:group :break :break (-block "Ex-data:" (-visit data printer) printer)])]}))
 
 ;;
-;; documents
+;; public api
 ;;
 
-(defn -exception-doc [e printer]
-  (let [{:keys [type data]} (ex-data e)
-        {:keys [title body] :or {title (:title printer)}} (-format type (ex-message e) data printer)
+(defn format [e printer]
+  (-format e (-> e (ex-data) :data) printer))
+
+(defn exception-document [e printer]
+  (let [{:keys [title body] :or {title (:title printer)}} (format e printer)
         location #?(:clj (-location e (:throwing-fn-top-level-ns-names printer)), :cljs nil)]
     (-section title location body printer)))

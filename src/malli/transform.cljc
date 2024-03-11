@@ -6,6 +6,7 @@
   #?(:clj (:import (java.time Instant ZoneId)
                    (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
                    (java.time.temporal ChronoField)
+                   (java.net URI)
                    (java.util Date UUID))))
 
 (def ^:dynamic *max-compile-depth* 10)
@@ -94,6 +95,17 @@
          :cljs (uuid x))
       x)
     x))
+
+#?(:clj
+   (defn -string->uri [x]
+     (if (string? x)
+       (try
+         (URI. x)
+         ;; TODO replace with URISyntaxException once we are on
+         ;; babashka >= v1.3.186.
+         (catch Exception _
+           x))
+       x)))
 
 #?(:clj
    (def ^DateTimeFormatter +string->date-format+
@@ -221,6 +233,7 @@
    'uuid? -string->uuid
    'double? -number->double
    'inst? -string->date
+   #?@(:clj ['uri? -string->uri])
 
    :enum {:compile (-infer-child-compiler :decode)}
    := {:compile (-infer-child-compiler :decode)}
@@ -231,6 +244,7 @@
    :qualified-keyword -string->keyword
    :qualified-symbol -string->symbol
    :uuid -string->uuid
+   ;#?@(:clj [:uri -string->uri])
 
    :set -sequential->set})
 
@@ -244,6 +258,7 @@
    'qualified-symbol? -any->string
 
    'uuid? -any->string
+   #?@(:clj ['uri? -any->string])
 
    :enum {:compile (-infer-child-compiler :encode)}
    := {:compile (-infer-child-compiler :encode)}
@@ -253,7 +268,7 @@
    :qualified-keyword m/-keyword->string
    :qualified-symbol -any->string
    :uuid -any->string
-   ;:uri any->string
+   ;#?@(:clj [:uri -any->string])
    ;:bigdec any->string
 
    'inst? -date->string
@@ -381,16 +396,18 @@
                                                    (if (and (map? x) (not default-schema))
                                                      (reduce-kv (fn [acc k _] (if-not (ks k) (dissoc acc k) acc)) x x)
                                                      x))))))}
-         strip-map-of {:compile (fn [schema options]
-                                  (let [entry-schema (m/into-schema :tuple nil (m/children schema) options)
-                                        valid? (m/validator entry-schema options)]
-                                    {:leave (fn [x] (reduce (fn [acc entry]
+         strip-map-of (fn [stage]
+                        {:compile (fn [schema options]
+                                    (let [entry-schema (m/into-schema :tuple nil (m/children schema) options)
+                                          valid?       (m/validator entry-schema options)]
+                                      {stage (fn [x]
+                                              (reduce (fn [acc entry]
                                                               (if (valid? entry)
                                                                 (apply assoc acc entry)
-                                                                acc)) (empty x) x))}))}]
+                                                                acc)) (empty x) x))}))})]
      (transformer
-      {:decoders {:map strip-map, :map-of strip-map-of}
-       :encoders {:map strip-map, :map-of strip-map-of}}))))
+       {:decoders {:map strip-map, :map-of (strip-map-of :leave)}
+        :encoders {:map strip-map, :map-of (strip-map-of :enter)}}))))
 
 (defn key-transformer [{:keys [decode encode types] :or {types #{:map}}}]
   (let [transform (fn [f stage] (when f {stage (-transform-map-keys f)}))]

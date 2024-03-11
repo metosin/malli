@@ -1948,23 +1948,23 @@
                  options))))))
 
 (deftest custom-registry-qualified-keyword-in-map-test
-  (let [schema [:map {:registry {::id int?
-                                 ::location [:tuple :int :int]
-                                 ::country string?}}
-                ::id
-                [::location]
+  (let [schema [:map {:registry {:user/id int?
+                                 "user/location" [:tuple :int :int]
+                                 'user/country string?}}
+                :user/id
+                ["user/location"]
                 [:name string?]
-                [::country {:optional true}]]]
+                ['user/country {:optional true}]]]
 
-    (testing "Example with qualified keyword + optional, regular key"
-      (is (m/validate schema {::id 123 ::location [1 1] ::country "Finland" :name "Malli"})))
+    (testing "Example with references + optional, regular key"
+      (is (m/validate schema {:user/id 123 "user/location" [1 1] 'user/country "Finland" :name "Malli"})))
 
     (testing "Optional qualified keyword is optional"
-      (is (m/validate schema {::id 123 ::location [1 1] :name "Malli"}))))
+      (is (m/validate schema {:user/id 123 "user/location" [1 1] :name "Malli"}))))
 
-  (testing "invalid ref"
+  (testing "invalid entry"
     (is (thrown-with-msg?
-         #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-ref"
+         #?(:clj Exception, :cljs js/Error) #":malli.core/invalid-entry"
          (m/schema [:map {:registry {:kikka :int}} :int])))))
 
 (deftest simple-schemas
@@ -2363,13 +2363,29 @@
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
         (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
-        (is (results= {:schema [:=> [:cat int? int?] int?]
-                       :value single-arity
-                       :errors [{:path []
-                                 :in []
-                                 :schema [:=> [:cat int? int?] int?]
-                                 :value single-arity}]}
-                      (m/explain schema2 single-arity)))
+
+        (testing "exception in execution causes single error to root schema path"
+         (is (results= {:schema [:=> [:cat int? int?] int?]
+                        :value single-arity
+                        :errors [{:path []
+                                  :in []
+                                  :schema [:=> [:cat int? int?] int?]
+                                  :value single-arity}]}
+                       (m/explain schema2 single-arity))))
+
+        (testing "error in output adds error to child in path 1"
+          (let [f (fn [x y] (str x y))]
+            (is (results= {:schema [:=> [:cat int? int?] int?]
+                           :value f
+                           :errors [{:path []
+                                     :in []
+                                     :schema [:=> [:cat int? int?] int?]
+                                     :value f}
+                                    {:path [1]
+                                     :in []
+                                     :schema int?
+                                     :value "00"}]}
+                          (m/explain schema2 f)))))
 
         (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
@@ -2446,6 +2462,48 @@
                                  :schema schema2
                                  :value invalid-f}]}
                       (m/explain schema2 invalid-f))))
+
+      (testing "guards"
+        (let [guard (fn [[[x y] z]] (> (+ x y) z))
+              schema (m/schema
+                      [:=> [:cat :int :int] :int [:fn guard]]
+                      {::m/function-checker mg/function-checker})
+              valid (fn [x y] (dec (+ x y)))
+              invalid (fn [x y] (+ x y))]
+
+          (is (= {:type :=>,
+                  :input {:type :cat
+                          :children [{:type :int} {:type :int}]},
+                  :output {:type :int},
+                  :guard {:type :fn
+                          :value guard}}
+                 (m/ast schema)))
+
+          (is (= nil (m/explain schema valid)))
+
+          (testing "error in guard adds error on path 2"
+            (is (results= {:schema schema,
+                           :value invalid
+                           :errors [{:path [],
+                                     :in [],
+                                     :schema schema
+                                     :value invalid}
+                                    {:path [2]
+                                     :in []
+                                     :schema [:fn guard]
+                                     :value ['(0 0) 0]}]}
+                          (m/explain schema invalid))))
+
+          (testing "instrument"
+            (let [schema [:=> [:cat :int] :int [:fn (fn [[[arg] ret]] (< arg ret))]]
+                  fn (m/-instrument {:schema schema} (fn [x] (* x x)))]
+
+              (is (= 4 (fn 2)))
+
+              (is (thrown-with-msg?
+                   #?(:clj Exception, :cljs js/Error)
+                   #":malli.core/invalid-guard"
+                   (fn 0)))))))
 
       (testing "non-accumulating errors"
         (let [schema (m/schema
@@ -2977,7 +3035,7 @@
                        (prefixer "h")
                        (prefixer "i")) "xxx"))))))
 
-(deftest -issue-925-test
+(deftest issue-925-test
   (testing "order is retained with catn parse+unparse"
     (let [schema [:catn
                   [:a :int]
@@ -2992,7 +3050,7 @@
           input [1 2 3 4 5 6 7 8 9]]
       (is (= input (->> input (m/parse schema) (m/unparse schema)))))))
 
-(deftest -issue-937-test
+(deftest issue-937-test
   (testing ":altn can handle just one child entry when nested"
     (let [schema [:* [:altn [:a [:= :a]]]]
           value [:a]]
@@ -3001,3 +3059,91 @@
       (is (= [[:a :a]] (m/parse schema value)))
       (is (= value (m/unparse schema (m/parse schema value))))
       (is (= value (m/decode schema value nil))))))
+
+(def UserId :string)
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:friends {:optional true} [:set [:ref #'User]]]])
+
+(deftest var-registry-test
+  (let [schema (m/schema User)]
+
+    (testing "getting schema over Var works"
+      (is (= UserId (mr/-schema (mr/var-registry) #'UserId)))
+      (is (= User (mr/-schema (mr/var-registry) #'User))))
+
+    (testing "we do not list all Var schemas (yet)"
+      (is (= nil (mr/-schemas (mr/var-registry)))))
+
+    (testing "it works"
+      (is (= User (m/form schema)))
+      (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
+
+#?(:clj
+   (deftest roundrobin-var-references
+     (let [schema (m/schema User)]
+
+       (testing "default options with var-registry fails"
+         (is (thrown? Exception
+                      (as-> schema $
+                        (edn/write-string $)
+                        (edn/read-string $)
+                        (every? (m/validator $) (mg/sample schema))))))
+
+       (testing "with custom edamame options with var-registry succeeds"
+         (is (as-> schema $
+               (edn/write-string $)
+               (edn/read-string $ {::edn/edamame-options {:fn true,
+                                                          :regex true,
+                                                          :var resolve}})
+               (every? (m/validator $) (mg/sample schema))))))))
+
+(deftest deref-recursive-test
+  (let [schema [:schema {:registry {::user-id :uuid
+                                    ::address [:map
+                                               [:street :string]
+                                               [:lonlat {:optional true} [:tuple :double :double]]]
+                                    ::user [:map
+                                            [:id ::user-id]
+                                            [:name :string]
+                                            [:friends {:optional true} [:set [:ref ::user]]]
+                                            [:address ::address]]}}
+                ::user]]
+    (is (= [:map
+            [:id :uuid]
+            [:name :string]
+            [:friends {:optional true} [:set [:ref ::user]]]
+            [:address [:map
+                       [:street :string]
+                       [:lonlat {:optional true} [:tuple :double :double]]]]]
+           (m/form (m/deref-recursive schema))
+           (m/form (m/deref-recursive schema {::m/ref-key nil}))))
+    (is (= [:map {:id ::user}
+            [:id [:uuid {:id ::user-id}]]
+            [:name :string]
+            [:friends {:optional true} [:set [:ref ::user]]]
+            [:address [:map {:id ::address}
+                       [:street :string]
+                       [:lonlat {:optional true} [:tuple :double :double]]]]]
+           (m/form (m/deref-recursive schema {::m/ref-key :id}))))
+    (testing "util schemas"
+      (let [registry (merge (m/default-schemas) (mu/schemas))]
+        (is (= [:map [:x :int] [:y :int]]
+               (m/form (m/deref-recursive
+                        [:merge
+                         [:map [:x :int]]
+                         [:map [:y :int]]]
+                        {:registry registry}))))
+        (is (= [:map {:id ::xymap}
+                [::x [:int {:id ::x}]]
+                [::y [:int {:id ::y}]]]
+               (m/form (m/deref-recursive
+                        [:schema {:registry {::x :int
+                                             ::y :int
+                                             ::xmap [:map ::x]
+                                             ::ymap [:map ::y]
+                                             ::xymap [:merge ::xmap ::ymap]}}
+                         ::xymap]
+                        {:registry registry, ::m/ref-key :id}))))))))

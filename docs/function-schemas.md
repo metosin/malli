@@ -4,6 +4,7 @@
 * [Predicate Schemas](#predicate-schemas)
 * [Function Schemas](#function-schemas)
   * [Generative Testing](#generative-testing)
+  * [Function Guards](#function-guards)
   * [Generating Functions](#generating-functions)
   * [Multi-arity Functions](#multi-arity-functions)
   * [Instrumentation](#instrumentation)
@@ -78,7 +79,10 @@ Examples of function definitions:
 [:=> [:catn 
       [:x :int] 
       [:xs [:+ :int]]] :int]
-      
+
+;; arg:int -> ret:int, arg > ret
+[:=> [:cat :int] :int [:fn (fn [[arg] ret] (> arg ret))]]
+
 ;; multi-arity function
 [:function
  [:=> [:cat :int] :int]
@@ -154,7 +158,66 @@ Explanation why it is not valid:
 
 Smallest failing invocation is `(str 0 0)`, which returns `"00"`, which is not an `:int`. Looks good.
 
-But, why `mg/function-checker` is not enabled by default? The reason is that it uses generartive testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be expecially bad for CLJS bundle size.
+But, why `mg/function-checker` is not enabled by default? The reason is that it uses generative testing, which is orders of magnitude slower than normal validation and requires an extra dependency to `test.check`, which would make `malli.core` much heavier. This would be especially bad for CLJS bundle size.
+
+### Function Guards
+
+`:=>` accepts optional third child, a guard schema that is used to validate a vector of function arguments and return value.
+
+```clojure
+;; function schema of arg:int -> ret:int, where arg < ret
+;; with generative function checking always enabled
+(def arg<ret
+  (m/schema
+   [:=>
+    [:cat :int]
+    :int
+    [:fn {:error/message "argument should be less than return"}
+     (fn [[[arg] ret]] (< arg ret))]]
+   {::m/function-checker mg/function-checker}))
+
+(m/explain arg<ret (fn [x] (inc x)))
+; nil
+
+(m/explain arg<ret (fn [x] x))
+;{:schema ...
+; :value #object[user$eval19073$fn__19074],
+; :errors ({:path [],
+;           :in [],
+;           :schema ...,
+;           :value #object[user$eval19073$fn__19074],
+;           :check {:total-nodes-visited 1,
+;                   :result false,
+;                   :result-data nil,
+;                   :smallest [(0)],
+;                   :time-shrinking-ms 0,
+;                   :pass? false,
+;                   :depth 0,
+;                   :malli.core/result 0}},
+;          {:path [2],
+;           :in [],
+;           :schema [:fn
+;                    #:error{:message "argument should be less than return"}
+;                    (fn [[[arg] ret]] (< arg ret))],
+;           :value [(0) 0]})}
+
+(me/humanize *1)
+; ["invalid function" "argument should be less than return"]
+```
+
+Identical schema using the Schema AST syntax:
+
+```clojure
+(m/from-ast
+ {:type :=>
+  :input {:type :cat
+          :children [{:type :int}]}
+  :output {:type :int}
+  :guard {:type :fn
+          :value (fn [[[arg] ret]] (< arg ret))
+          :properties {:error/message "argument should be less than return"}}}
+ {::m/function-checker mg/function-checker})
+```
 
 ### Generating Functions
 
@@ -252,9 +315,9 @@ Generating multi-arity functions:
 
 ### Instrumentation
 
-Besides testing function schemas as values, we can also intrument functions to enable runtime validation of arguments and return values.
+Besides testing function schemas as values, we can also instrument functions to enable runtime validation of arguments and return values.
 
-Simplest way to do this is to use `m/-instrument` which takes options map and a function and returns a instrumented function. Valid options include:
+Simplest way to do this is to use `m/-instrument` which takes an options map and a function and returns an instrumented function. Valid options include:
 
 | key       | description |
 | ----------|-------------|
@@ -498,7 +561,7 @@ Execution error (ExceptionInfo) at malli.core/-exception (core.cljc:138).
 
 ### Defn Instrumentation
 
-The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentations focus is for development time, but can also be used for production builds.
+The function (Var) registry is passive and doesn't do anything by itself. To instrument the Vars based on the registry, there is the `malli.instrument` namespace. Var instrumentation  is intended for development time, but can also be used for production builds.
 
 ```clojure
 (require '[malli.instrument :as mi])
@@ -620,8 +683,8 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 (m/=> plus1 [:=> [:cat :int] [:int {:max 6}]])
 
 (dev/start!)
-; =prints=> ..instrumented #'user/plus1
-; =prints=> started instrumentation
+; malli: instrumented 1 function var
+; malli: dev-mode started
 
 (plus1 "6")
 ; =throws=> :malli.core/invalid-input {:input [:cat :int], :args ["6"], :schema [:=> [:cat :int] [:int {:max 6}]]}
@@ -636,8 +699,8 @@ It's main entry points is `dev/start!`, taking same options as `mi/instrument!`.
 ; => 7
 
 (dev/stop!)
-; =prints=> ..unstrumented #'user/plus1
-; =prints=> stopped instrumentation
+; malli: unstrumented 1 function vars
+; malli: dev-mode stopped
 ```
 
 ## ClojureScript support
@@ -741,4 +804,4 @@ Here's the same code in [Cursive IDE](https://cursive-ide.com/) with [clj-kondo]
 ## Future work
 
 * [support Schema defn syntax](https://github.com/metosin/malli/issues/125)
-* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for enchanced DX.
+* better integration with [clj-kondo](https://github.com/clj-kondo/clj-kondo) and [clojure-lsp](https://github.com/clojure-lsp/clojure-lsp) for enhanced DX.

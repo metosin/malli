@@ -1,5 +1,5 @@
 (ns malli.core
-  (:refer-clojure :exclude [eval type -deref deref -lookup -key])
+  (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
   #?(:cljs (:require-macros malli.core))
   (:require #?(:clj [clojure.walk :as walk])
             [clojure.core :as c]
@@ -133,9 +133,7 @@
 
 (defn -deprecated! [x] (println "DEPRECATED:" x))
 
-(defn -exception
-  ([type] (-exception type nil))
-  ([type data] (ex-info (str type) {:type type, :message type, :data data})))
+(defn -exception [type data] (ex-info (str type) {:type type, :message type, :data data}))
 
 (defn -fail!
   ([type] (-fail! type nil))
@@ -169,7 +167,7 @@
 
 (defn -pointer [id schema options] (-into-schema (-schema-schema {:id id}) nil [schema] options))
 
-(defn -reference? [?schema] (or (string? ?schema) (qualified-keyword? ?schema)))
+(defn -reference? [?schema] (or (string? ?schema) (qualified-ident? ?schema) (var? ?schema)))
 
 (defn -lazy [ref options] (-into-schema (-ref-schema {:lazy true}) nil [ref] options))
 
@@ -206,12 +204,13 @@
 
 (defn -function-info [schema]
   (when (= (type schema) :=>)
-    (let [[input output] (-children schema)
+    (let [[input output guard] (-children schema)
           {:keys [min max]} (-regex-min-max input false)]
       (cond-> {:min min
                :arity (if (= min max) min :varargs)
                :input input
                :output output}
+        guard (assoc :guard guard)
         max (assoc :max max)))))
 
 (defn -group-by-arity! [infos]
@@ -266,11 +265,11 @@
     (or (mr/-schema registry ?schema)
         (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
 
-(defn- -lookup! [?schema f rec options]
+(defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
       (if-let [?schema (-lookup ?schema options)]
-        (cond-> ?schema rec (recur f rec options))
-        (-fail! ::invalid-schema {:schema ?schema}))))
+        (cond-> ?schema rec (recur ?form f rec options))
+        (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -294,16 +293,18 @@
 ;; forms
 ;;
 
-(defn -create-form [type properties children options]
-  (let [has-children (seq children)
-        has-properties (seq properties)
-        properties (when has-properties
-                     (let [registry (:registry properties)]
-                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+(defn -raw-form [type properties children]
+  (let [has-children (seq children), has-properties (seq properties)]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
           has-children (reduce conj [type] children)
           :else type)))
+
+(defn -create-form [type properties children options]
+  (let [properties (when (seq properties)
+                     (let [registry (:registry properties)]
+                       (cond-> properties registry (assoc :registry (-property-registry registry options -form)))))]
+    (-raw-form type properties children)))
 
 (defn -simple-form [parent properties children f options]
   (-create-form (-type parent) properties (-vmap f children) options))
@@ -344,6 +345,9 @@
 (defn -set-properties [schema properties]
   (if (-equals properties (-properties schema))
     schema (-into-schema (-parent schema) properties (or (and (-entry-schema? schema) (-entry-parser schema)) (-children schema)) (-options schema))))
+
+(defn -update-properties [schema f & args]
+  (-set-properties schema (not-empty (apply f (-properties schema) args))))
 
 (defn -update-options [schema f]
   (-into-schema (-parent schema) (-properties schema) (-children schema) (f (-options schema))))
@@ -443,7 +447,7 @@
         (if (== n 1)
           (if (and (-reference? e0) naked-keys)
             (-parse-ref-vector1 e e0)
-            (-fail! ::invalid-children {:children -children}))
+            (-fail! ::invalid-entry {:entry e}))
           (let [e1 (aget ea 1)]
             (if (== n 2)
               (if (and (-reference? e0) (map? e1))
@@ -453,17 +457,18 @@
                 (-parse-entry-else3 e0 e1 e2))))))
       (if (and naked-keys (-reference? e))
         (-parse-ref-entry e)
-        (-fail! ::invalid-ref {:ref e})))))
+        (-fail! ::invalid-entry {:entry e})))))
 
 (defn -eager-entry-parser [children props options]
   (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
           (-map [^objects arr] #?(:bb   (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys)) m)
-                                  :clj (PersistentArrayMap/createWithCheck arr)
+                                            (-fail! ::duplicate-keys {:arr arr})) m)
+                                  :clj (try (PersistentArrayMap/createWithCheck arr)
+                                            (catch Exception _ (-fail! ::duplicate-keys {:arr arr})))
                                   :cljs (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys)) m)))
+                                            (-fail! ::duplicate-keys {:arr arr})) m)))
           (-arange [^objects arr to]
            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
               :cljs (.slice arr 0 to)))]
@@ -849,7 +854,7 @@
           Cached
           (-cache [_] cache)
           LensSchema
-          (-keep [_] true)
+          (-keep [_])
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value)))))))
 
@@ -956,7 +961,7 @@
      AST
      (-from-ast [parent ast options] (-from-entry-ast parent ast options))
      IntoSchema
-     (-type [_] :map)
+     (-type [_] (:type opts :map))
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
@@ -1091,7 +1096,7 @@
      (-from-ast [parent ast options]
        (-into-schema parent (:properties ast) [(from-ast (:key ast) options) (from-ast (:value ast) options)] options))
      IntoSchema
-     (-type [_] :map-of)
+     (-type [_] (:type opts :map-of))
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
@@ -1598,14 +1603,14 @@
        (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
-       (let [-ref (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
-                      (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
-                      (when-not allow-invalid-refs
-                        (-fail! ::invalid-ref {:type :ref, :ref ref})))
+       (let [rf (or (and lazy (-memoize (fn [] (schema (mr/-schema (-registry options) ref) options))))
+                    (when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+                    (when-not allow-invalid-refs
+                      (-fail! ::invalid-ref {:type :ref, :ref ref})))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
-             ->parser (fn [f] (let [parser (-memoize (fn [] (f (-ref))))]
+             ->parser (fn [f] (let [parser (-memoize (fn [] (f (rf))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
          (reify
@@ -1613,19 +1618,19 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [_]
-             (let [validator (-memoize (fn [] (-validator (-ref))))]
+             (let [validator (-memoize (fn [] (-validator (rf))))]
                (fn [x] ((validator) x))))
            (-explainer [_ path]
-             (let [explainer (-memoize (fn [] (-explainer (-ref) (conj path 0))))]
+             (let [explainer (-memoize (fn [] (-explainer (rf) (conj path 0))))]
                (fn [x in acc] ((explainer) x in acc))))
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              (let [this-transformer (-value-transformer transformer this method options)
-                   deref-transformer (-memoize (fn [] (-transformer (-ref) transformer method options)))]
+                   deref-transformer (-memoize (fn [] (-transformer (rf) transformer method options)))]
                (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
            (-walk [this walker path options]
-             (let [accept (fn [] (-inner walker (-ref) (into path [0 0])
+             (let [accept (fn [] (-inner walker (rf) (into path [0 0])
                                          (-update options ::walked-refs #(conj (or % #{}) ref))))]
                (when (-accept walker this path options)
                  (if (or (not ((-boolean-fn (::walk-refs options false)) ref))
@@ -1640,13 +1645,13 @@
            Cached
            (-cache [_] cache)
            LensSchema
-           (-get [_ key default] (if (= key 0) (-pointer ref (-ref) options) default))
+           (-get [_ key default] (if (= key 0) (-pointer ref (rf) options) default))
            (-keep [_])
            (-set [this key value] (if (= key 0) (-set-children this [value])
                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
            RefSchema
            (-ref [_] ref)
-           (-deref [_] (-ref))
+           (-deref [_] (rf))
            RegexSchema
            (-regex-op? [_] false)
            (-regex-validator [this] (-fail! ::potentially-recursive-seqex this))
@@ -1746,15 +1751,16 @@
   ^{:type ::into-schema}
   (reify
     AST
-    (-from-ast [parent {:keys [input output properties]} options]
-      (-into-schema parent properties [(from-ast input options) (from-ast output options)] options))
+    (-from-ast [parent {:keys [input output guard properties]} options]
+      (-into-schema parent properties (cond-> [(from-ast input options) (from-ast output options)]
+                                        guard (conj (from-ast guard))) options))
     IntoSchema
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
-      (-check-children! :=> properties children 2 2)
-      (let [[input output :as children] (-vmap #(schema % options) children)
-            form (delay (-simple-form parent properties children -form options))
+      (-check-children! :=> properties children 2 3)
+      (let [[input output guard :as children] (-vmap #(schema % options) children)
+            form (delay (-create-form (-type parent) properties (-vmap -form children) options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
@@ -1764,7 +1770,7 @@
           AST
           (-to-ast [_ _]
             (cond-> {:type :=>, :input (ast input), :output (ast output)}
-              properties (assoc :properties properties)))
+              guard (assoc :guard (ast guard)), properties (assoc :properties properties)))
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]
@@ -1776,7 +1782,12 @@
                 (if (not (fn? x))
                   (conj acc (miu/-error path in this x))
                   (if-let [res (checker x)]
-                    (conj acc (assoc (miu/-error path in this x) :check res))
+                    (let [{::keys [explain-input explain-output explain-guard]} res
+                          res (dissoc res ::explain-input ::explain-output ::explain-guard)
+                          {:keys [path in] :as error} (assoc (miu/-error path in this x) :check res)
+                          -push (fn [acc i e]
+                                  (cond-> acc e (into (map #(assoc % :path (conj path i), :in in) (:errors e)))))]
+                      (-> (conj acc error) (-push 0 explain-input) (-push 1 explain-output) (-push 2 explain-guard)))
                     acc)))
               (let [validator (-validator this)]
                 (fn explain [x in acc]
@@ -1907,7 +1918,7 @@
           (-regex-min-max [_ _] (re-min-max properties children)))))))
 
 (defn -sequence-entry-schema
-  [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max]} :child-bounds :as opts}]
+  [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max keep]} :child-bounds :as opts}]
   ^{:type ::into-schema}
   (reify
     AST
@@ -1941,7 +1952,7 @@
           Cached
           (-cache [_] cache)
           LensSchema
-          (-keep [_] true)
+          (-keep [_] keep)
           (-get [this key default] (-get-entries this key default))
           (-set [this key value] (-set-entries this key value))
           EntrySchema
@@ -1975,11 +1986,11 @@
   ([type properties children]
    (into-schema type properties children nil))
   ([type properties children options]
-   (let [properties (when properties (when (pos? (count properties)) properties))
-         r (when properties (properties :registry))
+   (let [properties' (when properties (when (pos? (count properties)) properties))
+         r (when properties' (properties' :registry))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties :registry (-property-registry r options identity)) properties)]
-     (-into-schema (-lookup! type into-schema? false options) properties children options))))
+         properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
+     (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))
 
 (defn type
   "Returns the Schema type."
@@ -2035,7 +2046,7 @@
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) into-schema? true options)
+                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
@@ -2043,7 +2054,7 @@
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) options)
-             (-> ?schema (-lookup! nil false options) (recur options))))))
+             (-> ?schema (-lookup! ?schema nil false options) (recur options))))))
 
 (defn form
   "Returns the Schema form"
@@ -2216,7 +2227,7 @@
          decode (decoder s transformer)
          explain (explainer s)
          respond (or respond identity)
-         raise (or raise #(-fail! ::invalid-input %))]
+         raise (or raise #(-fail! ::coercion %))]
      (fn -coercer [x] (let [value (decode x)]
                         (if (valid? value)
                           (respond value)
@@ -2229,6 +2240,18 @@
   ([?schema value transformer options] (coerce ?schema value transformer nil nil options))
   ([?schema value transformer respond raise] (coerce ?schema value transformer respond raise nil))
   ([?schema value transformer respond raise options] ((coercer ?schema transformer respond raise options) value)))
+
+(defmacro assert
+  "Assert that `value` validates against schema `?schema`, or throws ExceptionInfo.
+   The var clojure.core/*assert* determines whether assertion are checked."
+
+  ([?schema value]
+   `(assert ~?schema ~value nil))
+
+  ([?schema value options]
+   (if *assert*
+     `(coerce ~?schema ~value nil ~options)
+     value)))
 
 (defn entries
   "Returns `EntrySchema` children as a sequence of `clojure.lang/MapEntry`s
@@ -2292,6 +2315,20 @@
   ([?schema options]
    (let [schema (deref ?schema options)]
      (cond-> schema (-ref-schema? schema) (recur options)))))
+
+(defn deref-recursive
+  "Derefs all schemas at all levels. Does not walk over `:ref`s."
+  ([?schema]
+   (deref-recursive ?schema nil))
+  ([?schema {::keys [ref-key] :as options}]
+   (let [schema (schema ?schema options)
+         maybe-set-ref (fn [s r] (if (and ref-key r) (-update-properties s assoc ref-key r) s))]
+     (-> (walk schema (fn [schema _ children _]
+                        (cond (= :ref (type schema)) schema
+                              (-ref-schema? schema) (maybe-set-ref (deref (-set-children schema children)) (-ref schema))
+                              :else (-set-children schema children)))
+               {::walk-schema-refs true})
+         (deref-all)))))
 
 (defn from-ast
   "Creates a Schema from AST"
@@ -2393,56 +2430,56 @@
    :uuid (-uuid-schema)})
 
 (defn sequence-schemas []
-  {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}
+  {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/+-validator child))
                          :re-explainer (fn [_ [child]] (re/+-explainer child))
                          :re-parser (fn [_ [child]] (re/+-parser child))
                          :re-unparser (fn [_ [child]] (re/+-unparser child))
                          :re-transformer (fn [_ [child]] (re/+-transformer child))
                          :re-min-max (fn [_ [child]] {:min (:min (-regex-min-max child true))})})
-   :* (-sequence-schema {:type :*, :child-bounds {:min 1, :max 1}
+   :* (-sequence-schema {:type :*, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/*-validator child))
                          :re-explainer (fn [_ [child]] (re/*-explainer child))
                          :re-parser (fn [_ [child]] (re/*-parser child))
                          :re-unparser (fn [_ [child]] (re/*-unparser child))
                          :re-transformer (fn [_ [child]] (re/*-transformer child))
                          :re-min-max (fn [_ _] {:min 0})})
-   :? (-sequence-schema {:type :?, :child-bounds {:min 1, :max 1}
+   :? (-sequence-schema {:type :?, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/?-validator child))
                          :re-explainer (fn [_ [child]] (re/?-explainer child))
                          :re-parser (fn [_ [child]] (re/?-parser child))
                          :re-unparser (fn [_ [child]] (re/?-unparser child))
                          :re-transformer (fn [_ [child]] (re/?-transformer child))
                          :re-min-max (fn [_ [child]] {:min 0, :max (:max (-regex-min-max child true))})})
-   :repeat (-sequence-schema {:type :repeat, :child-bounds {:min 1, :max 1}
+   :repeat (-sequence-schema {:type :repeat, :child-bounds {:min 1, :max 1}, :keep true
                               :re-validator (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-validator min max child))
                               :re-explainer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-explainer min max child))
                               :re-parser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-parser min max child))
                               :re-unparser (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-unparser min max child))
                               :re-transformer (fn [{:keys [min max] :or {min 0, max ##Inf}} [child]] (re/repeat-transformer min max child))
                               :re-min-max (fn [props [child]] (-re-min-max * props child))})
-   :cat (-sequence-schema {:type :cat, :child-bounds {}
+   :cat (-sequence-schema {:type :cat, :child-bounds {}, :keep true
                            :re-validator (fn [_ children] (apply re/cat-validator children))
                            :re-explainer (fn [_ children] (apply re/cat-explainer children))
                            :re-parser (fn [_ children] (apply re/cat-parser children))
                            :re-unparser (fn [_ children] (apply re/cat-unparser children))
                            :re-transformer (fn [_ children] (apply re/cat-transformer children))
                            :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} children))})
-   :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}
+   :alt (-sequence-schema {:type :alt, :child-bounds {:min 1}, :keep true
                            :re-validator (fn [_ children] (apply re/alt-validator children))
                            :re-explainer (fn [_ children] (apply re/alt-explainer children))
                            :re-parser (fn [_ children] (apply re/alt-parser children))
                            :re-unparser (fn [_ children] (apply re/alt-unparser children))
                            :re-transformer (fn [_ children] (apply re/alt-transformer children))
                            :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} children))})
-   :catn (-sequence-entry-schema {:type :catn, :child-bounds {}
+   :catn (-sequence-entry-schema {:type :catn, :child-bounds {}, :keep false
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
                                   :re-parser (fn [_ children] (apply re/catn-parser children))
                                   :re-unparser (fn [_ children] (apply re/catn-unparser children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
                                   :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (-vmap last children)))})
-   :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}
+   :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}, :keep false
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
                                   :re-parser (fn [_ children] (apply re/altn-parser children))
@@ -2477,7 +2514,8 @@
 
 (def default-registry
   (let [strict (identical? mr/mode "strict")
-        registry (mr/fast-registry (if (identical? mr/type "custom") {} (default-schemas)))]
+        custom (identical? mr/type "custom")
+        registry (if custom (mr/fast-registry {}) (mr/composite-registry (mr/fast-registry (default-schemas)) (mr/var-registry)))]
     (when-not strict (mr/set-default-registry! registry))
     (mr/registry (if strict registry (mr/custom-default-registry)))))
 
@@ -2521,9 +2559,7 @@
    (try
      (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))
      (catch #?(:clj Throwable :cljs :default) ex
-       (throw (ex-info
-               (str "Schema error when insrumenting function: " ns "/" name " - " (ex-message ex))
-               (ex-data ex)))))))
+       (-fail! ::register-function-schema {:ns ns, :name name, :schema ?schema, :data data, :key key, :exception ex})))))
 
 #?(:clj
    (defmacro => [given-sym value]
@@ -2553,19 +2589,19 @@
    | key       | description |
    | ----------|-------------|
    | `:schema` | function schema
-   | `:scope`  | optional set of scope definitions, defaults to `#{:input :output :fn}`
+   | `:scope`  | optional set of scope definitions, defaults to `#{:input :output :guard}`
    | `:report` | optional side-effecting function of `key data -> any` to report problems, defaults to `m/-fail!`
    | `:gen`    | optional function of `schema -> schema -> value` to be invoked on the args to get the return value"
   ([props]
    (-instrument props nil nil))
   ([props f]
    (-instrument props f nil))
-  ([{:keys [scope report gen] :or {scope #{:input :output}, report -fail!} :as props} f options]
+  ([{:keys [scope report gen] :or {scope #{:input :output :guard}, report -fail!} :as props} f options]
    (let [schema (-> props :schema (schema options))]
      (case (type schema)
-       :=> (let [{:keys [min max input output fn]} (-function-info schema)
-                 [validate-input validate-output validate-fn] (-vmap validator [input output fn])
-                 [wrap-input wrap-output wrap-fn] (-vmap (partial contains? scope) [:input :output :fn])
+       :=> (let [{:keys [min max input output guard]} (-function-info schema)
+                 [validate-input validate-output validate-guard] (-vmap validator [input output (or guard :any)])
+                 [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
                  f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
              (fn [& args]
                (let [args (vec args), arity (count args)]
@@ -2575,9 +2611,10 @@
                    (when-not (validate-input args)
                      (report ::invalid-input {:input input, :args args, :schema schema})))
                  (let [value (apply f args)]
-                   (when wrap-output
-                     (when-not (validate-output value)
-                       (report ::invalid-output {:output output, :value value, :args args, :schema schema})))
+                   (when (and wrap-output (not (validate-output value)))
+                     (report ::invalid-output {:output output, :value value, :args args, :schema schema}))
+                   (when (and wrap-guard (not (validate-guard [args value])))
+                     (report ::invalid-guard {:guard guard, :value value, :args args, :schema schema}))
                    value))))
        :function (let [arity->info (->> (children schema)
                                         (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))

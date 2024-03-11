@@ -11,9 +11,8 @@
 #?(:clj (defmacro stop!
           "Stops instrumentation for all functions vars and removes clj-kondo type annotations."
           []
-          `(do
-             (malli.instrument/unstrument! nil)
-             ~(do (clj-kondo/save! {}) nil))))
+          `(do (malli.instrument/unstrument! nil)
+               ~(do (clj-kondo/save! {}) nil))))
 
 #?(:clj (defmacro collect-all! [] (malli.instrument/collect! {:ns (ana-api/all-ns)})))
 
@@ -35,8 +34,8 @@
          (malli.instrument/collect! {:ns ~(if (:ns options)
                                             (:ns options)
                                             (vec (ana-api/all-ns)))})
-         (js/console.groupCollapsed "Instrumentation done")
          (malli.instrument/instrument! (assoc ~options :data (m/function-schemas :cljs)))
+         (js/console.groupCollapsed "Instrumentation done")
          (js/console.groupEnd)))))
 
 ;; only used by deprecated malli.instrument.cljs implementation

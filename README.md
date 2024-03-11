@@ -19,7 +19,8 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Generating values](#value-generation) from Schemas
 - [Inferring Schemas](#inferring-schemas) from sample values and [Destructuring](#destructuring).
 - Tools for [Programming with Schemas](#programming-with-schemas)
-- [Parsing](#parsing-values), [Unparsing](#unparsing-values) and [Sequence Schemas](#sequence-schemas)
+- [Parsing](#parsing-values) and [Unparsing](#unparsing-values) values
+- [Sequence](#sequence-schemas), [Vector](#vector-schemas), and [Set](#set-schemas) Schemas
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
@@ -68,6 +69,37 @@ So, we decided to spin out our own library, which would do all the things we fee
 [![Clojars Project](http://clojars.org/metosin/malli/latest-version.svg)](http://clojars.org/metosin/malli)
 
 Malli requires Clojure 1.11.
+
+## Quickstart
+
+```clojure
+(require '[malli.core :as m])
+
+(def UserId :string)
+
+(def Address
+  [:map
+   [:street :string]
+   [:country [:enum "FI" "UA"]]])
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:address #'Address]
+   [:friends [:set {:gen/max 2} [:ref #'User]]]])
+
+(require '[malli.generator :as mg])
+
+(mg/generate User)
+;{:id "AC",
+; :address {:street "mf", :country "UA"},
+; :friends #{{:id "1dm",
+;             :address {:street "8", :country "UA"},
+;             :friends #{}}}}
+
+(m/validate User *1)
+; => true
+```
 
 ## Syntax
 
@@ -348,27 +380,20 @@ default branching can be arbitrarily nested:
 
 ## Sequence schemas
 
-You can use `:sequential` for any homogeneous Clojure sequence, `:vector` for vectors and `:set` for sets.
+You can use `:sequential` to describe homogeneous sequential Clojure collections.
 
 ```clojure
 (m/validate [:sequential any?] (list "this" 'is :number 42))
 ;; => true
 
-(m/validate [:vector int?] [1 2 3])
+(m/validate [:sequential int?] [42 105])
 ;; => true
 
-(m/validate [:vector int?] (list 1 2 3))
+(m/validate [:sequential int?] #{42 105})
 ;; => false
 ```
 
-A `:tuple` describes a fixed length Clojure vector of heterogeneous elements:
-
-```clojure
-(m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
-;; => true
-```
-
-Malli also supports sequence regexes like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
+Malli also supports sequence regexes (also called sequence expresions) like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
 The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 ```clojure
@@ -429,7 +454,7 @@ while `:cat` and `:alt` just use numeric indices for paths:
 ;;              {:path [0 1 1], :in [3], :schema boolean?, :value 11})}
 ```
 
-As all these examples show, the "seqex" operators take any non-seqex child schema to
+As all these examples show, the sequence experssion (seqex) operators take any non-seqex child schema to
 mean a sequence of one element that matches that schema. To force that behaviour for
 a seqex child `:schema` can be used:
 
@@ -467,6 +492,54 @@ it is always better to use less general tools whenever possible:
 
 (let [valid? (m/validator [:sequential int?])]
   (cc/quick-bench (valid? (range 10)))) ; Execution time mean : 0.12µs
+```
+
+## Vector schemas
+
+You can use `:vector` to describe homogeneous Clojure vectors.
+
+```clojure
+(m/validate [:vector int?] [1 2 3])
+;; => true
+
+(m/validate [:vector int?] (list 1 2 3))
+;; => false
+```
+
+A `:tuple` schema describes a fixed length Clojure vector of heterogeneous elements:
+
+```clojure
+(m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
+;; => true
+```
+
+To create a vector schema based on a seqex, use `:and`.
+
+```clojure
+;; non-empty vector starting with a keyword
+(m/validate [:and [:cat :keyword [:* :any]]
+                  vector?]
+            [:a 1])
+; => true
+
+(m/validate [:and [:cat :keyword [:* :any]]
+                  vector?]
+            (:a 1))
+; => false
+```
+
+Note: To generate values from a vector seqex, see [:and generation](#and-generation).
+
+## Set schemas
+
+You can use `:set` to describe homogeneous Clojure sets.
+
+```clojure
+(m/validate [:set int?] #{42 105})
+;; => true
+
+(m/validate [:set int?] #{:a :b})
+;; => false
 ```
 
 ## String schemas
@@ -597,6 +670,36 @@ Detailed errors with `m/explain`:
 ;           :in [:address :lonlat 1]
 ;           :schema double?
 ;           :value nil})}
+```
+
+Under `:errors`, you get a list of errors with the following keys:
+
+* `:path`, error location in Schema
+* `:in`, error location in value
+* `:schema`, schema in error
+* `:value`, value in error
+
+```clojure
+(def Schema [:map [:x [:maybe [:tuple :string]]]])
+
+(def value {:x [1]})
+
+(def error (-> Schema
+               (m/explain value)
+               :errors
+               first))
+
+error
+;{:path [:x 0 0]
+; :in [:x 0]
+; :schema :string
+; :value 1}
+
+(get-in value (:in error))
+; => 1
+
+(mu/get-in Schema (:path error))
+; => :string
 ```
 
 Note! If you need error messages that serialize neatly to EDN/JSON, use `malli.util/explain-data` instead.
@@ -779,6 +882,40 @@ Masking irrelevant parts:
 ```
 
 ## Pretty errors
+
+There are two ways to get pretty errors:
+
+### Development mode
+
+Start development mode:
+
+```clojure
+((requiring-resolve 'malli.dev/start!))
+```
+
+Now, any exception thrown via `malli.core/-fail!` is being captured and pretty printed before being thrown. Pretty printing is extendable using [virhe](https://github.com/metosin/virhe).
+
+Pretty Coercion:
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-coerce.png" width=800>
+
+Custom exception (with default layout):
+
+<img src="https://github.com/metosin/malli/blob/master/docs/img/bats-in-the-attic.png" width=800>
+
+Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `(-> exception (ex-data) :data)` as the default dispatch key. As fallback, exception class - or exception subclass can be used, e.g. the following will handle all `java.sql.SQLException` and it's parent exceptions:
+
+```clojure
+(require '[malli.dev.virhe :as v])
+
+(defmethod v/-format java.sql.SQLException [e _ printer]
+  {:title "Exception thrown"
+   :body [:group
+          (v/-block "SQL Exception" (v/-color :string (ex-message e) printer) printer) :break :break
+          (v/-block "More information:" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+```
+
+### pretty/explain
 
 For pretty development-time error printing, try `malli.dev.pretty/explain`
 
@@ -1456,6 +1593,62 @@ Merged
 ; => true
 ```
 
+`:union` is similar to `:or`, except `:union` combines map schemas in different disjuncts with `:or`.
+For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:or :int :string]]]`.
+
+```clojure
+(def OrMaps
+  (m/schema
+    [:or
+     [:map [:x :int] [:y :string]]
+     [:map [:x :string] [:y :int]]]
+    {:registry registry}))
+
+(def UnionMaps
+  (m/schema
+    [:union
+     [:map [:x :int] [:y :string]]
+     [:map [:x :string] [:y :int]]]
+    {:registry registry}))
+
+(m/validate OrMaps {:x "kikka" :y "kikka"})
+; => false
+
+(m/validate UnionMaps {:x "kikka" :y "kikka"})
+; => true
+```
+
+`:merge` and `:union` differ on schemas with common keys. `:merge` chooses the right-most
+schema of common keys, and `:union` combines them with `:or`.
+For example, `MergedCommon` is equivalent to `[:map [:x :int]]`, and `UnionCommon`
+is equivalent to `[:map [:x [:or :string :int]]]`.
+
+```clojure
+(def MergedCommon
+  (m/schema
+    [:merge
+     [:map [:x :string]]
+     [:map [:x :int]]]
+    {:registry registry}))
+
+(def UnionCommon
+  (m/schema
+    [:union
+     [:map [:x :string]]
+     [:map [:x :int]]]
+    {:registry registry}))
+
+(m/validate MergedCommon {:x "kikka"})
+; => true
+(m/validate MergedCommon {:x 1})
+; => false
+(m/validate UnionCommon {:x "kikka"})
+; => true
+(m/validate UnionCommon {:x 1})
+; => true
+```
+
+
 ## Persisting schemas
 
 Writing and Reading schemas as [EDN](https://github.com/edn-format/edn), no `eval` needed.
@@ -1722,6 +1915,42 @@ Integration with test.check:
 ; => (2 1 2 2 2 2 8 1 55 83)
 ```
 
+### :and generation
+
+Generators for `:and` schemas work by generating values from the first child, and then filtering
+out any values that do not pass the overall `:and` schema.
+
+For the most reliable results, place the schema that is most likely to generate valid
+values for the entire schema as the first child of an `:and` schema.
+
+```clojure
+;; BAD: :string is unlikely to generate values satisfying the schema
+(mg/generate [:and :string [:enum "a" "b" "c"]] {:seed 42})
+; Execution error
+; Couldn't satisfy such-that predicate after 100 tries.
+
+;; GOOD: every value generated by the `:enum` is a string
+(mg/generate [:and [:enum "a" "b" "c"] :string] {:seed 42})
+; => "a"
+```
+
+You might need to customize the generator for the first `:and` child to improve
+the chances of it generating valid values.
+
+For example, a schema for non-empty heterogeneous vectors can validate values
+by combining `:cat` and `vector?`, but since `:cat` generates sequences
+we need to use `:gen/fmap` to make it generate vectors:
+
+```clojure
+;; generate a non-empty vector starting with a keyword
+(mg/generate [:and [:cat {:gen/fmap vec}
+                    :keyword [:* :any]]
+                   vector?]
+             {:size 1
+              :seed 2})
+;=> [:.+ [1]]
+```
+
 ## Inferring schemas
 
 Inspired by [F# Type providers](https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/):
@@ -1871,8 +2100,8 @@ Adding custom decoding via `::mp/value-decoders` option:
    :time "2021-01-01T00:00:00Z"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"
    :time "2022-01-01T00:00:00Z"}]
- {::mp/value-decoders {'string? {:uuid mt/-string->uuid
-                                 'inst? mt/-string->date}}})
+ {::mp/value-decoders {:string {:uuid mt/-string->uuid
+                                'inst? mt/-string->date}}})
 ; => [:map [:id :uuid] [:time inst?]
 ```
 
@@ -2510,6 +2739,30 @@ Just a `Map`.
   {:maybe "sheep"})
 ; => true
 ```
+### Var registry
+
+Var is a valid reference type in Malli. To support auto-resolving Var references to Vars, `mr/var-registry` is needed. It is enabled by default.
+
+```clojure
+(def UserId :string)
+
+(def User
+  [:map
+   [:id #'UserId]
+   [:friends {:optional true} [:set [:ref #'User]]]])
+
+(mg/sample User {:seed 0})
+;({:id ""}
+; {:id "6", :friends #{{:id ""}}}
+; {:id ""}
+; {:id "4", :friends #{}}
+; {:id "24b7"}
+; {:id "Uo"}
+; {:id "8"}
+; {:id "z5b"}
+; {:id "R9f"}
+; {:id "lUm6Wj9gR"})
+```
 
 ### Mutable registry
 
@@ -3018,6 +3271,7 @@ The following schemas and their respective types are provided:
 | Schema                   | Example                                              | JVM/js-joda Type (`java.time`) |
 |:-------------------------|:-----------------------------------------------------|:-------------------------------|
 | `:time/duration`         | PT0.01S                                              | `Duration`                     |
+| `:time/period`           | P-1Y100D                                             | `Period`                       |
 | `:time/instant`          | 2022-12-18T12:00:25.840823567Z                       | `Instant`                      |
 | `:time/local-date`       | 2020-01-01                                           | `LocalDate`                    |
 | `:time/local-date-time`  | 2020-01-01T12:00:00                                  | `LocalDateTime`                |
@@ -3074,6 +3328,13 @@ Time schemas respect min/max predicates for their respective types:
 
 Will be valid only for local times between 12:00 and 13:00.
 
+For the comparison of `Period`s, units are compared to corresponding units and never between.
+
+For example a Period of 1 year will always compare greater than a period of 13 months; that is, conceptually `(< P13M P1Y)`
+
+If you want to add further constraints you can transform your `Period`s before being used in `min` and `max` per your use-case
+or combine the schema with `:and` and `:fn` for example.
+
 #### Transformation - `malli.experimental.time.transform`
 
 The `malli.experimental.time.transform` namespace provides a `time-transformer` from string to the correct type.
@@ -3098,6 +3359,15 @@ Formats can be configured by providing a `formatter` or a `pattern` property
 Require `malli.experimental.time.generator` to add support for time schema generators.
 
 Generated data also respects min/max properties.
+
+When generating `Period`s there is no way distinguish between `nil` values and zero for each unit, so zero units will
+not constrain the generator, if you need some of the units to be zero in generated `Period`s you can always `gen/fmap` the data:
+
+```clojure
+[:time/period {:gen/fmap #(. % withMonths 0) :min (. Period of -10 0 1)}]
+```
+This would generate `Period`s with a minimum years unit of -10, minimum days unit of 1 and months unit always equal to zero.
+Without the fmap the months unit could be any negative or positive integer.
 
 #### JSON Schema - `malli.experimental.time.json-schema`
 

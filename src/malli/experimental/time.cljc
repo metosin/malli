@@ -2,28 +2,7 @@
   (:refer-clojure :exclude [<=])
   (:require [malli.core :as m]
             #?(:cljs ["@js-joda/core" :as js-joda]))
-  #?(:clj (:import (java.time Duration LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset))))
-
-(defn <= [^Comparable x ^Comparable y] (not (pos? (.compareTo x y))))
-
-(defn -min-max-pred [_]
-  (fn [{:keys [min max]}]
-    (cond
-      (not (or min max)) nil
-      (and min max) (fn [x] (and (<= x max) (<= min x)))
-      min (fn [x] (<= min x))
-      max (fn [x] (<= x max)))))
-
-(defn -temporal-schema [{:keys [type class type-properties]}]
-  (m/-simple-schema
-   (cond->
-     {:type type
-      :pred (fn pred [x]
-              #?(:clj  (.isInstance ^Class class x)
-                 :cljs (instance? class x)))
-      :property-pred (-min-max-pred nil)}
-     type-properties
-     (assoc :type-properties type-properties))))
+  #?(:clj (:import (java.time Duration Period LocalDate LocalDateTime LocalTime Instant ZonedDateTime OffsetDateTime ZoneId OffsetTime ZoneOffset))))
 
 #?(:cljs
    (do
@@ -48,6 +27,54 @@
      (def TemporalQuery (.-TemporalQuery js-joda))
      (def DateTimeFormatter (.-DateTimeFormatter js-joda))))
 
+(defn <= [^Comparable x ^Comparable y] (not (pos? (.compareTo x y))))
+
+(defn compare-periods
+  "Periods are not comparable in the java Comparable sense, instead this performs simple units-by-units comparison.
+   So a period of 1 year will always compare greater than a period of 13 months and similar for days and months."
+  [^Period p1 ^Period p2]
+  (let [years1  #?(:clj (.getYears p1) :cljs (.years p1))
+        years2  #?(:clj (.getYears p2) :cljs (.years p2))
+        months1 #?(:clj (.getMonths p1) :cljs (.months p1))
+        months2 #?(:clj (.getMonths p2) :cljs (.months p2))
+        days1   #?(:clj (.getDays p1) :cljs (.days p1))
+        days2   #?(:clj (.getDays p2) :cljs (.days p2))]
+    (cond
+      (not (= years1 years2)) (- years1 years2)
+      (not (= months1 months2)) (- months1 months2)
+      :else (- days1 days2))))
+
+(defn -min-max-pred [_]
+  (fn [{:keys [min max]}]
+    (cond
+      (not (or min max)) nil
+      (and min max)
+      (if (and (instance? Period min) (instance? Period max))
+        (fn [^Period x]
+          (and
+            (not (pos? (compare-periods x max)))
+            (not (pos? (compare-periods min x)))))
+        (fn [x] (and (<= x max) (<= min x))))
+      min (fn [x]
+            (if (instance? Period min)
+              (not (pos? (compare-periods min x)))
+              (<= min x)))
+      max (fn [x]
+            (if (instance? Period max)
+              (not (pos? (compare-periods x max)))
+              (<= x max))))))
+
+(defn -temporal-schema [{:keys [type class type-properties]}]
+  (m/-simple-schema
+    (cond->
+      {:type type
+       :pred (fn pred [x]
+               #?(:clj (.isInstance ^Class class x)
+                  :cljs (instance? class x)))
+       :property-pred (-min-max-pred nil)}
+      type-properties
+      (assoc :type-properties type-properties))))
+
 #?(:cljs
    (defn createTemporalQuery [f]
      (let [parent (TemporalQuery. "")
@@ -56,6 +83,7 @@
        query)))
 
 (defn -duration-schema [] (-temporal-schema {:type :time/duration :class Duration}))
+(defn -period-schema [] (-temporal-schema {:type :time/period :class Period}))
 (defn -instant-schema [] (-temporal-schema {:type :time/instant :class Instant}))
 (defn -local-date-schema [] (-temporal-schema {:type :time/local-date :class LocalDate :type-properties {:min (. LocalDate -MIN) :max (. LocalDate -MAX)}}))
 (defn -local-time-schema [] (-temporal-schema {:type :time/local-time :class LocalTime :type-properties {:min (. LocalTime -MIN) :max (. LocalTime -MAX)}}))
@@ -70,6 +98,7 @@
   {:time/zone-id (-zone-id-schema)
    :time/instant (-instant-schema)
    :time/duration (-duration-schema)
+   :time/period (-period-schema)
    :time/zoned-date-time (-zoned-date-time-schema)
    :time/offset-date-time (-offset-date-time-schema)
    :time/local-date (-local-date-schema)

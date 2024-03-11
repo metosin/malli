@@ -4,6 +4,7 @@
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
+            [malli.registry :as mr]
             [malli.util :as mu]))
 
 (def expectations
@@ -325,3 +326,36 @@
           :required [:name]
           :additionalProperties false}
          (json-schema/transform [:map {:closed true} [:name :string]]))))
+
+(def UserId :string)
+
+(def User
+  [:map {:registry {::location [:tuple :double :double]
+                    `description :string}}
+   [:id #'UserId]
+   ::location
+   `description
+   [:friends {:optional true} [:set [:ref #'User]]]])
+
+(deftest ref-test
+  (is (= {:type "object"
+          :properties {:id {:$ref "#/definitions/malli.json-schema-test~1UserId"},
+                       ::location {:$ref "#/definitions/malli.json-schema-test~1location"},
+                       `description {:$ref "#/definitions/malli.json-schema-test~1description"},
+                       :friends {:type "array", :items {:$ref "#/definitions/malli.json-schema-test~1User"}, :uniqueItems true}},
+          :required [:id :malli.json-schema-test/location `description],
+          :definitions {"malli.json-schema-test/UserId" {:type "string"},
+                        "malli.json-schema-test/location" {:type "array",
+                                                           :items [{:type "number"} {:type "number"}],
+                                                           :additionalItems false},
+                        "malli.json-schema-test/description" {:type "string"},
+                        "malli.json-schema-test/User" {:type "object",
+                                                       :properties {:id {:$ref "#/definitions/malli.json-schema-test~1UserId"},
+                                                                    ::location {:$ref "#/definitions/malli.json-schema-test~1location"},
+                                                                    `description {:$ref "#/definitions/malli.json-schema-test~1description"},
+                                                                    :friends {:type "array",
+                                                                              :items {:$ref "#/definitions/malli.json-schema-test~1User"},
+                                                                              :uniqueItems true}},
+                                                       :required [:id ::location `description]}}}
+
+         (json-schema/transform User))))

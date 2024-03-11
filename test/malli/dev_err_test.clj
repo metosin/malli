@@ -1,7 +1,6 @@
 (ns malli.dev-err-test
   (:require [clojure.test :refer [deftest is testing]]
-            [malli.dev :as md]
-            [malli.dev.pretty :as pretty]))
+            [malli.dev :as dev]))
 
 (defn plus-err
   [x] (inc x))
@@ -19,9 +18,8 @@
       (alter-meta! #'plus-err #(assoc % :malli/schema [:=> [:cat [:vector]] [:int {:max 6}]]))
       (try
         (is (thrown-with-msg?
-             Exception #"Schema error when insrumenting function: malli.dev-err-test/plus-err - :malli.core/child-error"
-             (md/start! {:ns *ns*})))
-        (catch Throwable _
-          (md/stop!)))
+             Exception #":malli.core/register-function-schema"
+             (dev/start! {:ns *ns*, :report (fn [& _args])})))
+        (finally
+          (with-out-str (dev/stop!))))
       (alter-meta! #'plus-err #(dissoc % :malli/schema)))))
-

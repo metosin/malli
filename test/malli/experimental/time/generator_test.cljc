@@ -16,6 +16,7 @@
 (t/deftest generator-test
   (t/testing "simple schemas"
     (t/is (exercise :time/duration))
+    (t/is (exercise :time/period))
     (t/is (exercise :time/zone-id))
     (t/is (exercise :time/zone-offset))
     (t/is (exercise :time/instant))

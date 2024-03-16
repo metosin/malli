@@ -24,6 +24,14 @@
                         :format "int64"
                         :x-anyOf [{:type "integer", :format "int64"}
                                   {:type "string"}]}]
+   [[:or int? :nil] {:type "integer"
+                     :format "int64"
+                     :x-anyOf [{:type "integer", :format "int64"}
+                               {:type "null"}]}]
+   [[:or :nil int?] {:type "integer"
+                     :format "int64"
+                     :x-anyOf [{:type "null"}
+                               {:type "integer", :format "int64"}]}]
    [[:map
      [:a string?]
      [:b {:optional true} string?]
@@ -381,25 +389,32 @@
                           (m/comparator-schemas) (m/sequence-schemas)
                           {::a [:or
                                 :string
-                                [:ref ::b]]
+                                [:vector [:ref ::b]]]
                            ::b [:or
                                 :keyword
-                                [:ref ::c]]
+                                [:vector [:ref ::c]]]
                            ::c [:or
                                 :symbol
-                                [:ref ::a]]
+                                [:vector [:ref ::a]]]
                            ::req-body [:map [:a ::a]]
                            ::success-resp [:map-of :keyword :string]
                            ::error-resp :string})]
+      (testing "not an infinite schema"
+        (is (not (m/validate (m/schema [:ref ::a] {:registry registry}) nil)))
+        (is (not (m/validate (m/schema [:ref ::b] {:registry registry}) nil)))
+        (is (not (m/validate (m/schema [:ref ::c] {:registry registry}) nil))))
       (is (= {:definitions {"malli.swagger-test/a" {:type "string"
                                                     :x-anyOf [{:type "string"}
-                                                              {:$ref "#/definitions/malli.swagger-test~1b"}]}
+                                                              {:type "array"
+                                                               :items {:$ref "#/definitions/malli.swagger-test~1b"}}]}
                             "malli.swagger-test/b" {:type "string"
                                                     :x-anyOf [{:type "string"}
-                                                              {:$ref "#/definitions/malli.swagger-test~1c"}]}
+                                                              {:type "array"
+                                                               :items {:$ref "#/definitions/malli.swagger-test~1c"}}]}
                             "malli.swagger-test/c" {:type "string"
                                                     :x-anyOf [{:type "string"}
-                                                              {:$ref "#/definitions/malli.swagger-test~1a"}]}
+                                                              {:type "array"
+                                                               :items {:$ref "#/definitions/malli.swagger-test~1a"}}]}
                             "malli.swagger-test/error-resp" {:type "string"}
                             "malli.swagger-test/req-body" {:properties {:a {:$ref "#/definitions/malli.swagger-test~1a"}}
                                                            :required [:a]

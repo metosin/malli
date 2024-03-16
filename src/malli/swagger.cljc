@@ -14,7 +14,14 @@
 
 (defmethod accept :not [_ _ children _] {:x-not (first children)})
 (defmethod accept :and [_ _ children _] (assoc (first children) :x-allOf children))
-(defmethod accept :or [_ _ children _] (assoc (first children) :x-anyOf children))
+(defmethod accept :or [_ s children _]
+  (let [[base] (keep-indexed (fn [i s]
+                               (when-not (m/validate s nil)
+                                 i))
+                             (m/children s))]
+    (when-not base
+      (m/-fail! ::non-nil-or-base-required {:schema s}))
+    (assoc (nth children base) :x-anyOf children)))
 (defmethod accept :multi [_ _ children _] (let [cs (mapv last children)] (assoc (first cs) :x-anyOf cs)))
 
 (defmethod accept :maybe [_ _ children {:keys [type in]}]

@@ -18,7 +18,11 @@
   "Attempts to find a non-null schema to use as base.
   If all are nullable, picks the first. This usually works out
   because children are processed first, but can fail on
-  schemas that only contain nil like [:or :nil :nil]."
+  schemas that only contain nil like [:or :nil :nil].
+
+  Since swagger has no null schema, there's no correct
+  schema to generate in this case, and we generate an
+  incorrect schema which will be flagged by swagger."
   [schema children]
   (let [[base] (keep-indexed (fn [i schema]
                                (when-not (m/validate schema nil)

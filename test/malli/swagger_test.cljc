@@ -221,7 +221,11 @@
         #":malli\.swagger/non-null-base-needed"
         (swagger/transform
           :nil)))
-)
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.swagger/non-null-base-needed"
+        (swagger/transform
+          [:maybe :nil]))))
 
 (deftest util-schemas-test
   (let [registry (merge (m/default-schemas) (mu/schemas))]

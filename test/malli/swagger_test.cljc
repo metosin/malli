@@ -210,6 +210,19 @@
                    :json-schema/example 422
                    :swagger/example 4222} int?])))))
 
+(deftest null-base-test
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.swagger/non-null-base-needed"
+        (swagger/transform
+          [:or :nil :nil])))
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.swagger/non-null-base-needed"
+        (swagger/transform
+          :nil)))
+)
+
 (deftest util-schemas-test
   (let [registry (merge (m/default-schemas) (mu/schemas))]
 

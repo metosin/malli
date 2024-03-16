@@ -14,38 +14,29 @@
 
 (defmethod accept :not [_ _ children _] {:x-not (first children)})
 
-(defn non-null-nth
-  "Attempts to find a non-null schema to use as base.
-  If all are nullable, picks the first. This usually works out
-  because children are processed first, but can fail on
-  schemas that only contain nil like [:or :nil :nil].
-
-  Since swagger has no null schema, there's no correct
-  schema to generate in this case, and we generate an
-  incorrect schema which will be flagged by swagger."
-  [schema children]
-  (let [[base] (keep-indexed (fn [i schema]
-                               (when-not (m/validate schema nil)
-                                 i))
-                             children)]
-    (or base 0)))
+(defn -base [s children]
+  (or (some #(when (not= "null" (:type %))
+               %)
+            children)
+      (m/-fail! ::non-null-base-needed {:schema s})))
 
 (defmethod accept :and [_ s children _]
-  (let [base (nth children (non-null-nth s (m/children s)))]
+  (let [base (-base s children)]
     (assoc base :x-allOf children)))
 
 (defmethod accept :or [_ s children _]
-  (let [base (nth children (non-null-nth s (m/children s)))]
+  (let [base (-base s children)]
     (assoc base :x-anyOf children)))
 
 (defmethod accept :multi [_ s children _]
   (let [cs (mapv last children)
-        base (nth cs (non-null-nth s (map peek (m/children s))))]
+        base (-base s cs)]
     (assoc base :x-anyOf cs)))
 
-(defmethod accept :maybe [_ _ children {:keys [type in]}]
-  (let [k (if (and (= type :parameter) (not= in :body)) :allowEmptyValue :x-nullable)]
-    (assoc (first children) k true)))
+(defmethod accept :maybe [_ s children {:keys [type in]}]
+  (let [k (if (and (= type :parameter) (not= in :body)) :allowEmptyValue :x-nullable)
+        base (-base s children)]
+    (assoc base k true)))
 
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
@@ -96,8 +87,11 @@
    (let [definitions (atom {})
          options (merge options {::m/walk-entry-vals true
                                  ::json-schema/definitions definitions
-                                 ::json-schema/transform -transform})]
-     (cond-> (-transform ?schema options) (seq @definitions) (assoc :definitions @definitions)))))
+                                 ::json-schema/transform -transform})
+         t (-transform ?schema options)]
+     (when (= "null" (:type t))
+       (m/-fail! ::non-null-base-needed {:schema (m/form ?schema options)}))
+     (cond-> t (seq @definitions) (assoc :definitions @definitions)))))
 
 (defmulti extract-parameter (fn [in _] in))
 

@@ -14,14 +14,17 @@
 
 (defmethod accept :not [_ _ children _] {:x-not (first children)})
 
-(defn non-null-nth [schema children]
+(defn non-null-nth
+  "Attempts to find a non-null schema to use as base.
+  If all are nullable, picks the first. This usually works out
+  because children are processed first, but can fail on
+  schemas that only contain nil like [:or :nil :nil]."
+  [schema children]
   (let [[base] (keep-indexed (fn [i schema]
                                (when-not (m/validate schema nil)
                                  i))
                              children)]
-    (when-not base
-      (m/-fail! ::non-null-base-required {:schema schema}))
-    base))
+    (or base 0)))
 
 (defmethod accept :and [_ s children _]
   (let [base (nth children (non-null-nth s (m/children s)))]

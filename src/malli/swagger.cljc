@@ -14,15 +14,23 @@
 
 (defmethod accept :not [_ _ children _] {:x-not (first children)})
 (defmethod accept :and [_ _ children _] (assoc (first children) :x-allOf children))
-(defmethod accept :or [_ s children _]
-  (let [[base] (keep-indexed (fn [i s]
-                               (when-not (m/validate s nil)
+
+(defn non-null-nth [schema children]
+  (let [[base] (keep-indexed (fn [i schema]
+                               (when-not (m/validate schema nil)
                                  i))
-                             (m/children s))]
+                             children)]
     (when-not base
-      (m/-fail! ::non-nil-or-base-required {:schema s}))
-    (assoc (nth children base) :x-anyOf children)))
-(defmethod accept :multi [_ _ children _] (let [cs (mapv last children)] (assoc (first cs) :x-anyOf cs)))
+      (m/-fail! ::non-null-base-required {:schema schema}))
+    base))
+
+(defmethod accept :or [_ s children _]
+  (let [base (nth children (non-null-nth s (m/children s)))]
+    (assoc base :x-anyOf children)))
+(defmethod accept :multi [_ s children _]
+  (let [cs (mapv last children)
+        base (nth cs (non-null-nth s (map peek (m/children s))))]
+    (assoc base :x-anyOf cs)))
 
 (defmethod accept :maybe [_ _ children {:keys [type in]}]
   (let [k (if (and (= type :parameter) (not= in :body)) :allowEmptyValue :x-nullable)]

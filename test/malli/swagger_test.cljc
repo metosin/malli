@@ -32,6 +32,14 @@
                      :format "int64"
                      :x-anyOf [{:type "null"}
                                {:type "integer", :format "int64"}]}]
+   [[:and int? :nil] {:type "integer"
+                      :format "int64"
+                      :x-allOf [{:type "integer", :format "int64"}
+                                {:type "null"}]}]
+   [[:and :nil int?] {:type "integer"
+                      :format "int64"
+                      :x-allOf [{:type "null"}
+                                {:type "integer", :format "int64"}]}]
    [[:multi {:dispatch :whatever}
      [:a int?]
      [:b :nil]]
@@ -46,10 +54,6 @@
      :format "int64"
      :x-anyOf [{:type "null"}
                {:type "integer", :format "int64"}]}]
-   [[:or :nil int?] {:type "integer"
-                     :format "int64"
-                     :x-anyOf [{:type "null"}
-                               {:type "integer", :format "int64"}]}]
    [[:map
      [:a string?]
      [:b {:optional true} string?]

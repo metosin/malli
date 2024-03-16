@@ -13,7 +13,6 @@
 (defmethod accept 'nil? [_ _ _ _] {})
 
 (defmethod accept :not [_ _ children _] {:x-not (first children)})
-(defmethod accept :and [_ _ children _] (assoc (first children) :x-allOf children))
 
 (defn non-null-nth [schema children]
   (let [[base] (keep-indexed (fn [i schema]
@@ -24,9 +23,14 @@
       (m/-fail! ::non-null-base-required {:schema schema}))
     base))
 
+(defmethod accept :and [_ s children _]
+  (let [base (nth children (non-null-nth s (m/children s)))]
+    (assoc base :x-allOf children)))
+
 (defmethod accept :or [_ s children _]
   (let [base (nth children (non-null-nth s (m/children s)))]
     (assoc base :x-anyOf children)))
+
 (defmethod accept :multi [_ s children _]
   (let [cs (mapv last children)
         base (nth cs (non-null-nth s (map peek (m/children s))))]

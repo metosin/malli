@@ -43,6 +43,7 @@
 (defmethod accept 'nat-int? [_ _ _ _] {:type "integer", :minimum 0})
 (defmethod accept 'float? [_ _ _ _] {:type "number"})
 (defmethod accept 'double? [_ _ _ _] {:type "number"})
+(defmethod accept 'float? [_ _ _ _] {:type "number"})
 (defmethod accept 'pos? [_ _ _ _] {:type "number" :exclusiveMinimum 0})
 (defmethod accept 'neg? [_ _ _ _] {:type "number" :exclusiveMaximum 0})
 (defmethod accept 'boolean? [_ _ _ _] {:type "boolean"})
@@ -162,6 +163,10 @@
 
 (defmethod accept :int [_ schema _ _]
   (merge {:type "integer"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
+
+(defmethod accept :float [_ schema _ _]
+  (merge {:type "number"}
+         (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
 
 (defmethod accept :double [_ schema _ _]
   (merge {:type "number"}

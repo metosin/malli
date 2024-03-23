@@ -1,5 +1,5 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.2"}
         borkdude/dynaload {:mvn/version "0.3.5"}
         borkdude/edamame {:mvn/version "1.4.25"}
         org.clojure/test.check {:mvn/version "1.1.1"}
@@ -19,7 +19,7 @@
                                prismatic/schema {:mvn/version "1.4.1"}
                                minimallist/minimallist {:mvn/version "0.0.10"}
                                net.cgrand/seqexp {:mvn/version "0.6.2"}
-                               djblue/portal {:mvn/version "0.52.2"}
+                               djblue/portal {:mvn/version "0.53.0"}
                                meta-merge/meta-merge {:mvn/version "1.0.0"}
                                expound/expound {:mvn/version "0.9.0"}
                                lambdaisland/deep-diff {:mvn/version "0.0-47"}
@@ -37,7 +37,7 @@
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.6" :git/sha "8e78bcc"}}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.0" :git/sha "3a2c484"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]
                  :deps {jmh-clojure/jmh-clojure {:mvn/version "0.4.1"}
@@ -49,7 +49,7 @@
                                 org.clojure/tools.namespace #_:clj-kondo/ignore {:mvn/version "RELEASE"}}}
 
            :shadow {:extra-paths ["app"]
-                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.27.4"}
+                    :extra-deps {thheller/shadow-cljs {:mvn/version "2.28.2"}
                                  binaryage/devtools {:mvn/version "1.0.7"}}}
            :slow {:extra-deps {io.dominic/slow-namespace-clj
                                {:git/url "https://git.sr.ht/~severeoverfl0w/slow-namespace-clj"
@@ -68,11 +68,11 @@
                      :main-opts ["-m" "deps-deploy.deps-deploy" "install"
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
-                     :extra-deps {org.clojure/clojure {:mvn/version "1.11.1"}
+                     :extra-deps {org.clojure/clojure {:mvn/version "1.11.2"}
                                   org.babashka/sci {:mvn/version "0.8.41"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                               org.clojure/clojure {:mvn/version "1.11.1"}
+                               org.clojure/clojure {:mvn/version "1.11.2"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.2.0"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

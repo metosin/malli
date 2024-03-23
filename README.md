@@ -393,7 +393,7 @@ You can use `:sequential` to describe homogeneous sequential Clojure collections
 ;; => false
 ```
 
-Malli also supports sequence regexes (also called sequence expresions) like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
+Malli also supports sequence regexes (also called sequence expressions) like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
 The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 ```clojure
@@ -454,7 +454,7 @@ while `:cat` and `:alt` just use numeric indices for paths:
 ;;              {:path [0 1 1], :in [3], :schema boolean?, :value 11})}
 ```
 
-As all these examples show, the sequence experssion (seqex) operators take any non-seqex child schema to
+As all these examples show, the sequence expression (seqex) operators take any non-seqex child schema to
 mean a sequence of one element that matches that schema. To force that behaviour for
 a seqex child `:schema` can be used:
 

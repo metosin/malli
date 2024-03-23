@@ -45,7 +45,7 @@
                :as map}]
     :schema [:cat
              :any
-             [:altn
+             [:orn
               [:map [:map
                      [:b {:optional true} :any]
                      ["c" {:optional true} :any]
@@ -71,7 +71,7 @@
     :bind '[{:keys [a :demo/b] :demo/keys [c]}]
     :options {::md/required-keys true}
     :schema [:cat
-             [:altn
+             [:orn
               [:map [:map
                      [:a :any]
                      :demo/b
@@ -86,7 +86,7 @@
     :options {::md/required-keys true
               ::md/closed-maps true}
     :schema [:cat
-             [:altn
+             [:orn
               [:map [:map {:closed true}
                      [:a :any]
                      :demo/b
@@ -101,7 +101,7 @@
               ::md/closed-maps true
               ::md/references false}
     :schema [:cat
-             [:altn
+             [:orn
               [:map [:map {:closed true}
                      [:a :any]
                      [:demo/b :any]
@@ -130,7 +130,7 @@
     :options {::md/sequential-maps false} ;; no effect here
     :schema [:cat
              :any
-             [:altn
+             [:orn
               [:map [:map
                      [:b {:optional true} :any]
                      ["c" {:optional true} :any]
@@ -151,7 +151,7 @@
     :schema [:cat
              [:maybe
               [:cat
-               [:altn
+               [:orn
                 [:map [:map
                        [:a {:optional true} :any]
                        [:b {:optional true} :any]]]
@@ -159,7 +159,7 @@
                             [:cat [:= :a] :any]
                             [:cat [:= :b] :any]
                             [:cat [:not [:enum :a :b]] :any]]]]]]]
-             [:altn
+             [:orn
               [:map [:map
                      [:a {:optional true} :any]
                      [:b {:optional true} :any]]]
@@ -170,11 +170,11 @@
    {:name "Nest right-to-left map syntax"
     :bind '[{{inner :inner} :outer}]
     :schema [:cat
-             [:altn
+             [:orn
               [:map [:map
                      [:outer
                       {:optional true}
-                      [:altn
+                      [:orn
                        [:map [:map
                               [:inner {:optional true} :any]]]
                        [:args [:schema
@@ -185,7 +185,7 @@
                       [:* [:alt
                            [:cat
                             [:= :outer]
-                            [:altn
+                            [:orn
                              [:map [:map [:inner {:optional true} :any]]]
                              [:args [:schema [:* [:alt
                                                   [:cat [:= :inner] :any]

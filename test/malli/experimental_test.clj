@@ -119,8 +119,12 @@
                    [[1 2 3 4] 10]
                    [[-1 2 3 4] ::throws]]}
    {:var #'inner-outer-no-schema
-    :calls [[[(list :outer [:not-inner])] nil]]
-    :instrumented [[[(list :outer [:not-inner])] ::throws]]}])
+    :calls [[[(list :outer [:not-inner])] nil]
+            [[{:outer {:inner "here"}}] "here"]
+            [[{:outer {:not-inner 'foo}}] nil]]
+    :instrumented [[[(list :outer [:not-inner])] ::throws]
+                   [[{:outer {:inner "here"}}] "here"]
+                   [[{:outer {:not-inner 'foo}}] nil]]}])
 
 (defn -strument! [mode v]
   (with-out-str

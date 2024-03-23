@@ -212,20 +212,17 @@
 
 (deftest null-base-test
   (is (thrown-with-msg?
-        Exception
-        #":malli\.swagger/non-null-base-needed"
-        (swagger/transform
-          [:or :nil :nil])))
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.swagger/non-null-base-needed"
+       (swagger/transform [:or :nil :nil])))
   (is (thrown-with-msg?
-        Exception
-        #":malli\.swagger/non-null-base-needed"
-        (swagger/transform
-          :nil)))
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.swagger/non-null-base-needed"
+       (swagger/transform :nil)))
   (is (thrown-with-msg?
-        Exception
-        #":malli\.swagger/non-null-base-needed"
-        (swagger/transform
-          [:maybe :nil]))))
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.swagger/non-null-base-needed"
+       (swagger/transform [:maybe :nil]))))
 
 (deftest util-schemas-test
   (let [registry (merge (m/default-schemas) (mu/schemas))]

@@ -64,7 +64,7 @@
                         [:cat [:= :demo/f] :demo/f]
                         [:cat [:= :demo/g] :demo/g]
                         [:cat [:= 123] :any]
-                        [:cat :any :any]]]]]]]
+                        [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f :demo/g 123]] :any]]]]]]]
     :errors '[[{::keysz [z]}]
               [{:kikka/keyz [z]}]]}
    {:name "map destructuring with required-keys"
@@ -80,7 +80,7 @@
                                    [:cat [:= :a] :any]
                                    [:cat [:= :demo/b] :demo/b]
                                    [:cat [:= :demo/c] :demo/c]
-                                   [:cat :any :any]]]]]]]}
+                                   [:cat [:not [:enum :a :demo/b :demo/c]] :any]]]]]]]}
    {:name "map destructuring with required-keys and closed-maps"
     :bind '[{:keys [a :demo/b] :demo/keys [c]}]
     :options {::md/required-keys true
@@ -144,7 +144,7 @@
                        [:cat [:= 'd] :any]
                        [:cat [:= :demo/e] :demo/e]
                        [:cat [:= 'demo/f] :any]
-                       [:cat :any :any]]]]]]}
+                       [:cat [:not [:enum :b "c" 'd :demo/e 'demo/f]] :any]]]]]]}
    {:name "Nested Keyword argument"
     :bind '[[& {:keys [a b] :as opts}]
             & {:keys [a b] :as opts}]
@@ -158,7 +158,7 @@
                 [:args [:* [:alt
                             [:cat [:= :a] :any]
                             [:cat [:= :b] :any]
-                            [:cat :any :any]]]]]]]
+                            [:cat [:not [:enum :a :b]] :any]]]]]]]
              [:altn
               [:map [:map
                      [:a {:optional true} :any]
@@ -166,7 +166,31 @@
               [:args [:* [:alt
                           [:cat [:= :a] :any]
                           [:cat [:= :b] :any]
-                          [:cat :any :any]]]]]]}])
+                          [:cat [:not [:enum :a :b]] :any]]]]]]}
+   {:name "Nest right-to-left map syntax"
+    :bind '[{{inner :inner} :outer}]
+    :schema [:cat
+             [:altn
+              [:map [:map
+                     [:outer
+                      {:optional true}
+                      [:altn
+                       [:map [:map
+                              [:inner {:optional true} :any]]]
+                       [:args [:schema
+                               [:* [:alt
+                                    [:cat [:= :inner] :any]
+                                    [:cat [:not [:enum :inner]] :any]]]]]]]]]
+              [:args [:schema
+                      [:* [:alt
+                           [:cat
+                            [:= :outer]
+                            [:altn
+                             [:map [:map [:inner {:optional true} :any]]]
+                             [:args [:schema [:* [:alt
+                                                  [:cat [:= :inner] :any]
+                                                  [:cat [:not [:enum :inner]] :any]]]]]]]
+                           [:cat [:not [:enum :outer]] :any]]]]]]]}])
 
 (def schematized-expectations
   [{:name "empty"

@@ -38,6 +38,10 @@
   ([x :- [:int {:min 0}], y :- :int & zs :- [:* :int]] (apply + x y zs))
   {:more "meta"})
 
+(mx/defn inner-outer-no-schema
+  [{{inner :inner} :outer}]
+  inner)
+
 (def expectations
   [{:var #'f1
     :calls [[nil 1]
@@ -113,7 +117,10 @@
                    [[1 -2] ::throws]
                    [[-1 2] ::throws]
                    [[1 2 3 4] 10]
-                   [[-1 2 3 4] ::throws]]}])
+                   [[-1 2 3 4] ::throws]]}
+   {:var #'inner-outer-no-schema
+    :calls [[[(list :outer [:not-inner])] nil]]
+    :instrumented [[[(list :outer [:not-inner])] ::throws]]}])
 
 (defn -strument! [mode v]
   (with-out-str
@@ -127,13 +134,14 @@
 
     (testing "plain calls"
       (doseq [[arg ret] calls]
-        (if (= ::throws ret)
-          (is (thrown? Exception (apply var arg)))
-          (let [actual (try (apply var arg)
-                            (catch Throwable ex
-                              (println "Unexpected failure in plain call" e [arg ret])
-                              (throw ex)))]
-            (is (= ret actual))))))
+        (testing (pr-str (list* 'apply (-> var symbol name symbol) (vec arg)))
+          (if (= ::throws ret)
+            (is (thrown? Exception (apply var arg)))
+            (let [actual (try (apply var arg)
+                              (catch Throwable ex
+                                (println "Unexpected failure in plain call" e [arg ret])
+                                (throw ex)))]
+              (is (= ret actual)))))))
 
     (when-let [m (:meta e)]
       (testing "meta"
@@ -145,8 +153,9 @@
         (-strument! :instrument var)
         (try
           (doseq [[arg ret] instrumented]
-            (if (= ::throws ret)
-              (is (thrown? Exception (apply var arg)))
-              (is (= ret (apply var arg)))))
+            (testing (pr-str (list* 'apply (-> var symbol name symbol) (vec arg)))
+              (if (= ::throws ret)
+                (is (thrown? Exception (apply var arg)))
+                (is (= ret (apply var arg))))))
           (finally
             (-strument! :unstrument var)))))))

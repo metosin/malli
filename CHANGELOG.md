@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.15.0 (2024-03-23)
 
 * `:=>` takes optional 3rd child, the guard schema validating vector of arguments and return value `[args ret]`. See [Function Guards](docs/function-schemas.md#function-guards) for more details. Fixes [#764](https://github.com/metosin/malli/issues/764) and [#764](https://github.com/metosin/malli/issues/764).
 

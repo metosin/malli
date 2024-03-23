@@ -13,13 +13,30 @@
 (defmethod accept 'nil? [_ _ _ _] {})
 
 (defmethod accept :not [_ _ children _] {:x-not (first children)})
-(defmethod accept :and [_ _ children _] (assoc (first children) :x-allOf children))
-(defmethod accept :or [_ _ children _] (assoc (first children) :x-anyOf children))
-(defmethod accept :multi [_ _ children _] (let [cs (mapv last children)] (assoc (first cs) :x-anyOf cs)))
 
-(defmethod accept :maybe [_ _ children {:keys [type in]}]
-  (let [k (if (and (= type :parameter) (not= in :body)) :allowEmptyValue :x-nullable)]
-    (assoc (first children) k true)))
+(defn -base [s children]
+  (or (some #(when (not= "null" (:type %))
+               %)
+            children)
+      (m/-fail! ::non-null-base-needed {:schema s})))
+
+(defmethod accept :and [_ s children _]
+  (let [base (-base s children)]
+    (assoc base :x-allOf children)))
+
+(defmethod accept :or [_ s children _]
+  (let [base (-base s children)]
+    (assoc base :x-anyOf children)))
+
+(defmethod accept :multi [_ s children _]
+  (let [cs (mapv last children)
+        base (-base s cs)]
+    (assoc base :x-anyOf cs)))
+
+(defmethod accept :maybe [_ s children {:keys [type in]}]
+  (let [k (if (and (= type :parameter) (not= in :body)) :allowEmptyValue :x-nullable)
+        base (-base s children)]
+    (assoc base k true)))
 
 (defmethod accept :tuple [_ _ children _] {:type "array" :items {} :x-items children})
 
@@ -70,8 +87,11 @@
    (let [definitions (atom {})
          options (merge options {::m/walk-entry-vals true
                                  ::json-schema/definitions definitions
-                                 ::json-schema/transform -transform})]
-     (cond-> (-transform ?schema options) (seq @definitions) (assoc :definitions @definitions)))))
+                                 ::json-schema/transform -transform})
+         t (-transform ?schema options)]
+     (when (= "null" (:type t))
+       (m/-fail! ::non-null-base-needed {:schema (m/form ?schema options)}))
+     (cond-> t (seq @definitions) (assoc :definitions @definitions)))))
 
 (defmulti extract-parameter (fn [in _] in))
 

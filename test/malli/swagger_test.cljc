@@ -24,6 +24,40 @@
                         :format "int64"
                         :x-anyOf [{:type "integer", :format "int64"}
                                   {:type "string"}]}]
+   [[:or int? :nil] {:type "integer"
+                     :format "int64"
+                     :x-anyOf [{:type "integer", :format "int64"}
+                               {:type "null"}]}]
+   [[:or :nil int?] {:type "integer"
+                     :format "int64"
+                     :x-anyOf [{:type "null"}
+                               {:type "integer", :format "int64"}]}]
+   [[:or [:or :nil int?] [:or :nil int?]] {:type "integer"
+                                           :format "int64"
+                                           :x-anyOf [{:type "integer", :format "int64", :x-anyOf [{:type "null"} {:type "integer", :format "int64"}]}
+                                                     {:type "integer", :format "int64", :x-anyOf [{:type "null"} {:type "integer", :format "int64"}]}]}]
+   [[:and int? :nil] {:type "integer"
+                      :format "int64"
+                      :x-allOf [{:type "integer", :format "int64"}
+                                {:type "null"}]}]
+   [[:and :nil int?] {:type "integer"
+                      :format "int64"
+                      :x-allOf [{:type "null"}
+                                {:type "integer", :format "int64"}]}]
+   [[:multi {:dispatch :whatever}
+     [:a int?]
+     [:b :nil]]
+    {:type "integer"
+     :format "int64"
+     :x-anyOf [{:type "integer", :format "int64"}
+               {:type "null"}]}]
+   [[:multi {:dispatch :whatever}
+     [:a :nil]
+     [:b int?]]
+    {:type "integer"
+     :format "int64"
+     :x-anyOf [{:type "null"}
+               {:type "integer", :format "int64"}]}]
    [[:map
      [:a string?]
      [:b {:optional true} string?]
@@ -175,6 +209,23 @@
                    :swagger/default 4222
                    :json-schema/example 422
                    :swagger/example 4222} int?])))))
+
+(deftest null-base-test
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.swagger/non-null-base-needed"
+        (swagger/transform
+          [:or :nil :nil])))
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.swagger/non-null-base-needed"
+        (swagger/transform
+          :nil)))
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.swagger/non-null-base-needed"
+        (swagger/transform
+          [:maybe :nil]))))
 
 (deftest util-schemas-test
   (let [registry (merge (m/default-schemas) (mu/schemas))]
@@ -381,25 +432,32 @@
                           (m/comparator-schemas) (m/sequence-schemas)
                           {::a [:or
                                 :string
-                                [:ref ::b]]
+                                [:vector [:ref ::b]]]
                            ::b [:or
                                 :keyword
-                                [:ref ::c]]
+                                [:vector [:ref ::c]]]
                            ::c [:or
                                 :symbol
-                                [:ref ::a]]
+                                [:vector [:ref ::a]]]
                            ::req-body [:map [:a ::a]]
                            ::success-resp [:map-of :keyword :string]
                            ::error-resp :string})]
+      (testing "not an infinite schema"
+        (is (not (m/validate (m/schema [:ref ::a] {:registry registry}) nil)))
+        (is (not (m/validate (m/schema [:ref ::b] {:registry registry}) nil)))
+        (is (not (m/validate (m/schema [:ref ::c] {:registry registry}) nil))))
       (is (= {:definitions {"malli.swagger-test/a" {:type "string"
                                                     :x-anyOf [{:type "string"}
-                                                              {:$ref "#/definitions/malli.swagger-test~1b"}]}
+                                                              {:type "array"
+                                                               :items {:$ref "#/definitions/malli.swagger-test~1b"}}]}
                             "malli.swagger-test/b" {:type "string"
                                                     :x-anyOf [{:type "string"}
-                                                              {:$ref "#/definitions/malli.swagger-test~1c"}]}
+                                                              {:type "array"
+                                                               :items {:$ref "#/definitions/malli.swagger-test~1c"}}]}
                             "malli.swagger-test/c" {:type "string"
                                                     :x-anyOf [{:type "string"}
-                                                              {:$ref "#/definitions/malli.swagger-test~1a"}]}
+                                                              {:type "array"
+                                                               :items {:$ref "#/definitions/malli.swagger-test~1a"}}]}
                             "malli.swagger-test/error-resp" {:type "string"}
                             "malli.swagger-test/req-body" {:properties {:a {:$ref "#/definitions/malli.swagger-test~1a"}}
                                                            :required [:a]

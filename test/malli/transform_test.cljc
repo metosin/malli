@@ -281,8 +281,12 @@
 
   (testing "seqex"
     (testing "decode"
+      (is (= [1 2] (m/decode [:repeat {:min 2, :max 4} int?] ["1" "2"] mt/string-transformer)))
+      (is (= [1 2] (m/decode [:repeat [:repeat int?]] ["1" "2"] mt/string-transformer)))
+      (is (= [1 2] (m/decode [:* [:repeat int?]] ["1" "2"] mt/string-transformer)))
+      (is (= [1 2] (m/decode [:repeat [:* int?]] ["1" "2"] mt/string-transformer)))
       (are [s v v*]
-        (= (m/decode s v mt/string-transformer) v*)
+        (= v* (m/decode s v mt/string-transformer))
 
         [:cat] [] []
         [:cat] "1" "1"

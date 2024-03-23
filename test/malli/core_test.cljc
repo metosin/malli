@@ -1282,6 +1282,8 @@
 
     (testing "empty tuples are ok"
       (is (m/validate :tuple []))
+      (is (nil? (m/explain :tuple [])))
+      (is (m/explain :tuple [1]))
       (is (not (m/validate :tuple nil))))
 
     (testing "more than 1 elements fail on collections"

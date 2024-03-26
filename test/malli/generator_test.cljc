@@ -919,3 +919,91 @@
                        {:seed 2})]
     (is (vector? v))
     (is (seq v))))
+
+(def NonEmptyMapGroup
+  [:map
+   {:keys [[:or :a1 :a2]]}
+   [:a1 {:optional true} string?]
+   [:a2 {:optional true} string?]])
+
+(def UserPwGroups
+  [:map
+   {:keys [[:or :secret [:and :user :pass]]
+             [:distinct #{:secret} #{:user :pass}]]}
+   [:secret {:optional true} string?]
+   [:user {:optional true} string?]
+   [:pass {:optional true} string?]])
+
+(def ImpliesGroups
+  [:map
+   {:keys [[:implies :a1 :a2 :a3]]}
+   [:a1 {:optional true} string?]
+   [:a2 {:optional true} string?]
+   [:a3 {:optional true} string?]])
+
+(def IffGroups
+  [:map
+   {:keys [[:iff :a1 :a2 :a3]]}
+   [:a1 {:optional true} string?]
+   [:a2 {:optional true} string?]
+   [:a3 {:optional true} string?]])
+
+(def XOrGroups
+  [:map
+   {:keys [[:xor :a1 :a2 :a3]]}
+   [:a1 {:optional true} string?]
+   [:a2 {:optional true} string?]
+   [:a3 {:optional true} string?]])
+
+(def NotGroups
+  [:map
+   {:keys [[:or [:and :a1 :a2] [:not :a3]]]}
+   [:a1 {:optional true} string?]
+   [:a2 {:optional true} string?]
+   [:a3 {:optional true} string?]])
+
+(deftest map-keys-generator-test
+  (testing ":or"
+    (is (= '({:a1 ""} {:a2 "4"} {:a1 "h"} {:a1 ""} {:a1 "99"} {:a1 "tW1", :a2 "8J"} {:a2 "c"})
+           (mg/sample NonEmptyMapGroup
+                      {:seed 1
+                       :size 7}))))
+  (testing ":distinct"
+    (is (= '({:secret ""} {:user "", :pass "H"} {:secret "L"} {:user "2P", :pass "06"} {:secret "r4Wn"})
+           (mg/sample UserPwGroups
+                      {:seed 3
+                       :size 5}))))
+  (testing ":implies"
+    (is (= '({} {:a2 ""} {:a3 "L"} {:a2 "2P", :a3 "06"} {:a3 "r4Wn"})
+           (mg/sample ImpliesGroups
+                      {:seed 3
+                       :size 5}))))
+  (testing ":iff"
+    (is (= '({} {:a1 "", :a2 "I", :a3 "1"} {} {:a1 "2P", :a2 "0k", :a3 "I4k"} {})
+           (mg/sample IffGroups
+                      {:seed 3
+                       :size 5}))))
+  (testing ":xor"
+    (is (= '({:a1 ""} {:a2 ""} {:a3 "L"} {:a1 "33"} {:a3 "r4Wn"})
+           (mg/sample XOrGroups
+                      {:seed 3
+                       :size 5}))))
+  (testing ":not"
+    (is (= '({} {:a1 ""} {:a2 "L"} {:a1 "2P", :a2 "06"} {:a2 "r4Wn"})
+           (mg/sample NotGroups
+                      {:seed 3
+                       :size 5})))))
+
+(deftest map-keys-unsatisfiable-test
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/unsatisfiable-keys"
+        (mg/generate
+          [:map {:keys [[:and :a [:not :a]]]}
+           [:a :int]])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/unsatisfiable-keys"
+        (mg/generate
+          [:map {:keys [[:not :a]]}
+           [:a :int]]))))

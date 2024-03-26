@@ -1,6 +1,7 @@
 ;; See also `malli.generator-ast` for viewing generators as data
 (ns malli.generator
-  (:require [clojure.spec.gen.alpha :as ga]
+  (:require [clojure.math.combinatorics :as comb]
+            [clojure.spec.gen.alpha :as ga]
             [clojure.string :as str]
             [clojure.test.check :as check]
             [clojure.test.check.generators :as gen]
@@ -170,24 +171,70 @@
   (let [g (generator s options)]
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
-(defn -map-gen [schema options]
+(defn -valid-key-sets [schema options]
+  (when-some [keys-constraints (:keys (m/properties schema))]
+    (let [{required false
+           optional true} (group-by #(-> % -last m/properties :optional boolean)
+                                    (m/entries schema))
+          keys-constraint (into [:and] keys-constraints)
+          base (into {} (map (fn [[k]]
+                               {k :required}))
+                     required)
+          p (m/-keys-constraint-validator keys-constraint options)]
+      (into [] (comp (keep (fn [optionals]
+                             (let [example (-> base
+                                               (into (map (fn [[k]]
+                                                            {k :required}))
+                                                     optionals))]
+                               (when (p example)
+                                 (into example
+                                       (map (fn [[k]]
+                                              (when-not (example k)
+                                                {k :never})))
+                                       optional)))))
+                     (distinct))
+            (comb/subsets optional)))))
+
+(defn -map-gen* [schema classify-entry options]
   (loop [[[k s :as e] & entries] (m/entries schema)
          gens []]
     (if (nil? e)
       (gen/fmap -build-map (apply gen/tuple gens))
-      (if (-> e -last m/properties :optional)
-        ;; opt
+      (case (classify-entry e)
+        :never (recur entries gens)
+        :optional
         (recur
-         entries
-         (conj gens
-               (if-let [g (-not-unreachable (-value-gen k s options))]
-                 (gen-one-of [nil-gen g])
-                 nil-gen)))
-        ;;; req
+          entries
+          (conj gens
+                (if-let [g (-not-unreachable (-value-gen k s options))]
+                  (gen-one-of [nil-gen g])
+                  nil-gen)))
+        :required
         (let [g (-value-gen k s options)]
           (if (-unreachable-gen? g)
             (-never-gen options)
             (recur entries (conj gens g))))))))
+
+(defn -map-gen-no-keys [schema options]
+  (-map-gen* schema
+             (fn [e]
+               (if (-> e -last m/properties :optional)
+                 :optional
+                 :required))
+             options))
+
+(defn -map-gen [schema options]
+  (if-some [key-sets (-valid-key-sets schema options)]
+    (if (empty? key-sets)
+      (m/-fail! ::unsatisfiable-keys {:schema (m/form schema)})
+      (gen/bind gen/nat
+                (fn [i]
+                  (let [key-group (nth key-sets (mod i (count key-sets)))]
+                    (-map-gen* schema
+                               (fn [[k]]
+                                 (get key-group k :never))
+                               options)))))
+    (-map-gen-no-keys schema options)))
 
 (defn -map-of-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)

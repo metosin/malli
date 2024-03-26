@@ -378,6 +378,190 @@ default branching can be arbitrarily nested:
 ; => true
 ```
 
+## Keys constraints
+
+The `:map` schema accepts a `:keys` property, which is a vector of
+additional constraints that must be satisfied by the keys of the map.
+
+The simplest constraint is naming a key, which asserts the key must exist.
+
+```clojure
+(me/humanize
+  (m/explain
+   [:map
+    {:keys [:x]}
+    [:x {:optional true} :int]]
+   {}))
+; => ["should provide key: :x"]
+```
+
+The `:or` constraint asserts that at least one of its children is satisfied.
+
+```clojure
+(def Padding
+  [:map
+   {:keys [[:or :top :bottom :left :right]]}
+   [:top {:optional true} number?]
+   [:bottom {:optional true} number?]
+   [:left {:optional true} number?]
+   [:right {:optional true} number?]])
+
+(m/validate Padding {:left 1 :right 10 :up 25 :down 50}) ;=> true
+(me/humanize
+  (m/explain Padding {}))
+; => ["should provide at least one key: :top :bottom :left :right"]
+```
+
+The `:xor` constraint requires exactly one of its children to be satisfied.
+
+```clojure
+(def GitOrMvn
+  [:map {:keys [[:xor :mvn/version :git/sha]]}
+   [:mvn/version {:optional true} :string]
+   [:git/sha {:optional true} :string]])
+
+(m/validate GitOrMvn {:mvn/version "1.0.0"}) ; => true
+
+(me/humanize
+  (m/explain GitOrMvn
+             {:mvn/version "1.0.0"
+              :git/sha "123"}))
+; => ["should provide exactly one of the following keys: :mvn/version :git/sha"]
+
+(me/humanize
+  (m/explain GitOrMvn
+             {}))
+; => ["should provide exactly one of the following keys: :mvn/version :git/sha"]
+```
+
+The `:iff` constraint either requires either all or none of its children to be satisfied.
+
+```clojure
+(def UserPass
+  [:map
+   {:keys [[:iff :user :pass]]}
+   [:user {:optional true} string?]
+   [:pass {:optional true} string?]])
+
+(m/validate UserPass {}) ; => true
+(m/validate UserPass {:user "a" :pass "b"}) ; => true
+
+(me/humanize
+  (m/explain UserPass {:user "a"}))
+; => ["should provide key: :pass"]
+```
+
+The `:implies` constraint is satisfied if either its first constraint is _not_ satisfied or
+all of its constraints are satisfied. It takes one or more constraints.
+
+
+```clojure
+(def TagImpliesSha
+  [:map {:keys [[:implies :git/tag :git/sha]]}
+   [:git/sha {:optional true} :string]
+   [:git/tag {:optional true} :string]])
+
+(m/validate TagImpliesSha {:git/sha "abc123"}) ;=> true
+(m/validate TagImpliesSha {:git/tag "v1.0.0" :git/sha "abc123"}) ; => true
+
+(me/humanize
+  (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
+; => ["should provide key: :git/sha"]
+```
+
+The `:distinct` constraint takes sets of keys. Map keys can intersect with at most one set.
+
+```clojure
+(def SeparateMvnGit
+  [:map {:keys [[:distinct #{:mvn/version} #{:git/sha :git/url :git/tag}]]}
+   [:mvn/version {:optional true} :string]
+   [:git/sha {:optional true} :string]
+   [:git/tag {:optional true} :string]
+   [:git/url {:optional true} :string]])
+
+(m/validate SeparateMvnGit {}) ; => true
+(m/validate SeparateMvnGit {:mvn/version "1.0.0"}) ; => true
+(m/validate SeparateMvnGit {:git/sha "1.0.0"}) ; => true
+
+(me/humanize
+  (m/explain SeparateMvnGit
+             {:mvn/version "1.0.0"
+              :git/sha "abc123"}))
+; => ["should not combine key :mvn/version with key: :git/sha"]
+```
+
+The `:and` constraint requires all of its children to be satisfied. The top-level vector
+of constraints provided to the `:keys` property implicitly forms an `:and`.
+
+```clojure
+(def SecretOrCreds
+  [:map
+   {:keys [[:or :secret [:and :user :pass]]
+           [:distinct #{:secret} #{:user :pass}]]}
+   [:secret {:optional true} string?]
+   [:user {:optional true} string?]
+   [:pass {:optional true} string?]])
+
+(m/validate SecretOrCreds {:secret "1234"}) ; => true
+(m/validate SecretOrCreds {:user "user" :pass "hello"}) ; => true
+
+(me/humanize
+  (m/explain SecretOrCreds {:user "user"}))
+; => ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
+
+;; combining :or with :distinct helps enforce this case
+(me/humanize
+  (m/explain SecretOrCreds {:secret "1234" :user "user"}))
+; => ["should not combine key :secret with key: :user"]
+```
+
+The `:not` constraint is satisified if its child isn't.
+
+```clojure
+(def DPad
+  [:map {:keys [[:not [:and :down :up]]
+                [:not [:and :left :right]]]}
+   [:down {:optional true} [:= 1]]
+   [:left {:optional true} [:= 1]]
+   [:right {:optional true} [:= 1]]
+   [:up {:optional true} [:= 1]]])
+
+(m/validate DPad {}) ; => true
+(m/validate DPad {:up 1}) ; => true
+(m/validate DPad {:down 1}) ; => true
+(m/validate DPad {:right 1}) ; => true
+(m/validate DPad {:left 1}) ; => true
+(m/validate DPad {:up 1 :left 1}) ; => true
+(m/validate DPad {:down 1 :left 1}) ; => true
+(m/validate DPad {:up 1 :right 1}) ; => true
+(m/validate DPad {:down 1 :right 1}) ; => true
+
+(me/humanize
+  (m/explain DPad {:up 1 :down 1}))
+; => ["either: 1). should not provide key: :down; or 2). should not provide key: :up"]
+
+(me/humanize
+  (m/explain DPad {:left 1 :right 1}))
+; => ["either: 1). should not provide key: :left; or 2). should not provide key: :right"]
+```
+
+Constraints can be checked for satisfiability by calling `mg/generate`. Note that a required
+key can never omitted from a map regardless of `:keys`.
+
+```clojure
+;; contradiction within :keys
+(mg/generate
+  [:map {:keys [[:and :a [:not :a]]]}
+   [:a :int]])
+; Exception: :malli.generator/unsatisfiable-keys
+
+;; :keys constraint contradicts required key
+(mg/generate
+  [:map {:keys [[:not :a]]}
+   [:a :int]])
+; Exception: :malli.generator/unsatisfiable-keys
+```
+
 ## Sequence schemas
 
 You can use `:sequential` to describe homogeneous sequential Clojure collections.

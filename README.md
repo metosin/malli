@@ -471,11 +471,11 @@ all of its constraints are satisfied. It takes one or more constraints.
 ; => ["should provide key: :git/sha"]
 ```
 
-The `:distinct` constraint takes sets of keys. Map keys can intersect with at most one set.
+The `:disjoint` constraint takes sets of keys. Map keys can intersect with at most one set.
 
 ```clojure
 (def SeparateMvnGit
-  [:map {:distinct [#{:mvn/version}
+  [:map {:disjoint [#{:mvn/version}
                     #{:git/sha :git/url :git/tag}]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]
@@ -493,12 +493,12 @@ The `:distinct` constraint takes sets of keys. Map keys can intersect with at mo
 ; => ["should not combine key :mvn/version with key: :git/sha"]
 ```
 
-For multiple sets of distinct keys, nest `:distinct` in `:keys`.
+For multiple sets of disjoint keys, nest `:disjoint` in `:keys`.
 
 ```clojure
 (def DPad
-  [:map {:keys [[:not [:and :down :up]]
-                [:not [:and :left :right]]]}
+  [:map {:keys [[:disjoint #{:down} #{:up}]
+                [:disjoint #{:left} #{:right}]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]
@@ -529,7 +529,7 @@ of constraints provided to the `:keys` property implicitly forms an `:and`.
 ```clojure
 (def SecretOrCreds
   [:map {:or [:secret [:and :user :pass]]
-         :distinct [#{:secret}
+         :disjoint [#{:secret}
                     #{:user :pass}]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
@@ -542,7 +542,7 @@ of constraints provided to the `:keys` property implicitly forms an `:and`.
   (m/explain SecretOrCreds {:user "user"}))
 ; => ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
 
-;; combining :or with :distinct helps enforce this case
+;; combining :or with :disjoint helps enforce this case
 (me/humanize
   (m/explain SecretOrCreds {:secret "1234" :user "user"}))
 ; => ["should not combine key :secret with key: :user"]

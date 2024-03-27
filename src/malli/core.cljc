@@ -971,10 +971,10 @@
                        #(let [rs (filter (fn [p] (p %)) ps)]
                           (boolean
                             (and (seq rs) (not (next rs))))))
-                :distinct (let [ksets (next constraint)
+                :disjoint (let [ksets (next constraint)
                                 ps (mapv (fn [ks]
                                            (when-not (set? ks)
-                                             (-fail! ::distinct-constraint-takes-sets-of-keys {:constraint constraint}))
+                                             (-fail! ::disjoint-constraint-takes-sets-of-keys {:constraint constraint}))
                                            #(boolean
                                               (some (fn [k]
                                                       (contains? % k))
@@ -982,7 +982,7 @@
                                          ksets)
                                 _ (let [in-multiple (apply set/intersection ksets)]
                                     (when (seq in-multiple)
-                                      (-fail! ::distinct-keys-must-be-distinct {:in-multiple-keys in-multiple})))]
+                                      (-fail! ::disjoint-keys-must-be-distinct {:in-multiple-keys in-multiple})))]
                             #(let [rs (keep-indexed (fn [i p]
                                                       (when (p %)
                                                         i))
@@ -1008,7 +1008,7 @@
                         [:contains :keys]))
           (into (keep #(some->> (get properties %)
                                 (into [%]))
-                      [:distinct :iff :implies :or :xor]))))
+                      [:disjoint :iff :implies :or :xor]))))
 
 (defn -map-schema
   ([]

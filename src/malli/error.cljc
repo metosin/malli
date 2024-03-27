@@ -82,7 +82,7 @@
                     (str "should provide key" (if (next missing) "s" "") ": "
                          (apply str (interpose " " (map pr-str missing)))))
 
-                  (= :distinct op)
+                  (= :disjoint op)
                   (let [ksets (vec ng)
                         [has-constraint has-k] (some (fn [i]
                                                   (when-some [[has-k] (not-empty

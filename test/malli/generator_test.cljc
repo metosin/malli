@@ -929,7 +929,7 @@
 (def UserPwGroups
   [:map
    {:keys [[:or :secret [:and :user :pass]]
-             [:distinct #{:secret} #{:user :pass}]]}
+           [:disjoint #{:secret} #{:user :pass}]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
@@ -968,7 +968,7 @@
            (mg/sample NonEmptyMapGroup
                       {:seed 1
                        :size 7}))))
-  (testing ":distinct"
+  (testing ":disjoint"
     (is (= '({:secret ""} {:user "", :pass "H"} {:secret "L"} {:user "2P", :pass "06"} {:secret "r4Wn"})
            (mg/sample UserPwGroups
                       {:seed 3

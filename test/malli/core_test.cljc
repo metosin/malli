@@ -3241,7 +3241,7 @@
 (def UserPwGroups
   [:map
    {:keys [[:or :secret [:and :user :pass]]
-           [:distinct #{:secret} (sorted-set :user :pass)]]}
+           [:disjoint #{:secret} (sorted-set :user :pass)]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
@@ -3304,7 +3304,7 @@
              (with-schema-forms (m/explain NonEmptyMapGroup {}))))
       (is (= ["should provide at least one key: :a1 :a2"]
              (me/humanize (m/explain NonEmptyMapGroup {}))))))
-  (testing ":distinct"
+  (testing ":disjoint"
     (testing "validate"
       (is (m/validate UserPwGroups {:secret "a"}))
       (is (m/validate UserPwGroups {:user "a"
@@ -3503,7 +3503,7 @@
    [:pass {:optional true} string?]])
 
 (def SeparateMvnGit
-  [:map {:distinct [#{:mvn/version}
+  [:map {:disjoint [#{:mvn/version}
                     #{:git/sha :git/url :git/tag}]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]
@@ -3512,13 +3512,21 @@
 
 (def SecretOrCreds
   [:map {:or [:secret [:and :user :pass]]
-         :distinct [#{:secret}
+         :disjoint [#{:secret}
                     #{:user :pass}]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
 (def DPad
+  [:map {:keys [[:disjoint #{:down} #{:up}]
+                [:disjoint #{:left} #{:right}]]}
+   [:down {:optional true} [:= 1]]
+   [:left {:optional true} [:= 1]]
+   [:right {:optional true} [:= 1]]
+   [:up {:optional true} [:= 1]]])
+
+(def DPadNot
   [:map {:keys [[:not [:and :down :up]]
                 [:not [:and :left :right]]]}
    [:down {:optional true} [:= 1]]
@@ -3529,14 +3537,6 @@
 (def DPadDeMorgan
   [:map {:keys [[:or [:not :down] [:not :up]]
                 [:or [:not :left] [:not :right]]]}
-   [:down {:optional true} [:= 1]]
-   [:left {:optional true} [:= 1]]
-   [:right {:optional true} [:= 1]]
-   [:up {:optional true} [:= 1]]])
-
-(def DPadDistinct
-  [:map {:keys [[:distinct #{:down} #{:up}]
-                [:distinct #{:left} #{:right}]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]
@@ -3622,7 +3622,7 @@
            ["should not combine key :secret with key: :user"])))
 
   (testing "DPad"
-    (doseq [DPad [DPad DPadDeMorgan DPadDistinct]]
+    (doseq [DPad [DPad DPadNot DPadDeMorgan]]
       (is (m/validate DPad {}))
       (is (m/validate DPad {:up 1}))
       (is (m/validate DPad {:down 1}))
@@ -3632,7 +3632,7 @@
       (is (m/validate DPad {:down 1 :left 1}))
       (is (m/validate DPad {:up 1 :right 1}))
       (is (m/validate DPad {:down 1 :right 1})))
-    (doseq [DPad [DPad DPadDeMorgan]]
+    (doseq [DPad [DPadNot DPadDeMorgan]]
       (is (= (me/humanize
                (m/explain DPad {:up 1 :down 1}))
              ["either: 1). should not provide key: :down; or 2). should not provide key: :up"]))
@@ -3640,10 +3640,10 @@
                (m/explain DPad {:left 1 :right 1}))
              ["either: 1). should not provide key: :left; or 2). should not provide key: :right"])))
     (is (= (me/humanize
-             (m/explain DPadDistinct {:up 1 :down 1}))
+             (m/explain DPad {:up 1 :down 1}))
            ["should not combine key :down with key: :up"]))
     (is (= (me/humanize
-             (m/explain DPadDistinct {:left 1 :right 1}))
+             (m/explain DPad {:left 1 :right 1}))
            ["should not combine key :left with key: :right"])))
   (testing "Padding"
     (is (m/validate Padding {:left 1 :right 10 :up 25 :down 50}))

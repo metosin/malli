@@ -1006,7 +1006,7 @@
   (some->> (not-empty
              (some-> []
                      (into (mapcat #(get properties %)
-                                   [:contains :keys]))
+                                   [:keys]))
                      (into (keep #(some->> (get properties %)
                                            (into [%]))
                                  [:disjoint :iff :implies :or :xor]))))

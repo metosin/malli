@@ -172,11 +172,10 @@
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
 (defn -valid-key-sets [schema options]
-  (when-some [keys-constraints (:keys (m/properties schema))]
+  (when-some [keys-constraint (m/-keys-constraint-from-properties (m/properties schema))]
     (let [{required false
            optional true} (group-by #(-> % -last m/properties :optional boolean)
                                     (m/entries schema))
-          keys-constraint (into [:and] keys-constraints)
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)

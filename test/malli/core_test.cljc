@@ -3241,7 +3241,7 @@
 (def UserPwGroups
   [:map
    {:keys [[:or :secret [:and :user :pass]]
-             [:distinct #{:secret} (sorted-set :user :pass)]]}
+           [:distinct #{:secret} (sorted-set :user :pass)]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
@@ -3630,4 +3630,6 @@
     (is (m/validate Padding {:left 1 :right 10 :up 25 :down 50}))
     (is (= (me/humanize
              (m/explain Padding {}))
-           ["should provide at least one key: :top :bottom :left :right"]))))
+           ["should provide at least one key: :top :bottom :left :right"]))
+    (is (mg/sample Padding {:size 5}))
+    ))

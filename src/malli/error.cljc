@@ -13,15 +13,15 @@
         min (str "should be at least " min)
         max (str "should be at most " max)))))
 
-(defn -humanize-group-violation [{:keys [group value] :as args}]
+(defn -humanize-constraint-violation [{:keys [constraint value] :as args}]
   (letfn [(has? [k] (contains? value k))
-          (flat? [group] (not-any? vector? (next group)))
-          (-humanize-group-violation [group]
-            (if (not (vector? group))
-              (str "should provide key: " (pr-str group))
-              (let [flat-op? (flat? group)
-                    ng (next group)
-                    op (first group)]
+          (flat? [constraint] (not-any? vector? (next constraint)))
+          (-humanize-constraint-violation [constraint]
+            (if (not (vector? constraint))
+              (str "should provide key: " (pr-str constraint))
+              (let [flat-op? (flat? constraint)
+                    ng (next constraint)
+                    op (first constraint)]
                 (cond
                   (and (= :or op) flat-op?)
                   (str "should provide at least one key: "
@@ -31,6 +31,23 @@
                   (let [missing (remove has? ng)]
                     (str "should provide key" (if (next missing) "s" "") ": "
                          (apply str (interpose " " (map pr-str missing)))))
+
+                  (= :and op)
+                  (let [failing-constraints (into []
+                                                  (keep (fn [constraint]
+                                                          (let [validator (m/-keys-constraint-validator constraint nil)]
+                                                            (when-not (validator value)
+                                                              constraint))))
+                                                  ng)]
+                    (if (= 1 (count failing-constraints))
+                      (-humanize-constraint-violation (first failing-constraints))
+                      (str "should: "
+                           (apply str
+                                  (interpose "; and "
+                                             (map-indexed (fn [i flat-child]
+                                                            (str (inc i) "). "
+                                                                 (-humanize-constraint-violation flat-child)))
+                                                          failing-constraints))))))
 
                   (and (= :xor op) flat-op?)
                   (let [provided (or (not-empty (filterv has? ng))
@@ -50,7 +67,7 @@
                               (interpose "; or "
                                          (map-indexed (fn [i flat-child]
                                                         (str (inc i) "). "
-                                                             (-humanize-group-violation flat-child)))
+                                                             (-humanize-constraint-violation flat-child)))
                                                       ng))))
 
                   (and (= :not op) flat-op?)
@@ -59,7 +76,7 @@
                   (and (= :not op)
                        (vector? (first ng))
                        (#{:and :or} (ffirst ng)))
-                  (-humanize-group-violation
+                  (-humanize-constraint-violation
                     (into [({:and :or :or :and} (ffirst ng))]
                           (map #(vector :not %))
                           (nfirst ng)))
@@ -76,18 +93,18 @@
 
                   (= :distinct op)
                   (let [ksets (vec ng)
-                        [has-group has-k] (some (fn [i]
+                        [has-constraint has-k] (some (fn [i]
                                                   (when-some [[has-k] (not-empty
                                                                         (filter has? (nth ksets i)))]
                                                     [i has-k]))
                                                 (range (count ksets)))
                         violating-ks (filterv has?
-                                              (apply concat (subvec ksets (inc has-group))))]
+                                              (apply concat (subvec ksets (inc has-constraint))))]
                     (str "should not combine key " (pr-str has-k)
                          " with key" (if (next violating-ks) "s" "") ": "
                          (apply str (interpose " " (map pr-str violating-ks)))))
-                  :else (str "should satisfy keys constraint: " (pr-str group))))))]
-    (-humanize-group-violation group)))
+                  :else (str "should satisfy keys constraint: " (pr-str constraint))))))]
+    (-humanize-constraint-violation constraint)))
 
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
@@ -104,9 +121,9 @@
                                       (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
-   ::m/group-violation {:error/fn {:en (fn [{:keys [schema value path]} _]
-                                         (-humanize-group-violation {:group (-> schema m/properties :keys (nth (peek path)))
-                                                                     :value value}))}}
+   ::m/keys-violation {:error/fn {:en (fn [{:keys [schema value path]} _]
+                                        (-humanize-constraint-violation {:constraint (-> schema m/properties m/-keys-constraint-from-properties)
+                                                                         :value value}))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}

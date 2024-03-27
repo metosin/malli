@@ -1001,6 +1001,12 @@
                 (-fail! ::unknown-constraint {:constraint constraint}))))]
     (-keys-constraint-validator constraint)))
 
+(defn -keys-constraint-from-properties [properties]
+  (some->> (not-empty
+             (mapcat #(get properties %)
+                     [:distinct :iff :implies :keys :or :xor]))
+           (into [:and])))
+
 (defn -map-schema
   ([]
    (-map-schema {:naked-keys true}))
@@ -1014,15 +1020,16 @@
      (-type-properties [_] (:type-properties opts))
      (-properties-schema [_ _])
      (-children-schema [_ _])
-     (-into-schema [parent {:keys [closed] keys-constraints :keys :as properties} children options]
+     (-into-schema [parent {:keys [closed] :as properties} children options]
        (let [pred? (:pred opts map?)
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
+             keys-constraints (delay (-keys-constraint-from-properties properties))
              default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
              explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]
-                        (when keys-constraints (-fail! ::todo-parse-map-keys))
+                        (when @keys-constraints (-fail! ::todo-parse-map-keys))
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
                               parsers (cond->> (-vmap
@@ -1057,10 +1064,8 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   keys-validator (when (seq keys-constraints)
-                                    (-keys-constraint-validator
-                                      (into [:and] keys-constraints)
-                                      options))
+                   keys-validator (some-> @keys-constraints
+                                          (-keys-constraint-validator options))
                    default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
@@ -1079,8 +1084,8 @@
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validators (some->> keys-constraints
-                                                  (mapv #(-keys-constraint-validator % options)))
+                   constraint-validator (some->> @keys-constraints
+                                                 (-keys-constraint-validator options))
                    default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]
@@ -1105,14 +1110,11 @@
                                               acc
                                               (conj acc (miu/-error (conj path k) (conj in k) this v ::extra-key))))
                                           acc x)))
-                                constraint-validators
+                                constraint-validator
                                 (conj (fn [x in acc]
-                                        (reduce
-                                         (fn [acc [i constraint-validator]]
-                                           (if (constraint-validator x)
-                                             acc
-                                             (conj acc (miu/-error (conj path :keys i) in this x ::group-violation))))
-                                         acc (map-indexed vector constraint-validators)))))]
+                                        (cond-> acc
+                                          (not (constraint-validator x))
+                                          (conj (miu/-error path in this x ::keys-violation))))))]
                (fn [x in acc]
                  (if-not (pred? x)
                    (conj acc (miu/-error path in this x ::invalid-type))
@@ -1123,7 +1125,7 @@
            (-parser [this] (->parser this -parser))
            (-unparser [this] (->parser this -unparser))
            (-transformer [this transformer method options]
-             (when keys-constraints (-fail! ::todo-transform-map-keys))
+             (when @keys-constraints (-fail! ::todo-transform-map-keys))
              (let [keyset (-entry-keyset (-entry-parser this))
                    this-transformer (-value-transformer transformer this method options)
                    ->children (reduce (fn [acc [k s]]

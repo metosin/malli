@@ -965,7 +965,8 @@
                 :and (let [ps (mapv -keys-constraint-validator (next constraint))]
                        #(every? (fn [p] (p %)) ps))
                 :or (let [ps (mapv -keys-constraint-validator (next constraint))]
-                      #(boolean (some (fn [p] (p %)) ps)))
+                      #(boolean 
+                         (some (fn [p] (p %)) ps)))
                 :xor (let [ps (mapv -keys-constraint-validator (next constraint))]
                        #(let [rs (filter (fn [p] (p %)) ps)]
                           (boolean
@@ -1084,8 +1085,8 @@
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validator (some->> @keys-constraints
-                                                 (-keys-constraint-validator options))
+                   constraint-validator (some-> @keys-constraints
+                                                (-keys-constraint-validator options))
                    default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]

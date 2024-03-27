@@ -33,21 +33,12 @@
                          (apply str (interpose " " (map pr-str missing)))))
 
                   (= :and op)
-                  (let [failing-constraints (into []
-                                                  (keep (fn [constraint]
-                                                          (let [validator (m/-keys-constraint-validator constraint nil)]
-                                                            (when-not (validator value)
-                                                              constraint))))
+                  (let [failing-constraints (keep (fn [constraint]
+                                                    (let [validator (m/-keys-constraint-validator constraint nil)]
+                                                      (when-not (validator value)
+                                                        constraint)))
                                                   ng)]
-                    (if (= 1 (count failing-constraints))
-                      (-humanize-constraint-violation (first failing-constraints))
-                      (str "should: "
-                           (apply str
-                                  (interpose "; and "
-                                             (map-indexed (fn [i flat-child]
-                                                            (str (inc i) "). "
-                                                                 (-humanize-constraint-violation flat-child)))
-                                                          failing-constraints))))))
+                    (-humanize-constraint-violation (first failing-constraints)))
 
                   (and (= :xor op) flat-op?)
                   (let [provided (or (not-empty (filterv has? ng))

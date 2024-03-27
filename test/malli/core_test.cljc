@@ -3295,11 +3295,11 @@
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a" :a2 "b" :a3 "c"})))
       (is (= '{:schema [:map {:keys [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                :value {}
-               :errors ({:path [:keys 0]
+               :errors ({:path []
                          :in []
                          :schema [:map {:keys [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                          :value {}
-                         :type :malli.core/group-violation
+                         :type :malli.core/keys-violation
                          :message nil})}
              (with-schema-forms (m/explain NonEmptyMapGroup {}))))
       (is (= ["should provide at least one key: :a1 :a2"]
@@ -3320,31 +3320,31 @@
       (is (nil? (m/explain UserPwGroups {:secret "a"})))
       (is (nil? (m/explain UserPwGroups {:user "a"
                                          :pass "b"})))
-      (is (= [{:path [:keys 0]
+      (is (= [{:path []
                :in []
                :schema (m/form UserPwGroups)
                :value {:user "a"}
-               :type :malli.core/group-violation
+               :type :malli.core/keys-violation
                :message nil}]
             (:errors (with-schema-forms (m/explain UserPwGroups {:user "a"})))))
       (is (= ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
              (me/humanize (m/explain UserPwGroups {:user "a"}))))
-      (is (= [{:path [:keys 0]
+      (is (= [{:path []
                :in []
                :schema (m/form UserPwGroups)
                :value {}
-               :type :malli.core/group-violation
+               :type :malli.core/keys-violation
                :message nil}]
              (-> (m/explain UserPwGroups {})
                  with-schema-forms
                  :errors)))
       (is (= ["either: 1). should provide key: :secret; or 2). should provide keys: :user :pass"]
              (me/humanize (m/explain UserPwGroups {}))))
-      (is (= [{:path [:keys 1]
+      (is (= [{:path []
                :in []
                :schema (m/form UserPwGroups)
                :value {:secret "a", :user "b"}
-               :type :malli.core/group-violation
+               :type :malli.core/keys-violation
                :message nil}]
              (-> (m/explain UserPwGroups {:secret "a"
                                           :user "b"})
@@ -3353,11 +3353,11 @@
       (is (= ["should not combine key :secret with key: :user"]
              (me/humanize (m/explain UserPwGroups {:secret "a"
                                                    :user "b"}))))
-      (is (= [{:path [:keys 1]
+      (is (= [{:path []
                :in []
                :schema (m/form UserPwGroups)
                :value {:secret "a", :user "b", :pass "c"}
-               :type :malli.core/group-violation
+               :type :malli.core/keys-violation
                :message nil}]
              (-> (m/explain UserPwGroups {:secret "a"
                                           :user "b"

@@ -2047,7 +2047,7 @@
   "Creates a Schema object from any of the following:
 
    - Schema instance (just returns it)
-   - IntoSchema instance (calls -into-schema with no children or properties)
+   - IntoSchema instance (attempts to construct a Schema with no children)
    - Schema vector syntax, e.g. [:string {:min 1}]
    - Qualified Keyword or String, using a registry lookup"
   ([?schema]

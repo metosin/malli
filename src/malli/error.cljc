@@ -13,7 +13,7 @@
         min (str "should be at least " min)
         max (str "should be at most " max)))))
 
-(defn -humanize-constraint-violation [{:keys [constraint value] :as args}]
+(defn -humanize-constraint-violation [{:keys [constraint value]} options]
   (letfn [(has? [k] (contains? value k))
           (flat? [constraint] (not-any? vector? (next constraint)))
           (-humanize-constraint-violation [constraint]
@@ -34,7 +34,7 @@
 
                   (= :and op)
                   (let [failing-constraints (keep (fn [constraint]
-                                                    (let [validator (m/-keys-constraint-validator constraint nil)]
+                                                    (let [validator (m/-keys-constraint-validator constraint options)]
                                                       (when-not (validator value)
                                                         constraint)))
                                                   ng)]
@@ -113,8 +113,10 @@
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
    ::m/keys-violation {:error/fn {:en (fn [{:keys [schema value path]} options]
-                                        (-humanize-constraint-violation {:constraint (-> schema m/properties (m/-keys-constraint-from-properties options))
-                                                                         :value value}))}}
+                                        (-humanize-constraint-violation
+                                          {:constraint (-> schema m/properties (m/-keys-constraint-from-properties options))
+                                           :value value
+                                           :options options}))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}

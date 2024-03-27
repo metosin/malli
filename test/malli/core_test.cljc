@@ -3488,32 +3488,32 @@
    [:zip {:optional true} int?]])
 
 (def GitOrMvn
-  [:map {:keys [[:xor :mvn/version :git/sha]]}
+  [:map {:xor [:mvn/version :git/sha]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]])
 
 (def TagImpliesSha
-  [:map {:keys [[:implies :git/tag :git/sha]]}
+  [:map {:implies [:git/tag :git/sha]}
    [:git/sha {:optional true} :string]
    [:git/tag {:optional true} :string]])
 
 (def UserPass
-  [:map
-   {:keys [[:iff :user :pass]]}
+  [:map {:iff [:user :pass]}
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
 (def SeparateMvnGit
-  [:map {:keys [[:distinct #{:mvn/version} #{:git/sha :git/url :git/tag}]]}
+  [:map {:distinct [#{:mvn/version}
+                    #{:git/sha :git/url :git/tag}]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]
    [:git/tag {:optional true} :string]
    [:git/url {:optional true} :string]])
 
 (def SecretOrCreds
-  [:map
-   {:keys [[:or :secret [:and :user :pass]]
-           [:distinct #{:secret} #{:user :pass}]]}
+  [:map {:or [:secret [:and :user :pass]]
+         :distinct [#{:secret}
+                    #{:user :pass}]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
@@ -3535,8 +3535,7 @@
    [:up {:optional true} [:= 1]]])
 
 (def Padding
-  [:map
-   {:keys [[:or :top :bottom :left :right]]}
+  [:map {:or [:top :bottom :left :right]}
    [:top {:optional true} number?]
    [:bottom {:optional true} number?]
    [:left {:optional true} number?]
@@ -3562,52 +3561,57 @@
          true))
   (is (= (me/humanize (m/explain Address {:zip 5555}))
          ["should provide keys: :street :city"]))
-  (is (= (m/validate GitOrMvn {:mvn/version "1.0.0"})
-         true))
-  (is (= (me/humanize
-           (m/explain GitOrMvn
-                      {:mvn/version "1.0.0"
-                       :git/sha "123"}))
-         ["should provide exactly one of the following keys: :mvn/version :git/sha"]))
-  (is (= (me/humanize
-           (m/explain GitOrMvn
-                      {}))
-         ["should provide exactly one of the following keys: :mvn/version :git/sha"]))
-  (is (= (m/validate TagImpliesSha {:git/sha "abc123"})
-         true))
-  (is (= (m/validate TagImpliesSha {:git/tag "v1.0.0" :git/sha "abc123"})
-         true))
-  (is (= (me/humanize
-           (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
-         ["should provide key: :git/sha"]))
-  (is (= (m/validate UserPass {})
-         true))
-  (is (= (m/validate UserPass {:user "a" :pass "b"})
-         true))
-  (is (= (me/humanize
-           (m/explain UserPass {:user "a"}))
-         ["should provide key: :pass"]))
-  (is (= (m/validate SeparateMvnGit {})
-         true))
-  (is (= (m/validate SeparateMvnGit {:mvn/version "1.0.0"})
-         true))
-  (is (= (m/validate SeparateMvnGit {:git/sha "1.0.0"})
-         true))
-  (is (= (me/humanize
-           (m/explain SeparateMvnGit
-                      {:mvn/version "1.0.0"
-                       :git/sha "abc123"}))
-         ["should not combine key :mvn/version with key: :git/sha"]))
-  (is (= (m/validate SecretOrCreds {:secret "1234"})
-         true))
-  (is (= (m/validate SecretOrCreds {:user "user" :pass "hello"})
-         true))
-  (is (= (me/humanize
-           (m/explain SecretOrCreds {:user "user"}))
-         ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]))
-  (is (= (me/humanize
-           (m/explain SecretOrCreds {:secret "1234" :user "user"}))
-         ["should not combine key :secret with key: :user"]))
+  (testing "GitOrMvn"
+    (is (= (m/validate GitOrMvn {:mvn/version "1.0.0"})
+           true))
+    (is (= (me/humanize
+             (m/explain GitOrMvn
+                        {:mvn/version "1.0.0"
+                         :git/sha "123"}))
+           ["should provide exactly one of the following keys: :mvn/version :git/sha"]))
+    (is (= (me/humanize
+             (m/explain GitOrMvn
+                        {}))
+           ["should provide exactly one of the following keys: :mvn/version :git/sha"])))
+  (testing "TagImpliesSha"
+    (is (= (m/validate TagImpliesSha {:git/sha "abc123"})
+           true))
+    (is (= (m/validate TagImpliesSha {:git/tag "v1.0.0" :git/sha "abc123"})
+           true))
+    (is (= (me/humanize
+             (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
+           ["should provide key: :git/sha"])))
+  (testing "UserPass"
+    (is (= (m/validate UserPass {})
+           true))
+    (is (= (m/validate UserPass {:user "a" :pass "b"})
+           true))
+    (is (= (me/humanize
+             (m/explain UserPass {:user "a"}))
+           ["should provide key: :pass"])))
+  (testing "SeparateMvnGit"
+    (is (= (m/validate SeparateMvnGit {})
+           true))
+    (is (= (m/validate SeparateMvnGit {:mvn/version "1.0.0"})
+           true))
+    (is (= (m/validate SeparateMvnGit {:git/sha "1.0.0"})
+           true))
+    (is (= (me/humanize
+             (m/explain SeparateMvnGit
+                        {:mvn/version "1.0.0"
+                         :git/sha "abc123"}))
+           ["should not combine key :mvn/version with key: :git/sha"])))
+  (testing "SecretOrCreds"
+    (is (= (m/validate SecretOrCreds {:secret "1234"})
+           true))
+    (is (= (m/validate SecretOrCreds {:user "user" :pass "hello"})
+           true))
+    (is (= (me/humanize
+             (m/explain SecretOrCreds {:user "user"}))
+           ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]))
+    (is (= (me/humanize
+             (m/explain SecretOrCreds {:secret "1234" :user "user"}))
+           ["should not combine key :secret with key: :user"])))
 
   (doseq [DPad [DPad DPadDeMorgan]]
     (testing "DPad"
@@ -3631,5 +3635,4 @@
     (is (= (me/humanize
              (m/explain Padding {}))
            ["should provide at least one key: :top :bottom :left :right"]))
-    (is (mg/sample Padding {:size 5}))
-    ))
+    (is (mg/sample Padding {:size 5}))))

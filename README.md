@@ -395,12 +395,15 @@ The simplest constraint is naming a key, which asserts the key must exist.
 ; => ["should provide key: :x"]
 ```
 
+Composite constraints are of the form `[:name constraint*]`. To avoid excessive nesting,
+some constraints can be named as a property, with its children as the property value. For example, 
+`{:or [:x :y] :iff [:z :a]}` is sugar for `{:keys [[:iff :z :a] [:or :x :y]]}`.
+
 The `:or` constraint asserts that at least one of its children is satisfied.
 
 ```clojure
 (def Padding
-  [:map
-   {:keys [[:or :top :bottom :left :right]]}
+  [:map {:or [:top :bottom :left :right]}
    [:top {:optional true} number?]
    [:bottom {:optional true} number?]
    [:left {:optional true} number?]
@@ -416,7 +419,7 @@ The `:xor` constraint requires exactly one of its children to be satisfied.
 
 ```clojure
 (def GitOrMvn
-  [:map {:keys [[:xor :mvn/version :git/sha]]}
+  [:map {:xor [:mvn/version :git/sha]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]])
 
@@ -438,8 +441,7 @@ The `:iff` constraint either requires either all or none of its children to be s
 
 ```clojure
 (def UserPass
-  [:map
-   {:keys [[:iff :user :pass]]}
+  [:map {:iff [:user :pass]}
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
@@ -457,7 +459,7 @@ all of its constraints are satisfied. It takes one or more constraints.
 
 ```clojure
 (def TagImpliesSha
-  [:map {:keys [[:implies :git/tag :git/sha]]}
+  [:map {:implies [:git/tag :git/sha]}
    [:git/sha {:optional true} :string]
    [:git/tag {:optional true} :string]])
 
@@ -473,7 +475,8 @@ The `:distinct` constraint takes sets of keys. Map keys can intersect with at mo
 
 ```clojure
 (def SeparateMvnGit
-  [:map {:keys [[:distinct #{:mvn/version} #{:git/sha :git/url :git/tag}]]}
+  [:map {:distinct [#{:mvn/version}
+                    #{:git/sha :git/url :git/tag}]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]
    [:git/tag {:optional true} :string]
@@ -495,9 +498,9 @@ of constraints provided to the `:keys` property implicitly forms an `:and`.
 
 ```clojure
 (def SecretOrCreds
-  [:map
-   {:keys [[:or :secret [:and :user :pass]]
-           [:distinct #{:secret} #{:user :pass}]]}
+  [:map {:or [:secret [:and :user :pass]]
+         :distinct [#{:secret}
+                    #{:user :pass}]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])

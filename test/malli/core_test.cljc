@@ -3224,3 +3224,13 @@
                                              ::xymap [:merge ::xmap ::ymap]}}
                          ::xymap]
                         {:registry registry, ::m/ref-key :id}))))))))
+
+(deftest property-registry-cannot-take-into-schema-test
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.core/error-creating-schema-from-into-schema-without-children"
+        (m/schema (:enum (m/default-schemas)))))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.core/schema-definition-must-be-in-options-not-properties"
+        (m/schema [:= {:registry {:enum (:enum (m/default-schemas))}} "foo"]))))

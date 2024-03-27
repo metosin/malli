@@ -1032,9 +1032,9 @@
              default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
              explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]
-                        (when @keys-constraints (-fail! ::todo-parse-map-keys))
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
+                              keys-validator (some-> @keys-constraints (-keys-constraint-validator options))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1058,7 +1058,13 @@
                                         (cons (fn [m]
                                                 (reduce
                                                  (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
-                                                 m (keys m)))))]
+                                                 m (keys m))))
+                                        ;;TODO unit test
+                                        keys-validator
+                                        (cons (fn [m]
+                                                (if (keys-validator m)
+                                                  m
+                                                  (reduced ::invalid)))))]
                           (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
@@ -1067,8 +1073,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   keys-validator (some-> @keys-constraints
-                                          (-keys-constraint-validator options))
+                   keys-validator (some-> @keys-constraints (-keys-constraint-validator options))
                    default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
@@ -1087,8 +1092,7 @@
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validator (some-> @keys-constraints
-                                                (-keys-constraint-validator options))
+                   constraint-validator (some-> @keys-constraints (-keys-constraint-validator options))
                    default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]

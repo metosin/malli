@@ -968,7 +968,7 @@
 (defn -keyset-constraint-validator [constraint options]
   (letfn [(-keyset-constraint-validator [constraint]
             (if-some [[k] (-contains-constraint-key constraint)]
-              #(contains? % constraint)
+              #(contains? % k)
               (case (if (vector? constraint)
                       (first constraint)
                       (-fail! ::unknown-keyset-contraint {:constraint constraint}))

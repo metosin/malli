@@ -112,8 +112,8 @@
                                       (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
-   ::m/keys-violation {:error/fn {:en (fn [{:keys [schema value path]} _]
-                                        (-humanize-constraint-violation {:constraint (-> schema m/properties m/-keys-constraint-from-properties)
+   ::m/keys-violation {:error/fn {:en (fn [{:keys [schema value path]} options]
+                                        (-humanize-constraint-violation {:constraint (-> schema m/properties (m/-keys-constraint-from-properties options))
                                                                          :value value}))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]

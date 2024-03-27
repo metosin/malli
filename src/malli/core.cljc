@@ -1002,7 +1002,7 @@
                 (-fail! ::unknown-constraint {:constraint constraint}))))]
     (-keys-constraint-validator constraint)))
 
-(defn -keys-constraint-from-properties [properties]
+(defn -keys-constraint-from-properties [properties options]
   (some->> (not-empty
              (some-> []
                      (into (mapcat #(get properties %)
@@ -1030,7 +1030,7 @@
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
-             keys-constraints (delay (-keys-constraint-from-properties properties))
+             keys-constraints (delay (-keys-constraint-from-properties properties options))
              default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
              explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]

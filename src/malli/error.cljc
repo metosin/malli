@@ -115,7 +115,7 @@
                                       (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
-   ::m/keys-violation {:error/fn {:en (fn [args options]
+   ::m/keys-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
                                         (-humanize-constraint-violation
                                           (assoc args :constraint (-> schema m/properties (m/-keys-constraint-from-properties options)))
                                           options))}}

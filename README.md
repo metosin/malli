@@ -388,8 +388,7 @@ The simplest constraint is naming a key, which asserts the key must exist.
 ```clojure
 (me/humanize
   (m/explain
-   [:map
-    {:keys [:x]}
+   [:map {:keys [:x]}
     [:x {:optional true} :int]]
    {}))
 ; => ["should provide key: :x"]

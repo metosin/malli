@@ -171,9 +171,11 @@
   (let [g (generator s options)]
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
+;;TODO gather optional keys from all :contains constraints (they might not all be mentioned in the :map keys).
 (defn -valid-keysets [schema options]
-  (when-some [keys-constraint (m/-keyset-constraint-from-properties (m/properties schema)
-                                                                  options)]
+  (when-some [keys-constraint (m/-keyset-constraint-from-properties
+                                (m/properties schema)
+                                options)]
     (let [{required false
            optional true} (group-by #(-> % -last m/properties :optional boolean)
                                     (m/entries schema))

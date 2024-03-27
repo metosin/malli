@@ -383,16 +383,13 @@ default branching can be arbitrarily nested:
 The `:map` schema accepts a `:keys` property, which is a vector of
 additional constraints that must be satisfied by the keys of the map.
 
-The simplest constraint is naming a key, which asserts the key must exist.
-At the top-level of a `:keys` form this has limited value, but it
-can change optional keys to required.
+The simplest constraint is naming a key, a "contains constraint", which asserts the key must exist.
 
 ```clojure
 (me/humanize
   (m/explain
-   [:map {:keys [:x]}
-    [:x {:optional true} :int]]
-   {}))
+    [:map {:keys [:x]}]
+    {}))
 ; => ["should provide key: :x"]
 ```
 

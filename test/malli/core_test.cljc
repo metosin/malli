@@ -3552,6 +3552,11 @@
 (deftest key-groupings-readme-examples-test
   (is (= (me/humanize
            (m/explain
+             [:map {:keys [:x]}]
+             {}))
+         ["should provide key: :x"]))
+  (is (= (me/humanize
+           (m/explain
              [:map
               {:keys [:x]}
               [:x {:optional true} :int]]

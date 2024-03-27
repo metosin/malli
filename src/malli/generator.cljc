@@ -171,8 +171,8 @@
   (let [g (generator s options)]
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
-(defn -valid-key-sets [schema options]
-  (when-some [keys-constraint (m/-keys-constraint-from-properties (m/properties schema)
+(defn -valid-keysets [schema options]
+  (when-some [keys-constraint (m/-keyset-constraint-from-properties (m/properties schema)
                                                                   options)]
     (let [{required false
            optional true} (group-by #(-> % -last m/properties :optional boolean)
@@ -180,7 +180,7 @@
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)
-          p (m/-keys-constraint-validator keys-constraint options)]
+          p (m/-keyset-constraint-validator keys-constraint options)]
       (into [] (comp (keep (fn [optionals]
                              (let [example (-> base
                                                (into (map (fn [[k]]
@@ -224,7 +224,7 @@
              options))
 
 (defn -map-gen [schema options]
-  (if-some [key-sets (-valid-key-sets schema options)]
+  (if-some [key-sets (-valid-keysets schema options)]
     (if (empty? key-sets)
       (m/-fail! ::unsatisfiable-keys {:schema (m/form schema)})
       (gen/bind gen/nat

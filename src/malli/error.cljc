@@ -39,7 +39,7 @@
 
                       (= :and op)
                       (let [failing-constraints (keep (fn [constraint]
-                                                        (let [validator (m/-keys-constraint-validator constraint options)]
+                                                        (let [validator (m/-keyset-constraint-validator constraint options)]
                                                           (when-not (validator value)
                                                             constraint)))
                                                       ng)]
@@ -120,7 +120,7 @@
    ::m/extra-key {:error/message {:en "disallowed key"}}
    ::m/keys-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
                                         (-humanize-constraint-violation
-                                          (assoc args :constraint (-> schema m/properties (m/-keys-constraint-from-properties options)))
+                                          (assoc args :constraint (-> schema m/properties (m/-keyset-constraint-from-properties options)))
                                           options))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]

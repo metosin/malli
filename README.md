@@ -525,6 +525,12 @@ For multiple sets of disjoint keys, nest `:disjoint` in `:keys`.
 The `:and` constraint requires all of its children to be satisfied. The top-level vector
 of constraints provided to the `:keys` property implicitly forms an `:and`.
 
+In this example, we nest `:and` in `:or` to assert that either a secret or
+user/pass must be provided. The `:disjoint` constraint is used to ensure
+both are not provided. Even if we used `:xor` instead of `:or`, it
+would still be legal to provide `{:secret "1234" :user "user"}` without
+this additional constraint.
+
 ```clojure
 (def SecretOrCreds
   [:map {:or [:secret [:and :user :pass]]

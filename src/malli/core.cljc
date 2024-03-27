@@ -1008,7 +1008,7 @@
                        (when-not p
                          (-fail! ::empty-iff))
                        #(let [expect (p %)]
-                          (every? (fn [p] (= expect (p %))) ps)))
+                          (every? (fn [p] (identical? expect (p %))) ps)))
                 :implies (let [[p & ps] (mapv -keyset-constraint-validator (next constraint))]
                            (when-not p
                              (-fail! ::missing-implies-condition {:constraint constraint}))

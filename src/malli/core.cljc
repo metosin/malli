@@ -257,7 +257,7 @@
   (let [options (assoc options ::allow-invalid-refs true)]
     (reduce-kv (fn [acc k v]
                  (let [s (try (schema v options)
-                              (catch Exception e
+                              (catch #?(:clj Exception, :cljs js/Error) e
                                 (if (= ::error-creating-schema-from-into-schema-without-children (:type (ex-data e)))
                                   (-fail! ::schema-definition-must-be-in-options-not-properties
                                           {:bad-property-registry-entry k
@@ -2056,7 +2056,7 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (try (-into-schema ?schema nil nil options)
-                                 (catch Exception e
+                                 (catch #?(:clj Exception, :cljs js/Error) e
                                    (if (= ::child-error (:type (ex-data e)))
                                      (-fail! ::error-creating-schema-from-into-schema-without-children
                                              {:schema ?schema

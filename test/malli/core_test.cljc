@@ -3534,6 +3534,14 @@
    [:right {:optional true} [:= 1]]
    [:up {:optional true} [:= 1]]])
 
+(def DPadDistinct
+  [:map {:keys [[:distinct #{:down} #{:up}]
+                [:distinct #{:left} #{:right}]]}
+   [:down {:optional true} [:= 1]]
+   [:left {:optional true} [:= 1]]
+   [:right {:optional true} [:= 1]]
+   [:up {:optional true} [:= 1]]])
+
 (def Padding
   [:map {:or [:top :bottom :left :right]}
    [:top {:optional true} number?]
@@ -3613,8 +3621,8 @@
              (m/explain SecretOrCreds {:secret "1234" :user "user"}))
            ["should not combine key :secret with key: :user"])))
 
-  (doseq [DPad [DPad DPadDeMorgan]]
-    (testing "DPad"
+  (testing "DPad"
+    (doseq [DPad [DPad DPadDeMorgan DPadDistinct]]
       (is (m/validate DPad {}))
       (is (m/validate DPad {:up 1}))
       (is (m/validate DPad {:down 1}))
@@ -3623,13 +3631,20 @@
       (is (m/validate DPad {:up 1 :left 1}))
       (is (m/validate DPad {:down 1 :left 1}))
       (is (m/validate DPad {:up 1 :right 1}))
-      (is (m/validate DPad {:down 1 :right 1}))
+      (is (m/validate DPad {:down 1 :right 1})))
+    (doseq [DPad [DPad DPadDeMorgan]]
       (is (= (me/humanize
                (m/explain DPad {:up 1 :down 1}))
              ["either: 1). should not provide key: :down; or 2). should not provide key: :up"]))
       (is (= (me/humanize
                (m/explain DPad {:left 1 :right 1}))
-             ["either: 1). should not provide key: :left; or 2). should not provide key: :right"]))))
+             ["either: 1). should not provide key: :left; or 2). should not provide key: :right"])))
+    (is (= (me/humanize
+             (m/explain DPadDistinct {:up 1 :down 1}))
+           ["should not combine key :down with key: :up"]))
+    (is (= (me/humanize
+             (m/explain DPadDistinct {:left 1 :right 1}))
+           ["should not combine key :left with key: :right"])))
   (testing "Padding"
     (is (m/validate Padding {:left 1 :right 10 :up 25 :down 50}))
     (is (= (me/humanize

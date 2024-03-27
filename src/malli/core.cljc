@@ -1009,7 +1009,9 @@
                                    [:keys]))
                      (into (keep #(some->> (get properties %)
                                            (into [%]))
-                                 [:disjoint :iff :implies :or :xor]))))
+                                 (concat [:disjoint :iff :implies :or :xor]
+                                         ;;TODO better name
+                                         #_(::extra-keys-constraint-properties-sugar options))))))
            (into [:and])))
 
 (defn -map-schema

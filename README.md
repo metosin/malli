@@ -560,8 +560,7 @@ key can never omitted from a map regardless of `:keys`.
 ```clojure
 ;; contradiction within :keys
 (mg/generate
-  [:map {:keys [[:and :a [:not :a]]]}
-   [:a :int]])
+  [:map {:keys [:a [:not :a]]}])
 ; Exception: :malli.generator/unsatisfiable-keys
 
 ;; :keys constraint contradicts required key

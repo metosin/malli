@@ -999,8 +999,7 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keys"
         (mg/generate
-          [:map {:keys [[:and :a [:not :a]]]}
-           [:a :int]])))
+          [:map {:keys [:a [:not :a]]}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keys"

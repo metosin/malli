@@ -3234,42 +3234,42 @@
 
 (def NonEmptyMapGroup
   [:map
-   {:keys [[:or :a1 :a2]]}
+   {:keyset [[:or :a1 :a2]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]])
 
 (def UserPwGroups
   [:map
-   {:keys [[:or :secret [:and :user :pass]]
-           [:disjoint #{:secret} (sorted-set :user :pass)]]}
+   {:keyset [[:or :secret [:and :user :pass]]
+             [:disjoint #{:secret} (sorted-set :user :pass)]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
 (def IffGroups
   [:map
-   {:keys [[:iff :a1 :a2 :a3]]}
+   {:keyset [[:iff :a1 :a2 :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def ImpliesGroups
   [:map
-   {:keys [[:implies :a1 :a2 :a3]]}
+   {:keyset [[:implies :a1 :a2 :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def XOrGroups
   [:map
-   {:keys [[:xor :a1 :a2 :a3]]}
+   {:keyset [[:xor :a1 :a2 :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def FlatNotGroup
   [:map
-   {:keys [[:not :a3]]}
+   {:keyset [[:not :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
@@ -3277,7 +3277,7 @@
 ;; equivalent to [:implies :a3 :a1 :a2]
 (def NotGroups
   [:map
-   {:keys [[:or [:and :a1 :a2] [:not :a3]]]}
+   {:keyset [[:or [:and :a1 :a2] [:not :a3]]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
@@ -3293,11 +3293,11 @@
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a"})))
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a" :a2 "b"})))
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a" :a2 "b" :a3 "c"})))
-      (is (= '{:schema [:map {:keys [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
+      (is (= '{:schema [:map {:keyset [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                :value {}
                :errors ({:path []
                          :in []
-                         :schema [:map {:keys [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
+                         :schema [:map {:keyset [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                          :value {}
                          :type :malli.core/keys-violation
                          :message nil})}
@@ -3482,7 +3482,7 @@
 
 (def Address
   [:map
-   {:keys [[:iff :street :city :zip]]}
+   {:keyset [[:iff :street :city :zip]]}
    [:street {:optional true} string?]
    [:city {:optional true} string?]
    [:zip {:optional true} int?]])
@@ -3519,7 +3519,7 @@
    [:pass {:optional true} string?]])
 
 (def DPad
-  [:map {:keys [[:disjoint #{:down} #{:up}]
+  [:map {:keyset [[:disjoint #{:down} #{:up}]
                 [:disjoint #{:left} #{:right}]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
@@ -3527,7 +3527,7 @@
    [:up {:optional true} [:= 1]]])
 
 (def DPadNot
-  [:map {:keys [[:not [:and :down :up]]
+  [:map {:keyset [[:not [:and :down :up]]
                 [:not [:and :left :right]]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
@@ -3535,7 +3535,7 @@
    [:up {:optional true} [:= 1]]])
 
 (def DPadDeMorgan
-  [:map {:keys [[:or [:not :down] [:not :up]]
+  [:map {:keyset [[:or [:not :down] [:not :up]]
                 [:or [:not :left] [:not :right]]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
@@ -3552,20 +3552,31 @@
 (deftest key-groupings-readme-examples-test
   (is (= (me/humanize
            (m/explain
-             [:map {:keys [:x]}]
+             [:map {:keyset [:x]}]
              {}))
          ["should provide key: :x"]))
   (is (= (me/humanize
            (m/explain
+             [:map {:keyset [[:contains nil]]}]
+             {}))
+         ["should provide key: nil"]))
+  (is (= (me/humanize
+           (m/explain
+             [:map {:keyset [[:contains nil]
+                             [:contains []]]}]
+             {}))
+         ["should provide keys: nil []"]))
+  (is (= (me/humanize
+           (m/explain
              [:map
-              {:keys [:x]}
+              {:keyset [:x]}
               [:x {:optional true} :int]]
              {}))
          ["should provide key: :x"]))
   (is (= (me/humanize
            (m/explain
              [:map
-              {:keys [[:or :a1 :a2]]}
+              {:keyset [[:or :a1 :a2]]}
               [:a1 {:optional true} :string]
               [:a2 {:optional true} :string]]
              {}))

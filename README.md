@@ -378,24 +378,32 @@ default branching can be arbitrarily nested:
 ; => true
 ```
 
-## Keys constraints
+## Keyset constraints
 
-The `:map` schema accepts a `:keys` property, which is a vector of
+The `:map` schema accepts a `:keyset` property, which is a vector of
 additional constraints that must be satisfied by the keys of the map.
 
-The simplest constraint is naming a key, a "contains constraint", which asserts the key must exist.
+The simplest constraint `[:contains K]` asserts the key `K` must be present.
+For keyword, symbol, and string keys, this can be abbreviated to `K`.
 
 ```clojure
 (me/humanize
   (m/explain
-    [:map {:keys [:x]}]
+    [:map {:keyset [:x]}]
     {}))
 ; => ["should provide key: :x"]
+
+(me/humanize
+  (m/explain
+    [:map {:keyset [[:contains nil]
+                    [:contains []]]}]
+    {}))
+; => ["should provide keys: nil []"]
 ```
 
 Composite constraints are of the form `[:name constraint*]`. To avoid excessive nesting,
 some constraints can be named as a property, with its children as the property value. For example, 
-`{:or [:x :y] :iff [:z :a]}` is sugar for `{:keys [[:iff :z :a] [:or :x :y]]}`.
+`{:or [:x :y] :iff [:z :a]}` is sugar for `{:keyset [[:iff :z :a] [:or :x :y]]}`.
 
 The `:or` constraint asserts that at least one of its children is satisfied.
 
@@ -491,12 +499,12 @@ The `:disjoint` constraint takes sets of keys. Map keys can intersect with at mo
 ; => ["should not combine key :mvn/version with key: :git/sha"]
 ```
 
-For multiple sets of disjoint keys, nest `:disjoint` in `:keys`.
+For multiple sets of disjoint keys, nest `:disjoint` in `:keyset`.
 
 ```clojure
 (def DPad
-  [:map {:keys [[:disjoint #{:down} #{:up}]
-                [:disjoint #{:left} #{:right}]]}
+  [:map {:keyset [[:disjoint #{:down} #{:up}]
+                  [:disjoint #{:left} #{:right}]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]
@@ -522,7 +530,7 @@ For multiple sets of disjoint keys, nest `:disjoint` in `:keys`.
 ```
 
 The `:and` constraint requires all of its children to be satisfied. The top-level vector
-of constraints provided to the `:keys` property implicitly forms an `:and`.
+of constraints provided to the `:keyset` property implicitly forms an `:and`.
 
 In this example, we nest `:and` in `:or` to assert that either a secret or
 user/pass must be provided. The `:disjoint` constraint is used to ensure
@@ -555,17 +563,17 @@ this additional constraint.
 The `:not` constraint is satisified if its child isn't.
 
 Constraints can be checked for satisfiability by calling `mg/generate`. Note that a required
-key can never omitted from a map regardless of `:keys`.
+key can never omitted from a map regardless of `:keyset`.
 
 ```clojure
-;; contradiction within :keys
+;; contradiction within :keyset
 (mg/generate
-  [:map {:keys [:a [:not :a]]}])
+  [:map {:keyset [:a [:not :a]]}])
 ; Exception: :malli.generator/unsatisfiable-keys
 
-;; :keys constraint contradicts required key
+;; :keyset constraint contradicts required key
 (mg/generate
-  [:map {:keys [[:not :a]]}
+  [:map {:keyset [[:not :a]]}
    [:a :int]])
 ; Exception: :malli.generator/unsatisfiable-keys
 ```

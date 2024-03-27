@@ -953,14 +953,29 @@
            (-ref [_])
            (-deref [_] schema)))))))
 
+(defn -contains-constraint-key [constraint]
+  (if (or (symbol? constraint)
+          (keyword? constraint)
+          (string? constraint))
+    [constraint]
+    (when (and (vector? constraint)
+               (= :contains (first constraint)))
+      (let [[k :as all] (next constraint)
+            _ (when-not (= 1 (count all))
+                (-fail! ::contains-keyset-constraint-takes-one-child {:constraint constraint}))]
+        [k]))))
+
 (defn -keys-constraint-validator [constraint options]
   (letfn [(-keys-constraint-validator [constraint]
-            (if (not (vector? constraint))
+            (if-some [[k] (-contains-constraint-key constraint)]
               #(contains? % constraint)
-              (case (first constraint)
-                :not (let [[p & ps] (mapv -keys-constraint-validator (next constraint))]
-                       (when (or (not p) ps)
-                         (-fail! ::not-keys-constraint-takes-one-child {:constraint constraint}))
+              (case (if (vector? constraint)
+                      (first constraint)
+                      (-fail! ::unknown-keyset-contraint {:constraint constraint}))
+                :not (let [[p :as all] (next constraint)
+                           _ (when-not (= 1 (count all))
+                               (-fail! ::not-keys-constraint-takes-one-child {:constraint constraint}))
+                           p (-keys-constraint-validator p)]
                        #(not (p %)))
                 :and (let [ps (mapv -keys-constraint-validator (next constraint))]
                        #(every? (fn [p] (p %)) ps))
@@ -999,14 +1014,14 @@
                              (-fail! ::missing-implies-condition {:constraint constraint}))
                            #(or (not (p %))
                                 (every? (fn [p] (p %)) ps)))
-                (-fail! ::unknown-constraint {:constraint constraint}))))]
+                (-fail! ::unknown-keyset-contraint {:constraint constraint}))))]
     (-keys-constraint-validator constraint)))
 
 (defn -keys-constraint-from-properties [properties options]
   (some->> (not-empty
              (some-> []
                      (into (mapcat #(get properties %)
-                                   [:keys]))
+                                   [:keyset]))
                      (into (keep #(some->> (get properties %)
                                            (into [%]))
                                  (concat [:disjoint :iff :implies :or :xor]

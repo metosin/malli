@@ -16,22 +16,24 @@
 (defn -humanize-constraint-violation [{:keys [constraint value] :as args}
                                       {custom-error ::humanize-constraint-violation :as options}]
   (letfn [(has? [k] (contains? value k))
-          (flat? [constraint] (not-any? vector? (next constraint)))
+          (->flat-ks [constraint] (let [ks (map m/-contains-constraint-key (next constraint))]
+                                    (when (every? identity ks)
+                                      (map first ks))))
           (-humanize-constraint-violation [constraint]
             (or (when custom-error
                   (custom-error (assoc args :constraint constraint) options))
-                (if (not (vector? constraint))
-                  (str "should provide key: " (pr-str constraint))
-                  (let [flat-op? (flat? constraint)
+                (if-some [[k] (m/-contains-constraint-key constraint)]
+                  (str "should provide key: " (pr-str k))
+                  (let [flat-ks (delay (->flat-ks constraint))
                         ng (next constraint)
                         op (first constraint)]
                     (cond
-                      (and (= :or op) flat-op?)
+                      (and (= :or op) @flat-ks)
                       (str "should provide at least one key: "
-                           (apply str (interpose " " (map pr-str ng))))
+                           (apply str (interpose " " (map pr-str @flat-ks))))
 
-                      (and (= :and op) flat-op?)
-                      (let [missing (remove has? ng)]
+                      (and (= :and op) @flat-ks)
+                      (let [missing (remove has? @flat-ks)]
                         (str "should provide key" (if (next missing) "s" "") ": "
                              (apply str (interpose " " (map pr-str missing)))))
 
@@ -43,16 +45,17 @@
                                                       ng)]
                         (-humanize-constraint-violation (first failing-constraints)))
 
-                      (and (= :xor op) flat-op?)
-                      (let [provided (or (not-empty (filterv has? ng))
-                                         ng)]
+                      (and (= :xor op) @flat-ks)
+                      (let [provided (or (not-empty (filterv has? @flat-ks))
+                                         @flat-ks)]
                         (str "should provide exactly one of the following keys: "
                              (apply str (interpose " " (map pr-str provided)))))
 
                       (and (#{:xor :or} op)
-                           (every? #(or (not (vector? %))
-                                        (and (#{:and :not :implies :iff} (first %))
-                                             (flat? %)))
+                           (every? #(or (m/-contains-constraint-key %)
+                                        (and (vector? %)
+                                             (#{:and :not :implies :iff} (first %))
+                                             (->flat-ks %)))
                                    ng))
                       (str (case op
                              :or "either: "
@@ -64,8 +67,8 @@
                                                                  (-humanize-constraint-violation flat-child)))
                                                           ng))))
 
-                      (and (= :not op) flat-op?)
-                      (str "should not provide key: " (pr-str (first ng)))
+                      (and (= :not op) @flat-ks)
+                      (str "should not provide key: " (pr-str (first @flat-ks)))
 
                       (and (= :not op)
                            (vector? (first ng))
@@ -75,13 +78,13 @@
                               (map #(vector :not %))
                               (nfirst ng)))
 
-                      (and (= :iff op) flat-op?)
-                      (let [missing (remove has? ng)]
+                      (and (= :iff op) @flat-ks)
+                      (let [missing (remove has? @flat-ks)]
                         (str "should provide key" (if (next missing) "s" "") ": "
                              (apply str (interpose " " (map pr-str missing)))))
 
-                      (and (= :implies op) flat-op?)
-                      (let [missing (remove has? (next ng))]
+                      (and (= :implies op) @flat-ks)
+                      (let [missing (remove has? (next @flat-ks))]
                         (str "should provide key" (if (next missing) "s" "") ": "
                              (apply str (interpose " " (map pr-str missing)))))
 

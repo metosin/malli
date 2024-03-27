@@ -194,7 +194,7 @@
 
 (defn data-explainer
   "Like `m/explainer` but output is pure clojure data. Schema objects have been replaced with their m/form.
-   Useful when you need to serialise errrors."
+   Useful when you need to serialise errors."
   ([?schema]
    (data-explainer ?schema nil))
   ([?schema options]

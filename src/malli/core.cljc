@@ -1003,12 +1003,14 @@
     (-keys-constraint-validator constraint)))
 
 (defn -keys-constraint-from-properties [properties]
-  (some-> [:and]
-          (into (mapcat #(get properties %)
-                        [:contains :keys]))
-          (into (keep #(some->> (get properties %)
-                                (into [%]))
-                      [:disjoint :iff :implies :or :xor]))))
+  (some-> (not-empty
+            (some-> []
+                    (into (mapcat #(get properties %)
+                                  [:contains :keys]))
+                    (into (keep #(some->> (get properties %)
+                                          (into [%]))
+                                [:disjoint :iff :implies :or :xor]))))
+          [:and]))
 
 (defn -map-schema
   ([]

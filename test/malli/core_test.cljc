@@ -3681,3 +3681,17 @@
               [:enum :a :b]]
              #{:a :b})
 )
+
+(deftest map-of-keyset-test
+  (is (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:a nil}))
+  (is (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:b nil}))
+  (is (not (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {})))
+  ;;TODO are there satisfiable sets that cannot be generated?
+  ;; e.g., allowing keys in the child but not telling the keyset
+  ;; perhaps :optional [:b] property key to inform generator?
+  #_
+  (mg/sample [:set {:keyset [:a]
+                    :min 2}
+              [:enum :a :b]]
+             #{:a :b})
+)

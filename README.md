@@ -409,7 +409,7 @@ default branching can be arbitrarily nested:
 
 ## Keyset constraints
 
-The `:map` schema accepts a `:keyset` property, which is a vector of
+The `:map`, `:set`, and `:map-of` schemas accept a `:keyset` property, which is a vector of
 additional constraints that must be satisfied by the keys of the map.
 
 The simplest constraint `[:contains K]` asserts the key `K` must be present.

@@ -1293,7 +1293,8 @@
                   cache (-create-cache options)
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [_ (when @keyset-constraint (-fail! ::todo-parse-set-keyset))
-                                           child-parser (some-> schema f)]
+                                           child-parser (some-> schema f)
+                                           _ (when-not child-parser (-fail! ::todo-parse-closed-set))]
                                        (fn [x]
                                          (cond
                                            (not (fpred x)) ::invalid

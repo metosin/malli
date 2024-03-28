@@ -1017,16 +1017,18 @@
     (-keyset-constraint-validator constraint)))
 
 (defn -keyset-constraint-from-properties [properties options]
-  (some->> (not-empty
-             (some-> []
+  (when-some [cs (-> []
                      (into (mapcat #(get properties %)
                                    [:keyset]))
                      (into (keep #(some->> (get properties %)
                                            (into [%]))
                                  (concat [:disjoint :iff :implies :or :xor]
                                          ;;TODO better name
-                                         #_(::extra-keyset-constraint-properties-sugar options))))))
-           (into [:and])))
+                                         #_(::extra-keyset-constraint-properties-sugar options))))
+                     not-empty)]
+    (if (= 1 (count cs))
+      (first cs)
+      (into [:and] cs))))
 
 (defn -map-schema
   ([]
@@ -1291,6 +1293,7 @@
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
                   keyset-constraint (delay (when keyset-properties? (-keyset-constraint-from-properties properties options)))
+                  _ (prn "keyset-constraint" @keyset-constraint)
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [child-parser (f schema)
                                            keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]
@@ -1320,7 +1323,8 @@
                         keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
-                                 (keyset-validator x)
+                                 (or (not keyset-validator)
+                                     (keyset-validator x))
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))

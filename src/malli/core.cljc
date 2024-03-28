@@ -959,11 +959,10 @@
           (string? constraint))
     [constraint]
     (when (and (vector? constraint)
-               (= :contains (first constraint)))
-      (let [[k :as all] (next constraint)
-            _ (when-not (= 1 (count all))
-                (-fail! ::contains-keyset-constraint-takes-one-child {:constraint constraint}))]
-        [k]))))
+               (= :contains (first constraint))
+               (or (= 2 (count constraint))
+                   (-fail! ::contains-keyset-constraint-takes-one-child {:constraint constraint})))
+      (subvec constraint 1))))
 
 (defn -keyset-constraint-validator [constraint options]
   (letfn [(-keyset-constraint-validator [constraint]

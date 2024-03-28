@@ -3668,10 +3668,34 @@
            ["should provide at least one key: :top :bottom :left :right"]))
     (is (mg/sample Padding {:size 5}))))
 
+(def OpenSetAB [:set {:or [:a :b]} :keyword])
+(def ClosedSetAB [:set {:or [:a :b]} [:enum :a :b]])
+
 (deftest set-keyset-test
-  (is (m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:a}))
-  (is (m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:b}))
-  (is (not (m/validate [:set {:or [:a :b]} [:enum :a :b]] #{})))
+  (testing "OpenSetAB"
+    (is (m/validate      OpenSetAB #{:a}))
+    (is (m/validate      OpenSetAB #{:a :z}))
+    (is (m/validate      OpenSetAB #{:b}))
+    (is (m/validate      OpenSetAB #{:b :z}))
+    (is (not (m/validate OpenSetAB #{:z})))
+    (is (not (m/validate OpenSetAB #{}))))
+
+  (testing "ClosedSetAB"
+    (is (m/validate      ClosedSetAB #{:a}))
+    (is (not (m/validate ClosedSetAB #{:a :z})))
+    (is (m/validate      ClosedSetAB #{:b}))
+    (is (not (m/validate ClosedSetAB #{:b :z})))
+    (is (not (m/validate ClosedSetAB #{:z})))
+    (is (not (m/validate ClosedSetAB #{}))))
+
+  (is (not (m/validate [:set {:or [:a :b]
+                              :min 2}
+                        [:enum :a :b]]
+                       #{:a})))
+  (is (m/validate [:set {:or [:a :b]
+                         :min 2}
+                   [:enum :a :b]]
+                  #{:a :b}))
   ;;TODO are there satisfiable sets that cannot be generated?
   ;; e.g., allowing keys in the child but not telling the keyset
   ;; perhaps :optional [:b] property key to inform generator?
@@ -3683,6 +3707,9 @@
 )
 
 (deftest map-of-keyset-test
+  (is (m/validate [:map-of {:or [:a :b]} :keyword :any] {:a nil}))
+  (is (m/validate [:map-of {:or [:a :b]} :keyword :any] {:b nil}))
+  (is (not (m/validate [:map-of {:or [:a :b]} :keyword :any] {})))
   (is (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:a nil}))
   (is (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:b nil}))
   (is (not (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {})))

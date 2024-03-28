@@ -352,6 +352,19 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
    "helsinki" {:lat 60 :long 24}})
 ;; => true
 ```
+
+Keysets can be further specified via [`:keyset` constraints](#keyset-constraints)
+and `:min`/`:max` count properties.
+
+To restrict the keys to just those permitted by the heterogeneous constraints,
+use the homogeneous keys schema to enumerate the valid keys.
+
+```clojure
+(m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:a nil}) ; => true
+(m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:b nil}) ; => true
+(m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {}))      ; => false
+```
+
 ## Map with default schemas
 
 Map schemas can define a special `:malli.core/default` key to handle extra keys:
@@ -747,18 +760,28 @@ keysets can be further specified via [`:keyset` constraints](#keyset-constraints
 and `:min`/`:max` count properties.
 
 ```clojure
-(m/validate [:set {:or [:a :b]} :int] #{:a 1 2}) ; => true
-(m/validate [:set {:or [:a :b]} :int] #{:b 1 2}) ; => true
-(m/validate [:set {:or [:a :b]} :int] #{1 2})    ; => false
+(def OpenSetAB [:set {:or [:a :b]} :keyword])
+
+(m/validate OpenSetAB #{:a})    ; => true
+(m/validate OpenSetAB #{:a :z}) ; => true
+(m/validate OpenSetAB #{:b})    ; => true
+(m/validate OpenSetAB #{:b :z}) ; => true
+(m/validate OpenSetAB #{:z})    ; => false
+(m/validate OpenSetAB #{})      ; => false
 ```
 
-To restrict the set to just the keys mentioned in the heterogeneous constraints,
+To restrict the set to just the keys permitted by the heterogeneous constraints,
 use the homogeneous schema to enumerate the valid keys.
 
 ```clojure
-(m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:a}) ; => true
-(m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:b}) ; => true
-(m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:c}) ; => false
+(def ClosedSetAB [:set {:or [:a :b]} [:enum :a :b]])
+
+(m/validate ClosedSetAB #{:a})    ; => true
+(m/validate ClosedSetAB #{:a :z}) ; => false
+(m/validate ClosedSetAB #{:b})    ; => true
+(m/validate ClosedSetAB #{:b :z}) ; => false
+(m/validate ClosedSetAB #{:z})    ; => false
+(m/validate ClosedSetAB #{})      ; => false
 
 (m/validate [:set {:or [:a :b]
                    :min 2}

@@ -1293,8 +1293,8 @@
                   cache (-create-cache options)
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [_ (when @keyset-constraint (-fail! ::todo-parse-set-keyset))
-                                           child-parser (some-> schema f)
-                                           _ (when-not child-parser (-fail! ::todo-parse-closed-set))]
+                                           child-parser (or (some-> schema f)
+                                                            (-fail! ::todo-parse-closed-set))]
                                        (fn [x]
                                          (cond
                                            (not (fpred x)) ::invalid
@@ -1316,15 +1316,15 @@
                 Schema
                 (-validator [_]
                   (let [_ (when @keyset-constraint (-fail! ::todo-validate-set-keyset))
-                        validator (some-> schema -validator)
-                        _ (when-not validator (-fail! ::todo-validate-closed-set))]
+                        validator (or (some-> schema -validator)
+                                      (-fail! ::todo-validate-closed-set))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
                   (let [_ (when @keyset-constraint (-fail! ::todo-explain-set-keyset))
-                        explainer (some-> schema (-explainer (conj path 0)))
-                        _ (when-not explainer (-fail! ::todo-explain-closed-set))]
+                        explainer (or (some-> schema (-explainer (conj path 0)))
+                                      (-fail! ::todo-explain-closed-set))]
                     (fn [x in acc]
                       (cond
                         (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
@@ -1340,8 +1340,8 @@
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
                         _ (when @keyset-constraint (-fail! ::todo-transform-set-keyset))
-                        child-transformer (some-> schema (-transformer transformer method options))
-                        _ (when-not validator (-fail! ::todo-transform-closed-set))
+                        child-transformer (or (some-> schema (-transformer transformer method options))
+                                              (-fail! ::todo-transform-closed-set))
                         ->child (when child-transformer
                                   (if fempty
                                     (-collection-transformer child-transformer fempty)

@@ -1337,7 +1337,7 @@
                   (let [explainer (-explainer schema (conj path 0))
                         keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]
                     (fn [x in acc]
-                      (if (not (fpred x))
+                      (if-not (fpred x)
                         (conj acc (miu/-error path in this x ::invalid-type))
                         (let [acc (cond-> acc
                                     (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))

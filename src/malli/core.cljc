@@ -1269,7 +1269,7 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
-(defn -collection-schema [props]
+(defn -collection-schema [{:keys [keyset-properties?] :as props}]
   (if (fn? props)
     (do (-deprecated! "-collection-schema doesn't take fn-props, use :compile property instead")
         (-collection-schema {:compile (fn [c p _] (props c p))}))
@@ -1290,46 +1290,56 @@
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
+                  keyset-constraint (delay (when keyset-properties? (-keyset-constraint-from-properties properties options)))
                   validate-limits (-validate-limits min max)
-                  ->parser (fn [f g] (let [child-parser (f schema)]
+                  ->parser (fn [f g] (let [child-parser (f schema)
+                                           keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]
                                        (fn [x]
-                                         (cond
-                                           (not (fpred x)) ::invalid
-                                           (not (validate-limits x)) ::invalid
-                                           :else (let [x' (reduce
-                                                           (fn [acc v]
-                                                             (let [v' (child-parser v)]
-                                                               (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                           [] x)]
-                                                   (cond
-                                                     (miu/-invalid? x') x'
-                                                     g (g x')
-                                                     fempty (into fempty x')
-                                                     :else x'))))))]
+                                         (if (or (not (fpred x))
+                                                 (not (validate-limits x))
+                                                 (and keyset-validator
+                                                      (not (keyset-validator x))))
+                                           ::invalid
+                                           (let [x' (reduce
+                                                      (fn [acc v]
+                                                        (let [v' (child-parser v)]
+                                                          (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                      [] x)]
+                                             (cond
+                                               (miu/-invalid? x') x'
+                                               g (g x')
+                                               fempty (into fempty x')
+                                               :else x'))))))]
               ^{:type ::schema}
               (reify
                 AST
                 (-to-ast [this _] (-to-child-ast this))
                 Schema
                 (-validator [_]
-                  (let [validator (-validator schema)]
+                  (let [validator (-validator schema)
+                        keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
+                                 (keyset-validator x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
-                  (let [explainer (-explainer schema (conj path 0))]
+                  (let [explainer (-explainer schema (conj path 0))
+                        keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]
                     (fn [x in acc]
-                      (cond
-                        (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
-                        (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                        :else (let [size (count x)]
-                                (loop [acc acc, i 0, [x & xs] x]
-                                  (if (< i size)
-                                    (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
-                                    acc)))))))
+                      (-> acc
+                          (cond->
+                            (not (fpred x)) (conj (miu/-error path in this x ::invalid-type))
+                            (not (validate-limits x)) (conj (miu/-error path in this x ::limits))
+                            (and keyset-validator (not (keyset-validator x))) (conj (miu/-error path in this x ::keyset-violation)))
+                          (into (let [size (count x)]
+                                  (loop [acc [] , i 0, [x & xs] x]
+                                    (if (< i size)
+                                      (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
+                                      acc))))))))
                 (-parser [_] (->parser -parser parse))
                 (-unparser [_] (->parser -unparser unparse))
                 (-transformer [this transformer method options]
+                  (when @keyset-constraint (-fail! ::todo-transform-set-keys))
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
                         child-transformer (-transformer schema transformer method options)
@@ -2591,7 +2601,8 @@
    :map-of (-map-of-schema)
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
    :sequential (-collection-schema {:type :sequential, :pred sequential?})
-   :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)})
+   :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)
+                             :keyset-properties? true})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

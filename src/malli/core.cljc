@@ -1317,7 +1317,9 @@
                 (-validator [_]
                   (let [_ (when @keyset-constraint (-fail! ::todo-validate-set-keyset))
                         validator (or (some-> schema -validator)
-                                      (-fail! ::todo-validate-closed-set))]
+                                      (-fail! ::todo-validate-closed-set {:schema schema
+                                                                          :type type
+                                                                          :children children}))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))

@@ -1792,8 +1792,10 @@
         (reify
           AST
           (-to-ast [_ _]
-            (cond-> {:type :=>, :input (ast input), :output (ast output)}
-              guard (assoc :guard (ast guard)), properties (assoc :properties properties)))
+            (let [properties (dissoc properties :fn)]
+              (cond-> {:type :=>, :input (ast input), :output (ast output)}
+                guard (assoc :guard (ast guard))
+                properties (assoc :properties properties))))
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]

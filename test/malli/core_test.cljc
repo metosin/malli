@@ -1276,13 +1276,9 @@
 
   (testing "sequence schemas"
 
-    (testing "empty schemas"
-      (testing "for schemas supporting keysets are ok"
-        (is (m/schema :set))
-        (is (m/schema [:set])))
-      (testing "fail"
-        (doseq [element [:vector :sequential]]
-          (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element]))))))
+    (testing "empty schemas fail"
+      (doseq [element [:vector :sequential :set]]
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
 
     (testing "empty tuples are ok"
       (is (m/validate :tuple []))
@@ -3303,7 +3299,7 @@
                          :in []
                          :schema [:map {:keyset [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                          :value {}
-                         :type :malli.core/keyset-violation
+                         :type :malli.core/keys-violation
                          :message nil})}
              (with-schema-forms (m/explain NonEmptyMapGroup {}))))
       (is (= ["should provide at least one key: :a1 :a2"]
@@ -3328,7 +3324,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {:user "a"}
-               :type :malli.core/keyset-violation
+               :type :malli.core/keys-violation
                :message nil}]
             (:errors (with-schema-forms (m/explain UserPwGroups {:user "a"})))))
       (is (= ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
@@ -3337,7 +3333,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {}
-               :type :malli.core/keyset-violation
+               :type :malli.core/keys-violation
                :message nil}]
              (-> (m/explain UserPwGroups {})
                  with-schema-forms
@@ -3348,7 +3344,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {:secret "a", :user "b"}
-               :type :malli.core/keyset-violation
+               :type :malli.core/keys-violation
                :message nil}]
              (-> (m/explain UserPwGroups {:secret "a"
                                           :user "b"})
@@ -3361,7 +3357,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {:secret "a", :user "b", :pass "c"}
-               :type :malli.core/keyset-violation
+               :type :malli.core/keys-violation
                :message nil}]
              (-> (m/explain UserPwGroups {:secret "a"
                                           :user "b"
@@ -3674,8 +3670,6 @@
 
 #_
 (deftest set-keyset-test
-  (is (m/validate [:set] #{}))
-  (is (not (m/validate [:set] #{:a})))
   (is (m/validate [:set {:or [:a :b]}] #{:a}))
   (is (m/validate [:set {:or [:a :b]}] #{:b}))
   (is (m/validate [:set {:or [:a :b]}] #{}))

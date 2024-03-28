@@ -1139,7 +1139,7 @@
                                 (conj (fn [x in acc]
                                         (cond-> acc
                                           (not (constraint-validator x))
-                                          (conj (miu/-error path in this x ::keyset-violation))))))]
+                                          (conj (miu/-error path in this x ::keys-violation))))))]
                (fn [x in acc]
                  (if-not (pred? x)
                    (conj acc (miu/-error path in this x ::invalid-type))
@@ -1269,7 +1269,7 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
-(defn -collection-schema [{:keys [keyset-constraints?] :as props}]
+(defn -collection-schema [props]
   (if (fn? props)
     (do (-deprecated! "-collection-schema doesn't take fn-props, use :compile property instead")
         (-collection-schema {:compile (fn [c p _] (props c p))}))
@@ -1286,15 +1286,12 @@
         (if-let [compile (:compile props)]
           (-into-schema (-collection-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
           (let [{:keys [type parse unparse], fpred :pred, fempty :empty, fin :in :or {fin (fn [i _] i)}} props]
-            (-check-children! type properties children (when-not keyset-constraints? 1) 1)
+            (-check-children! type properties children 1 1)
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
-                  keyset-constraint (delay (when keyset-constraints? (-keyset-constraint-from-properties properties options)))
                   cache (-create-cache options)
                   validate-limits (-validate-limits min max)
-                  ->parser (fn [f g] (let [_ (when @keyset-constraint (-fail! ::todo-parse-set-keyset))
-                                           child-parser (or (some-> schema f)
-                                                            (-fail! ::todo-parse-closed-set))]
+                  ->parser (fn [f g] (let [child-parser (f schema)]
                                        (fn [x]
                                          (cond
                                            (not (fpred x)) ::invalid
@@ -1315,18 +1312,12 @@
                 (-to-ast [this _] (-to-child-ast this))
                 Schema
                 (-validator [_]
-                  (let [_ (when @keyset-constraint (-fail! ::todo-validate-set-keyset))
-                        validator (or (some-> schema -validator)
-                                      (-fail! ::todo-validate-closed-set {:schema schema
-                                                                          :type type
-                                                                          :children children}))]
+                  (let [validator (-validator schema)]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
-                  (let [_ (when @keyset-constraint (-fail! ::todo-explain-set-keyset))
-                        explainer (or (some-> schema (-explainer (conj path 0)))
-                                      (-fail! ::todo-explain-closed-set))]
+                  (let [explainer (-explainer schema (conj path 0))]
                     (fn [x in acc]
                       (cond
                         (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
@@ -1341,9 +1332,7 @@
                 (-transformer [this transformer method options]
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
-                        _ (when @keyset-constraint (-fail! ::todo-transform-set-keyset))
-                        _ (or schema (-fail! ::todo-transform-closed-set))
-                        child-transformer (some-> schema (-transformer transformer method options))
+                        child-transformer (-transformer schema transformer method options)
                         ->child (when child-transformer
                                   (if fempty
                                     (-collection-transformer child-transformer fempty)
@@ -1352,7 +1341,7 @@
                     (-intercepting this-transformer ->child)))
                 (-walk [this walker path options]
                   (when (-accept walker this path options)
-                    (-outer walker this path (if schema [(-inner walker schema (conj path ::in) options)] []) options)))
+                    (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
                 (-properties [_] properties)
                 (-options [_] options)
                 (-children [_] children)
@@ -2603,7 +2592,7 @@
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
    :sequential (-collection-schema {:type :sequential, :pred sequential?})
    :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)
-                             :keyset-constraints? true})
+                             :keyset-constraints true})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

@@ -1749,7 +1749,7 @@
                 {:min 1 :max 1}
                 (-regex-min-max child nested?)))))))))
 
-(defn -=>-schema []
+(defn -=>-schema [{:keys [flat-arrow?]}]
   ^{:type ::into-schema}
   (reify
     AST
@@ -1760,9 +1760,28 @@
     (-type [_] :=>)
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
-      (-check-children! :=> properties children 2 3)
-      (let [[input output guard :as children] (-vmap #(schema % options) children)
-            form (delay (-create-form (-type parent) properties (-vmap -form children) options))
+      (if flat-arrow?
+        (-check-children! :-> properties children 1 nil)
+        (-check-children! :=> properties children 2 3))
+      (let [guard-property (:fn properties)
+            _ (when (and guard-property
+                         (not flat-arrow?)
+                         (= 3 (count children)))
+                (-fail! ::cannot-provide-both-=>-guard-child-and-property))
+            original-children (-vmap #(schema % options) children)
+            [input output guard :as children] (if flat-arrow?
+                                                (-vmap
+                                                  #(schema % options)
+                                                  (into [(into [:cat] (pop original-children))
+                                                         (peek original-children)]
+                                                        (when guard-property
+                                                          [(schema [:fn guard-property] options)])))
+                                                original-children)
+            form (delay
+                   (-create-form (if flat-arrow? :-> (-type parent))
+                                 properties
+                                 (-vmap -form original-children)
+                                 options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         (when-not (#{:cat :catn} (type input))
@@ -1771,8 +1790,10 @@
         (reify
           AST
           (-to-ast [_ _]
-            (cond-> {:type :=>, :input (ast input), :output (ast output)}
-              guard (assoc :guard (ast guard)), properties (assoc :properties properties)))
+            (let [properties (dissoc properties :fn)]
+              (cond-> {:type :=>, :input (ast input), :output (ast output)}
+                guard (assoc :guard (ast guard))
+                properties (assoc :properties properties))))
           Schema
           (-validator [this]
             (if-let [checker (->checker this)]
@@ -2506,7 +2527,8 @@
    :re (-re-schema false)
    :fn (-fn-schema)
    :ref (-ref-schema)
-   :=> (-=>-schema)
+   :=> (-=>-schema nil)
+   :-> (-=>-schema {:flat-arrow? true})
    :function (-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})

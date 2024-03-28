@@ -1276,9 +1276,12 @@
 
   (testing "sequence schemas"
 
-    (testing "empty schemas fail"
-      (doseq [element [:vector :sequential :set]]
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element])))))
+    (testing "empty schemas"
+      (testing "for schemas supporting keysets are ok"
+        (m/schema [:set]))
+      (testing "fail"
+        (doseq [element [:vector :sequential]]
+          (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element]))))))
 
     (testing "empty tuples are ok"
       (is (m/validate :tuple []))

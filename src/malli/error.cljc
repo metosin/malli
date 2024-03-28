@@ -13,6 +13,96 @@
         min (str "should be at least " min)
         max (str "should be at most " max)))))
 
+(defn -humanize-keyset-violation [{:keys [constraint value] :as args}
+                                  {custom-error ::humanize-keyset-violation :as options}]
+  (letfn [(has? [k] (contains? value k))
+          (->flat-ks [constraint] (let [ks (map m/-contains-constraint-key (next constraint))]
+                                    (when (every? identity ks)
+                                      (map first ks))))
+          (-humanize-keyset-violation [constraint]
+            (or (when custom-error
+                  (custom-error (assoc args :constraint constraint) options))
+                (if-some [[k] (m/-contains-constraint-key constraint)]
+                  (str "should provide key: " (pr-str k))
+                  (let [flat-ks (delay (->flat-ks constraint))
+                        ng (next constraint)
+                        op (first constraint)]
+                    (cond
+                      (and (= :or op) @flat-ks)
+                      (str "should provide at least one key: "
+                           (apply str (interpose " " (map pr-str @flat-ks))))
+
+                      (and (= :and op) @flat-ks)
+                      (let [missing (remove has? @flat-ks)]
+                        (str "should provide key" (if (next missing) "s" "") ": "
+                             (apply str (interpose " " (map pr-str missing)))))
+
+                      (= :and op)
+                      (let [failing-constraints (keep (fn [constraint]
+                                                        (let [validator (m/-keyset-constraint-validator constraint options)]
+                                                          (when-not (validator value)
+                                                            constraint)))
+                                                      ng)]
+                        (-humanize-keyset-violation (first failing-constraints)))
+
+                      (and (= :xor op) @flat-ks)
+                      (let [provided (or (not-empty (filterv has? @flat-ks))
+                                         @flat-ks)]
+                        (str "should provide exactly one of the following keys: "
+                             (apply str (interpose " " (map pr-str provided)))))
+
+                      (and (#{:xor :or} op)
+                           (every? #(or (m/-contains-constraint-key %)
+                                        (and (vector? %)
+                                             (#{:and :not :implies :iff} (first %))
+                                             (->flat-ks %)))
+                                   ng))
+                      (str (case op
+                             :or "either: "
+                             :xor "exactly one of: ")
+                           (apply str
+                                  (interpose "; or "
+                                             (map-indexed (fn [i flat-child]
+                                                            (str (inc i) "). "
+                                                                 (-humanize-keyset-violation flat-child)))
+                                                          ng))))
+
+                      (and (= :not op) @flat-ks)
+                      (str "should not provide key: " (pr-str (first @flat-ks)))
+
+                      (and (= :not op)
+                           (vector? (first ng))
+                           (#{:and :or} (ffirst ng)))
+                      (-humanize-keyset-violation
+                        (into [({:and :or :or :and} (ffirst ng))]
+                              (map #(vector :not %))
+                              (nfirst ng)))
+
+                      (and (= :iff op) @flat-ks)
+                      (let [missing (remove has? @flat-ks)]
+                        (str "should provide key" (if (next missing) "s" "") ": "
+                             (apply str (interpose " " (map pr-str missing)))))
+
+                      (and (= :implies op) @flat-ks)
+                      (let [missing (remove has? (next @flat-ks))]
+                        (str "should provide key" (if (next missing) "s" "") ": "
+                             (apply str (interpose " " (map pr-str missing)))))
+
+                      (= :disjoint op)
+                      (let [ksets (vec ng)
+                            [has-constraint has-k] (some (fn [i]
+                                                           (when-some [[has-k] (not-empty
+                                                                                 (filter has? (nth ksets i)))]
+                                                             [i has-k]))
+                                                         (range (count ksets)))
+                            violating-ks (filterv has?
+                                                  (apply concat (subvec ksets (inc has-constraint))))]
+                        (str "should not combine key " (pr-str has-k)
+                             " with key" (if (next violating-ks) "s" "") ": "
+                             (apply str (interpose " " (map pr-str violating-ks)))))
+                      :else (str "should satisfy keyset constraint: " (pr-str constraint)))))))]
+    (-humanize-keyset-violation constraint)))
+
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
@@ -28,6 +118,10 @@
                                       (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
+   ::m/keyset-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
+                                          (-humanize-keyset-violation
+                                            (assoc args :constraint (-> schema m/properties (m/-keyset-constraint-from-properties options)))
+                                            options))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}

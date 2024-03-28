@@ -742,6 +742,37 @@ You can use `:set` to describe homogeneous Clojure sets.
 ;; => false
 ```
 
+Keysets can be further specified via [`:keyset` constraints](#keyset-constraints)
+and `:min`/`:max` count properties.
+
+```clojure
+(m/validate [:set {:or [:a :b]} :int] #{:a 1 2}) ; => true
+(m/validate [:set {:or [:a :b]} :int] #{:b 1 2}) ; => true
+(m/validate [:set {:or [:a :b]} :int] #{1 2})    ; => false
+```
+
+Providing no child schema results in a closed set, with its keysets being entirely
+specified by properties.
+
+```clojure
+(m/validate [:set] #{}) ; => true
+(m/validate [:set] #{1}) ; => false
+
+(m/validate [:set {:or [:a :b]}] #{:a}) ; => true
+(m/validate [:set {:or [:a :b]}] #{:b}) ; => true
+(m/validate [:set {:or [:a :b]}] #{:c}) ; => false
+
+(m/validate [:set {:or [:a :b]
+                   :min 2}]
+            #{:a})
+; => false
+
+(m/validate [:set {:or [:a :b]
+                   :min 2}]
+            #{:a :b})
+; => true
+```
+
 ## String schemas
 
 Using a predicate:

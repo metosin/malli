@@ -3282,7 +3282,7 @@
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
-(deftest map-keys-test
+(deftest map-keyset-test
   (testing ":or"
     (testing "validate"
       (is (m/validate NonEmptyMapGroup {:a1 "a"}))
@@ -3549,7 +3549,7 @@
    [:left {:optional true} number?]
    [:right {:optional true} number?]])
 
-(deftest key-groupings-readme-examples-test
+(deftest map-keyset-readme-examples-test
   (is (= (me/humanize
            (m/explain
              [:map {:keyset [:x]}]
@@ -3667,3 +3667,12 @@
              (m/explain Padding {}))
            ["should provide at least one key: :top :bottom :left :right"]))
     (is (mg/sample Padding {:size 5}))))
+
+#_
+(deftest set-keyset-test
+  (is (m/validate [:set] #{}))
+  (is (not (m/validate [:set] #{:a})))
+  (is (m/validate [:set {:or [:a :b]}] #{:a}))
+  (is (m/validate [:set {:or [:a :b]}] #{:b}))
+  (is (m/validate [:set {:or [:a :b]}] #{}))
+)

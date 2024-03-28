@@ -1005,4 +1005,12 @@
         #":malli\.generator/unsatisfiable-keys"
         (mg/generate
           [:map {:keyset [[:not :a]]}
-           [:a :int]]))))
+           [:a :int]])))
+  (is (every? #(contains? % :a)
+              (mg/sample
+                [:map {:keyset [:a]}]
+                {:size 100})))
+  (is (every? #{{}}
+              (mg/sample
+                [:map {:keyset [[:not :a]]}]
+                {:size 100}))))

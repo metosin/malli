@@ -171,42 +171,67 @@
   (let [g (generator s options)]
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
-;;TODO gather optional keys from all :contains constraints (they might not all be mentioned in the :map keys).
+(defn -mentioned-constraint-keys [constraint options]
+  (letfn [(-mentioned-constraint-keys [constraint]
+            (or (m/-contains-constraint-key constraint)
+                (case (first constraint)
+                  (:not :and :or :xor :iff :implies) (mapcat -mentioned-constraint-keys (next constraint))
+                  :disjoint (apply concat (next constraint))
+                  (or (when-some [mentioned-constraint-keys (::mentioned-constraint-keys options)]
+                        (mentioned-constraint-keys constraint options))
+                      (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
+    (-mentioned-constraint-keys constraint)))
+
 (defn -valid-keysets [schema options]
-  (when-some [keys-constraint (m/-keyset-constraint-from-properties
-                                (m/properties schema)
-                                options)]
+  (when-some [constraint (m/-keyset-constraint-from-properties
+                           (m/properties schema)
+                           options)]
     (let [{required false
            optional true} (group-by #(-> % -last m/properties :optional boolean)
                                     (m/entries schema))
+          ;; add keys only mentioned in :keyset constraints
+          optional (into [] (distinct)
+                         (concat (map first optional)
+                                 (-mentioned-constraint-keys constraint options)))
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)
-          p (m/-keyset-constraint-validator keys-constraint options)]
+          p (m/-keyset-constraint-validator constraint options)]
       (into [] (comp (keep (fn [optionals]
                              (let [example (-> base
-                                               (into (map (fn [[k]]
+                                               (into (map (fn [k]
                                                             {k :required}))
                                                      optionals))]
                                (when (p example)
                                  (into example
-                                       (map (fn [[k]]
+                                       (map (fn [k]
                                               (when-not (example k)
                                                 {k :never})))
                                        optional)))))
                      (distinct))
             (comb/subsets optional)))))
 
-(defn -map-gen* [schema classify-entry options]
+(defn -map-gen* [schema classify-entry keyset options]
   (loop [[[k s :as e] & entries] (m/entries schema)
+         keyset keyset
          gens []]
+    (prn "keyset" keyset)
     (if (nil? e)
-      (gen/fmap -build-map (apply gen/tuple gens))
+      (let [gens (concat gens
+                         ;; leftover keys only mentioned in :keyset constraints
+                         (keep #(when-not (= :never (val %))
+                                  (let [g (-value-gen (key %) :any options)]
+                                    (case (val %)
+                                      :optional (gen-one-of [nil-gen g])
+                                      :required g)))
+                               keyset))]
+        (gen/fmap -build-map (apply gen/tuple gens)))
       (case (classify-entry e)
-        :never (recur entries gens)
+        :never (recur entries (dissoc keyset k) gens)
         :optional
         (recur
           entries
+          (dissoc keyset k)
           (conj gens
                 (if-let [g (-not-unreachable (-value-gen k s options))]
                   (gen-one-of [nil-gen g])
@@ -215,7 +240,7 @@
         (let [g (-value-gen k s options)]
           (if (-unreachable-gen? g)
             (-never-gen options)
-            (recur entries (conj gens g))))))))
+            (recur entries (dissoc keyset k) (conj gens g))))))))
 
 (defn -map-gen-no-keys [schema options]
   (-map-gen* schema
@@ -223,18 +248,20 @@
                (if (-> e -last m/properties :optional)
                  :optional
                  :required))
+             nil
              options))
 
 (defn -map-gen [schema options]
-  (if-some [key-sets (-valid-keysets schema options)]
-    (if (empty? key-sets)
+  (if-some [keysets (-valid-keysets schema options)]
+    (if (empty? keysets)
       (m/-fail! ::unsatisfiable-keys {:schema (m/form schema)})
       (gen/bind gen/nat
                 (fn [i]
-                  (let [key-group (nth key-sets (mod i (count key-sets)))]
+                  (let [keyset (nth keysets (mod i (count keysets)))]
                     (-map-gen* schema
                                (fn [[k]]
-                                 (get key-group k :never))
+                                 (get keyset k :never))
+                               keyset
                                options)))))
     (-map-gen-no-keys schema options)))
 

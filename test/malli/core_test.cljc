@@ -2406,57 +2406,58 @@
   ;; js allows invalid arity
 
   (testing ":=>"
-    (let [valid-f (fn [x y]
-                    (unchecked-subtract x y))
-          ?schema [:=> [:cat int? int?] int?]
-          schema1 (m/schema ?schema)
-          schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
+    (doseq [?schema [[:=> [:cat int? int?] int?]
+                     [:-> int? int? int?]]]
+      (let [valid-f (fn [x y]
+                      (unchecked-subtract x y))
+            schema1 (m/schema ?schema)
+            schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
 
-      (testing "by default, all ifn? are valid"
-        (is (true? (m/validate schema1 identity)))
-        (is (true? (m/validate schema1 #{}))))
+        (testing "by default, all ifn? are valid"
+          (is (true? (m/validate schema1 identity)))
+          (is (true? (m/validate schema1 #{}))))
 
-      (testing "using generative testing"
-        (is (false? (m/validate schema2 single-arity)))
-        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
-        #?(:clj (is (false? (m/validate schema2 #{}))))
-        (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
-        (is (false? (m/validate schema2 (fn [x y] (str x y)))))
+        (testing "using generative testing"
+          (is (false? (m/validate schema2 single-arity)))
+          #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
+          #?(:clj (is (false? (m/validate schema2 #{}))))
+          (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
+          (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
+          (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
 
-        (testing "exception in execution causes single error to root schema path"
-         (is (results= {:schema [:=> [:cat int? int?] int?]
-                        :value single-arity
-                        :errors [{:path []
-                                  :in []
-                                  :schema [:=> [:cat int? int?] int?]
-                                  :value single-arity}]}
-                       (m/explain schema2 single-arity))))
+          (testing "exception in execution causes single error to root schema path"
+           (is (results= {:schema ?schema
+                          :value single-arity
+                          :errors [{:path []
+                                    :in []
+                                    :schema ?schema
+                                    :value single-arity}]}
+                         (m/explain schema2 single-arity))))
 
-        (testing "error in output adds error to child in path 1"
-          (let [f (fn [x y] (str x y))]
-            (is (results= {:schema [:=> [:cat int? int?] int?]
-                           :value f
-                           :errors [{:path []
-                                     :in []
-                                     :schema [:=> [:cat int? int?] int?]
-                                     :value f}
-                                    {:path [1]
-                                     :in []
-                                     :schema int?
-                                     :value "00"}]}
-                          (m/explain schema2 f)))))
+          (testing "error in output adds error to child in path 1"
+            (let [f (fn [x y] (str x y))]
+              (is (results= {:schema ?schema
+                             :value f
+                             :errors [{:path []
+                                       :in []
+                                       :schema ?schema
+                                       :value f}
+                                      {:path [1]
+                                       :in []
+                                       :schema int?
+                                       :value "00"}]}
+                            (m/explain schema2 f)))))
 
-        (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
+          (is (= single-arity (m/decode schema2 single-arity mt/string-transformer)))
 
-        (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
+          (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
-        (is (= {:type :=>
-                :input {:type :cat
-                        :children [{:type 'int?} {:type 'int?}]}
-                :output {:type 'int?}}
-               (m/ast schema1))))))
+          (is (= {:type :=>
+                  :input {:type :cat
+                          :children [{:type 'int?} {:type 'int?}]}
+                  :output {:type 'int?}}
+                 (m/ast schema1)))))))
 
   (testing ":function"
 

@@ -1278,7 +1278,7 @@
 
     (testing "empty schemas"
       (testing "for schemas supporting keysets are ok"
-        (m/schema [:set]))
+        (is (m/schema [:set])))
       (testing "fail"
         (doseq [element [:vector :sequential]]
           (is (thrown? #?(:clj Exception, :cljs js/Error) (m/schema [element]))))))

@@ -1293,7 +1293,6 @@
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
                   keyset-constraint (delay (when keyset-properties? (-keyset-constraint-from-properties properties options)))
-                  _ (prn "keyset-constraint" @keyset-constraint)
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [child-parser (f schema)
                                            keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))]

@@ -1278,6 +1278,7 @@
 
     (testing "empty schemas"
       (testing "for schemas supporting keysets are ok"
+        (is (m/schema :set))
         (is (m/schema [:set])))
       (testing "fail"
         (doseq [element [:vector :sequential]]

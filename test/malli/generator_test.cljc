@@ -922,13 +922,13 @@
 
 (def NonEmptyMapGroup
   [:map
-   {:keys [[:or :a1 :a2]]}
+   {:keyset [[:or :a1 :a2]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]])
 
 (def UserPwGroups
   [:map
-   {:keys [[:or :secret [:and :user :pass]]
+   {:keyset [[:or :secret [:and :user :pass]]
            [:disjoint #{:secret} #{:user :pass}]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
@@ -936,33 +936,33 @@
 
 (def ImpliesGroups
   [:map
-   {:keys [[:implies :a1 :a2 :a3]]}
+   {:keyset [[:implies :a1 :a2 :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def IffGroups
   [:map
-   {:keys [[:iff :a1 :a2 :a3]]}
+   {:keyset [[:iff :a1 :a2 :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def XOrGroups
   [:map
-   {:keys [[:xor :a1 :a2 :a3]]}
+   {:keyset [[:xor :a1 :a2 :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def NotGroups
   [:map
-   {:keys [[:or [:and :a1 :a2] [:not :a3]]]}
+   {:keyset [[:or [:and :a1 :a2] [:not :a3]]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
-(deftest map-keys-generator-test
+(deftest map-keyset-generator-test
   (testing ":or"
     (is (= '({:a1 ""} {:a2 "4"} {:a1 "h"} {:a1 ""} {:a1 "99"} {:a1 "tW1", :a2 "8J"} {:a2 "c"})
            (mg/sample NonEmptyMapGroup
@@ -994,15 +994,15 @@
                       {:seed 3
                        :size 5})))))
 
-(deftest map-keys-unsatisfiable-test
+(deftest map-keyset-unsatisfiable-test
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keys"
         (mg/generate
-          [:map {:keys [:a [:not :a]]}])))
+          [:map {:keyset [:a [:not :a]]}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keys"
         (mg/generate
-          [:map {:keys [[:not :a]]}
+          [:map {:keyset [[:not :a]]}
            [:a :int]]))))

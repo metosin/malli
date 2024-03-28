@@ -3673,4 +3673,11 @@
   (is (m/validate [:set {:or [:a :b]}] #{:a}))
   (is (m/validate [:set {:or [:a :b]}] #{:b}))
   (is (m/validate [:set {:or [:a :b]}] #{}))
+  ;;TODO are there satisfiable sets that cannot be generated?
+  ;; e.g., allowing keys in the child but not telling the keyset
+  #_
+  (mg/sample [:set {:keyset [:a]
+                    :min 2}
+              [:enum :a :b]]
+             #{:a :b})
 )

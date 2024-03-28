@@ -3706,13 +3706,26 @@
              #{:a :b})
 )
 
+(def OpenMapOfAB [:map-of {:or [:a :b]} keyword? :any])
+(def ClosedMapOfAB [:map-of {:or [:a :b]} [:enum :a :b] :any])
+
 (deftest map-of-keyset-test
-  (is (m/validate [:map-of {:or [:a :b]} :keyword :any] {:a nil}))
-  (is (m/validate [:map-of {:or [:a :b]} :keyword :any] {:b nil}))
-  (is (not (m/validate [:map-of {:or [:a :b]} :keyword :any] {})))
-  (is (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:a nil}))
-  (is (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:b nil}))
-  (is (not (m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {})))
+  (testing "OpenMapOfAB"
+    (is (m/validate      OpenMapOfAB {:a 0}))
+    (is (m/validate      OpenMapOfAB {:a 0 :z 0}))
+    (is (m/validate      OpenMapOfAB {:b 0}))
+    (is (m/validate      OpenMapOfAB {:b 0 :z 0}))
+    (is (not (m/validate OpenMapOfAB {:z 0})))
+    (is (not (m/validate OpenMapOfAB {}))))
+
+  (testing "ClosedMapOfAB"
+    (is (m/validate      ClosedMapOfAB {:a 0}))
+    (is (not (m/validate ClosedMapOfAB {:a 0 :z 0})))
+    (is (m/validate      ClosedMapOfAB {:b 0}))
+    (is (not (m/validate ClosedMapOfAB {:b 0 :z 0})))
+    (is (not (m/validate ClosedMapOfAB {:z 0})))
+    (is (not (m/validate ClosedMapOfAB {}))))
+
   ;;TODO are there satisfiable sets that cannot be generated?
   ;; e.g., allowing keys in the child but not telling the keyset
   ;; perhaps :optional [:b] property key to inform generator?

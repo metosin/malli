@@ -356,13 +356,29 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
 Keysets can be further specified via [`:keyset` constraints](#keyset-constraints)
 and `:min`/`:max` count properties.
 
+```clojure
+(def OpenMapOfAB [:map-of {:or [:a :b]} keyword? :any])
+
+(m/validate OpenMapOfAB {:a 0}))      ;=> true
+(m/validate OpenMapOfAB {:a 0 :z 0})) ;=> true
+(m/validate OpenMapOfAB {:b 0}))      ;=> true
+(m/validate OpenMapOfAB {:b 0 :z 0})) ;=> true
+(m/validate OpenMapOfAB {:z 0})       ;=> false
+(m/validate OpenMapOfAB {})           ;=> false
+```
+
 To restrict the keys to just those permitted by the heterogeneous constraints,
 use the homogeneous keys schema to enumerate the valid keys.
 
 ```clojure
-(m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:a nil}) ; => true
-(m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {:b nil}) ; => true
-(m/validate [:map-of {:or [:a :b]} [:enum :a :b] :any] {}))      ; => false
+(def ClosedMapOfAB [:map-of {:or [:a :b]} [:enum :a :b] :any])
+
+(m/validate ClosedMapOfAB {:a 0}))      ;=> true
+(m/validate ClosedMapOfAB {:a 0 :z 0})) ;=> false
+(m/validate ClosedMapOfAB {:b 0}))      ;=> true
+(m/validate ClosedMapOfAB {:b 0 :z 0})) ;=> false
+(m/validate ClosedMapOfAB {:z 0})       ;=> false
+(m/validate ClosedMapOfAB {})           ;=> false
 ```
 
 ## Map with default schemas

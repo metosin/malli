@@ -1244,18 +1244,20 @@
                (fn [m in acc]
                  (if-not (map? m)
                    (conj acc (miu/-error path in this m ::invalid-type))
-                   (if-not (validate-limits m)
-                     (conj acc (miu/-error path in this m ::limits))
+                   (let [acc (cond-> acc
+                               (not (validate-limits m)) (conj (miu/-error path in this m ::limits))
+                               (and keyset-validator (not (keyset-validator m))) (conj (miu/-error path in this m ::keyset-violation)))]
                      (reduce-kv
-                      (fn [acc key value]
-                        (let [in (conj in key)]
-                          (->> acc
-                               (key-explainer key in)
-                               (value-explainer value in))))
-                      acc m))))))
+                       (fn [acc key value]
+                         (let [in (conj in key)]
+                           (->> acc
+                                (key-explainer key in)
+                                (value-explainer value in))))
+                       acc m))))))
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
+             (when @keyset-constraint (-fail! ::todo-transform-map-of-keys))
              (let [this-transformer (-value-transformer transformer this method options)
                    ->key (-transformer key-schema transformer method options)
                    ->child (-transformer value-schema transformer method options)
@@ -1340,8 +1342,8 @@
                       (if-not (fpred x)
                         (conj acc (miu/-error path in this x ::invalid-type))
                         (let [acc (cond-> acc
-                                    (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                                    (and keyset-validator (not (keyset-validator x))) (conj acc (miu/-error path in this x ::keyset-violation)))
+                                    (not (validate-limits x)) (conj (miu/-error path in this x ::limits))
+                                    (and keyset-validator (not (keyset-validator x))) (conj (miu/-error path in this x ::keyset-violation)))
                               size (count x)]
                           (loop [acc acc , i 0, [x & xs] x]
                             (if (< i size)

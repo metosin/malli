@@ -1340,8 +1340,8 @@
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
                         _ (when @keyset-constraint (-fail! ::todo-transform-set-keyset))
-                        child-transformer (or (some-> schema (-transformer transformer method options))
-                                              (-fail! ::todo-transform-closed-set))
+                        _ (or schema (-fail! ::todo-transform-closed-set))
+                        child-transformer (some-> schema (-transformer transformer method options))
                         ->child (when child-transformer
                                   (if fempty
                                     (-collection-transformer child-transformer fempty)

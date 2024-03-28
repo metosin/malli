@@ -1339,15 +1339,14 @@
                     (fn [x in acc]
                       (if (not (fpred x))
                         (conj acc (miu/-error path in this x ::invalid-type))
-                        (-> acc
-                            (cond->
-                              (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                              (and keyset-validator (not (keyset-validator x))) (conj acc (miu/-error path in this x ::keyset-violation)))
-                            (into (let [size (count x)]
-                                    (loop [acc [] , i 0, [x & xs] x]
-                                      (if (< i size)
-                                        (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
-                                        acc)))))))))
+                        (let [acc (cond-> acc
+                                    (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
+                                    (and keyset-validator (not (keyset-validator x))) (conj acc (miu/-error path in this x ::keyset-violation)))
+                              size (count x)]
+                          (loop [acc acc , i 0, [x & xs] x]
+                            (if (< i size)
+                              (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
+                              acc)))))))
                 (-parser [_] (->parser -parser parse))
                 (-unparser [_] (->parser -unparser unparse))
                 (-transformer [this transformer method options]

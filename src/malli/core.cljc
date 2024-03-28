@@ -1761,7 +1761,7 @@
     (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (if flat-arrow?
-        (-check-children! :-> properties children nil nil)
+        (-check-children! :-> properties children 1 nil)
         (-check-children! :=> properties children 2 3))
       (let [guard-property (:fn properties)
             _ (when (and guard-property
@@ -1772,10 +1772,8 @@
             [input output guard :as children] (if flat-arrow?
                                                 (-vmap
                                                   #(schema % options)
-                                                  (into (if (empty? original-children)
-                                                          [:cat :any]
-                                                          [(into [:cat] (pop original-children))
-                                                           (peek original-children)])
+                                                  (into [(into [:cat] (pop original-children))
+                                                         (peek original-children)]
                                                         (when guard-property
                                                           [(schema [:fn guard-property] options)])))
                                                 original-children)

@@ -3670,11 +3670,12 @@
 
 #_
 (deftest set-keyset-test
-  (is (m/validate [:set {:or [:a :b]}] #{:a}))
-  (is (m/validate [:set {:or [:a :b]}] #{:b}))
-  (is (m/validate [:set {:or [:a :b]}] #{}))
+  (is (m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:a}))
+  (is (m/validate [:set {:or [:a :b]} [:enum :a :b]] #{:b}))
+  (is (m/validate [:set {:or [:a :b]} [:enum :a :b]] #{}))
   ;;TODO are there satisfiable sets that cannot be generated?
   ;; e.g., allowing keys in the child but not telling the keyset
+  ;; perhaps :optional [:b] property key to inform generator?
   #_
   (mg/sample [:set {:keyset [:a]
                     :min 2}

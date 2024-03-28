@@ -1139,7 +1139,7 @@
                                 (conj (fn [x in acc]
                                         (cond-> acc
                                           (not (constraint-validator x))
-                                          (conj (miu/-error path in this x ::keys-violation))))))]
+                                          (conj (miu/-error path in this x ::keyset-violation))))))]
                (fn [x in acc]
                  (if-not (pred? x)
                    (conj acc (miu/-error path in this x ::invalid-type))

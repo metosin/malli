@@ -773,7 +773,6 @@ use the homogeneous schema to enumerate the valid keys.
 ; => true
 ```
 
-
 ## String schemas
 
 Using a predicate:

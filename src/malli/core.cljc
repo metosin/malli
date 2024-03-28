@@ -1046,13 +1046,13 @@
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
-             keys-constraints (delay (-keyset-constraint-from-properties properties options))
+             keyset-constraint (delay (-keyset-constraint-from-properties properties options))
              default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
              explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
-                              keys-validator (some-> @keys-constraints (-keyset-constraint-validator options))
+                              keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1078,9 +1078,9 @@
                                                  (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                  m (keys m))))
                                         ;;TODO unit test
-                                        keys-validator
+                                        keyset-validator
                                         (cons (fn [m]
-                                                (if (keys-validator m)
+                                                (if (keyset-validator m)
                                                   m
                                                   (reduced ::invalid)))))]
                           (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
@@ -1091,7 +1091,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   keys-validator (some-> @keys-constraints (-keyset-constraint-validator options))
+                   keyset-validator (some-> @keyset-constraint (-keyset-constraint-validator options))
                    default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
@@ -1105,12 +1105,12 @@
                                 (conj (fn [m] (default-validator (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))))
                                 (and closed (not default-validator))
                                 (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m))))
-                                keys-validator (conj keys-validator))
+                                keyset-validator (conj keyset-validator))
                    validate (miu/-every-pred validators)]
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validator (some-> @keys-constraints (-keyset-constraint-validator options))
+                   constraint-validator (some-> @keyset-constraint (-keyset-constraint-validator options))
                    default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]
@@ -1150,7 +1150,7 @@
            (-parser [this] (->parser this -parser))
            (-unparser [this] (->parser this -unparser))
            (-transformer [this transformer method options]
-             (when @keys-constraints (-fail! ::todo-transform-map-keys))
+             (when @keyset-constraint (-fail! ::todo-transform-map-keys))
              (let [keyset (-entry-keyset (-entry-parser this))
                    this-transformer (-value-transformer transformer this method options)
                    ->children (reduce (fn [acc [k s]]

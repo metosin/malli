@@ -264,6 +264,18 @@
                   {} sols)
           vector))
 
+(defn- unchunk
+  "Given a sequence that may have chunks, return a sequence that is 1-at-a-time
+lazy with no chunks. Chunks are good for efficiency when the data items are
+small, but when being processed via map, for example, a reference is kept to
+every function result in the chunk until the entire chunk has been processed,
+which increases the amount of memory in use that cannot be garbage
+collected."
+  [s]
+  (lazy-seq
+    (when (seq s)
+      (cons (first s) (unchunk (rest s))))))
+
 (defn -keyset-constraint-solutions [constraint options]
   (letfn [(-keyset-constraint-solutions [constraint]
             (lazy-seq
@@ -287,6 +299,7 @@
                             ;; [-1 -2 -3 -4 -5] === negate all
                             base-id (vec (range ndisjuncts))]
                         (when (pos? ndisjuncts)
+                          ;; TODO unchunk
                           (when-some [[first-satisfiable first-solution]
                                       (some (fn [i]
                                               (when-some [sol (seq (-keyset-constraint-solutions (nth cs i)))]
@@ -306,7 +319,8 @@
                                                                           (subvec id mid)))))]
                                                           (swap! solution-cache assoc id sol)
                                                           sol)))
-                                  satisfiable-after-first (keep-indexed #(vector % (solve-combination [%])) (range first-satisfiable))]
+                                  satisfiable-after-first (keep-indexed #(vector % (solve-combination [%]))
+                                                                        (unchunk (range first-satisfiable)))]
                               (cons
                                 first-solution
                                 (concat

@@ -1014,3 +1014,9 @@
               (mg/sample
                 [:map {:keyset [[:not :a]]}]
                 {:size 100}))))
+
+(deftest set-keyset-constraint-test
+  (is (= [#{:a} #{:b} #{:b :a} #{:b} #{:b}]
+         (mg/sample [:set {:or [:a :b]} keyword?]
+                    {:seed 10
+                     :size 5}))))

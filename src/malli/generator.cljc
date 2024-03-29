@@ -124,15 +124,42 @@
                     max (gen/vector gen 0 max)
                     :else (gen/vector gen))))))
 
+(defn -mentioned-constraint-keys [constraint options]
+  (letfn [(-mentioned-constraint-keys [constraint]
+            (or (m/-contains-constraint-key constraint)
+                (case (first constraint)
+                  (:not :and :or :xor :iff :implies) (mapcat -mentioned-constraint-keys (next constraint))
+                  :disjoint (apply concat (next constraint))
+                  (or (when-some [mentioned-constraint-keys (::mentioned-constraint-keys options)]
+                        (mentioned-constraint-keys constraint options))
+                      (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
+    (-mentioned-constraint-keys constraint)))
+
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
+        constraint (m/-keyset-constraint-from-properties (m/properties schema) options)
+        constraint-validator (some-> constraint (m/-keyset-constraint-validator options))
         child (-> schema m/children first)
+        child-validator (m/validator child)
+        mentioned (some-> constraint
+                          (-mentioned-constraint-keys options)
+                          (->> (into [] (comp (distinct) (filter child-validator)))))
+        keysets (when constraint
+                  (into [] (comp (map f)
+                                 (filter constraint-validator))
+                        (comb/subsets mentioned)))
         gen (generator child options)]
     (gen/fmap f (if (-unreachable-gen? gen)
-                  (if (<= (or min 0) 0 (or max 0))
+                  (if (and (<= (or min 0) 0 (or max 0))
+                           (or (not constraint-validator)
+                               (constraint-validator (f []))))
                     (gen/return [])
                     (-never-gen options))
-                  (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})))))
+                  (if constraint-validator
+                    (gen/bind gen/nat
+                              (fn [i]
+                                (gen/return (nth keysets (mod i (count keysets))))))
+                    (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))))
 
 (defn -and-gen [schema options]
   (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
@@ -170,17 +197,6 @@
 (defn- -value-gen [k s options]
   (let [g (generator s options)]
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
-
-(defn -mentioned-constraint-keys [constraint options]
-  (letfn [(-mentioned-constraint-keys [constraint]
-            (or (m/-contains-constraint-key constraint)
-                (case (first constraint)
-                  (:not :and :or :xor :iff :implies) (mapcat -mentioned-constraint-keys (next constraint))
-                  :disjoint (apply concat (next constraint))
-                  (or (when-some [mentioned-constraint-keys (::mentioned-constraint-keys options)]
-                        (mentioned-constraint-keys constraint options))
-                      (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
-    (-mentioned-constraint-keys constraint)))
 
 (defn -valid-keysets [schema options]
   (when-some [constraint (m/-keyset-constraint-from-properties

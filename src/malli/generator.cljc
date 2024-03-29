@@ -312,12 +312,16 @@
                                                           (swap! solution-cache assoc id sol)
                                                           sol)))]
                               (concat
+                                ;;TODO first just satisfy each disjunct to reduce search space of comb/selections
+
+                                ;; now satisfy combinations of disjuncts
                                 ;; true = solve
                                 ;; false = ignore
                                 (let [base-id (mapv ffirst satisfiable)]
                                   (keep-indexed
                                     (fn [i msk]
-                                      (let [solution-id (into [] (remove nil?)
+                                      (let [msk (-> msk reverse vec)
+                                            solution-id (into [] (remove nil?)
                                                               (map
                                                                 (fn [id need-to-satisfy]
                                                                   (when need-to-satisfy

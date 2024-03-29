@@ -217,7 +217,6 @@
   (let [g (generator s options)]
     (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
-#_ ;; brute force
 (defn -valid-map-keysets [schema options]
   {:pre [(= :map (m/type schema))]}
   (when-some [constraint (m/-keyset-constraint-from-properties
@@ -260,8 +259,7 @@
                       (if (= :never present)
                         (reduced nil)
                         (-> acc
-                            (update :order #(into % (filter #(contains? present %))
-                                                  (:order sol)))
+                            (update :order into (filter #(contains? present %)) (:order sol))
                             (assoc :present present)))))
                   {} sols)
           vector))
@@ -269,12 +267,12 @@
 (defn -keyset-constraint-solutions [constraint options]
   (letfn [(-keyset-constraint-solutions [constraint]
             (lazy-seq
-              (if-some [[k] (-contains-constraint-key constraint)]
+              (if-some [[k] (m/-contains-constraint-key constraint)]
                 [{:order [k]
                   :present {k true}}]
                 (case (if (vector? constraint)
                         (first constraint)
-                        (-fail! ::unknown-keyset-contraint {:constraint constraint}))
+                        (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))
                   :not (let [[c] (next constraint)
                              sol (-keyset-constraint-solutions c)]
                          (if (empty? sol)
@@ -284,6 +282,7 @@
                                 sol)))
                   :and (apply -conj-solutions (next constraint))
                   :or (let [cs (subvec constraint 1)
+                            ndisjuncts (count cs)
                             ;; [0 1 2 3 4] === solve all
                             ;; [-1 -2 -3 -4 -5] === negate all
                             base-id (vec (range ndisjuncts))]
@@ -293,11 +292,7 @@
                                               (when-some [sol (seq (-keyset-constraint-solutions (nth cs i)))]
                                                 [i sol]))
                                             (range ndisjuncts))]
-                            (let [solution-cache (atom 
-                                                   (into {#{first-satisfiable} first-solution}
-                                                         ;; everything before first satisfiable is not satisfiable
-                                                         (map (fn [i] [#{i} nil]))
-                                                         (range first-satisfiable)))
+                            (let [solution-cache (atom {#{first-satisfiable} first-solution})
                                   solve-combination (fn solve-combination [id]
                                                       (if-some [[_ res] (find @solution-cache id)]
                                                         res
@@ -310,82 +305,90 @@
                                                                         (solve-combination
                                                                           (subvec id mid)))))]
                                                           (swap! solution-cache assoc id sol)
-                                                          sol)))]
-                              (concat
-                                ;;TODO first just satisfy each disjunct to reduce search space of comb/selections
+                                                          sol)))
+                                  satisfiable-after-first (keep-indexed #(vector % (solve-combination [%])) (range first-satisfiable))]
+                              (cons
+                                first-solution
+                                (concat
+                                  ;;first just satisfy each disjunct to reduce search space of comb/selections
+                                  (map second satisfiable-after-first)
 
-                                ;; now satisfy combinations of disjuncts
-                                ;; true = solve
-                                ;; false = ignore
-                                (let [base-id (mapv ffirst satisfiable)]
-                                  (keep-indexed
-                                    (fn [i msk]
-                                      (let [msk (-> msk reverse vec)
-                                            solution-id (into [] (remove nil?)
-                                                              (map
-                                                                (fn [id need-to-satisfy]
-                                                                  (when need-to-satisfy
-                                                                    id))
-                                                                base-id msk))]
-                                        (solve-combination solution-id)))
-                                    ;; trim search space at the expense of upfront calculation of satisfiability of each disjunct
-                                    (next (comb/selections [false true] (dec (count satisfiable))))))
-                                ;; true = solve
-                                ;; false = solve negation
-                                (lazy-seq
-                                  (when-some [negation-satisfiable (seq
-                                                                     (keep-indexed
-                                                                       (fn [i c]
-                                                                         (when-some [sol (seq (-keyset-constraint-solutions [:not c]))]
-                                                                           {[(dec (- i))] sol}))
-                                                                       ;;FIXME right-to-left?
-                                                                       cs))]
-                                    (swap! solution-cache into negation-satisfiable)
-                                    (keep-indexed
-                                      (fn [i msk]
-                                        (if (< ndisjuncts i)
-                                          (when (every? identity (map (fn [satisfiable must-satisfy]
-                                                                        (or (not must-satisfy)
-                                                                            satisfiable))
-                                                                      @seen-satisfiable msk))
-                                            [i ])
-                                          ;;FIXME right-to-left?
-                                          [i (map (fn []) cs msk)]))
-                                      (next (comb/selections [false true] (dec (count solvable))))))))))))
-                  :xor (let [ps (mapv -keyset-constraint-solutions (next constraint))]
-                         #(let [rs (filter (fn [p] (p %)) ps)]
-                            (boolean
-                              (and (seq rs) (not (next rs))))))
-                  :disjoint (let [ksets (next constraint)
-                                  ps (mapv (fn [ks]
-                                             (when-not (set? ks)
-                                               (-fail! ::disjoint-constraint-takes-sets-of-keys {:constraint constraint}))
-                                             #(boolean
-                                                (some (fn [k]
-                                                        (contains? % k))
-                                                      ks)))
-                                           ksets)
-                                  _ (when (next ksets)
-                                      (let [in-multiple (apply set/intersection ksets)]
-                                        (when (seq in-multiple)
-                                          (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple}))))]
-                              #(let [rs (keep-indexed (fn [i p]
-                                                        (when (p %)
-                                                          i))
-                                                      ps)]
-                                 (or (empty? rs)
-                                     (not (next rs)))))
-                  :iff (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
-                         (when-not p
-                           (-fail! ::empty-iff))
-                         #(let [expect (p %)]
-                            (every? (fn [p] (identical? expect (p %))) ps)))
-                  :implies (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
-                             (when-not p
-                               (-fail! ::missing-implies-condition {:constraint constraint}))
-                             #(or (not (p %))
-                                  (every? (fn [p] (p %)) ps)))
-                  (-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
+                                  ;; now satisfy combinations of disjuncts
+                                  ;; true = solve
+                                  ;; false = ignore
+                                  (lazy-seq
+                                    ;; everything before first satisfiable is not satisfiable
+                                    (swap! solution-cache into (map (fn [i] [#{i} nil])) (range 0 first-satisfiable))
+                                    (let [base-id (into [first-satisfiable]
+                                                        (map first)
+                                                        satisfiable-after-first)]
+                                      (keep-indexed
+                                        (fn [i msk]
+                                          (let [msk (-> msk reverse vec)
+                                                solution-id (into [] (remove nil?)
+                                                                  (map
+                                                                    (fn [id need-to-satisfy]
+                                                                      (when need-to-satisfy
+                                                                        id))
+                                                                    base-id msk))]
+                                            (solve-combination solution-id)))
+                                        (next (comb/selections [false true] (dec (count base-id)))))))
+                                  ;; true = solve
+                                  ;; false = solve negation
+                                  #_
+                                  (lazy-seq
+                                    (when-some [negation-satisfiable (seq
+                                                                       (keep-indexed
+                                                                         (fn [i c]
+                                                                           (when-some [sol (seq (-keyset-constraint-solutions [:not c]))]
+                                                                             {[(dec (- i))] sol}))
+                                                                         ;;FIXME right-to-left?
+                                                                         cs))]
+                                      (keep-indexed
+                                        (fn [i msk]
+                                          (if (< ndisjuncts i)
+                                            (when (every? identity (map (fn [satisfiable must-satisfy]
+                                                                          (or (not must-satisfy)
+                                                                              satisfiable))
+                                                                        @seen-satisfiable msk))
+                                              [i ])
+                                            ;;FIXME right-to-left?
+                                            [i (map (fn []) cs msk)]))
+                                        (next (comb/selections [false true] (dec (count solvable)))))))))))))
+                  ;:xor (let [ps (mapv -keyset-constraint-solutions (next constraint))]
+                  ;       #(let [rs (filter (fn [p] (p %)) ps)]
+                  ;          (boolean
+                  ;            (and (seq rs) (not (next rs))))))
+                  ;:disjoint (let [ksets (next constraint)
+                  ;                ps (mapv (fn [ks]
+                  ;                           (when-not (set? ks)
+                  ;                             (-fail! ::disjoint-constraint-takes-sets-of-keys {:constraint constraint}))
+                  ;                           #(boolean
+                  ;                              (some (fn [k]
+                  ;                                      (contains? % k))
+                  ;                                    ks)))
+                  ;                         ksets)
+                  ;                _ (when (next ksets)
+                  ;                    (let [in-multiple (apply set/intersection ksets)]
+                  ;                      (when (seq in-multiple)
+                  ;                        (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple}))))]
+                  ;            #(let [rs (keep-indexed (fn [i p]
+                  ;                                      (when (p %)
+                  ;                                        i))
+                  ;                                    ps)]
+                  ;               (or (empty? rs)
+                  ;                   (not (next rs)))))
+                  ;:iff (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
+                  ;       (when-not p
+                  ;         (-fail! ::empty-iff))
+                  ;       #(let [expect (p %)]
+                  ;          (every? (fn [p] (identical? expect (p %))) ps)))
+                  ;:implies (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
+                  ;           (when-not p
+                  ;             (-fail! ::missing-implies-condition {:constraint constraint}))
+                  ;           #(or (not (p %))
+                  ;                (every? (fn [p] (p %)) ps)))
+                  (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
     (-keyset-constraint-solutions constraint))
   )
 

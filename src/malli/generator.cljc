@@ -151,9 +151,7 @@
                         (or (not-empty
                               (into [] (comp (mapcat #(comb/combinations mentioned %))
                                              (map f)
-                                             (filter #(and (or (not min) (<= min (count %)))
-                                                           (constraint-validator %)))
-                                             (halt-when #(some-> max (< (count %)))))
+                                             (filter #(constraint-validator %)))
                                     (range (or min 0)
                                            (inc (or max (count mentioned))))))
                             (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))

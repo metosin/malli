@@ -145,9 +145,13 @@
                           (-mentioned-constraint-keys options)
                           (->> (into [] (comp (distinct) (filter child-validator)))))
         keysets (when constraint
-                  (into [] (comp (map f)
-                                 (filter constraint-validator))
-                        (comb/subsets mentioned)))
+                  (or (not-empty
+                        (into [] (comp (map f)
+                                       (filter #(and (or (not min) (<= min (count %)))
+                                                     (or (not max) (<= (count %) max))
+                                                     (constraint-validator %))))
+                              (comb/subsets mentioned)))
+                      (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))
         gen (generator child options)]
     (gen/fmap f (if (-unreachable-gen? gen)
                   (if (and (<= (or min 0) 0 (or max 0))

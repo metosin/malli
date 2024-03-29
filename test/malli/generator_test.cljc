@@ -1019,4 +1019,32 @@
   (is (= [#{:a} #{:b} #{:b :a} #{:b} #{:b}]
          (mg/sample [:set {:or [:a :b]} keyword?]
                     {:seed 10
-                     :size 5}))))
+                     :size 5})))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/unsatisfiable-keyset"
+        (mg/sample [:set {:or [:a :b]
+                          :min 3}
+                    keyword?]
+                   {:seed 10
+                    :size 5})))
+  (is (= [#{:c :b :a} #{:c :b :a} #{:c :b :a} #{:c :b :a} #{:c :b :a}]
+         (mg/sample [:set {:or [:a :b
+                                ;; hint for optional key
+                                :c [:not :c]]
+                           :min 3}
+                     keyword?]
+                    {:seed 10
+                     :size 5})))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/unsatisfiable-keyset"
+        (mg/sample [:set {:keyset [:a [:not :a]]} keyword?]
+                   {:seed 10
+                    :size 5})))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/unsatisfiable-keyset"
+        (mg/sample [:set {:keyset [:a]} symbol?]
+                   {:seed 10
+                    :size 5}))))

@@ -1016,9 +1016,9 @@
                 {:size 100}))))
 
 (deftest set-keyset-constraint-test
-  (is (= [#{:a} #{:b} #{:b :a} #{:b} #{:b}]
+  (is (= [#{:a} #{:a} #{:a} #{:C/z :sz/Yp :a} #{:a}]
          (mg/sample [:set {:or [:a :b]} keyword?]
-                    {:seed 10
+                    {:seed 11
                      :size 5})))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
@@ -1028,14 +1028,27 @@
                     keyword?]
                    {:seed 10
                     :size 5})))
-  (is (= [#{:c :b :a} #{:c :b :a} #{:c :b :a} #{:c :b :a} #{:c :b :a}]
-         (mg/sample [:set {:or [:a :b
-                                ;; hint for optional key
-                                :c [:not :c]]
-                           :min 3}
-                     keyword?]
-                    {:seed 10
-                     :size 5})))
+  (is (= (every? (m/validator [:set {:or [:a :b] :min 3}
+                               keyword?])
+                 (mg/sample [:set {:or [:a :b
+                                        ;;hint
+                                        :c [:not :c]]
+                                   :min 3}
+                             keyword?]
+                            {:seed 11
+                             :size 100}))))
+  (is (every? (m/validator [:set {:or [:a :b]
+                                  :min 3
+                                  :max 5}
+                            keyword?])
+              (mg/sample [:set {:disjoint [#{:hint1 :hint2 :hint3}]
+                                :keyset [[:or :a :b]
+                                         [:or :hint3 [:not :hint3]]]
+                                :min 3
+                                :max 5}
+                          keyword?]
+                         {:seed 11
+                          :size 100})))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keyset"

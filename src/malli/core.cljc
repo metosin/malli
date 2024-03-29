@@ -994,9 +994,10 @@
                                                       (contains? % k))
                                                     ks)))
                                          ksets)
-                                _ (let [in-multiple (apply set/intersection ksets)]
-                                    (when (seq in-multiple)
-                                      (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple})))]
+                                _ (when (next ksets)
+                                    (let [in-multiple (apply set/intersection ksets)]
+                                      (when (seq in-multiple)
+                                        (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple}))))]
                             #(let [rs (keep-indexed (fn [i p]
                                                       (when (p %)
                                                         i))

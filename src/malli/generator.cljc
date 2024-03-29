@@ -1,6 +1,7 @@
 ;; See also `malli.generator-ast` for viewing generators as data
 (ns malli.generator
-  (:require [clojure.math.combinatorics :as comb]
+  (:require [clojure.core :as cc]
+            [clojure.math.combinatorics :as comb]
             [clojure.spec.gen.alpha :as ga]
             [clojure.string :as str]
             [clojure.test.check :as check]
@@ -144,14 +145,18 @@
         mentioned (some-> constraint
                           (-mentioned-constraint-keys options)
                           (->> (into [] (comp (distinct) (filter child-validator)))))
-        keysets (when constraint
-                  (or (not-empty
-                        (into [] (comp (map f)
-                                       (filter #(and (or (not min) (<= min (count %)))
-                                                     (or (not max) (<= (count %) max))
-                                                     (constraint-validator %))))
-                              (comb/subsets mentioned)))
-                      (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))
+        ;; TODO if only two keys are mentioned in constraints and min is 3, we say its unsatisfiable.
+        ;; but we should try to generate more keys from the child.
+        valid-keysets (when constraint
+                        (or (not-empty
+                              (into [] (comp (mapcat #(comb/combinations mentioned %))
+                                             (map f)
+                                             (filter #(and (or (not min) (<= min (count %)))
+                                                           (constraint-validator %)))
+                                             (halt-when #(some-> max (< (count %)))))
+                                    (range (or min 0)
+                                           (inc (or max (count mentioned))))))
+                            (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))
         gen (generator child options)]
     (gen/fmap f (if (-unreachable-gen? gen)
                   (if (and (<= (or min 0) 0 (or max 0))
@@ -159,11 +164,23 @@
                                (constraint-validator (f []))))
                     (gen/return [])
                     (-never-gen options))
-                  (if constraint-validator
-                    (gen/bind gen/nat
-                              (fn [i]
-                                (gen/return (nth keysets (mod i (count keysets))))))
-                    (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100}))))))
+                  (cond-> (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
+                    constraint-validator
+                    (gen/bind (fn [extra]
+                                (gen/bind (gen/tuple gen/nat gen/nat gen/nat gen/nat)
+                                          (fn [[i j k]]
+                                            (gen/return
+                                              (let [base (nth valid-keysets (mod i (count valid-keysets)))
+                                                    remaining-mentioned (remove (set base) mentioned)
+                                                    candidate (cond-> base
+                                                                (zero? (rem j 3))
+                                                                (into (take (cc/max 0 (if max
+                                                                                        (- max (count base))
+                                                                                        k)))
+                                                                      extra))]
+                                                (if (constraint-validator candidate)
+                                                  candidate
+                                                  base))))))))))))
 
 (defn -and-gen [schema options]
   (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]

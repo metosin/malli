@@ -202,7 +202,7 @@
   (let [{:keys [min max]} (-min-max schema options)
         [k-gen v-gen :as gs] (map #(generator % options) (m/children schema options))]
     (if (some -unreachable-gen? gs)
-      (if (= 0 (or min 0) (or max 0))
+      (if (= 0 (or min 0))
         (gen/return {})
         (-never-gen options))
       (let [opts (-> (cond

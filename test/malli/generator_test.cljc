@@ -852,6 +852,16 @@
                         (gen/fmap #(into {} %)
                                   (gen/vector-distinct-by first (gen/tuple rec rec))))
                       (gen/return {}))
+                    {:seed 0})))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Cannot generate values due to infinitely expanding schema: \[:map-of \{:min 1\} \[:ref :malli\.generator-test/rec\] \[:ref :malli\.generator-test/rec\]\]"
+        (mg/generate [:schema {:registry {::rec [:map-of {:min 1} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                     {:seed 0})))
+  (is (= '({{} {}} {{} {}} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
+         (mg/sample [:schema {:registry {::rec [:map-of {:max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                    {:seed 0})
+         (mg/sample [:schema {:registry {::rec [:map-of {:min 0 :max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
                     {:seed 0}))))
 
 (deftest vector-schema-simplify-test

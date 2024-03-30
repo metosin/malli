@@ -145,16 +145,6 @@
         mentioned (some-> constraint
                           (-mentioned-constraint-keys options)
                           (->> (into [] (comp (distinct) (filter child-validator)))))
-        ;; TODO if only two keys are mentioned in constraints and min is 3, we say its unsatisfiable.
-        ;; but we should try to generate more keys from the child.
-        valid-keysets (when constraint
-                        (or (not-empty
-                              (into [] (comp (mapcat #(comb/combinations mentioned %))
-                                             (map f)
-                                             (filter #(constraint-validator %)))
-                                    (range (or min 0)
-                                           (inc (or max (count mentioned))))))
-                            (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))
         gen (generator child options)]
     (gen/fmap f (if (-unreachable-gen? gen)
                   (if (and (<= (or min 0) 0 (or max 0))
@@ -164,21 +154,32 @@
                     (-never-gen options))
                   (cond-> (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
                     constraint-validator
-                    (gen/bind (fn [extra]
-                                (gen/bind (gen/tuple gen/nat gen/nat gen/nat gen/nat)
-                                          (fn [[i j k]]
-                                            (gen/return
-                                              (let [base (nth valid-keysets (mod i (count valid-keysets)))
-                                                    remaining-mentioned (remove (set base) mentioned)
-                                                    candidate (cond-> base
-                                                                (zero? (rem j 3))
-                                                                (into (take (cc/max 0 (if max
-                                                                                        (- max (count base))
-                                                                                        k)))
-                                                                      extra))]
-                                                (if (constraint-validator candidate)
-                                                  candidate
-                                                  base))))))))))))
+                    ;;brute force
+                    (gen/bind (let [;; TODO if only two keys are mentioned in constraints and min is 3, we say it's unsatisfiable.
+                                    ;; but we should try to generate more keys from the child.
+                                    valid-keysets (when constraint
+                                                    (or (not-empty
+                                                          (into [] (comp (mapcat #(comb/combinations mentioned %))
+                                                                         (map f)
+                                                                         (filter #(constraint-validator %)))
+                                                                (range (or min 0)
+                                                                       (inc (or max (count mentioned))))))
+                                                        (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))]
+                                (fn [extra]
+                                  (gen/bind (gen/tuple gen/nat gen/nat gen/nat gen/nat)
+                                            (fn [[i j k]]
+                                              (gen/return
+                                                (let [base (nth valid-keysets (mod i (count valid-keysets)))
+                                                      remaining-mentioned (remove (set base) mentioned)
+                                                      candidate (cond-> base
+                                                                  (zero? (rem j 3))
+                                                                  (into (take (cc/max 0 (if max
+                                                                                          (- max (count base))
+                                                                                          k)))
+                                                                        extra))]
+                                                  (if (constraint-validator candidate)
+                                                    candidate
+                                                    base)))))))))))))
 
 (defn -and-gen [schema options]
   (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
@@ -376,13 +377,11 @@ collected."
                                                ;; false = solve negation
                                                #_
                                                (lazy-seq
-                                                 (when-some [negation-satisfiable (seq
-                                                                                    (keep-indexed
-                                                                                      (fn [i c]
-                                                                                        (when-some [sol (seq (-keyset-constraint-solutions [:not c]))]
-                                                                                          {#{(dec (- i))} sol}))
-                                                                                      ;;FIXME right-to-left?
-                                                                                      cs))]
+                                                 (when-some [satisfiable-negated-disjuncts
+                                                             (seq
+                                                               (keep #(some->> (not-empty (solve-combination [%]))
+                                                                               (vector (dec (- i))))
+                                                                     (unchunk (range ndisjuncts))))]
                                                    (keep-indexed
                                                      (fn [i msk]
                                                        (if (< ndisjuncts i)
@@ -406,12 +405,23 @@ collected."
                          (concat (-keyset-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                  (lazy-seq
                                    (-keyset-constraint-solutions (into [:and] cs)))))
-                  :implies (let [[c & cs] (next constraint)]
-                             (concat (-keyset-constraint-solutions c)
+                  :implies (let [[c & cs] (next constraint)
+                                 not-c-sol (seq (-keyset-constraint-solutions [:not c]))]
+                             (concat
+                               not-c-sol
+                               (lazy-seq
+                                 (let [c-sol (seq (-keyset-constraint-solutions c))
+                                       cs-sol (seq (-keyset-constraint-solutions (into [:and] cs)))]
+                                   (concat
+                                     (-conj-solutions c-sol cs-sol)
                                      (lazy-seq
-                                       (let [sol (seq (-keyset-constraint-solutions (into [:and] cs)))]
-                                         (concat sol
-                                                 (lazy-seq (some->> sol (-conj-solutions (-keyset-constraint-solutions [:not c])))))))))
+                                       (let [or-cs-sol (seq (-keyset-constraint-solutions (into [:or] cs)))]
+                                         (concat
+                                           or-cs-sol
+                                           (lazy-seq
+                                             (-conj-solutions
+                                               not-c-sol
+                                               or-cs-sol))))))))))
                   (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))))))]
     (-keyset-constraint-solutions constraint))
   )
@@ -430,7 +440,8 @@ collected."
                [:or :a :b]
                nil)
              '({:order [:a], :present {:a true}}
-               {:order [:b], :present {:b true}})))
+               {:order [:b], :present {:b true}}
+               {:order [:a :b], :present {:a true, :b true}})))
   (assert (= (-keyset-constraint-solutions
                [:or :a :b :c]
                nil)
@@ -460,9 +471,10 @@ collected."
   (assert (= (-keyset-constraint-solutions
                [:implies :a :b]
                nil)
-             '({:order [:a], :present {:a true}}
+             '({:order [:a], :present {:a false}}
+               {:order [:a :b], :present {:a true, :b true}}
                {:order [:b], :present {:b true}}
-               {:order [:a :b], :present {:a false :b true}})))
+               {:order [:a :b], :present {:a false, :b true}})))
 )
 
 (defn -map-gen* [schema classify-entry keyset options]

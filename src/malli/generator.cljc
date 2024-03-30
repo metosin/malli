@@ -370,7 +370,7 @@ collected."
                                                                                         (nth base-id i))))
                                                                                msk)]
                                                          (solve-combination solution-id)))
-                                                     (unchunk (range)) (next (comb/selections [false true] (dec (count base-id)))))))
+                                                     (unchunk (range)) (next (comb/selections [false true] (count base-id))))))
                                                ;;TODO
                                                ;; true = solve
                                                ;; false = solve negation
@@ -406,11 +406,12 @@ collected."
                          (concat (apply -conj-solutions (map #(-keyset-constraint-solutions [:not %]) cs))
                                  (lazy-seq
                                    (apply -conj-solutions (map -keyset-constraint-solutions cs)))))
-                  ;:implies (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
-                  ;           (when-not p
-                  ;             (-fail! ::missing-implies-condition {:constraint constraint}))
-                  ;           #(or (not (p %))
-                  ;                (every? (fn [p] (p %)) ps)))
+#_#_
+                  :implies (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
+                             (when-not p
+                               (-fail! ::missing-implies-condition {:constraint constraint}))
+                             #(or (not (p %))
+                                  (every? (fn [p] (p %)) ps)))
                   (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))))))]
     (-keyset-constraint-solutions constraint))
   )
@@ -431,6 +432,16 @@ collected."
              '({:order [:a], :present {:a true}}
                {:order [:b], :present {:b true}})))
   (assert (= (-keyset-constraint-solutions
+               [:or :a :b :c]
+               nil)
+             '({:order [:a], :present {:a true}}
+               {:order [:b], :present {:b true}}
+               {:order [:c], :present {:c true}}
+               {:order [:b :c], :present {:b true, :c true}}
+               {:order [:a :c], :present {:a true, :c true}}
+               {:order [:a :b], :present {:a true, :b true}}
+               {:order [:a :b :c], :present {:a true, :b true, :c true}})))
+  (assert (= (-keyset-constraint-solutions
                [:xor :a :b]
                nil)
              '({:order [:a :b], :present {:a true, :b false}}
@@ -443,6 +454,11 @@ collected."
                {:order [:a :b], :present {:a false, :b true}})))
   (assert (= (-keyset-constraint-solutions
                [:iff :a :b]
+               nil)
+             '({:order [:a :b], :present {:a false, :b false}}
+               {:order [:a :b], :present {:a true, :b true}})))
+  (assert (= (-keyset-constraint-solutions
+               [:implies :a :b]
                nil)
              '({:order [:a :b], :present {:a false, :b false}}
                {:order [:a :b], :present {:a true, :b true}})))

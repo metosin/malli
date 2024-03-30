@@ -506,7 +506,7 @@ all of its constraints are satisfied. It takes one or more constraints.
 ; => ["should provide key: :git/sha"]
 ```
 
-The `:disjoint` constraint takes collections of keysets (vector). Map keys can intersect with at most one keyset.
+The `:disjoint` constraint takes collections of keysets (vectors). Map keys can intersect with at most one keyset.
 
 ```clojure
 (def SeparateMvnGit

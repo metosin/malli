@@ -403,15 +403,15 @@ collected."
                                            (update base :present into (zipmap kset (repeat true))))
                                          ksets)))
                   :iff (let [cs (subvec constraint 1)]
-                         (concat (apply -conj-solutions (map #(-keyset-constraint-solutions [:not %]) cs))
+                         (concat (-keyset-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                  (lazy-seq
-                                   (apply -conj-solutions (map -keyset-constraint-solutions cs)))))
-#_#_
-                  :implies (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
-                             (when-not p
-                               (-fail! ::missing-implies-condition {:constraint constraint}))
-                             #(or (not (p %))
-                                  (every? (fn [p] (p %)) ps)))
+                                   (-keyset-constraint-solutions (into [:and] cs)))))
+                  :implies (let [[c & cs] (next constraint)]
+                             (concat (-keyset-constraint-solutions c)
+                                     (lazy-seq
+                                       (let [sol (seq (-keyset-constraint-solutions (into [:and] cs)))]
+                                         (concat sol
+                                                 (lazy-seq (some->> sol (-conj-solutions (-keyset-constraint-solutions [:not c])))))))))
                   (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))))))]
     (-keyset-constraint-solutions constraint))
   )
@@ -460,8 +460,9 @@ collected."
   (assert (= (-keyset-constraint-solutions
                [:implies :a :b]
                nil)
-             '({:order [:a :b], :present {:a false, :b false}}
-               {:order [:a :b], :present {:a true, :b true}})))
+             '({:order [:a], :present {:a true}}
+               {:order [:b], :present {:b true}}
+               {:order [:a :b], :present {:a false :b true}})))
 )
 
 (defn -map-gen* [schema classify-entry keyset options]

@@ -1085,4 +1085,11 @@
                         :size 1000})]
     (is (m/validate s v))
     (is (= 892 (count v))))
-  )
+  (let [s [:set {:and (vec (take 100 (repeatedly gensym)))
+                 :min 200}
+           symbol?]
+        v (mg/generate s
+                       {:seed 10
+                        :size 1000})]
+    (is (m/validate s v))
+    (is (= 331 (count v)))))

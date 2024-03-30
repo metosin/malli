@@ -1005,42 +1005,43 @@
 
 (def NonEmptyMapGroup
   [:map
-   {:keyset [[:or :a1 :a2]]}
+   {:or [:a1 :a2]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]])
 
 (def UserPwGroups
   [:map
-   {:keyset [[:or :secret [:and :user :pass]]
-             [:disjoint [:secret] [:user :pass]]]}
+   {:and [[:or :secret [:and :user :pass]]
+          [:disjoint [:secret] [:user :pass]]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
 (def ImpliesGroups
   [:map
-   {:keyset [[:implies :a1 :a2 :a3]]}
+   {:implies [:a1 :a2 :a3]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def IffGroups
   [:map
-   {:keyset [[:iff :a1 :a2 :a3]]}
+   {:iff [:a1 :a2 :a3]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def XOrGroups
   [:map
-   {:keyset [[:xor :a1 :a2 :a3]]}
+   {:xor [:a1 :a2 :a3]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def NotGroups
   [:map
-   {:keyset [[:or [:and :a1 :a2] [:not :a3]]]}
+   {:or [[:and :a1 :a2]
+         [:not :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
@@ -1082,20 +1083,20 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keys"
         (mg/generate
-          [:map {:keyset [:a [:not :a]]}])))
+          [:map {:and [:a [:not :a]]}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keys"
         (mg/generate
-          [:map {:keyset [[:not :a]]}
+          [:map {:and [[:not :a]]}
            [:a :int]])))
   (is (every? #(contains? % :a)
               (mg/sample
-                [:map {:keyset [:a]}]
+                [:map {:and [:a]}]
                 {:size 100})))
   (is (every? #{{}}
               (mg/sample
-                [:map {:keyset [[:not :a]]}]
+                [:map {:and [[:not :a]]}]
                 {:size 100}))))
 
 (deftest set-constraint-test
@@ -1128,14 +1129,14 @@
                             :size 100}))))
   (is (empty?
         (remove (m/validator [:set {:disjoint [[:hint1 :hint2 :hint3]]
-                                    :keyset [[:or :a :b]
-                                             [:or :hint3 [:not :hint3]]]
+                                    :and [[:or :a :b]
+                                          [:or :hint3 [:not :hint3]]]
                                     :min 3
                                     :max 5}
                               keyword?])
                 (mg/sample [:set {:disjoint [[:hint1 :hint2 :hint3]]
-                                  :keyset [[:or :a :b]
-                                           [:or :hint3 [:not :hint3]]]
+                                  :and [[:or :a :b]
+                                        [:or :hint3 [:not :hint3]]]
                                   :min 3
                                   :max 5}
                             keyword?]
@@ -1144,20 +1145,20 @@
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keyset"
-        (mg/sample [:set {:keyset [:a [:not :a]]} keyword?]
+        (mg/sample [:set {:and [:a [:not :a]]} keyword?]
                    {:seed 10
                     :size 5})))
   ;;FIXME check that keyset keys satisfy the child schema!!
   ;; this should be unsatisfiable (the test below)
   (is (empty?
-        (remove (m/validator [:set {:keyset [:a]} symbol?])
-                (mg/sample [:set {:keyset [:a]} symbol?]
+        (remove (m/validator [:set {:and [:a]} symbol?])
+                (mg/sample [:set {:and [:a]} symbol?]
                            {:seed 10
                             :size 5}))))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keyset"
-        (mg/sample [:set {:keyset [:a]} symbol?]
+        (mg/sample [:set {:and [:a]} symbol?]
                    {:seed 10
                     :size 5})))
   (let [s [:set {:or (vec (take 100 (repeatedly gensym)))

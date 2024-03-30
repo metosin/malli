@@ -17,9 +17,8 @@
   (letfn [(-constraint-validator [constraint]
             (if-some [[k] (-contains-constraint-key constraint)]
               #(contains? % k)
-              (let [op (if (vector? constraint)
-                         (first constraint)
-                         (-fail! ::unknown-keyset-contraint {:constraint constraint}))]
+              (let [op (when (vector? constraint)
+                         (first constraint))]
                 (case op
                   (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)
                                         _ (when-not (= 1 (count all))
@@ -86,12 +85,12 @@
                                (-fail! ::missing-implies-condition {:constraint constraint}))
                              #(or (not (p %))
                                   (every? (fn [p] (p %)) ps)))
-                  (-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
+                  (-fail! ::unknown-keyset-constraint {:constraint constraint})))))]
     (-constraint-validator constraint)))
 
 (defn -constraint-from-properties [properties options]
   (when-some [cs (-> []
-                     (into (keep #(get properties %) [:and]))
+                     (into (get properties :and))
                      (into (keep #(some->> (get properties %)
                                            (into [%]))
                                  (concat [:disjoint :iff :implies :or :xor]

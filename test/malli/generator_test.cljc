@@ -857,11 +857,14 @@
                         (gen/return {}))
                       {:seed 0}))))
   (testing "cannot generate empty for positive :min"
-    (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #"Cannot generate values due to infinitely expanding schema: \[:map-of \{:min 1\} \[:ref :malli\.generator-test/rec\] \[:ref :malli\.generator-test/rec\]\]"
-          (mg/generate [:schema {:registry {::rec [:map-of {:min 1} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
-                       {:seed 0}))))
+    (try (mg/generate [:schema {:registry {::rec [:map-of {:min 1} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+         (is false)
+         (catch #?(:clj Exception, :cljs js/Error) e
+           (is (re-find #":malli\.generator/infinitely-expanding-schema"
+                        (ex-message e)))
+           (is (= [:map-of {:min 1} [:ref :malli.generator-test/rec] [:ref :malli.generator-test/rec]]
+                  (-> e ex-data :data :schema m/form))))))
   (testing "can generate empty regardless of :max"
     (is (= '({{} {}} {{} {}} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
            (mg/sample [:schema {:registry {::rec [:map-of {:max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
@@ -1017,17 +1020,17 @@
 (deftest such-that-generator-failure-test
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #"Could not generate a value for schema \[:not :any\]\. Consider providing a custom generator\."
+        #":malli\.generator/not-generator-failure"
         (mg/generate [:not :any])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #"Could not generate enough distinct elements for schema \[:set \{:min 2\} \[:= 1\]\]\. Consider providing a custom generator\."
+        #":malli\.generator/distinct-generator-failure"
         (mg/generate [:set {:min 2} [:= 1]])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #"Could not generate enough distinct keys for schema \[:map-of \{:min 2\} \[:= 1\] :any\]\. Consider providing a custom generator\."
+        #":malli\.generator/distinct-generator-failure"
         (mg/generate [:map-of {:min 2} [:= 1] :any])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #"Could not generate a value for schema \[:and pos\? neg\?\]\. Consider providing a custom generator\."
+        #":malli\.generator/and-generator-failure"
         (mg/generate [:and pos? neg?]))))

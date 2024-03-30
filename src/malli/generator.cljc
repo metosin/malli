@@ -153,6 +153,7 @@
                       (gen/return [])
                       (-never-gen options)))
                   (if-not constraint
+                    ;;TODO custom :ex-fn that prints schema
                     (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
                     (let [sols (or (seq (-keyset-constraint-solutions constraint options))
                                    (m/-fail! ::unsatisfiable-keyset))
@@ -199,6 +200,7 @@
                                                 ;; we might be one value short if this generator succeeds.
                                                 ;; this is to handle the case where sentinel is never used
                                                 ;; and we have enough valid values to complete the keyset.
+                                                ;;TODO custom :ex-fn that prints schema
                                                 (gen/vector-distinct-by
                                                   (fn [v] (if (contains? present v)
                                                             sentinel
@@ -207,12 +209,14 @@
                                                   {:min-elements (some-> min (- nbase))
                                                    :max-elements (some-> max (- nbase))
                                                    :max-tries 100})
+                                                ;;TODO custom :ex-fn that prints schema
                                                 (gen/vector-distinct gen {:max-tries 100}))
                                               (fn [extra-ks]
                                                 (let [base (into base (remove #(false? (present %)))
                                                                  extra-ks)]
                                                   (if (some->> min (< (count base)))
                                                     ;; still short, need to generate one more value
+                                                    ;;TODO custom :ex-fn that prints schema
                                                     (gen/bind (gen/vector-distinct-by
                                                                 (fn [v] (if (or (contains? present v)
                                                                                 (contains? base v))
@@ -619,7 +623,9 @@ collected."
       (if (= 0 (or min 0) (or max 0))
         (gen/return {})
         (-never-gen options))
-      (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen) opts)))))
+      (gen/fmap #(into {} %)
+                ;;TODO custom :ex-fn that prints schema
+                (gen/vector-distinct (gen/tuple k-gen v-gen) opts)))))
 
 #?(:clj
    (defn -re-gen [schema options]

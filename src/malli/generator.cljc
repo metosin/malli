@@ -402,11 +402,10 @@ collected."
                                     (map (fn [kset]
                                            (update base :present into (zipmap kset (repeat true))))
                                          ksets)))
-                  ;:iff (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
-                  ;       (when-not p
-                  ;         (-fail! ::empty-iff))
-                  ;       #(let [expect (p %)]
-                  ;          (every? (fn [p] (identical? expect (p %))) ps)))
+                  :iff (let [cs (subvec constraint 1)]
+                         (concat (apply -conj-solutions (map #(-keyset-constraint-solutions [:not %]) cs))
+                                 (lazy-seq
+                                   (apply -conj-solutions (map -keyset-constraint-solutions cs)))))
                   ;:implies (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
                   ;           (when-not p
                   ;             (-fail! ::missing-implies-condition {:constraint constraint}))
@@ -442,6 +441,11 @@ collected."
              '({:order [:a :b], :present {:a false, :b false}}
                {:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))
+  (assert (= (-keyset-constraint-solutions
+               [:iff :a :b]
+               nil)
+             '({:order [:a :b], :present {:a false, :b false}}
+               {:order [:a :b], :present {:a true, :b true}})))
 )
 
 (defn -map-gen* [schema classify-entry keyset options]

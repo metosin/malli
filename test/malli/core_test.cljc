@@ -3241,7 +3241,7 @@
 (def UserPwGroups
   [:map
    {:keyset [[:or :secret [:and :user :pass]]
-             [:disjoint #{:secret} (sorted-set :user :pass)]]}
+             [:disjoint [:secret] [:pass :user]]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
@@ -3503,8 +3503,8 @@
    [:pass {:optional true} string?]])
 
 (def SeparateMvnGit
-  [:map {:disjoint [#{:mvn/version}
-                    #{:git/sha :git/url :git/tag}]}
+  [:map {:disjoint [[:mvn/version]
+                    [:git/sha :git/url :git/tag]]}
    [:mvn/version {:optional true} :string]
    [:git/sha {:optional true} :string]
    [:git/tag {:optional true} :string]
@@ -3512,15 +3512,15 @@
 
 (def SecretOrCreds
   [:map {:or [:secret [:and :user :pass]]
-         :disjoint [#{:secret}
-                    #{:user :pass}]}
+         :disjoint [[:secret]
+                    [:user :pass]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
 (def DPad
-  [:map {:keyset [[:disjoint #{:down} #{:up}]
-                [:disjoint #{:left} #{:right}]]}
+  [:map {:keyset [[:disjoint [:down] [:up]]
+                  [:disjoint [:left] [:right]]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]

@@ -394,25 +394,7 @@ collected."
                                                          ;;FIXME right-to-left?
                                                          [i (map (fn []) cs msk)]))
                                                      (next (comb/selections [false true] (dec (count solvable))))))))))))))
-                  ;:disjoint (let [ksets (next constraint)
-                  ;                ps (mapv (fn [ks]
-                  ;                           (when-not (set? ks)
-                  ;                             (-fail! ::disjoint-constraint-takes-sets-of-keys {:constraint constraint}))
-                  ;                           #(boolean
-                  ;                              (some (fn [k]
-                  ;                                      (contains? % k))
-                  ;                                    ks)))
-                  ;                         ksets)
-                  ;                _ (when (next ksets)
-                  ;                    (let [in-multiple (apply set/intersection ksets)]
-                  ;                      (when (seq in-multiple)
-                  ;                        (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple}))))]
-                  ;            #(let [rs (keep-indexed (fn [i p]
-                  ;                                      (when (p %)
-                  ;                                        i))
-                  ;                                    ps)]
-                  ;               (or (empty? rs)
-                  ;                   (not (next rs)))))
+                  :disjoint (let [])
                   ;:iff (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
                   ;       (when-not p
                   ;         (-fail! ::empty-iff))
@@ -444,6 +426,11 @@ collected."
                {:order [:b], :present {:b true}})))
   (assert (= (-keyset-constraint-solutions
                [:xor :a :b]
+               nil)
+             '({:order [:a :b], :present {:a true, :b false}}
+               {:order [:a :b], :present {:a false, :b true}})))
+  (assert (= (-keyset-constraint-solutions
+               [:disjoint [:a] [:b]]
                nil)
              '({:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))

@@ -987,15 +987,19 @@
                             (and (seq rs) (not (next rs))))))
                 :disjoint (let [ksets (next constraint)
                                 ps (mapv (fn [ks]
-                                           (when-not (set? ks)
-                                             (-fail! ::disjoint-constraint-takes-sets-of-keys {:constraint constraint}))
+                                           (when (empty? ks)
+                                             (-fail! ::disjoint-keyset-must-be-non-empty {:constraint constraint}))
+                                           (when-not (apply distinct? ks)
+                                             (-fail! ::disjoint-keyset-must-be-distinct {:constraint constraint}))
+                                           (when-not (vector? ks)
+                                             (-fail! ::disjoint-constraint-takes-vectors-of-keys {:constraint constraint}))
                                            #(boolean
                                               (some (fn [k]
                                                       (contains? % k))
                                                     ks)))
                                          ksets)
                                 _ (when (next ksets)
-                                    (let [in-multiple (apply set/intersection ksets)]
+                                    (let [in-multiple (apply set/intersection (map set ksets))]
                                       (when (seq in-multiple)
                                         (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple}))))]
                             #(let [rs (keep-indexed (fn [i p]

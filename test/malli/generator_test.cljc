@@ -929,7 +929,7 @@
 (def UserPwGroups
   [:map
    {:keyset [[:or :secret [:and :user :pass]]
-           [:disjoint #{:secret} #{:user :pass}]]}
+             [:disjoint [:secret] [:user :pass]]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
@@ -1041,7 +1041,7 @@
                                   :min 3
                                   :max 5}
                             keyword?])
-              (mg/sample [:set {:disjoint [#{:hint1 :hint2 :hint3}]
+              (mg/sample [:set {:disjoint [[:hint1 :hint2 :hint3]]
                                 :keyset [[:or :a :b]
                                          [:or :hint3 [:not :hint3]]]
                                 :min 3

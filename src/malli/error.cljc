@@ -25,7 +25,7 @@
                 (if-some [[k] (m/-contains-constraint-key constraint)]
                   (str "should provide key: " (pr-str k))
                   (let [flat-ks (delay (->flat-ks constraint))
-                        ng (next constraint)
+                        ng (subvec constraint 1)
                         op (first constraint)]
                     (cond
                       (and (= :or op) @flat-ks)
@@ -89,7 +89,7 @@
                              (apply str (interpose " " (map pr-str missing)))))
 
                       (= :disjoint op)
-                      (let [ksets (vec ng)
+                      (let [ksets ng
                             [has-constraint has-k] (some (fn [i]
                                                            (when-some [[has-k] (not-empty
                                                                                  (filter has? (nth ksets i)))]

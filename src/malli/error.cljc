@@ -13,13 +13,13 @@
         min (str "should be at least " min)
         max (str "should be at most " max)))))
 
-(defn -humanize-keyset-violation [{:keys [constraint value] :as args}
-                                  {custom-error ::humanize-keyset-violation :as options}]
+(defn -humanize-constraint-violation [{:keys [constraint value] :as args}
+                                      {custom-error ::humanize-constraint-violation :as options}]
   (letfn [(has? [k] (contains? value k))
           (->flat-ks [constraint] (let [ks (map m/-contains-constraint-key (next constraint))]
                                     (when (every? identity ks)
                                       (map first ks))))
-          (-humanize-keyset-violation [constraint]
+          (-humanize-constraint-violation [constraint]
             (or (when custom-error
                   (custom-error (assoc args :constraint constraint) options))
                 (if-some [[k] (m/-contains-constraint-key constraint)]
@@ -39,11 +39,11 @@
 
                       (= :and op)
                       (let [failing-constraints (keep (fn [constraint]
-                                                        (let [validator (m/-keyset-constraint-validator constraint options)]
+                                                        (let [validator (m/-constraint-validator constraint options)]
                                                           (when-not (validator value)
                                                             constraint)))
                                                       ng)]
-                        (-humanize-keyset-violation (first failing-constraints)))
+                        (-humanize-constraint-violation (first failing-constraints)))
 
                       (and (= :xor op) @flat-ks)
                       (let [provided (or (not-empty (filterv has? @flat-ks))
@@ -64,7 +64,7 @@
                                   (interpose "; or "
                                              (map-indexed (fn [i flat-child]
                                                             (str (inc i) "). "
-                                                                 (-humanize-keyset-violation flat-child)))
+                                                                 (-humanize-constraint-violation flat-child)))
                                                           ng))))
 
                       (and (= :not op) @flat-ks)
@@ -73,7 +73,7 @@
                       (and (= :not op)
                            (vector? (first ng))
                            (#{:and :or} (ffirst ng)))
-                      (-humanize-keyset-violation
+                      (-humanize-constraint-violation
                         (into [({:and :or :or :and} (ffirst ng))]
                               (map #(vector :not %))
                               (nfirst ng)))
@@ -100,8 +100,8 @@
                         (str "should not combine key " (pr-str has-k)
                              " with key" (if (next violating-ks) "s" "") ": "
                              (apply str (interpose " " (map pr-str violating-ks)))))
-                      :else (str "should satisfy keyset constraint: " (pr-str constraint)))))))]
-    (-humanize-keyset-violation constraint)))
+                      :else (str "should satisfy constraint: " (pr-str constraint)))))))]
+    (-humanize-constraint-violation constraint)))
 
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
@@ -118,10 +118,10 @@
                                       (str "invalid tuple size " (count value) ", expected " size)))}}
    ::m/invalid-type {:error/message {:en "invalid type"}}
    ::m/extra-key {:error/message {:en "disallowed key"}}
-   ::m/keyset-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
-                                          (-humanize-keyset-violation
-                                            (assoc args :constraint (-> schema m/properties (m/-keyset-constraint-from-properties options)))
-                                            options))}}
+   ::m/constraint-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
+                                              (-humanize-constraint-violation
+                                                (assoc args :constraint (-> schema m/properties (m/-constraint-from-properties options)))
+                                                options))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}

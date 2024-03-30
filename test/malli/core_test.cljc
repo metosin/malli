@@ -3299,7 +3299,7 @@
                          :in []
                          :schema [:map {:keyset [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                          :value {}
-                         :type :malli.core/keyset-violation
+                         :type :malli.core/constraint-violation
                          :message nil})}
              (with-schema-forms (m/explain NonEmptyMapGroup {}))))
       (is (= ["should provide at least one key: :a1 :a2"]
@@ -3324,7 +3324,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {:user "a"}
-               :type :malli.core/keyset-violation
+               :type :malli.core/constraint-violation
                :message nil}]
             (:errors (with-schema-forms (m/explain UserPwGroups {:user "a"})))))
       (is (= ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
@@ -3333,7 +3333,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {}
-               :type :malli.core/keyset-violation
+               :type :malli.core/constraint-violation
                :message nil}]
              (-> (m/explain UserPwGroups {})
                  with-schema-forms
@@ -3344,7 +3344,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {:secret "a", :user "b"}
-               :type :malli.core/keyset-violation
+               :type :malli.core/constraint-violation
                :message nil}]
              (-> (m/explain UserPwGroups {:secret "a"
                                           :user "b"})
@@ -3357,7 +3357,7 @@
                :in []
                :schema (m/form UserPwGroups)
                :value {:secret "a", :user "b", :pass "c"}
-               :type :malli.core/keyset-violation
+               :type :malli.core/constraint-violation
                :message nil}]
              (-> (m/explain UserPwGroups {:secret "a"
                                           :user "b"

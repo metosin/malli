@@ -1098,7 +1098,7 @@
                 [:map {:keyset [[:not :a]]}]
                 {:size 100}))))
 
-(deftest set-keyset-constraint-test
+(deftest set-constraint-test
   (is (= '(#{:a} #{:A/*9 :a} #{:j/? :a} #{:*/+ :a} #{:j-Y/F :!d_/l3. :tm6/n :d_/MTY :a})
          (mg/sample [:set {:or [:a :b]} keyword?]
                     {:seed 11

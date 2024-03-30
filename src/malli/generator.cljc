@@ -138,7 +138,7 @@
 
 (defn -valid-map-keysets [schema options]
   {:pre [(= :map (m/type schema))]}
-  (when-some [constraint (m/-keyset-constraint-from-properties
+  (when-some [constraint (m/-constraint-from-properties
                            (m/properties schema)
                            options)]
     (let [{required false
@@ -151,7 +151,7 @@
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)
-          p (m/-keyset-constraint-validator constraint options)]
+          p (m/-constraint-validator constraint options)]
       (into [] (comp (keep (fn [optionals]
                              (let [example (-> base
                                                (into (map (fn [k]
@@ -209,8 +209,8 @@ collected."
     (when (seq s)
       (cons (first s) (unchunk (rest s))))))
 
-(defn -keyset-constraint-solutions [constraint options]
-  (letfn [(-keyset-constraint-solutions [constraint]
+(defn -constraint-solutions [constraint options]
+  (letfn [(-constraint-solutions [constraint]
             (lazy-seq
               (if-some [[k] (m/-contains-constraint-key constraint)]
                 [{:order [k]
@@ -220,13 +220,13 @@ collected."
                            (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))]
                   (case op
                   :not (let [[c] (next constraint)
-                             sol (-keyset-constraint-solutions c)]
+                             sol (-constraint-solutions c)]
                          (if (empty? sol)
                            [{:order [] :present {}}]
                            (map (fn [s]
                                   (update s :present update-vals not))
                                 sol)))
-                  :and (apply -conj-solutions (map -keyset-constraint-solutions (next constraint)))
+                  :and (apply -conj-solutions (map -constraint-solutions (next constraint)))
                   (:or :xor) (let [cs (subvec constraint 1)
                                    ndisjuncts (count cs)
                                    base-id (vec (range ndisjuncts))]
@@ -238,7 +238,7 @@ collected."
                                                              (let [nid (count id)
                                                                    sol (if (= 1 nid)
                                                                          (let [i (nth id 0)]
-                                                                           (-keyset-constraint-solutions
+                                                                           (-constraint-solutions
                                                                              ;; [0 1 2 3 4] === solve all
                                                                              ;; [-1 -2 -3 -4 -5] === negate all
                                                                              (if (neg? i)
@@ -316,20 +316,20 @@ collected."
                                            (update base :present into (zipmap kset (repeat true))))
                                          ksets)))
                   :iff (let [cs (subvec constraint 1)]
-                         (concat (-keyset-constraint-solutions (into [:and] (map #(do [:not %])) cs))
+                         (concat (-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                  (lazy-seq
-                                   (-keyset-constraint-solutions (into [:and] cs)))))
+                                   (-constraint-solutions (into [:and] cs)))))
                   :implies (let [[c & cs] (next constraint)
-                                 not-c-sol (seq (-keyset-constraint-solutions [:not c]))]
+                                 not-c-sol (seq (-constraint-solutions [:not c]))]
                              (concat
                                not-c-sol
                                (lazy-seq
-                                 (let [c-sol (seq (-keyset-constraint-solutions c))
-                                       cs-sol (seq (-keyset-constraint-solutions (into [:and] cs)))]
+                                 (let [c-sol (seq (-constraint-solutions c))
+                                       cs-sol (seq (-constraint-solutions (into [:and] cs)))]
                                    (concat
                                      (-conj-solutions c-sol cs-sol)
                                      (lazy-seq
-                                       (let [or-cs-sol (seq (-keyset-constraint-solutions (into [:or] cs)))]
+                                       (let [or-cs-sol (seq (-constraint-solutions (into [:or] cs)))]
                                          (concat
                                            or-cs-sol
                                            (lazy-seq
@@ -337,26 +337,26 @@ collected."
                                                not-c-sol
                                                or-cs-sol))))))))))
                   (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))))))]
-    (-keyset-constraint-solutions constraint))
+    (-constraint-solutions constraint))
   )
 
 (comment
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:and :a :b]
                nil)
              '({:order [:a :b], :present {:a true, :b true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:and [:xor :a :c] :b]
                nil)
              '({:order [:a :c :b], :present {:a true, :c false, :b true}}
                {:order [:a :c :b], :present {:a false, :c true, :b true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:or :a :b]
                nil)
              '({:order [:a], :present {:a true}}
                {:order [:b], :present {:b true}}
                {:order [:a :b], :present {:a true, :b true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:or :a :b :c]
                nil)
              '({:order [:a], :present {:a true}}
@@ -366,23 +366,23 @@ collected."
                {:order [:a :c], :present {:a true, :c true}}
                {:order [:a :b], :present {:a true, :b true}}
                {:order [:a :b :c], :present {:a true, :b true, :c true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:xor :a :b]
                nil)
              '({:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:disjoint [:a] [:b]]
                nil)
              '({:order [:a :b], :present {:a false, :b false}}
                {:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:iff :a :b]
                nil)
              '({:order [:a :b], :present {:a false, :b false}}
                {:order [:a :b], :present {:a true, :b true}})))
-  (assert (= (-keyset-constraint-solutions
+  (assert (= (-constraint-solutions
                [:implies :a :b]
                nil)
              '({:order [:a], :present {:a false}}
@@ -394,7 +394,7 @@ collected."
 
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        constraint (m/-keyset-constraint-from-properties (m/properties schema) options)
+        constraint (m/-constraint-from-properties (m/properties schema) options)
         child (-> schema m/children first)
         child-validator (m/validator child)
         mentioned (some-> constraint
@@ -411,7 +411,7 @@ collected."
                                                                     (pr-str (m/form schema))
                                                                     ". Consider providing a custom generator.")
                                                                %)})
-                    (let [sols (or (seq (-keyset-constraint-solutions constraint options))
+                    (let [sols (or (seq (-constraint-solutions constraint options))
                                    (m/-fail! ::unsatisfiable-keyset))
                           nth-sol (let [atm (atom {:indexed []
                                                    :lazy sols})
@@ -439,7 +439,7 @@ collected."
                       (gen/bind gen/nat
                                 (fn [i]
                                   (let [{:keys [present]} (nth-sol i)
-                                        ;;TODO if count greater than :max, skip solution. might need to bake into -keyset-constraint-solutions
+                                        ;;TODO if count greater than :max, skip solution. might need to bake into -constraint-solutions
                                         base (reduce-kv (fn [acc k v]
                                                           (cond-> acc
                                                             v (conj k)))

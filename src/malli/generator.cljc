@@ -113,7 +113,7 @@
         child (-> schema m/children first)
         gen (generator child options)]
     (if (-unreachable-gen? gen)
-      (if (<= (or min 0) 0 (or max 0))
+      (if (= 0 (or min 0))
         (gen/fmap f (gen/return []))
         (-never-gen options))
       (gen/fmap f (cond
@@ -127,11 +127,11 @@
   (let [{:keys [min max]} (-min-max schema options)
         child (-> schema m/children first)
         gen (generator child options)]
-    (gen/fmap f (if (-unreachable-gen? gen)
-                  (if (<= (or min 0) 0 (or max 0))
-                    (gen/return [])
-                    (-never-gen options))
-                  (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100
+    (if (-unreachable-gen? gen)
+      (if (= 0 (or min 0))
+        (gen/return (f []))
+        (-never-gen options))
+      (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100
                                             :ex-fn #(ex-info (str "Could not generate enough distinct elements for schema "
                                                                   (pr-str (m/form schema))
                                                                   ". Consider providing a custom generator.")

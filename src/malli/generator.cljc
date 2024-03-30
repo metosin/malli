@@ -394,7 +394,14 @@ collected."
                                                          ;;FIXME right-to-left?
                                                          [i (map (fn []) cs msk)]))
                                                      (next (comb/selections [false true] (dec (count solvable))))))))))))))
-                  :disjoint (let [])
+                  :disjoint (let [ksets (subvec constraint 1)
+                                  order (into [] (mapcat identity) ksets)
+                                  base {:order order :present (zipmap order (repeat false))}]
+                              (cons base
+                                    ;; lazier?
+                                    (map (fn [kset]
+                                           (update base :present into (zipmap kset (repeat true))))
+                                         ksets)))
                   ;:iff (let [[p & ps] (mapv -keyset-constraint-solutions (next constraint))]
                   ;       (when-not p
                   ;         (-fail! ::empty-iff))
@@ -432,7 +439,8 @@ collected."
   (assert (= (-keyset-constraint-solutions
                [:disjoint [:a] [:b]]
                nil)
-             '({:order [:a :b], :present {:a true, :b false}}
+             '({:order [:a :b], :present {:a false, :b false}}
+               {:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))
 )
 

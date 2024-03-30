@@ -1,5 +1,6 @@
 (ns malli.error
   (:require [clojure.string :as str]
+            [malli.constraint :as mc]
             [malli.core :as m]
             [malli.util :as mu]))
 
@@ -16,13 +17,13 @@
 (defn -humanize-constraint-violation [{:keys [constraint value] :as args}
                                       {custom-error ::humanize-constraint-violation :as options}]
   (letfn [(has? [k] (contains? value k))
-          (->flat-ks [constraint] (let [ks (map m/-contains-constraint-key (next constraint))]
+          (->flat-ks [constraint] (let [ks (map mc/-contains-constraint-key (next constraint))]
                                     (when (every? identity ks)
                                       (map first ks))))
           (-humanize-constraint-violation [constraint]
             (or (when custom-error
                   (custom-error (assoc args :constraint constraint) options))
-                (if-some [[k] (m/-contains-constraint-key constraint)]
+                (if-some [[k] (mc/-contains-constraint-key constraint)]
                   (str "should provide key: " (pr-str k))
                   (let [flat-ks (delay (->flat-ks constraint))
                         ng (subvec constraint 1)
@@ -39,7 +40,7 @@
 
                       (= :and op)
                       (let [failing-constraints (keep (fn [constraint]
-                                                        (let [validator (m/-constraint-validator constraint options)]
+                                                        (let [validator (mc/-constraint-validator constraint options)]
                                                           (when-not (validator value)
                                                             constraint)))
                                                       ng)]
@@ -52,7 +53,7 @@
                              (apply str (interpose " " (map pr-str provided)))))
 
                       (and (#{:xor :or} op)
-                           (every? #(or (m/-contains-constraint-key %)
+                           (every? #(or (mc/-contains-constraint-key %)
                                         (and (vector? %)
                                              (#{:and :not :implies :iff} (first %))
                                              (->flat-ks %)))
@@ -120,7 +121,7 @@
    ::m/extra-key {:error/message {:en "disallowed key"}}
    ::m/constraint-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
                                               (-humanize-constraint-violation
-                                                (assoc args :constraint (-> schema m/properties (m/-constraint-from-properties options)))
+                                                (assoc args :constraint (-> schema m/properties (mc/-constraint-from-properties options)))
                                                 options))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]

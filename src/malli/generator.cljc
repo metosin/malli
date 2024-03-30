@@ -9,6 +9,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
+            [malli.constraint :as mc]
             [malli.core :as m]
             [malli.registry :as mr]
             [malli.impl.util :refer [-last -merge]]
@@ -127,7 +128,7 @@
 
 (defn -mentioned-constraint-keys [constraint options]
   (letfn [(-mentioned-constraint-keys [constraint]
-            (or (m/-contains-constraint-key constraint)
+            (or (mc/-contains-constraint-key constraint)
                 (case (first constraint)
                   (:not :and :or :xor :iff :implies) (mapcat -mentioned-constraint-keys (next constraint))
                   :disjoint (apply concat (next constraint))
@@ -138,7 +139,7 @@
 
 (defn -valid-map-keysets [schema options]
   {:pre [(= :map (m/type schema))]}
-  (when-some [constraint (m/-constraint-from-properties
+  (when-some [constraint (mc/-constraint-from-properties
                            (m/properties schema)
                            options)]
     (let [{required false
@@ -151,7 +152,7 @@
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)
-          p (m/-constraint-validator constraint options)]
+          p (mc/-constraint-validator constraint options)]
       (into [] (comp (keep (fn [optionals]
                              (let [example (-> base
                                                (into (map (fn [k]
@@ -212,7 +213,7 @@ collected."
 (defn -constraint-solutions [constraint options]
   (letfn [(-constraint-solutions [constraint]
             (lazy-seq
-              (if-some [[k] (m/-contains-constraint-key constraint)]
+              (if-some [[k] (mc/-contains-constraint-key constraint)]
                 [{:order [k]
                   :present {k true}}]
                 (let [op (if (vector? constraint)
@@ -394,7 +395,7 @@ collected."
 
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        constraint (m/-constraint-from-properties (m/properties schema) options)
+        constraint (mc/-constraint-from-properties (m/properties schema) options)
         child (-> schema m/children first)
         child-validator (m/validator child)
         mentioned (some-> constraint

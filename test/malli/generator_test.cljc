@@ -844,14 +844,14 @@
                       {:seed 0})))))
 
 (deftest map-of-schema-simplify-test
-  (is (= '({} {} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {}})
+  (is (= '({} {} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
          (mg/sample [:schema {:registry {::rec [:map-of [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
                     {:seed 0})
          (mg/sample (gen/recursive-gen
-                     (fn [rec]
-                       (gen/fmap #(into {} %)
-                                 (gen/vector-distinct (gen/tuple rec rec))))
-                     (gen/return {}))
+                      (fn [rec]
+                        (gen/fmap #(into {} %)
+                                  (gen/vector-distinct-by first (gen/tuple rec rec))))
+                      (gen/return {}))
                     {:seed 0}))))
 
 (deftest vector-schema-simplify-test
@@ -919,3 +919,32 @@
                        {:seed 2})]
     (is (vector? v))
     (is (seq v))))
+
+(deftest map-of-min-max-test
+  (is (empty? (remove #(<= 2 (count %))
+                      (mg/sample [:map-of {:min 2} [:enum 1 2 3] :any]
+                                 {:size 100}))))
+  (is (empty? (remove #(<= (count %) 2)
+                      (mg/sample [:map-of {:max 2} [:enum 1 2 3] :any]
+                                 {:size 100}))))
+  (is (empty? (remove #(<= 2 (count %) 3)
+                      (mg/sample [:map-of {:min 2 :max 3} [:enum 1 2 3] :any]
+                                 {:size 100})))))
+
+(deftest such-that-generator-failure-test
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate a value for schema \[:not :any\]\. Consider providing a custom generator\."
+        (mg/generate [:not :any])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate enough distinct elements for schema \[:set \{:min 2\} \[:= 1\]\]\. Consider providing a custom generator\."
+        (mg/generate [:set {:min 2} [:= 1]])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate enough distinct keys for schema \[:map-of \{:min 2\} \[:= 1\] :any\]\. Consider providing a custom generator\."
+        (mg/generate [:map-of {:min 2} [:= 1] :any])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate a value for schema \[:and pos\? neg\?\]\. Consider providing a custom generator\."
+        (mg/generate [:and pos? neg?]))))

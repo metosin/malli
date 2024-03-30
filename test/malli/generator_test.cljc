@@ -1028,15 +1028,15 @@
                     keyword?]
                    {:seed 10
                     :size 5})))
-  (is (= (every? (m/validator [:set {:or [:a :b] :min 3}
-                               keyword?])
-                 (mg/sample [:set {:or [:a :b
-                                        ;;hint
-                                        :c [:not :c]]
-                                   :min 3}
-                             keyword?]
-                            {:seed 11
-                             :size 100}))))
+  (is (every? (m/validator [:set {:or [:a :b] :min 3}
+                            keyword?])
+              (mg/sample [:set {:or [:a :b
+                                     ;;hint
+                                     :c [:not :c]]
+                                :min 3}
+                          keyword?]
+                         {:seed 11
+                          :size 100})))
   (is (every? (m/validator [:set {:or [:a :b]
                                   :min 3
                                   :max 5}

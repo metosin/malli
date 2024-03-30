@@ -136,177 +136,6 @@
                       (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
     (-mentioned-constraint-keys constraint)))
 
-(defn- -coll-distinct-gen [schema f options]
-  (let [{:keys [min max]} (-min-max schema options)
-        constraint (m/-keyset-constraint-from-properties (m/properties schema) options)
-        child (-> schema m/children first)
-        child-validator (m/validator child)
-        mentioned (some-> constraint
-                          (-mentioned-constraint-keys options)
-                          (->> (into [] (comp (distinct) (filter child-validator)))))
-        gen (generator child options)]
-    (if (-unreachable-gen? gen)
-      (if (= 0 (or min 0))
-        (gen/return (f []))
-        (-never-gen options))
-      (gen/fmap f (if-not constraint
-                    (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100
-                                              :ex-fn #(ex-info (str "Could not generate enough distinct elements for schema "
-                                                                    (pr-str (m/form schema))
-                                                                    ". Consider providing a custom generator.")
-                                                               %)})
-                    (let [sols (or (seq (-keyset-constraint-solutions constraint options))
-                                   (m/-fail! ::unsatisfiable-keyset))
-                          nth-sol (let [atm (atom {:indexed []
-                                                   :lazy sols})
-                                        ;; evolves from indexing a finite lazy sequence to a cycling indexed vector
-                                        f (volatile! nil)
-                                        _ (vreset!
-                                            f
-                                            (fn [i]
-                                              (let [{:keys [indexed atomless]} (swap! atm (fn [{:keys [indexed lazy] :as state}]
-                                                                                            (let [cindexed (count indexed)]
-                                                                                              (if (or (< i cindexed)
-                                                                                                      (empty? lazy))
-                                                                                                state
-                                                                                                (let [[extra lazy] (split-at (- i (dec cindexed)) lazy)]
-                                                                                                  {:indexed (into indexed extra)
-                                                                                                   :lazy lazy
-                                                                                                   :atomless (empty? lazy)})))))
-                                                    _ (assert (seq indexed) @atm)
-                                                    cindexed (count indexed)
-                                                    nth-indexed #(nth indexed (mod % cindexed))]
-                                                (when atomless
-                                                  (vreset! f nth-indexed))
-                                                (nth-indexed i))))]
-                                    (fn [i] (@f i)))]
-                      (gen/bind gen/nat
-                                (fn [i]
-                                  (let [{:keys [present]} (nth-sol i)
-                                        ;;TODO if count greater than :max, skip solution. might need to bake into -keyset-constraint-solutions
-                                        base (reduce-kv (fn [acc k v]
-                                                          (cond-> acc
-                                                            v (conj k)))
-                                                        [] present)
-                                        base (cond-> base
-                                               ;; try and fill in some values if :min needs it
-                                               (some->> min (< (count base)))
-                                               (into (remove #(contains? present %))
-                                                     mentioned))
-                                        nbase (count base)
-                                        sentinel (Object.)]
-                                    (assert (zero? (or max 0)) "TODO")
-                                    (gen/bind (if (or min max)
-                                                ;; we might be one value short if this generator succeeds.
-                                                ;; this is to handle the case where sentinel is never used
-                                                ;; and we have enough valid values to complete the keyset.
-                                                ;;TODO custom :ex-fn that prints schema
-                                                (gen/vector-distinct-by
-                                                  (fn [v] (if (contains? present v)
-                                                            sentinel
-                                                            v))
-                                                  gen
-                                                  {:min-elements (some-> min (- nbase))
-                                                   :max-elements (some-> max (- nbase))
-                                                   :max-tries 100})
-                                                ;;TODO custom :ex-fn that prints schema
-                                                (gen/vector-distinct gen {:max-tries 100}))
-                                              (fn [extra-ks]
-                                                (let [base (into base (remove #(false? (present %)))
-                                                                 extra-ks)]
-                                                  (if (some->> min (< (count base)))
-                                                    ;; still short, need to generate one more value
-                                                    ;;TODO custom :ex-fn that prints schema
-                                                    (gen/bind (gen/vector-distinct-by
-                                                                (fn [v] (if (or (contains? present v)
-                                                                                (contains? base v))
-                                                                          sentinel
-                                                                          v))
-                                                                gen
-                                                                {;; last ditch effort to generate a useful value.
-                                                                 :min-elements 2
-                                                                 :max-elements 2
-                                                                 :max-tries 100})
-                                                              (fn [extra-ks]
-                                                                (let [extra-ks (take 1 (remove #(or (contains? present %)
-                                                                                                    (contains? base %))
-                                                                                               extra-ks))
-                                                                      _ (when (empty? extra-ks)
-                                                                          (m/-fail! ::could-not-satisfy-min {:schema schema}))
-                                                                      base (into base extra-ks)]
-                                                                  (assert (= min (count base)) base)
-                                                                  (gen/return base))))
-                                                    (gen/return base)))))))))
-                    ;;brute force
-                    #_
-                    (gen/bind (let [;; TODO if only two keys are mentioned in constraints and min is 3, we say it's unsatisfiable.
-                                    ;; but we should try to generate more keys from the child.
-                                    valid-keysets (when constraint
-                                                    (or (not-empty
-                                                          (into [] (comp (mapcat #(comb/combinations mentioned %))
-                                                                         (map f)
-                                                                         (filter #(constraint-validator %)))
-                                                                (range (or min 0)
-                                                                       (inc (or max (count mentioned))))))
-                                                        (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))]
-                                (fn [extra]
-                                  (gen/bind (gen/tuple gen/nat gen/nat gen/nat gen/nat)
-                                            (fn [[i j k]]
-                                              (gen/return
-                                                (let [base (nth valid-keysets (mod i (count valid-keysets)))
-                                                      remaining-mentioned (remove (set base) mentioned)
-                                                      candidate (cond-> base
-                                                                  (zero? (rem j 3))
-                                                                  (into (take (cc/max 0 (if max
-                                                                                          (- max (count base))
-                                                                                          k)))
-                                                                        extra))]
-                                                  (if (constraint-validator candidate)
-                                                    candidate
-                                                    base)))))))))))))
-
-(defn -and-gen [schema options]
-  (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
-    (gen/such-that (m/validator schema options) gen
-                   {:max-tries 100
-                    :ex-fn #(ex-info (str "Could not generate a value for schema "
-                                          (pr-str (m/form schema))
-                                          ". Consider providing a custom generator.")
-                                     %)})
-    (-never-gen options)))
-
-(defn- gen-one-of [gs]
-  (if (= 1 (count gs))
-    (first gs)
-    (gen/one-of gs)))
-
-(defn -or-gen [schema options]
-  (if-some [gs (not-empty
-                (into [] (keep #(-not-unreachable (generator % options)))
-                      (m/children schema options)))]
-    (gen-one-of gs)
-    (-never-gen options)))
-
-(defn -multi-gen [schema options]
-  (if-some [gs (not-empty
-                (into [] (keep #(-not-unreachable (generator (last %) options)))
-                      (m/entries schema options)))]
-    (gen-one-of gs)
-    (-never-gen options)))
-
-(defn- -build-map [kvs]
-  (persistent!
-   (reduce
-    (fn [acc [k v]]
-      (cond (and (= k ::m/default) (map? v)) (reduce-kv assoc! acc v)
-            (nil? k) acc
-            :else (assoc! acc k v)))
-    (transient {}) kvs)))
-
-(defn- -value-gen [k s options]
-  (let [g (generator s options)]
-    (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
-
 (defn -valid-map-keysets [schema options]
   {:pre [(= :map (m/type schema))]}
   (when-some [constraint (m/-keyset-constraint-from-properties
@@ -561,6 +390,178 @@ collected."
                {:order [:b], :present {:b true}}
                {:order [:a :b], :present {:a false, :b true}})))
 )
+
+
+(defn- -coll-distinct-gen [schema f options]
+  (let [{:keys [min max]} (-min-max schema options)
+        constraint (m/-keyset-constraint-from-properties (m/properties schema) options)
+        child (-> schema m/children first)
+        child-validator (m/validator child)
+        mentioned (some-> constraint
+                          (-mentioned-constraint-keys options)
+                          (->> (into [] (comp (distinct) (filter child-validator)))))
+        gen (generator child options)]
+    (if (-unreachable-gen? gen)
+      (if (= 0 (or min 0))
+        (gen/return (f []))
+        (-never-gen options))
+      (gen/fmap f (if-not constraint
+                    (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100
+                                              :ex-fn #(ex-info (str "Could not generate enough distinct elements for schema "
+                                                                    (pr-str (m/form schema))
+                                                                    ". Consider providing a custom generator.")
+                                                               %)})
+                    (let [sols (or (seq (-keyset-constraint-solutions constraint options))
+                                   (m/-fail! ::unsatisfiable-keyset))
+                          nth-sol (let [atm (atom {:indexed []
+                                                   :lazy sols})
+                                        ;; evolves from indexing a finite lazy sequence to a cycling indexed vector
+                                        f (volatile! nil)
+                                        _ (vreset!
+                                            f
+                                            (fn [i]
+                                              (let [{:keys [indexed atomless]} (swap! atm (fn [{:keys [indexed lazy] :as state}]
+                                                                                            (let [cindexed (count indexed)]
+                                                                                              (if (or (< i cindexed)
+                                                                                                      (empty? lazy))
+                                                                                                state
+                                                                                                (let [[extra lazy] (split-at (- i (dec cindexed)) lazy)]
+                                                                                                  {:indexed (into indexed extra)
+                                                                                                   :lazy lazy
+                                                                                                   :atomless (empty? lazy)})))))
+                                                    _ (assert (seq indexed) @atm)
+                                                    cindexed (count indexed)
+                                                    nth-indexed #(nth indexed (mod % cindexed))]
+                                                (when atomless
+                                                  (vreset! f nth-indexed))
+                                                (nth-indexed i))))]
+                                    (fn [i] (@f i)))]
+                      (gen/bind gen/nat
+                                (fn [i]
+                                  (let [{:keys [present]} (nth-sol i)
+                                        ;;TODO if count greater than :max, skip solution. might need to bake into -keyset-constraint-solutions
+                                        base (reduce-kv (fn [acc k v]
+                                                          (cond-> acc
+                                                            v (conj k)))
+                                                        [] present)
+                                        base (cond-> base
+                                               ;; try and fill in some values if :min needs it
+                                               (some->> min (< (count base)))
+                                               (into (remove #(contains? present %))
+                                                     mentioned))
+                                        nbase (count base)
+                                        sentinel (Object.)]
+                                    (assert (zero? (or max 0)) "TODO")
+                                    (gen/bind (if (or min max)
+                                                ;; we might be one value short if this generator succeeds.
+                                                ;; this is to handle the case where sentinel is never used
+                                                ;; and we have enough valid values to complete the keyset.
+                                                ;;TODO custom :ex-fn that prints schema
+                                                (gen/vector-distinct-by
+                                                  (fn [v] (if (contains? present v)
+                                                            sentinel
+                                                            v))
+                                                  gen
+                                                  {:min-elements (some-> min (- nbase))
+                                                   :max-elements (some-> max (- nbase))
+                                                   :max-tries 100})
+                                                ;;TODO custom :ex-fn that prints schema
+                                                (gen/vector-distinct gen {:max-tries 100}))
+                                              (fn [extra-ks]
+                                                (let [base (into base (remove #(false? (present %)))
+                                                                 extra-ks)]
+                                                  (if (some->> min (< (count base)))
+                                                    ;; still short, need to generate one more value
+                                                    ;;TODO custom :ex-fn that prints schema
+                                                    (gen/bind (gen/vector-distinct-by
+                                                                (fn [v] (if (or (contains? present v)
+                                                                                (contains? base v))
+                                                                          sentinel
+                                                                          v))
+                                                                gen
+                                                                {;; last ditch effort to generate a useful value.
+                                                                 :min-elements 2
+                                                                 :max-elements 2
+                                                                 :max-tries 100})
+                                                              (fn [extra-ks]
+                                                                (let [extra-ks (take 1 (remove #(or (contains? present %)
+                                                                                                    (contains? base %))
+                                                                                               extra-ks))
+                                                                      _ (when (empty? extra-ks)
+                                                                          (m/-fail! ::could-not-satisfy-min {:schema schema}))
+                                                                      base (into base extra-ks)]
+                                                                  (assert (= min (count base)) base)
+                                                                  (gen/return base))))
+                                                    (gen/return base)))))))))
+                    ;;brute force
+                    #_
+                    (gen/bind (let [;; TODO if only two keys are mentioned in constraints and min is 3, we say it's unsatisfiable.
+                                    ;; but we should try to generate more keys from the child.
+                                    valid-keysets (when constraint
+                                                    (or (not-empty
+                                                          (into [] (comp (mapcat #(comb/combinations mentioned %))
+                                                                         (map f)
+                                                                         (filter #(constraint-validator %)))
+                                                                (range (or min 0)
+                                                                       (inc (or max (count mentioned))))))
+                                                        (m/-fail! ::unsatisfiable-keyset {:schema (m/form schema)})))]
+                                (fn [extra]
+                                  (gen/bind (gen/tuple gen/nat gen/nat gen/nat gen/nat)
+                                            (fn [[i j k]]
+                                              (gen/return
+                                                (let [base (nth valid-keysets (mod i (count valid-keysets)))
+                                                      remaining-mentioned (remove (set base) mentioned)
+                                                      candidate (cond-> base
+                                                                  (zero? (rem j 3))
+                                                                  (into (take (cc/max 0 (if max
+                                                                                          (- max (count base))
+                                                                                          k)))
+                                                                        extra))]
+                                                  (if (constraint-validator candidate)
+                                                    candidate
+                                                    base)))))))))))))
+
+(defn -and-gen [schema options]
+  (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
+    (gen/such-that (m/validator schema options) gen
+                   {:max-tries 100
+                    :ex-fn #(ex-info (str "Could not generate a value for schema "
+                                          (pr-str (m/form schema))
+                                          ". Consider providing a custom generator.")
+                                     %)})
+    (-never-gen options)))
+
+(defn- gen-one-of [gs]
+  (if (= 1 (count gs))
+    (first gs)
+    (gen/one-of gs)))
+
+(defn -or-gen [schema options]
+  (if-some [gs (not-empty
+                (into [] (keep #(-not-unreachable (generator % options)))
+                      (m/children schema options)))]
+    (gen-one-of gs)
+    (-never-gen options)))
+
+(defn -multi-gen [schema options]
+  (if-some [gs (not-empty
+                (into [] (keep #(-not-unreachable (generator (last %) options)))
+                      (m/entries schema options)))]
+    (gen-one-of gs)
+    (-never-gen options)))
+
+(defn- -build-map [kvs]
+  (persistent!
+   (reduce
+    (fn [acc [k v]]
+      (cond (and (= k ::m/default) (map? v)) (reduce-kv assoc! acc v)
+            (nil? k) acc
+            :else (assoc! acc k v)))
+    (transient {}) kvs)))
+
+(defn- -value-gen [k s options]
+  (let [g (generator s options)]
+    (cond->> g (-not-unreachable g) (gen/fmap (fn [v] [k v])))))
 
 (defn -map-gen* [schema classify-entry keyset options]
   (loop [[[k s :as e] & entries] (m/entries schema)

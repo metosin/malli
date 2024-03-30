@@ -1016,45 +1016,61 @@
                 {:size 100}))))
 
 (deftest set-keyset-constraint-test
-  (is (= [#{:a} #{:a} #{:a} #{:C/z :sz/Yp :a} #{:a}]
+  (is (= '(#{:a} #{:A/*9 :a} #{:j/? :a} #{:*/+ :a} #{:j-Y/F :!d_/l3. :tm6/n :d_/MTY :a})
          (mg/sample [:set {:or [:a :b]} keyword?]
                     {:seed 11
                      :size 5})))
-  (is (thrown-with-msg?
-        #?(:clj Exception, :cljs js/Error)
-        #":malli\.generator/unsatisfiable-keyset"
-        (mg/sample [:set {:or [:a :b]
-                          :min 3}
-                    keyword?]
-                   {:seed 10
-                    :size 5})))
-  (is (every? (m/validator [:set {:or [:a :b] :min 3}
-                            keyword?])
-              (mg/sample [:set {:or [:a :b
-                                     ;;hint
-                                     :c [:not :c]]
-                                :min 3}
-                          keyword?]
-                         {:seed 11
-                          :size 100})))
-  (is (every? (m/validator [:set {:or [:a :b]
+  (is (= [#{:w/- :-/U :a}
+          #{:b :p/-- :?!/w8 :a-/O}
+          #{:c3/E :.A/* :b :O7/* :a}
+          #{:w/P :I./t :u/ss :b :*/Af}
+          #{:./p0J :+./Wv. :b :_/b :m/TG? :y?*/+}]
+         (mg/sample [:set {:or [:a :b]
+                           :min 3}
+                     keyword?]
+                    {:seed 10
+                     :size 5})))
+  (is (empty?
+        (remove (m/validator [:set {:or [:a :b
+                                         ;;hint
+                                         :c [:not :c]]
+                                    :min 3}
+                              keyword?])
+                (mg/sample [:set {:or [:a :b
+                                       ;;hint
+                                       :c [:not :c]]
+                                  :min 3}
+                            keyword?]
+                           {:seed 11
+                            :size 100}))))
+  (is (empty?
+        (remove (m/validator [:set {:disjoint [[:hint1 :hint2 :hint3]]
+                                    :keyset [[:or :a :b]
+                                             [:or :hint3 [:not :hint3]]]
+                                    :min 3
+                                    :max 5}
+                              keyword?])
+                (mg/sample [:set {:disjoint [[:hint1 :hint2 :hint3]]
+                                  :keyset [[:or :a :b]
+                                           [:or :hint3 [:not :hint3]]]
                                   :min 3
                                   :max 5}
-                            keyword?])
-              (mg/sample [:set {:disjoint [[:hint1 :hint2 :hint3]]
-                                :keyset [[:or :a :b]
-                                         [:or :hint3 [:not :hint3]]]
-                                :min 3
-                                :max 5}
-                          keyword?]
-                         {:seed 11
-                          :size 100})))
+                            keyword?]
+                           {:seed 11
+                            :size 100}))))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keyset"
         (mg/sample [:set {:keyset [:a [:not :a]]} keyword?]
                    {:seed 10
                     :size 5})))
+  ;;FIXME check that keyset keys satisfy the child schema!!
+  ;; this should be unsatisfiable (the test below)
+  (is (empty?
+        (remove (m/validator [:set {:keyset [:a]} symbol?])
+                (mg/sample [:set {:keyset [:a]} symbol?]
+                           {:seed 10
+                            :size 5}))))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keyset"

@@ -139,7 +139,6 @@
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
         constraint (m/-keyset-constraint-from-properties (m/properties schema) options)
-        constraint-validator (some-> constraint (m/-keyset-constraint-validator options))
         child (-> schema m/children first)
         child-validator (m/validator child)
         mentioned (some-> constraint
@@ -147,14 +146,95 @@
                           (->> (into [] (comp (distinct) (filter child-validator)))))
         gen (generator child options)]
     (gen/fmap f (if (-unreachable-gen? gen)
-                  (if (and (<= (or min 0) 0 (or max 0))
-                           (or (not constraint-validator)
-                               (constraint-validator (f []))))
-                    (gen/return [])
-                    (-never-gen options))
-                  (cond-> (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
-                    constraint-validator
+                  (let [constraint-validator (some-> constraint (m/-keyset-constraint-validator options))]
+                    (if (and (<= (or min 0) 0 (or max 0))
+                             (or (not constraint-validator)
+                                 (constraint-validator (f []))))
+                      (gen/return [])
+                      (-never-gen options)))
+                  (if-not constraint
+                    (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})
+                    (let [sols (or (seq (-keyset-constraint-solutions constraint options))
+                                   (m/-fail! ::unsatisfiable-keyset))
+                          nth-sol (let [atm (atom {:indexed []
+                                                   :lazy sols})
+                                        ;; evolves from indexing a finite lazy sequence to a cycling indexed vector
+                                        f (volatile! nil)
+                                        _ (vreset!
+                                            f
+                                            (fn [i]
+                                              (let [{:keys [indexed atomless]} (swap! atm (fn [{:keys [indexed lazy] :as state}]
+                                                                                            (let [cindexed (count indexed)]
+                                                                                              (if (or (< i cindexed)
+                                                                                                      (empty? lazy))
+                                                                                                state
+                                                                                                (let [[extra lazy] (split-at (- i (dec cindexed)) lazy)]
+                                                                                                  {:indexed (into indexed extra)
+                                                                                                   :lazy lazy
+                                                                                                   :atomless (empty? lazy)})))))
+                                                    _ (assert (seq indexed) @atm)
+                                                    cindexed (count indexed)
+                                                    nth-indexed #(nth indexed (mod % cindexed))]
+                                                (when atomless
+                                                  (vreset! f nth-indexed))
+                                                (nth-indexed i))))]
+                                    (fn [i] (@f i)))]
+                      (gen/bind gen/nat
+                                (fn [i]
+                                  (let [{:keys [order present]} (nth-sol i)
+                                        ;;TODO if count greater than :max, skip solution. might need to bake into -keyset-constraint-solutions
+                                        base (reduce-kv (fn [acc k v]
+                                                          (cond-> acc
+                                                            v (conj k)))
+                                                        [] present)
+                                        base (cond-> base
+                                               ;; try and fill in some values if :min needs it
+                                               (some->> min (< (count base)))
+                                               (into (filter #(not (contains? present %)))
+                                                     order))
+                                        nbase (count base)
+                                        sentinel (Object.)]
+                                    (assert (zero? (or max 0)) "TODO")
+                                    (gen/bind (if (or min max)
+                                                ;; we might be one value short if this generator succeeds.
+                                                ;; this is to handle the case where sentinel is never used
+                                                ;; and we have enough valid values to complete the keyset.
+                                                (gen/vector-distinct-by
+                                                  (fn [v] (if (contains? present v)
+                                                            sentinel
+                                                            v))
+                                                  gen
+                                                  {:min-elements (some-> min (- nbase))
+                                                   :max-elements (some-> max (- nbase))
+                                                   :max-tries 100})
+                                                (gen/vector-distinct gen {:max-tries 100}))
+                                              (fn [extra-ks]
+                                                (let [base (into base (remove #(false? (present %)))
+                                                                 extra-ks)]
+                                                  (if (some->> min (< (count base)))
+                                                    ;; still short, need to generate one more value
+                                                    (gen/bind (gen/vector-distinct-by
+                                                                (fn [v] (if (or (contains? present v)
+                                                                                (contains? base v))
+                                                                          sentinel
+                                                                          v))
+                                                                gen
+                                                                {;; last ditch effort to generate a useful value.
+                                                                 :min-elements 2
+                                                                 :max-elements 2
+                                                                 :max-tries 100})
+                                                              (fn [extra-ks]
+                                                                (let [extra-ks (take 1 (remove #(or (contains? present %)
+                                                                                                    (contains? base %))
+                                                                                               extra-ks))
+                                                                      _ (when (empty? extra-ks)
+                                                                          (m/-fail! ::could-not-satisfy-min {:schema schema}))
+                                                                      base (into base extra-ks)]
+                                                                  (assert (= min (count base)) base)
+                                                                  (gen/return base))))
+                                                    (gen/return base)))))))))
                     ;;brute force
+                    #_
                     (gen/bind (let [;; TODO if only two keys are mentioned in constraints and min is 3, we say it's unsatisfiable.
                                     ;; but we should try to generate more keys from the child.
                                     valid-keysets (when constraint

@@ -844,27 +844,44 @@
                       {:seed 0})))))
 
 (deftest map-of-schema-simplify-test
-  (is (= '({} {} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {}})
-         (mg/sample [:schema {:registry {::rec [:map-of [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
-                    {:seed 0})
-         (mg/sample (gen/recursive-gen
-                     (fn [rec]
-                       (gen/fmap #(into {} %)
-                                 (gen/vector-distinct (gen/tuple rec rec))))
-                     (gen/return {}))
-                    {:seed 0}))))
+  (testing "empty maps allowed if :min is not positive"
+    (is (= '({} {} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
+           (mg/sample [:schema {:registry {::rec [:map-of [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:map-of {:min 0} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                        (fn [rec]
+                          (gen/fmap #(into {} %)
+                                    (gen/vector-distinct-by first (gen/tuple rec rec))))
+                        (gen/return {}))
+                      {:seed 0}))))
+  (testing "cannot generate empty for positive :min"
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #"Cannot generate values due to infinitely expanding schema: \[:map-of \{:min 1\} \[:ref :malli\.generator-test/rec\] \[:ref :malli\.generator-test/rec\]\]"
+          (mg/generate [:schema {:registry {::rec [:map-of {:min 1} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                       {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '({{} {}} {{} {}} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
+           (mg/sample [:schema {:registry {::rec [:map-of {:max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:map-of {:min 0 :max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})))))
 
 (deftest vector-schema-simplify-test
-  (testing "empty vectors allowed"
+  (testing "empty vectors allowed if :min is not positive"
     (is (= '([] [] [[] []] [[] []] [] [[]] [] [[] []] [[]] [[[] []] [[] []]])
            (mg/sample [:schema {:registry {::rec [:vector [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:vector {:min 0} [:ref ::rec]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
                        (fn [rec]
                          (gen/vector rec))
                        (gen/return []))
                       {:seed 0}))))
-  (testing "no empty vectors allowed"
+  (testing "no empty vectors allowed with positive :min"
     (is (= [nil nil [nil nil nil] [nil] nil [nil nil] nil [nil nil nil] nil [[nil nil nil]]]
            (mg/sample [:schema {:registry {::rec [:maybe [:vector {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
                       {:seed 0})
@@ -873,6 +890,72 @@
                          (gen/one-of [(gen/return nil)
                                       (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
                        (gen/one-of [(gen/return nil)]))
+                      {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '([[] [] [] []] [[] [] [] []] [[] [] [] [] [] [] []] [[] [] [] [] [] [] [] []] [[] []]
+             [[] [] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] [] []]
+             [[[] [] [] [] [] [] [] []] [[] [] []] [] [[] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] []]])
+           (mg/sample [:schema {:registry {::rec [:vector {:max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:vector {:min 0 :max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})))))
+
+(deftest sequential-schema-simplify-test
+  (testing "empty sequentials allowed"
+    (is (= '([] [] [[] []] [[] []] [] [[]] [] [[] []] [[]] [[[] []] [[] []]])
+           (mg/sample [:schema {:registry {::rec [:sequential [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/vector rec))
+                       (gen/return []))
+                      {:seed 0}))))
+  (testing "no empty sequentials allowed with positive :min"
+    (is (= [nil nil [nil nil nil] [nil] nil [nil nil] nil [nil nil nil] nil [[nil nil nil]]]
+           (mg/sample [:schema {:registry {::rec [:maybe [:sequential {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/one-of [(gen/return nil)
+                                      (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
+                       (gen/one-of [(gen/return nil)]))
+                      {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '([[] [] [] []] [[] [] [] []] [[] [] [] [] [] [] []] [[] [] [] [] [] [] [] []] [[] []]
+             [[] [] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] [] []]
+             [[[] [] [] [] [] [] [] []] [[] [] []] [] [[] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] []]])
+           (mg/sample [:schema {:registry {::rec [:sequential {:max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:sequential {:min 0 :max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})))))
+
+(deftest set-schema-simplify-test
+  (testing "empty sets allowed if :min is not positive"
+    (is (= '(#{} #{} #{#{}} #{#{}} #{} #{#{}} #{} #{#{}} #{#{}} #{#{} #{#{}}})
+           (mg/sample [:schema {:registry {::rec [:set [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:set {:min 0} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                        (fn [rec]
+                          (gen/fmap set (gen/vector-distinct rec)))
+                        (gen/return #{}))
+                      {:seed 0}))))
+  (testing "no empty sets allowed with positive :min"
+    (is (= '(nil nil #{nil} #{nil} nil #{nil} nil #{nil} nil #{#{nil}})
+           (mg/sample [:schema {:registry {::rec [:maybe [:set {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/one-of [(gen/return nil)
+                                      (gen/fmap set (gen/vector-distinct rec {:min-elements 1}))]))
+                       (gen/one-of [(gen/return nil)]))
+                      {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '(#{#{}} #{#{}} #{#{}} #{#{}} #{#{}} #{#{}} #{} #{#{}} #{#{}} #{#{} #{#{}}})
+           (mg/sample [:schema {:registry {::rec [:set {:max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:set {:min 0 :max 10} [:ref ::rec]]}} [:ref ::rec]]
                       {:seed 0})))))
 
 (defn alphanumeric-char? [c]
@@ -1093,3 +1176,32 @@
                         :size 1000})]
     (is (m/validate s v))
     (is (= 331 (count v)))))
+
+(deftest map-of-min-max-test
+  (is (empty? (remove #(<= 2 (count %))
+                      (mg/sample [:map-of {:min 2} [:enum 1 2 3] :any]
+                                 {:size 100}))))
+  (is (empty? (remove #(<= (count %) 2)
+                      (mg/sample [:map-of {:max 2} [:enum 1 2 3] :any]
+                                 {:size 100}))))
+  (is (empty? (remove #(<= 2 (count %) 3)
+                      (mg/sample [:map-of {:min 2 :max 3} [:enum 1 2 3] :any]
+                                 {:size 100})))))
+
+(deftest such-that-generator-failure-test
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate a value for schema \[:not :any\]\. Consider providing a custom generator\."
+        (mg/generate [:not :any])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate enough distinct elements for schema \[:set \{:min 2\} \[:= 1\]\]\. Consider providing a custom generator\."
+        (mg/generate [:set {:min 2} [:= 1]])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate enough distinct keys for schema \[:map-of \{:min 2\} \[:= 1\] :any\]\. Consider providing a custom generator\."
+        (mg/generate [:map-of {:min 2} [:= 1] :any])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"Could not generate a value for schema \[:and pos\? neg\?\]\. Consider providing a custom generator\."
+        (mg/generate [:and pos? neg?]))))

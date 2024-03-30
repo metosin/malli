@@ -181,7 +181,7 @@
                                     (fn [i] (@f i)))]
                       (gen/bind gen/nat
                                 (fn [i]
-                                  (let [{:keys [order present]} (nth-sol i)
+                                  (let [{:keys [present]} (nth-sol i)
                                         ;;TODO if count greater than :max, skip solution. might need to bake into -keyset-constraint-solutions
                                         base (reduce-kv (fn [acc k v]
                                                           (cond-> acc
@@ -190,8 +190,8 @@
                                         base (cond-> base
                                                ;; try and fill in some values if :min needs it
                                                (some->> min (< (count base)))
-                                               (into (filter #(not (contains? present %)))
-                                                     order))
+                                               (into (remove #(contains? present %))
+                                                     mentioned))
                                         nbase (count base)
                                         sentinel (Object.)]
                                     (assert (zero? (or max 0)) "TODO")

@@ -1020,11 +1020,11 @@
          (mg/sample [:set {:or [:a :b]} keyword?]
                     {:seed 11
                      :size 5})))
-  (is (= [#{:w/- :-/U :a}
-          #{:b :p/-- :?!/w8 :a-/O}
+  (is (= [#{:w/- :b :a}
+          #{:b :p/-- :?!/w8 :a}
           #{:c3/E :.A/* :b :O7/* :a}
-          #{:w/P :I./t :u/ss :b :*/Af}
-          #{:./p0J :+./Wv. :b :_/b :m/TG? :y?*/+}]
+          #{:w/P :u/ss :b :*/Af :a}
+          #{:./p0J :+./Wv. :b :m/TG? :a :y?*/+}]
          (mg/sample [:set {:or [:a :b]
                            :min 3}
                      keyword?]

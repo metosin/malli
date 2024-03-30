@@ -331,7 +331,6 @@
 (defn -conj-solutions [& sols]
   (distinct
     (reduce (fn [acc [sol1 & sols]]
-              (prn "sol1" sol1)
               (if-some [present (reduce (fn [p1 p2]
                                           (reduce-kv (fn [acc k v]
                                                        (if-some [[_ present1] (find acc k)]
@@ -396,13 +395,11 @@ collected."
                                (when (pos? ndisjuncts)
                                  (let [solution-cache (atom {})
                                        solve-combination (fn solve-combination [id]
-                                                           (prn "solve-combination" (find @solution-cache id))
                                                            (if-some [[_ res] (find @solution-cache id)]
                                                              res
                                                              (let [nid (count id)
                                                                    sol (if (= 1 nid)
                                                                          (let [i (nth id 0)]
-                                                                           (prn "i" i cs)
                                                                            (-keyset-constraint-solutions
                                                                              ;; [0 1 2 3 4] === solve all
                                                                              ;; [-1 -2 -3 -4 -5] === negate all
@@ -418,7 +415,6 @@ collected."
                                                                                                        (subvec id mid)))]
                                                                                    (-conj-solutions left right)))
                                                                                [])))]
-                                                               (prn "res solve-combination" id sol)
                                                                (swap! solution-cache assoc id sol)
                                                                sol)))]
                                    (when-some [satisfiable-disjuncts (seq

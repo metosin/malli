@@ -1076,4 +1076,13 @@
         #":malli\.generator/unsatisfiable-keyset"
         (mg/sample [:set {:keyset [:a]} symbol?]
                    {:seed 10
-                    :size 5}))))
+                    :size 5})))
+  (let [s [:set {:or (vec (take 100 (repeatedly gensym)))
+                 :min 200}
+           symbol?]
+        v (mg/generate s
+                       {:seed 10
+                        :size 1000})]
+    (is (m/validate s v))
+    (is (= 892 (count v))))
+  )

@@ -420,6 +420,39 @@ collected."
                          nil)
 )
 
+(defn- cycle-nth-lazily-indexed
+  "Given a sequential collection, returns a function
+  that returns the nth element of the cycled collection."
+  [lazy]
+  (let [atm (atom {:indexed []
+                   :lazy lazy})
+        ;; evolves from indexing a finite lazy sequence to a cycling indexed vector
+        f (volatile! nil)
+        _ (vreset!
+            f
+            (fn [i]
+              (let [{:keys [indexed all-indexed]} (swap! atm (fn [{:keys [indexed lazy] :as state}]
+                                                            (let [cindexed (count indexed)]
+                                                              (if (or (< i cindexed)
+                                                                      (empty? lazy))
+                                                                state
+                                                                (let [[extra lazy] (split-at (- i (dec cindexed)) lazy)]
+                                                                  {:indexed (into indexed extra)
+                                                                   :lazy lazy
+                                                                   :all-indexed (empty? lazy)})))))
+                    _ (assert (seq indexed) @atm)
+                    cindexed (count indexed)
+                    nth-indexed #(nth indexed (mod % cindexed))]
+                (when all-indexed
+                  (vreset! f nth-indexed))
+                (nth-indexed i))))]
+    (fn [i] (@f i))))
+
+(comment
+  (assert (= (concat (range 10) (range 10)) 
+             (mapv (cycle-nth-lazily-indexed (range 10))
+                   (range 20))))
+  )
 
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
@@ -440,35 +473,13 @@ collected."
                                                                     (pr-str (m/form schema))
                                                                     ". Consider providing a custom generator.")
                                                                %)})
-                    (let [sols (or (seq (filter #(every? (fn [[k present?]]
-                                                           (or (not present?)
-                                                               (child-validator k)))
-                                                         (:present %))
-                                                (-constraint-solutions constraint options)))
-                                   (m/-fail! ::unsatisfiable-keyset))
-                          nth-sol (let [atm (atom {:indexed []
-                                                   :lazy sols})
-                                        ;; evolves from indexing a finite lazy sequence to a cycling indexed vector
-                                        f (volatile! nil)
-                                        _ (vreset!
-                                            f
-                                            (fn [i]
-                                              (let [{:keys [indexed atomless]} (swap! atm (fn [{:keys [indexed lazy] :as state}]
-                                                                                            (let [cindexed (count indexed)]
-                                                                                              (if (or (< i cindexed)
-                                                                                                      (empty? lazy))
-                                                                                                state
-                                                                                                (let [[extra lazy] (split-at (- i (dec cindexed)) lazy)]
-                                                                                                  {:indexed (into indexed extra)
-                                                                                                   :lazy lazy
-                                                                                                   :atomless (empty? lazy)})))))
-                                                    _ (assert (seq indexed) @atm)
-                                                    cindexed (count indexed)
-                                                    nth-indexed #(nth indexed (mod % cindexed))]
-                                                (when atomless
-                                                  (vreset! f nth-indexed))
-                                                (nth-indexed i))))]
-                                    (fn [i] (@f i)))]
+                    (let [nth-sol (or (seq (cycle-nth-lazily-indexed
+                                             (filter #(every? (fn [[k present?]]
+                                                                (or (not present?)
+                                                                    (child-validator k)))
+                                                              (:present %))
+                                                     (-constraint-solutions constraint options))))
+                                      (m/-fail! ::unsatisfiable-keyset))]
                       (gen/bind gen/nat
                                 (fn [i]
                                   (let [{:keys [present]} (nth-sol i)
@@ -483,6 +494,7 @@ collected."
                                                (into (remove #(contains? present %))
                                                      mentioned))
                                         nbase (count base)
+                                        ;; don't generate keys that already exist or are absent in solution
                                         sentinel (Object.)]
                                     (assert (zero? (or max 0)) "TODO")
                                     (gen/bind (if (or min max)

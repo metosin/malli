@@ -463,6 +463,13 @@ collected."
   (let [warm (cycle-nth-lazily-indexed (range 20))]
     (warm 100000)
     (time (warm 100000))); 0.003ms
+
+  (let [c (cycle (range 20))]
+    (time (dotimes [i 100]
+            (nth c i)))) ; 0.1ms
+  (let [nth-coll (cycle-nth-lazily-indexed (range 20))]
+    (time (dotimes [i 100]
+            (nth-coll i)))); 0.2ms
   )
 
 (defn- -coll-distinct-gen [schema f options]

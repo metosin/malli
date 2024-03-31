@@ -270,6 +270,8 @@ collected."
                                                       (comb/permutations (into [true] (repeat (dec ndisjuncts) false))))
                                          :or (concat
                                                ;;first just satisfy each disjunct to reduce search space of comb/selections
+                                               ;;also the smallest solutions will go first, since negating the other disjuncts
+                                               ;;could increase the size of the solutions.
                                                (mapcat second satisfiable-disjuncts)
 
                                                ;; now satisfy combinations of disjuncts
@@ -313,9 +315,11 @@ collected."
                                   base {:order order :present (zipmap order (repeat false))}]
                               (cons base
                                     ;; lazier?
-                                    (map (fn [kset]
-                                           (update base :present into (zipmap kset (repeat true))))
-                                         ksets)))
+                                    (apply interleave
+                                           (mapcat (fn [kset]
+                                                     (map #(update base :present into (zipmap kset %))
+                                                          (next (comb/selections [false true] (count kset)))))
+                                                   ksets))))
                   :iff (let [cs (subvec constraint 1)]
                          (concat (-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                  (lazy-seq
@@ -390,6 +394,30 @@ collected."
                {:order [:a :b], :present {:a true, :b true}}
                {:order [:b], :present {:b true}}
                {:order [:a :b], :present {:a false, :b true}})))
+
+  (-constraint-solutions [:and
+                          [:or :a :b]
+                          ;[:or :hint3 [:not :hint3]]
+                          [:disjoint [:hint1 :hint2 :hint3]]]
+                         nil)
+  (-constraint-solutions [:or :a :b]
+                         nil)
+  (-constraint-solutions [:and
+                          [:or :a :b]
+                          [:or :hint3 [:not :hint3]]
+                          [:disjoint [:hint1 :hint2 :hint3]]
+                          ]
+                         nil)
+  (-constraint-solutions [:and
+                          :a
+                          :hint3
+                          [:disjoint [:hint3]]
+                          ]
+                         nil)
+  (-constraint-solutions [:disjoint [:hint1 :hint2 :hint3]]
+                         nil)
+  (-constraint-solutions [:and [:disjoint [:hint1 :hint2 :hint3]]]
+                         nil)
 )
 
 
@@ -412,7 +440,11 @@ collected."
                                                                     (pr-str (m/form schema))
                                                                     ". Consider providing a custom generator.")
                                                                %)})
-                    (let [sols (or (seq (-constraint-solutions constraint options))
+                    (let [sols (or (seq (filter #(every? (fn [[k present?]]
+                                                           (or (not present?)
+                                                               (child-validator k)))
+                                                         (:present %))
+                                                (-constraint-solutions constraint options)))
                                    (m/-fail! ::unsatisfiable-keyset))
                           nth-sol (let [atm (atom {:indexed []
                                                    :lazy sols})

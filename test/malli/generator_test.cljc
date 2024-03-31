@@ -1148,13 +1148,6 @@
         (mg/sample [:set {:and [:a [:not :a]]} keyword?]
                    {:seed 10
                     :size 5})))
-  ;;FIXME check that keyset keys satisfy the child schema!!
-  ;; this should be unsatisfiable (the test below)
-  (is (empty?
-        (remove (m/validator [:set {:and [:a]} symbol?])
-                (mg/sample [:set {:and [:a]} symbol?]
-                           {:seed 10
-                            :size 5}))))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/unsatisfiable-keyset"

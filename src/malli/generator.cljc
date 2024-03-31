@@ -432,14 +432,25 @@ collected."
             f
             (fn [i]
               (let [{:keys [indexed all-indexed]} (swap! atm (fn [{:keys [indexed lazy] :as state}]
-                                                            (let [cindexed (count indexed)]
-                                                              (if (or (< i cindexed)
-                                                                      (empty? lazy))
-                                                                state
-                                                                (let [[extra lazy] (split-at (- i (dec cindexed)) lazy)]
-                                                                  {:indexed (into indexed extra)
-                                                                   :lazy lazy
-                                                                   :all-indexed (empty? lazy)})))))
+                                                               (let [cindexed (count indexed)]
+                                                                 (if (or (< i cindexed)
+                                                                         (empty? lazy))
+                                                                   state
+                                                                   (loop [times (- i (dec cindexed))
+                                                                          indexed indexed
+                                                                          lazy lazy]
+                                                                     (if (zero? times)
+                                                                       {:indexed indexed
+                                                                        :lazy lazy
+                                                                        :all-indexed false}
+                                                                       (let [[flazy & nlazy] lazy]
+                                                                         (if nlazy
+                                                                           (recur (dec times)
+                                                                                  (conj indexed flazy)
+                                                                                  nlazy)
+                                                                           {:indexed (conj indexed flazy)
+                                                                            :lazy nil
+                                                                            :all-indexed true}))))))))
                     _ (assert (seq indexed) @atm)
                     cindexed (count indexed)
                     nth-indexed #(nth indexed (mod % cindexed))]

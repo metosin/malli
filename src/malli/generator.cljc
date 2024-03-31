@@ -452,6 +452,14 @@ collected."
   (assert (= (concat (range 10) (range 10)) 
              (mapv (cycle-nth-lazily-indexed (range 10))
                    (range 20))))
+  (time (nth (cycle (range 20)) 20)) ; 0.08ms
+  (time ((cycle-nth-lazily-indexed (range 20)) 20)); 0.11ms
+
+  (time (nth (cycle (range 20)) 10001)) ; 0.5ms
+  (time ((cycle-nth-lazily-indexed (range 20)) 10001)); 0.1ms
+
+  (time (nth (cycle (range 20)) 100000)) ; 4.6ms
+  (time ((cycle-nth-lazily-indexed (range 20)) 100000)); 0.2ms
   )
 
 (defn- -coll-distinct-gen [schema f options]

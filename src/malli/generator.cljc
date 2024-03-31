@@ -469,7 +469,14 @@ collected."
             (nth c i)))) ; 0.1ms
   (let [nth-coll (cycle-nth-lazily-indexed (range 20))]
     (time (dotimes [i 100]
-            (nth-coll i)))); 0.2ms
+            (nth-coll i)))) ; 0.2ms
+
+  (let [c (cycle (range 20))]
+    (time (dotimes [i 1000]
+            (nth c i)))) ; 2ms
+  (let [nth-coll (cycle-nth-lazily-indexed (range 20))]
+    (time (dotimes [i 1000]
+            (nth-coll i)))) ; 0.25ms
   )
 
 (defn- -coll-distinct-gen [schema f options]

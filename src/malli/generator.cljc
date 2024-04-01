@@ -213,6 +213,20 @@ collected."
     (when (seq s)
       (cons (first s) (unchunk (rest s))))))
 
+(defn- join
+  "Lazily concatenates a collection of collections into a flat sequence,
+  because Clojure's `apply concat` is insufficiently lazy."
+  [colls]
+  (lazy-seq
+   (when-let [s (seq colls)]
+     (concat (first s) (join (rest s))))))
+
+(defn- mapjoin
+  "Uses join to achieve lazier version of mapcat (on one collection)"
+  [f coll]
+  (join (map f coll)))
+
+
 (defn -constraint-solutions [constraint options]
   (letfn [(-constraint-solutions
             ([constraint] (-constraint-solutions constraint options))
@@ -232,8 +246,8 @@ collected."
                               (sequence (comp (map (fn [s]
                                                      (update s :present update-vals not)))
                                               (distinct))
-                                        sol)))
-                     :and (apply -conj-solutions (map -constraint-solutions (next constraint)))
+                                        (unchunk sol))))
+                     :and (apply -conj-solutions (map -constraint-solutions (unchunk (next constraint))))
                      (:or :xor) (let [cs (subvec constraint 1)
                                       ndisjuncts (count cs)
                                       base-id (vec (range ndisjuncts))]
@@ -270,17 +284,17 @@ collected."
                                           (case op
                                             :xor (let [perm-coll (into [true] (repeat (dec ndisjuncts) false))
                                                        nperm (comb/permutations perm-coll)]
-                                                   (mapcat #(solve-combination (into []
-                                                                                     (map-indexed (fn [i pos-neg]
-                                                                                                    (cond-> i
-                                                                                                      (not pos-neg) (-> - dec))))
-                                                                                     (comb/nth-permutation perm-coll %)))
-                                                           (range nperm)))
+                                                   (mapjoin #(solve-combination (into []
+                                                                                      (map-indexed (fn [i pos-neg]
+                                                                                                     (cond-> i
+                                                                                                       (not pos-neg) (-> - dec))))
+                                                                                      (comb/nth-permutation perm-coll %)))
+                                                            (unchunk (range nperm))))
                                             :or (concat
                                                   ;;first just satisfy each disjunct to reduce search space of comb/selections
                                                   ;;also the smallest solutions will go first, since negating the other disjuncts
                                                   ;;could increase the size of the solutions.
-                                                  (mapcat second satisfiable-disjuncts)
+                                                  (mapjoin second satisfiable-disjuncts)
 
                                                   ;; now satisfy combinations of disjuncts
                                                   ;; true = solve
@@ -288,15 +302,15 @@ collected."
                                                   (lazy-seq
                                                     (let [base-id (mapv first satisfiable-disjuncts)
                                                           idx->id (into {} (map-indexed (fn [i id] {i id})) base-id)]
-                                                      (mapcat
-                                                        (fn [i msk]
+                                                      (mapjoin
+                                                        (fn [[i msk]]
                                                           (let [solution-id (into [] (keep-indexed
                                                                                        (fn [i need-to-satisfy]
                                                                                          (when need-to-satisfy
                                                                                            (nth base-id i))))
                                                                                   msk)]
                                                             (solve-combination solution-id)))
-                                                        (unchunk (range)) (next (comb/selections [false true] (count base-id))))))
+                                                        (map vector (unchunk (range)) (next (comb/selections [false true] (count base-id)))))))
                                                   ;;TODO
                                                   ;; true = solve
                                                   ;; false = solve negation
@@ -322,12 +336,11 @@ collected."
                                      order (into [] (mapcat identity) ksets)
                                      base {:order order :present (zipmap order (repeat false))}]
                                  (cons base
-                                       ;; lazier?
                                        (apply interleave
-                                              (mapcat (fn [kset]
-                                                        (map #(update base :present into (zipmap kset %))
-                                                             (next (comb/selections [false true] (count kset)))))
-                                                      ksets))))
+                                              (mapjoin (fn [kset]
+                                                         (map #(update base :present into (zipmap kset %))
+                                                              (next (comb/selections [false true] (count kset)))))
+                                                       (unchunk ksets)))))
                      :iff (let [cs (subvec constraint 1)]
                             (concat (-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                     (lazy-seq
@@ -446,83 +459,6 @@ collected."
                        (vreset! f single-cycle)
                        (single-cycle i))))))
     (fn [i] (@f i))))
-
-(comment
-  (assert (= (concat (range 10) (range 10)) 
-             (mapv (cycled-nth-fn (range 10))
-                   (range 20))))
-  (time (nth (cycle (range 20)) 20)) ; 0.08ms
-  (time ((cycled-nth-fn (range 20)) 20)); 0.11ms
-  (time ((cycled-nth-fn (range 20)) 20)); 0.11ms
-  (clojure.test/is (= 0 ((cycled-nth-fn (range 20)) 20)))
-  (time (nth (range 1000) 999))
-  (let [v (vec (range 1000))]
-    (time (nth v 999)))
-
-  ((cycled-nth-fn (range 20)) 0)
-  ((cycled-nth-fn (range 0)) 0)
-  ((cycled-nth-fn (range 5)) 0)
-  ((cycled-nth-fn (range 5)) 1)
-  ((cycled-nth-fn (range 5)) 2)
-  ((cycled-nth-fn (range 5)) 3)
-  ((cycled-nth-fn (range 5)) 4)
-  (time ((cycled-nth-fn (range 5)) 1000000000))
-  (time ((cycled-nth-fn (range 100000)) 1000000000))
-  (time ((cycled-nth-fn (range 100000)) 1000000000))
-  ;;diverges
-  #_(time (nth (cycle (range 5)) 1000000000))
-
-  (time
-    (let [c (cycle (unchunk (range 100)))]
-      (dotimes [i 200]
-        (nth c i))))
-
-  (time
-    (let [c (cycle (comb/selections [false true] 30))]
-      (doseq [i (range 5000 -1 -1)]
-        (nth c i)))) ;80ms
-  (time
-    (let [f (cycled-nth-fn (range 10000))]
-      (doseq [i (range 5000 -1 -1)]
-        (f i))));50
-
-  (time
-    (let [f (cycled-nth-fn (unchunk (range 100)))]
-      (dotimes [i 200]
-        (f i))))
-
-  (time (nth (cycle (comb/selections [false true] 5)) 1000))
-  (time ((cycled-nth-fn (comb/selections [false true] 5)) 1000))
-
-  (time (nth (cycle (range 20)) 10001)) ; 0.5ms
-  (time ((cycled-nth-fn (range 20)) 10001)); 0.1ms
-
-  (time (nth (cycle (unchunk (range 20))) 100000)) ; 4.6ms
-  (time ((cycled-nth-fn (unchunk (range 20))) 100000)); 0.2ms
-  (let [warm (cycled-nth-fn (unchunk (range 20)))]
-    (warm 100000)
-    (time (warm 100000))); 0.003ms
-  (let [warm (cycled-nth-fn (unchunk (range 20)))]
-    (warm 14)
-    (time (warm 15)))
-  (let [warm (partial nth (cycle (unchunk (range 20))))]
-    (warm 100000)
-    (time (warm 100000)))
-
-  (let [c (cycle (unchunk (range 20)))]
-    (time (dotimes [i 100]
-            (nth c i)))) ; 0.1ms
-  (let [nth-coll (cycled-nth-fn (unchunk (range 20)))]
-    (time (dotimes [i 100]
-            (nth-coll i)))) ; 0.2ms
-
-  (let [c (cycle (range 20))]
-    (time (dotimes [i 1000]
-            (nth c i)))) ; 2ms
-  (let [nth-coll (cycled-nth-fn (range 20))]
-    (time (dotimes [i 1000]
-            (nth-coll i)))) ; 0.25ms
-  )
 
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)

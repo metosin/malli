@@ -972,13 +972,13 @@
              entry-parser (-create-entry-parser children opts options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
-             constraint (delay (mc/-constraint-from-properties properties options))
+             constraint (delay (mc/-constraint-from-properties properties :map options))
              default-schema (delay (some-> entry-parser (-entry-children) (-default-entry-schema) (schema options)))
              explicit-children (delay (cond->> (-entry-children entry-parser) @default-schema (remove -default-entry)))
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
-                              keyset-validator (some-> @constraint (mc/-constraint-validator options))
+                              keyset-validator (some-> @constraint (mc/-constraint-validator :map options))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1017,7 +1017,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   keyset-validator (some-> @constraint (mc/-constraint-validator options))
+                   keyset-validator (some-> @constraint (mc/-constraint-validator :map options))
                    default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
@@ -1036,7 +1036,7 @@
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validator (some-> @constraint (mc/-constraint-validator options))
+                   constraint-validator (some-> @constraint (mc/-constraint-validator :map options))
                    default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]
@@ -1124,11 +1124,11 @@
        (let [[key-schema value-schema :as children] (-vmap #(schema % options) children)
              form (delay (-simple-form parent properties children -form options))
              cache (-create-cache options)
-             constraint (delay (mc/-constraint-from-properties properties options))
+             constraint (delay (mc/-constraint-from-properties properties :map-of options))
              validate-limits (-validate-limits min max)
              ->parser (fn [f] (let [key-parser (f key-schema)
                                     value-parser (f value-schema)
-                                    keyset-validator (some-> @constraint (mc/-constraint-validator options))]
+                                    keyset-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
                                 (fn [x]
                                   (if (and (map? x)
                                            (or (not keyset-validator)
@@ -1151,7 +1151,7 @@
            (-validator [_]
              (let [key-valid? (-validator key-schema)
                    value-valid? (-validator value-schema)
-                   keyset-validator (some-> @constraint (mc/-constraint-validator options))]
+                   keyset-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
                (fn [m]
                  (and (map? m)
                       (validate-limits m)
@@ -1164,7 +1164,7 @@
            (-explainer [this path]
              (let [key-explainer (-explainer key-schema (conj path 0))
                    value-explainer (-explainer value-schema (conj path 1))
-                   keyset-validator (some-> @constraint (mc/-constraint-validator options))]
+                   keyset-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
                (fn [m in acc]
                  (if-not (map? m)
                    (conj acc (miu/-error path in this m ::invalid-type))
@@ -1226,10 +1226,10 @@
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
-                  constraint (delay (when constraint-properties? (mc/-constraint-from-properties properties options)))
+                  constraint (delay (when constraint-properties? (mc/-constraint-from-properties properties type options)))
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [child-parser (f schema)
-                                           keyset-validator (some-> @constraint (mc/-constraint-validator options))]
+                                           keyset-validator (some-> @constraint (mc/-constraint-validator type options))]
                                        (fn [x]
                                          (if (or (not (fpred x))
                                                  (not (validate-limits x))
@@ -1253,7 +1253,7 @@
                 Schema
                 (-validator [_]
                   (let [validator (-validator schema)
-                        keyset-validator (some-> @constraint (mc/-constraint-validator options))]
+                        keyset-validator (some-> @constraint (mc/-constraint-validator type options))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
                                  (or (not keyset-validator)
@@ -1261,7 +1261,7 @@
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))
-                        keyset-validator (some-> @constraint (mc/-constraint-validator options))]
+                        keyset-validator (some-> @constraint (mc/-constraint-validator type options))]
                     (fn [x in acc]
                       (if-not (fpred x)
                         (conj acc (miu/-error path in this x ::invalid-type))

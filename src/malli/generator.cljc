@@ -141,6 +141,7 @@
   {:pre [(= :map (m/type schema))]}
   (when-some [constraint (mc/-constraint-from-properties
                            (m/properties schema)
+                           :map
                            options)]
     (let [{required false
            optional true} (group-by #(-> % -last m/properties :optional boolean)
@@ -152,7 +153,7 @@
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)
-          p (mc/-constraint-validator constraint options)]
+          p (mc/-constraint-validator constraint :map options)]
       (into [] (comp (keep (fn [optionals]
                              (let [example (-> base
                                                (into (map (fn [k]
@@ -225,7 +226,6 @@ collected."
   "Uses join to achieve lazier version of mapcat (on one collection)"
   [f coll]
   (join (map f coll)))
-
 
 (defn -constraint-solutions [constraint options]
   (letfn [(-constraint-solutions
@@ -458,7 +458,7 @@ collected."
 
 (defn- -coll-distinct-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
-        constraint (mc/-constraint-from-properties (m/properties schema) options)
+        constraint (mc/-constraint-from-properties (m/properties schema) (m/type schema) options)
         child (-> schema m/children first)
         child-validator (m/validator child)
         mentioned (some-> constraint

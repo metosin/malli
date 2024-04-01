@@ -1202,4 +1202,5 @@
 
 (deftest number-constraint-generator-test
   (is (= 740 (mg/generate [:int {:> 739 :< 741}])))
+  ;;TODO :double
   )

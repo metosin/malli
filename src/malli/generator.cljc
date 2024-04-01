@@ -1043,6 +1043,7 @@ collected."
                           (conj (set/rename-keys (-min-max schema options)
                                                  {:min :>= :max :<=}))
                           -conj-number-constraints)]
+    ;:TODO gen/min gen/max
     (assert (seq solutions))
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]

@@ -350,18 +350,14 @@ collected."
                                 (concat
                                   not-c-sol
                                   (lazy-seq
-                                    (let [c-sol (seq (-constraint-solutions c))
-                                          cs-sol (seq (-constraint-solutions (into [:and] cs)))]
-                                      (concat
-                                        (-conj-solutions c-sol cs-sol)
-                                        (lazy-seq
-                                          (let [or-cs-sol (seq (-constraint-solutions (into [:or] cs)))]
-                                            (concat
-                                              or-cs-sol
-                                              (lazy-seq
-                                                (-conj-solutions
-                                                  not-c-sol
-                                                  or-cs-sol))))))))))
+                                    (concat
+                                      (-conj-solutions (-constraint-solutions c)
+                                                       (-constraint-solutions (into [:and] cs)))
+                                      (lazy-seq
+                                        (let [or-cs-sol (-constraint-solutions (into [:or] cs))]
+                                          (concat
+                                            or-cs-sol
+                                            (-conj-solutions not-c-sol or-cs-sol))))))))
                      (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))))]
    (-constraint-solutions constraint)))
 

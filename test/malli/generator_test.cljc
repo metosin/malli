@@ -919,3 +919,30 @@
                        {:seed 2})]
     (is (vector? v))
     (is (seq v))))
+
+(deftest lt-gt-generator-test
+  (doseq [n [0 -0 2 -1.23456 #?(:clj 1/2) 8N 1.001M]]
+    (testing (pr-str n)
+      (testing ":<"
+        (testing "can generate within <1"
+          (is (< (dec n)
+                 (apply max (mg/sample [:< n]
+                                       {:seed 0
+                                        :size 100}))
+                 n)))
+        (is (empty? (remove #(< % n)
+                            (mg/sample [:< n]
+                                       {:size 1000})))))
+      (testing ":>"
+        (testing "can generate within <1"
+          (is (< n
+                 (apply min
+                        (mg/sample [:> n]
+                                   {:seed 0
+                                    :size 100}))
+                 (inc n))))
+        (is (empty? (remove #(> % n)
+                            (mg/sample [:> n]
+                                       {:size 1000})))))))
+  (is (< 0 (apply min (mg/sample pos? {:seed 0 :size 10000})) 0.0001))
+  (is (< -0.0001 (apply max (mg/sample neg? {:seed 0 :size 10000})) 0)))

@@ -407,14 +407,22 @@
 
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
-(defmethod -schema-generator :> [schema options] (-double-gen {:min (-> schema (m/children options) first inc)}))
+(defmethod -schema-generator :> [schema options] (let [n (-> schema (m/children options) first)]
+                                                   (gen/such-that #(not (== n %)) (-double-gen {:min n})
+                                                                  {:ex-fn #(m/-exception ::>-generator-failed {:schema schema})})))
 (defmethod -schema-generator :>= [schema options] (-double-gen {:min (-> schema (m/children options) first)}))
-(defmethod -schema-generator :< [schema options] (-double-gen {:max (-> schema (m/children options) first dec)}))
+(defmethod -schema-generator :< [schema options] (let [n (-> schema (m/children options) first)]
+                                                   (gen/such-that #(not (== n %)) (-double-gen {:max n})
+                                                                  {:ex-fn #(m/-exception ::<-generator-failed {:schema schema})})))
 (defmethod -schema-generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
 (defmethod -schema-generator := [schema options] (gen/return (first (m/children schema options))))
 (defmethod -schema-generator :not= [schema options] (gen/such-that #(not= % (-> schema (m/children options) first)) gen/any-printable 100))
-(defmethod -schema-generator 'pos? [_ _] (gen/one-of [(-double-gen {:min 0.00001}) (gen/fmap inc gen/nat)]))
-(defmethod -schema-generator 'neg? [_ _] (gen/one-of [(-double-gen {:max -0.0001}) (gen/fmap (comp dec -) gen/nat)]))
+(defmethod -schema-generator 'pos? [schema _] (gen/one-of [(gen/such-that pos? (-double-gen {:min 0})
+                                                                          {:ex-fn #(m/-exception ::pos?-generator-failed {:schema schema})})
+                                                           (gen/fmap inc gen/nat)]))
+(defmethod -schema-generator 'neg? [schema _] (gen/one-of [(gen/such-that neg? (-double-gen {:max 0})
+                                                                          {:ex-fn #(m/-exception ::neg?-generator-failed {:schema schema})})
+                                                           (gen/fmap (comp dec -) gen/nat)]))
 
 (defmethod -schema-generator :not [schema options] (gen/such-that (m/validator schema options) (ga/gen-for-pred any?) 100))
 (defmethod -schema-generator :and [schema options] (-and-gen schema options))

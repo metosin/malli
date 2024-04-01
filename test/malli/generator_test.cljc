@@ -1199,3 +1199,7 @@
         #?(:clj Exception, :cljs js/Error)
         #"Could not generate a value for schema \[:and pos\? neg\?\]\. Consider providing a custom generator\."
         (mg/generate [:and pos? neg?]))))
+
+(deftest number-constraint-generator-test
+  (is (= 740 (mg/generate [:int {:> 739 :< 741}])))
+  )

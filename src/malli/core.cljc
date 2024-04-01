@@ -670,6 +670,9 @@
           (if compile
             (-into-schema (-simple-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
             (let [form (delay (-simple-form parent properties children identity options))
+                  constraint (delay (when-some [constraint-opts (doto (mc/->constraint-opts type) prn)]
+                                      (doto (mc/-constraint-from-properties properties constraint-opts options)
+                                        prn)))
                   cache (-create-cache options)]
               (-check-children! type properties children min max)
               ^{:type ::schema}
@@ -678,8 +681,13 @@
                 (-to-ast [this _] (to-ast this))
                 Schema
                 (-validator [_]
-                  (if-let [pvalidator (when property-pred (property-pred properties))]
-                    (fn [x] (and (pred x) (pvalidator x))) pred))
+                  (let [constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                    (prn "constraint-validator" type constraint-validator)
+                    (-> [(if-let [pvalidator (when property-pred (property-pred properties))]
+                           (fn [x] (and (pred x) (pvalidator x)))
+                           pred)]
+                        (cond-> constraint-validator (conj constraint-validator))
+                        miu/-every-pred)))
                 (-explainer [this path]
                   (let [validator (-validator this)]
                     (fn explain [x in acc]
@@ -978,7 +986,7 @@
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
-                              keyset-validator (some-> @constraint (mc/-constraint-validator :map options))
+                              constraint-validator (some-> @constraint (mc/-constraint-validator :map options))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1004,9 +1012,9 @@
                                                  (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                  m (keys m))))
                                         ;;TODO unit test
-                                        keyset-validator
+                                        constraint-validator
                                         (cons (fn [m]
-                                                (if (keyset-validator m)
+                                                (if (constraint-validator m)
                                                   m
                                                   (reduced ::invalid)))))]
                           (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
@@ -1017,7 +1025,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   keyset-validator (some-> @constraint (mc/-constraint-validator :map options))
+                   constraint-validator (some-> @constraint (mc/-constraint-validator :map options))
                    default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
@@ -1031,7 +1039,7 @@
                                 (conj (fn [m] (default-validator (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))))
                                 (and closed (not default-validator))
                                 (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m))))
-                                keyset-validator (conj keyset-validator))
+                                constraint-validator (conj constraint-validator))
                    validate (miu/-every-pred validators)]
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
@@ -1128,11 +1136,11 @@
              validate-limits (-validate-limits min max)
              ->parser (fn [f] (let [key-parser (f key-schema)
                                     value-parser (f value-schema)
-                                    keyset-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
+                                    constraint-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
                                 (fn [x]
                                   (if (and (map? x)
-                                           (or (not keyset-validator)
-                                               (keyset-validator x)))
+                                           (or (not constraint-validator)
+                                               (constraint-validator x)))
                                     (reduce-kv (fn [acc k v]
                                                  (let [k* (key-parser k)
                                                        v* (value-parser v)]
@@ -1151,12 +1159,12 @@
            (-validator [_]
              (let [key-valid? (-validator key-schema)
                    value-valid? (-validator value-schema)
-                   keyset-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
+                   constraint-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
                (fn [m]
                  (and (map? m)
                       (validate-limits m)
-                      (or (not keyset-validator)
-                          (keyset-validator m))
+                      (or (not constraint-validator)
+                          (constraint-validator m))
                       (reduce-kv
                        (fn [_ key value]
                          (or (and (key-valid? key) (value-valid? value)) (reduced false)))
@@ -1164,13 +1172,13 @@
            (-explainer [this path]
              (let [key-explainer (-explainer key-schema (conj path 0))
                    value-explainer (-explainer value-schema (conj path 1))
-                   keyset-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
+                   constraint-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
                (fn [m in acc]
                  (if-not (map? m)
                    (conj acc (miu/-error path in this m ::invalid-type))
                    (let [acc (cond-> acc
                                (not (validate-limits m)) (conj (miu/-error path in this m ::limits))
-                               (and keyset-validator (not (keyset-validator m))) (conj (miu/-error path in this m ::constraint-violation)))]
+                               (and constraint-validator (not (constraint-validator m))) (conj (miu/-error path in this m ::constraint-violation)))]
                      (reduce-kv
                        (fn [acc key value]
                          (let [in (conj in key)]
@@ -1229,12 +1237,12 @@
                   constraint (delay (when constraint-properties? (mc/-constraint-from-properties properties type options)))
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [child-parser (f schema)
-                                           keyset-validator (some-> @constraint (mc/-constraint-validator type options))]
+                                           constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
                                        (fn [x]
                                          (if (or (not (fpred x))
                                                  (not (validate-limits x))
-                                                 (and keyset-validator
-                                                      (not (keyset-validator x))))
+                                                 (and constraint-validator
+                                                      (not (constraint-validator x))))
                                            ::invalid
                                            (let [x' (reduce
                                                       (fn [acc v]
@@ -1253,21 +1261,21 @@
                 Schema
                 (-validator [_]
                   (let [validator (-validator schema)
-                        keyset-validator (some-> @constraint (mc/-constraint-validator type options))]
+                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
-                                 (or (not keyset-validator)
-                                     (keyset-validator x))
+                                 (or (not constraint-validator)
+                                     (constraint-validator x))
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))
-                        keyset-validator (some-> @constraint (mc/-constraint-validator type options))]
+                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
                     (fn [x in acc]
                       (if-not (fpred x)
                         (conj acc (miu/-error path in this x ::invalid-type))
                         (let [acc (cond-> acc
                                     (not (validate-limits x)) (conj (miu/-error path in this x ::limits))
-                                    (and keyset-validator (not (keyset-validator x))) (conj (miu/-error path in this x ::constraint-violation)))
+                                    (and constraint-validator (not (constraint-validator x))) (conj (miu/-error path in this x ::constraint-violation)))
                               size (count x)]
                           (loop [acc acc , i 0, [x & xs] x]
                             (if (< i size)

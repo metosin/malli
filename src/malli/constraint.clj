@@ -5,23 +5,22 @@
 (def composite-constraint-types
   #{:and :or :implies :xor :iff :not})
 
+(def keyset-constraints {:nested-property-keys (-> composite-constraint-types (disj :not) (conj :disjoint))
+                         :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains})
+                         :constraint-remap {:max :max-count
+                                            :min :min-count}})
+
+(def number-constraints {:flat-property-keys #{:max :min :< :> :<= :>=}
+                         :constraint-types (into composite-constraint-types #{:max :min :< :> :<= :>=})
+                         :constraint-remap {:max :<=
+                                            :min :>=}})
+
 (def schema-constraints
-  {:map {:property-keys (-> composite-constraint-types (disj :not) (conj :disjoint))
-         :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains})
-         :constraint-remap {:max :max-count
-                            :min :min-count}}
-   :set {:property-keys (-> composite-constraint-types (disj :not) (conj :disjoint))
-         :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains})
-         :constraint-remap {:max :max-count
-                            :min :min-count}}
-   :map-of {:property-keys (-> composite-constraint-types (disj :not) (conj :disjoint))
-            :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains})
-            :constraint-remap {:max :max-count
-                               :min :min-count}}
-   :int {:properties (-> composite-constraint-types (disj :not))
-         :constraint-types (into composite-constraint-types #{:max :min :< :> :<= :>=})
-         :constraint-remap {:max :<=
-                            :min :>=}}})
+  {:map keyset-constraints
+   :set keyset-constraints
+   :map-of keyset-constraints
+   :int number-constraints
+   :double number-constraints})
 
 (defn -contains-constraint-key [constraint]
   (if (or (symbol? constraint)
@@ -39,16 +38,20 @@
     type-or-map
     (get schema-constraints type-or-map)))
 
+(defn -resolve-op [constraint {:keys [constraint-remap constraint-types]} options]
+  (let [op (when (vector? constraint)
+             (first constraint))
+        op (or (get constraint-types op)
+               (-fail! ::disallowed-constraint {:constraint constraint}))]
+    (get constraint-remap op op)))
+
 (defn -constraint-validator [constraint constraint-opts options]
-  (let [{:keys [constraint-types]} (->constraint-opts constraint-opts)]
+  (let [{:keys [constraint-remap constraint-types] :as constraint-opts} (->constraint-opts constraint-opts)]
     (letfn [(-constraint-validator [constraint]
               (if-some [[k] (when (:contains constraint-types)
                               (-contains-constraint-key constraint))]
                 #(contains? % k)
-                (let [op (when (vector? constraint)
-                           (first constraint))
-                      op (or (constraint-types op)
-                             (-fail! ::disallowed-constraint {:constraint constraint}))]
+                (let [op (-resolve-op constraint constraint-opts options)]
                   (case op
                     (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)
                                           _ (when-not (= 1 (count all))
@@ -56,10 +59,10 @@
                                           _ (when-not (number? n)
                                               (-fail! ::numeric-constraint-takes-integer {:constraint constraint}))]
                                       (case op
-                                        :<  #(<  n %)
-                                        :<= #(<= n %)
-                                        :>  #(>  n %)
-                                        :>= #(>= n %)))
+                                        :<  #(<  % n)
+                                        :<= #(<= % n)
+                                        :>  #(>  % n)
+                                        :>= #(>= % n)))
                     (:max-count :min-count) (let [[n :as all] (subvec constraint 1)
                                                   _ (when-not (= 1 (count all))
                                                       (-fail! ::min-max-constraint-takes-one-child {:constraint constraint}))
@@ -119,14 +122,17 @@
       (-constraint-validator constraint))))
 
 (defn -constraint-from-properties [properties constraint-opts options]
-  (let [{:keys [property-keys]} (->constraint-opts constraint-opts)]
+  (let [{:keys [flat-property-keys nested-property-keys]} (->constraint-opts constraint-opts)]
     (when-some [cs (-> []
                        (cond->
-                         (:and property-keys)
+                         (:and nested-property-keys)
                          (into (get properties :and)))
                        (into (keep #(some->> (get properties %)
                                              (into [%]))
-                                   (disj property-keys :and)))
+                                   (disj nested-property-keys :and)))
+                       (into (keep #(some->> (get properties %)
+                                             (conj [%]))
+                                   flat-property-keys))
                        not-empty)]
       (if (= 1 (count cs))
         (first cs)

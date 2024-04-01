@@ -3735,3 +3735,12 @@
               [:enum :a :b]]
              #{:a :b})
 )
+
+(deftest number-constraint-test
+  (is (m/validate [:int {:> 5 :< 10}] 8))
+  (is (not (m/validate [:int {:> 5 :< 10}] 2)))
+  (is (not (m/validate [:int {:> 5 :< 10}] 5)))
+  (is (m/validate [:int {:=> 5 :< 10}] 5))
+  (is (not (m/validate [:int {:> 5 :< 10}] 10)))
+  (is (m/validate [:int {:> 5 :<= 10}] 10))
+  )

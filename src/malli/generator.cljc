@@ -3,6 +3,7 @@
   (:require [clojure.core :as cc]
             [clojure.math.combinatorics :as comb]
             [clojure.spec.gen.alpha :as ga]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test.check :as check]
             [clojure.test.check.generators :as gen]
@@ -134,7 +135,7 @@
                   :disjoint (apply concat (next constraint))
                   (or (when-some [mentioned-constraint-keys (::mentioned-constraint-keys options)]
                         (mentioned-constraint-keys constraint options))
-                      (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))]
+                      (m/-fail! ::unknown-keyset-constraint {:constraint constraint})))))]
     (-mentioned-constraint-keys constraint)))
 
 (defn -valid-map-keysets [schema options]
@@ -168,24 +169,64 @@
                      (distinct))
             (comb/subsets optional)))))
 
+(defn -conj-number-constraints [[sol1 & sols :as all-sols]]
+  (let [lt (some->> (seq (keep :< all-sols)) (apply min))
+        gt (some->> (seq (keep :> all-sols)) (apply max))
+        lte (some->> (seq (keep :<= all-sols)) (apply min))
+        gte (some->> (seq (keep :>= all-sols)) (apply max))
+        [upper upper-op] (when (or lt lte)
+                           (if (and lt lte)
+                             (if (<= lt lte)
+                               [lt :<]
+                               [lte :<=])
+                             (if lt
+                               [lt :<]
+                               [lte :<=])))
+        [lower lower-op] (when (or gt gte)
+                           (if (and gt gte)
+                             (if (<= gt gte)
+                               [gte :>=]
+                               [gt :>])
+                             (if gt
+                               [gt :>]
+                               [gte :>=])))]
+    (if (and lower upper)
+      (if (< lower upper)
+        [{lower-op lower
+          upper-op upper}]
+        (if (and (= lower upper)
+                 (and (#{:>= :>} lower-op)
+                      (= :<= upper-op)))
+          [{lower-op lower
+            upper-op upper}]
+          []))
+      (if lower
+        [{lower-op lower}]
+        (if upper
+          [{upper-op upper-op}]
+          [{}])))))
+
 (defn -conj-solutions [& sols]
   (letfn [(rec [cart-sols]
             (lazy-seq
-              (when-some [[[sol1 & sols]] (seq cart-sols)]
-                (if-some [present (reduce (fn [p1 {p2 :present}]
-                                            (reduce-kv (fn [acc k v]
-                                                         (if-some [[_ present1] (find acc k)]
-                                                           (if (identical? acc v)
-                                                             acc
-                                                             (reduced (reduced nil)))
-                                                           (assoc acc k v)))
-                                                       p1 p2))
-                                          (:present sol1) sols)]
-                  (cons (-> sol1
-                            (update :order into (mapcat :order) sols)
-                            (assoc :present present))
-                        (rec (rest cart-sols)))
-                  (rec (rest cart-sols))))))]
+              (when-some [[[sol1 & sols :as all-sols]] (seq cart-sols)]
+                (if (some (some-fn :< :> :<= :>=) all-sols)
+                  (concat (-conj-number-constraints all-sols)
+                          (rec (rest cart-sols)))
+                  (if-some [present (reduce (fn [p1 {p2 :present}]
+                                              (reduce-kv (fn [acc k v]
+                                                           (if-some [[_ present1] (find acc k)]
+                                                             (if (identical? acc v)
+                                                               acc
+                                                               (reduced (reduced nil)))
+                                                             (assoc acc k v)))
+                                                         p1 p2))
+                                            (:present sol1) sols)]
+                    (cons (-> sol1
+                              (update :order into (mapcat :order) sols)
+                              (assoc :present present))
+                          (rec (rest cart-sols)))
+                    (rec (rest cart-sols)))))))]
     (distinct (rec (apply comb/cartesian-product (distinct sols))))))
 
 (comment
@@ -200,6 +241,57 @@
   (assert (= (-conj-solutions '({:order [:a], :present {:a true}})
                               '({:order [:b], :present {:b false}}))
              [{:order [:a :b] :present {:a true :b false}}]))
+  (assert (= (-conj-solutions '({:< 2})
+                              '({:> 0}))
+             [{:> 0 :< 2}]))
+  (assert (= (-conj-solutions '({:< 2})
+                              '({:< 0}))
+             [{:< 0}]))
+  (assert (= (-conj-solutions '({:<= 2})
+                              '({:<  2}))
+             [{:< 2}]))
+  (assert (= (-conj-solutions '({:<= 2})
+                              '({:<  2}))
+             [{:< 2}]))
+  (assert (= (-conj-solutions '({:<= 2})
+                              '({:<= 0}))
+             [{:<= 0}]))
+  (assert (= (-conj-solutions '({:<= 2})
+                              '({:< 0}))
+             [{:< 0}]))
+  (assert (= (-conj-solutions '({:< 2})
+                              '({:<= 0}))
+             [{:< 0}]))
+  (assert (= (-conj-solutions '({:< 2})
+                              '({:> 2}))
+             []))
+  (assert (= (-conj-solutions '({:> 2})
+                              '({:> 0}))
+             [{:> 2}]))
+  (assert (= (-conj-solutions '({:>= 2})
+                              '({:> 0}))
+             [{:>= 2}]))
+  (assert (= (-conj-solutions '({:> 2})
+                              '({:>= 0}))
+             [{:> 2}]))
+  (assert (= (-conj-solutions '({:>= 2})
+                              '({:>= 0}))
+             [{:>= 2}]))
+  (assert (= (-conj-solutions '({:>= 2})
+                              '({:> 2}))
+             [{:>= 2}]))
+  (assert (= (-conj-solutions '({:>= 2})
+                              '({:> 2}))
+             [{:>= 2}]))
+  (assert (= (-conj-solutions '({:>= 2})
+                              '({:> 1}))
+             [{:>= 2}]))
+  (assert (= (-conj-solutions '({:>= 3})
+                              '({:> 2}))
+             [{:>= 3}]))
+  (assert (= (-conj-solutions '({:>= 2})
+                              '({:< 2}))
+             [{:>= 2}]))
   )
 
 (defn- unchunk
@@ -227,139 +319,148 @@ collected."
   [f coll]
   (join (map f coll)))
 
-(defn -constraint-solutions [constraint options]
-  (letfn [(-constraint-solutions
-            ([constraint] (-constraint-solutions constraint options))
-            ([constraint options]
-             (lazy-seq
-               (if-some [[k] (mc/-contains-constraint-key constraint)]
-                 [{:order [k]
-                   :present {k true}}]
-                 (let [op (if (vector? constraint)
-                            (first constraint)
-                            (m/-fail! ::unknown-keyset-contraint {:constraint constraint}))]
-                   (case op
-                     :not (let [[c] (next constraint)
-                                sol (-constraint-solutions c)]
-                            (if (empty? sol)
-                              [{:order [] :present {}}]
-                              (sequence (comp (map (fn [s]
-                                                     (update s :present update-vals not)))
-                                              (distinct))
-                                        (unchunk sol))))
-                     :and (apply -conj-solutions (map -constraint-solutions (unchunk (next constraint))))
-                     (:or :xor) (let [cs (subvec constraint 1)
-                                      ndisjuncts (count cs)
-                                      base-id (vec (range ndisjuncts))]
-                                  (when (pos? ndisjuncts)
-                                    (let [solution-cache (atom {})
-                                          solve-combination (fn solve-combination [id]
-                                                              (if-some [[_ res] (find @solution-cache id)]
-                                                                res
-                                                                (let [nid (count id)
-                                                                      sol (if (= 1 nid)
-                                                                            (let [i (nth id 0)]
-                                                                              (-constraint-solutions
-                                                                                ;; [0 1 2 3 4] === solve all
-                                                                                ;; [-1 -2 -3 -4 -5] === negate all
-                                                                                (if (neg? i)
-                                                                                  [:not (nth cs (- (inc i)))]
-                                                                                  (nth cs i))))
-                                                                            (let [mid (quot nid 2)]
-                                                                              (or (when-some [left (not-empty
-                                                                                                     (solve-combination
-                                                                                                       (subvec id 0 mid)))]
-                                                                                    (when-some [right (not-empty
-                                                                                                        (solve-combination
-                                                                                                          (subvec id mid)))]
-                                                                                      (-conj-solutions left right)))
-                                                                                  [])))]
-                                                                  (swap! solution-cache assoc id sol)
-                                                                  sol)))]
-                                      (when-some [satisfiable-disjuncts (seq
-                                                                          (keep #(some->> (not-empty (solve-combination [%]))
-                                                                                          (vector %))
-                                                                                (unchunk (range ndisjuncts))))]
-                                        (distinct
-                                          (case op
-                                            :xor (let [perm-coll (into [true] (repeat (dec ndisjuncts) false))
-                                                       nperm (comb/permutations perm-coll)]
-                                                   (mapjoin #(solve-combination (into []
-                                                                                      (map-indexed (fn [i pos-neg]
-                                                                                                     (cond-> i
-                                                                                                       (not pos-neg) (-> - dec))))
-                                                                                      (comb/nth-permutation perm-coll %)))
-                                                            (unchunk (range nperm))))
-                                            :or (concat
-                                                  ;;first just satisfy each disjunct to reduce search space of comb/selections
-                                                  ;;also the smallest solutions will go first, since negating the other disjuncts
-                                                  ;;could increase the size of the solutions.
-                                                  (mapjoin second satisfiable-disjuncts)
+(defn -constraint-solutions [constraint constraint-opts options]
+  (prn "constraint" constraint)
+  (let [{:keys [constraint-remap constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
+    (letfn [(-constraint-solutions
+              ([constraint] (-constraint-solutions constraint options))
+              ([constraint options]
+               (lazy-seq
+                 (if-some [[k] (when (:contains constraint-types)
+                                 (mc/-contains-constraint-key constraint))]
+                   [{:order [k]
+                     :present {k true}}]
+                   (let [op (mc/-resolve-op constraint constraint-opts options)]
+                     (case op
+                       (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)]
+                                         [{op n}])
+                       :not (let [[c] (next constraint)
+                                  sol (-constraint-solutions c)]
+                              (if (empty? sol)
+                                [{:order [] :present {}}]
+                                (sequence (comp (map (fn [s]
+                                                       (assert (not-any? s [:max-count :min-count]))
+                                                       (-> s
+                                                           (set/rename-keys {:< :>=
+                                                                             :> :<=
+                                                                             :<= :>
+                                                                             :>= :<})
+                                                           (update :present update-vals not))))
+                                                (distinct))
+                                          (unchunk sol))))
+                       :and (apply -conj-solutions (map -constraint-solutions (unchunk (next constraint))))
+                       (:or :xor) (let [cs (subvec constraint 1)
+                                        ndisjuncts (count cs)
+                                        base-id (vec (range ndisjuncts))]
+                                    (when (pos? ndisjuncts)
+                                      (let [solution-cache (atom {})
+                                            solve-combination (fn solve-combination [id]
+                                                                (if-some [[_ res] (find @solution-cache id)]
+                                                                  res
+                                                                  (let [nid (count id)
+                                                                        sol (if (= 1 nid)
+                                                                              (let [i (nth id 0)]
+                                                                                (-constraint-solutions
+                                                                                  ;; [0 1 2 3 4] === solve all
+                                                                                  ;; [-1 -2 -3 -4 -5] === negate all
+                                                                                  (if (neg? i)
+                                                                                    [:not (nth cs (- (inc i)))]
+                                                                                    (nth cs i))))
+                                                                              (let [mid (quot nid 2)]
+                                                                                (or (when-some [left (not-empty
+                                                                                                       (solve-combination
+                                                                                                         (subvec id 0 mid)))]
+                                                                                      (when-some [right (not-empty
+                                                                                                          (solve-combination
+                                                                                                            (subvec id mid)))]
+                                                                                        (-conj-solutions left right)))
+                                                                                    [])))]
+                                                                    (swap! solution-cache assoc id sol)
+                                                                    sol)))]
+                                        (when-some [satisfiable-disjuncts (seq
+                                                                            (keep #(some->> (not-empty (solve-combination [%]))
+                                                                                            (vector %))
+                                                                                  (unchunk (range ndisjuncts))))]
+                                          (distinct
+                                            (case op
+                                              :xor (let [perm-coll (into [true] (repeat (dec ndisjuncts) false))
+                                                         nperm (comb/permutations perm-coll)]
+                                                     (mapjoin #(solve-combination (into []
+                                                                                        (map-indexed (fn [i pos-neg]
+                                                                                                       (cond-> i
+                                                                                                         (not pos-neg) (-> - dec))))
+                                                                                        (comb/nth-permutation perm-coll %)))
+                                                              (unchunk (range nperm))))
+                                              :or (concat
+                                                    ;;first just satisfy each disjunct to reduce search space of comb/selections
+                                                    ;;also the smallest solutions will go first, since negating the other disjuncts
+                                                    ;;could increase the size of the solutions.
+                                                    (mapjoin second satisfiable-disjuncts)
 
-                                                  ;; now satisfy combinations of disjuncts
-                                                  ;; true = solve
-                                                  ;; false = ignore
-                                                  (lazy-seq
-                                                    (let [base-id (mapv first satisfiable-disjuncts)
-                                                          idx->id (into {} (map-indexed (fn [i id] {i id})) base-id)]
-                                                      (mapjoin
-                                                        (fn [[i msk]]
-                                                          (let [solution-id (into [] (keep-indexed
-                                                                                       (fn [i need-to-satisfy]
-                                                                                         (when need-to-satisfy
-                                                                                           (nth base-id i))))
-                                                                                  msk)]
-                                                            (solve-combination solution-id)))
-                                                        (map vector (unchunk (range)) (next (comb/selections [false true] (count base-id)))))))
-                                                  ;;TODO
-                                                  ;; true = solve
-                                                  ;; false = solve negation
-                                                  #_
-                                                  (lazy-seq
-                                                    (when-some [satisfiable-negated-disjuncts
-                                                                (seq
-                                                                  (keep #(some->> (not-empty (solve-combination [%]))
-                                                                                  (vector (dec (- i))))
-                                                                        (unchunk (range ndisjuncts))))]
-                                                      (keep-indexed
-                                                        (fn [i msk]
-                                                          (if (< ndisjuncts i)
-                                                            (when (every? identity (map (fn [satisfiable must-satisfy]
-                                                                                          (or (not must-satisfy)
-                                                                                              satisfiable))
-                                                                                        @seen-satisfiable msk))
-                                                              [i ])
-                                                            ;;FIXME right-to-left?
-                                                            [i (map (fn []) cs msk)]))
-                                                        (next (comb/selections [false true] (dec (count solvable))))))))))))))
-                     :disjoint (let [ksets (subvec constraint 1)
-                                     order (into [] (mapcat identity) ksets)
-                                     base {:order order :present (zipmap order (repeat false))}]
-                                 (cons base
-                                       (apply interleave
-                                              (mapjoin (fn [kset]
-                                                         (map #(update base :present into (zipmap kset %))
-                                                              (next (comb/selections [false true] (count kset)))))
-                                                       (unchunk ksets)))))
-                     :iff (let [cs (subvec constraint 1)]
-                            (concat (-constraint-solutions (into [:and] (map #(do [:not %])) cs))
-                                    (lazy-seq
-                                      (-constraint-solutions (into [:and] cs)))))
-                     :implies (let [[c & cs] (next constraint)
-                                    not-c-sol (seq (-constraint-solutions [:not c]))]
-                                (concat
-                                  not-c-sol
-                                  (lazy-seq
-                                    (concat
-                                      (-conj-solutions (-constraint-solutions c)
-                                                       (-constraint-solutions (into [:and] cs)))
+                                                    ;; now satisfy combinations of disjuncts
+                                                    ;; true = solve
+                                                    ;; false = ignore
+                                                    (lazy-seq
+                                                      (let [base-id (mapv first satisfiable-disjuncts)
+                                                            idx->id (into {} (map-indexed (fn [i id] {i id})) base-id)]
+                                                        (mapjoin
+                                                          (fn [[i msk]]
+                                                            (let [solution-id (into [] (keep-indexed
+                                                                                         (fn [i need-to-satisfy]
+                                                                                           (when need-to-satisfy
+                                                                                             (nth base-id i))))
+                                                                                    msk)]
+                                                              (solve-combination solution-id)))
+                                                          (map vector (unchunk (range)) (next (comb/selections [false true] (count base-id)))))))
+                                                    ;;TODO
+                                                    ;; true = solve
+                                                    ;; false = solve negation
+                                                    #_
+                                                    (lazy-seq
+                                                      (when-some [satisfiable-negated-disjuncts
+                                                                  (seq
+                                                                    (keep #(some->> (not-empty (solve-combination [%]))
+                                                                                    (vector (dec (- i))))
+                                                                          (unchunk (range ndisjuncts))))]
+                                                        (keep-indexed
+                                                          (fn [i msk]
+                                                            (if (< ndisjuncts i)
+                                                              (when (every? identity (map (fn [satisfiable must-satisfy]
+                                                                                            (or (not must-satisfy)
+                                                                                                satisfiable))
+                                                                                          @seen-satisfiable msk))
+                                                                [i ])
+                                                              ;;FIXME right-to-left?
+                                                              [i (map (fn []) cs msk)]))
+                                                          (next (comb/selections [false true] (dec (count solvable))))))))))))))
+                       :disjoint (let [ksets (subvec constraint 1)
+                                       order (into [] (mapcat identity) ksets)
+                                       base {:order order :present (zipmap order (repeat false))}]
+                                   (cons base
+                                         (apply interleave
+                                                (mapjoin (fn [kset]
+                                                           (map #(update base :present into (zipmap kset %))
+                                                                (next (comb/selections [false true] (count kset)))))
+                                                         (unchunk ksets)))))
+                       :iff (let [cs (subvec constraint 1)]
+                              (concat (-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                       (lazy-seq
-                                        (let [or-cs-sol (-constraint-solutions (into [:or] cs))]
-                                          (concat
-                                            or-cs-sol
-                                            (-conj-solutions not-c-sol or-cs-sol))))))))
-                     (m/-fail! ::unknown-keyset-contraint {:constraint constraint})))))))]
-   (-constraint-solutions constraint)))
+                                        (-constraint-solutions (into [:and] cs)))))
+                       :implies (let [[c & cs] (next constraint)
+                                      not-c-sol (seq (-constraint-solutions [:not c]))]
+                                  (concat
+                                    not-c-sol
+                                    (lazy-seq
+                                      (concat
+                                        (-conj-solutions (-constraint-solutions c)
+                                                         (-constraint-solutions (into [:and] cs)))
+                                        (lazy-seq
+                                          (let [or-cs-sol (-constraint-solutions (into [:or] cs))]
+                                            (concat
+                                              or-cs-sol
+                                              (-conj-solutions not-c-sol or-cs-sol))))))))
+                       (m/-fail! ::unknown-keyset-constraint {:constraint constraint})))))))]
+     (-constraint-solutions constraint))))
 
 (comment
   (assert (= (-constraint-solutions
@@ -479,7 +580,7 @@ collected."
                                                                  (or (not present?)
                                                                      (child-validator k)))
                                                                (:present %))
-                                                      (-constraint-solutions constraint options))
+                                                      (-constraint-solutions constraint (m/type schema) options))
                                               seq
                                               cycled-nth-fn)
                                       (m/-fail! ::unsatisfiable-keyset))]
@@ -935,7 +1036,21 @@ collected."
 (defmethod -schema-generator :some [_ _] gen/any-printable)
 (defmethod -schema-generator :nil [_ _] nil-gen)
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
-(defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
+(defmethod -schema-generator :int [schema options]
+  (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
+        solutions (some-> (-constraint-solutions constraint :int options)
+                          seq
+                          (conj (set/rename-keys (-min-max schema options)
+                                                 {:min :>= :max :<=}))
+                          -conj-number-constraints)]
+    (assert (seq solutions))
+    (gen-one-of
+      (mapv (fn [{:keys [<= >= < >]}]
+              (cond->> (gen/large-integer* {:min (or >= >)
+                                            :max (or <= <)})
+                > (gen/such-that #(not (== % >)))
+                < (gen/such-that #(not (== % <)))))
+            solutions))))
 (defmethod -schema-generator :double [schema options]
   (gen/double* (merge (let [props (m/properties schema options)]
                         {:infinite? (get props :gen/infinite? false)

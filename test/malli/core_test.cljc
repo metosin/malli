@@ -3784,7 +3784,16 @@
 (deftest string-constraint-test
   (testing ":min/:max"
     (is (m/validate [:string {:min 1 :max 5}] "ab"))
-    (is (not (m/validate [:string {:min 1 :max 5}] ""))))
+    (is (not (m/validate [:string {:min 1 :max 5}] "")))
+    (is (= ["should be at least 1 characters"] ;; https://github.com/metosin/malli/pull/1032
+           (me/humanize (m/explain [:string {:min 1}] ""))))
+    (is (= ["should be at least 1 character"]
+           (me/humanize (m/explain [:string {:and [[:min 1]]}] ""))))
+    (is (= ["should be less than 1 character"]
+           (me/humanize (m/explain [:string {:not [:min 1]}] "a"))))
+    (is (= ["should be less than 1 character"]
+           (me/humanize (m/explain [:string {:not [:min 1]}] "a"))))
+    )
   (testing ":alpha"
     (is (m/validate [:string {:alpha true}] "ab"))
     (is (m/validate [:string {:alpha true}] ""))
@@ -3852,7 +3861,6 @@
     (is (m/validate [:string {:not [:alphanumeric]}] "[a1]"))
     (is (= ["should contain a non-alphanumeric character"]
            (me/humanize (m/explain [:string {:not [:alphanumeric]}] "12")))))
-
   (testing ":non-alphanumeric"
     (is (m/validate [:string {:non-alphanumeric true}] ""))
     (is (m/validate [:string {:non-alphanumeric true}] "[]"))

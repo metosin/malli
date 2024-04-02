@@ -1,6 +1,7 @@
 (ns malli.constraint
   (:require [clojure.set :as set]
             [malli.constraint.string :as mcs]
+            [malli.constraint.validate-string :as mcsv]
             [malli.constraint.util :refer [composite-constraint-types
                                            -add-gen-key
                                            -generator-types]]
@@ -60,7 +61,8 @@
      :validator-constraint-types validator-constraint-types}))
 
 ;; TODO :qualified-keyword + :namespace
-(def schema-constraints
+;; TODO add to options
+(defn schema-constraints []
   (into {:map keyset-constraints
          :set keyset-constraints
          :map-of keyset-constraints
@@ -68,7 +70,7 @@
          :double number-constraints
          :vector sequential-constraints
          :sequential sequential-constraints}
-        mcs/schema-constraints))
+        (mcs/schema-constraints)))
 
 (defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)
@@ -99,10 +101,11 @@
 (defn ->constraint-opts [type-or-map]
   (if (map? type-or-map)
     type-or-map
-    (get schema-constraints type-or-map)))
+    (get (schema-constraints) type-or-map)))
 
-(def validators
-  (into mcs/validators))
+;; TODO add to options
+(defn validators []
+  (mcsv/validators))
 
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]
@@ -111,7 +114,7 @@
                               (-contains-constraint-key constraint constraint-opts options))]
                 #(contains? % k)
                 (let [op (-resolve-op constraint validator-constraint-types options)]
-                  (or (validators op) ;;TODO make extensible
+                  (or ((validators) op) ;;TODO make extensible
                       (case op
                         :any any?
                         :sorted (let [[v :as all] (subvec constraint 1)

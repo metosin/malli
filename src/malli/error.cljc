@@ -42,6 +42,7 @@
                         validator (let [v (delay (mc/-constraint-validator constraint type options))]
                                     (fn [x] (@v x)))
                         valid? (delay (validator value))]
+                    (prn "constraint" constraint)
                     (if-some [humanizer (constraint-humanizers (if not?
                                                                  [:not not-child-op]
                                                                  op))]
@@ -51,6 +52,43 @@
                                  options)
                       (cond
                         (= :any op) []
+
+                        (and not? (= :min-count not-child-op))
+                        (let [cnt (count value)
+                              min (second not-child)]
+                          (when (<= min cnt)
+                            (str "should be less than " min
+                                 (if (string? value)
+                                   " character"
+                                   " element")
+                                 (when-not (= 1 cnt) "s"))))
+
+                        (= :min-count op) (let [cnt (count value)
+                                                min (first ng)]
+                                            (when-not (<= min cnt)
+                                              (str "should be at least " min
+                                                   (if (string? value)
+                                                     " character"
+                                                     " element")
+                                                   (when-not (= 1 cnt) "s"))))
+
+                        (and not? (= :max-count not-child-op))
+                        (let [cnt (count value)
+                              max (second not-child)]
+                          (when (<= cnt max)
+                            (str "should be more than " min
+                                 (if (string? value)
+                                   " character"
+                                   " element")
+                                 (when-not (= 1 cnt) "s"))))
+                        (= :max-count op) (let [cnt (count value)
+                                                max (first ng)]
+                                            (when-not (<= cnt max)
+                                              (str "should be at most " min
+                                                   (if (string? value)
+                                                     " character"
+                                                     " element")
+                                                   (when-not (= 1 cnt) "s"))))
 
                         (and (= :distinct op) (true? (first ng))
                              (not (validator value)))

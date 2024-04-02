@@ -85,7 +85,7 @@
              (first constraint))
         op (or (get constraint-types op)
                (-fail! ::disallowed-constraint {:type op :constraint constraint
-                                                :allowed constraint-types}))]
+                                                :allowed (keys constraint-types)}))]
     (loop [op op]
       (let [op' (get constraint-types op op)]
         (cond-> op

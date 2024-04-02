@@ -175,41 +175,43 @@
             (comb/subsets optional)))))
 
 (defn -conj-number-constraints [[sol1 & sols :as all-sols]]
-  (let [lt (some->> (seq (keep :< all-sols)) (apply min))
-        gt (some->> (seq (keep :> all-sols)) (apply max))
-        lte (some->> (seq (keep :<= all-sols)) (apply min))
-        gte (some->> (seq (keep :>= all-sols)) (apply max))
-        [upper upper-op] (when (or lt lte)
-                           (if (and lt lte)
-                             (if (<= lt lte)
-                               [lt :<]
-                               [lte :<=])
-                             (if lt
-                               [lt :<]
-                               [lte :<=])))
-        [lower lower-op] (when (or gt gte)
-                           (if (and gt gte)
-                             (if (<= gt gte)
-                               [gte :>=]
-                               [gt :>])
-                             (if gt
-                               [gt :>]
-                               [gte :>=])))]
-    (if (and lower upper)
-      (if (< lower upper)
-        [{lower-op lower
-          upper-op upper}]
-        (if (and (= lower upper)
-                 (and (#{:>= :>} lower-op)
-                      (= :<= upper-op)))
+  (if (empty? all-sols)
+    [{}]
+    (let [lt (some->> (seq (keep :< all-sols)) (apply min))
+          gt (some->> (seq (keep :> all-sols)) (apply max))
+          lte (some->> (seq (keep :<= all-sols)) (apply min))
+          gte (some->> (seq (keep :>= all-sols)) (apply max))
+          [upper upper-op] (when (or lt lte)
+                             (if (and lt lte)
+                               (if (<= lt lte)
+                                 [lt :<]
+                                 [lte :<=])
+                               (if lt
+                                 [lt :<]
+                                 [lte :<=])))
+          [lower lower-op] (when (or gt gte)
+                             (if (and gt gte)
+                               (if (<= gt gte)
+                                 [gte :>=]
+                                 [gt :>])
+                               (if gt
+                                 [gt :>]
+                                 [gte :>=])))]
+      (if (and lower upper)
+        (if (< lower upper)
           [{lower-op lower
             upper-op upper}]
-          []))
-      (if lower
-        [{lower-op lower}]
-        (if upper
-          [{upper-op upper}]
-          [{}])))))
+          (if (and (= lower upper)
+                   (and (#{:>= :>} lower-op)
+                        (= :<= upper-op)))
+            [{lower-op lower
+              upper-op upper}]
+            []))
+        (if lower
+          [{lower-op lower}]
+          (if upper
+            [{upper-op upper}]
+            [{}]))))))
 
 (defn -conj-solutions [& sols]
   (letfn [(rec [cart-sols]
@@ -333,7 +335,8 @@ collected."
                  (if-some [[k] (mc/-contains-constraint-key constraint generator-constraint-types options)]
                    [{:order [k]
                      :present {k true}}]
-                   (let [op (mc/-resolve-op constraint generator-constraint-types options)]
+                   (let [_ (prn "constraint" constraint)
+                         op (mc/-resolve-op constraint generator-constraint-types options)]
                      (case op
                        (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)]
                                          [{op n}])
@@ -1043,9 +1046,12 @@ collected."
 (defmethod -schema-generator :nil [_ _] nil-gen)
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options]
-  (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
-        solutions (some-> (-constraint-solutions constraint :int options)
-                          seq -conj-number-constraints)]
+  (let [solutions (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
+                          ;;FIXME something is wrong with this. nil vs () ?
+                          ;;also fix :double
+                          (-> (-constraint-solutions :int options)
+                              ;;FIXME why are we collapsing all solutions into one?
+                              -conj-number-constraints))]
     (when (empty? solutions)
       (m/-fail! ::unsatisfiable-int-schema {:schema schema}))
     (gen-one-of
@@ -1062,9 +1068,11 @@ collected."
                   g)))
             solutions))))
 (defmethod -schema-generator :double [schema options]
-  (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
-        solutions (some-> (-constraint-solutions constraint :int options)
-                          seq -conj-number-constraints)]
+  (let [solutions (or (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
+                              (-constraint-solutions :int options)
+                              seq
+                              -conj-number-constraints)
+                      [{}])]
     (when (empty? solutions)
       (m/-fail! ::unsatisfiable-double-schema {:schema schema}))
     (gen-one-of

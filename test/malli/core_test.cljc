@@ -3780,3 +3780,13 @@
                         [:sequential {:sorted true
                                       :distinct true} :any]
                         [1 3 3 2])))))
+
+(deftest string-constraint-test
+  (is (m/validate [:string {:min 1 :max 5}] "ab"))
+  (is (not (m/validate [:string {:min 1 :max 5}] "")))
+  (is (m/validate [:string {:alpha true}] "ab"))
+  (is (not (m/validate [:string {:alpha true}] "ab1")))
+  (is (= ["should be alphabetic: index 2 has \\1."
+          "should be alphabetic: index 4 has \\*."]
+         (me/humanize (m/explain [:string {:alpha true}] "ab1c*"))))
+  )

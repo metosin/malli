@@ -670,9 +670,7 @@
           (if compile
             (-into-schema (-simple-schema (merge (dissoc props :compile) (compile properties children options))) properties children options)
             (let [form (delay (-simple-form parent properties children identity options))
-                  constraint (delay (when-some [constraint-opts (doto (mc/->constraint-opts type) prn)]
-                                      (doto (mc/-constraint-from-properties properties constraint-opts options)
-                                        prn)))
+                  constraint (delay (mc/-constraint-from-properties properties type options))
                   cache (-create-cache options)]
               (-check-children! type properties children min max)
               ^{:type ::schema}
@@ -681,17 +679,27 @@
                 (-to-ast [this _] (to-ast this))
                 Schema
                 (-validator [_]
-                  (let [constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
-                    (prn "constraint-validator" type constraint-validator)
-                    (-> [(if-let [pvalidator (when property-pred (property-pred properties))]
-                           (fn [x] (and (pred x) (pvalidator x)))
-                           pred)]
-                        (cond-> constraint-validator (conj constraint-validator))
+                  (let [pvalidator (when property-pred (property-pred properties))
+                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                    (-> [pred]
+                        (cond->
+                          ;; TODO obsoleted by constraint-validator?
+                          pvalidator (conj pvalidator)
+                          constraint-validator (conj constraint-validator))
                         miu/-every-pred)))
                 (-explainer [this path]
-                  (let [validator (-validator this)]
-                    (fn explain [x in acc]
-                      (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
+                  (let [pvalidator (when property-pred (property-pred properties))
+                        validator (-validator this)
+                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                    (fn [x in acc]
+                      (if-not (pred x)
+                        (conj acc (miu/-error path in this x ::invalid-type))
+                        (cond-> acc
+                          (and pvalidator (not (pvalidator x)))
+                          (miu/-error path in this x)
+
+                          (and constraint-validator (not (constraint-validator x)))
+                          (conj (miu/-error path in this x ::constraint-violation)))))))
                 (-parser [this]
                   (let [validator (-validator this)]
                     (fn [x] (if (validator x) x ::invalid))))
@@ -714,7 +722,7 @@
 (defn -nil-schema [] (-simple-schema {:type :nil, :pred nil?}))
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))
 (defn -some-schema [] (-simple-schema {:type :some, :pred some?}))
-(defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
+(defn -string-schema [] (-simple-schema {:type :string, :pred string?}))
 (defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
 (defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
 (defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))

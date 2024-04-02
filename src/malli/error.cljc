@@ -15,22 +15,30 @@
         max (str "should be at most " max)))))
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
-                                      {custom-error ::humanize-constraint-violation :as options}]
-  (letfn [(has? [k] (contains? value k))
-          (->flat-ks [constraint] (let [ks (map mc/-contains-constraint-key (next constraint))]
-                                    (when (every? identity ks)
-                                      (map first ks))))
-          (-humanize-constraint-violation [constraint]
-            (or (when custom-error
-                  (custom-error (assoc args :constraint constraint) options))
-                (if-some [[k] (mc/-contains-constraint-key constraint)]
+                                      options]
+  (let [{:keys [validator-constraint-types]} (mc/->constraint-opts (m/type schema))]
+    (letfn [(has? [k] (contains? value k))
+            (->flat-ks [constraint] (let [ks (map mc/-contains-constraint-key (next constraint))]
+                                      (when (every? identity ks)
+                                        (map first ks))))
+            (-humanize-constraint-violation [constraint]
+              (let [op (mc/-resolve-op constraint validator-constraint-types options)]
+                (if-some [[k] (mc/-contains-constraint-key constraint validator-constraint-types options)]
                   (str "should provide key: " (pr-str k))
                   (let [flat-ks (delay (->flat-ks constraint))
                         ng (subvec constraint 1)
-                        op (first constraint)
                         type (m/type schema)
                         validator (delay (mc/-constraint-validator constraint type options))]
                     (cond
+                      (= :any op) []
+
+                      (= :alpha-string op)
+                      (keep-indexed (fn [i v]
+                                      (when-not (Character/isAlphabetic (int v))
+                                        (str "should be alphabetic: "
+                                             "index " i " has " (pr-str (char v)) ".")))
+                                    value)
+
                       (and (= :distinct op) (true? (first ng))
                            (not (@validator value)))
                       (let [freq (into {}
@@ -142,7 +150,7 @@
                              " with key" (if (next violating-ks) "s" "") ": "
                              (apply str (interpose " " (map pr-str violating-ks)))))
                       :else (str "should satisfy constraint: " (pr-str constraint)))))))]
-    (-humanize-constraint-violation constraint)))
+      (-humanize-constraint-violation constraint))))
 
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
@@ -489,11 +497,10 @@
    (when errors
      (reduce
       (fn [acc error]
-        (let [[path message] (resolve explanation error options)
-              push-msg (fn [acc msg] (-push-in acc value path (wrap (assoc error :message msg))))]
-          (if (string? message)
-            (push-msg message)
-            (reduce push-msg acc message))))
+        (let [[path message] (resolve explanation error options)]
+          (reduce (fn [acc msg] (-push-in acc value path (wrap (assoc error :message msg))))
+                  acc (cond-> message
+                        (string? message) vector))))
       nil errors))))
 
 (defn error-value

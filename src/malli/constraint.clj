@@ -8,15 +8,17 @@
 (defn -add-gen-key [k]
   [k (keyword "gen" (name k))])
 
+(defn -generator-types [constraint-types]
+  (into {} (map (juxt #(keyword "gen" (name %))
+                      identity))
+        constraint-types))
+
 (def keyset-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types
                                        ;;TODO :sorted
                                        [:disjoint :max :min :contains]))
-        ;; :gen/foo :=> :foo
-        generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
-                                                       identity))
-                                         (keys constraint-types))
+        generator-constraint-types (-generator-types (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
@@ -32,10 +34,7 @@
 (def number-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max :min :< :> :<= :>=}))
-        ;; :gen/foo :=> :foo
-        generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
-                                                       identity))
-                                         (keys constraint-types))
+        generator-constraint-types (-generator-types (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
@@ -55,10 +54,7 @@
 (def sequential-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max :min :distinct :sorted}))
-        ;; :gen/foo :=> :foo
-        generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
-                                                       identity))
-                                         (keys constraint-types))
+        generator-constraint-types (-generator-types (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
@@ -66,6 +62,35 @@
                                               :min :min-count))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max :min :distinct :sorted})
+     :generator-constraint-types (into validator-constraint-types
+                                       generator-constraint-types)
+     :validator-constraint-types validator-constraint-types}))
+
+(def string-constraints
+  (let [constraint-types (into {} (map (juxt identity identity))
+                               (concat composite-constraint-types #{:max
+                                                                    :min
+                                                                    :re
+                                                                    :alphanumeric
+                                                                    :numeric
+                                                                    :alpha}))
+        generator-constraint-types (-generator-types (keys constraint-types))
+        validator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :any
+                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
+                                       (assoc :max :max-count
+                                              :min :min-count
+                                              :alphanumeric :alphanumeric-string
+                                              :numeric :numeric-string
+                                              :alpha :alpha-string
+                                              :re :re-string))]
+    {:flat-property-keys (into #{} (mapcat -add-gen-key)
+                               #{:max
+                                 :min
+                                 :re
+                                 :alphanumeric
+                                 :numeric
+                                 :alpha})
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)
      :validator-constraint-types validator-constraint-types}))
@@ -78,7 +103,8 @@
    :int number-constraints
    :double number-constraints
    :vector sequential-constraints
-   :sequential sequential-constraints})
+   :sequential sequential-constraints
+   :string string-constraints})
 
 (defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)
@@ -91,16 +117,20 @@
         (cond-> op
           (not (identical? op op')) recur)))))
 
-(defn -contains-constraint-key [constraint constraint-types options]
-  (if (or (symbol? constraint)
-          (keyword? constraint)
-          (string? constraint))
-    [constraint]
-    (when (and (vector? constraint)
-               (= :contains (-resolve-op constraint constraint-types options))
-               (or (= 2 (count constraint))
-                   (-fail! ::contains-constraint-takes-one-child {:constraint constraint})))
-      (subvec constraint 1))))
+(defn -contains-constraint-key
+  "If :contains is a valid constraint, return its key.
+  Recognizes symbol/keyword/string sugar for key."
+  [constraint constraint-types options]
+  (when (:contains constraint-types)
+    (if (or (symbol? constraint)
+            (keyword? constraint)
+            (string? constraint))
+      [constraint]
+      (when (and (vector? constraint)
+                 (= :contains (-resolve-op constraint constraint-types options))
+                 (or (= 2 (count constraint))
+                     (-fail! ::contains-constraint-takes-one-child {:constraint constraint})))
+        (subvec constraint 1)))))
 
 (defn ->constraint-opts [type-or-map]
   (if (map? type-or-map)
@@ -115,6 +145,8 @@
                 #(contains? % k)
                 (let [op (-resolve-op constraint validator-constraint-types options)]
                   (case op
+                    :alpha-string (fn [s]
+                                    (every? #(Character/isAlphabetic (int %)) s))
                     :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)

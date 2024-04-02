@@ -3808,4 +3808,12 @@
          (me/humanize (m/explain [:string {:non-alpha true}] "ab1c*"))))
   (is (= ["should contain an alphabetic character"]
          (me/humanize (m/explain [:string {:not [:non-alpha]}] "12"))))
+
+  (is (m/validate [:string {:numeric true}] ""))
+  (is (m/validate [:string {:numeric true}] "12"))
+  (is (not (m/validate [:string {:numeric true}] "1a2")))
+  (is (= ["should be numeric: index 0 has \\a."
+          "should be numeric: index 1 has \\b."
+          "should be numeric: index 3 has \\c." "should be numeric: index 4 has \\*."]
+         (me/humanize (m/explain [:string {:numeric true}] "ab1c*"))))
   )

@@ -40,9 +40,20 @@
                     (cond
                       (= :any op) []
 
-                      (and not? (= :alpha-string not-child-op))
+                      (and not? (= :numeric-string not-child-op))
                       (when-not @valid?
-                        (str "should contain a non-alphabetic character"))
+                        (str "should contain a non-numeric character"))
+
+                      (= :numeric-string op)
+                      (keep-indexed (fn [i v]
+                                      (when-not (Character/isDigit (int v))
+                                        (str "should be numeric: "
+                                             "index " i " has " (pr-str (char v)) ".")))
+                                    value)
+
+                      (and not? (= :numeric-string not-child-op))
+                      (when-not @valid?
+                        (str "should contain a non-numeric character"))
 
                       (= :alpha-string op)
                       (keep-indexed (fn [i v]

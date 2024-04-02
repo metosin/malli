@@ -151,6 +151,7 @@
                   (case op
                     :alpha-string (fn [s] (every? #(Character/isAlphabetic (int %)) s))
                     :non-alpha-string (fn [s] (not-any? #(Character/isAlphabetic (int %)) s))
+                    :numeric-string (fn [s] (every? #(Character/isDigit (int %)) s))
                     :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)

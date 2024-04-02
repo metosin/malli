@@ -3816,4 +3816,10 @@
           "should be numeric: index 1 has \\b."
           "should be numeric: index 3 has \\c." "should be numeric: index 4 has \\*."]
          (me/humanize (m/explain [:string {:numeric true}] "ab1c*"))))
+  (is (not (m/validate [:string {:not [:numeric]}] "")))
+  (is (not (m/validate [:string {:not [:numeric]}] "12")))
+  (is (m/validate [:string {:not [:numeric]}] "1a2"))
+  (is (= ["should contain a non-numeric character"]
+         (me/humanize (m/explain [:string {:not [:numeric]}] ""))
+         (me/humanize (m/explain [:string {:not [:numeric]}] "123"))))
   )

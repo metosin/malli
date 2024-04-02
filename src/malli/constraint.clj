@@ -73,6 +73,7 @@
                                                                     :re
                                                                     :alphanumeric
                                                                     :numeric
+                                                                    :non-numeric
                                                                     :alpha
                                                                     :non-alpha}))
         generator-constraint-types (-generator-types (keys constraint-types))
@@ -83,6 +84,7 @@
                                               :min :min-count
                                               :alphanumeric :alphanumeric-string
                                               :numeric :numeric-string
+                                              :non-numeric :non-numeric-string
                                               :alpha :alpha-string
                                               :non-alpha :non-alpha-string
                                               :re :re-string))]
@@ -92,6 +94,7 @@
                                  :re
                                  :alphanumeric
                                  :numeric
+                                 :non-numeric
                                  :alpha
                                  :non-alpha
                                  :not})
@@ -152,6 +155,7 @@
                     :alpha-string (fn [s] (every? #(Character/isAlphabetic (int %)) s))
                     :non-alpha-string (fn [s] (not-any? #(Character/isAlphabetic (int %)) s))
                     :numeric-string (fn [s] (every? #(Character/isDigit (int %)) s))
+                    :non-numeric-string (fn [s] (not-any? #(Character/isDigit (int %)) s))
                     :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)

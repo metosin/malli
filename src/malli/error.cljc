@@ -40,6 +40,18 @@
                     (cond
                       (= :any op) []
 
+                      (and not? (= :non-alphanumeric-string not-child-op))
+                      (when-not @valid?
+                        (str "should contain an alphanumeric character"))
+
+                      (= :non-alphanumeric-string op)
+                      (keep-indexed (fn [i v]
+                                      (when (Character/isLetterOrDigit (int v))
+                                        (str "should not contain alphanumeric characters: "
+                                             "index " i " has " (pr-str (char v)) ".")))
+                                    value)
+
+
                       (and not? (= :alphanumeric-string not-child-op))
                       (when-not @valid?
                         (str "should contain a non-alphanumeric character"))

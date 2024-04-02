@@ -72,6 +72,7 @@
                                                                     :min
                                                                     :re
                                                                     :alphanumeric
+                                                                    :non-alphanumeric
                                                                     :numeric
                                                                     :non-numeric
                                                                     :alpha
@@ -83,6 +84,7 @@
                                        (assoc :max :max-count
                                               :min :min-count
                                               :alphanumeric :alphanumeric-string
+                                              :non-alphanumeric :non-alphanumeric-string
                                               :numeric :numeric-string
                                               :non-numeric :non-numeric-string
                                               :alpha :alpha-string
@@ -93,6 +95,7 @@
                                  :min
                                  :re
                                  :alphanumeric
+                                 :non-alphanumeric
                                  :numeric
                                  :non-numeric
                                  :alpha

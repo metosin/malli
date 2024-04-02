@@ -3822,4 +3822,19 @@
   (is (= ["should contain a non-numeric character"]
          (me/humanize (m/explain [:string {:not [:numeric]}] ""))
          (me/humanize (m/explain [:string {:not [:numeric]}] "123"))))
+
+  (is (m/validate [:string {:alphanumeric true}] ""))
+  (is (m/validate [:string {:alphanumeric true}] "12"))
+  (is (m/validate [:string {:alphanumeric true}] "12ab"))
+  (is (not (m/validate [:string {:alphanumeric true}] "[a1]")))
+  (is (= ["should be alphanumeric: index 0 has \\[."
+          "should be alphanumeric: index 3 has \\]."]
+         (me/humanize (m/explain [:string {:alphanumeric true}] "[a1]"))))
+  (is (not (m/validate [:string {:not [:alphanumeric]}] "")))
+  (is (not (m/validate [:string {:not [:alphanumeric]}] "12")))
+  (is (not (m/validate [:string {:not [:alphanumeric]}] "12ab")))
+  (is (m/validate [:string {:not [:alphanumeric]}] "[a1]"))
+  (is (= ["should contain a non-alphanumeric character"]
+         (me/humanize (m/explain [:string {:not [:alphanumeric]}] "12"))))
+
   )

@@ -152,10 +152,12 @@
                 #(contains? % k)
                 (let [op (-resolve-op constraint validator-constraint-types options)]
                   (case op
-                    :alpha-string (fn [s] (every? #(Character/isAlphabetic (int %)) s))
-                    :non-alpha-string (fn [s] (not-any? #(Character/isAlphabetic (int %)) s))
+                    :alpha-string (fn [s] (every? #(Character/isLetter (int %)) s))
+                    :non-alpha-string (fn [s] (not-any? #(Character/isLetter (int %)) s))
                     :numeric-string (fn [s] (every? #(Character/isDigit (int %)) s))
                     :non-numeric-string (fn [s] (not-any? #(Character/isDigit (int %)) s))
+                    :alphanumeric-string (fn [s] (every? #(Character/isLetterOrDigit (int %)) s))
+                    :non-alphanumeric-string (fn [s] (not-any? #(Character/isLetterOrDigit (int %)) s))
                     :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)

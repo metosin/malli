@@ -79,14 +79,12 @@
                                       (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
                               #(or (sorted? %)
                                    (and (sequential? %)
-                                        (try (= % (sort %))
+                                        (try (prn "here" %) (= % (sort %))
                                              (catch Exception _ false)))))
                     :distinct (let [[v :as all] (subvec constraint 1)
                                     _ (when-not (= [true] all)
                                         (-fail! ::distinct-in-constraint-takes-one-child {:constraint constraint}))]
-                                #(or (indexed? %)
-                                     (empty? %)
-                                     (apply distinct? %)))
+                                #(or (empty? %) (apply distinct? %)))
                     (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)
                                           _ (when-not (= 1 (count all))
                                               (-fail! ::numeric-constraint-takes-one-child {:constraint constraint}))

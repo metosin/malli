@@ -28,7 +28,8 @@
                   (let [flat-ks (delay (->flat-ks constraint))
                         ng (subvec constraint 1)
                         op (first constraint)
-                        validator (delay (mc/-constraint-validator constraint (m/type schema) options))]
+                        type (m/type schema)
+                        validator (delay (mc/-constraint-validator constraint type options))]
                     (cond
                       (and (= :distinct op) (true? (first ng))
                            (not (@validator value)))
@@ -77,10 +78,11 @@
 
                       (= :and op)
                       (let [failing-constraints (keep (fn [constraint]
-                                                        (let [validator (mc/-constraint-validator constraint options)]
+                                                        (let [validator (mc/-constraint-validator constraint type options)]
                                                           (when-not (validator value)
                                                             constraint)))
                                                       ng)]
+                        ;;TODO return a collection of failures
                         (-humanize-constraint-violation (first failing-constraints)))
 
                       (and (= :xor op) @flat-ks)

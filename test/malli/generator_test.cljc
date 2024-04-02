@@ -1209,6 +1209,8 @@
         #?(:clj Exception, :cljs js/Error)
         (dotimes [_ 10] (doall (mg/sample [:and int? [:> 739] [:< 741]])))))
   (is (= 740 (mg/generate [:int {:> 739 :< 741}])))
+  (is (= 740 (mg/generate [:int {:and [[:not [:<= 739]]
+                                       [:not [:>= 741]]]}])))
   (dotimes [_ 100]
     (is (every? #{740}
                 (mg/sample [:int {:> 739 :< 741}]

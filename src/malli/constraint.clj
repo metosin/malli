@@ -17,10 +17,11 @@
                          :constraint-remap {:max :max-count
                                             :min :min-count}})
 
-(def number-constraints {:flat-property-keys #{:max :min :< :> :<= :>=
+(def number-constraints {:flat-property-keys #{:max :min :< :> :<= :>= :not
                                                ;;TODO
                                                ;:even? :odd? :pos? :neg? :multiple
                                                }
+                         :nested-property-keys (-> composite-constraint-types (disj :not))
                          :constraint-types (into composite-constraint-types #{:max :min :< :> :<= :>=})
                          :constraint-remap {:max :<=
                                             :min :>=}})
@@ -64,7 +65,7 @@
   (let [op (when (vector? constraint)
              (first constraint))
         op (or (get constraint-types op)
-               (-fail! ::disallowed-constraint {:constraint constraint}))]
+               (-fail! ::disallowed-constraint {:type op :constraint constraint}))]
     (get constraint-remap op op)))
 
 (defn -constraint-validator [constraint constraint-opts options]

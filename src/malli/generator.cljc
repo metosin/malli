@@ -203,7 +203,7 @@
       (if lower
         [{lower-op lower}]
         (if upper
-          [{upper-op upper-op}]
+          [{upper-op upper}]
           [{}])))))
 
 (defn -conj-solutions [& sols]
@@ -320,6 +320,7 @@ collected."
   (join (map f coll)))
 
 (defn -constraint-solutions [constraint constraint-opts options]
+  (prn "constraint" constraint)
   (let [{:keys [constraint-remap constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
     (letfn [(-constraint-solutions
               ([constraint] (-constraint-solutions constraint options))
@@ -1037,17 +1038,23 @@ collected."
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options]
   (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
+        ;; add generator-specific keys
+        constraint (if-some [{:keys [min max]} (not-empty (-min-max schema options))]
+                     (cond-> [:and constraint]
+                       min (conj [:>= min])
+                       max (conj [:<= max]))
+                     constraint)
+        _ (prn "constraint" (doall (-constraint-solutions constraint :int options)))
         solutions (some-> (-constraint-solutions constraint :int options)
-                          seq
-                          (conj (set/rename-keys (-min-max schema options)
-                                                 {:min :>= :max :<=}))
-                          -conj-number-constraints)]
-    ;:TODO gen/min gen/max
-    (assert (seq solutions))
+                          seq -conj-number-constraints)]
+    (when (empty? solutions)
+      (m/-fail! ::unsatisfiable-int-schema {:schema schema}))
+    (prn "solutions" solutions)
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
               (let [g (gen/large-integer* {:min (or >= >)
-                                           :max (or <= <)})]
+                                           ;;TODO unit test this case
+                                           :max (or < <=)})]
                 (if (or < >)
                   (gen/such-that (miu/-every-pred
                                    (cond-> []

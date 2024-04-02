@@ -3760,8 +3760,8 @@
   (is (= ["should be distinct: 2 provided 2 times"]
          (me/humanize (m/explain [:sequential {:sorted true :distinct true} :any] [1 2 2 3]))))
 
-  (is (= ["should be sorted: index 0 has 3 but expected 1"]
-         ::FIXME ;;TODO return a collection of failures in -humanize-constraint-violation :and case
+  (is (= ["should be distinct: 3 provided 2 times"
+          "should be sorted: index 1 has 3 but expected 2"]
          (me/humanize (m/explain
                         [:sequential {:sorted true
                                       :distinct true} :any]

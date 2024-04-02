@@ -77,13 +77,14 @@
                              (apply str (interpose " " (map pr-str missing)))))
 
                       (= :and op)
-                      (let [failing-constraints (keep (fn [constraint]
-                                                        (let [validator (mc/-constraint-validator constraint type options)]
-                                                          (when-not (validator value)
-                                                            constraint)))
-                                                      ng)]
-                        ;;TODO return a collection of failures
-                        (-humanize-constraint-violation (first failing-constraints)))
+                      (mapcat (fn [constraint]
+                                (let [validator (mc/-constraint-validator constraint type options)]
+                                  (when-not (validator value)
+                                    (let [msg (-humanize-constraint-violation constraint)]
+                                      (if (string? msg)
+                                        [msg]
+                                        msg)))))
+                              ng)
 
                       (and (= :xor op) @flat-ks)
                       (let [provided (or (not-empty (filterv has? @flat-ks))
@@ -430,7 +431,14 @@
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
    (when explanation
-     (update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors)))))))
+     (update explanation :errors (fn [errors]
+                                   (doall (mapcat (fn [error]
+                                                    (let [msg (error-message error options)
+                                                          wrap-msg #(f (assoc error :message %))]
+                                                      (if (string? msg)
+                                                        (wrap-msg msg)
+                                                        (map wrap-msg msg))))
+                                                  errors)))))))
 
 (defn with-spell-checking
   ([explanation]
@@ -481,8 +489,11 @@
    (when errors
      (reduce
       (fn [acc error]
-        (let [[path message] (resolve explanation error options)]
-          (-push-in acc value path (wrap (assoc error :message message)))))
+        (let [[path message] (resolve explanation error options)
+              push-msg (fn [acc msg] (-push-in acc value path (wrap (assoc error :message msg))))]
+          (if (string? message)
+            (push-msg message)
+            (reduce push-msg acc message))))
       nil errors))))
 
 (defn error-value

@@ -73,6 +73,8 @@
                                                                     :re
                                                                     :alphanumeric
                                                                     :non-alphanumeric
+                                                                    :letters
+                                                                    :non-letters
                                                                     :numeric
                                                                     :non-numeric
                                                                     :alpha
@@ -168,6 +170,10 @@
     type-or-map
     (get schema-constraints type-or-map)))
 
+(defn -char-alpha? [c] (Character/isAlphabetic (int c)))
+(defn -char-numeric? [c] (Character/isDigit (int c)))
+(defn -char-alphanumeric? [c] (or (-char-alpha? c) (-char-numeric? c)))
+
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]
     (letfn [(-constraint-validator [constraint]
@@ -176,12 +182,12 @@
                 #(contains? % k)
                 (let [op (-resolve-op constraint validator-constraint-types options)]
                   (case op
-                    :alpha-string (fn [s] (every? #(Character/isLetter (int %)) s))
-                    :non-alpha-string (fn [s] (not-any? #(Character/isLetter (int %)) s))
-                    :numeric-string (fn [s] (every? #(Character/isDigit (int %)) s))
-                    :non-numeric-string (fn [s] (not-any? #(Character/isDigit (int %)) s))
-                    :alphanumeric-string (fn [s] (every? #(Character/isLetterOrDigit (int %)) s))
-                    :non-alphanumeric-string (fn [s] (not-any? #(Character/isLetterOrDigit (int %)) s))
+                    :alpha-string (fn [s] (every? -char-alpha? s))
+                    :non-alpha-string (fn [s] (not-any? -char-alpha? s))
+                    :numeric-string (fn [s] (every? -char-numeric? s))
+                    :non-numeric-string (fn [s] (not-any? -char-numeric? s))
+                    :alphanumeric-string (fn [s] (every? -char-alphanumeric? s))
+                    :non-alphanumeric-string (fn [s] (not-any? -char-alphanumeric? s))
                     :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)

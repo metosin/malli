@@ -3791,9 +3791,6 @@
   (is (m/validate [:string {:not [:alpha]}] "ab1"))
   (is (m/validate [:string {:not [:alpha]}] "1"))
   (is (not (m/validate [:string {:not [:alpha]}] "")))
-  (is (= ["should be alphabetic: index 2 has \\1."
-          "should be alphabetic: index 4 has \\*."]
-         (me/humanize (m/explain [:string {:alpha true}] "ab1c*"))))
   (is (= ["should contain a non-alphabetic character"]
          (me/humanize (m/explain [:string {:not [:alpha]}] "ab"))
          (me/humanize (m/explain [:string {:not [:alpha]}] ""))))

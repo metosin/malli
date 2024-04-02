@@ -46,9 +46,9 @@
 
                       (= :non-alphanumeric-string op)
                       (keep-indexed (fn [i v]
-                                      (when (Character/isLetterOrDigit (int v))
+                                      (when (mc/-char-alphanumeric? v)
                                         (str "should not contain alphanumeric characters: "
-                                             "index " i " has " (pr-str (char v)) ".")))
+                                             "index " i " has " (pr-str v) ".")))
                                     value)
 
 
@@ -58,9 +58,9 @@
 
                       (= :alphanumeric-string op)
                       (keep-indexed (fn [i v]
-                                      (when-not (Character/isLetterOrDigit (int v))
+                                      (when-not (mc/-char-alphanumeric? v)
                                         (str "should be alphanumeric: "
-                                             "index " i " has " (pr-str (char v)) ".")))
+                                             "index " i " has " (pr-str v) ".")))
                                     value)
 
                       (and not? (= :numeric-string not-child-op))
@@ -69,20 +69,20 @@
 
                       (= :numeric-string op)
                       (keep-indexed (fn [i v]
-                                      (when-not (Character/isDigit (int v))
+                                      (when-not (mc/-char-numeric? v)
                                         (str "should be numeric: "
-                                             "index " i " has " (pr-str (char v)) ".")))
+                                             "index " i " has " (pr-str v) ".")))
                                     value)
 
-                      (and not? (= :numeric-string not-child-op))
+                      (and not? (= :alpha-string not-child-op))
                       (when-not @valid?
-                        (str "should contain a non-numeric character"))
+                        (str "should contain a non-alphabetic character"))
 
                       (= :alpha-string op)
                       (keep-indexed (fn [i v]
-                                      (when-not (Character/isLetter (int v))
+                                      (when-not (mc/-char-alpha? v)
                                         (str "should be alphabetic: "
-                                             "index " i " has " (pr-str (char v)) ".")))
+                                             "index " i " has " (pr-str v) ".")))
                                     value)
 
                       (and not? (= :non-alpha-string not-child-op))
@@ -91,9 +91,9 @@
 
                       (= :non-alpha-string op)
                       (keep-indexed (fn [i v]
-                                      (when (Character/isLetter (int v))
+                                      (when (mc/-char-alpha? v)
                                         (str "should not contain alphabetic characters: "
-                                             "index " i " has " (pr-str (char v)) ".")))
+                                             "index " i " has " (pr-str v) ".")))
                                     value)
 
                       (and (= :distinct op) (true? (first ng))

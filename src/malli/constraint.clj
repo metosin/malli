@@ -74,17 +74,19 @@
                 #(contains? % k)
                 (let [op (-resolve-op constraint constraint-opts options)]
                   (case op
-                    :sorted-in (let [[in :as all] (subvec constraint 1)
-                                     _ (when-not (= 1 (count all))
-                                         (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
-                                 (if (empty? in)
-                                   #(or (sorted? %) (try (= % (sort %))))
-                                   (let [f #(get-in % in)]
-                                     #(= % (sort-by f)))))
+                    :sorted (let [[v :as all] (subvec constraint 1)
+                                  _ (when-not (= [true] all)
+                                      (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
+                              #(or (sorted? %)
+                                   (and (sequential? %)
+                                        (try (= % (sort %))
+                                             (catch Exception _ false)))))
                     :distinct (let [[v :as all] (subvec constraint 1)
-                                    _ (when-not (true? v)
+                                    _ (when-not (= [true] all)
                                         (-fail! ::distinct-in-constraint-takes-one-child {:constraint constraint}))]
-                                #(or (empty? %) (apply distinct? %)))
+                                #(or (indexed? %)
+                                     (empty? %)
+                                     (apply distinct? %)))
                     (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)
                                           _ (when-not (= 1 (count all))
                                               (-fail! ::numeric-constraint-takes-one-child {:constraint constraint}))

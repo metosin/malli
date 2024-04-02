@@ -46,15 +46,25 @@
 
                       (and (= :sorted op) (true? (first ng))
                            (not (@validator value)))
-                      (try (let [[i v s] (map (fn [i v s]
-                                                (when (not= v s)
-                                                  [i v s]))
-                                              (range) value (sort value))]
-                             (str "should be sorted: index "
-                                  i " has " (pr-str v) " but "
-                                  " expected " (pr-str s)))
-                           (catch Exception _
-                             "should be sortable but throws during sorting"))
+                      (if (map? value)
+                        "should be a sorted map"
+                        (if (set? value)
+                          "should be a sorted set"
+                          (if-not (sequential? value)
+                            "should be sortable"
+                            (let [sv (delay (sort value))]
+                              (or (try @sv
+                                       nil
+                                       (catch Exception _
+                                         "should be sorted but elements are not comparable"))
+                                  (let [[i v s] (some identity
+                                                      (map (fn [i v s]
+                                                             (when (not= v s)
+                                                               [i v s]))
+                                                           (range) value @sv))]
+                                    (str "should be sorted: index "
+                                         i " has " (pr-str v) " but"
+                                         " expected " (pr-str s))))))))
 
                       (and (= :or op) @flat-ks)
                       (str "should provide at least one key: "

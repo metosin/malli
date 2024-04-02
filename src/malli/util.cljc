@@ -177,7 +177,7 @@
 (defn distinct-by
   "Returns a sequence of distinct (f x) values)"
   [f coll]
-  (miu/distinct-by f coll))
+  (miu/-distinct-by f coll))
 
 (defn path->in
   "Returns a value path for a given Schema and schema path"

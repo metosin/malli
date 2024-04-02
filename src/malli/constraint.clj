@@ -3,7 +3,7 @@
             [malli.impl.util :as miu :refer [-fail!]]))
 
 (def composite-constraint-types
-  #{:and :or :implies :xor :iff :not :in})
+  #{:and :or :implies :xor :iff :not #_:in})
 
 (defn -add-gen-key [k]
   [k (keyword "gen" (name k))])
@@ -14,11 +14,10 @@
                                        ;;TODO
                                        ;;:sorted
                                        [:disjoint :max :min :contains]))
-        generator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :foo
-                                       (into (map (juxt #(keyword "gen" (name %))
-                                                        identity))
-                                             (keys constraint-types)))
+        ;; :gen/foo :=> :foo
+        generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
+                                                       identity))
+                                         (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
@@ -27,16 +26,16 @@
     {:nested-property-keys (into #{} (mapcat -add-gen-key)
                                  (-> composite-constraint-types (disj :not) (conj :disjoint)))
      :validator-constraint-types validator-constraint-types
-     :generator-constraint-types generator-constraint-types}))
+     :generator-constraint-types (into validator-constraint-types
+                                       generator-constraint-types)}))
 
 (def number-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max :min :< :> :<= :>=}))
-        generator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :foo
-                                       (into (map (juxt #(keyword "gen" (name %))
-                                                        identity))
-                                             (keys constraint-types)))
+        ;; :gen/foo :=> :foo
+        generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
+                                                       identity))
+                                         (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
@@ -50,16 +49,16 @@
      :nested-property-keys (into #{} (mapcat -add-gen-key)
                                  (-> composite-constraint-types (disj :not)))
      :validator-constraint-types validator-constraint-types
-     :generator-constraint-types generator-constraint-types}))
+     :generator-constraint-types (into validator-constraint-types
+                                       generator-constraint-types)}))
 
 (def sequential-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max :min :distinct :sorted}))
-        generator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :foo
-                                       (into (map (juxt #(keyword "gen" (name %))
-                                                        identity))
-                                             (keys constraint-types)))
+        ;; :gen/foo :=> :foo
+        generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
+                                                       identity))
+                                         (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
@@ -67,7 +66,8 @@
                                               :min :min-count))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max :min :distinct :sorted})
-     :generator-constraint-types generator-constraint-types
+     :generator-constraint-types (into validator-constraint-types
+                                       generator-constraint-types)
      :validator-constraint-types validator-constraint-types}))
 
 ;; TODO :qualified-keyword + :namespace
@@ -79,6 +79,17 @@
    :double number-constraints
    :vector sequential-constraints
    :sequential sequential-constraints})
+
+(defn -resolve-op [constraint constraint-types options]
+  (let [op (when (vector? constraint)
+             (first constraint))
+        op (or (get constraint-types op)
+               (-fail! ::disallowed-constraint {:type op :constraint constraint
+                                                :allowed constraint-types}))]
+    (loop [op op]
+      (let [op' (get constraint-types op op)]
+        (cond-> op
+          (not (identical? op op')) recur)))))
 
 (defn -contains-constraint-key [constraint constraint-types options]
   (if (or (symbol? constraint)
@@ -96,19 +107,9 @@
     type-or-map
     (get schema-constraints type-or-map)))
 
-(defn -resolve-op [constraint constraint-types options]
-  (let [op (when (vector? constraint)
-             (first constraint))
-        op (or (get constraint-types op)
-               (-fail! ::disallowed-constraint {:type op :constraint constraint
-                                                :allowed constraint-types}))]
-    (loop [op op]
-      (let [op' (get constraint-types op op)]
-        (cond-> op
-          (not (identical? op op')) recur)))))
-
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]
+    (prn validator-constraint-types)
     (letfn [(-constraint-validator [constraint]
               (if-some [[k] (when (= :contains (:contains validator-constraint-types))
                               (-contains-constraint-key constraint constraint-opts options))]

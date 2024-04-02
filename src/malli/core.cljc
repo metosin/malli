@@ -1213,7 +1213,7 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
-(defn -collection-schema [{:keys [constraint-properties?] :as props}]
+(defn -collection-schema [props]
   (if (fn? props)
     (do (-deprecated! "-collection-schema doesn't take fn-props, use :compile property instead")
         (-collection-schema {:compile (fn [c p _] (props c p))}))
@@ -1234,7 +1234,7 @@
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
-                  constraint (delay (when constraint-properties? (mc/-constraint-from-properties properties type options)))
+                  constraint (delay (mc/-constraint-from-properties properties type options))
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [child-parser (f schema)
                                            constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
@@ -2546,7 +2546,7 @@
    :map-of (-map-of-schema)
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
    :sequential (-collection-schema {:type :sequential, :pred sequential?})
-   :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x) :constraint-properties? true})
+   :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)})
    :enum (-enum-schema)
    :maybe (-maybe-schema)
    :tuple (-tuple-schema)

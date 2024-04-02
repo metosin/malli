@@ -78,3 +78,9 @@
 (defn -fail!
   ([type] (-fail! type nil))
   ([type data] (throw (-exception type data))))
+
+(defn -distinct-by
+  "Returns a sequence of distinct (f x) values)"
+  [f coll]
+  (let [seen (atom #{})]
+    (filter (fn [x] (let [v (f x)] (when-not (@seen v) (swap! seen conj v)))) coll)))

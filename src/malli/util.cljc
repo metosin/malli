@@ -1,7 +1,8 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.impl.util :as miu]))
 
 (declare path->in)
 
@@ -176,8 +177,7 @@
 (defn distinct-by
   "Returns a sequence of distinct (f x) values)"
   [f coll]
-  (let [seen (atom #{})]
-    (filter (fn [x] (let [v (f x)] (when-not (@seen v) (swap! seen conj v)))) coll)))
+  (miu/distinct-by f coll))
 
 (defn path->in
   "Returns a value path for a given Schema and schema path"

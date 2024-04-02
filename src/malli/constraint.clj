@@ -1,26 +1,47 @@
 (ns malli.constraint
   (:require [clojure.set :as set]
-            [malli.impl.util :refer [-fail!]]))
+            [malli.impl.util :as miu :refer [-fail!]]))
 
 (def composite-constraint-types
-  #{:and :or :implies :xor :iff :not})
+  #{:and :or :implies :xor :iff :not :in})
 
 (def keyset-constraints {:nested-property-keys (-> composite-constraint-types (disj :not) (conj :disjoint))
-                         :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains})
+                         :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains
+                                                                              ;;TODO
+                                                                              ;;:sorted
+                                                                              })
+                         ;:in [:count [:< 5]]
+                         ;:in [:a [:distinct]]
+                         ;:in {[:a [:count]] [:< 5]}
+                         ;:in [[:key :a] [:count] [:< 5]]
                          :constraint-remap {:max :max-count
                                             :min :min-count}})
 
-(def number-constraints {:flat-property-keys #{:max :min :< :> :<= :>=}
+(def number-constraints {:flat-property-keys #{:max :min :< :> :<= :>=
+                                               ;;TODO
+                                               ;:even? :odd? :pos? :neg? :multiple
+                                               }
                          :constraint-types (into composite-constraint-types #{:max :min :< :> :<= :>=})
                          :constraint-remap {:max :<=
                                             :min :>=}})
 
+(def sequential-constraints {:flat-property-keys #{:max :min :distinct :sorted}
+                             :constraint-types (into composite-constraint-types #{:max :min :distinct :sorted})
+                             :in #{:nth}
+                             :constraint-remap {:max :max-count
+                                                :min :min-count}})
+
 (def schema-constraints
-  {:map keyset-constraints
-   :set keyset-constraints
-   :map-of keyset-constraints
+  {:map (assoc keyset-constraints
+               :in #{:keys :vals :get :count})
+   :set (assoc keyset-constraints
+               :in #{:vals :get :count})
+   :map-of (assoc keyset-constraints
+                  :in #{:keys :vals :get :count})
    :int number-constraints
-   :double number-constraints})
+   :double number-constraints
+   :vector sequential-constraints
+   :sequential sequential-constraints})
 
 (defn -contains-constraint-key [constraint]
   (if (or (symbol? constraint)
@@ -53,6 +74,17 @@
                 #(contains? % k)
                 (let [op (-resolve-op constraint constraint-opts options)]
                   (case op
+                    :sorted-in (let [[in :as all] (subvec constraint 1)
+                                     _ (when-not (= 1 (count all))
+                                         (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
+                                 (if (empty? in)
+                                   #(or (sorted? %) (try (= % (sort %))))
+                                   (let [f #(get-in % in)]
+                                     #(= % (sort-by f)))))
+                    :distinct (let [[v :as all] (subvec constraint 1)
+                                    _ (when-not (true? v)
+                                        (-fail! ::distinct-in-constraint-takes-one-child {:constraint constraint}))]
+                                #(or (empty? %) (apply distinct? %)))
                     (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)
                                           _ (when-not (= 1 (count all))
                                               (-fail! ::numeric-constraint-takes-one-child {:constraint constraint}))
@@ -118,7 +150,7 @@
                                  (-fail! ::missing-implies-condition {:constraint constraint}))
                                #(or (not (p %))
                                     (every? (fn [p] (p %)) ps)))
-                    (-fail! ::unknown-keyset-constraint {:constraint constraint})))))]
+                    (-fail! ::unknown-constraint {:constraint constraint})))))]
       (-constraint-validator constraint))))
 
 (defn -constraint-from-properties [properties constraint-opts options]

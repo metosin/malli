@@ -14,7 +14,7 @@
         min (str "should be at least " min)
         max (str "should be at most " max)))))
 
-(defn -humanize-constraint-violation [{:keys [constraint value] :as args}
+(defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       {custom-error ::humanize-constraint-violation :as options}]
   (letfn [(has? [k] (contains? value k))
           (->flat-ks [constraint] (let [ks (map mc/-contains-constraint-key (next constraint))]
@@ -27,8 +27,35 @@
                   (str "should provide key: " (pr-str k))
                   (let [flat-ks (delay (->flat-ks constraint))
                         ng (subvec constraint 1)
-                        op (first constraint)]
+                        op (first constraint)
+                        validator (delay (mc/-constraint-validator constraint (m/type schema) options))]
                     (cond
+                      (and (= :distinct op) (true? (first ng))
+                           (not (@validator value)))
+                      (let [freq (into {}
+                                       (remove (comp #(= 1 %) val))
+                                       (frequencies value))]
+                        (str "should be distinct: "
+                             (apply str
+                                    (interpose
+                                      ", " (map (fn [[v i]]
+                                                  (str (pr-str v)
+                                                       " provided "
+                                                       i " times"))
+                                                freq)))))
+
+                      (and (= :sorted op) (true? (first ng))
+                           (not (@validator value)))
+                      (try (let [[i v s] (map (fn [i v s]
+                                                (when (not= v s)
+                                                  [i v s]))
+                                              (range) value (sort value))]
+                             (str "should be sorted: index "
+                                  i " has " (pr-str v) " but "
+                                  " expected " (pr-str s)))
+                           (catch Exception _
+                             "should be sortable but throws during sorting"))
+
                       (and (= :or op) @flat-ks)
                       (str "should provide at least one key: "
                            (apply str (interpose " " (map pr-str @flat-ks))))
@@ -121,7 +148,11 @@
    ::m/extra-key {:error/message {:en "disallowed key"}}
    ::m/constraint-violation {:error/fn {:en (fn [{:keys [schema] :as args} options]
                                               (-humanize-constraint-violation
-                                                (assoc args :constraint (-> schema m/properties (mc/-constraint-from-properties options)))
+                                                (assoc args :constraint (-> schema
+                                                                            m/properties
+                                                                            (mc/-constraint-from-properties
+                                                                              (m/type schema)
+                                                                              options)))
                                                 options))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]

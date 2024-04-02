@@ -3742,5 +3742,12 @@
   (is (not (m/validate [:int {:> 5 :< 10}] 5)))
   (is (m/validate [:int {:=> 5 :< 10}] 5))
   (is (not (m/validate [:int {:> 5 :< 10}] 10)))
-  (is (m/validate [:int {:> 5 :<= 10}] 10))
+  (is (m/validate [:int {:> 5 :<= 10}] 10)))
+
+(deftest vector-constraint-test
+  (is (m/validate [:sequential {:distinct true} :any] [1 2 3]))
+  (is (not (m/explain [:sequential {:distinct true} :any] [1 2 3])))
+  (is (not (m/validate [:sequential {:distinct true} :any] [1 3 3])))
+  (is (= ["should be distinct: 3 provided 2 times"]
+         (me/humanize (m/explain [:sequential {:distinct true} :any] [1 3 3]))))
   )

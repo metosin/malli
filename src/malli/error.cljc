@@ -1,6 +1,7 @@
 (ns malli.error
   (:require [clojure.string :as str]
             [malli.constraint :as mc]
+            [malli.constraint.char :as mcc]
             [malli.core :as m]
             [malli.util :as mu]))
 
@@ -46,7 +47,7 @@
 
                       (= :non-alphanumeric-string op)
                       (keep-indexed (fn [i v]
-                                      (when (mc/-char-alphanumeric? v)
+                                      (when (mcc/alphanumeric? v)
                                         (str "should not contain alphanumeric characters: "
                                              "index " i " has " (pr-str v) ".")))
                                     value)
@@ -58,7 +59,7 @@
 
                       (= :alphanumeric-string op)
                       (keep-indexed (fn [i v]
-                                      (when-not (mc/-char-alphanumeric? v)
+                                      (when-not (mcc/alphanumeric? v)
                                         (str "should be alphanumeric: "
                                              "index " i " has " (pr-str v) ".")))
                                     value)
@@ -69,7 +70,7 @@
 
                       (= :numeric-string op)
                       (keep-indexed (fn [i v]
-                                      (when-not (mc/-char-numeric? v)
+                                      (when-not (mcc/numeric? v)
                                         (str "should be numeric: "
                                              "index " i " has " (pr-str v) ".")))
                                     value)
@@ -80,7 +81,7 @@
 
                       (= :alpha-string op)
                       (keep-indexed (fn [i v]
-                                      (when-not (mc/-char-alpha? v)
+                                      (when-not (mcc/alpha? v)
                                         (str "should be alphabetic: "
                                              "index " i " has " (pr-str v) ".")))
                                     value)
@@ -91,7 +92,7 @@
 
                       (= :non-alpha-string op)
                       (keep-indexed (fn [i v]
-                                      (when (mc/-char-alpha? v)
+                                      (when (mcc/alpha? v)
                                         (str "should not contain alphabetic characters: "
                                              "index " i " has " (pr-str v) ".")))
                                     value)

@@ -52,39 +52,6 @@
                       (cond
                         (= :any op) []
 
-                        (and not? (= :numeric-string not-child-op))
-                        (when-not @valid?
-                          (str "should contain a non-numeric character"))
-
-                        (= :numeric-string op)
-                        (keep-indexed (fn [i v]
-                                        (when-not (mcc/numeric? v)
-                                          (str "should be numeric: "
-                                               "index " i " has " (pr-str v) ".")))
-                                      value)
-
-                        (and not? (= :alpha-string not-child-op))
-                        (when-not @valid?
-                          (str "should contain a non-alphabetic character"))
-
-                        (= :alpha-string op)
-                        (keep-indexed (fn [i v]
-                                        (when-not (mcc/alpha? v)
-                                          (str "should be alphabetic: "
-                                               "index " i " has " (pr-str v) ".")))
-                                      value)
-
-                        (and not? (= :non-alpha-string not-child-op))
-                        (when-not @valid?
-                          (str "should contain an alphabetic character"))
-
-                        (= :non-alpha-string op)
-                        (keep-indexed (fn [i v]
-                                        (when (mcc/alpha? v)
-                                          (str "should not contain alphabetic characters: "
-                                               "index " i " has " (pr-str v) ".")))
-                                      value)
-
                         (and (= :distinct op) (true? (first ng))
                              (not (validator value)))
                         (let [freq (into {}

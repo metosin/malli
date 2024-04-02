@@ -3895,10 +3895,21 @@
   (testing ":sorted"
     (is (m/validate [:string {:sorted true}] "[]"))
     (is (not (m/validate [:string {:sorted true}] "][")))
+    (is (not (m/validate [:string {:distinct true}] "abcba")))
     (is (= ["should be sorted: index 0 has \\] but expected \\["]
            (me/humanize (m/explain [:string {:sorted true}] "][")))))
   (testing ":distinct"
     (is (m/validate [:string {:distinct true}] "[]"))
     (is (not (m/validate [:string {:distinct true}] "[[")))
+    (is (m/validate [:string {:distinct true}] "abcde"))
     (is (= ["should be distinct: \\[ provided 2 times"]
-           (me/humanize (m/explain [:string {:distinct true}] "[["))))))
+           (me/humanize (m/explain [:string {:distinct true}] "[[")))))
+  (testing ":palindrome"
+    (is (not (m/validate [:string {:palindrome true}] "[]")))
+    (is (m/validate [:string {:palindrome true}] "[["))
+    (is (m/validate [:string {:palindrome true}] ""))
+    (is (m/validate [:string {:palindrome true}] "a"))
+    (is (m/validate [:string {:palindrome true}] "abcba"))
+    (is (not (m/validate [:string {:palindrome true}] "abcbab")))
+    (is (= ["should be a palindrome"]
+           (me/humanize (m/explain [:string {:palindrome true}] "[]"))))))

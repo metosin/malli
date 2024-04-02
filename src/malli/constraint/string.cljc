@@ -18,6 +18,7 @@
                                                                     :non-alpha
                                                                     :sorted
                                                                     :distinct
+                                                                    :palindrome
                                                                     #_:trim
                                                                     #_:triml
                                                                     #_:trimr
@@ -64,7 +65,8 @@
                                  :non-alpha
                                  :not
                                  :sorted
-                                 :distinct})
+                                 :distinct
+                                 :palindrome})
      :nested-property-keys (disj composite-constraint-types :not)
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)

@@ -119,16 +119,23 @@
                       (case op
                         :any any?
                         :sorted (let [[v :as all] (subvec constraint 1)
-                                      _ (when-not (= [true] all)
-                                          (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
+                                      _ (when-not (#{[] [true]} all)
+                                          (-fail! ::sorted-constraint-takes-one-child {:constraint constraint}))]
                                   #(or (sorted? %)
                                        (and (or (string? %) ;; TODO test string
                                                 (sequential? %))
                                             (try (= (seq %) (sort %))
                                                  (catch Exception _ false)))))
+                        :palindrome (let [[v :as all] (subvec constraint 1)
+                                          _ (when-not (#{[] [true]} all)
+                                              (-fail! ::palindrome-constraint-takes-one-child {:constraint constraint}))]
+                                      #(= (sequence %)
+                                          (if (reversible? %)
+                                            (-> % rseq sequence)
+                                            (reverse %))))
                         :distinct (let [[v :as all] (subvec constraint 1)
-                                        _ (when-not (= [true] all)
-                                            (-fail! ::distinct-in-constraint-takes-one-child {:constraint constraint}))]
+                                        _ (when-not (#{[] [true]} all)
+                                            (-fail! ::distinct-constraint-takes-one-child {:constraint constraint}))]
                                     #(or (empty? %) (apply distinct? %)))
                         (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)
                                               _ (when-not (= 1 (count all))

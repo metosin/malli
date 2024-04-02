@@ -43,7 +43,6 @@
                         validator (let [v (delay (mc/-constraint-validator constraint type options))]
                                     (fn [x] (@v x)))
                         valid? (delay (validator value))]
-                    (prn "constraint" constraint)
                     (if-some [humanizer ((default-constraint-humanizers)
                                          (if not?
                                            [:not not-child-op]
@@ -110,8 +109,13 @@
                                                          i " times"))
                                                   freq)))))
 
-                        (and (= :sorted op) (true? (first ng))
-                             (not (validator value)))
+                        (and (= :palindrome op) (not @valid?))
+                        (if (or (string? value)
+                                (sequential? value))
+                          "should be a palindrome"
+                          "should be a sequential collection")
+
+                        (and (= :sorted op) (not @valid?))
                         (if (map? value)
                           "should be a sorted map"
                           (if (set? value)

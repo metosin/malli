@@ -1200,10 +1200,14 @@
         #"Could not generate a value for schema \[:and pos\? neg\?\]\. Consider providing a custom generator\."
         (mg/generate [:and pos? neg?]))))
 
+;; these generators don't work well with :and but do with constraints
+;; because the generators are much more specific. they also grow
+;; and shrink better because such-that fails a lot less often
+;; and the size remains more consistent.
 (deftest number-constraint-generator-test
   (is (thrown?
         #?(:clj Exception, :cljs js/Error)
-        (doall (mg/sample [:and int? [:> 739] [:< 741]]))))
+        (dotimes [_ 10] (doall (mg/sample [:and int? [:> 739] [:< 741]])))))
   (is (= 740 (mg/generate [:int {:> 739 :< 741}])))
   (dotimes [_ 100]
     (is (every? #{740}
@@ -1211,8 +1215,9 @@
                            {:size 1000}))))
   (is (thrown?
         #?(:clj Exception, :cljs js/Error)
-        (doall (mg/sample [:and int? [:> 10] [:< 100]]
-                          {:size 1000}))))
+        (dotimes [_ 10]
+          (doall (mg/sample [:and int? [:> 10] [:< 100]]
+                            {:size 1000})))))
   (is (doall (mg/sample [:int {:> 10 :< 100}]
                         {:seed 123})))
   (is (doall (mg/sample [:int {:> 10 :< 100}]

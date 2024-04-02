@@ -1,7 +1,7 @@
 (ns malli.error
   (:require [clojure.string :as str]
             [malli.constraint :as mc]
-            [malli.constraint.humanize-string :as mch-str]
+            [malli.constraint.string.humanize :as mc-strh]
             [malli.constraint.char :as mcc]
             [malli.core :as m]
             [malli.util :as mu]))
@@ -16,8 +16,9 @@
         min (str "should be at least " min)
         max (str "should be at most " max)))))
 
-(def constraint-humanizers
-  mch-str/humanizers)
+;;TODO add to options
+(defn constraint-humanizers []
+  (mc-strh/humanizers))
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       options]
@@ -43,9 +44,10 @@
                                     (fn [x] (@v x)))
                         valid? (delay (validator value))]
                     (prn "constraint" constraint)
-                    (if-some [humanizer (constraint-humanizers (if not?
-                                                                 [:not not-child-op]
-                                                                 op))]
+                    (if-some [humanizer ((constraint-humanizers)
+                                         (if not?
+                                           [:not not-child-op]
+                                           op))]
                       (humanizer (-> args
                                      (assoc :constraint (if not? not-child constraint)
                                             :validator validator))

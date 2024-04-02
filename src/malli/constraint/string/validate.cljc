@@ -1,4 +1,4 @@
-(ns malli.constraint.validate-string
+(ns malli.constraint.string.validate
   (:require [malli.constraint.char :as char]))
 
 (defn validators []

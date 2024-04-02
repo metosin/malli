@@ -1,7 +1,7 @@
 (ns malli.constraint
   (:require [clojure.set :as set]
-            [malli.constraint.string :as mcs]
-            [malli.constraint.validate-string :as mcsv]
+            [malli.constraint.string :as mc-str]
+            [malli.constraint.string.validate :as mc-strv]
             [malli.constraint.util :refer [composite-constraint-types
                                            -add-gen-key
                                            -generator-types]]
@@ -70,7 +70,7 @@
          :double number-constraints
          :vector sequential-constraints
          :sequential sequential-constraints}
-        (mcs/schema-constraints)))
+        (mc-str/schema-constraints)))
 
 (defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)
@@ -105,7 +105,7 @@
 
 ;; TODO add to options
 (defn validators []
-  (mcsv/validators))
+  (mc-strv/validators))
 
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]

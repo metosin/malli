@@ -1,4 +1,4 @@
-(ns malli.constraint.humanize-string
+(ns malli.constraint.string.humanize
   (:require [malli.constraint.char :as mcc]))
 
 (defn -msg-or-validates [msg]
@@ -14,7 +14,7 @@
                            "index " i " has " (pr-str v) ".")))
                   value)))
 
-(def humanizers
+(defn humanizers []
   {:alphanumeric-string (-msg-check-each "should be alphanumeric" mcc/alphanumeric?)
    [:not :alphanumeric-string] (-msg-or-validates "should contain a non-alphanumeric character")
    :non-alphanumeric-string (-msg-check-each "should not contain alphanumeric characters" (complement mcc/alphanumeric?))

@@ -52,17 +52,6 @@
                       (cond
                         (= :any op) []
 
-                        (and not? (= :non-alphanumeric-string not-child-op))
-                        (when-not @valid?
-                          (str "should contain an alphanumeric character"))
-
-                        (= :non-alphanumeric-string op)
-                        (keep-indexed (fn [i v]
-                                        (when (mcc/alphanumeric? v)
-                                          (str "should not contain alphanumeric characters: "
-                                               "index " i " has " (pr-str v) ".")))
-                                      value)
-
                         (and not? (= :numeric-string not-child-op))
                         (when-not @valid?
                           (str "should contain a non-numeric character"))

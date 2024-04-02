@@ -16,6 +16,8 @@
                                                                     :non-numeric
                                                                     :alpha
                                                                     :non-alpha
+                                                                    :sorted
+                                                                    :distinct
                                                                     #_:trim
                                                                     #_:triml
                                                                     #_:trimr
@@ -60,7 +62,9 @@
                                  :non-numeric
                                  :alpha
                                  :non-alpha
-                                 :not})
+                                 :not
+                                 :sorted
+                                 :distinct})
      :nested-property-keys (disj composite-constraint-types :not)
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)

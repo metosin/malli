@@ -108,21 +108,23 @@
   (mc-strv/validators))
 
 (defn -constraint-validator [constraint constraint-opts options]
-  (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]
+  (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)
+        validators (validators)]
     (letfn [(-constraint-validator [constraint]
               (if-some [[k] (when (= :contains (:contains validator-constraint-types))
                               (-contains-constraint-key constraint constraint-opts options))]
                 #(contains? % k)
                 (let [op (-resolve-op constraint validator-constraint-types options)]
-                  (or ((validators) op) ;;TODO make extensible
+                  (or (validators op) ;;TODO make extensible
                       (case op
                         :any any?
                         :sorted (let [[v :as all] (subvec constraint 1)
                                       _ (when-not (= [true] all)
                                           (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
                                   #(or (sorted? %)
-                                       (and (sequential? %)
-                                            (try (= % (sort %))
+                                       (and (or (string? %) ;; TODO test string
+                                                (sequential? %))
+                                            (try (= (seq %) (sort %))
                                                  (catch Exception _ false)))))
                         :distinct (let [[v :as all] (subvec constraint 1)
                                         _ (when-not (= [true] all)

@@ -3891,4 +3891,14 @@
     (is (m/validate [:string {:not [:non-alphanumeric]}] "12"))
     (is (= ["should contain an alphanumeric character"]
            (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] ""))
-           (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] "[]"))))))
+           (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] "[]")))))
+  (testing ":sorted"
+    (is (m/validate [:string {:sorted true}] "[]"))
+    (is (not (m/validate [:string {:sorted true}] "][")))
+    (is (= ["should be sorted: index 0 has \\] but expected \\["]
+           (me/humanize (m/explain [:string {:sorted true}] "][")))))
+  (testing ":distinct"
+    (is (m/validate [:string {:distinct true}] "[]"))
+    (is (not (m/validate [:string {:distinct true}] "[[")))
+    (is (= ["should be distinct: \\[ provided 2 times"]
+           (me/humanize (m/explain [:string {:distinct true}] "[["))))))

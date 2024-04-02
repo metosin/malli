@@ -116,7 +116,8 @@
                           "should be a sorted map"
                           (if (set? value)
                             "should be a sorted set"
-                            (if-not (sequential? value)
+                            (if-not (or (string? value)
+                                        (sequential? value))
                               "should be sortable"
                               (let [sv (delay (sort value))]
                                 (or (try @sv

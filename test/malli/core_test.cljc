@@ -3824,6 +3824,12 @@
          (me/humanize (m/explain [:string {:not [:numeric]}] "123"))))
   ;;TODO :non-numeric
 
+  (is (m/validate [:string {:non-numeric true}] ""))
+  (is (m/validate [:string {:non-numeric true}] "abc"))
+  (is (m/validate [:string {:non-numeric true}] "abc]["))
+  (is (not (m/validate [:string {:non-numeric true}] "12")))
+  (is (not (m/validate [:string {:non-numeric true}] "1a2")))
+
   (is (m/validate [:string {:alphanumeric true}] ""))
   (is (m/validate [:string {:alphanumeric true}] "12"))
   (is (m/validate [:string {:alphanumeric true}] "12ab"))

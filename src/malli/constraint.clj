@@ -76,7 +76,27 @@
                                                                     :numeric
                                                                     :non-numeric
                                                                     :alpha
-                                                                    :non-alpha}))
+                                                                    :non-alpha
+                                                                    #_:trim
+                                                                    #_:triml
+                                                                    #_:trimr
+                                                                    #_:trim-newline
+                                                                    #_:blank
+                                                                    #_:non-blank
+                                                                    #_:starts-with
+                                                                    #_:ends-with
+                                                                    #_:upper-case
+                                                                    #_:lower-case
+                                                                    #_:ends-with
+                                                                    #_:capitalized
+                                                                    #_[:lines [:and [:< 1] [:<= 10]]]
+                                                                    #_[:includes "foo"]
+                                                                    #_[:escape {\a "__a__"}]
+                                                                    #_[:index-of "foo" [:< 7]]
+                                                                    #_[:last-index-of "foo" [:< 7]]
+                                                                    #_[:split ]
+                                                                    #_:palindrome
+                                                                    }))
         generator-constraint-types (-generator-types (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any

@@ -1224,5 +1224,7 @@
                         {:seed 123})))
   (is (doall (mg/sample [:int {:> 10 :< 100}]
                         {:size 1000})))
+  (is (doall (mg/sample [:int {:gen/> 10 :gen/< 100}]
+                        {:size 1000})))
   ;;TODO :double
   )

@@ -5,53 +5,88 @@
 (def composite-constraint-types
   #{:and :or :implies :xor :iff :not :in})
 
-(def keyset-constraints {:nested-property-keys (-> composite-constraint-types (disj :not) (conj :disjoint))
-                         :constraint-types (into composite-constraint-types #{:disjoint :max :min :contains
-                                                                              ;;TODO
-                                                                              ;;:sorted
-                                                                              })
-                         ;:in [:count [:< 5]]
-                         ;:in [:a [:distinct]]
-                         ;:in {[:a [:count]] [:< 5]}
-                         ;:in [[:key :a] [:count] [:< 5]]
-                         :constraint-remap {:max :max-count
-                                            :min :min-count}})
+(defn -add-gen-key [k]
+  [k (keyword "gen" (name k))])
 
-(def number-constraints {:flat-property-keys #{:max :min :< :> :<= :>= :not
-                                               ;;TODO
-                                               ;:even? :odd? :pos? :neg? :multiple
-                                               }
-                         :nested-property-keys (-> composite-constraint-types (disj :not))
-                         :constraint-types (into composite-constraint-types #{:max :min :< :> :<= :>=})
-                         :constraint-remap {:max :<=
-                                            :min :>=}})
+(def keyset-constraints
+  (let [constraint-types (into {} (map (juxt identity identity))
+                               (concat composite-constraint-types
+                                       ;;TODO
+                                       ;;:sorted
+                                       [:disjoint :max :min :contains]))
+        generator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :foo
+                                       (into (map (juxt #(keyword "gen" (name %))
+                                                        identity))
+                                             (keys constraint-types)))
+        validator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :any
+                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
+                                       (assoc :max :max-count
+                                              :min :min-count))]
+    {:nested-property-keys (into #{} (mapcat -add-gen-key)
+                                 (-> composite-constraint-types (disj :not) (conj :disjoint)))
+     :validator-constraint-types validator-constraint-types
+     :generator-constraint-types generator-constraint-types}))
 
-(def sequential-constraints {:flat-property-keys #{:max :min :distinct :sorted}
-                             :constraint-types (into composite-constraint-types #{:max :min :distinct :sorted})
-                             :in #{:nth}
-                             :constraint-remap {:max :max-count
-                                                :min :min-count}})
+(def number-constraints
+  (let [constraint-types (into {} (map (juxt identity identity))
+                               (concat composite-constraint-types #{:max :min :< :> :<= :>=}))
+        generator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :foo
+                                       (into (map (juxt #(keyword "gen" (name %))
+                                                        identity))
+                                             (keys constraint-types)))
+        validator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :any
+                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
+                                       (assoc :max :<=
+                                              :min :>=))]
+    {:flat-property-keys (into #{} (mapcat -add-gen-key)
+                               #{:max :min :< :> :<= :>= :not
+                                 ;;TODO
+                                 ;:even? :odd? :pos? :neg? :multiple
+                                 })
+     :nested-property-keys (into #{} (mapcat -add-gen-key)
+                                 (-> composite-constraint-types (disj :not)))
+     :validator-constraint-types validator-constraint-types
+     :generator-constraint-types generator-constraint-types}))
+
+(def sequential-constraints
+  (let [constraint-types (into {} (map (juxt identity identity))
+                               (concat composite-constraint-types #{:max :min :distinct :sorted}))
+        generator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :foo
+                                       (into (map (juxt #(keyword "gen" (name %))
+                                                        identity))
+                                             (keys constraint-types)))
+        validator-constraint-types (-> constraint-types
+                                       ;; :gen/foo :=> :any
+                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
+                                       (assoc :max :max-count
+                                              :min :min-count))]
+    {:flat-property-keys (into #{} (mapcat -add-gen-key)
+                               #{:max :min :distinct :sorted})
+     :generator-constraint-types generator-constraint-types
+     :validator-constraint-types validator-constraint-types}))
 
 ;; TODO :qualified-keyword + :namespace
 (def schema-constraints
-  {:map (assoc keyset-constraints
-               :in #{:keys :vals :get :count})
-   :set (assoc keyset-constraints
-               :in #{:vals :get :count})
-   :map-of (assoc keyset-constraints
-                  :in #{:keys :vals :get :count})
+  {:map keyset-constraints
+   :set keyset-constraints
+   :map-of keyset-constraints
    :int number-constraints
    :double number-constraints
    :vector sequential-constraints
    :sequential sequential-constraints})
 
-(defn -contains-constraint-key [constraint]
+(defn -contains-constraint-key [constraint constraint-types options]
   (if (or (symbol? constraint)
           (keyword? constraint)
           (string? constraint))
     [constraint]
     (when (and (vector? constraint)
-               (= :contains (first constraint))
+               (= :contains (-resolve-op constraint constraint-types options))
                (or (= 2 (count constraint))
                    (-fail! ::contains-constraint-takes-one-child {:constraint constraint})))
       (subvec constraint 1))))
@@ -61,21 +96,26 @@
     type-or-map
     (get schema-constraints type-or-map)))
 
-(defn -resolve-op [constraint {:keys [constraint-remap constraint-types]} options]
+(defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)
              (first constraint))
         op (or (get constraint-types op)
-               (-fail! ::disallowed-constraint {:type op :constraint constraint}))]
-    (get constraint-remap op op)))
+               (-fail! ::disallowed-constraint {:type op :constraint constraint
+                                                :allowed constraint-types}))]
+    (loop [op op]
+      (let [op' (get constraint-types op op)]
+        (cond-> op
+          (not (identical? op op')) recur)))))
 
 (defn -constraint-validator [constraint constraint-opts options]
-  (let [{:keys [constraint-remap constraint-types] :as constraint-opts} (->constraint-opts constraint-opts)]
+  (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]
     (letfn [(-constraint-validator [constraint]
-              (if-some [[k] (when (:contains constraint-types)
-                              (-contains-constraint-key constraint))]
+              (if-some [[k] (when (= :contains (:contains validator-constraint-types))
+                              (-contains-constraint-key constraint constraint-opts options))]
                 #(contains? % k)
-                (let [op (-resolve-op constraint constraint-opts options)]
+                (let [op (-resolve-op constraint validator-constraint-types options)]
                   (case op
+                    :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)
                                       (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
@@ -158,15 +198,12 @@
 (defn -constraint-from-properties [properties constraint-opts options]
   (let [{:keys [flat-property-keys nested-property-keys]} (->constraint-opts constraint-opts)]
     (when-some [cs (-> []
-                       (cond->
-                         (:and nested-property-keys)
-                         (into (get properties :and)))
                        (into (keep #(some->> (get properties %)
-                                             (into [%]))
-                                   (disj nested-property-keys :and)))
+                                             (into [%])))
+                             nested-property-keys)
                        (into (keep #(some->> (get properties %)
-                                             (conj [%]))
-                                   flat-property-keys))
+                                             (conj [%])))
+                             flat-property-keys)
                        not-empty)]
       (if (= 1 (count cs))
         (first cs)

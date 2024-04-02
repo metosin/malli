@@ -3742,7 +3742,10 @@
   (is (not (m/validate [:int {:> 5 :< 10}] 5)))
   (is (m/validate [:int {:=> 5 :< 10}] 5))
   (is (not (m/validate [:int {:> 5 :< 10}] 10)))
-  (is (m/validate [:int {:> 5 :<= 10}] 10)))
+  (is (m/validate [:int {:> 5 :<= 10}] 10))
+  (testing ":gen ignored"
+    (is (m/validate [:int {:gen/> 5 :< 10}] 3))
+    (is (not (m/validate [:int {:gen/> 5 :< 10}] 11)))))
 
 (deftest vector-constraint-test
   (is (m/validate [:sequential {:distinct true} :any] [1 2 3]))

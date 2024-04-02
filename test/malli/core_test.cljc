@@ -3785,15 +3785,29 @@
   (testing ":min/:max"
     (is (m/validate [:string {:min 1 :max 5}] "ab"))
     (is (not (m/validate [:string {:min 1 :max 5}] "")))
-    (is (= ["should be at least 1 characters"] ;; https://github.com/metosin/malli/pull/1032
-           (me/humanize (m/explain [:string {:min 1}] ""))))
-    (is (= ["should be at least 1 character"]
+    (is (= ["should be at least 1 character, given 0"]
+           (me/humanize (m/explain [:string {:min 1}] ""))
+           (me/humanize (m/explain [:string {:min 1 :max 10}] ""))
            (me/humanize (m/explain [:string {:and [[:min 1]]}] ""))))
-    (is (= ["should be less than 1 character"]
-           (me/humanize (m/explain [:string {:not [:min 1]}] "a"))))
-    (is (= ["should be less than 1 character"]
-           (me/humanize (m/explain [:string {:not [:min 1]}] "a"))))
-    )
+    (is (= ["should be at least 2 characters, given 0"]
+           (me/humanize (m/explain [:string {:min 2}] ""))
+           (me/humanize (m/explain [:string {:min 2 :max 10}] ""))
+           (me/humanize (m/explain [:string {:and [[:min 2]]}] ""))))
+    (is (= ["should be at most 1 character, given 2"]
+           (me/humanize (m/explain [:string {:max 1}] "12"))
+           (me/humanize (m/explain [:string {:min 0 :max 1}] "12"))
+           (me/humanize (m/explain [:string {:and [[:max 1]]}] "12"))))
+    (is (= ["should be at most 2 characters, given 3"]
+           (me/humanize (m/explain [:string {:max 2}] "123"))
+           (me/humanize (m/explain [:string {:min 1 :max 2}] "123"))
+           (me/humanize (m/explain [:string {:and [[:max 2]]}] "123"))))
+    (is (= ["should be less than 1 character, given 1"]
+           (me/humanize (m/explain [:string {:not [:min 1]}] "a"))
+           ))
+    ;;FIXME
+    #_(is (me/humanize (m/explain [:string {:not [:and [:min 1] [:max 2]]}] "a")))
+    (is (= ["should be more than 1 character, given 0"]
+           (me/humanize (m/explain [:string {:not [:max 1]}] "")))))
   (testing ":alpha"
     (is (m/validate [:string {:alpha true}] "ab"))
     (is (m/validate [:string {:alpha true}] ""))

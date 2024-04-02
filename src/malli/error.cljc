@@ -17,7 +17,7 @@
         max (str "should be at most " max)))))
 
 ;;TODO add to options
-(defn constraint-humanizers []
+(defn default-constraint-humanizers []
   (mc-strh/humanizers))
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
@@ -44,7 +44,7 @@
                                     (fn [x] (@v x)))
                         valid? (delay (validator value))]
                     (prn "constraint" constraint)
-                    (if-some [humanizer ((constraint-humanizers)
+                    (if-some [humanizer ((default-constraint-humanizers)
                                          (if not?
                                            [:not not-child-op]
                                            op))]
@@ -63,7 +63,8 @@
                                  (if (string? value)
                                    " character"
                                    " element")
-                                 (when-not (= 1 cnt) "s"))))
+                                 (when-not (= 1 min) "s")
+                                 ", given " cnt)))
 
                         (= :min-count op) (let [cnt (count value)
                                                 min (first ng)]
@@ -72,25 +73,28 @@
                                                    (if (string? value)
                                                      " character"
                                                      " element")
-                                                   (when-not (= 1 cnt) "s"))))
+                                                   (when-not (= 1 min) "s")
+                                                   ", given " cnt)))
 
                         (and not? (= :max-count not-child-op))
                         (let [cnt (count value)
                               max (second not-child)]
                           (when (<= cnt max)
-                            (str "should be more than " min
+                            (str "should be more than " max
                                  (if (string? value)
                                    " character"
                                    " element")
-                                 (when-not (= 1 cnt) "s"))))
+                                 (when-not (= 1 max) "s")
+                                 ", given " cnt)))
                         (= :max-count op) (let [cnt (count value)
                                                 max (first ng)]
                                             (when-not (<= cnt max)
-                                              (str "should be at most " min
+                                              (str "should be at most " max
                                                    (if (string? value)
                                                      " character"
                                                      " element")
-                                                   (when-not (= 1 cnt) "s"))))
+                                                   (when-not (= 1 max) "s")
+                                                   ", given " cnt)))
 
                         (and (= :distinct op) (true? (first ng))
                              (not (validator value)))
@@ -154,7 +158,7 @@
                                (apply str (interpose " " (map pr-str provided)))))
 
                         (and (#{:xor :or} op)
-                             (every? #(or (mc/-contains-constraint-key %)
+                             (every? #(or (mc/-contains-constraint-key % validator-constraint-types options)
                                           (and (vector? %)
                                                (#{:and :not :implies :iff} (first %))
                                                (->flat-ks %)))
@@ -291,14 +295,7 @@
                                        " or " (last (m/children schema))))))}}
    :any {:error/message {:en "should be any"}}
    :nil {:error/message {:en "should be nil"}}
-   :string {:error/fn {:en (fn [{:keys [schema value]} _]
-                             (let [{:keys [min max]} (m/properties schema)]
-                               (cond
-                                 (not (string? value)) "should be a string"
-                                 (and min (= min max)) (str "should be " min " characters")
-                                 (and min max) (str "should be between " min " and " max " characters")
-                                 min (str "should be at least " min " characters")
-                                 max (str "should be at most " max " characters"))))}}
+   :string {:error/fn {:en "should be a string"}}
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
    :boolean {:error/message {:en "should be a boolean"}}

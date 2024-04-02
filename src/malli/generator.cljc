@@ -13,7 +13,7 @@
             [malli.constraint :as mc]
             [malli.core :as m]
             [malli.registry :as mr]
-            [malli.impl.util :refer [-last -merge]]
+            [malli.impl.util :as miu :refer [-last -merge]]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
@@ -320,7 +320,6 @@ collected."
   (join (map f coll)))
 
 (defn -constraint-solutions [constraint constraint-opts options]
-  (prn "constraint" constraint)
   (let [{:keys [constraint-remap constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
     (letfn [(-constraint-solutions
               ([constraint] (-constraint-solutions constraint options))
@@ -1047,10 +1046,15 @@ collected."
     (assert (seq solutions))
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
-              (cond->> (gen/large-integer* {:min (or >= >)
-                                            :max (or <= <)})
-                > (gen/such-that #(not (== % >)))
-                < (gen/such-that #(not (== % <)))))
+              (let [g (gen/large-integer* {:min (or >= >)
+                                           :max (or <= <)})]
+                (if (or < >)
+                  (gen/such-that (miu/-every-pred
+                                   (cond-> []
+                                     > (conj #(not (== % >)))
+                                     < (conj #(not (== % <)))))
+                                 g 100)
+                  g)))
             solutions))))
 (defmethod -schema-generator :double [schema options]
   (gen/double* (merge (let [props (m/properties schema options)]

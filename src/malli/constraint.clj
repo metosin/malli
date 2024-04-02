@@ -31,6 +31,7 @@
                              :constraint-remap {:max :max-count
                                                 :min :min-count}})
 
+;; TODO :qualified-keyword + :namespace
 (def schema-constraints
   {:map (assoc keyset-constraints
                :in #{:keys :vals :get :count})

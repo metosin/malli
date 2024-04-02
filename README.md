@@ -247,7 +247,7 @@ Validating values against a schema:
 (m/validate [:enum 1 2] 1)
 ; => true
 
-(m/validate [:and :int [:> 6]] 7)
+(m/validate [:int {:> 6}] 7)
 ; => true
 
 (m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
@@ -2178,8 +2178,8 @@ Sampling values:
 
 ```clojure
 ;; sampling
-(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
-; => (25 39 51 13 53 43 57 15 26 27)
+(mg/sample [:int {:> 10 :< 100} {:seed 123})
+; => (11 12 11 13 11 26 11 11 17 11)
 ```
 
 Integration with test.check:

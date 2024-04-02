@@ -1201,6 +1201,21 @@
         (mg/generate [:and pos? neg?]))))
 
 (deftest number-constraint-generator-test
+  (is (thrown?
+        #?(:clj Exception, :cljs js/Error)
+        (doall (mg/sample [:and int? [:> 739] [:< 741]]))))
   (is (= 740 (mg/generate [:int {:> 739 :< 741}])))
+  (dotimes [_ 100]
+    (is (every? #{740}
+                (mg/sample [:int {:> 739 :< 741}]
+                           {:size 1000}))))
+  (is (thrown?
+        #?(:clj Exception, :cljs js/Error)
+        (doall (mg/sample [:and int? [:> 10] [:< 100]]
+                          {:size 1000}))))
+  (is (doall (mg/sample [:int {:> 10 :< 100}]
+                        {:seed 123})))
+  (is (doall (mg/sample [:int {:> 10 :< 100}]
+                        {:size 1000})))
   ;;TODO :double
   )

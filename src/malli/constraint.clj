@@ -73,7 +73,8 @@
                                                                     :re
                                                                     :alphanumeric
                                                                     :numeric
-                                                                    :alpha}))
+                                                                    :alpha
+                                                                    :non-alpha}))
         generator-constraint-types (-generator-types (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
@@ -83,6 +84,7 @@
                                               :alphanumeric :alphanumeric-string
                                               :numeric :numeric-string
                                               :alpha :alpha-string
+                                              :non-alpha :non-alpha-string
                                               :re :re-string))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max
@@ -90,7 +92,9 @@
                                  :re
                                  :alphanumeric
                                  :numeric
-                                 :alpha})
+                                 :alpha
+                                 :non-alpha
+                                 :not})
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)
      :validator-constraint-types validator-constraint-types}))
@@ -145,8 +149,8 @@
                 #(contains? % k)
                 (let [op (-resolve-op constraint validator-constraint-types options)]
                   (case op
-                    :alpha-string (fn [s]
-                                    (every? #(Character/isAlphabetic (int %)) s))
+                    :alpha-string (fn [s] (every? #(Character/isAlphabetic (int %)) s))
+                    :non-alpha-string (fn [s] (not-any? #(Character/isAlphabetic (int %)) s))
                     :any any?
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (= [true] all)

@@ -16,9 +16,12 @@
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       options]
+  (prn "-humanize-constraint-violation" constraint)
   (let [{:keys [validator-constraint-types]} (mc/->constraint-opts (m/type schema))]
     (letfn [(has? [k] (contains? value k))
-            (->flat-ks [constraint] (let [ks (map mc/-contains-constraint-key (next constraint))]
+            (->flat-ks [constraint] (let [ks (map #(mc/-contains-constraint-key
+                                                     % validator-constraint-types options)
+                                                  (next constraint))]
                                       (when (every? identity ks)
                                         (map first ks))))
             (-humanize-constraint-violation [constraint]
@@ -28,14 +31,31 @@
                   (let [flat-ks (delay (->flat-ks constraint))
                         ng (subvec constraint 1)
                         type (m/type schema)
+                        not? (= :not op)
+                        not-child (when (and not? (vector? (first ng)))
+                                    (first ng))
+                        not-child-op (some-> not-child (mc/-resolve-op validator-constraint-types options))
                         validator (delay (mc/-constraint-validator constraint type options))]
                     (cond
                       (= :any op) []
+
+                      (and not? (= :alpha-string not-child-op))
+                      (str "should contain a non-alphabetic character")
 
                       (= :alpha-string op)
                       (keep-indexed (fn [i v]
                                       (when-not (Character/isAlphabetic (int v))
                                         (str "should be alphabetic: "
+                                             "index " i " has " (pr-str (char v)) ".")))
+                                    value)
+
+                      (and not? (= :non-alpha-string not-child-op))
+                      (str "should contain an alphabetic character")
+
+                      (= :non-alpha-string op)
+                      (keep-indexed (fn [i v]
+                                      (when (Character/isAlphabetic (int v))
+                                        (str "should not contain alphabetic characters: "
                                              "index " i " has " (pr-str (char v)) ".")))
                                     value)
 
@@ -116,12 +136,10 @@
                                                                  (-humanize-constraint-violation flat-child)))
                                                           ng))))
 
-                      (and (= :not op) @flat-ks)
+                      (and not? @flat-ks)
                       (str "should not provide key: " (pr-str (first @flat-ks)))
 
-                      (and (= :not op)
-                           (vector? (first ng))
-                           (#{:and :or} (ffirst ng)))
+                      (and not? (#{:and :or} not-child-op))
                       (-humanize-constraint-violation
                         (into [({:and :or :or :and} (ffirst ng))]
                               (map #(vector :not %))

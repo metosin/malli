@@ -3785,8 +3785,27 @@
   (is (m/validate [:string {:min 1 :max 5}] "ab"))
   (is (not (m/validate [:string {:min 1 :max 5}] "")))
   (is (m/validate [:string {:alpha true}] "ab"))
+  (is (m/validate [:string {:alpha true}] ""))
   (is (not (m/validate [:string {:alpha true}] "ab1")))
+  (is (not (m/validate [:string {:not [:alpha]}] "ab")))
+  (is (m/validate [:string {:not [:alpha]}] "ab1"))
+  (is (m/validate [:string {:not [:alpha]}] "1"))
+  (is (not (m/validate [:string {:not [:alpha]}] "")))
   (is (= ["should be alphabetic: index 2 has \\1."
           "should be alphabetic: index 4 has \\*."]
          (me/humanize (m/explain [:string {:alpha true}] "ab1c*"))))
+  (is (= ["should contain a non-alphabetic character"]
+         (me/humanize (m/explain [:string {:not [:alpha]}] "ab"))
+         (me/humanize (m/explain [:string {:not [:alpha]}] ""))))
+
+  (is (m/validate [:string {:non-alpha true}] "12"))
+  (is (m/validate [:string {:non-alpha true}] ""))
+  (is (not (m/validate [:string {:non-alpha true}] "a2")))
+  (is (not (m/validate [:string {:not [:non-alpha]}] "12")))
+  (is (= ["should not contain alphabetic characters: index 0 has \\a."
+          "should not contain alphabetic characters: index 1 has \\b."
+          "should not contain alphabetic characters: index 3 has \\c."]
+         (me/humanize (m/explain [:string {:non-alpha true}] "ab1c*"))))
+  (is (= ["should contain an alphabetic character"]
+         (me/humanize (m/explain [:string {:not [:non-alpha]}] "12"))))
   )

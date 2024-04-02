@@ -1,18 +1,10 @@
 (ns malli.constraint
   (:require [clojure.set :as set]
             [malli.constraint.string :as mcs]
+            [malli.constraint.util :refer [composite-constraint-types
+                                           -add-gen-key
+                                           -generator-types]]
             [malli.impl.util :as miu :refer [-fail!]]))
-
-(def composite-constraint-types
-  #{:and :or :implies :xor :iff :not #_:in})
-
-(defn -add-gen-key [k]
-  [k (keyword "gen" (name k))])
-
-(defn -generator-types [constraint-types]
-  (into {} (map (juxt #(keyword "gen" (name %))
-                      identity))
-        constraint-types))
 
 (def keyset-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
@@ -67,78 +59,16 @@
                                        generator-constraint-types)
      :validator-constraint-types validator-constraint-types}))
 
-(def string-constraints
-  (let [constraint-types (into {} (map (juxt identity identity))
-                               (concat composite-constraint-types #{:max
-                                                                    :min
-                                                                    :re
-                                                                    :alphanumeric
-                                                                    :non-alphanumeric
-                                                                    :letters
-                                                                    :non-letters
-                                                                    :numeric
-                                                                    :non-numeric
-                                                                    :alpha
-                                                                    :non-alpha
-                                                                    #_:trim
-                                                                    #_:triml
-                                                                    #_:trimr
-                                                                    #_:trim-newline
-                                                                    #_:blank
-                                                                    #_:non-blank
-                                                                    #_:starts-with
-                                                                    #_:ends-with
-                                                                    #_:upper-case
-                                                                    #_:lower-case
-                                                                    #_:capitalized
-                                                                    #_[:lines [:and [:< 1] [:<= 10]]]
-                                                                    #_[:splits #"foo" [:and
-                                                                                       [:max-count 1]
-                                                                                       [:min-count 10]]]
-                                                                    #_[:includes "foo"]
-                                                                    #_[:gen/escapes {\a "__a__"}]
-                                                                    #_[:index-of "foo" [:< 7]]
-                                                                    #_[:last-index-of "foo" [:< 7]]
-                                                                    #_:palindrome
-                                                                    }))
-        generator-constraint-types (-generator-types (keys constraint-types))
-        validator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :any
-                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
-                                       (assoc :max :max-count
-                                              :min :min-count
-                                              :alphanumeric :alphanumeric-string
-                                              :non-alphanumeric :non-alphanumeric-string
-                                              :numeric :numeric-string
-                                              :non-numeric :non-numeric-string
-                                              :alpha :alpha-string
-                                              :non-alpha :non-alpha-string
-                                              :re :re-string))]
-    {:flat-property-keys (into #{} (mapcat -add-gen-key)
-                               #{:max
-                                 :min
-                                 :re
-                                 :alphanumeric
-                                 :non-alphanumeric
-                                 :numeric
-                                 :non-numeric
-                                 :alpha
-                                 :non-alpha
-                                 :not})
-     :generator-constraint-types (into validator-constraint-types
-                                       generator-constraint-types)
-     :validator-constraint-types validator-constraint-types}))
-
 ;; TODO :qualified-keyword + :namespace
 (def schema-constraints
-  {:map keyset-constraints
-   :set keyset-constraints
-   :map-of keyset-constraints
-   :int number-constraints
-   :double number-constraints
-   :vector sequential-constraints
-   :sequential sequential-constraints
-   :string string-constraints})
+  (into {:map keyset-constraints
+         :set keyset-constraints
+         :map-of keyset-constraints
+         :int number-constraints
+         :double number-constraints
+         :vector sequential-constraints
+         :sequential sequential-constraints}
+        mcs/schema-constraints))
 
 (defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)

@@ -30,9 +30,11 @@
    ::m/extra-key {:error/message {:en "disallowed key"}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
-                                      (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
+                                      (str "should be spelled "
+                                           (str/join " or " (map (comp pr-str last) likely-misspelling-of))))}}
    ::misspelled-value {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
-                                        (str "did you mean " (str/join " or " (map last likely-misspelling-of))))}}
+                                        (str "did you mean "
+                                             (str/join " or " (map (comp pr-str last) likely-misspelling-of))))}}
    ::m/input-remaining {:error/message {:en "input remaining"}}
    ::m/end-of-input {:error/message {:en "end of input"}}
    'any? {:error/message {:en "should be any"}}
@@ -88,9 +90,9 @@
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
                            (str "should be "
                                 (if (= 1 (count (m/children schema)))
-                                  (first (m/children schema))
-                                  (str "either " (->> (m/children schema) butlast (str/join ", "))
-                                       " or " (last (m/children schema))))))}}
+                                  (pr-str (first (m/children schema)))
+                                  (str "either " (->> (m/children schema) butlast (map pr-str) (str/join ", "))
+                                       " or " (pr-str (last (m/children schema)))))))}}
    :any {:error/message {:en "should be any"}}
    :nil {:error/message {:en "should be nil"}}
    :string {:error/fn {:en (fn [{:keys [schema value]} _]
@@ -126,9 +128,9 @@
                            (str "should be at most " (first (m/children schema)))
                            "should be a number"))}}
    := {:error/fn {:en (fn [{:keys [schema]} _]
-                        (str "should be " (first (m/children schema))))}}
+                        (str "should be " (pr-str (first (m/children schema)))))}}
    :not= {:error/fn {:en (fn [{:keys [schema]} _]
-                           (str "should not be " (first (m/children schema))))}}})
+                           (str "should not be " (pr-str (first (m/children schema)))))}}})
 
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))

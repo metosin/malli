@@ -1101,6 +1101,9 @@ Looking up humanized errors from parent schemas with custom `:resolve` (BETA, su
 ; => {:foo ["entry-failure"]}
 ```
 
+Error messages are either strings or collections of strings if you would like to return
+multiple error messages (in the case of more than one failure).
+
 ## Spell checking
 
 For closed schemas, key spelling can be checked with:

@@ -11,8 +11,7 @@
 (def keyset-constraints
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types
-                                       ;;TODO
-                                       ;;:sorted
+                                       ;;TODO :sorted
                                        [:disjoint :max :min :contains]))
         ;; :gen/foo :=> :foo
         generator-constraint-types (into {} (map (juxt #(keyword "gen" (name %))
@@ -21,6 +20,7 @@
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
+                                       ;;TODO :disjoint :disjoint-keys
                                        (assoc :max :max-count
                                               :min :min-count))]
     {:nested-property-keys (into #{} (mapcat -add-gen-key)

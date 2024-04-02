@@ -1044,12 +1044,6 @@ collected."
 (defmethod -schema-generator :string [schema options] (-string-gen schema options))
 (defmethod -schema-generator :int [schema options]
   (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
-        ;; add generator-specific keys
-        constraint (if-some [{:keys [min max]} (not-empty (-min-max schema options))]
-                     (cond-> [:and constraint]
-                       min (conj [:>= min])
-                       max (conj [:<= max]))
-                     constraint)
         solutions (some-> (-constraint-solutions constraint :int options)
                           seq -conj-number-constraints)]
     (when (empty? solutions)
@@ -1068,10 +1062,26 @@ collected."
                   g)))
             solutions))))
 (defmethod -schema-generator :double [schema options]
-  (gen/double* (merge (let [props (m/properties schema options)]
-                        {:infinite? (get props :gen/infinite? false)
-                         :NaN? (get props :gen/NaN? false)})
-                      (-min-max schema options))))
+  (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
+        solutions (some-> (-constraint-solutions constraint :int options)
+                          seq -conj-number-constraints)]
+    (when (empty? solutions)
+      (m/-fail! ::unsatisfiable-double-schema {:schema schema}))
+    (gen-one-of
+      (mapv (fn [{:keys [<= >= < >]}]
+              (let [g (gen/double* (into (let [props (m/properties schema options)]
+                                           {:infinite? (get props :gen/infinite? false)
+                                            :NaN? (get props :gen/NaN? false)})
+                                         {:min (or >= >)
+                                          :max (or < <=)}))]
+                (if (or < >)
+                  (gen/such-that (miu/-every-pred
+                                   (cond-> []
+                                     > (conj #(not (== % >)))
+                                     < (conj #(not (== % <)))))
+                                 g 100)
+                  g)))
+            solutions))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

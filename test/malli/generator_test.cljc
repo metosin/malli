@@ -1204,7 +1204,7 @@
 ;; because the generators are much more specific. they also grow
 ;; and shrink better because such-that fails a lot less often
 ;; and the size remains more consistent.
-(deftest number-constraint-generator-test
+(deftest int-constraint-generator-test
   (is (thrown?
         #?(:clj Exception, :cljs js/Error)
         (dotimes [_ 10] (doall (mg/sample [:and int? [:> 739] [:< 741]])))))
@@ -1227,6 +1227,28 @@
                      :seed 0})
          (mg/sample [:int {:gen/> 10 :gen/< 100}]
                     {:size 1000
-                     :seed 0})))
-  ;;TODO :double
-  )
+                     :seed 0}))))
+
+(deftest double-constraint-generator-test
+  (is (thrown?
+        #?(:clj Exception, :cljs js/Error)
+        (dotimes [_ 10] (doall (mg/sample [:and :double [:> 739] [:< 741]])))))
+  (dotimes [_ 10]
+    (let [vs (mg/sample [:double {:> 739.000001 :< 739.000002}]
+                        {:size 1000})]
+      (is (< 500 (count (distinct vs))))
+      (is (every? #(< 739.000001 % 739.000002)
+                  vs))))
+  (dotimes [_ 10]
+    (let [vs (mg/sample [:double {:and [[:not [:<= 739.000001]]
+                                        [:not [:>= 739.000002]]]}]
+                        {:size 1000})]
+      (is (< 500 (count (distinct vs))))
+      (is (every? #(< 739.000001 % 739.000002)
+                  vs))))
+  (is (= (mg/sample [:double {:> 10 :< 100}]
+                    {:size 1000
+                     :seed 0})
+         (mg/sample [:double {:gen/> 10 :gen/< 100}]
+                    {:size 1000
+                     :seed 0}))))

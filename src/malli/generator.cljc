@@ -320,7 +320,6 @@ collected."
   (join (map f coll)))
 
 (defn -constraint-solutions [constraint constraint-opts options]
-  (prn "constraint" constraint)
   (let [{:keys [constraint-remap constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
     (letfn [(-constraint-solutions
               ([constraint] (-constraint-solutions constraint options))
@@ -1044,12 +1043,10 @@ collected."
                        min (conj [:>= min])
                        max (conj [:<= max]))
                      constraint)
-        _ (prn "constraint" (doall (-constraint-solutions constraint :int options)))
         solutions (some-> (-constraint-solutions constraint :int options)
                           seq -conj-number-constraints)]
     (when (empty? solutions)
       (m/-fail! ::unsatisfiable-int-schema {:schema schema}))
-    (prn "solutions" solutions)
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
               (let [g (gen/large-integer* {:min (or >= >)

@@ -3782,80 +3782,91 @@
                         [1 3 3 2])))))
 
 (deftest string-constraint-test
-  (is (m/validate [:string {:min 1 :max 5}] "ab"))
-  (is (not (m/validate [:string {:min 1 :max 5}] "")))
-  (is (m/validate [:string {:alpha true}] "ab"))
-  (is (m/validate [:string {:alpha true}] ""))
-  (is (not (m/validate [:string {:alpha true}] "ab1")))
-  (is (not (m/validate [:string {:not [:alpha]}] "ab")))
-  (is (m/validate [:string {:not [:alpha]}] "ab1"))
-  (is (m/validate [:string {:not [:alpha]}] "1"))
-  (is (not (m/validate [:string {:not [:alpha]}] "")))
-  (is (= ["should contain a non-alphabetic character"]
-         (me/humanize (m/explain [:string {:not [:alpha]}] "ab"))
-         (me/humanize (m/explain [:string {:not [:alpha]}] ""))))
+  (testing ":min/:max"
+    (is (m/validate [:string {:min 1 :max 5}] "ab"))
+    (is (not (m/validate [:string {:min 1 :max 5}] ""))))
+  (testing ":alpha"
+    (is (m/validate [:string {:alpha true}] "ab"))
+    (is (m/validate [:string {:alpha true}] ""))
+    (is (not (m/validate [:string {:alpha true}] "ab1")))
+    (is (not (m/validate [:string {:not [:alpha]}] "ab")))
+    (is (m/validate [:string {:not [:alpha]}] "ab1"))
+    (is (m/validate [:string {:not [:alpha]}] "1"))
+    (is (not (m/validate [:string {:not [:alpha]}] "")))
+    (is (= ["should contain a non-alphabetic character"]
+           (me/humanize (m/explain [:string {:not [:alpha]}] "ab"))
+           (me/humanize (m/explain [:string {:not [:alpha]}] "")))))
+  (testing ":non-alpha"
+    (is (m/validate [:string {:non-alpha true}] "12"))
+    (is (m/validate [:string {:non-alpha true}] ""))
+    (is (not (m/validate [:string {:non-alpha true}] "a2")))
+    (is (not (m/validate [:string {:not [:non-alpha]}] "12")))
+    (is (= ["should not contain alphabetic characters: index 0 has \\a."
+            "should not contain alphabetic characters: index 1 has \\b."
+            "should not contain alphabetic characters: index 3 has \\c."]
+           (me/humanize (m/explain [:string {:non-alpha true}] "ab1c*"))))
+    (is (= ["should contain an alphabetic character"]
+           (me/humanize (m/explain [:string {:not [:non-alpha]}] "12")))))
+  (testing ":numeric"
+    (is (m/validate [:string {:numeric true}] ""))
+    (is (m/validate [:string {:numeric true}] "12"))
+    (is (not (m/validate [:string {:numeric true}] "1a2")))
+    (is (= ["should be numeric: index 0 has \\a."
+            "should be numeric: index 1 has \\b."
+            "should be numeric: index 3 has \\c." "should be numeric: index 4 has \\*."]
+           (me/humanize (m/explain [:string {:numeric true}] "ab1c*"))))
+    (is (not (m/validate [:string {:not [:numeric]}] "")))
+    (is (not (m/validate [:string {:not [:numeric]}] "12")))
+    (is (m/validate [:string {:not [:numeric]}] "1a2"))
+    (is (= ["should contain a non-numeric character"]
+           (me/humanize (m/explain [:string {:not [:numeric]}] ""))
+           (me/humanize (m/explain [:string {:not [:numeric]}] "123")))))
+  (testing ":non-numeric"
+    (is (m/validate [:string {:non-numeric true}] ""))
+    (is (m/validate [:string {:non-numeric true}] "abc"))
+    (is (m/validate [:string {:non-numeric true}] "abc]["))
+    (is (not (m/validate [:string {:non-numeric true}] "12")))
+    (is (not (m/validate [:string {:non-numeric true}] "1a2")))
+    (is (= ["should not contain numeric characters: index 0 has \\1."
+            "should not contain numeric characters: index 2 has \\2."]
+           (me/humanize (m/explain [:string {:non-numeric true}] "1a2"))))
+    (is (not (m/validate [:string {:not [:non-numeric]}] "")))
+    (is (not (m/validate [:string {:not [:non-numeric]}] "abc")))
+    (is (not (m/validate [:string {:not [:non-numeric]}] "abc][")))
+    (is (m/validate [:string {:not [:non-numeric]}] "12"))
+    (is (m/validate [:string {:not [:non-numeric]}] "1a2"))
+    (is (= ["should contain a numeric character"]
+           (me/humanize (m/explain [:string {:not [:non-numeric]}] ""))
+           (me/humanize (m/explain [:string {:not [:non-numeric]}] "abc")))))
+  (testing ":alphanumeric"
+    (is (m/validate [:string {:alphanumeric true}] ""))
+    (is (m/validate [:string {:alphanumeric true}] "12"))
+    (is (m/validate [:string {:alphanumeric true}] "12ab"))
+    (is (not (m/validate [:string {:alphanumeric true}] "[a1]")))
+    (is (= ["should be alphanumeric: index 0 has \\[."
+            "should be alphanumeric: index 3 has \\]."]
+           (me/humanize (m/explain [:string {:alphanumeric true}] "[a1]"))))
+    (is (not (m/validate [:string {:not [:alphanumeric]}] "")))
+    (is (not (m/validate [:string {:not [:alphanumeric]}] "12")))
+    (is (not (m/validate [:string {:not [:alphanumeric]}] "12ab")))
+    (is (m/validate [:string {:not [:alphanumeric]}] "[a1]"))
+    (is (= ["should contain a non-alphanumeric character"]
+           (me/humanize (m/explain [:string {:not [:alphanumeric]}] "12")))))
 
-  (is (m/validate [:string {:non-alpha true}] "12"))
-  (is (m/validate [:string {:non-alpha true}] ""))
-  (is (not (m/validate [:string {:non-alpha true}] "a2")))
-  (is (not (m/validate [:string {:not [:non-alpha]}] "12")))
-  (is (= ["should not contain alphabetic characters: index 0 has \\a."
-          "should not contain alphabetic characters: index 1 has \\b."
-          "should not contain alphabetic characters: index 3 has \\c."]
-         (me/humanize (m/explain [:string {:non-alpha true}] "ab1c*"))))
-  (is (= ["should contain an alphabetic character"]
-         (me/humanize (m/explain [:string {:not [:non-alpha]}] "12"))))
-
-  (is (m/validate [:string {:numeric true}] ""))
-  (is (m/validate [:string {:numeric true}] "12"))
-  (is (not (m/validate [:string {:numeric true}] "1a2")))
-  (is (= ["should be numeric: index 0 has \\a."
-          "should be numeric: index 1 has \\b."
-          "should be numeric: index 3 has \\c." "should be numeric: index 4 has \\*."]
-         (me/humanize (m/explain [:string {:numeric true}] "ab1c*"))))
-  (is (not (m/validate [:string {:not [:numeric]}] "")))
-  (is (not (m/validate [:string {:not [:numeric]}] "12")))
-  (is (m/validate [:string {:not [:numeric]}] "1a2"))
-  (is (= ["should contain a non-numeric character"]
-         (me/humanize (m/explain [:string {:not [:numeric]}] ""))
-         (me/humanize (m/explain [:string {:not [:numeric]}] "123"))))
-  ;;TODO :non-numeric
-
-  (is (m/validate [:string {:non-numeric true}] ""))
-  (is (m/validate [:string {:non-numeric true}] "abc"))
-  (is (m/validate [:string {:non-numeric true}] "abc]["))
-  (is (not (m/validate [:string {:non-numeric true}] "12")))
-  (is (not (m/validate [:string {:non-numeric true}] "1a2")))
-
-  (is (m/validate [:string {:alphanumeric true}] ""))
-  (is (m/validate [:string {:alphanumeric true}] "12"))
-  (is (m/validate [:string {:alphanumeric true}] "12ab"))
-  (is (not (m/validate [:string {:alphanumeric true}] "[a1]")))
-  (is (= ["should be alphanumeric: index 0 has \\[."
-          "should be alphanumeric: index 3 has \\]."]
-         (me/humanize (m/explain [:string {:alphanumeric true}] "[a1]"))))
-  (is (not (m/validate [:string {:not [:alphanumeric]}] "")))
-  (is (not (m/validate [:string {:not [:alphanumeric]}] "12")))
-  (is (not (m/validate [:string {:not [:alphanumeric]}] "12ab")))
-  (is (m/validate [:string {:not [:alphanumeric]}] "[a1]"))
-  (is (= ["should contain a non-alphanumeric character"]
-         (me/humanize (m/explain [:string {:not [:alphanumeric]}] "12"))))
-
-  (is (m/validate [:string {:non-alphanumeric true}] ""))
-  (is (m/validate [:string {:non-alphanumeric true}] "[]"))
-  (is (not (m/validate [:string {:non-alphanumeric true}] "[12]")))
-  (is (not (m/validate [:string {:non-alphanumeric true}] "[ab]")))
-  (is (not (m/validate [:string {:non-alphanumeric true}] "12")))
-  (is (= ["should not contain alphanumeric characters: index 1 has \\a."
-          "should not contain alphanumeric characters: index 2 has \\1."]
-         (me/humanize (m/explain [:string {:non-alphanumeric true}] "[a1]"))))
-  (is (not (m/validate [:string {:not [:non-alphanumeric]}] "")))
-  (is (not (m/validate [:string {:not [:non-alphanumeric]}] "[]")))
-  (is (m/validate [:string {:not [:non-alphanumeric]}] "[12]"))
-  (is (m/validate [:string {:not [:non-alphanumeric]}] "[ab]"))
-  (is (m/validate [:string {:not [:non-alphanumeric]}] "12"))
-  (is (= ["should contain an alphanumeric character"]
-         (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] ""))
-         (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] "[]"))))
-
-  )
+  (testing ":non-alphanumeric"
+    (is (m/validate [:string {:non-alphanumeric true}] ""))
+    (is (m/validate [:string {:non-alphanumeric true}] "[]"))
+    (is (not (m/validate [:string {:non-alphanumeric true}] "[12]")))
+    (is (not (m/validate [:string {:non-alphanumeric true}] "[ab]")))
+    (is (not (m/validate [:string {:non-alphanumeric true}] "12")))
+    (is (= ["should not contain alphanumeric characters: index 1 has \\a."
+            "should not contain alphanumeric characters: index 2 has \\1."]
+           (me/humanize (m/explain [:string {:non-alphanumeric true}] "[a1]"))))
+    (is (not (m/validate [:string {:not [:non-alphanumeric]}] "")))
+    (is (not (m/validate [:string {:not [:non-alphanumeric]}] "[]")))
+    (is (m/validate [:string {:not [:non-alphanumeric]}] "[12]"))
+    (is (m/validate [:string {:not [:non-alphanumeric]}] "[ab]"))
+    (is (m/validate [:string {:not [:non-alphanumeric]}] "12"))
+    (is (= ["should contain an alphanumeric character"]
+           (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] ""))
+           (me/humanize (m/explain [:string {:not [:non-alphanumeric]}] "[]"))))))

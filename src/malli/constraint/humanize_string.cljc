@@ -25,7 +25,7 @@
    :non-alpha-string (-msg-check-each "should not contain alphabetic characters" (complement mcc/alpha?))
    [:not :non-alpha-string] (-msg-or-validates "should contain an alphabetic character")
 
-   ;;TODO :non-numeric-string
    :numeric-string (-msg-check-each "should be numeric" mcc/numeric?)
    [:not :numeric-string] (-msg-or-validates "should contain a non-numeric character")
-   })
+   :non-numeric-string (-msg-check-each "should not contain numeric characters" (complement mcc/numeric?))
+   [:not :non-numeric-string] (-msg-or-validates "should contain a numeric character")})

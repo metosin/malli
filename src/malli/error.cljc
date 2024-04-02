@@ -35,12 +35,14 @@
                         not-child (when (and not? (vector? (first ng)))
                                     (first ng))
                         not-child-op (some-> not-child (mc/-resolve-op validator-constraint-types options))
-                        validator (delay (mc/-constraint-validator constraint type options))]
+                        validator (delay (mc/-constraint-validator constraint type options))
+                        valid? (delay (@validator value))]
                     (cond
                       (= :any op) []
 
                       (and not? (= :alpha-string not-child-op))
-                      (str "should contain a non-alphabetic character")
+                      (when-not @valid?
+                        (str "should contain a non-alphabetic character"))
 
                       (= :alpha-string op)
                       (keep-indexed (fn [i v]
@@ -50,7 +52,8 @@
                                     value)
 
                       (and not? (= :non-alpha-string not-child-op))
-                      (str "should contain an alphabetic character")
+                      (when-not @valid?
+                        (str "should contain an alphabetic character"))
 
                       (= :non-alpha-string op)
                       (keep-indexed (fn [i v]

@@ -1222,9 +1222,11 @@
                             {:size 1000})))))
   (is (doall (mg/sample [:int {:> 10 :< 100}]
                         {:seed 123})))
-  (is (doall (mg/sample [:int {:> 10 :< 100}]
-                        {:size 1000})))
-  (is (doall (mg/sample [:int {:gen/> 10 :gen/< 100}]
-                        {:size 1000})))
+  (is (= (mg/sample [:int {:> 10 :< 100}]
+                    {:size 1000
+                     :seed 0})
+         (mg/sample [:int {:gen/> 10 :gen/< 100}]
+                    {:size 1000
+                     :seed 0})))
   ;;TODO :double
   )

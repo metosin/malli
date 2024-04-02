@@ -109,7 +109,6 @@
 
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types]} (->constraint-opts constraint-opts)]
-    (prn validator-constraint-types)
     (letfn [(-constraint-validator [constraint]
               (if-some [[k] (when (= :contains (:contains validator-constraint-types))
                               (-contains-constraint-key constraint constraint-opts options))]
@@ -122,7 +121,7 @@
                                       (-fail! ::sorted-in-constraint-takes-one-child {:constraint constraint}))]
                               #(or (sorted? %)
                                    (and (sequential? %)
-                                        (try (prn "here" %) (= % (sort %))
+                                        (try (= % (sort %))
                                              (catch Exception _ false)))))
                     :distinct (let [[v :as all] (subvec constraint 1)
                                     _ (when-not (= [true] all)

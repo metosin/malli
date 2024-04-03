@@ -66,12 +66,6 @@
                              options)
                   (cond
                     (= :any op) []
-
-                    (and not? (= :contains not-child-op)) (when-not @valid?
-                                                            (str "should not provide key: " (pr-str (second not-child))))
-                    (= :contains op) (when-not @valid?
-                                       (str "should provide key: " (pr-str (second constraint))))
-
                     (and not? (= :min-count not-child-op))
                     (let [cnt (count value)
                           min (second not-child)]

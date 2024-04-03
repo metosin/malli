@@ -7,7 +7,6 @@
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max
                                                                     :min
-                                                                    :re
                                                                     :alphanumeric
                                                                     :non-alphanumeric
                                                                     :letters
@@ -27,6 +26,7 @@
                                                                     :non-blank
                                                                     :escapes
                                                                     :includes
+                                                                    #_:re
                                                                     #_:starts-with
                                                                     #_:ends-with
                                                                     #_:upper-case

@@ -14,4 +14,7 @@
    :trim-string (-idempotent str/trim)
    :triml-string (-idempotent str/triml)
    :trimr-string (-idempotent str/trimr)
-   :trim-newline-string (-idempotent str/trim-newline)})
+   :trim-newline-string (-idempotent str/trim-newline)
+   :blank-string str/blank?
+   :non-blank-string (complement str/blank?)
+   })

@@ -48,4 +48,8 @@
    [:not :trimr-string] (-msg-or-validates "should have trailing whitespace")
    :trim-newline-string (-msg-or-validates "should not have trailing newline")
    [:not :trim-newline-string] (-msg-or-validates "should have trailing newline")
+   :blank-string (-msg-or-validates "should be blank")
+   [:not :blank-string] (-msg-or-validates "should not be blank")
+   :non-blank-string (-msg-or-validates "should not be blank")
+   [:not :non-blank-string] (-msg-or-validates "should be blank")
    })

@@ -3966,4 +3966,37 @@
            (me/humanize (m/explain [:string {:trim-newline true}] "a\n"))))
     (is (= ["should have trailing newline"]
            (me/humanize (m/explain [:string {:not [:trim-newline]}] "")))))
+  (testing ":blank"
+    (is (m/validate [:string {:blank true}] ""))
+    (is (m/validate [:string {:blank true}] "   \n   "))
+    (is (not (m/validate [:string {:blank true}] nil)))
+    (is (not (m/validate [:string {:blank true}] [\space])))
+    (is (not (m/validate [:string {:blank true}] "abc")))
+    (is (not (m/validate [:string {:blank true}] "  a")))
+    (is (not (m/validate [:string {:blank true}] "a  ")))
+    (is (not (m/validate [:string {:blank true}] "a\n")))
+    (is (= ["should be blank"]
+           (me/humanize (m/explain [:string {:blank true}] "a\nab"))))
+    (is (= ["should not be blank"]
+           (me/humanize (m/explain [:string {:not [:blank]}] ""))
+           (me/humanize (m/explain [:string {:not [:blank]}] "  \n "))))
+    (is (= ["invalid type"]
+           (me/humanize (m/explain [:string {:blank true}] nil)))))
+  (testing ":non-blank"
+    (is (not (m/validate [:string {:non-blank true}] "")))
+    (is (not (m/validate [:string {:non-blank true}] "   \n   ")))
+    (is (not (m/validate [:string {:non-blank true}] nil)))
+    (is (not (m/validate [:string {:non-blank true}] [\space])))
+    (is (m/validate [:string {:non-blank true}] "abc"))
+    (is (m/validate [:string {:non-blank true}] "  a"))
+    (is (m/validate [:string {:non-blank true}] "a  "))
+    (is (m/validate [:string {:non-blank true}] "a\n"))
+    (is (= ["should not be blank"]
+           (me/humanize (m/explain [:string {:non-blank true}] "   "))
+           (me/humanize (m/explain [:string {:non-blank true}] ""))))
+    (is (= ["should be blank"]
+           (me/humanize (m/explain [:string {:not [:non-blank]}] "a"))
+           (me/humanize (m/explain [:string {:not [:non-blank]}] "a"))))
+    (is (= ["invalid type"]
+           (me/humanize (m/explain [:string {:non-blank true}] nil)))))
 )

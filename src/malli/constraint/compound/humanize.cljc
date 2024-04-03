@@ -1,6 +1,14 @@
 (ns malli.constraint.compound.humanize
   (:require [malli.error.utils :refer [-flatten-errors]]))
 
+(defn -de-morgan []
+  (fn [{:keys [constraint humanize-constraint-violation]} _]
+    (let [[and-or & rands] constraint]
+      (humanize-constraint-violation
+        (into [({:and :or :or :and} and-or)]
+              (map #(vector :not %))
+              rands)))))
+
 (defn humanizers []
   {;;TODO [:not :iff]
    :iff (fn [{:keys [constraint constraint-validator humanize-constraint-violation
@@ -33,4 +41,7 @@
                                   (if (string? errors)
                                     [errors]
                                     errors))))
-                            results)))))})
+                            results)))))
+   [:not :or] (-de-morgan)
+   [:not :and] (-de-morgan)
+   })

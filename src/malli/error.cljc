@@ -4,6 +4,7 @@
             [malli.constraint :as mc]
             [malli.constraint.char :as mcc]
             [malli.constraint.compound.humanize :as mch-compound]
+            [malli.constraint.keyset.humanize :as mch-keyset]
             [malli.constraint.string.humanize :as mch-str]
             [malli.core :as m]
             [malli.error.utils :refer [-flatten-errors]]
@@ -22,7 +23,8 @@
 ;;TODO add to options
 (defn default-constraint-humanizers []
   (merge (mch-str/humanizers)
-         (mch-compound/humanizers)))
+         (mch-compound/humanizers)
+         (mch-keyset/humanizers)))
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       options]
@@ -198,24 +200,6 @@
                     (and not? @flat-ks)
                     (str "should not provide key: " (pr-str (first @flat-ks)))
 
-                    (and not? (#{:and :or} not-child-op))
-                    (-humanize-constraint-violation
-                      (into [({:and :or :or :and} (ffirst ng))]
-                            (map #(vector :not %))
-                            (nfirst ng)))
-
-                    (= :disjoint op)
-                    (let [ksets ng
-                          [has-constraint has-k] (some (fn [i]
-                                                         (when-some [[has-k] (not-empty
-                                                                               (filter has? (nth ksets i)))]
-                                                           [i has-k]))
-                                                       (range (count ksets)))
-                          violating-ks (filterv has?
-                                                (apply concat (subvec ksets (inc has-constraint))))]
-                      (str "should not combine key " (pr-str has-k)
-                           " with key" (if (next violating-ks) "s" "") ": "
-                           (apply str (interpose " " (map pr-str violating-ks)))))
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))
 

@@ -176,20 +176,41 @@
       (is (nil? (m/explain IffGroups {})))
       (is (nil? (m/explain IffGroups {:a1 "a" :a2 "b" :a3 "c"})))
       (is (nil? (m/explain IffGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"})))
-      (is (= ["should provide key: :a3"]
+      (is (= [:xor
+              "should provide key: :a3"
+              [:and
+               "should not provide key: :a1"
+               "should not provide key: :a2"]]
              (me/humanize (m/explain IffGroups {:a1 "a" :a2 "b"}))))
-      (is (= ["should provide key: :a2"]
+      (is (= [:xor
+              "should provide key: :a2"
+              [:and
+               "should not provide key: :a1"
+               "should not provide key: :a3"]]
              (me/humanize (m/explain IffGroups {:a1 "a" :a3 "c"}))))
-      (is (= ["should provide key: :a1"]
+      (is (= [:xor
+              "should provide key: :a1"
+              [:and
+               "should not provide key: :a2"
+               "should not provide key: :a3"]]
              (me/humanize (m/explain IffGroups {:a2 "b" :a3 "c"}))))
-      (is (= ["should provide key: :a2"
-              "should provide key: :a3"]
+      (is (= [:xor
+              [:and
+               "should provide key: :a2"
+               "should provide key: :a3"]
+              "should not provide key: :a1"]
              (me/humanize (m/explain IffGroups {:a1 "a"}))))
-      (is (= ["should provide key: :a1"
-              "should provide key: :a3"]
+      (is (= [:xor
+              [:and
+               "should provide key: :a1"
+               "should provide key: :a3"]
+              "should not provide key: :a2"]
              (me/humanize (m/explain IffGroups {:a2 "b"}))))
-      (is (= ["should provide key: :a1"
-              "should provide key: :a2"]
+      (is (= [:xor
+              [:and
+               "should provide key: :a1"
+               "should provide key: :a2"]
+              "should not provide key: :a3"]
              (me/humanize (m/explain IffGroups {:a3 "c"}))))))
   (testing ":implies"
     (testing "validate"
@@ -386,25 +407,31 @@
          ["should provide key: nil"]))
   (is (= (me/humanize
            (m/explain
-             [:map {:keyset [[:contains nil]
-                             [:contains []]]}]
+             [:map {:and [[:contains nil]
+                          [:contains []]]}]
              {}))
-         ["should provide keys: nil []"]))
+
+         [:and
+          "should provide key: nil"
+          "should provide key: []"]))
   (is (= (me/humanize
            (m/explain
              [:map
-              {:keyset [:x]}
+              {:contains :x}
               [:x {:optional true} :int]]
              {}))
          ["should provide key: :x"]))
   (is (= (me/humanize
            (m/explain
              [:map
-              {:keyset [[:or :a1 :a2]]}
+              {:or [:a1 :a2]}
               [:a1 {:optional true} :string]
               [:a2 {:optional true} :string]]
              {}))
-         ["should provide at least one key: :a1 :a2"]))
+
+         [:or
+          "should provide key: :a1"
+          "should provide key: :a2"]))
   (is (= (m/validate Address {})
          true))
   (is (= (me/humanize (m/explain Address {:zip 5555}))
@@ -420,11 +447,16 @@
              (m/explain GitOrMvn
                         {:mvn/version "1.0.0"
                          :git/sha "123"}))
-           ["should provide exactly one of the following keys: :mvn/version :git/sha"]))
+
+           [:xor
+            "should not provide key: :mvn/version"
+            "should not provide key: :git/sha"]))
     (is (= (me/humanize
-             (m/explain GitOrMvn
-                        {}))
-           ["should provide exactly one of the following keys: :mvn/version :git/sha"])))
+             (m/explain GitOrMvn {}))
+
+           [:xor
+            "should provide key: :mvn/version"
+            "should provide key: :git/sha"])))
   (testing "TagImpliesSha"
     (is (= (m/validate TagImpliesSha {:git/sha "abc123"})
            true))
@@ -440,7 +472,10 @@
            true))
     (is (= (me/humanize
              (m/explain UserPass {:user "a"}))
-           ["should provide key: :pass"])))
+
+           [:xor
+            "should provide key: :pass"
+            "should not provide key: :user"])))
   (testing "SeparateMvnGit"
     (is (= (m/validate SeparateMvnGit {})
            true))
@@ -460,7 +495,7 @@
            true))
     (is (= (me/humanize
              (m/explain SecretOrCreds {:user "user"}))
-           ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]))
+           [:or "should provide key: :secret" "should provide key: :pass"]))
     (is (= (me/humanize
              (m/explain SecretOrCreds {:secret "1234" :user "user"}))
            ["should not combine key :secret with key: :user"])))
@@ -479,10 +514,14 @@
     (doseq [DPad [DPadNot DPadDeMorgan]]
       (is (= (me/humanize
                (m/explain DPad {:up 1 :down 1}))
-             ["either: 1). should not provide key: :down; or 2). should not provide key: :up"]))
+             [:or
+              "should not provide key: :down"
+              "should not provide key: :up"]))
       (is (= (me/humanize
                (m/explain DPad {:left 1 :right 1}))
-             ["either: 1). should not provide key: :left; or 2). should not provide key: :right"])))
+             [:or
+              "should not provide key: :left"
+              "should not provide key: :right"])))
     (is (= (me/humanize
              (m/explain DPad {:up 1 :down 1}))
            ["should not combine key :down with key: :up"]))
@@ -493,7 +532,11 @@
     (is (m/validate Padding {:left 1 :right 10 :up 25 :down 50}))
     (is (= (me/humanize
              (m/explain Padding {}))
-           ["should provide at least one key: :top :bottom :left :right"]))
+           [:or
+            "should provide key: :top"
+            "should provide key: :bottom"
+            "should provide key: :left"
+            "should provide key: :right"]))
     (is (mg/sample Padding {:size 5}))))
 
 (def OpenSetAB [:set {:or [:a :b]} :keyword])

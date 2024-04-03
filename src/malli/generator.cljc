@@ -335,8 +335,7 @@ collected."
                  (if-some [[k] (mc/-contains-constraint-key constraint generator-constraint-types options)]
                    [{:order [k]
                      :present {k true}}]
-                   (let [_ (prn "constraint" constraint)
-                         op (mc/-resolve-op constraint generator-constraint-types options)]
+                   (let [op (mc/-resolve-op constraint generator-constraint-types options)]
                      (case op
                        (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)]
                                          [{op n}])

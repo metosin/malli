@@ -127,17 +127,19 @@
                     max (gen/vector gen 0 max)
                     :else (gen/vector gen))))))
 
-(defn -mentioned-constraint-keys [constraint constraint-types options]
-  (letfn [(-mentioned-constraint-keys [constraint]
-            (or (mc/-contains-constraint-key constraint constraint-types options)
-                (case (mc/-resolve-op constraint constraint-types options)
+(defn -mentioned-constraint-keys [constraint constraint-opts options]
+  (let [{:keys [generator-constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
+    (letfn [(-mentioned-constraint-keys [constraint]
+              (let [constraint (mc/-resolve-constraint-sugar constraint constraint-opts options)]
+                (case (mc/-resolve-op constraint (:generator-constraint-types constraint-opts) options)
                   :any []
                   (:not :and :or :xor :iff :implies) (mapcat -mentioned-constraint-keys (next constraint))
                   :disjoint (apply concat (next constraint))
+                  :contains (subvec constraint 1)
                   (or (when-some [mentioned-constraint-keys (::mentioned-constraint-keys options)]
                         (mentioned-constraint-keys constraint options))
                       (m/-fail! ::unknown-keyset-constraint {:constraint constraint})))))]
-    (-mentioned-constraint-keys constraint)))
+      (-mentioned-constraint-keys constraint))))
 
 (defn -valid-map-keysets [schema options]
   {:pre [(= :map (m/type schema))]}
@@ -151,11 +153,7 @@
           ;; add keys only mentioned in :keyset constraints
           optional (into [] (distinct)
                          (concat (map first optional)
-                                 (-mentioned-constraint-keys
-                                   constraint
-                                   (:generator-constraint-types
-                                     (mc/->constraint-opts (m/type schema)))
-                                   options)))
+                                 (-mentioned-constraint-keys constraint (m/type schema) options)))
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)

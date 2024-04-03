@@ -12,9 +12,6 @@
             [malli.constraint.sequential.validate :as mcv-seq]
             [malli.constraint.sortable.validate :as mcv-sort]
             [malli.constraint.string.validate :as mcv-str]
-            [malli.constraint.util :refer [composite-constraint-types
-                                           -add-gen-key
-                                           -generator-types]]
             [malli.impl.util :as miu :refer [-fail!]]))
 
 
@@ -48,14 +45,11 @@
   "If :contains is a valid constraint, return its key.
   Recognizes symbol/keyword/string sugar for key."
   [constraint constraint-types options]
-  (when (keyword? constraint)
-    (when-some [kw-sugar (:keyword-sugar constraint-types)]
-      [(conj [:contains] kw-sugar)]
-      (when (and (vector? constraint)
-                 (= :contains (-resolve-op constraint constraint-types options))
-                 (or (= 2 (count constraint))
-                     (-fail! ::contains-constraint-takes-one-child {:constraint constraint})))
-        (subvec constraint 1)))))
+  (when (and (vector? constraint)
+             (= :contains (-resolve-op constraint constraint-types options))
+             (or (= 2 (count constraint))
+                 (-fail! ::contains-constraint-takes-one-child {:constraint constraint})))
+    (subvec constraint 1)))
 
 (defn ->constraint-opts [type-or-map]
   (if (map? type-or-map)

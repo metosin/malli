@@ -24,4 +24,7 @@
                                        generator-constraint-types)}))
 
 (defn schema-constraints []
-  (zipmap [:int :double] (repeat (number-constraints))))
+  {:int (number-constraints)
+   :double (-> (number-constraints)
+               (update :flat-property-keys into #{:gen/infinite? :gen/NaN?})
+               (update ))})

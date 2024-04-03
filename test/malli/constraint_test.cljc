@@ -537,7 +537,8 @@
             "should provide key: :bottom"
             "should provide key: :left"
             "should provide key: :right"]))
-    (is (mg/sample Padding {:size 5}))))
+    (is (= '({:top 0} {:bottom 0.5} {:left -1} {:left 0} {:bottom 1.5})
+           (mg/sample Padding {:size 5 :seed 0})))))
 
 (def OpenSetAB [:set {:or [:a :b]} :keyword])
 (def ClosedSetAB [:set {:or [:a :b]} [:enum :a :b]])

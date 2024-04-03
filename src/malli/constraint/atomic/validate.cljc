@@ -27,8 +27,9 @@
           s (schema ?schema)
           p (cond->> (validator s)
               (= :is-not (first constraint)) (comp not))
-          path (-build-path path constraint-opts options)]
-      (comp p path))))
+          path (some-> path rseq (-build-path constraint-opts options))]
+      (cond-> p
+        path (comp path)))))
 
 (defn validators []
   {:any (fn [{:keys [constraint]} _]
@@ -41,6 +42,14 @@
    ;; TODO [:< [:nth 0] [:nth 3]]
    ;; TODO [:< [:get :x] [:get :y]]
    ;; TODO [:< [:in [:get :x]] [:in [:get :y]]]
-   :is (-is)
-   :is-not (-is)
+
+   ;;TODO [:is SCHEMA ID PATH]
+   ;:is (-is)
+   ;:is-not (-is)
    })
+
+#_
+(m/all [x y]
+       [:=> {:is [:int x [:get :x]]}
+        [:map
+         {:and}]])

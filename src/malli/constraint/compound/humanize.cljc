@@ -11,7 +11,7 @@
               rands)))))
 
 (defn humanizers []
-  {;;TODO [:not :iff]
+  {;;TODO [:not :iff] == every combination of success/fail of clauses except all fail and all succeed
    :iff (fn [{:keys [constraint constraint-validator humanize-constraint-violation
                      value]} _]
           (let [results (map #(do [((constraint-validator %) value)

@@ -48,6 +48,7 @@
   (if (keyword? constraint)
     (if keyword-sugar
       (conj [keyword-sugar] constraint)
+      ;;FIXME not sure we should do this.
       [constraint])
     constraint))
 

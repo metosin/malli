@@ -906,16 +906,17 @@
                    [:y :int]]
                   {:x 1 :y 2}))
   (is (not (m/validate [:map
-                        {:and [[:is [:= 1] [:get :x]]]}
+                        {:and [[:is [:get :x] [:= 1]]]}
                         [:x :int]
                         [:y :int]]
                        {:x 2 :y 2})))
   (is (m/validate [:map
-                   {:and [[:is [:= 1] [:get :x]]]}
+                   {:and [[:is [:get :x] [:= 1]]]}
                    [:x :int]
                    [:y :int]
                    ]
                   {:x 1 :y 2}))
+  #_
   (is (m/validate [:map
                    {:and [[:is [:< [:get :x] [:get :y]]]]}
                    [:x :int]

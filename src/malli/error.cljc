@@ -62,8 +62,10 @@
                   (cond
                     (= :any op) []
 
-                    (and not? (= :contains not-child-op)) (str "should not provide key: " (pr-str (second not-child)))
-                    (= :contains op) (str "should provide key: " (pr-str (second constraint)))
+                    (and not? (= :contains not-child-op)) (when-not @valid?
+                                                            (str "should not provide key: " (pr-str (second not-child))))
+                    (= :contains op) (when-not @valid?
+                                       (str "should provide key: " (pr-str (second constraint))))
 
                     (and not? (= :min-count not-child-op))
                     (let [cnt (count value)
@@ -217,14 +219,15 @@
                                                 %)
                                        ng)]
                       (when-not (apply = (map first results))
-                        ;; heuristic: assume if any clauses are true, the rest should be
-                        (mapcat (fn [[valid? constraint]]
-                                  (when-not valid?
-                                    (let [errors (-humanize-constraint-violation constraint)]
-                                      (if (string? errors)
-                                        [errors]
-                                        errors))))
-                                results)))
+                        [:xor
+                         (-flatten-errors (into [:and] (keep (fn [[valid? constraint]]
+                                                               (when-not valid?
+                                                                 (-humanize-constraint-violation constraint))))
+                                                results))
+                         (-flatten-errors (into [:and] (keep (fn [[valid? constraint]]
+                                                               (when valid?
+                                                                 (-humanize-constraint-violation [:not constraint]))))
+                                                results))]))
 
                     (= :implies op)
                     (let [[test-result & results] (map #(vector ((mc/-constraint-validator % type options)

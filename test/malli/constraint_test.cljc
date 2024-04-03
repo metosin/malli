@@ -300,7 +300,7 @@
 
 (def Address
   [:map
-   {:keyset [[:iff :street :city :zip]]}
+   {:iff [:street :city :zip]}
    [:street {:optional true} string?]
    [:city {:optional true} string?]
    [:zip {:optional true} int?]])
@@ -337,24 +337,24 @@
    [:pass {:optional true} string?]])
 
 (def DPad
-  [:map {:keyset [[:disjoint [:down] [:up]]
-                  [:disjoint [:left] [:right]]]}
+  [:map {:and [[:disjoint [:down] [:up]]
+               [:disjoint [:left] [:right]]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]
    [:up {:optional true} [:= 1]]])
 
 (def DPadNot
-  [:map {:keyset [[:not [:and :down :up]]
-                [:not [:and :left :right]]]}
+  [:map {:and [[:not [:and :down :up]]
+               [:not [:and :left :right]]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]
    [:up {:optional true} [:= 1]]])
 
 (def DPadDeMorgan
-  [:map {:keyset [[:or [:not :down] [:not :up]]
-                [:or [:not :left] [:not :right]]]}
+  [:map {:and [[:or [:not :down] [:not :up]]
+               [:or [:not :left] [:not :right]]]}
    [:down {:optional true} [:= 1]]
    [:left {:optional true} [:= 1]]
    [:right {:optional true} [:= 1]]
@@ -370,12 +370,18 @@
 (deftest map-keyset-readme-examples-test
   (is (= (me/humanize
            (m/explain
-             [:map {:keyset [:x]}]
+             [:map {:contains :x}]
              {}))
          ["should provide key: :x"]))
+  (is (not (m/validate [:map {:contains :a}] {})))
+  (is (not (m/validate [:map {:contains "a"}] {})))
+  (is (not (m/validate [:map {:contains []}] {})))
+  (is (m/validate [:map {:contains []}] {[] nil}))
+  (is (not (m/validate [:map {:contains nil}] {})))
+  (is (m/validate [:map {:contains nil}] {nil nil}))
   (is (= (me/humanize
            (m/explain
-             [:map {:keyset [[:contains nil]]}]
+             [:map {:contains nil}]
              {}))
          ["should provide key: nil"]))
   (is (= (me/humanize
@@ -402,7 +408,11 @@
   (is (= (m/validate Address {})
          true))
   (is (= (me/humanize (m/explain Address {:zip 5555}))
-         ["should provide keys: :street :city"]))
+         [:xor
+          [:and
+           "should provide key: :street"
+           "should provide key: :city"]
+          "should not provide key: :zip"]))
   (testing "GitOrMvn"
     (is (= (m/validate GitOrMvn {:mvn/version "1.0.0"})
            true))
@@ -518,7 +528,7 @@
   ;; e.g., allowing keys in the child but not telling the keyset
   ;; perhaps :optional [:b] property key to inform generator?
   #_
-  (mg/sample [:set {:keyset [:a]
+  (mg/sample [:set {:contains :a
                     :min 2}
               [:enum :a :b]]
              #{:a :b}))
@@ -547,7 +557,7 @@
   ;; e.g., allowing keys in the child but not telling the keyset
   ;; perhaps :optional [:b] property key to inform generator?
   #_
-  (mg/sample [:set {:keyset [:a]
+  (mg/sample [:set {:contains :a
                     :min 2}
               [:enum :a :b]]
              #{:a :b}))
@@ -590,7 +600,8 @@
   (is (= ["should be distinct: 2 provided 2 times"]
          (me/humanize (m/explain [:sequential {:sorted true :distinct true} :any] [1 2 2 3]))))
 
-  (is (= ["should be distinct: 3 provided 2 times"
+  (is (= [:and
+          "should be distinct: 3 provided 2 times"
           "should be sorted: index 1 has 3 but expected 2"]
          (me/humanize (m/explain
                         [:sequential {:sorted true

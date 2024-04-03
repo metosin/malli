@@ -128,6 +128,7 @@
                     :contains (let [[k :as all] (subvec constraint 1)
                                     _ (when-not (= 1 (count all))
                                         (-fail! ::contains-constraint-takes-one-child {:constraint constraint}))]
+                                (prn "contains validator" (pr-str k))
                                 #(contains? % k))
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (#{[] [true]} all)

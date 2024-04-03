@@ -14,7 +14,6 @@
             [malli.constraint.string.validate :as mcv-str]
             [malli.impl.util :as miu :refer [-fail!]]))
 
-
 ;; TODO :qualified-keyword + :namespace
 ;; TODO add to options
 (defn default-schema-constraints []
@@ -22,6 +21,17 @@
          (mc-str/schema-constraints)
          (mc-num/schema-constraints)
          (mc-keys/schema-constraints)))
+
+;; TODO add to options
+(defn default-validators []
+  (merge (mcv-atomic/validators)
+         (mcv-comp/validators)
+         (mcv-count/validators)
+         (mcv-keys/validators)
+         (mcv-num/validators)
+         (mcv-seq/validators)
+         (mcv-sort/validators)
+         (mcv-str/validators)))
 
 (defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)
@@ -55,17 +65,6 @@
   (if (map? type-or-map)
     type-or-map
     (get (default-schema-constraints) type-or-map)))
-
-;; TODO add to options
-(defn default-validators []
-  (merge (mcv-atomic/validators)
-         (mcv-comp/validators)
-         (mcv-count/validators)
-         (mcv-keys/validators)
-         (mcv-num/validators)
-         (mcv-seq/validators)
-         (mcv-sort/validators)
-         (mcv-str/validators)))
 
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types] :as constraint-opts} (->constraint-opts constraint-opts)

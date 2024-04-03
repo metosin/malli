@@ -16,7 +16,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast)
+         parser unparser ast from-ast validator)
 
 ;;
 ;; protocols and records
@@ -646,6 +646,11 @@
   (when-let [ns-name (some-> properties :namespace name)]
     (fn [x] (= (namespace x) ns-name))))
 
+(defn- -constraint-validator [properties type options]
+  (mc/-constraint-validator properties type (assoc options
+                                                   ::schema schema
+                                                   ::validator validator)))
+
 ;;
 ;; Schemas
 ;;
@@ -680,7 +685,7 @@
                 Schema
                 (-validator [_]
                   (let [pvalidator (when property-pred (property-pred properties))
-                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                        constraint-validator (some-> @constraint (-constraint-validator type options))]
                     (-> [pred]
                         (cond->
                           ;; TODO obsoleted by constraint-validator?
@@ -690,7 +695,7 @@
                 (-explainer [this path]
                   (let [pvalidator (when property-pred (property-pred properties))
                         validator (-validator this)
-                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                        constraint-validator (some-> @constraint (-constraint-validator type options))]
                     (fn [x in acc]
                       (if-not (pred x)
                         (conj acc (miu/-error path in this x ::invalid-type))
@@ -994,7 +999,7 @@
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
-                              constraint-validator (some-> @constraint (mc/-constraint-validator :map options))
+                              constraint-validator (some-> @constraint (-constraint-validator :map options))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1033,7 +1038,7 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validator (some-> @constraint (mc/-constraint-validator :map options))
+                   constraint-validator (some-> @constraint (-constraint-validator :map options))
                    default-validator (some-> @default-schema (-validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
@@ -1052,7 +1057,7 @@
                (fn [m] (and (pred? m) (validate m)))))
            (-explainer [this path]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   constraint-validator (some-> @constraint (mc/-constraint-validator :map options))
+                   constraint-validator (some-> @constraint (-constraint-validator :map options))
                    default-explainer (some-> @default-schema (-explainer (conj path ::default)))
                    explainers (cond-> (-vmap
                                        (fn [[key {:keys [optional]} schema]]
@@ -1144,7 +1149,7 @@
              validate-limits (-validate-limits min max)
              ->parser (fn [f] (let [key-parser (f key-schema)
                                     value-parser (f value-schema)
-                                    constraint-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
+                                    constraint-validator (some-> @constraint (-constraint-validator :map-of options))]
                                 (fn [x]
                                   (if (and (map? x)
                                            (or (not constraint-validator)
@@ -1167,7 +1172,7 @@
            (-validator [_]
              (let [key-valid? (-validator key-schema)
                    value-valid? (-validator value-schema)
-                   constraint-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
+                   constraint-validator (some-> @constraint (-constraint-validator :map-of options))]
                (fn [m]
                  (and (map? m)
                       (validate-limits m)
@@ -1180,7 +1185,7 @@
            (-explainer [this path]
              (let [key-explainer (-explainer key-schema (conj path 0))
                    value-explainer (-explainer value-schema (conj path 1))
-                   constraint-validator (some-> @constraint (mc/-constraint-validator :map-of options))]
+                   constraint-validator (some-> @constraint (-constraint-validator :map-of options))]
                (fn [m in acc]
                  (if-not (map? m)
                    (conj acc (miu/-error path in this m ::invalid-type))
@@ -1245,7 +1250,7 @@
                   constraint (delay (mc/-constraint-from-properties properties type options))
                   validate-limits (-validate-limits min max)
                   ->parser (fn [f g] (let [child-parser (f schema)
-                                           constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                                           constraint-validator (some-> @constraint (-constraint-validator type options))]
                                        (fn [x]
                                          (if (or (not (fpred x))
                                                  (not (validate-limits x))
@@ -1269,7 +1274,7 @@
                 Schema
                 (-validator [_]
                   (let [validator (-validator schema)
-                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                        constraint-validator (some-> @constraint (-constraint-validator type options))]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
                                  (or (not constraint-validator)
@@ -1277,7 +1282,7 @@
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))
-                        constraint-validator (some-> @constraint (mc/-constraint-validator type options))]
+                        constraint-validator (some-> @constraint (-constraint-validator type options))]
                     (fn [x in acc]
                       (if-not (fpred x)
                         (conj acc (miu/-error path in this x ::invalid-type))

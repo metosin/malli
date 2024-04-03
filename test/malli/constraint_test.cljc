@@ -888,3 +888,51 @@
     (is (= ["should not include substring \"foo\""]
            (me/humanize (m/explain [:string {:not [:includes "foo"]}] "foobar")))))
 )
+
+(deftest is-prop-test
+  (is (m/validate [:map
+                   {:and [[:is [:= 1] [:get :x]]]}
+                   [:x :int]
+                   [:y :int]]
+                  {:x 1 :y 2}))
+  (is (not (m/validate [:map
+                        {:and [[:is [:= 1] [:get :x]]]}
+                        [:x :int]
+                        [:y :int]]
+                       {:x 2 :y 2})))
+  (is (m/validate [:map
+                   {:is [[:get :x] [:= 1]]}
+                   [:x :int]
+                   [:y :int]]
+                  {:x 1 :y 2}))
+  (is (not (m/validate [:map
+                        {:and [[:is [:= 1] [:get :x]]]}
+                        [:x :int]
+                        [:y :int]]
+                       {:x 2 :y 2})))
+  (is (m/validate [:map
+                   {:and [[:is [:= 1] [:get :x]]]}
+                   [:x :int]
+                   [:y :int]
+                   ]
+                  {:x 1 :y 2}))
+  (is (m/validate [:map
+                   {:and [[:is [:< [:get :x] [:get :y]]]]}
+                   [:x :int]
+                   [:y :int]
+                   ]
+                  {}))
+  )
+
+;; TODO
+[:map
+ {:> [:x :y]}
+ [:x int?]
+ [:y int?]
+ [:z int?]]
+[:not :int [:key :x] [:count]]
+[:map
+ {:and [:< [:is :int [:get :x]] [:in :y]]}
+ [:x int?]
+ [:y int?]
+ [:z int?]]

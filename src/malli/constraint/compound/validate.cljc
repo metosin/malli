@@ -1,13 +1,14 @@
 (ns malli.constraint.compound.validate
   (:require [malli.impl.util :as miu]))
 
+
 (defn validators []
-  {:not (fn [{:keys [constraint constraint-validator]} _]
+  {:not (fn [{:keys [constraint constraint-validator] :as constraint-opts} options]
           (let [[p :as all] (next constraint)
                 _ (when-not (= 1 (count all))
                     (miu/-fail! ::not-constraint-takes-one-child {:constraint constraint}))
                 p (constraint-validator p)]
-            #(not (p %))))
+            (comp not p)))
    :and (fn [{:keys [constraint constraint-validator]} _]
           (let [ps (mapv constraint-validator (next constraint))]
             (when-not (seq ps)

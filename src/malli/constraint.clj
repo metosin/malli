@@ -4,10 +4,13 @@
             [malli.constraint.number :as mc-num]
             [malli.constraint.sequential :as mc-seq]
             [malli.constraint.string :as mc-str]
+            [malli.constraint.atomic.validate :as mcv-atomic]
             [malli.constraint.compound.validate :as mcv-comp]
+            [malli.constraint.countable.validate :as mcv-count]
             [malli.constraint.keyset.validate :as mcv-keys]
             [malli.constraint.number.validate :as mcv-num]
             [malli.constraint.sequential.validate :as mcv-seq]
+            [malli.constraint.sortable.validate :as mcv-sort]
             [malli.constraint.string.validate :as mcv-str]
             [malli.constraint.util :refer [composite-constraint-types
                                            -add-gen-key
@@ -17,7 +20,7 @@
 
 ;; TODO :qualified-keyword + :namespace
 ;; TODO add to options
-(defn schema-constraints []
+(defn default-schema-constraints []
   (merge (mc-seq/schema-constraints)
          (mc-str/schema-constraints)
          (mc-num/schema-constraints)
@@ -56,19 +59,22 @@
 (defn ->constraint-opts [type-or-map]
   (if (map? type-or-map)
     type-or-map
-    (get (schema-constraints) type-or-map)))
+    (get (default-schema-constraints) type-or-map)))
 
 ;; TODO add to options
-(defn validators []
-  (merge (mcv-comp/validators)
+(defn default-validators []
+  (merge (mcv-atomic/validators)
+         (mcv-comp/validators)
+         (mcv-count/validators)
          (mcv-keys/validators)
          (mcv-num/validators)
-         (mcv-str/validators)
-         (mcv-seq/validators)))
+         (mcv-seq/validators)
+         (mcv-sort/validators)
+         (mcv-str/validators)))
 
 (defn -constraint-validator [constraint constraint-opts options]
   (let [{:keys [validator-constraint-types] :as constraint-opts} (->constraint-opts constraint-opts)
-        validators (validators)]
+        validators (default-validators)]
     (letfn [(-constraint-validator [constraint]
               (let [constraint (-resolve-constraint-sugar constraint constraint-opts options)
                     op (-resolve-op constraint validator-constraint-types options)]
@@ -78,48 +84,7 @@
                                      ;;TODO other arities
                                      :constraint-validator (fn ([constraint] (-constraint-validator constraint)))}
                                     options)
-                  (case op
-                    :any any?
-                    :sorted (let [[v :as all] (subvec constraint 1)
-                                  _ (when-not (#{[] [true]} all)
-                                      (-fail! ::sorted-constraint-takes-one-child {:constraint constraint}))]
-                              #(or (sorted? %)
-                                   (and (or (string? %) ;; TODO test string
-                                            (sequential? %))
-                                        (try (= (seq %) (sort %))
-                                             (catch Exception _ false)))))
-                    (:max-count :min-count) (let [[n :as all] (subvec constraint 1)
-                                                  _ (when-not (= 1 (count all))
-                                                      (-fail! ::min-max-constraint-takes-one-child {:constraint constraint}))
-                                                  _ (when-not (nat-int? n)
-                                                      (-fail! ::min-max-constraint-takes-integer {:constraint constraint}))]
-                                              (case op
-                                                :max-count #(<= (count %) n)
-                                                :min-count #(<= n (count %))))
-                    :disjoint (let [ksets (next constraint)
-                                    ps (mapv (fn [ks]
-                                               (when (empty? ks)
-                                                 (-fail! ::disjoint-keyset-must-be-non-empty {:constraint constraint}))
-                                               (when-not (apply distinct? ks)
-                                                 (-fail! ::disjoint-keyset-must-be-distinct {:constraint constraint}))
-                                               (when-not (vector? ks)
-                                                 (-fail! ::disjoint-constraint-takes-vectors-of-keys {:constraint constraint}))
-                                               #(boolean
-                                                  (some (fn [k]
-                                                          (contains? % k))
-                                                        ks)))
-                                             ksets)
-                                    _ (when (next ksets)
-                                        (let [in-multiple (apply set/intersection (map set ksets))]
-                                          (when (seq in-multiple)
-                                            (-fail! ::disjoint-keyset-must-be-distinct {:in-multiple-keys in-multiple}))))]
-                                #(let [rs (keep-indexed (fn [i p]
-                                                          (when (p %)
-                                                            i))
-                                                        ps)]
-                                   (or (empty? rs)
-                                       (not (next rs)))))
-                    (-fail! ::unknown-constraint {:constraint constraint})))))]
+                  (-fail! ::unknown-constraint {:constraint constraint}))))]
       (-constraint-validator constraint))))
 
 (defn -constraint-from-properties [properties constraint-opts options]

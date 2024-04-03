@@ -60,4 +60,10 @@
    [:not :escapes-string] (fn [{[_ m] :constraint :keys [validator value]} _]
                             (when-not (validator value)
                               (str "should include at least one unescaped character:"
-                                   (apply str (interleave " " (map pr-str (sort (keys m))))))))})
+                                   (apply str (interleave " " (map pr-str (sort (keys m))))))))
+   :includes-string (fn [{[_ s] :constraint :keys [validator value]} _]
+                      (when-not (validator value)
+                        (str "should include substring " (pr-str s))))
+   [:not :includes-string] (fn [{[_ s] :constraint :keys [validator value]} _]
+                             (when-not (validator value)
+                               (str "should not include substring " (pr-str s))))})

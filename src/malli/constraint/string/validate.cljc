@@ -38,4 +38,14 @@
                                                         c))
                                              (keys m))]
                        (fn [s]
-                         (not-any? not-allowed s))))})
+                         (not-any? not-allowed s))))
+   :includes-string (fn [{:keys [constraint value]} _]
+                      (when-not (= 2 (count constraint))
+                        (miu/-fail! ::includes-constraint-takes-one-child
+                                    {:constraint constraint}))
+                      (let [s (second constraint)
+                            _ (when-not (string? s)
+                                (miu/-fail! ::includes-constraint-takes-string-child
+                                            {:constraint constraint}))]
+                        (fn [v]
+                          (str/includes? v s))))})

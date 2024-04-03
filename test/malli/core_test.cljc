@@ -4009,4 +4009,12 @@
     (is (= ["should escape character \\c"]
            (me/humanize (m/explain [:string {:escapes {\c "b"}}] "c"))))
     (is (= ["should include at least one unescaped character: \\c"]
-           (me/humanize (m/explain [:string {:not [:escapes {\c "b"}]}] "b"))))))
+           (me/humanize (m/explain [:string {:not [:escapes {\c "b"}]}] "b")))))
+  (testing ":includes"
+    (is (m/validate [:string {:includes "foo"}] "foobar"))
+    (is (not (m/validate [:string {:includes "foo"}] "oofar")))
+    (is (= ["should include substring \"foo\""]
+           (me/humanize (m/explain [:string {:includes "foo"}] "oobar"))))
+    (is (= ["should not include substring \"foo\""]
+           (me/humanize (m/explain [:string {:not [:includes "foo"]}] "foobar"))))
+    ))

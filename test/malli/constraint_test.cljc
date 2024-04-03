@@ -87,7 +87,9 @@
                          :type :malli.core/constraint-violation
                          :message nil})}
              (with-schema-forms (m/explain NonEmptyMapGroup {}))))
-      (is (= ["should provide at least one key: :a1 :a2"]
+      (is (= [:or
+              "should provide key: :a1"
+              "should provide key: :a2"]
              (me/humanize (m/explain NonEmptyMapGroup {}))))))
   (testing ":disjoint"
     (testing "validate"
@@ -226,17 +228,32 @@
       (is (m/validate XOrGroups {:a2 "b"}))
       (is (m/validate XOrGroups {:a3 "c"})))
     (testing "explain"
-      (is (= ["should provide exactly one of the following keys: :a1 :a2 :a3"]
+      (is (= [:xor
+              "should provide key: :a1"
+              "should provide key: :a2"
+              "should provide key: :a3"]
              (me/humanize (m/explain XOrGroups {}))))
-      (is (= ["should provide exactly one of the following keys: :a1 :a2 :a3"]
-             (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b" :a3 "c"}))))
-      (is (= ["should provide exactly one of the following keys: :a1 :a2 :a3"]
+      (is (= [:xor
+              [:and "should not provide key: :a1" "should not provide key: :a2"]
+              [:and "should not provide key: :a1" "should not provide key: :a3"]
+              [:and "should not provide key: :a2" "should not provide key: :a3"]]
              (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"}))))
-      (is (= ["should provide exactly one of the following keys: :a1 :a2"]
+      (is (= [:xor
+              [:and "should not provide key: :a1" "should not provide key: :a2"]
+              [:and "should not provide key: :a1" "should not provide key: :a3"]
+              [:and "should not provide key: :a2" "should not provide key: :a3"]]
+            (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b" :a3 "c"}))))
+      (is (= [:xor
+              "should not provide key: :a1"
+              "should not provide key: :a2"]
              (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b"}))))
-      (is (= ["should provide exactly one of the following keys: :a1 :a3"]
+      (is (= [:xor
+              "should not provide key: :a1"
+              "should not provide key: :a3"]
              (me/humanize (m/explain XOrGroups {:a1 "a" :a3 "c"}))))
-      (is (= ["should provide exactly one of the following keys: :a2 :a3"]
+      (is (= [:xor
+              "should not provide key: :a2"
+              "should not provide key: :a3"]
              (me/humanize (m/explain XOrGroups {:a2 "b" :a3 "c"}))))
       (is (nil? (m/explain XOrGroups {:a1 "a"})))
       (is (nil? (m/explain XOrGroups {:a2 "b"})))

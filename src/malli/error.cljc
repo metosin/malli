@@ -1,5 +1,6 @@
 (ns malli.error
-  (:require [clojure.string :as str]
+  (:require [clojure.math.combinatorics :as comb]
+            [clojure.string :as str]
             [malli.constraint :as mc]
             [malli.constraint.string.humanize :as mc-strh]
             [malli.constraint.char :as mcc]
@@ -21,7 +22,6 @@
   (mc-strh/humanizers))
 
 (defn -flatten-errors [errors]
-  {:post [(do (prn "-flatten-errors" errors %) true)]}
   (if (and (vector? errors)
            (keyword? (first errors))
            (= 2 (count errors)))
@@ -44,8 +44,8 @@
                     ng (subvec constraint 1)
                     type (m/type schema)
                     not? (= :not op)
-                    not-child (when (and not? (vector? (first ng)))
-                                (first ng))
+                    not-child (when not?
+                                (mc/-resolve-constraint-sugar (first ng) constraint-opts options))
                     not-child-op (some-> not-child (mc/-resolve-op validator-constraint-types options))
                     validator (let [v (delay (mc/-constraint-validator constraint type options))]
                                 (fn [x] (@v x)))
@@ -62,6 +62,7 @@
                   (cond
                     (= :any op) []
 
+                    (and not? (= :contains not-child-op)) (str "should not provide key: " (pr-str (second not-child)))
                     (= :contains op) (str "should provide key: " (pr-str (second constraint)))
 
                     (and not? (= :min-count not-child-op))
@@ -171,10 +172,35 @@
                                         (-humanize-constraint-violation constraint)))))
                             ng))
 
-                    (#{:xor :or} op)
-                    (-flatten-errors
-                      (into [op] (keep -humanize-constraint-violation)
-                            ng))
+                    (= :or op)
+                    (let [results (map #(vector ((mc/-constraint-validator % type options)
+                                                 value)
+                                                %)
+                                       ng)]
+                      (when (not-any? first results)
+                        (-flatten-errors
+                          (into [:or] (comp (remove first)
+                                            (keep (comp -humanize-constraint-violation second)))
+                                results))))
+
+                    (= :xor op)
+                    (let [results (map #(vector ((mc/-constraint-validator % type options)
+                                                 value)
+                                                %)
+                                       ng)
+                          succeed (filter first results)
+                          nsucceed (count succeed)]
+                      (when-not (= 1 nsucceed)
+                        (if (zero? nsucceed)
+                          (-flatten-errors
+                            (into [:xor] (map -humanize-constraint-violation)
+                                  ng))
+                          (-flatten-errors
+                            (into [:xor] (map #(-humanize-constraint-violation
+                                                 (into [:and]
+                                                       (map (fn [c] [:not c]))
+                                                       %)))
+                                  (comb/combinations (map second succeed) (dec nsucceed)))))))
 
                     (and not? @flat-ks)
                     (str "should not provide key: " (pr-str (first @flat-ks)))

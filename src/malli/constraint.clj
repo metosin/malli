@@ -94,7 +94,6 @@
   "If :contains is a valid constraint, return its key.
   Recognizes symbol/keyword/string sugar for key."
   [constraint constraint-types options]
-  (prn "constraint-types" constraint-types)
   (when (keyword? constraint)
     (when-some [kw-sugar (:keyword-sugar constraint-types)]
       [(conj [:contains] kw-sugar)]
@@ -119,7 +118,6 @@
     (letfn [(-constraint-validator [constraint]
               (let [constraint (-resolve-constraint-sugar constraint constraint-opts options)
                     op (-resolve-op constraint validator-constraint-types options)]
-                (prn "constraint" constraint)
                 (if-some [custom-validator (validators op)]
                   (custom-validator {:constraint constraint
                                      :constraint-opts constraint-opts}

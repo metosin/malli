@@ -1,5 +1,6 @@
 (ns malli.constraint.compound.humanize
-  (:require [malli.error.utils :refer [-flatten-errors]]))
+  (:require [clojure.math.combinatorics :as comb]
+            [malli.error.utils :refer [-flatten-errors]]))
 
 (defn -de-morgan []
   (fn [{:keys [constraint humanize-constraint-violation]} _]
@@ -54,11 +55,30 @@
                                  (keep (comp humanize-constraint-violation second)))
                      results)))))
    :and (fn [{:keys [constraint constraint-validator
-                    humanize-constraint-violation value]} _]
+                     humanize-constraint-violation value]} _]
           (-flatten-errors
             (into [:and] (keep (fn [constraint]
                                  (let [validator (constraint-validator constraint)]
                                    (when-not (validator value)
                                      (humanize-constraint-violation constraint)))))
                   (next constraint))))
-   })
+
+   :xor (fn [{:keys [constraint constraint-validator
+                     humanize-constraint-violation value]} _]
+          (let [rands (subvec constraint 1)
+                results (map #(do [((constraint-validator %) value)
+                                   %])
+                             rands)
+                succeed (filter first results)
+                nsucceed (count succeed)]
+            (when-not (= 1 nsucceed)
+              (if (zero? nsucceed)
+                (-flatten-errors
+                  (into [:xor] (map humanize-constraint-violation)
+                        rands))
+                (-flatten-errors
+                  (into [:xor] (map #(humanize-constraint-violation
+                                       (into [:and]
+                                             (map (fn [c] [:not c]))
+                                             %)))
+                        (comb/combinations (map second succeed) (dec nsucceed)))))))) })

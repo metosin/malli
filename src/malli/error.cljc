@@ -1,5 +1,5 @@
 (ns malli.error
-  (:require [clojure.math.combinatorics :as comb]
+  (:require 
             [clojure.string :as str]
             [malli.constraint :as mc]
             [malli.constraint.char :as mcc]
@@ -157,25 +157,6 @@
                                   (str "should be sorted: index "
                                        i " has " (pr-str v) " but"
                                        " expected " (pr-str s))))))))
-
-                    (= :xor op)
-                    (let [results (map #(vector ((mc/-constraint-validator % type options)
-                                                 value)
-                                                %)
-                                       ng)
-                          succeed (filter first results)
-                          nsucceed (count succeed)]
-                      (when-not (= 1 nsucceed)
-                        (if (zero? nsucceed)
-                          (-flatten-errors
-                            (into [:xor] (map -humanize-constraint-violation)
-                                  ng))
-                          (-flatten-errors
-                            (into [:xor] (map #(-humanize-constraint-violation
-                                                 (into [:and]
-                                                       (map (fn [c] [:not c]))
-                                                       %)))
-                                  (comb/combinations (map second succeed) (dec nsucceed)))))))
 
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))

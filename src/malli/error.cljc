@@ -5,6 +5,7 @@
             [malli.constraint.compound.humanize :as mch-compound]
             [malli.constraint.keyset.humanize :as mch-keyset]
             [malli.constraint.string.humanize :as mch-str]
+            [malli.constraint.sequential.humanize :as mch-seq]
             [malli.constraint.sortable.humanize :as mch-sort]
             [malli.core :as m]
             [malli.error.utils :refer [-flatten-errors]]
@@ -24,6 +25,7 @@
 (defn default-constraint-humanizers []
   (merge (mch-str/humanizers)
          (mch-sort/humanizers)
+         (mch-seq/humanizers)
          (mch-compound/humanizers)
          (mch-keyset/humanizers)))
 
@@ -124,18 +126,6 @@
                                                      " provided "
                                                      i " times"))
                                               freq)))))
-
-                    (and (= :palindrome op) (not @valid?))
-                    (if (or (string? value)
-                            (sequential? value))
-                      "should be a palindrome"
-                      "should be a sequential collection")
-
-                    (and not? (= :palindrome not-child-op) (not @valid?))
-                    (if (or (string? value)
-                            (sequential? value))
-                      "should not be a palindrome"
-                      "should be a sequential collection")
 
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))

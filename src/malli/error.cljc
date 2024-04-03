@@ -156,15 +156,6 @@
                                        i " has " (pr-str v) " but"
                                        " expected " (pr-str s))))))))
 
-                    (and (= :or op) @flat-ks)
-                    (str "should provide at least one key: "
-                         (apply str (interpose " " (map pr-str @flat-ks))))
-
-                    (and (= :and op) @flat-ks)
-                    (let [missing (remove has? @flat-ks)]
-                      (str "should provide key" (if (next missing) "s" "") ": "
-                           (apply str (interpose " " (map pr-str missing)))))
-
                     (= :and op)
                     (-flatten-errors
                       (into [:and]

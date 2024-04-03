@@ -6,7 +6,8 @@
    :iff (fn [{:keys [constraint constraint-validator humanize-constraint-violation
                      value]}
              _]
-          (let [results (map #(do [((constraint-validator %) value) %])
+          (let [results (map #(do [((constraint-validator %) value)
+                                   %])
                              (next constraint))]
             (when-not (apply = (map first results))
               [:xor
@@ -17,4 +18,19 @@
                (-flatten-errors (into [:and] (keep (fn [[valid? constraint]]
                                                      (when valid?
                                                        (humanize-constraint-violation [:not constraint]))))
-                                      results))])))})
+                                      results))])))
+   :implies (fn [{:keys [constraint constraint-validator humanize-constraint-violation
+                         value]}
+                 _]
+              (let [[test-result & results] (map #(do [((constraint-validator %) value)
+                                                       %])
+                                                 (next constraint))]
+                (when (first test-result)
+                  (when-not (apply = true (map first results))
+                    (mapcat (fn [[valid? constraint]]
+                              (when-not valid?
+                                (let [errors (humanize-constraint-violation constraint)]
+                                  (if (string? errors)
+                                    [errors]
+                                    errors))))
+                            results)))))})

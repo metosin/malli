@@ -204,21 +204,6 @@
                             (map #(vector :not %))
                             (nfirst ng)))
 
-                    (= :implies op)
-                    (let [[test-result & results] (map #(vector ((mc/-constraint-validator % type options)
-                                                                 value)
-                                                                %)
-                                                       ng)]
-                      (when (first test-result)
-                        (when-not (apply = true (map first results))
-                          (mapcat (fn [[valid? constraint]]
-                                    (when-not valid?
-                                      (let [errors (-humanize-constraint-violation constraint)]
-                                        (if (string? errors)
-                                          [errors]
-                                          errors))))
-                                  results))))
-
                     (= :disjoint op)
                     (let [ksets ng
                           [has-constraint has-k] (some (fn [i]

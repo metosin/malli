@@ -3,8 +3,8 @@
             [malli.constraint.char :as char]
             [malli.impl.util :as miu]))
 
-(defn -wrap [f] (fn [_ _] f))
-(defn -idempotent [f] (-wrap (fn [s] (= s (f s)))))
+(defn- -wrap [f] (fn [_ _] f))
+(defn- -idempotent [f] (-wrap (fn [s] (= s (f s)))))
 
 (defn validators []
   {:alpha-string (-wrap (fn [s] (every? char/alpha? s)))

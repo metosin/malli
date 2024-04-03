@@ -1,5 +1,8 @@
 (ns malli.constraint
   (:require [clojure.set :as set]
+            [malli.constraint.keyset :as mc-keys]
+            [malli.constraint.number :as mc-num]
+            [malli.constraint.sequential :as mc-seq]
             [malli.constraint.string :as mc-str]
             [malli.constraint.string.validate :as mc-strv]
             [malli.constraint.util :refer [composite-constraint-types
@@ -7,73 +10,14 @@
                                            -generator-types]]
             [malli.impl.util :as miu :refer [-fail!]]))
 
-(def keyset-constraints
-  (let [constraint-types (into {} (map (juxt identity identity))
-                               (concat composite-constraint-types
-                                       ;;TODO :sorted
-                                       [:disjoint :max :min :contains]))
-        generator-constraint-types (-generator-types (keys constraint-types))
-        validator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :any
-                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
-                                       ;;TODO :disjoint :disjoint-keys
-                                       (assoc :max :max-count
-                                              :min :min-count))]
-    {:keyword-sugar :contains
-     :flat-property-keys (into #{} (mapcat -add-gen-key)
-                               #{:not :contains})
-     :nested-property-keys (into #{} (mapcat -add-gen-key)
-                                 (-> composite-constraint-types (disj :not) (conj :disjoint)))
-     :validator-constraint-types validator-constraint-types
-     :generator-constraint-types (into validator-constraint-types
-                                       generator-constraint-types)}))
-
-(def number-constraints
-  (let [constraint-types (into {} (map (juxt identity identity))
-                               (concat composite-constraint-types #{:max :min :< :> :<= :>=}))
-        generator-constraint-types (-generator-types (keys constraint-types))
-        validator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :any
-                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
-                                       (assoc :max :<=
-                                              :min :>=))]
-    {:flat-property-keys (into #{} (mapcat -add-gen-key)
-                               #{:max :min :< :> :<= :>= :not
-                                 ;;TODO
-                                 ;:even? :odd? :pos? :neg? :multiple
-                                 })
-     :nested-property-keys (into #{} (mapcat -add-gen-key)
-                                 (-> composite-constraint-types (disj :not)))
-     :validator-constraint-types validator-constraint-types
-     :generator-constraint-types (into validator-constraint-types
-                                       generator-constraint-types)}))
-
-(def sequential-constraints
-  (let [constraint-types (into {} (map (juxt identity identity))
-                               (concat composite-constraint-types #{:max :min :distinct :sorted}))
-        generator-constraint-types (-generator-types (keys constraint-types))
-        validator-constraint-types (-> constraint-types
-                                       ;; :gen/foo :=> :any
-                                       (into (map (fn [c] [c :any])) (keys generator-constraint-types))
-                                       (assoc :max :max-count
-                                              :min :min-count))]
-    {:flat-property-keys (into #{} (mapcat -add-gen-key)
-                               #{:max :min :distinct :sorted})
-     :generator-constraint-types (into validator-constraint-types
-                                       generator-constraint-types)
-     :validator-constraint-types validator-constraint-types}))
 
 ;; TODO :qualified-keyword + :namespace
 ;; TODO add to options
 (defn schema-constraints []
-  (into {:map keyset-constraints
-         :set keyset-constraints
-         :map-of keyset-constraints
-         :int number-constraints
-         :double number-constraints
-         :vector sequential-constraints
-         :sequential sequential-constraints}
-        (mc-str/schema-constraints)))
+  (merge (mc-seq/schema-constraints)
+         (mc-str/schema-constraints)
+         (mc-num/schema-constraints)
+         (mc-keys/schema-constraints)))
 
 (defn -resolve-op [constraint constraint-types options]
   (let [op (when (vector? constraint)

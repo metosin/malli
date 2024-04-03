@@ -3,7 +3,7 @@
                                            -add-gen-key
                                            -generator-types]]))
 
-(def ^:private string-constraints
+(defn- string-constraints []
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max
                                                                     :min
@@ -89,4 +89,4 @@
      :validator-constraint-types validator-constraint-types}))
 
 (defn schema-constraints []
-  {:string string-constraints})
+  {:string (string-constraints)})

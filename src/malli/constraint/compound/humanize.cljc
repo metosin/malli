@@ -44,4 +44,15 @@
                             results)))))
    [:not :or] (-de-morgan)
    [:not :and] (-de-morgan)
+
+   :or (fn [{:keys [constraint constraint-validator
+                    humanize-constraint-violation value]} _]
+         (let [results (map #(do [((constraint-validator %) value)
+                                  %])
+                            (next constraint))]
+           (when (not-any? first results)
+             (-flatten-errors
+               (into [:or] (comp (remove first)
+                                 (keep (comp humanize-constraint-violation second)))
+                     results)))))
    })

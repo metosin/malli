@@ -167,17 +167,6 @@
                                         (-humanize-constraint-violation constraint)))))
                             ng))
 
-                    (= :or op)
-                    (let [results (map #(vector ((mc/-constraint-validator % type options)
-                                                 value)
-                                                %)
-                                       ng)]
-                      (when (not-any? first results)
-                        (-flatten-errors
-                          (into [:or] (comp (remove first)
-                                            (keep (comp -humanize-constraint-violation second)))
-                                results))))
-
                     (= :xor op)
                     (let [results (map #(vector ((mc/-constraint-validator % type options)
                                                  value)

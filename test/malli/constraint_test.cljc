@@ -78,11 +78,11 @@
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a"})))
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a" :a2 "b"})))
       (is (nil? (m/explain NonEmptyMapGroup {:a1 "a" :a2 "b" :a3 "c"})))
-      (is (= '{:schema [:map {:keyset [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
+      (is (= '{:schema [:map {:or [:a1 :a2]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                :value {}
                :errors ({:path []
                          :in []
-                         :schema [:map {:keyset [[:or :a1 :a2]]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
+                         :schema [:map {:or [:a1 :a2]} [:a1 {:optional true} string?] [:a2 {:optional true} string?]]
                          :value {}
                          :type :malli.core/constraint-violation
                          :message nil})}
@@ -283,13 +283,19 @@
       (is (nil? (m/explain NotGroups {:a1 "a" :a2 "b" :a3 "c"})))
       (is (nil? (m/explain NotGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"})))
       (is (nil? (m/explain NotGroups {:a1 "a" :a2 "b"})))
-      (is (= ["either: 1). should provide key: :a2; or 2). should not provide key: :a3"]
+      (is (= [:or
+              "should provide key: :a2"
+              "should not provide key: :a3"]
              (me/humanize (m/explain NotGroups {:a1 "a" :a3 "c"}))))
-      (is (= ["either: 1). should provide key: :a1; or 2). should not provide key: :a3"]
+      (is (= [:or "should provide key: :a1" "should not provide key: :a3"]
              (me/humanize (m/explain NotGroups {:a2 "b" :a3 "c"}))))
       (is (nil? (m/explain NotGroups {:a1 "a"})))
       (is (nil? (m/explain NotGroups {:a2 "b"})))
-      (is (= ["either: 1). should provide keys: :a1 :a2; or 2). should not provide key: :a3"]
+      (is (= [:or
+              [:and
+               "should provide key: :a1"
+               "should provide key: :a2"]
+              "should not provide key: :a3"]
              (me/humanize (m/explain NotGroups {:a3 "c"})))))))
 
 (def Address

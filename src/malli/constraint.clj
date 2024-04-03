@@ -20,6 +20,7 @@
                                        (assoc :max :max-count
                                               :min :min-count))]
     {:keyword-sugar :contains
+     :flat-property-keys #{:not :contains}
      :nested-property-keys (into #{} (mapcat -add-gen-key)
                                  (-> composite-constraint-types (disj :not) (conj :disjoint)))
      :validator-constraint-types validator-constraint-types

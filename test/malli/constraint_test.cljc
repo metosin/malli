@@ -410,7 +410,6 @@
              [:map {:and [[:contains nil]
                           [:contains []]]}]
              {}))
-
          [:and
           "should provide key: nil"
           "should provide key: []"]))

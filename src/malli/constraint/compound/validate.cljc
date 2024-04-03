@@ -37,5 +37,4 @@
                 (when-not p
                   (miu/-fail! ::missing-implies-condition {:constraint constraint}))
                 #(or (not (p %))
-                     (every? (fn [p] (p %)) ps))))
-   })
+                     (every? (fn [p] (p %)) ps))))})

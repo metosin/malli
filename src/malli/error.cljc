@@ -2,9 +2,11 @@
   (:require [clojure.math.combinatorics :as comb]
             [clojure.string :as str]
             [malli.constraint :as mc]
-            [malli.constraint.string.humanize :as mc-strh]
             [malli.constraint.char :as mcc]
+            [malli.constraint.compound.humanize :as mch-compound]
+            [malli.constraint.string.humanize :as mch-str]
             [malli.core :as m]
+            [malli.error.utils :refer [-flatten-errors]]
             [malli.util :as mu]))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
@@ -19,14 +21,8 @@
 
 ;;TODO add to options
 (defn default-constraint-humanizers []
-  (mc-strh/humanizers))
-
-(defn -flatten-errors [errors]
-  (if (and (vector? errors)
-           (keyword? (first errors))
-           (= 2 (count errors)))
-    (second errors)
-    errors))
+  (merge (mch-str/humanizers)
+         (mch-compound/humanizers)))
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       options]
@@ -57,7 +53,11 @@
                                      humanizer-id)]
                   (humanizer (-> args
                                  (assoc :constraint (if not? not-child constraint)
-                                        :validator validator))
+                                        :validator validator
+                                        ;;TODO expose more arities
+                                        :humanize-constraint-violation -humanize-constraint-violation
+                                        ;;TODO expose more arities
+                                        :constraint-validator #(mc/-constraint-validator % type options)))
                              options)
                   (cond
                     (= :any op) []
@@ -212,22 +212,6 @@
                       (into [({:and :or :or :and} (ffirst ng))]
                             (map #(vector :not %))
                             (nfirst ng)))
-
-                    (= :iff op)
-                    (let [results (map #(vector ((mc/-constraint-validator % type options)
-                                                 value)
-                                                %)
-                                       ng)]
-                      (when-not (apply = (map first results))
-                        [:xor
-                         (-flatten-errors (into [:and] (keep (fn [[valid? constraint]]
-                                                               (when-not valid?
-                                                                 (-humanize-constraint-violation constraint))))
-                                                results))
-                         (-flatten-errors (into [:and] (keep (fn [[valid? constraint]]
-                                                               (when valid?
-                                                                 (-humanize-constraint-violation [:not constraint]))))
-                                                results))]))
 
                     (= :implies op)
                     (let [[test-result & results] (map #(vector ((mc/-constraint-validator % type options)

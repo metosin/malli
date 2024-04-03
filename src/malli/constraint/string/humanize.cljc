@@ -52,4 +52,12 @@
    [:not :blank-string] (-msg-or-validates "should not be blank")
    :non-blank-string (-msg-or-validates "should not be blank")
    [:not :non-blank-string] (-msg-or-validates "should be blank")
-   })
+   :escapes-string (fn [{[_ m] :constraint :keys [value]} _]
+                     (keep (fn [c]
+                             (when (contains? m c)
+                               (str "should escape character " (pr-str c))))
+                           value))
+   [:not :escapes-string] (fn [{[_ m] :constraint :keys [validator value]} _]
+                            (when-not (validator value)
+                              (str "should include at least one unescaped character:"
+                                   (apply str (interleave " " (map pr-str (sort (keys m))))))))})

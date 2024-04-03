@@ -3999,4 +3999,14 @@
            (me/humanize (m/explain [:string {:not [:non-blank]}] "a"))))
     (is (= ["invalid type"]
            (me/humanize (m/explain [:string {:non-blank true}] nil)))))
-)
+  (testing ":escapes"
+    (is (m/validate [:string {:escapes {\c "b"}}] "b"))
+    (is (not (m/validate [:string {:escapes {\c "b"}}] "c")))
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli.constraint.string.validate/escape-constraint-map-cannot-overlap-keys-vals"
+          (m/validator [:string {:escapes {\c "c"}}])))
+    (is (= ["should escape character \\c"]
+           (me/humanize (m/explain [:string {:escapes {\c "b"}}] "c"))))
+    (is (= ["should include at least one unescaped character: \\c"]
+           (me/humanize (m/explain [:string {:not [:escapes {\c "b"}]}] "b"))))))

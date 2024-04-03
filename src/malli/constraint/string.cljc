@@ -25,6 +25,7 @@
                                                                     :trim-newline
                                                                     :blank
                                                                     :non-blank
+                                                                    :escapes
                                                                     #_:starts-with
                                                                     #_:ends-with
                                                                     #_:upper-case
@@ -35,7 +36,6 @@
                                                                                        [:max-count 1]
                                                                                        [:min-count 10]]]
                                                                     #_[:includes "foo"]
-                                                                    #_[:gen/escapes {\a "__a__"}]
                                                                     #_[:index-of "foo" [:< 7]]
                                                                     #_[:last-index-of "foo" [:< 7]]
                                                                     #_:palindrome
@@ -58,6 +58,7 @@
                                               :trim-newline :trim-newline-string
                                               :blank :blank-string
                                               :non-blank :non-blank-string
+                                              :escapes :escapes-string
                                               :re :re-string))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max
@@ -78,7 +79,8 @@
                                  :trimr
                                  :trim-newline
                                  :blank
-                                 :non-blank})
+                                 :non-blank
+                                 :escapes})
      :nested-property-keys (disj composite-constraint-types :not)
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)

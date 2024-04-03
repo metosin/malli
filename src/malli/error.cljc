@@ -197,9 +197,6 @@
                                                        %)))
                                   (comb/combinations (map second succeed) (dec nsucceed)))))))
 
-                    (and not? @flat-ks)
-                    (str "should not provide key: " (pr-str (first @flat-ks)))
-
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))
 

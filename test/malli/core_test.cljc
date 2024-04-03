@@ -3912,4 +3912,48 @@
     (is (m/validate [:string {:palindrome true}] "abcba"))
     (is (not (m/validate [:string {:palindrome true}] "abcbab")))
     (is (= ["should be a palindrome"]
-           (me/humanize (m/explain [:string {:palindrome true}] "[]"))))))
+           (me/humanize (m/explain [:string {:palindrome true}] "[]"))
+           (me/humanize (m/explain [:string {:palindrome true}] "abab"))))
+    (is (= ["should not be a palindrome"]
+           (me/humanize (m/explain [:string {:not [:palindrome]}] ""))
+           (me/humanize (m/explain [:string {:not [:palindrome]}] "ababa")))))
+  (testing ":trim"
+    (is (m/validate [:string {:trim true}] "[]"))
+    (is (not (m/validate [:string {:trim true}] "  a")))
+    (is (not (m/validate [:string {:trim true}] "a  ")))
+    (is (not (m/validate [:string {:trim true}] " a ")))
+    (is (= ["should not have leading whitespace"]
+           (me/humanize (m/explain [:string {:trim true}] " a"))))
+    (is (= ["should not have trailing whitespace"]
+           (me/humanize (m/explain [:string {:trim true}] "a "))))
+    (is (= ["should not have leading whitespace"
+            "should not have trailing whitespace"]
+           (me/humanize (m/explain [:string {:trim true}] " a "))))
+    (is (= ["should have leading or trailing whitespace"]
+           (me/humanize (m/explain [:string {:not [:trim]}] ""))
+           (me/humanize (m/explain [:string {:not [:trim]}] "abc")))))
+  (testing ":triml"
+    (is (m/validate [:string {:triml true}] "[]"))
+    (is (not (m/validate [:string {:triml true}] "  a")))
+    (is (m/validate [:string {:triml true}] "a  "))
+    (is (not (m/validate [:string {:triml true}] " a ")))
+    (is (= ["should not have leading whitespace"]
+           (me/humanize (m/explain [:string {:triml true}] " a"))))
+    (is (= ["should not have leading whitespace"]
+           (me/humanize (m/explain [:string {:triml true}] " a "))))
+    (is (= ["should have leading whitespace"]
+           (me/humanize (m/explain [:string {:not [:triml]}] ""))
+           (me/humanize (m/explain [:string {:not [:triml]}] "abc"))
+           (me/humanize (m/explain [:string {:not [:triml]}] "abc ")))))
+  (testing ":trimr"
+    (is (m/validate [:string {:trimr true}] "[]"))
+    (is (m/validate [:string {:trimr true}] "  a"))
+    (is (not (m/validate [:string {:trimr true}] "a  ")))
+    (is (not (m/validate [:string {:trimr true}] " a ")))
+    (is (= ["should not have trailing whitespace"]
+           (me/humanize (m/explain [:string {:trimr true}] "a "))))
+    (is (= ["should not have trailing whitespace"]
+           (me/humanize (m/explain [:string {:trimr true}] " a "))))
+    (is (= ["should have trailing whitespace"]
+           (me/humanize (m/explain [:string {:not [:trimr]}] "")))))
+)

@@ -1,5 +1,11 @@
 (ns malli.constraint.string.humanize
-  (:require [malli.constraint.char :as mcc]))
+  (:require [clojure.string :as str]
+            [malli.constraint.char :as mcc]))
+
+(defn -msg-or-pred [msg pred]
+  (fn [{:keys [value]} _options]
+    (when-not (pred value)
+      msg)))
 
 (defn -msg-or-validates [msg]
   (fn [{:keys [validator value]} _options]
@@ -28,4 +34,15 @@
    :numeric-string (-msg-check-each "should be numeric" mcc/numeric?)
    [:not :numeric-string] (-msg-or-validates "should contain a non-numeric character")
    :non-numeric-string (-msg-check-each "should not contain numeric characters" (complement mcc/numeric?))
-   [:not :non-numeric-string] (-msg-or-validates "should contain a numeric character")})
+   [:not :non-numeric-string] (-msg-or-validates "should contain a numeric character")
+   
+   :trim-string (fn [{:keys [value]} _options]
+                  (cond-> []
+                    (not= value (str/triml value)) (conj "should not have leading whitespace")
+                    (not= value (str/trimr value)) (conj "should not have trailing whitespace")))
+   [:not :trim-string] (-msg-or-pred "should have leading or trailing whitespace" #(not= % (str/trim %)))
+
+   :triml-string (-msg-or-validates "should not have leading whitespace")
+   [:not :triml-string] (-msg-or-validates "should have leading whitespace")
+   :trimr-string (-msg-or-validates "should not have trailing whitespace")
+   [:not :trimr-string] (-msg-or-validates "should have trailing whitespace")})

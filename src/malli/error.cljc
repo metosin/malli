@@ -42,11 +42,13 @@
                         not-child-op (some-> not-child (mc/-resolve-op validator-constraint-types options))
                         validator (let [v (delay (mc/-constraint-validator constraint type options))]
                                     (fn [x] (@v x)))
-                        valid? (delay (validator value))]
+                        valid? (delay (validator value))
+                        humanizer-id (if not?
+                                       [:not not-child-op]
+                                       op)]
+                    (prn "humanizer-id" humanizer-id)
                     (if-some [humanizer ((default-constraint-humanizers)
-                                         (if not?
-                                           [:not not-child-op]
-                                           op))]
+                                         humanizer-id)]
                       (humanizer (-> args
                                      (assoc :constraint (if not? not-child constraint)
                                             :validator validator))
@@ -113,6 +115,12 @@
                         (if (or (string? value)
                                 (sequential? value))
                           "should be a palindrome"
+                          "should be a sequential collection")
+
+                        (and not? (= :palindrome not-child-op) (not @valid?))
+                        (if (or (string? value)
+                                (sequential? value))
+                          "should not be a palindrome"
                           "should be a sequential collection")
 
                         (and (= :sorted op) (not @valid?))

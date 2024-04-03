@@ -19,9 +19,9 @@
                                                                     :sorted
                                                                     :distinct
                                                                     :palindrome
-                                                                    #_:trim
-                                                                    #_:triml
-                                                                    #_:trimr
+                                                                    :trim
+                                                                    :triml
+                                                                    :trimr
                                                                     #_:trim-newline
                                                                     #_:blank
                                                                     #_:non-blank
@@ -52,6 +52,9 @@
                                               :non-numeric :non-numeric-string
                                               :alpha :alpha-string
                                               :non-alpha :non-alpha-string
+                                              :trim :trim-string
+                                              :triml :triml-string
+                                              :trimr :trimr-string
                                               :re :re-string))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max
@@ -66,7 +69,10 @@
                                  :not
                                  :sorted
                                  :distinct
-                                 :palindrome})
+                                 :palindrome
+                                 :trim
+                                 :triml
+                                 :trimr})
      :nested-property-keys (disj composite-constraint-types :not)
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)

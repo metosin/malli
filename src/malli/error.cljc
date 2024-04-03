@@ -68,37 +68,6 @@
                              options)
                   (cond
                     (= :any op) []
-
-                    (= :min-count op) (let [cnt (count value)
-                                            min (first ng)]
-                                        (when-not (<= min cnt)
-                                          (str "should be at least " min
-                                               (if (string? value)
-                                                 " character"
-                                                 " element")
-                                               (when-not (= 1 min) "s")
-                                               ", given " cnt)))
-
-                    (and not? (= :max-count not-child-op))
-                    (let [cnt (count value)
-                          max (second not-child)]
-                      (when (<= cnt max)
-                        (str "should be more than " max
-                             (if (string? value)
-                               " character"
-                               " element")
-                             (when-not (= 1 max) "s")
-                             ", given " cnt)))
-                    (= :max-count op) (let [cnt (count value)
-                                            max (first ng)]
-                                        (when-not (<= cnt max)
-                                          (str "should be at most " max
-                                               (if (string? value)
-                                                 " character"
-                                                 " element")
-                                               (when-not (= 1 max) "s")
-                                               ", given " cnt)))
-
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))
 

@@ -158,15 +158,6 @@
                                        i " has " (pr-str v) " but"
                                        " expected " (pr-str s))))))))
 
-                    (= :and op)
-                    (-flatten-errors
-                      (into [:and]
-                            (keep (fn [constraint]
-                                    (let [validator (mc/-constraint-validator constraint type options)]
-                                      (when-not (validator value)
-                                        (-humanize-constraint-violation constraint)))))
-                            ng))
-
                     (= :xor op)
                     (let [results (map #(vector ((mc/-constraint-validator % type options)
                                                  value)

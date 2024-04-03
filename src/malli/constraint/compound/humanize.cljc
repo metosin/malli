@@ -12,8 +12,7 @@
 (defn humanizers []
   {;;TODO [:not :iff]
    :iff (fn [{:keys [constraint constraint-validator humanize-constraint-violation
-                     value]}
-             _]
+                     value]} _]
           (let [results (map #(do [((constraint-validator %) value)
                                    %])
                              (next constraint))]
@@ -28,8 +27,7 @@
                                                        (humanize-constraint-violation [:not constraint]))))
                                       results))])))
    :implies (fn [{:keys [constraint constraint-validator humanize-constraint-violation
-                         value]}
-                 _]
+                         value]} _]
               (let [[test-result & results] (map #(do [((constraint-validator %) value)
                                                        %])
                                                  (next constraint))]
@@ -55,4 +53,12 @@
                (into [:or] (comp (remove first)
                                  (keep (comp humanize-constraint-violation second)))
                      results)))))
+   :and (fn [{:keys [constraint constraint-validator
+                    humanize-constraint-violation value]} _]
+          (-flatten-errors
+            (into [:and] (keep (fn [constraint]
+                                 (let [validator (constraint-validator constraint)]
+                                   (when-not (validator value)
+                                     (humanize-constraint-violation constraint)))))
+                  (next constraint))))
    })

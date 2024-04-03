@@ -18,42 +18,42 @@
 
 (def NonEmptyMapGroup
   [:map
-   {:keyset [[:or :a1 :a2]]}
+   {:or [:a1 :a2]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]])
 
 (def UserPwGroups
   [:map
-   {:keyset [[:or :secret [:and :user :pass]]
-             [:disjoint [:secret] [:pass :user]]]}
+   {:and [[:or :secret [:and :user :pass]]
+          [:disjoint [:secret] [:pass :user]]]}
    [:secret {:optional true} string?]
    [:user {:optional true} string?]
    [:pass {:optional true} string?]])
 
 (def IffGroups
   [:map
-   {:keyset [[:iff :a1 :a2 :a3]]}
+   {:iff [:a1 :a2 :a3]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def ImpliesGroups
   [:map
-   {:keyset [[:implies :a1 :a2 :a3]]}
+   {:implies [:a1 :a2 :a3]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def XOrGroups
   [:map
-   {:keyset [[:xor :a1 :a2 :a3]]}
+   {:xor [:a1 :a2 :a3]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
 
 (def FlatNotGroup
   [:map
-   {:keyset [[:not :a3]]}
+   {:not :a3}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])
@@ -61,7 +61,8 @@
 ;; equivalent to [:implies :a3 :a1 :a2]
 (def NotGroups
   [:map
-   {:keyset [[:or [:and :a1 :a2] [:not :a3]]]}
+   {:or [[:and :a1 :a2]
+         [:not :a3]]}
    [:a1 {:optional true} string?]
    [:a2 {:optional true} string?]
    [:a3 {:optional true} string?]])

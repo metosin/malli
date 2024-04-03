@@ -3,6 +3,7 @@
             [malli.constraint :as mc]
             [malli.constraint.char :as mcc]
             [malli.constraint.compound.humanize :as mch-compound]
+            [malli.constraint.countable.humanize :as mch-count]
             [malli.constraint.keyset.humanize :as mch-keyset]
             [malli.constraint.string.humanize :as mch-str]
             [malli.constraint.sequential.humanize :as mch-seq]
@@ -27,6 +28,7 @@
          (mch-sort/humanizers)
          (mch-seq/humanizers)
          (mch-compound/humanizers)
+         (mch-count/humanizers)
          (mch-keyset/humanizers)))
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
@@ -66,16 +68,6 @@
                              options)
                   (cond
                     (= :any op) []
-                    (and not? (= :min-count not-child-op))
-                    (let [cnt (count value)
-                          min (second not-child)]
-                      (when (<= min cnt)
-                        (str "should be less than " min
-                             (if (string? value)
-                               " character"
-                               " element")
-                             (when-not (= 1 min) "s")
-                             ", given " cnt)))
 
                     (= :min-count op) (let [cnt (count value)
                                             min (first ng)]
@@ -106,20 +98,6 @@
                                                  " element")
                                                (when-not (= 1 max) "s")
                                                ", given " cnt)))
-
-                    (and (= :distinct op) (true? (first ng))
-                         (not (validator value)))
-                    (let [freq (into {}
-                                     (remove (comp #(= 1 %) val))
-                                     (frequencies value))]
-                      (str "should be distinct: "
-                           (apply str
-                                  (interpose
-                                    ", " (map (fn [[v i]]
-                                                (str (pr-str v)
-                                                     " provided "
-                                                     i " times"))
-                                              freq)))))
 
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))

@@ -37,10 +37,11 @@
         (cond-> op
           (not (identical? op op')) recur)))))
 
-(defn -resolve-constraint-sugar [constraint constraint-opts options]
-  (if-some [kw-sugar (when (keyword? constraint)
-                       (:keyword-sugar constraint-opts))]
-    (conj [kw-sugar] constraint)
+(defn -resolve-constraint-sugar [constraint {:keys [keyword-sugar]} options]
+  (if (keyword? constraint)
+    (if keyword-sugar
+      (conj [keyword-sugar] constraint)
+      [constraint])
     constraint))
 
 (defn -contains-constraint-key
@@ -79,7 +80,7 @@
               (let [constraint (-resolve-constraint-sugar constraint constraint-opts options)
                     op (-resolve-op constraint validator-constraint-types options)]
                 (if-some [custom-validator (validators op)]
-                  (custom-validator {:constraint constraint
+                  (custom-validator {:constraint (if (= :any op) [:any] constraint)
                                      :constraint-opts constraint-opts
                                      ;;TODO other arities
                                      :constraint-validator (fn ([constraint] (-constraint-validator constraint)))}

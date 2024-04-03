@@ -1,11 +1,11 @@
 (ns malli.error
-  (:require 
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [malli.constraint :as mc]
             [malli.constraint.char :as mcc]
             [malli.constraint.compound.humanize :as mch-compound]
             [malli.constraint.keyset.humanize :as mch-keyset]
             [malli.constraint.string.humanize :as mch-str]
+            [malli.constraint.sortable.humanize :as mch-sort]
             [malli.core :as m]
             [malli.error.utils :refer [-flatten-errors]]
             [malli.util :as mu]))
@@ -23,6 +23,7 @@
 ;;TODO add to options
 (defn default-constraint-humanizers []
   (merge (mch-str/humanizers)
+         (mch-sort/humanizers)
          (mch-compound/humanizers)
          (mch-keyset/humanizers)))
 
@@ -135,28 +136,6 @@
                             (sequential? value))
                       "should not be a palindrome"
                       "should be a sequential collection")
-
-                    (and (= :sorted op) (not @valid?))
-                    (if (map? value)
-                      "should be a sorted map"
-                      (if (set? value)
-                        "should be a sorted set"
-                        (if-not (or (string? value)
-                                    (sequential? value))
-                          "should be sortable"
-                          (let [sv (delay (sort value))]
-                            (or (try @sv
-                                     nil
-                                     (catch Exception _
-                                       "should be sorted but elements are not comparable"))
-                                (let [[i v s] (some identity
-                                                    (map (fn [i v s]
-                                                           (when (not= v s)
-                                                             [i v s]))
-                                                         (range) value @sv))]
-                                  (str "should be sorted: index "
-                                       i " has " (pr-str v) " but"
-                                       " expected " (pr-str s))))))))
 
                     :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))

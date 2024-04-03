@@ -20,7 +20,8 @@
                                        (assoc :max :max-count
                                               :min :min-count))]
     {:keyword-sugar :contains
-     :flat-property-keys #{:not :contains}
+     :flat-property-keys (into #{} (mapcat -add-gen-key)
+                               #{:not :contains})
      :nested-property-keys (into #{} (mapcat -add-gen-key)
                                  (-> composite-constraint-types (disj :not) (conj :disjoint)))
      :validator-constraint-types validator-constraint-types
@@ -128,7 +129,6 @@
                     :contains (let [[k :as all] (subvec constraint 1)
                                     _ (when-not (= 1 (count all))
                                         (-fail! ::contains-constraint-takes-one-child {:constraint constraint}))]
-                                (prn "contains validator" (pr-str k))
                                 #(contains? % k))
                     :sorted (let [[v :as all] (subvec constraint 1)
                                   _ (when-not (#{[] [true]} all)
@@ -220,11 +220,11 @@
 (defn -constraint-from-properties [properties constraint-opts options]
   (let [{:keys [flat-property-keys nested-property-keys]} (->constraint-opts constraint-opts)]
     (when-some [cs (-> []
-                       (into (keep #(some->> (get properties %)
-                                             (into [%])))
+                       (into (keep #(when-some [[_ v] (find properties %)]
+                                      (into [%] v)))
                              nested-property-keys)
-                       (into (keep #(some->> (get properties %)
-                                             (conj [%])))
+                       (into (keep #(when-some [[_ v] (find properties %)]
+                                      (conj [%] v)))
                              flat-property-keys)
                        not-empty)]
       (if (= 1 (count cs))

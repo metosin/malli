@@ -174,11 +174,14 @@
              (me/humanize (m/explain IffGroups {:a1 "a" :a3 "c"}))))
       (is (= ["should provide key: :a1"]
              (me/humanize (m/explain IffGroups {:a2 "b" :a3 "c"}))))
-      (is (= ["should provide keys: :a2 :a3"]
+      (is (= ["should provide key: :a2"
+              "should provide key: :a3"]
              (me/humanize (m/explain IffGroups {:a1 "a"}))))
-      (is (= ["should provide keys: :a1 :a3"]
+      (is (= ["should provide key: :a1"
+              "should provide key: :a3"]
              (me/humanize (m/explain IffGroups {:a2 "b"}))))
-      (is (= ["should provide keys: :a1 :a2"]
+      (is (= ["should provide key: :a1"
+              "should provide key: :a2"]
              (me/humanize (m/explain IffGroups {:a3 "c"}))))))
   (testing ":implies"
     (testing "validate"

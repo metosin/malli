@@ -22,7 +22,7 @@
 
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       options]
-  (let [{:keys [validator-constraint-types]} (mc/->constraint-opts (m/type schema))]
+  (let [{:keys [validator-constraint-types] :as constraint-opts} (mc/->constraint-opts (m/type schema))]
     (letfn [(has? [k] (contains? value k))
             (->flat-ks [constraint] (let [ks (map #(mc/-contains-constraint-key
                                                      % validator-constraint-types options)
@@ -30,194 +30,204 @@
                                       (when (every? identity ks)
                                         (map first ks))))
             (-humanize-constraint-violation [constraint]
-              (let [op (mc/-resolve-op constraint validator-constraint-types options)]
-                (if-some [[k] (mc/-contains-constraint-key constraint validator-constraint-types options)]
-                  (str "should provide key: " (pr-str k))
-                  (let [flat-ks (delay (->flat-ks constraint))
-                        ng (subvec constraint 1)
-                        type (m/type schema)
-                        not? (= :not op)
-                        not-child (when (and not? (vector? (first ng)))
-                                    (first ng))
-                        not-child-op (some-> not-child (mc/-resolve-op validator-constraint-types options))
-                        validator (let [v (delay (mc/-constraint-validator constraint type options))]
-                                    (fn [x] (@v x)))
-                        valid? (delay (validator value))
-                        humanizer-id (if not?
-                                       [:not not-child-op]
-                                       op)]
-                    (prn "humanizer-id" humanizer-id)
-                    (if-some [humanizer ((default-constraint-humanizers)
-                                         humanizer-id)]
-                      (humanizer (-> args
-                                     (assoc :constraint (if not? not-child constraint)
-                                            :validator validator))
-                                 options)
-                      (cond
-                        (= :any op) []
+              (let [constraint (mc/-resolve-constraint-sugar constraint constraint-opts options)
+                    op (mc/-resolve-op constraint validator-constraint-types options)
+                    flat-ks (delay (->flat-ks constraint))
+                    ng (subvec constraint 1)
+                    type (m/type schema)
+                    not? (= :not op)
+                    not-child (when (and not? (vector? (first ng)))
+                                (first ng))
+                    not-child-op (some-> not-child (mc/-resolve-op validator-constraint-types options))
+                    validator (let [v (delay (mc/-constraint-validator constraint type options))]
+                                (fn [x] (@v x)))
+                    valid? (delay (validator value))
+                    humanizer-id (if not?
+                                   [:not not-child-op]
+                                   op)]
+                (if-some [humanizer ((default-constraint-humanizers)
+                                     humanizer-id)]
+                  (humanizer (-> args
+                                 (assoc :constraint (if not? not-child constraint)
+                                        :validator validator))
+                             options)
+                  (cond
+                    (= :any op) []
 
-                        (and not? (= :min-count not-child-op))
-                        (let [cnt (count value)
-                              min (second not-child)]
-                          (when (<= min cnt)
-                            (str "should be less than " min
-                                 (if (string? value)
-                                   " character"
-                                   " element")
-                                 (when-not (= 1 min) "s")
-                                 ", given " cnt)))
+                    (= :contains op) (str "should provide key: " (pr-str (second constraint)))
 
-                        (= :min-count op) (let [cnt (count value)
-                                                min (first ng)]
-                                            (when-not (<= min cnt)
-                                              (str "should be at least " min
-                                                   (if (string? value)
-                                                     " character"
-                                                     " element")
-                                                   (when-not (= 1 min) "s")
-                                                   ", given " cnt)))
+                    (and not? (= :min-count not-child-op))
+                    (let [cnt (count value)
+                          min (second not-child)]
+                      (when (<= min cnt)
+                        (str "should be less than " min
+                             (if (string? value)
+                               " character"
+                               " element")
+                             (when-not (= 1 min) "s")
+                             ", given " cnt)))
 
-                        (and not? (= :max-count not-child-op))
-                        (let [cnt (count value)
-                              max (second not-child)]
-                          (when (<= cnt max)
-                            (str "should be more than " max
-                                 (if (string? value)
-                                   " character"
-                                   " element")
-                                 (when-not (= 1 max) "s")
-                                 ", given " cnt)))
-                        (= :max-count op) (let [cnt (count value)
-                                                max (first ng)]
-                                            (when-not (<= cnt max)
-                                              (str "should be at most " max
-                                                   (if (string? value)
-                                                     " character"
-                                                     " element")
-                                                   (when-not (= 1 max) "s")
-                                                   ", given " cnt)))
+                    (= :min-count op) (let [cnt (count value)
+                                            min (first ng)]
+                                        (when-not (<= min cnt)
+                                          (str "should be at least " min
+                                               (if (string? value)
+                                                 " character"
+                                                 " element")
+                                               (when-not (= 1 min) "s")
+                                               ", given " cnt)))
 
-                        (and (= :distinct op) (true? (first ng))
-                             (not (validator value)))
-                        (let [freq (into {}
-                                         (remove (comp #(= 1 %) val))
-                                         (frequencies value))]
-                          (str "should be distinct: "
-                               (apply str
-                                      (interpose
-                                        ", " (map (fn [[v i]]
-                                                    (str (pr-str v)
-                                                         " provided "
-                                                         i " times"))
-                                                  freq)))))
+                    (and not? (= :max-count not-child-op))
+                    (let [cnt (count value)
+                          max (second not-child)]
+                      (when (<= cnt max)
+                        (str "should be more than " max
+                             (if (string? value)
+                               " character"
+                               " element")
+                             (when-not (= 1 max) "s")
+                             ", given " cnt)))
+                    (= :max-count op) (let [cnt (count value)
+                                            max (first ng)]
+                                        (when-not (<= cnt max)
+                                          (str "should be at most " max
+                                               (if (string? value)
+                                                 " character"
+                                                 " element")
+                                               (when-not (= 1 max) "s")
+                                               ", given " cnt)))
 
-                        (and (= :palindrome op) (not @valid?))
-                        (if (or (string? value)
-                                (sequential? value))
-                          "should be a palindrome"
-                          "should be a sequential collection")
+                    (and (= :distinct op) (true? (first ng))
+                         (not (validator value)))
+                    (let [freq (into {}
+                                     (remove (comp #(= 1 %) val))
+                                     (frequencies value))]
+                      (str "should be distinct: "
+                           (apply str
+                                  (interpose
+                                    ", " (map (fn [[v i]]
+                                                (str (pr-str v)
+                                                     " provided "
+                                                     i " times"))
+                                              freq)))))
 
-                        (and not? (= :palindrome not-child-op) (not @valid?))
-                        (if (or (string? value)
-                                (sequential? value))
-                          "should not be a palindrome"
-                          "should be a sequential collection")
+                    (and (= :palindrome op) (not @valid?))
+                    (if (or (string? value)
+                            (sequential? value))
+                      "should be a palindrome"
+                      "should be a sequential collection")
 
-                        (and (= :sorted op) (not @valid?))
-                        (if (map? value)
-                          "should be a sorted map"
-                          (if (set? value)
-                            "should be a sorted set"
-                            (if-not (or (string? value)
-                                        (sequential? value))
-                              "should be sortable"
-                              (let [sv (delay (sort value))]
-                                (or (try @sv
-                                         nil
-                                         (catch Exception _
-                                           "should be sorted but elements are not comparable"))
-                                    (let [[i v s] (some identity
-                                                        (map (fn [i v s]
-                                                               (when (not= v s)
-                                                                 [i v s]))
-                                                             (range) value @sv))]
-                                      (str "should be sorted: index "
-                                           i " has " (pr-str v) " but"
-                                           " expected " (pr-str s))))))))
+                    (and not? (= :palindrome not-child-op) (not @valid?))
+                    (if (or (string? value)
+                            (sequential? value))
+                      "should not be a palindrome"
+                      "should be a sequential collection")
 
-                        (and (= :or op) @flat-ks)
-                        (str "should provide at least one key: "
-                             (apply str (interpose " " (map pr-str @flat-ks))))
+                    (and (= :sorted op) (not @valid?))
+                    (if (map? value)
+                      "should be a sorted map"
+                      (if (set? value)
+                        "should be a sorted set"
+                        (if-not (or (string? value)
+                                    (sequential? value))
+                          "should be sortable"
+                          (let [sv (delay (sort value))]
+                            (or (try @sv
+                                     nil
+                                     (catch Exception _
+                                       "should be sorted but elements are not comparable"))
+                                (let [[i v s] (some identity
+                                                    (map (fn [i v s]
+                                                           (when (not= v s)
+                                                             [i v s]))
+                                                         (range) value @sv))]
+                                  (str "should be sorted: index "
+                                       i " has " (pr-str v) " but"
+                                       " expected " (pr-str s))))))))
 
-                        (and (= :and op) @flat-ks)
-                        (let [missing (remove has? @flat-ks)]
-                          (str "should provide key" (if (next missing) "s" "") ": "
-                               (apply str (interpose " " (map pr-str missing)))))
+                    (and (= :or op) @flat-ks)
+                    (str "should provide at least one key: "
+                         (apply str (interpose " " (map pr-str @flat-ks))))
 
-                        (= :and op)
-                        (mapcat (fn [constraint]
-                                  (let [validator (mc/-constraint-validator constraint type options)]
-                                    (when-not (validator value)
-                                      (let [msg (-humanize-constraint-violation constraint)]
-                                        (if (string? msg)
-                                          [msg]
-                                          msg)))))
-                                ng)
+                    (and (= :and op) @flat-ks)
+                    (let [missing (remove has? @flat-ks)]
+                      (str "should provide key" (if (next missing) "s" "") ": "
+                           (apply str (interpose " " (map pr-str missing)))))
 
-                        (and (= :xor op) @flat-ks)
-                        (let [provided (or (not-empty (filterv has? @flat-ks))
-                                           @flat-ks)]
-                          (str "should provide exactly one of the following keys: "
-                               (apply str (interpose " " (map pr-str provided)))))
+                    (= :and op)
+                    (mapcat (fn [constraint]
+                              (let [validator (mc/-constraint-validator constraint type options)]
+                                (when-not (validator value)
+                                  (let [msg (-humanize-constraint-violation constraint)]
+                                    (if (string? msg)
+                                      [msg]
+                                      msg)))))
+                            ng)
 
-                        (and (#{:xor :or} op)
-                             (every? #(or (mc/-contains-constraint-key % validator-constraint-types options)
-                                          (and (vector? %)
-                                               (#{:and :not :implies :iff} (first %))
-                                               (->flat-ks %)))
-                                     ng))
-                        (str (case op
-                               :or "either: "
-                               :xor "exactly one of: ")
-                             (apply str
-                                    (interpose "; or "
-                                               (map-indexed (fn [i flat-child]
-                                                              (str (inc i) "). "
-                                                                   (-humanize-constraint-violation flat-child)))
-                                                            ng))))
+                    (and (= :xor op) @flat-ks)
+                    (let [provided (or (not-empty (filterv has? @flat-ks))
+                                       @flat-ks)]
+                      (str "should provide exactly one of the following keys: "
+                           (apply str (interpose " " (map pr-str provided)))))
 
-                        (and not? @flat-ks)
-                        (str "should not provide key: " (pr-str (first @flat-ks)))
+                    (and (#{:xor :or} op)
+                         (every? #(or (mc/-contains-constraint-key % validator-constraint-types options)
+                                      (and (vector? %)
+                                           (#{:and :not :implies :iff} (first %))
+                                           (->flat-ks %)))
+                                 ng))
+                    (str (case op
+                           :or "either: "
+                           :xor "exactly one of: ")
+                         (apply str
+                                (interpose "; or "
+                                           (map-indexed (fn [i flat-child]
+                                                          (str (inc i) "). "
+                                                               (-humanize-constraint-violation flat-child)))
+                                                        ng))))
 
-                        (and not? (#{:and :or} not-child-op))
-                        (-humanize-constraint-violation
-                          (into [({:and :or :or :and} (ffirst ng))]
-                                (map #(vector :not %))
-                                (nfirst ng)))
+                    (and not? @flat-ks)
+                    (str "should not provide key: " (pr-str (first @flat-ks)))
 
-                        (and (= :iff op) @flat-ks)
-                        (let [missing (remove has? @flat-ks)]
-                          (str "should provide key" (if (next missing) "s" "") ": "
-                               (apply str (interpose " " (map pr-str missing)))))
+                    (and not? (#{:and :or} not-child-op))
+                    (-humanize-constraint-violation
+                      (into [({:and :or :or :and} (ffirst ng))]
+                            (map #(vector :not %))
+                            (nfirst ng)))
 
-                        (and (= :implies op) @flat-ks)
-                        (let [missing (remove has? (next @flat-ks))]
-                          (str "should provide key" (if (next missing) "s" "") ": "
-                               (apply str (interpose " " (map pr-str missing)))))
+                    (= :iff op)
+                    (let [results (map #(vector ((mc/-constraint-validator % type options)
+                                                 value)
+                                                %)
+                                       ng)]
+                      (when-not (apply = (map first results))
+                        ;; heuristic: assume if any clauses are true, the rest should be
+                        (mapcat (fn [[valid? constraint]]
+                                  (when-not valid?
+                                    (let [errors (-humanize-constraint-violation constraint)]
+                                      (if (string? errors)
+                                        [errors]
+                                        errors))))
+                                results)))
 
-                        (= :disjoint op)
-                        (let [ksets ng
-                              [has-constraint has-k] (some (fn [i]
-                                                             (when-some [[has-k] (not-empty
-                                                                                   (filter has? (nth ksets i)))]
-                                                               [i has-k]))
-                                                           (range (count ksets)))
-                              violating-ks (filterv has?
-                                                    (apply concat (subvec ksets (inc has-constraint))))]
-                          (str "should not combine key " (pr-str has-k)
-                               " with key" (if (next violating-ks) "s" "") ": "
-                               (apply str (interpose " " (map pr-str violating-ks)))))
-                        :else (str "should satisfy constraint: " (pr-str constraint))))))))]
+                    (and (= :implies op) @flat-ks)
+                    (let [missing (remove has? (next @flat-ks))]
+                      (str "should provide key" (if (next missing) "s" "") ": "
+                           (apply str (interpose " " (map pr-str missing)))))
+
+                    (= :disjoint op)
+                    (let [ksets ng
+                          [has-constraint has-k] (some (fn [i]
+                                                         (when-some [[has-k] (not-empty
+                                                                               (filter has? (nth ksets i)))]
+                                                           [i has-k]))
+                                                       (range (count ksets)))
+                          violating-ks (filterv has?
+                                                (apply concat (subvec ksets (inc has-constraint))))]
+                      (str "should not combine key " (pr-str has-k)
+                           " with key" (if (next violating-ks) "s" "") ": "
+                           (apply str (interpose " " (map pr-str violating-ks)))))
+                    :else (str "should satisfy constraint: " (pr-str constraint))))))]
       (-humanize-constraint-violation constraint))))
 
 (def default-errors

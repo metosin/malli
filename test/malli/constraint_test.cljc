@@ -112,7 +112,9 @@
                :type :malli.core/constraint-violation
                :message nil}]
             (:errors (with-schema-forms (m/explain UserPwGroups {:user "a"})))))
-      (is (= ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
+      (is (= [:or
+              "should provide key: :secret"
+              "should provide key: :pass"]
              (me/humanize (m/explain UserPwGroups {:user "a"}))))
       (is (= [{:path []
                :in []
@@ -123,7 +125,11 @@
              (-> (m/explain UserPwGroups {})
                  with-schema-forms
                  :errors)))
-      (is (= ["either: 1). should provide key: :secret; or 2). should provide keys: :user :pass"]
+      (is (= [:or
+              "should provide key: :secret"
+              [:and
+               "should provide key: :user"
+               "should provide key: :pass"]]
              (me/humanize (m/explain UserPwGroups {}))))
       (is (= [{:path []
                :in []
@@ -203,7 +209,8 @@
       (is (= ["should provide key: :a2"]
              (me/humanize (m/explain ImpliesGroups {:a1 "a" :a3 "c"}))))
       (is (nil? (m/explain ImpliesGroups {:a2 "b" :a3 "c"})))
-      (is (= ["should provide keys: :a2 :a3"]
+      (is (= ["should provide key: :a2"
+              "should provide key: :a3"]
              (me/humanize (m/explain ImpliesGroups {:a1 "a"}))))
       (is (nil? (m/explain ImpliesGroups {:a2 "b"})))
       (is (nil? (m/explain ImpliesGroups {:a3 "c"})))))

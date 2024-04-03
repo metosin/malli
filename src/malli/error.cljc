@@ -20,6 +20,14 @@
 (defn default-constraint-humanizers []
   (mc-strh/humanizers))
 
+(defn -flatten-errors [errors]
+  {:post [(do (prn "-flatten-errors" errors %) true)]}
+  (if (and (vector? errors)
+           (keyword? (first errors))
+           (= 2 (count errors)))
+    (second errors)
+    errors))
+
 (defn -humanize-constraint-violation [{:keys [constraint value schema] :as args}
                                       options]
   (let [{:keys [validator-constraint-types] :as constraint-opts} (mc/->constraint-opts (m/type schema))]
@@ -155,36 +163,18 @@
                            (apply str (interpose " " (map pr-str missing)))))
 
                     (= :and op)
-                    (mapcat (fn [constraint]
-                              (let [validator (mc/-constraint-validator constraint type options)]
-                                (when-not (validator value)
-                                  (let [msg (-humanize-constraint-violation constraint)]
-                                    (if (string? msg)
-                                      [msg]
-                                      msg)))))
-                            ng)
+                    (-flatten-errors
+                      (into [:and]
+                            (keep (fn [constraint]
+                                    (let [validator (mc/-constraint-validator constraint type options)]
+                                      (when-not (validator value)
+                                        (-humanize-constraint-violation constraint)))))
+                            ng))
 
-                    (and (= :xor op) @flat-ks)
-                    (let [provided (or (not-empty (filterv has? @flat-ks))
-                                       @flat-ks)]
-                      (str "should provide exactly one of the following keys: "
-                           (apply str (interpose " " (map pr-str provided)))))
-
-                    (and (#{:xor :or} op)
-                         (every? #(or (mc/-contains-constraint-key % validator-constraint-types options)
-                                      (and (vector? %)
-                                           (#{:and :not :implies :iff} (first %))
-                                           (->flat-ks %)))
-                                 ng))
-                    (str (case op
-                           :or "either: "
-                           :xor "exactly one of: ")
-                         (apply str
-                                (interpose "; or "
-                                           (map-indexed (fn [i flat-child]
-                                                          (str (inc i) "). "
-                                                               (-humanize-constraint-violation flat-child)))
-                                                        ng))))
+                    (#{:xor :or} op)
+                    (-flatten-errors
+                      (into [op] (keep -humanize-constraint-violation)
+                            ng))
 
                     (and not? @flat-ks)
                     (str "should not provide key: " (pr-str (first @flat-ks)))
@@ -210,10 +200,20 @@
                                         errors))))
                                 results)))
 
-                    (and (= :implies op) @flat-ks)
-                    (let [missing (remove has? (next @flat-ks))]
-                      (str "should provide key" (if (next missing) "s" "") ": "
-                           (apply str (interpose " " (map pr-str missing)))))
+                    (= :implies op)
+                    (let [[test-result & results] (map #(vector ((mc/-constraint-validator % type options)
+                                                                 value)
+                                                                %)
+                                                       ng)]
+                      (when (first test-result)
+                        (when-not (apply = true (map first results))
+                          (mapcat (fn [[valid? constraint]]
+                                    (when-not valid?
+                                      (let [errors (-humanize-constraint-violation constraint)]
+                                        (if (string? errors)
+                                          [errors]
+                                          errors))))
+                                  results))))
 
                     (= :disjoint op)
                     (let [ksets ng

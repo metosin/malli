@@ -13,4 +13,5 @@
    :non-alphanumeric-string (fn [s] (not-any? char/alphanumeric? s))
    :trim-string (-idempotent str/trim)
    :triml-string (-idempotent str/triml)
-   :trimr-string (-idempotent str/trimr)})
+   :trimr-string (-idempotent str/trimr)
+   :trim-newline-string (-idempotent str/trim-newline)})

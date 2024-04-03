@@ -45,4 +45,7 @@
    :triml-string (-msg-or-validates "should not have leading whitespace")
    [:not :triml-string] (-msg-or-validates "should have leading whitespace")
    :trimr-string (-msg-or-validates "should not have trailing whitespace")
-   [:not :trimr-string] (-msg-or-validates "should have trailing whitespace")})
+   [:not :trimr-string] (-msg-or-validates "should have trailing whitespace")
+   :trim-newline-string (-msg-or-validates "should not have trailing newline")
+   [:not :trim-newline-string] (-msg-or-validates "should have trailing newline")
+   })

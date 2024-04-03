@@ -3956,4 +3956,14 @@
            (me/humanize (m/explain [:string {:trimr true}] " a "))))
     (is (= ["should have trailing whitespace"]
            (me/humanize (m/explain [:string {:not [:trimr]}] "")))))
+  (testing ":trim-newline"
+    (is (m/validate [:string {:trim-newline true}] ""))
+    (is (m/validate [:string {:trim-newline true}] "[]"))
+    (is (m/validate [:string {:trim-newline true}] "  a"))
+    (is (m/validate [:string {:trim-newline true}] "a  "))
+    (is (not (m/validate [:string {:trim-newline true}] "a\n")))
+    (is (= ["should not have trailing newline"]
+           (me/humanize (m/explain [:string {:trim-newline true}] "a\n"))))
+    (is (= ["should have trailing newline"]
+           (me/humanize (m/explain [:string {:not [:trim-newline]}] "")))))
 )

@@ -22,7 +22,7 @@
                                                                     :trim
                                                                     :triml
                                                                     :trimr
-                                                                    #_:trim-newline
+                                                                    :trim-newline
                                                                     #_:blank
                                                                     #_:non-blank
                                                                     #_:starts-with
@@ -55,6 +55,7 @@
                                               :trim :trim-string
                                               :triml :triml-string
                                               :trimr :trimr-string
+                                              :trim-newline :trim-newline-string
                                               :re :re-string))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max
@@ -72,7 +73,8 @@
                                  :palindrome
                                  :trim
                                  :triml
-                                 :trimr})
+                                 :trimr
+                                 :trim-newline})
      :nested-property-keys (disj composite-constraint-types :not)
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)

@@ -11,6 +11,7 @@
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
             [malli.constraint :as mc]
+            [malli.constraint.string.generate :as mcg-str]
             [malli.core :as m]
             [malli.registry :as mr]
             [malli.impl.util :as miu :refer [-last -merge]]
@@ -130,15 +131,16 @@
 (defn -mentioned-constraint-keys [constraint constraint-opts options]
   (let [{:keys [generator-constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
     (letfn [(-mentioned-constraint-keys [constraint]
-              (let [constraint (mc/-resolve-constraint-sugar constraint constraint-opts options)]
-                (case (mc/-resolve-op constraint (:generator-constraint-types constraint-opts) options)
+              (let [constraint (mc/-resolve-constraint-sugar constraint constraint-opts options)
+                    op (mc/-resolve-op constraint generator-constraint-types options)]
+                (case op
                   :any []
                   (:not :and :or :xor :iff :implies) (mapcat -mentioned-constraint-keys (next constraint))
                   :disjoint (apply concat (next constraint))
                   :contains (subvec constraint 1)
                   (or (when-some [mentioned-constraint-keys (::mentioned-constraint-keys options)]
                         (mentioned-constraint-keys constraint options))
-                      (m/-fail! ::unknown-keyset-constraint {:constraint constraint})))))]
+                      (m/-fail! ::unknown-constraint {:constraint constraint})))))]
       (-mentioned-constraint-keys constraint))))
 
 (defn -valid-map-keysets [schema options]
@@ -150,10 +152,11 @@
     (let [{required false
            optional true} (group-by #(-> % -last m/properties :optional boolean)
                                     (m/entries schema))
+          mentioned (-mentioned-constraint-keys constraint (m/type schema) options)
           ;; add keys only mentioned in :keyset constraints
           optional (into [] (distinct)
                          (concat (map first optional)
-                                 (-mentioned-constraint-keys constraint (m/type schema) options)))
+                                 mentioned))
           base (into {} (map (fn [[k]]
                                {k :required}))
                      required)
@@ -324,17 +327,30 @@ collected."
   [f coll]
   (join (map f coll)))
 
+(defn default-constraint-solvers []
+  (merge (mcg-str/solvers)))
+
 (defn -constraint-solutions [constraint constraint-opts options]
-  (let [{:keys [generator-constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)]
+  {:post [(every? map? %)]}
+  (let [{:keys [generator-constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)
+        ;;TODO parameterize
+        solvers (default-constraint-solvers)]
     (letfn [(-constraint-solutions
               ([constraint] (-constraint-solutions constraint options))
               ([constraint options]
                (lazy-seq
-                 (if-some [[k] (mc/-contains-constraint-key constraint generator-constraint-types options)]
-                   [{:order [k]
-                     :present {k true}}]
-                   (let [op (mc/-resolve-op constraint generator-constraint-types options)]
+                 (let [constraint (mc/-resolve-constraint-sugar constraint constraint-opts options)
+                       op (mc/-resolve-op constraint generator-constraint-types options)]
+                   (if-some [solver (solvers op)]
+                     (solver {:constraint (if (= :any op) [:any] constraint)
+                              :constraint-opts constraint-opts}
+                             (m/-options-with-malli-core-fns options))
                      (case op
+                       :min-count (let [[n] (next constraint)]
+                                    [{:min-count n}])
+                       :contains (let [[k] (next constraint)]
+                                   [{:order [k]
+                                     :present {k true}}])
                        (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)]
                                          [{op n}])
                        :not (let [[c] (next constraint)
@@ -387,7 +403,7 @@ collected."
                                           (distinct
                                             (case op
                                               :xor (let [perm-coll (into [true] (repeat (dec ndisjuncts) false))
-                                                         nperm (comb/permutations perm-coll)]
+                                                         nperm (comb/count-permutations perm-coll)]
                                                      (mapjoin #(solve-combination (into []
                                                                                         (map-indexed (fn [i pos-neg]
                                                                                                        (cond-> i
@@ -440,11 +456,10 @@ collected."
                                        order (into [] (mapcat identity) ksets)
                                        base {:order order :present (zipmap order (repeat false))}]
                                    (cons base
-                                         (apply interleave
-                                                (mapjoin (fn [kset]
-                                                           (map #(update base :present into (zipmap kset %))
-                                                                (next (comb/selections [false true] (count kset)))))
-                                                         (unchunk ksets)))))
+                                         (mapjoin (fn [kset]
+                                                    (map #(update base :present into (zipmap kset %))
+                                                         (next (comb/selections [false true] (count kset)))))
+                                                  (unchunk ksets))))
                        :iff (let [cs (subvec constraint 1)]
                               (concat (-constraint-solutions (into [:and] (map #(do [:not %])) cs))
                                       (lazy-seq
@@ -462,28 +477,27 @@ collected."
                                             (concat
                                               or-cs-sol
                                               (-conj-solutions not-c-sol or-cs-sol))))))))
-                       (m/-fail! ::unknown-keyset-constraint {:constraint constraint})))))))]
+                       (m/-fail! ::unknown-constraint {:constraint constraint})))))))]
      (-constraint-solutions constraint))))
 
 (comment
   (assert (= (-constraint-solutions
-               [:and :a :b]
-               nil)
+               [:and :a :b] :map nil)
              '({:order [:a :b], :present {:a true, :b true}})))
   (assert (= (-constraint-solutions
                [:and [:xor :a :c] :b]
-               nil)
+               :map nil)
              '({:order [:a :c :b], :present {:a true, :c false, :b true}}
                {:order [:a :c :b], :present {:a false, :c true, :b true}})))
   (assert (= (-constraint-solutions
                [:or :a :b]
-               nil)
+               :map nil)
              '({:order [:a], :present {:a true}}
                {:order [:b], :present {:b true}}
                {:order [:a :b], :present {:a true, :b true}})))
   (assert (= (-constraint-solutions
                [:or :a :b :c]
-               nil)
+               :map nil)
              '({:order [:a], :present {:a true}}
                {:order [:b], :present {:b true}}
                {:order [:c], :present {:c true}}
@@ -493,18 +507,18 @@ collected."
                {:order [:a :b :c], :present {:a true, :b true, :c true}})))
   (assert (= (-constraint-solutions
                [:xor :a :b]
-               nil)
+               :map nil)
              '({:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))
   (assert (= (-constraint-solutions
                [:disjoint [:a] [:b]]
-               nil)
+               :map nil)
              '({:order [:a :b], :present {:a false, :b false}}
                {:order [:a :b], :present {:a true, :b false}}
                {:order [:a :b], :present {:a false, :b true}})))
   (assert (= (-constraint-solutions
                [:iff :a :b]
-               nil)
+               :map nil)
              '({:order [:a :b], :present {:a false, :b false}}
                {:order [:a :b], :present {:a true, :b true}})))
   (assert (= (-constraint-solutions
@@ -566,10 +580,7 @@ collected."
         child (-> schema m/children first)
         child-validator (m/validator child)
         mentioned (some-> constraint
-                          (-mentioned-constraint-keys
-                            (:generator-constraint-types
-                              (mc/->constraint-opts (m/type schema)))
-                            options)
+                          (-mentioned-constraint-keys (m/type schema) options)
                           (->> (into [] (comp (distinct) (filter child-validator)))))
         gen (generator child options)]
     (if (-unreachable-gen? gen)
@@ -586,7 +597,8 @@ collected."
                                                                  (or (not present?)
                                                                      (child-validator k)))
                                                                (:present %))
-                                                      (-constraint-solutions constraint (m/type schema) options))
+                                                      (doto (-constraint-solutions constraint (m/type schema) options)
+                                                        prn))
                                               seq
                                               cycled-nth-fn)
                                       (m/-fail! ::unsatisfiable-keyset))]
@@ -1041,7 +1053,12 @@ collected."
 (defmethod -schema-generator :any [_ _] (ga/gen-for-pred any?))
 (defmethod -schema-generator :some [_ _] gen/any-printable)
 (defmethod -schema-generator :nil [_ _] nil-gen)
-(defmethod -schema-generator :string [schema options] (-string-gen schema options))
+(defmethod -schema-generator :string [schema options]
+  (let [solutions (or (some-> (mc/-constraint-from-properties (m/properties schema) (m/type schema) options)
+                              (-constraint-solutions (m/type schema) options)
+                              seq)
+                      [{}])]
+    (-string-gen schema options)))
 (defmethod -schema-generator :int [schema options]
   (let [solutions (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
                           ;;FIXME something is wrong with this. nil vs () ?

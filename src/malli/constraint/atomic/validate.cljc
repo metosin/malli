@@ -52,4 +52,4 @@
 (m/all [x y]
        [:=> {:is [:int x [:get :x]]}
         [:map
-         {:and}]])
+         {:and wip}]])

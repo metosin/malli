@@ -1154,7 +1154,9 @@
         (mg/sample [:set {:and [:a]} symbol?]
                    {:seed 10
                     :size 5})))
-  (let [s [:set {:or (vec (take 100 (repeatedly gensym)))
+  (let [s [:set {:or (into [] (comp (take 100)
+                                    (map #(do [:contains %])))
+                           (repeatedly gensym))
                  :min 200}
            symbol?]
         v (mg/generate s
@@ -1162,7 +1164,9 @@
                         :size 1000})]
     (is (m/validate s v))
     (is (= 892 (count v))))
-  (let [s [:set {:and (vec (take 100 (repeatedly gensym)))
+  (let [s [:set {:and (into [] (comp (take 100)
+                                     (map #(do [:contains %])))
+                            (repeatedly gensym))
                  :min 200}
            symbol?]
         v (mg/generate s
@@ -1252,3 +1256,6 @@
          (mg/sample [:double {:gen/> 10 :gen/< 100}]
                     {:size 1000
                      :seed 0}))))
+
+(deftest string-constraint-generate-test
+  (is (mg/generate [:string {:min 10 :alpha true}])))

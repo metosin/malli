@@ -26,5 +26,5 @@
 (defn schema-constraints []
   {:int (number-constraints)
    :double (-> (number-constraints)
-               (update :flat-property-keys into #{:gen/infinite? :gen/NaN?})
-               (update ))})
+               ;:TODO
+               #_(update :flat-property-keys into #{:gen/infinite? :gen/NaN?}))})

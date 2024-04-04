@@ -907,6 +907,9 @@
            (me/humanize (m/explain [:string {:edn [:map [:a :int]]}]
                                    "{}"))))))
 
+;; not sure this makes sense without objects [:is schema object path]. we could default to "this"
+;; but need to keep forwards compat if we add explicit objects.
+#_
 (deftest is-prop-test
   (is (m/validate [:map
                    {:and [[:is [:= 1] [:get :x]]]}

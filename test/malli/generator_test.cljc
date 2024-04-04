@@ -1262,10 +1262,18 @@
 (deftest string-constraint-generate-test
   (is (= ["qBoTBneKUb" "RznfuEdSsmp" "pwbdaMNTYxxH" "MtCxHNxEiZPJ" "pRXpSisHqog"
           "QhEHYYfiswSl" "XKYeOExmpprzg" "xMwVWpPDVlAp" "iMrMJGWzETClJ" "syJVWCJeAOPmABe"]
-         (mg/sample [:string {:min 10 :alpha true}]
-                    {:seed 0})))
+         (vec (mg/sample [:string {:min 10 :alpha true}]
+                         {:seed 0}))
+         (vec (mg/sample [:string {:min 10 :alpha true :alphanumeric true}]
+                         {:seed 0}))))
   (is (= ["0512069087" "81635196348" "416649118043" "105571456853" "94201363561" "815573842818"
           "2789823848768" "650900047134" "4183700601041" "300407523083076"]
          (vec (mg/sample [:string {:min 10 :numeric true}]
+                         {:seed 0}))
+         (vec (mg/sample [:string {:min 10 :numeric true :alphanumeric true}]
                          {:seed 0}))))
-  )
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/unsatisfiable-string-constraint"
+        (mg/generate [:string {:min 10 :numeric true :alpha true}]
+                     {:seed 0}))))

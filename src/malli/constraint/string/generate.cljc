@@ -9,6 +9,10 @@
                      (let [[s] (next constraint)]
                        (assert (not (false? s)))
                        [{:string-class #{:numeric}}]))
+   :alphanumeric-string (fn [{:keys [constraint]} options]
+                          (let [[s] (next constraint)]
+                            (assert (not (false? s)))
+                            [{:string-class #{:alphanumeric}}]))
    :edn-string (fn [{:keys [constraint]} options]
                  (let [[s] (next constraint)]
                    (assert (not (false? s)))

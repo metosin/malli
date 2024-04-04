@@ -1146,7 +1146,7 @@ collected."
                     (-constraint-solutions constraint (m/type schema) options)
                     [{}])]
     (when (empty? solutions)
-      (m/-fail! ::string-constraint-unsatisfiable {:schema schema
+      (m/-fail! ::unsatisfiable-string-constraint {:schema schema
                                                    :constraint constraint}))
     ;;TODO respect solutions
     (-string-gen schema solutions options)))

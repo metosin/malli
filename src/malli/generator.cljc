@@ -115,16 +115,17 @@
             (let [{min :min-count
                    max :max-count
                    :keys [string-class]} solution
-                  _ (when (> 1 (count string-class))
+                  _ (when (< 1 (count string-class))
                       ;;WIP
                       (m/-fail! ::unsupported-string-class-combination
                                 {:schema schema
                                  :string-class string-class}))
-                  char-gen (when (seq string-class)
+                  char-gen (if (empty? string-class)
+                             gen/char-alphanumeric
                              (case (first string-class)
-                               :alpha gen/char-alpha
+                               (:non-numeric :alpha) gen/char-alpha
                                :alphanumeric gen/char-alphanumeric
-                               :numeric (gen/fmap char (gen/choose 48 57))))]
+                               (:non-alpha :numeric) (gen/fmap char (gen/choose 48 57))))]
               (cond
                 (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
                 (and min max) (gen/fmap str/join (gen/vector char-gen min max))
@@ -438,23 +439,60 @@ collected."
                                   sol (-constraint-solutions c)]
                               (if (empty? sol)
                                 [{:order [] :present {}}]
-                                (sequence (comp (map (fn [s]
-                                                       (when-some [unsupported-keys
-                                                                   (not-empty
-                                                                     (disj (into #{} (keys s))
-                                                                           :max-count :min-count
-                                                                           :< :> :<= :>=))]
-                                                         (m/-fail! ::unsupported-negated-solution
-                                                                   {:unsupported-keys unsupported-keys
-                                                                    :solution s}))
-                                                       (-> s
-                                                           (set/rename-keys {:< :>=
-                                                                             :> :<=
-                                                                             :<= :>
-                                                                             :>= :<})
-                                                           (update :present update-vals not))))
-                                                (distinct))
-                                          (unchunk sol))))
+                                (if (some #(= 0 (:min-count %)) sol)
+                                  [] ;;unsatisfiable
+                                  (sequence (comp (map (fn [s]
+                                                         (when-some [unsupported-keys
+                                                                     (not-empty
+                                                                       (disj (set (keys s))
+                                                                             :max-count :min-count
+                                                                             :< :> :<= :>=
+                                                                             :string-class))]
+                                                           (m/-fail! ::unsupported-negated-solution
+                                                                     {:unsupported-keys unsupported-keys
+                                                                      :solution s}))
+                                                         (-> s
+                                                             (set/rename-keys {:< :>=
+                                                                               :> :<=
+                                                                               :<= :>
+                                                                               :>= :<})
+                                                             (cond->
+                                                               (:max-count s) (-> (assoc :min-count (inc (:max-count s)))
+                                                                                  (dissoc :max-count))
+                                                               (:min-count s) (-> (assoc :max-count (dec (:min-count s)))
+                                                                                  (dissoc :min-count))
+
+                                                               (:string-class s)
+                                                               (update
+                                                                 :string-class
+                                                                 (fn [string-class]
+                                                                   (when-some [unsupported
+                                                                               (not-empty
+                                                                                 (disj string-class
+                                                                                       :alpha
+                                                                                       :not-alpha
+                                                                                       :numeric
+                                                                                       :not-numeric
+                                                                                       :alphanumeric
+                                                                                       :not-alphanumeric))]
+                                                                     (m/-fail! ::unsupported-negated-class
+                                                                               {:unsupported unsupported
+                                                                                :solution s}))
+                                                                   (-> string-class
+                                                                       (zipmap (repeat nil))
+                                                                       (set/rename-keys
+                                                                         {:alpha :not-alpha
+                                                                          :not-alpha :alpha
+                                                                          :numeric :not-numeric
+                                                                          :not-numeric :numeric
+                                                                          :alphanumeric :not-alphanumeric
+                                                                          :not-alphanumeric :alphanumeric})
+                                                                       keys
+                                                                       set)))
+                                                               (:present s)
+                                                               (update :present update-vals not)))))
+                                                  (distinct))
+                                            (unchunk sol)))))
                        :and (apply -conj-solutions (map -constraint-solutions (unchunk (next constraint))))
                        (:or :xor) (let [cs (subvec constraint 1)
                                         ndisjuncts (count cs)

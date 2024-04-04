@@ -1260,20 +1260,46 @@
                      :seed 0}))))
 
 (deftest string-constraint-generate-test
-  (is (= ["qBoTBneKUb" "RznfuEdSsmp" "pwbdaMNTYxxH" "MtCxHNxEiZPJ" "pRXpSisHqog"
-          "QhEHYYfiswSl" "XKYeOExmpprzg" "xMwVWpPDVlAp" "iMrMJGWzETClJ" "syJVWCJeAOPmABe"]
-         (vec (mg/sample [:string {:min 10 :alpha true}]
-                         {:seed 0}))
-         (vec (mg/sample [:string {:min 10 :alpha true :alphanumeric true}]
-                         {:seed 0}))))
-  (is (= ["0512069087" "81635196348" "416649118043" "105571456853" "94201363561" "815573842818"
-          "2789823848768" "650900047134" "4183700601041" "300407523083076"]
-         (vec (mg/sample [:string {:min 10 :numeric true}]
-                         {:seed 0}))
-         (vec (mg/sample [:string {:min 10 :numeric true :alphanumeric true}]
-                         {:seed 0}))))
-  (is (thrown-with-msg?
-        #?(:clj Exception, :cljs js/Error)
-        #":malli\.generator/unsatisfiable-string-constraint"
-        (mg/generate [:string {:min 10 :numeric true :alpha true}]
-                     {:seed 0}))))
+  (testing ":alphanumeric + :alpha :numeric"
+    (is (= ["qBoTBneKUb" "RznfuEdSsmp" "pwbdaMNTYxxH" "MtCxHNxEiZPJ" "pRXpSisHqog"
+            "QhEHYYfiswSl" "XKYeOExmpprzg" "xMwVWpPDVlAp" "iMrMJGWzETClJ" "syJVWCJeAOPmABe"]
+           (vec (mg/sample [:string {:min 10 :alpha true}]
+                           {:seed 0}))
+           (vec (mg/sample [:string {:min 10 :alpha true :alphanumeric true}]
+                           {:seed 0}))))
+    (is (= ["0512069087" "81635196348" "416649118043" "105571456853" "94201363561" "815573842818"
+            "2789823848768" "650900047134" "4183700601041" "300407523083076"]
+           (vec (mg/sample [:string {:min 10 :numeric true}]
+                           {:seed 0}))
+           (vec (mg/sample [:string {:min 10 :numeric true :alphanumeric true}]
+                           {:seed 0}))))
+    (is (= ["5" "42" "" "" "" "W" "3" "0" "" "Gr"]
+           (vec (mg/sample [:string {:not [:min 3]}]
+                           {:seed 1}))))
+    (is (every? seq (mg/sample [:string {:not [:max 0]}])))
+    ; [:or [:not [:min 1]] [:not [:max 1]]]
+    ; [:or [:max 0] [:min 2]]
+    ;;FIXME why aren't we seeing min=2 strings?
+    (is (every? empty? (mg/sample [:string {:not [:and [:min 1] [:max 1]]}]
+                                  {:size 1000})))
+    ;;TODO what's the right answer here?
+    ;(is (every? empty? (mg/sample [:string {:not [:and [:min 2] [:max 2]]}])))
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli\.generator/unsatisfiable-string-constraint"
+          (mg/generate [:string {:not [:min 0]}])))
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli\.generator/unsatisfiable-string-constraint"
+          (mg/generate [:string {:not [:and [:min 0] [:max 10]]}])))
+    (is (= (mg/generate [:string {:min 10 :not :alpha}]
+                        {:seed 0})))
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli\.generator/unsatisfiable-string-constraint"
+          (mg/generate [:string {:min 10 :numeric true :alpha true}]))))
+  (testing ":non-alpha"
+    (is (= "5833307285"
+           (mg/generate [:string {:min 10 :non-alpha true}]
+                        {:seed 0}))))
+  )

@@ -407,7 +407,7 @@ default branching can be arbitrarily nested:
 ; => true
 ```
 
-## Constraints
+## Keyset Constraints
 
 The `:map`, `:set`, and `:map-of` schemas accept
 additional constraints that must be satisfied by the keys of the map.
@@ -430,7 +430,9 @@ nest contains constraints inside of it.
     [:map {:and [[:contains nil]
                  [:contains []]]}]
     {}))
-; => ["should provide keys: nil []"]
+; => [:and
+;     "should provide key: nil"
+;     "should provide key: []"]
 ```
 
 Composite constraints are of the form `[:name constraint*]`. To avoid excessive nesting,
@@ -450,7 +452,11 @@ The `:or` constraint asserts that at least one of its children is satisfied.
 (m/validate Padding {:left 1 :right 10 :up 25 :down 50}) ;=> true
 (me/humanize
   (m/explain Padding {}))
-; => ["should provide at least one key: :top :bottom :left :right"]
+; => [:or
+;     "should provide key: :top"
+;     "should provide key: :bottom"
+;     "should provide key: :left"
+;     "should provide key: :right"]
 ```
 
 The `:xor` constraint requires exactly one of its children to be satisfied.
@@ -467,12 +473,16 @@ The `:xor` constraint requires exactly one of its children to be satisfied.
   (m/explain GitOrMvn
              {:mvn/version "1.0.0"
               :git/sha "123"}))
-; => ["should provide exactly one of the following keys: :mvn/version :git/sha"]
+; => [:xor
+;     "should not provide key: :mvn/version"
+;     "should not provide key: :git/sha"]
 
 (me/humanize
   (m/explain GitOrMvn
              {}))
-; => ["should provide exactly one of the following keys: :mvn/version :git/sha"]
+; => [:xor
+      "should provide key: :mvn/version"
+      "should provide key: :git/sha"]
 ```
 
 The `:iff` constraint either requires either all or none of its children to be satisfied.
@@ -488,7 +498,9 @@ The `:iff` constraint either requires either all or none of its children to be s
 
 (me/humanize
   (m/explain UserPass {:user "a"}))
-; => ["should provide key: :pass"]
+; => [:xor
+;     "should provide key: :pass"
+;     "should not provide key: :user"]
 ```
 
 The `:implies` constraint is satisfied if either its first constraint is _not_ satisfied or
@@ -583,7 +595,11 @@ this additional constraint.
 
 (me/humanize
   (m/explain SecretOrCreds {:user "user"}))
-; => ["either: 1). should provide key: :secret; or 2). should provide key: :pass"]
+; => [:or
+;     "should provide key: :secret"
+;     "should provide key: :pass"]
+;;^
+;;FIXME should say: either remove :user and add :secret, or add :pass, but not both
 
 ;; combining :or with :disjoint helps enforce this case
 (me/humanize

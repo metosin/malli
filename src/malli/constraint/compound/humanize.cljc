@@ -74,11 +74,11 @@
             (when-not (= 1 nsucceed)
               (if (zero? nsucceed)
                 (-flatten-errors
-                  (into [:xor] (map humanize-constraint-violation)
+                  (into [:xor] (keep humanize-constraint-violation)
                         rands))
                 (-flatten-errors
-                  (into [:xor] (map #(humanize-constraint-violation
-                                       (into [:and]
-                                             (map (fn [c] [:not c]))
-                                             %)))
+                  (into [:xor] (keep #(humanize-constraint-violation
+                                        (into [:and]
+                                              (map (fn [c] [:not c]))
+                                              %)))
                         (comb/combinations (map second succeed) (dec nsucceed)))))))) })

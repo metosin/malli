@@ -494,7 +494,10 @@
            true))
     (is (= (me/humanize
              (m/explain SecretOrCreds {:user "user"}))
-           [:or "should provide key: :secret" "should provide key: :pass"]))
+           ;;FIXME should say: either remove user and add secret, or add pass, but not both
+           [:or
+            "should provide key: :secret"
+            "should provide key: :pass"]))
     (is (= (me/humanize
              (m/explain SecretOrCreds {:secret "1234" :user "user"}))
            ["should not combine key :secret with key: :user"])))
@@ -895,17 +898,32 @@
     (is (m/validate [:string {:edn :symbol}] "a"))
     (is (m/validate [:string {:edn :string}] "\"a\""))
     (is (not (m/validate [:string {:edn :keyword}] "\"a\"")))
+    (is (m/validate [:string {:edn :keyword}] ":a"))
+    (is (m/validate [:string {:or [:edn :alpha]}] ":a"))
+    (is (m/validate [:string {:xor [:edn :alpha]}] "a"))
     ;;TODO not yet implemented
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
           #":malli\.constraint\.string\.validate/edn-string-regex-schema-not-yet-implemented"
           (m/validate [:string {:edn [:+ :keyword]}] "\"a\"")))
-    (is (= ["should should be a string of :keyword" :constraint-failure ["invalid type"]]
+    (is (= ["should be a string of :keyword" :constraint-failure ["invalid type"]]
            (me/humanize (m/explain [:string {:edn :keyword}] "a"))))
-    (is (= ["should should be a string of [:map [:a :int]]"
+    (is (= ["should be a string of [:map [:a :int]]"
             :constraint-failure {:a ["missing required key"]}]
            (me/humanize (m/explain [:string {:edn [:map [:a :int]]}]
-                                   "{}"))))))
+                                   "{}"))))
+    (is (m/validate [:string {:xor [:edn :alpha]}] "a1"))
+    (is (m/validate [:string {:xor [:edn :alpha]}] "1"))
+    (is (= ["should contain a non-alphabetic character"]
+           (me/humanize (m/explain [:string {:xor [:edn :alpha]}] "a"))))
+    (is (= ["should contain a non-alphabetic character"]
+           (me/humanize (m/explain [:string {:xor [:edn [:includes "foo"]]}] "foo1"))))
+    (is (m/validate [:string {:implies [:alphanumeric :edn]}] "1"))
+    (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a"))
+    (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a1"))
+    (is (= ["should be valid edn"]
+           (me/humanize (m/explain [:string {:implies [:alphanumeric :edn]}] "1a"))))
+))
 
 ;; not sure this makes sense without objects [:is schema object path]. we could default to "this"
 ;; but need to keep forwards compat if we add explicit objects.

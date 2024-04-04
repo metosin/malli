@@ -77,10 +77,24 @@
                          opts {:eof eof}]
                      (if-some [[edn] (try [(edn/read-string opts value)]
                                           (catch Exception _))]
-                       (if (and (some? s)
-                                (not (boolean? s)))
+                       (when (and (some? s)
+                                  (not (boolean? s)))
                          (when-some [errors (explain s edn)]
-                           (prn errors)
-                           [(str "should should be a string of " (pr-str s))
+                           [(str "should be a string of " (pr-str s))
                             :constraint-failure (humanize errors)]))
-                       "should be valid edn"))))})
+                       "should be valid edn"))))
+  [:not :edn-string] (fn [{[_ s] :constraint :keys [validator value humanize]}
+                          {::m/keys [valid schema explain]}]
+                       (prn "no edn")
+                       (assert (not (false? s)))
+                       (when (validator value)
+                         (let [eof (Object.)
+                               opts {:eof eof}]
+                           (when-some [[edn] (try [(edn/read-string opts value)]
+                                                  (catch Exception _))]
+                             (if (and (some? s)
+                                      (not (boolean? s)))
+                               (when (valid s edn)
+                                 (str "should not be a string of " (pr-str s)))
+                               "should not be valid edn")))))
+   })

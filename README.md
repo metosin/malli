@@ -407,13 +407,17 @@ default branching can be arbitrarily nested:
 ; => true
 ```
 
-## Keyset Constraints
+## Map and Set Constraints
 
-The `:map`, `:set`, and `:map-of` schemas accept
-additional constraints that must be satisfied by the keys of the map.
+Many schemas accept additional constraints that must be satisfied in addition to the
+schema itself. 
+
+Here we describe the constraints for `:map`, `:set`, and `:map-of` schemas.
 
 The simplest constraint `[:contains K]` asserts the key `K` must be present.
-For keyword, symbol, and string keys, this can be abbreviated to `K`.
+For keyword, symbol, and string keys, this can be abbreviated to `K`
+(but only in `:map`, `:set` and `:map-of; other schemas abbreviate `[CONSTRAINT]`
+to `CONSTRAINT`).
 
 The `:and` constraint requires all of its children to be satisfied, and we
 nest contains constraints inside of it.

@@ -471,7 +471,6 @@
            true))
     (is (= (me/humanize
              (m/explain UserPass {:user "a"}))
-
            [:xor
             "should provide key: :pass"
             "should not provide key: :user"])))

@@ -619,7 +619,8 @@ Since it has only one child, its sugar does not require a vector val: `[:map {:n
 expands to `[:map {:and [[:not :a]]}]`.
 
 Constraints can be checked for satisfiability by calling `mg/generate`. Note that a required
-key can never omitted from a map regardless of constraints.
+key can never omitted from a map regardless of constraints, since it is equivalent
+to a `[:contains K]` constraint, and `[:and K [:not K]]` is unsatisfiable.
 
 ```clojure
 ;; contradiction within constraints

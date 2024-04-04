@@ -615,6 +615,9 @@ this additional constraint.
 
 The `:not` constraint is satisified if its child isn't.
 
+Since it has only one child, its sugar does not require a vector val: `[:map {:not :a}]`
+expands to `[:map {:and [[:not :a]]}]`.
+
 Constraints can be checked for satisfiability by calling `mg/generate`. Note that a required
 key can never omitted from a map regardless of constraints.
 

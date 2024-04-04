@@ -415,9 +415,11 @@ schema itself.
 Here we describe the constraints for `:map`, `:set`, and `:map-of` schemas.
 
 The simplest constraint `[:contains K]` asserts the key `K` must be present.
-For keyword, symbol, and string keys, this can be abbreviated to `K`
-(but only in `:map`, `:set` and `:map-of; other schemas abbreviate `[CONSTRAINT]`
-to `CONSTRAINT`).
+I `:map`, `:set` and `:map-of` this constraint can be abbreviated to `K`.
+Other schemas abbreviate `[CONSTRAINT]` to `CONSTRAINT`.
+
+For example, `[:map {:and [:alpha]}]` is sugar for `[:map {:and [[:contains :alpha]]}]`
+and `[:string {:and [:alpha]}]` is sugar for `[:string {:and [[:alpha]]}]`.
 
 The `:and` constraint requires all of its children to be satisfied, and we
 nest contains constraints inside of it.

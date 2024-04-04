@@ -222,12 +222,12 @@
                   (concat (-conj-number-constraints all-sols)
                           (rec (rest cart-sols)))
                   (if-some [present (reduce (fn [p1 {p2 :present}]
-                                              (reduce-kv (fn [acc k v]
-                                                           (if-some [[_ present1] (find acc k)]
-                                                             (if (identical? acc v)
+                                              (reduce-kv (fn [acc k present1]
+                                                           (if-some [[_ present2] (find acc k)]
+                                                             (if (identical? present1 present2)
                                                                acc
                                                                (reduced (reduced nil)))
-                                                             (assoc acc k v)))
+                                                             (assoc acc k present1)))
                                                          p1 p2))
                                             (:present sol1) sols)]
                     (cons (-> sol1
@@ -597,8 +597,7 @@ collected."
                                                                  (or (not present?)
                                                                      (child-validator k)))
                                                                (:present %))
-                                                      (doto (-constraint-solutions constraint (m/type schema) options)
-                                                        prn))
+                                                      (-constraint-solutions constraint (m/type schema) options))
                                               seq
                                               cycled-nth-fn)
                                       (m/-fail! ::unsatisfiable-keyset))]

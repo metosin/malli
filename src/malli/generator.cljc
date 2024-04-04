@@ -125,7 +125,8 @@
                              (case (first string-class)
                                (:non-numeric :alpha) gen/char-alpha
                                :alphanumeric gen/char-alphanumeric
-                               (:non-alpha :numeric) (gen/fmap char (gen/choose 48 57))))]
+                               (:non-alpha :numeric) (gen/fmap char (gen/choose 48 57))
+                               :includes-string ))]
               (cond
                 (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
                 (and min max) (gen/fmap str/join (gen/vector char-gen min max))
@@ -466,29 +467,8 @@ collected."
                                                                (update
                                                                  :string-class
                                                                  (fn [string-class]
-                                                                   (when-some [unsupported
-                                                                               (not-empty
-                                                                                 (disj string-class
-                                                                                       :alpha
-                                                                                       :not-alpha
-                                                                                       :numeric
-                                                                                       :not-numeric
-                                                                                       :alphanumeric
-                                                                                       :not-alphanumeric))]
-                                                                     (m/-fail! ::unsupported-negated-class
-                                                                               {:unsupported unsupported
-                                                                                :solution s}))
-                                                                   (-> string-class
-                                                                       (zipmap (repeat nil))
-                                                                       (set/rename-keys
-                                                                         {:alpha :not-alpha
-                                                                          :not-alpha :alpha
-                                                                          :numeric :not-numeric
-                                                                          :not-numeric :numeric
-                                                                          :alphanumeric :not-alphanumeric
-                                                                          :not-alphanumeric :alphanumeric})
-                                                                       keys
-                                                                       set)))
+                                                                   (into #{} (map mcg-str/negate-string-class)
+                                                                         string-class)))
                                                                (:present s)
                                                                (update :present update-vals not)))))
                                                   (distinct))

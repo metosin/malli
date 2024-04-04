@@ -104,14 +104,20 @@
                                           :generator gen
                                           :min min})))
 
-(defn- -string-gen [schema options]
-  (let [{:keys [min max]} (-min-max schema options)]
-    (cond
-      (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
-      (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
-      min (gen/fmap str/join (gen-vector-min gen/char-alphanumeric min options))
-      max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
-      :else gen/string-alphanumeric)))
+(defn- -string-gen [schema solutions options]
+  (gen-one-of
+    (mapv (fn [solution]
+            (when-some [unsupported-keys (not-empty (disj (set (keys solution)) :min-count :max-count))]
+              (m/-fail! ::unsupported-string-constraint-solution {:schema schema :solution solution}))
+            (let [{min :min-count
+                   max :max-count} solution]
+              (cond
+                (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
+                (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
+                min (gen/fmap str/join (gen-vector-min gen/char-alphanumeric min options))
+                max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
+                :else gen/string-alphanumeric)))
+          solutions)))
 
 (defn- -coll-gen [schema f options]
   (let [{:keys [min max]} (-min-max schema options)
@@ -182,6 +188,8 @@
           gt (some->> (seq (keep :> all-sols)) (apply max))
           lte (some->> (seq (keep :<= all-sols)) (apply min))
           gte (some->> (seq (keep :>= all-sols)) (apply max))
+          max-count (some->> (seq (keep :max-count all-sols)) (apply min))
+          min-count (some->> (seq (keep :min-count all-sols)) (apply max))
           [upper upper-op] (when (or lt lte)
                              (if (and lt lte)
                                (if (<= lt lte)
@@ -197,28 +205,59 @@
                                  [gt :>])
                                (if gt
                                  [gt :>]
-                                 [gte :>=])))]
-      (if (and lower upper)
-        (if (< lower upper)
-          [{lower-op lower
-            upper-op upper}]
-          (if (and (= lower upper)
-                   (and (#{:>= :>} lower-op)
-                        (= :<= upper-op)))
-            [{lower-op lower
-              upper-op upper}]
+                                 [gte :>=])))
+          number-solutions (lazy-seq
+                             (if (and lower upper)
+                               (if (< lower upper)
+                                 [{lower-op lower
+                                   upper-op upper}]
+                                 (if (and (= lower upper)
+                                          (and (#{:>= :>} lower-op)
+                                               (= :<= upper-op)))
+                                   [{lower-op lower
+                                     upper-op upper}]
+                                   []))
+                               (if lower
+                                 [{lower-op lower}]
+                                 (if upper
+                                   [{upper-op upper}]
+                                   [{}]))))
+          count-solutions (lazy-seq
+                            (if (and min-count max-count)
+                              (if (<= min-count max-count)
+                                [{:min-count min-count
+                                  :max-count max-count}]
+                                [])
+                              (if min-count
+                                [{:min-count min-count}]
+                                (if max-count
+                                  [{:max-count max-count}]
+                                  [{}]))))
+          all-solutions [number-solutions count-solutions]]
+      (lazy-seq
+        (->> (apply comb/cartesian-product all-solutions)
+             (map #(apply merge %) ))))))
+
+(comment
+ (map #(apply merge %) (comb/cartesian-product [{:< 1} {:> 2}] [{:max-count 1} {:min-count 3}]))
+ (assert (= (-conj-number-constraints [{:max-count 10} {:min-count 1}])
+            [{:max-count 10 :min-count 1}]))
+ (assert (= (-conj-number-constraints [{:max-count 1} {:min-count 10}])
             []))
-        (if lower
-          [{lower-op lower}]
-          (if upper
-            [{upper-op upper}]
-            [{}]))))))
+ (assert (= (-conj-number-constraints [{:max-count 1} {:min-count 10}])
+            []))
+ (assert (= (-conj-number-constraints [{:max-count 5 :> 3} {:min-count 4 :< 4}])
+            [{:> 3, :< 4, :min-count 4, :max-count 5}]))
+ (assert (= (-conj-number-constraints [{:max-count 5 :> 3} {:min-count 4 :> 4}])
+            [{:> 4, :min-count 4, :max-count 5}]))
+
+)
 
 (defn -conj-solutions [& sols]
   (letfn [(rec [cart-sols]
             (lazy-seq
               (when-some [[[sol1 & sols :as all-sols]] (seq cart-sols)]
-                (if (some (some-fn :< :> :<= :>=) all-sols)
+                (if (some (some-fn :< :> :<= :>= :max-count :min-count) all-sols)
                   (concat (-conj-number-constraints all-sols)
                           (rec (rest cart-sols)))
                   (if-some [present (reduce (fn [p1 {p2 :present}]
@@ -346,8 +385,7 @@ collected."
                               :constraint-opts constraint-opts}
                              (m/-options-with-malli-core-fns options))
                      (case op
-                       :min-count (let [[n] (next constraint)]
-                                    [{:min-count n}])
+                       (:max-count :min-count) [{op (second constraint)}]
                        :contains (let [[k] (next constraint)]
                                    [{:order [k]
                                      :present {k true}}])
@@ -1053,11 +1091,15 @@ collected."
 (defmethod -schema-generator :some [_ _] gen/any-printable)
 (defmethod -schema-generator :nil [_ _] nil-gen)
 (defmethod -schema-generator :string [schema options]
-  (let [solutions (or (some-> (mc/-constraint-from-properties (m/properties schema) (m/type schema) options)
-                              (-constraint-solutions (m/type schema) options)
-                              seq)
-                      [{}])]
-    (-string-gen schema options)))
+  (let [constraint (mc/-constraint-from-properties (m/properties schema) (m/type schema) options)
+        solutions (if constraint
+                    (-constraint-solutions constraint (m/type schema) options)
+                    [{}])]
+    (when (empty? solutions)
+      (m/-fail! ::string-constraint-unsatisfiable {:schema schema
+                                                   :constraint constraint}))
+    ;;TODO respect solutions
+    (-string-gen schema solutions options)))
 (defmethod -schema-generator :int [schema options]
   (let [solutions (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
                           ;;FIXME something is wrong with this. nil vs () ?

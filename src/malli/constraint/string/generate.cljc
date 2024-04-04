@@ -20,6 +20,15 @@
                                        s (conj s))}}]))
    })
 
+;; TODO calculate compatibility with set intersection
+(defn string-class->char-codes [cls]
+  {:pre [(vector? cls)]}
+  (case (first cls)
+    :alphanumeric (concat (string-class->char-codes [:numeric])
+                          (string-class->char-codes [:alpha]))
+    :alpha (concat (range 65 91)
+                   (range 97 123))
+    :numeric (range 48 58)))
 
 (defn negate-string-class [cls]
   {:pre [(vector? cls)]}

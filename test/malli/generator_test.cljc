@@ -1301,5 +1301,6 @@
   (testing ":non-alpha"
     (is (= "5833307285"
            (mg/generate [:string {:min 10 :non-alpha true}]
-                        {:seed 0}))))
+                        {:seed 0})))
+    )
   )

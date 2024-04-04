@@ -1,9 +1,19 @@
 (ns malli.constraint.string.validate
   (:require [clojure.string :as str]
+            [clojure.edn :as edn]
+            [malli.core :as-alias m]
             [malli.constraint.char :as char]
             [malli.impl.util :as miu]))
 
-(defn- -wrap [f] (fn [_ _] f))
+(defn- -flip? [{:keys [constraint]} _]
+  (false? (second constraint)))
+
+(defn- -wrap [f] (fn [constraint-opts options]
+                   (cond-> f
+                     ;;TODO :alpha false == [:not :alpha]
+                     ;(-flip? constraint-opts options)
+                     ;complement
+                     )))
 (defn- -idempotent [f] (-wrap (fn [s] (= s (f s)))))
 
 (defn validators []
@@ -48,4 +58,30 @@
                                 (miu/-fail! ::includes-constraint-takes-string-child
                                             {:constraint constraint}))]
                         (fn [v]
-                          (str/includes? v s))))})
+                          (str/includes? v s))))
+   :edn-string (fn [{:keys [constraint value]} {::m/keys [schema validator -regex-op?]}]
+                 (assert (and schema validator -regex-op?))
+                 ;;TODO schema arg
+                 (when-not (<= 1 (count constraint) 2)
+                   (miu/-fail! ::edn-constraint-takes-at-most-one-child
+                               {:constraint constraint}))
+                 (let [?schema (second constraint)
+                       ?schema (if (false? ?schema)
+                                 (miu/-fail! ::edn-child-is-true-or-schema {:constraint constraint})
+                                 (when-not (true? ?schema)
+                                   ?schema))
+                       eof (Object.)
+                       opts {:eof eof}
+                       schema (when (some? ?schema)
+                                (schema ?schema))
+                       ;;TODO if regex allow multiple (or no) forms
+                       _ (when (some-> schema -regex-op?)
+                           (miu/-fail! ::edn-string-regex-schema-not-yet-implemented))
+                       p (miu/-every-pred
+                           (cond-> [#(not (identical? eof %))]
+                             schema (conj (validator ?schema))))]
+                   (fn [v]
+                     (try (p (edn/read-string opts v))
+                          (catch Exception _
+                            (prn "caught")
+                            false)))))})

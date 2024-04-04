@@ -12,6 +12,8 @@
             [malli.error.utils :refer [-flatten-errors]]
             [malli.util :as mu]))
 
+(declare humanize)
+
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
   (fn [{:keys [schema value]} _]
     (let [{:keys [min max]} (m/properties schema)]
@@ -61,6 +63,7 @@
                   (humanizer (-> args
                                  (assoc :constraint (if not? not-child constraint)
                                         :validator validator
+                                        :humanize humanize
                                         ;;TODO expose more arities
                                         :humanize-constraint-violation -humanize-constraint-violation
                                         ;;TODO expose more arities
@@ -93,7 +96,7 @@
                                                                             (mc/-constraint-from-properties
                                                                               (m/type schema)
                                                                               options)))
-                                                options))}}
+                                                (m/-options-with-malli-core-fns options)))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
                                       (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}

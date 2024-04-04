@@ -874,7 +874,7 @@
     (is (not (m/validate [:string {:escapes {\c "b"}}] "c")))
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
-          #":malli.constraint.string.validate/escape-constraint-map-cannot-overlap-keys-vals"
+          #":malli\.constraint\.string\.validate/escape-constraint-map-cannot-overlap-keys-vals"
           (m/validator [:string {:escapes {\c "c"}}])))
     (is (= ["should escape character \\c"]
            (me/humanize (m/explain [:string {:escapes {\c "b"}}] "c"))))
@@ -887,6 +887,25 @@
            (me/humanize (m/explain [:string {:includes "foo"}] "oobar"))))
     (is (= ["should not include substring \"foo\""]
            (me/humanize (m/explain [:string {:not [:includes "foo"]}] "foobar")))))
+  (testing ":edn"
+    (is (not (m/validate [:string {:edn true}] "")))
+    (is (m/validate [:string {:edn true}] "()"))
+    (is (m/validate [:string {:edn :int}] "123"))
+    (is (not (m/validate [:string {:edn :int}] "a")))
+    (is (m/validate [:string {:edn :symbol}] "a"))
+    (is (m/validate [:string {:edn :string}] "\"a\""))
+    (is (not (m/validate [:string {:edn :keyword}] "\"a\"")))
+    ;;TODO not yet implemented
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli\.constraint\.string\.validate/edn-string-regex-schema-not-yet-implemented"
+          (m/validate [:string {:edn [:+ :keyword]}] "\"a\"")))
+    (is (= ["should should be a string of :keyword" :constraint-failure ["invalid type"]]
+           (me/humanize (m/explain [:string {:edn :keyword}] "a"))))
+    (is (= ["should should be a string of [:map [:a :int]]"
+            :constraint-failure {:a ["missing required key"]}]
+           (me/humanize (m/explain [:string {:edn [:map [:a :int]]}]
+                                   "{}")))))
 )
 
 (deftest is-prop-test

@@ -24,8 +24,10 @@
                                                                     :trim-newline
                                                                     :blank
                                                                     :non-blank
+                                                                    ;;TODO :unescapes {"__MINUS__" \-}
                                                                     :escapes
                                                                     :includes
+                                                                    :edn
                                                                     #_:re
                                                                     #_:starts-with
                                                                     #_:ends-with
@@ -60,7 +62,10 @@
                                               :non-blank :non-blank-string
                                               :escapes :escapes-string
                                               :includes :includes-string
-                                              :re :re-string))]
+                                              :edn :edn-string
+                                              ;;TODO
+                                              :re :re-string
+                                              ))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max
                                  :min
@@ -82,7 +87,8 @@
                                  :blank
                                  :non-blank
                                  :escapes
-                                 :includes})
+                                 :includes
+                                 :edn})
      :nested-property-keys (disj composite-constraint-types :not)
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)

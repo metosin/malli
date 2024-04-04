@@ -1,6 +1,8 @@
 (ns malli.constraint.string.humanize
-  (:require [clojure.string :as str]
-            [malli.constraint.char :as mcc]))
+  (:require [clojure.edn :as edn]
+            [clojure.string :as str]
+            [malli.constraint.char :as mcc]
+            [malli.core :as-alias m]))
 
 (defn -msg-or-pred [msg pred]
   (fn [{:keys [value]} _options]
@@ -66,4 +68,19 @@
                         (str "should include substring " (pr-str s))))
    [:not :includes-string] (fn [{[_ s] :constraint :keys [validator value]} _]
                              (when-not (validator value)
-                               (str "should not include substring " (pr-str s))))})
+                               (str "should not include substring " (pr-str s))))
+   :edn-string (fn [{[_ s] :constraint :keys [validator value humanize]}
+                    {::m/keys [schema explain]}]
+                 (assert (not (false? s)))
+                 (when-not (validator value)
+                   (let [eof (Object.)
+                         opts {:eof eof}]
+                     (if-some [[edn] (try [(edn/read-string opts value)]
+                                          (catch Exception _))]
+                       (if (and (some? s)
+                                (not (boolean? s)))
+                         (when-some [errors (explain s edn)]
+                           (prn errors)
+                           [(str "should should be a string of " (pr-str s))
+                            :constraint-failure (humanize errors)]))
+                       "should be valid edn"))))})

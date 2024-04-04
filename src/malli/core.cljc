@@ -16,7 +16,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast validator)
+         parser unparser ast from-ast validator validate explain)
 
 ;;
 ;; protocols and records
@@ -646,10 +646,16 @@
   (when-let [ns-name (some-> properties :namespace name)]
     (fn [x] (= (namespace x) ns-name))))
 
+(defn -options-with-malli-core-fns [options]
+  (assoc options
+         ::schema schema
+         ::validator validator
+         ::validate validate
+         ::-regex-op? -regex-op?
+         ::explain explain))
+
 (defn- -constraint-validator [properties type options]
-  (mc/-constraint-validator properties type (assoc options
-                                                   ::schema schema
-                                                   ::validator validator)))
+  (mc/-constraint-validator properties type (-options-with-malli-core-fns options)))
 
 ;;
 ;; Schemas

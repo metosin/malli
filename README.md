@@ -415,8 +415,8 @@ schema itself.
 Here we describe the constraints for `:map`, `:set`, and `:map-of` schemas.
 
 The simplest constraint `[:contains K]` asserts the key `K` must be present.
-In `:map`, `:set`, and `:map-of` constraints, can be abbreviated to `K`.
-Other schemas abbreviate `[CONSTRAINT]` to `CONSTRAINT`.
+In `:map`, `:set`, and `:map-of` constraints, this constraint can be abbreviated to `K`.
+This is different to constraints in other schemas, which abbreviate `[CONSTRAINT]` to `CONSTRAINT`.
 
 For example, `[:map {:and [:alpha]}]` is sugar for `[:map {:and [[:contains :alpha]]}]`
 and `[:string {:and [:alpha]}]` is sugar for `[:string {:and [[:alpha]]}]`.

@@ -905,8 +905,7 @@
     (is (= ["should should be a string of [:map [:a :int]]"
             :constraint-failure {:a ["missing required key"]}]
            (me/humanize (m/explain [:string {:edn [:map [:a :int]]}]
-                                   "{}")))))
-)
+                                   "{}"))))))
 
 (deftest is-prop-test
   (is (m/validate [:map

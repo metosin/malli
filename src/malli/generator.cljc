@@ -105,18 +105,32 @@
                                           :min min})))
 
 (defn- -string-gen [schema solutions options]
+  (prn "-string-gen" solutions)
   (gen-one-of
     (mapv (fn [solution]
-            (when-some [unsupported-keys (not-empty (disj (set (keys solution)) :min-count :max-count))]
+            (when-some [unsupported-keys (not-empty (disj (set (keys solution))
+                                                          :min-count :max-count
+                                                          :string-class))]
               (m/-fail! ::unsupported-string-constraint-solution {:schema schema :solution solution}))
             (let [{min :min-count
-                   max :max-count} solution]
+                   max :max-count
+                   :keys [string-class]} solution
+                  _ (when (> 1 (count string-class))
+                      ;;WIP
+                      (m/-fail! ::unsupported-string-class-combination
+                                {:schema schema
+                                 :string-class string-class}))
+                  char-gen (when (seq string-class)
+                             (case (first string-class)
+                               :alpha gen/char-alpha
+                               :alphanumeric gen/char-alphanumeric
+                               :numeric (gen/fmap char (gen/choose 48 57))))]
               (cond
-                (and min (= min max)) (gen/fmap str/join (gen/vector gen/char-alphanumeric min))
-                (and min max) (gen/fmap str/join (gen/vector gen/char-alphanumeric min max))
-                min (gen/fmap str/join (gen-vector-min gen/char-alphanumeric min options))
-                max (gen/fmap str/join (gen/vector gen/char-alphanumeric 0 max))
-                :else gen/string-alphanumeric)))
+                (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
+                (and min max) (gen/fmap str/join (gen/vector char-gen min max))
+                min (gen/fmap str/join (gen-vector-min char-gen min options))
+                max (gen/fmap str/join (gen/vector char-gen 0 max))
+                :else (gen/fmap str/join (gen/vector char-gen)))))
           solutions)))
 
 (defn- -coll-gen [schema f options]
@@ -257,23 +271,52 @@
   (letfn [(rec [cart-sols]
             (lazy-seq
               (when-some [[[sol1 & sols :as all-sols]] (seq cart-sols)]
-                (if (some (some-fn :< :> :<= :>= :max-count :min-count) all-sols)
-                  (concat (-conj-number-constraints all-sols)
-                          (rec (rest cart-sols)))
-                  (if-some [present (reduce (fn [p1 {p2 :present}]
-                                              (reduce-kv (fn [acc k present1]
-                                                           (if-some [[_ present2] (find acc k)]
-                                                             (if (identical? present1 present2)
-                                                               acc
-                                                               (reduced (reduced nil)))
-                                                             (assoc acc k present1)))
-                                                         p1 p2))
-                                            (:present sol1) sols)]
-                    (cons (-> sol1
-                              (update :order into (mapcat :order) sols)
-                              (assoc :present present))
-                          (rec (rest cart-sols)))
-                    (rec (rest cart-sols)))))))]
+                (when-some [unsupported-keys (not-empty
+                                               (disj (into #{} (mapcat keys) all-sols)
+                                                     :< :> :<= :>= :max-count :min-count
+                                                     :present :order :string-class))]
+                  (m/-fail! ::unsupported-conj-solution {:unsupported-keys unsupported-keys}))
+                (let [string-solutions
+                      (if (not-any? :string-class all-sols)
+                        [{}]
+                        (let [sc (into #{} (mapcat :string-class) all-sols)
+                              sc (cond-> sc
+                                   ;; numeric/alpha subsumes alphanumeric
+                                   (and (:alphanumeric sc)
+                                        (or (:numeric sc)
+                                            (:alpha sc)))
+                                   (disj :alphanumeric))]
+                          (if (and (:numeric sc)
+                                   (:alpha sc))
+                            ;; unsatisfiable
+                            []
+                            [{:string-class sc}])))
+                      number-solutions
+                      (if (not-any? (some-fn :< :> :<= :>= :max-count :min-count) all-sols)
+                        [{}]
+                        (-conj-number-constraints all-sols))
+                      keyset-solutions
+                      (if (not-any? (some-fn :present :order) all-sols)
+                        [{}]
+                        (if-some [present (reduce (fn [p1 {p2 :present}]
+                                                    (reduce-kv (fn [acc k present1]
+                                                                 (if-some [[_ present2] (find acc k)]
+                                                                   (if (identical? present1 present2)
+                                                                     acc
+                                                                     (reduced (reduced nil)))
+                                                                   (assoc acc k present1)))
+                                                               p1 p2))
+                                                  (:present sol1) sols)]
+                          [(-> sol1
+                               (update :order into (mapcat :order) sols)
+                               (assoc :present present))]
+                          []))
+                      combined-sols (comb/cartesian-product
+                                      string-solutions number-solutions keyset-solutions)]
+                  (if (empty? combined-sols)
+                    []
+                    (concat (map #(apply merge %) combined-sols)
+                            (rec (rest cart-sols))))))))]
     (distinct (rec (apply comb/cartesian-product (distinct sols))))))
 
 (comment
@@ -396,7 +439,14 @@ collected."
                               (if (empty? sol)
                                 [{:order [] :present {}}]
                                 (sequence (comp (map (fn [s]
-                                                       (assert (not-any? s [:max-count :min-count]))
+                                                       (when-some [unsupported-keys
+                                                                   (not-empty
+                                                                     (disj (into #{} (keys s))
+                                                                           :max-count :min-count
+                                                                           :< :> :<= :>=))]
+                                                         (m/-fail! ::unsupported-negated-solution
+                                                                   {:unsupported-keys unsupported-keys
+                                                                    :solution s}))
                                                        (-> s
                                                            (set/rename-keys {:< :>=
                                                                              :> :<=
@@ -1126,6 +1176,7 @@ collected."
   (let [solutions (or (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
                               (-constraint-solutions :int options)
                               seq
+                              ;;FIXME drops unrelated constraints silently like :min-count
                               -conj-number-constraints)
                       [{}])]
     (when (empty? solutions)

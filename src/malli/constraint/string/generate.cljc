@@ -4,12 +4,16 @@
   {:alpha-string (fn [{:keys [constraint]} options]
                    (let [[s] (next constraint)]
                      (assert (not (false? s)))
-                     [{:string-class [[:alpha]]}]))
+                     [{:string-class #{:alpha}}]))
+   :numeric-string (fn [{:keys [constraint]} options]
+                     (let [[s] (next constraint)]
+                       (assert (not (false? s)))
+                       [{:string-class #{:numeric}}]))
    :edn-string (fn [{:keys [constraint]} options]
                  (let [[s] (next constraint)]
                    (assert (not (false? s)))
-                   [{:string-class [(cond-> [:edn]
-                                      s (conj s))]}]))
+                   [{:string-class #{(cond-> [:edn]
+                                       s (conj s))}}]))
    })
 
 (defn generators []

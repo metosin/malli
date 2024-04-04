@@ -26,9 +26,9 @@
   (case (first cls)
     :alphanumeric (concat (string-class->char-codes [:numeric])
                           (string-class->char-codes [:alpha]))
-    :alpha (concat (range (int \A) (inc (int \A)))
-                   (range (int \a) (inc (int \z))))
-    :numeric (range (int \0) (inc (int \9)))))
+    :alpha [{:min (int \A) :max (int \Z)}
+            {:min (int \a) :max (int \z)}]
+    :numeric [{:min (int \0) :max (int \9)}]))
 
 (defn negate-string-class [cls]
   {:pre [(vector? cls)]}

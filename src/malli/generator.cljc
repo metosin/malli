@@ -104,8 +104,9 @@
                                           :generator gen
                                           :min min})))
 
+(declare gen-one-of)
+
 (defn- -string-gen [schema solutions options]
-  (prn "-string-gen" solutions)
   (gen-one-of
     (mapv (fn [solution]
             (when-some [unsupported-keys (not-empty (disj (set (keys solution))
@@ -120,19 +121,29 @@
                       (m/-fail! ::unsupported-string-class-combination
                                 {:schema schema
                                  :string-class string-class}))
-                  char-gen (if (empty? string-class)
-                             gen/char-alphanumeric
-                             (case (first string-class)
-                               (:non-numeric :alpha) gen/char-alpha
-                               :alphanumeric gen/char-alphanumeric
-                               (:non-alpha :numeric) (gen/fmap char (gen/choose 48 57))
-                               :includes-string ))]
-              (cond
-                (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
-                (and min max) (gen/fmap str/join (gen/vector char-gen min max))
-                min (gen/fmap str/join (gen-vector-min char-gen min options))
-                max (gen/fmap str/join (gen/vector char-gen 0 max))
-                :else (gen/fmap str/join (gen/vector char-gen)))))
+                  string-gen (fn [min max char-gen]
+                               (cond
+                                 (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
+                                 (and min max) (gen/fmap str/join (gen/vector char-gen min max))
+                                 min (gen/fmap str/join (gen-vector-min char-gen min options))
+                                 max (gen/fmap str/join (gen/vector char-gen 0 max))
+                                 :else (gen/fmap str/join (gen/vector char-gen))))]
+              (if (empty? string-class)
+                gen/char-alphanumeric
+                (case (ffirst string-class)
+                  (:non-numeric :alpha) (string-gen min max gen/char-alpha)
+                  :alphanumeric (string-gen min max gen/char-alphanumeric)
+                  (:not-alpha :non-alpha :numeric) (string-gen min max (gen/fmap char (gen/choose 48 57)))
+                  :includes (let [[s] (nfirst string-class)
+                                  scount (count s)]
+                              (gen/bind
+                                (gen/fmap inc (gen/large-integer* {:min 1 :max (some-> max (quot scount))}))
+                                (fn [times]
+                                  (let [max (some-> max (- (* times scount)))
+                                        _ (when max (assert (nat-int? max)))
+                                        min (some->> min (- (* times scount)) (cc/max 0))]
+                                    (gen/fmap #(apply str % (repeat times s))
+                                              (string-gen min max gen/char-alphanumeric))))))))))
           solutions)))
 
 (defn- -coll-gen [schema f options]

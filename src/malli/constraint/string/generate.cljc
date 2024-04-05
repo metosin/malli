@@ -8,16 +8,20 @@
       [{:string-class #{k}}])))
 
 (defn solvers []
-  {:alpha-string (-string-class :alpha)
-   :non-alpha-string (-string-class :non-alpha)
-   :numeric-string (-string-class :numeric)
-   :non-numeric-string (-string-class :non-numeric)
-   :alphanumeric-string (-string-class :alphanumeric)
+  {:alpha-string (-string-class [:alpha])
+   :non-alpha-string (-string-class [:non-alpha])
+   :numeric-string (-string-class [:numeric])
+   :non-numeric-string (-string-class [:non-numeric])
+   :alphanumeric-string (-string-class [:alphanumeric])
    :edn-string (fn [{:keys [constraint]} options]
                  (let [[s] (next constraint)]
                    (assert (not (false? s)))
                    [{:string-class #{(cond-> [:edn]
                                        s (conj s))}}]))
+   :includes-string (fn [{:keys [constraint]} options]
+                      (let [[s] (next constraint)]
+                        [{:string-class #{[:includes s]}}]))
+
    })
 
 ;; TODO calculate compatibility with set intersection
@@ -31,7 +35,7 @@
     :numeric [{:min (int \0) :max (int \9)}]))
 
 (defn negate-string-class [cls]
-  {:pre [(vector? cls)]}
+  (assert (vector? cls) (pr-str cls))
   (case (first cls)
     :alpha [:not-alpha]
     :not-alpha [:alpha]

@@ -1292,7 +1292,8 @@
           #?(:clj Exception, :cljs js/Error)
           #":malli\.generator/unsatisfiable-string-constraint"
           (mg/generate [:string {:not [:and [:min 0] [:max 10]]}])))
-    (is (= (mg/generate [:string {:min 10 :not :alpha}]
+    (is (= "5833307285"
+           (mg/generate [:string {:min 10 :not :alpha}]
                         {:seed 0})))
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
@@ -1301,6 +1302,8 @@
   (testing ":non-alpha"
     (is (= "5833307285"
            (mg/generate [:string {:min 10 :non-alpha true}]
-                        {:seed 0})))
-    )
-  )
+                        {:seed 0}))))
+  (testing ":includes"
+    (is (= "54T0oJ7NCbWYeLkvm84iwiZblahblah"
+           (mg/generate [:string {:min 10 :includes "blah"}]
+                        {:seed 0})))))

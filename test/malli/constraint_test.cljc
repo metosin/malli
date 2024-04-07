@@ -774,6 +774,8 @@
     (is (m/validate [:string {:distinct true}] "[]"))
     (is (not (m/validate [:string {:distinct true}] "[[")))
     (is (m/validate [:string {:distinct true}] "abcde"))
+    (is (= ["invalid type"]
+           (me/humanize (m/explain [:string {:distinct true}] nil))))
     (is (= ["should be distinct: \\[ provided 2 times"]
            (me/humanize (m/explain [:string {:distinct true}] "[[")))))
   (testing ":palindrome"

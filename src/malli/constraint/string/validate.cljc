@@ -3,7 +3,8 @@
             [clojure.edn :as edn]
             [malli.core :as-alias m]
             [malli.constraint.char :as char]
-            [malli.impl.util :as miu]))
+            [malli.impl.util :as miu])
+  #?(:clj (:import java.lang.Character$UnicodeScript)))
 
 (defn- -flip? [{:keys [constraint]} _]
   (false? (second constraint)))
@@ -16,13 +17,39 @@
                      )))
 (defn- -idempotent [f] (-wrap (fn [s] (= s (f s)))))
 
+;; https://lambdaisland.com/blog/12-06-2017-clojure-gotchas-surrogate-pairs
+(defn char-code-at [str pos]
+  #?(:clj (.charAt ^String str pos)
+     :cljs (.charCodeAt str pos)))
+
+(defn to-code-point [high low]
+  #?(:clj (Character/toCodePoint (char high) (char low))
+     :cljs (miu/-fail! ::to-code-point-not-implemented-cljs)))
+
+;; https://lambdaisland.com/blog/12-06-2017-clojure-gotchas-surrogate-pairs
+(defn code-point-seq
+  "Return a seq of the characters in a string, making sure not to split up
+  UCS-2 (or is it UTF-16?) surrogate pairs. Because JavaScript. And Java."
+  ([str]
+   (char-seq str 0))
+  ([str offset]
+   (if (>= offset (count str))
+     ()
+     (let [code (char-code-at str offset)
+           surrogate (<= 0xD800 (int code) 0xDBFF)
+           code (if surrogate
+                  (to-code-point code (char-code-at str (inc offset)))
+                  code)]
+       (cons (int code)
+             (char-seq str (cond-> offset surrogate inc)))))))
+
 (defn validators []
-  {:alpha-string (-wrap (fn [s] (every? char/alpha? s)))
-   :non-alpha-string (-wrap (fn [s] (not-any? char/alpha? s)))
-   :numeric-string (-wrap (fn [s] (every? char/numeric? s)))
-   :non-numeric-string (-wrap (fn [s] (not-any? char/numeric? s)))
-   :alphanumeric-string (-wrap (fn [s] (every? char/alphanumeric? s)))
-   :non-alphanumeric-string (-wrap (fn [s] (not-any? char/alphanumeric? s)))
+  {:alpha-string (-wrap (fn [s] (every? char/alpha? (code-point-seq s))))
+   :non-alpha-string (-wrap (fn [s] (not-any? char/alpha? (code-point-seq s))))
+   :numeric-string (-wrap (fn [s] (every? char/numeric? (code-point-seq s))))
+   :non-numeric-string (-wrap (fn [s] (not-any? char/numeric? (code-point-seq s))))
+   :alphanumeric-string (-wrap (fn [s] (every? char/alphanumeric? (code-point-seq s))))
+   :non-alphanumeric-string (-wrap (fn [s] (not-any? char/alphanumeric? (code-point-seq s))))
    :trim-string (-idempotent str/trim)
    :triml-string (-idempotent str/triml)
    :trimr-string (-idempotent str/trimr)
@@ -84,4 +111,19 @@
                      (try (p (edn/read-string opts v))
                           (catch Exception _
                             (prn "caught")
-                            false)))))})
+                            false)))))
+   :unicode-script (fn [{:keys [constraint value]} {::m/keys [schema validator -regex-op?]}]
+                     ;;TODO schema arg
+                     (when-not (= 1 (count constraint))
+                       (miu/-fail! ::unicode-script-takes-one-child
+                                   {:constraint constraint}))
+                     (assert nil "WIP")
+                     #_
+                     (let [script-name (str/replace (name (second constraint)) \- \_)]
+                       #?(:clj (let [uc (try (Character$UnicodeScript/of script-name)
+                                             (catch IllegalArgumentException _
+                                               (miu/-fail! ::unicode-script-not-found {:constraint constraint})))]
+                                 (fn [v]
+                                   (every? )
+                                   ))
+                          :cljs (miu/-fail! ::unicode-script-not-implemented-for-cljs))))})

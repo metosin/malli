@@ -1,5 +1,7 @@
 (ns malli.constraint.string.generate
-  (:require [malli.impl.util :as miu]))
+  (:require [clojure.test.check.generators :as gen]
+            [clojure.string :as str]
+            [malli.impl.util :as miu]))
 
 (defn- -string-class [k]
   (fn [{:keys [constraint]} options]

@@ -22,7 +22,9 @@
                        :cljs (assert nil "NYI"))
                     (when-not (f v)
                       (str msg ": "
-                           "index " i " has " (pr-str v) ".")))
+                           "index " i " has "
+                           (pr-str v) ;;TODO code point => string?
+                           ".")))
                   (mcv-str/code-point-seq value))))
 
 (defn humanizers []

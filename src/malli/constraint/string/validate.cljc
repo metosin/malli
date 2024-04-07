@@ -26,22 +26,19 @@
   #?(:clj (Character/toCodePoint (char high) (char low))
      :cljs (miu/-fail! ::to-code-point-not-implemented-cljs)))
 
-;; https://lambdaisland.com/blog/12-06-2017-clojure-gotchas-surrogate-pairs
 (defn code-point-seq
-  "Return a seq of the characters in a string, making sure not to split up
-  UCS-2 (or is it UTF-16?) surrogate pairs. Because JavaScript. And Java."
   ([str]
-   (char-seq str 0))
+   (code-point-seq str 0))
   ([str offset]
-   (if (>= offset (count str))
-     ()
-     (let [code (char-code-at str offset)
-           surrogate (<= 0xD800 (int code) 0xDBFF)
-           code (if surrogate
-                  (to-code-point code (char-code-at str (inc offset)))
-                  code)]
-       (cons (int code)
-             (char-seq str (cond-> offset surrogate inc)))))))
+   (lazy-seq
+     (when (< offset (count str))
+       (let [code (char-code-at str offset)
+             surrogate (<= 0xD800 (int code) 0xDBFF)
+             code (if surrogate
+                    (to-code-point code (char-code-at str (inc offset)))
+                    code)]
+         (cons (int code)
+               (code-point-seq str (cond-> (inc offset) surrogate inc))))))))
 
 (defn validators []
   {:alpha-string (-wrap (fn [s] (every? char/alpha? (code-point-seq s))))

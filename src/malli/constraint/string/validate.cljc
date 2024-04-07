@@ -34,10 +34,10 @@
      (when (< offset (count str))
        (let [code (char-code-at str offset)
              offset (inc offset)
-             surrogate (<= 0xD800 (int code) 0xDBFF)
-             code (if surrogate
-                    (to-code-point code (char-code-at str offset))
-                    code)
+             surrogate (and (<= 0xD800 (int code) 0xDBFF)
+                            (< offset (count str)))
+             code (cond-> code
+                    surrogate (to-code-point code (char-code-at str offset)))
              offset (cond-> offset surrogate inc)]
          (cons (int code)
                (code-point-seq str offset)))))))

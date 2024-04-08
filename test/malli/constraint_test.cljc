@@ -893,9 +893,12 @@
            (me/humanize (m/explain [:string {:not [:escapes {\c "b"}]}] "b")))))
   (testing ":includes"
     (is (m/validate [:string {:includes "foo"}] "foobar"))
+    (is (m/validate [:string {:includes "𓅡"}] "𓅡foobar"))
     (is (not (m/validate [:string {:includes "foo"}] "oofar")))
     (is (= ["should include substring \"foo\""]
            (me/humanize (m/explain [:string {:includes "foo"}] "oobar"))))
+    (is (= ["should include substring \"𓅡\""]
+           (me/humanize (m/explain [:string {:includes "𓅡"}] "oobar"))))
     (is (= ["should not include substring \"foo\""]
            (me/humanize (m/explain [:string {:not [:includes "foo"]}] "foobar")))))
   (testing ":edn"
@@ -905,6 +908,7 @@
     (is (not (m/validate [:string {:edn :int}] "a")))
     (is (m/validate [:string {:edn :symbol}] "a"))
     (is (m/validate [:string {:edn :string}] "\"a\""))
+    (is (m/validate [:string {:edn :string}] "\"𓅡\""))
     (is (not (m/validate [:string {:edn :keyword}] "\"a\"")))
     (is (m/validate [:string {:edn :keyword}] ":a"))
     (is (m/validate [:string {:or [:edn :alpha]}] ":a"))
@@ -927,12 +931,13 @@
            (me/humanize (m/explain [:string {:xor [:edn :alpha]}] "a"))))
     (is (= ["should not include substring \"foo\""]
            (me/humanize (m/explain [:string {:xor [:edn [:includes "foo"]]}] "foo1"))))
+    (is (= ["should not include substring \"𓅡\""]
+           (me/humanize (m/explain [:string {:xor [:edn [:includes "𓅡"]]}] "𓅡foo1"))))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "1"))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a"))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a1"))
     (is (= ["should be valid edn"]
-           (me/humanize (m/explain [:string {:implies [:alphanumeric :edn]}] "1a"))))
-))
+           (me/humanize (m/explain [:string {:implies [:alphanumeric :edn]}] "1a"))))))
 
 ;; not sure this makes sense without objects [:is schema object path]. we could default to "this"
 ;; but need to keep forwards compat if we add explicit objects.

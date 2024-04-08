@@ -306,12 +306,24 @@
 (def Password
   [:string {:min 5
             :and [[:not [:non-alpha]]
-                  [:not [:non-numeric]]]}])
+                  [:not [:non-numeric]]
+                  (into [:or] (map #(do [:includes (str %)]))
+                        [\; \! \@ \# \$ \% \^ \& \*])]}])
 
 (deftest string-password-test
   (is (m/validate Password "12345abc"))
   (is (= [:and
           "should contain an alphabetic character"
           "should contain a numeric character"
+          [:or
+           "should include substring \";\""
+           "should include substring \"!\""
+           "should include substring \"@\""
+           "should include substring \"#\""
+           "should include substring \"$\""
+           "should include substring \"%\""
+           "should include substring \"^\""
+           "should include substring \"&\""
+           "should include substring \"*\""]
           "should be at least 5 characters, given 0"]
          (me/humanize (m/explain Password "")))))

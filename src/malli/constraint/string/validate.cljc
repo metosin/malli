@@ -3,7 +3,6 @@
             [clojure.edn :as edn]
             [malli.core :as-alias m]
             [malli.constraint.char :as char]
-            [malli.constraint.string.util :refer [code-point-seq]]
             [malli.impl.util :as miu])
   #?(:clj (:import java.lang.Character$UnicodeScript)))
 
@@ -19,12 +18,12 @@
 (defn- -idempotent [f] (-wrap (fn [s] (= s (f s)))))
 
 (defn validators []
-  {:alpha-string (-wrap (fn [s] (every? char/alpha? (code-point-seq s))))
-   :non-alpha-string (-wrap (fn [s] (not-any? char/alpha? (code-point-seq s))))
-   :numeric-string (-wrap (fn [s] (every? char/numeric? (code-point-seq s))))
-   :non-numeric-string (-wrap (fn [s] (not-any? char/numeric? (code-point-seq s))))
-   :alphanumeric-string (-wrap (fn [s] (every? char/alphanumeric? (code-point-seq s))))
-   :non-alphanumeric-string (-wrap (fn [s] (not-any? char/alphanumeric? (code-point-seq s))))
+  {:alpha-string (-wrap (fn [s] (every? char/alpha? s)))
+   :non-alpha-string (-wrap (fn [s] (not-any? char/alpha? s)))
+   :numeric-string (-wrap (fn [s] (every? char/numeric? s)))
+   :non-numeric-string (-wrap (fn [s] (not-any? char/numeric? s)))
+   :alphanumeric-string (-wrap (fn [s] (every? char/alphanumeric? s)))
+   :non-alphanumeric-string (-wrap (fn [s] (not-any? char/alphanumeric? s)))
    :trim-string (-idempotent str/trim)
    :triml-string (-idempotent str/triml)
    :trimr-string (-idempotent str/trimr)
@@ -47,7 +46,7 @@
                                                         (when-not (char? c)
                                                           (miu/-fail! ::escapes-constraint-map-takes-characters
                                                                       {:constraint constraint}))
-                                                        c))
+                                                        (int c)))
                                              (keys m))]
                        (fn [s]
                          (not-any? not-allowed s))))

@@ -1,7 +1,8 @@
 (ns malli.constraint.char)
 
-(defn alpha? [c] #?(:clj (Character/isAlphabetic (int c))
-                    :cljs (throw (ex-info (str `alpha) {}))))
-(defn numeric? [c] #?(:clj (Character/isDigit (int c))
-                      :cljs (throw (ex-info (str `numeric?) {}))))
+(defn alpha? [c] (or (<= 65 (int c) 90) (<= 97 (int c) 122)))
+(defn numeric? [c] (<= 48 c 57))
 (defn alphanumeric? [c] (or (alpha? c) (numeric? c)))
+(defn ascii? [ch] (<= 32 (int ch) 126))
+(defn whitespace? [ch] #?(:clj (Character/isWhitespace (int ch))
+                          :cljs (throw (ex-info (str `whitespace?) {}))))

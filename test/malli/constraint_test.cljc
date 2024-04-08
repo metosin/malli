@@ -4,6 +4,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.walk :as walk]
             [malli.core :as m]
+            [malli.constraint.string.util :refer [code-point-offset-seq]]
             [malli.edn :as edn]
             [malli.generator :as mg]
             [malli.error :as me]
@@ -688,6 +689,12 @@
     (is (m/validate [:string {:not [:alpha]}] "ab1"))
     (is (m/validate [:string {:not [:alpha]}] "1"))
     (is (not (m/validate [:string {:not [:alpha]}] "")))
+    (is (= ["should be alphabetic: index 0 has \\space."]
+           (me/humanize (m/explain [:string {:alpha true}] " ab"))
+           (me/humanize (m/explain [:string {:alpha true}] " "))))
+    (is (= ["should be alphabetic: index 0 has code point 78177."
+            "should be alphabetic: index 4 (code point offset 3) has code point 78177."]
+           (me/humanize (m/explain [:string {:alpha true}] "𓅡ab𓅡"))))
     (is (= ["should contain a non-alphabetic character"]
            (me/humanize (m/explain [:string {:not [:alpha]}] "ab"))
            (me/humanize (m/explain [:string {:not [:alpha]}] "")))))

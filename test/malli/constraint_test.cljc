@@ -689,6 +689,7 @@
     (is (m/validate [:string {:not [:alpha]}] "ab1"))
     (is (m/validate [:string {:not [:alpha]}] "1"))
     (is (not (m/validate [:string {:not [:alpha]}] "")))
+    (is (m/validate [:string {:not [:alpha]}] "𓅡"))
     (is (= ["should be alphabetic: index 0 has \\space."]
            (me/humanize (m/explain [:string {:alpha true}] " ab"))
            (me/humanize (m/explain [:string {:alpha true}] " "))))

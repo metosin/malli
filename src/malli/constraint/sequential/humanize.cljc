@@ -2,7 +2,8 @@
   (:require [malli.impl.util :as miu]))
 
 (defn humanizers []
-  {:palindrome (fn [{:keys [validator value]} _]
+  {;;FIXME create :palindrome-string, doesn't work for strings (code points)
+   :palindrome (fn [{:keys [validator value]} _]
                  (when-not (validator value)
                    (if (or (string? value)
                            (sequential? value))
@@ -14,6 +15,7 @@
                                   (sequential? value))
                             "should not be a palindrome"
                             "should be a sequential collection")))
+   ;;FIXME create :distinct-string, doesn't work for strings (code points)
    :distinct (fn [{:keys [validator value]} _]
                (when-not (validator value)
                  (let [freq (into {} (remove (comp #(= 1 %) val))

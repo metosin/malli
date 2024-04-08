@@ -1,7 +1,8 @@
 (ns malli.constraint.string.humanize
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
-            [malli.constraint.string.validate :as mcv-str]
+            [malli.constraint.string.util :refer [code-point-offset-seq
+                                                  code-point->string]]
             [malli.constraint.char :as mcc]
             [malli.core :as-alias m]))
 
@@ -17,15 +18,19 @@
 
 (defn -msg-check-each [msg f]
   (fn [{:keys [value]} _options]
-    (keep-indexed (fn [i v]
-                    #?(:clj (assert (= 1 (String/charCount v)) "WIP")
-                       :cljs (assert nil "NYI"))
-                    (when-not (f v)
-                      (str msg ": "
-                           "index " i " has "
-                           (pr-str v) ;;TODO code point => string?
-                           ".")))
-                  (mcv-str/code-point-seq value))))
+    (keep (fn [{:keys [code-point-offset
+                       char-offset
+                       code-point]}]
+            (when-not (f code-point)
+              (str msg ": "
+                   "index "
+                   char-offset
+                   (when (not= code-point-offset char-offset)
+                     (str "(code point offset " code-point-offset ")"))
+                   " has "
+                   (code-point->string code-point)
+                   ".")))
+          (code-point-offset-seq value))))
 
 (defn humanizers []
   {:alphanumeric-string (-msg-check-each "should be alphanumeric" mcc/alphanumeric?)

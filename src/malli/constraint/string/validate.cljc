@@ -3,6 +3,7 @@
             [clojure.edn :as edn]
             [malli.core :as-alias m]
             [malli.constraint.char :as char]
+            [malli.constraint.string.util :refer [code-point-seq]]
             [malli.impl.util :as miu])
   #?(:clj (:import java.lang.Character$UnicodeScript)))
 
@@ -16,31 +17,6 @@
                      ;complement
                      )))
 (defn- -idempotent [f] (-wrap (fn [s] (= s (f s)))))
-
-;; https://lambdaisland.com/blog/12-06-2017-clojure-gotchas-surrogate-pairs
-(defn char-code-at [str pos]
-  #?(:clj (.charAt ^String str pos)
-     :cljs (.charCodeAt str pos)))
-
-(defn to-code-point [high low]
-  #?(:clj (Character/toCodePoint (char high) (char low))
-     :cljs (miu/-fail! ::to-code-point-not-implemented-cljs)))
-
-(defn code-point-seq
-  ([str]
-   (code-point-seq str 0))
-  ([str offset]
-   (lazy-seq
-     (when (< offset (count str))
-       (let [code (char-code-at str offset)
-             offset (inc offset)
-             surrogate (and (<= 0xD800 (int code) 0xDBFF)
-                            (< offset (count str)))
-             code (cond-> code
-                    surrogate (to-code-point code (char-code-at str offset)))
-             offset (cond-> offset surrogate inc)]
-         (cons (int code)
-               (code-point-seq str offset)))))))
 
 (defn validators []
   {:alpha-string (-wrap (fn [s] (every? char/alpha? (code-point-seq s))))

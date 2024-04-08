@@ -1,8 +1,9 @@
 (ns malli.constraint.generator-test
   (:require [clojure.test :refer [are deftest is testing]]
+            [clojure.test.check :refer [quick-check]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :refer [for-all]]
+            [com.gfredericks.test.chuck.properties :as prop' :refer [for-all]]
             [malli.core :as m]
             [malli.generator :as mg]
             [malli.json-schema-test :as json-schema-test]
@@ -10,6 +11,13 @@
             #?(:clj  [malli.test-macros :refer [when-env]]
                :cljs ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
   #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
+
+(defn shrinks [?schema]
+  (-> (quick-check 1 (for-all [s (mg/generator ?schema)] false) {:seed 0})
+      :shrunk
+      :smallest
+      first
+      (get 's)))
 
 ;; these generators don't work well with :and but do with constraints
 ;; because the generators are much more specific. they also grow
@@ -129,10 +137,14 @@
     (is (= "54T0oJ7NCbWYeLkvm84iwiZblahblah"
            (mg/generate [:string {:min 10 :includes "blah"}]
                         {:seed 0})))
-    (is (= "54T0oJ7NCbWYeLkvm84iwiZblahblah"
+    (is (= "54T0oJ7NCbWYeLkvm84iwi1P3foobarfoobar"
            (mg/generate [:string {:min 10 :and [[:includes "foo"]
                                                 [:includes "bar"]]}]
                         {:seed 0})))
+    (is (= "foobarfoobar"
+           (shrinks [:string {:min 10
+                              :and [[:includes "foo"]
+                                    [:includes "bar"]]}])))
     ;;FIXME
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)

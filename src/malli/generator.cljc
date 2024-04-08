@@ -145,7 +145,7 @@
                                     scount (count s)]
                                 ;;FIXME -fail! if includes will never fit in length bounds
                                 (gen/bind
-                                  (gen/fmap inc (gen/large-integer* {:min 1 :max (some-> max (quot scount))}))
+                                  (gen/large-integer* {:min 1 :max (some-> max (quot scount))})
                                   (fn [times]
                                     (let [max (some-> max (- (* times scount)))
                                           _ (when max (assert (nat-int? max)))

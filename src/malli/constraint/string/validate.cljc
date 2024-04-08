@@ -47,7 +47,9 @@
                 (if max
                   (if (empty? cs)
                     (<= min len max)
-                    (recur (next cs) (inc len)))
+                    (if (< len max)
+                      false
+                      (recur (next cs) (inc len))))
                   (if (<= min len)
                     (if (empty? cs)
                       false
@@ -55,7 +57,9 @@
                 (if max
                   (if (empty? cs)
                     (<= len max)
-                    (recur (next cs) (inc len)))))))))))
+                    (if (< max len)
+                      false
+                      (recur (next cs) (inc len))))))))))))
 
 (defn validators []
   {:max-string (fn [{[_ min :as constraint] :constraint} _]

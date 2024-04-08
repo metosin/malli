@@ -11,7 +11,9 @@
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
                                        (assoc :max :max-count
-                                              :min :min-count))]
+                                              :min :min-count
+                                              :distinct :distinct-sequential
+                                              :sorted :sorted-sequential))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max :min :distinct :sorted})
      :generator-constraint-types (into validator-constraint-types

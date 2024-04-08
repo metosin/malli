@@ -20,6 +20,7 @@
 (deftest string-constraint-test
   (testing ":min/:max"
     (is (m/validate [:string {:min 1 :max 5}] "ab"))
+    (is (m/validate [:string {:min 2 :max 2}] "🌉🜉"))
     (is (not (m/validate [:string {:min 1 :max 5}] "")))
     (is (= ["should be at least 1 character, given 0"]
            (me/humanize (m/explain [:string {:min 1}] ""))
@@ -30,6 +31,8 @@
            (me/humanize (m/explain [:string {:min 2 :max 10}] ""))
            (me/humanize (m/explain [:string {:and [[:min 2]]}] ""))))
     (is (= ["should be at most 1 character, given 2"]
+           ;;FIXME
+           (me/humanize (m/explain [:string {:max 1}] "🌉🜉"))
            (me/humanize (m/explain [:string {:max 1}] "12"))
            (me/humanize (m/explain [:string {:min 0 :max 1}] "12"))
            (me/humanize (m/explain [:string {:and [[:max 1]]}] "12"))))

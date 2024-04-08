@@ -46,8 +46,8 @@
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
-                                       (assoc :max :max-count
-                                              :min :min-count
+                                       (assoc :max :max-string
+                                              :min :min-string
                                               :alphanumeric :alphanumeric-string
                                               :non-alphanumeric :non-alphanumeric-string
                                               :numeric :numeric-string

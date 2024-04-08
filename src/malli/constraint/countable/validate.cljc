@@ -16,5 +16,5 @@
     (count v)))
 
 (defn validators []
-  {:max-count (-first-child (fn [n] #(<= (-count %) n)))
-   :min-count (-first-child (fn [n] #(<= n (-count %))))})
+  {:max-count (-first-child (fn [n] #(<= (count %) n)))
+   :min-count (-first-child (fn [n] #(<= n (count %))))})

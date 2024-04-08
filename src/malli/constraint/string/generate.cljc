@@ -41,8 +41,12 @@
   (case (first cls)
     :alpha [:not-alpha]
     :not-alpha [:alpha]
+    :non-alpha [:not-non-alpha]
+    :not-non-alpha [:non-alpha]
     :numeric [:not-numeric]
     :not-numeric [:numeric]
+    :non-numeric [:not-non-numeric]
+    :not-non-numeric [:non-numeric]
     :alphanumeric [:not-alphanumeric]
     :not-alphanumeric [:alphanumeric]
     (miu/-fail! ::unsupported-negated-class

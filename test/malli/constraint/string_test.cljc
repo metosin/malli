@@ -307,6 +307,7 @@
   [:string {:min 5
             :and [[:not [:non-alpha]]
                   [:not [:non-numeric]]
+                  ;; TODO [:string-class {:min 1} [\; \! \@ \# \$ \% \^ \& \*]]
                   (into [:or] (map #(do [:includes (str %)]))
                         [\; \! \@ \# \$ \% \^ \& \*])]}])
 
@@ -326,4 +327,6 @@
            "should include substring \"&\""
            "should include substring \"*\""]
           "should be at least 5 characters, given 0"]
-         (me/humanize (m/explain Password "")))))
+         (me/humanize (m/explain Password ""))))
+  #_;;TODO
+  (is (mg/generate Password)))

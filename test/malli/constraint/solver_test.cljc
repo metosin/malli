@@ -7,10 +7,9 @@
            [:and :a :b] :map nil)
          '({:order [:a :b], :present {:a true, :b true}})))
   (is (= (mcs/-constraint-solutions
-               [:and [:xor :a :c] :b]
-               :map nil)
-             '({:order [:a :c :b], :present {:a true, :c false, :b true}}
-               {:order [:a :c :b], :present {:a false, :c true, :b true}})))
+           [:and [:xor :a :c] :b] :map nil)
+         '({:order [:a :c :b], :present {:a true, :c false, :b true}}
+           {:order [:a :c :b], :present {:a false, :c true, :b true}})))
   (is (= (mcs/-constraint-solutions
            [:or :a :b]
            :map nil)

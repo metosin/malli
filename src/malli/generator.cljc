@@ -121,11 +121,6 @@
             (let [{min :min-count
                    max :max-count
                    :keys [string-class]} solution
-                  _ (when (< 1 (count string-class))
-                      ;;WIP
-                      (m/-fail! ::unsupported-string-class-combination
-                                {:schema schema
-                                 :string-class string-class}))
                   string-gen (fn [min max char-gen]
                                (cond
                                  (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
@@ -135,20 +130,26 @@
                                  :else (gen/fmap str/join (gen/vector char-gen))))]
               (if (empty? string-class)
                 gen/char-alphanumeric
-                (case (ffirst string-class)
-                  (:non-numeric :alpha) (string-gen min max gen/char-alpha)
-                  :alphanumeric (string-gen min max gen/char-alphanumeric)
-                  (:not-alpha :non-alpha :numeric) (string-gen min max (gen/fmap char (gen/choose 48 57)))
-                  :includes (let [[s] (nfirst string-class)
-                                  scount (count s)]
-                              (gen/bind
-                                (gen/fmap inc (gen/large-integer* {:min 1 :max (some-> max (quot scount))}))
-                                (fn [times]
-                                  (let [max (some-> max (- (* times scount)))
-                                        _ (when max (assert (nat-int? max)))
-                                        min (some->> min (- (* times scount)) (cc/max 0))]
-                                    (gen/fmap #(apply str % (repeat times s))
-                                              (string-gen min max gen/char-alphanumeric))))))))))
+                (let [_ (when (< 1 (count string-class))
+                          ;;WIP
+                          (m/-fail! ::unsupported-string-class-combination
+                                    {:schema schema
+                                     :string-class string-class}))
+                      [the-string-class argset] (first string-class)]
+                  (case the-string-class
+                    (:non-numeric :alpha) (string-gen min max gen/char-alpha)
+                    :alphanumeric (string-gen min max gen/char-alphanumeric)
+                    (:not-alpha :non-alpha :numeric) (string-gen min max (gen/fmap char (gen/choose 48 57)))
+                    :includes (let [s (apply str argset)
+                                    scount (count s)]
+                                (gen/bind
+                                  (gen/fmap inc (gen/large-integer* {:min 1 :max (some-> max (quot scount))}))
+                                  (fn [times]
+                                    (let [max (some-> max (- (* times scount)))
+                                          _ (when max (assert (nat-int? max)))
+                                          min (some->> min (- (* times scount)) (cc/max 0))]
+                                      (gen/fmap #(apply str % (repeat times s))
+                                                (string-gen min max gen/char-alphanumeric)))))))))))
           solutions)))
 
 (defn- -coll-gen [schema f options]
@@ -720,7 +721,6 @@
     (when (empty? solutions)
       (m/-fail! ::unsatisfiable-string-constraint {:schema schema
                                                    :constraint constraint}))
-    ;;TODO respect solutions
     (-string-gen schema solutions options)))
 (defmethod -schema-generator :int [schema options]
   (let [solutions (some-> (mc/-constraint-from-properties (m/properties schema) :int options)

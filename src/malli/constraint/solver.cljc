@@ -89,21 +89,7 @@
                                                      :< :> :<= :>= :max-count :min-count
                                                      :present :order :string-class))]
                   (miu/-fail! ::unsupported-conj-solution {:unsupported-keys unsupported-keys}))
-                (let [string-solutions
-                      (if (not-any? :string-class all-sols)
-                        [{}]
-                        (let [sc (into #{} (mapcat :string-class) all-sols)
-                              sc (cond-> sc
-                                   ;; numeric/alpha subsumes alphanumeric
-                                   (and (:alphanumeric sc)
-                                        (or (:numeric sc)
-                                            (:alpha sc)))
-                                   (disj :alphanumeric))]
-                          (if (and (:numeric sc)
-                                   (:alpha sc))
-                            ;; unsatisfiable
-                            []
-                            [{:string-class sc}])))
+                (let [string-solutions (mcg-str/conj-string-class-solutions all-sols)
                       number-solutions
                       (if (not-any? (some-fn :< :> :<= :>= :max-count :min-count) all-sols)
                         [{}]
@@ -278,7 +264,7 @@ collected."
                                                                (update
                                                                  :string-class
                                                                  (fn [string-class]
-                                                                   (into #{} (map mcg-str/negate-string-class)
+                                                                   (into {} (map mcg-str/negate-string-class)
                                                                          string-class)))
                                                                (:present s)
                                                                (update :present update-vals not)))))

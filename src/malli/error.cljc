@@ -7,7 +7,7 @@
             [malli.constraint.keyset.humanize :as mch-keyset]
             [malli.constraint.string.humanize :as mch-str]
             [malli.constraint.seqable.humanize :as mch-seqable]
-            [malli.constraint.sequential.humanize :as mch-seq]
+            [malli.constraint.sequential.humanize :as mch-sequential]
             [malli.constraint.sortable.humanize :as mch-sort]
             [malli.core :as m]
             [malli.error.utils :refer [-flatten-errors]]

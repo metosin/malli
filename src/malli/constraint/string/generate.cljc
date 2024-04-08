@@ -55,7 +55,7 @@
   (assert (keyword? cls) (pr-str cls))
   (assert (set? args) (pr-str args))
   (or (when (empty? args)
-        (when-some [flip (case (first cls)
+        (when-some [flip (case cls
                            :alpha :not-alpha
                            :not-alpha :alpha
                            :non-alpha :not-non-alpha

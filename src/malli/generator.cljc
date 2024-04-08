@@ -122,6 +122,7 @@
                    max :max-count
                    :keys [string-class]} solution
                   string-gen (fn [min max char-gen]
+                               (prn {:min min :max max})
                                (cond
                                  (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
                                  (and min max) (gen/fmap str/join (gen/vector char-gen min max))
@@ -129,7 +130,7 @@
                                  max (gen/fmap str/join (gen/vector char-gen 0 max))
                                  :else (gen/fmap str/join (gen/vector char-gen))))]
               (if (empty? string-class)
-                gen/char-alphanumeric
+                (string-gen min max gen/char-alphanumeric)
                 (let [_ (when (< 1 (count string-class))
                           ;;WIP
                           (m/-fail! ::unsupported-string-class-combination

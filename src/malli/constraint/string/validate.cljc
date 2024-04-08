@@ -84,7 +84,6 @@
                    (fn [v]
                      (try (p (edn/read-string opts v))
                           (catch Exception _
-                            (prn "caught")
                             false)))))
    :unicode-script (fn [{:keys [constraint value]} {::m/keys [schema validator -regex-op?]}]
                      ;;TODO schema arg

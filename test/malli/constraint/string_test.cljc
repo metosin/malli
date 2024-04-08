@@ -302,3 +302,16 @@
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a1"))
     (is (= ["should be valid edn"]
            (me/humanize (m/explain [:string {:implies [:alphanumeric :edn]}] "1a"))))))
+
+(def Password
+  [:string {:min 5
+            :and [[:not [:non-alpha]]
+                  [:not [:non-numeric]]]}])
+
+(deftest string-password-test
+  (is (m/validate Password "12345abc"))
+  (is (= [:and
+          "should contain an alphabetic character"
+          "should contain a numeric character"
+          "should be at least 5 characters, given 0"]
+         (me/humanize (m/explain Password "")))))

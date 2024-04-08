@@ -10,6 +10,11 @@
               (miu/-fail! ::min-max-constraint-takes-integer {:constraint constraint}))]
       (f n))))
 
+(defn- -count [v]
+  (if (string? v)
+    (.codePointCount ^String v 0 (count v))
+    (count v)))
+
 (defn validators []
-  {:max-count (-first-child (fn [n] #(<= (count %) n)))
-   :min-count (-first-child (fn [n] #(<= n (count %))))})
+  {:max-count (-first-child (fn [n] #(<= (-count %) n)))
+   :min-count (-first-child (fn [n] #(<= n (-count %))))})

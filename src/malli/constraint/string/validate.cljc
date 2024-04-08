@@ -27,39 +27,40 @@
       (apply distinct? (code-point-seq s))))
 
 (defn- -string-length-in [min max]
-  (if (and (zero? min)
-           (not max))
-    (fn [_] true)
-    (if (and (= 1 min)
-             (pos? max))
-      (fn [s] (pos? (count s)))
-      (fn [s]
-        (or (let [max-code-points (count s)
-                  min (or min 0)
-                  max (or max ##Inf)]
-              (and (<= min max-code-points max)
-                   (let [min-code-points (+ (quot max-code-points 2)
-                                            (rem max-code-points 2))]
-                     (<= min min-code-points max))))
-            (loop [cs (code-point-seq s)
-                   len 0]
-              (if min
-                (if max
-                  (if (empty? cs)
-                    (<= min len max)
-                    (if (< len max)
-                      false
-                      (recur (next cs) (inc len))))
-                  (if (<= min len)
-                    (if (empty? cs)
-                      false
-                      (recur (next cs) (inc len)))))
-                (if max
-                  (if (empty? cs)
-                    (<= len max)
-                    (if (< max len)
-                      false
-                      (recur (next cs) (inc len))))))))))))
+  #?(:cljs (miu/-fail! ::string-length-in-cljs-nyi)
+     :clj (if (and (zero? min)
+                   (not max))
+            (fn [_] true)
+            (if (and (= 1 min)
+                     (pos? max))
+              (fn [s] (pos? (count s)))
+              (fn [s]
+                (or (let [max-code-points (count s)
+                          min (or min 0)
+                          max (or max ##Inf)]
+                      (and (<= min max-code-points max)
+                           (let [min-code-points (+ (quot max-code-points 2)
+                                                    (rem max-code-points 2))]
+                             (<= min min-code-points max))))
+                    (loop [cs (code-point-seq s)
+                           len 0]
+                      (if min
+                        (if max
+                          (if (empty? cs)
+                            (<= min len max)
+                            (if (< len max)
+                              false
+                              (recur (next cs) (inc len))))
+                          (if (<= min len)
+                            (if (empty? cs)
+                              false
+                              (recur (next cs) (inc len)))))
+                        (if max
+                          (if (empty? cs)
+                            (<= len max)
+                            (if (< max len)
+                              false
+                              (recur (next cs) (inc len)))))))))))))
 
 (defn validators []
   {:max-string (fn [{[_ min :as constraint] :constraint} _]

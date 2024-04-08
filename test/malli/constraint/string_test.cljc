@@ -145,6 +145,7 @@
     (is (m/validate [:string {:distinct true}] "[]"))
     (is (not (m/validate [:string {:distinct true}] "[[")))
     (is (m/validate [:string {:distinct true}] "abcde"))
+    (is (m/validate [:string {:distinct true}] "🌉🜉")) ;; same lower surrogate
     (is (= ["invalid type"]
            (me/humanize (m/explain [:string {:distinct true}] nil))))
     (is (= ["should be distinct: \\[ provided 2 times"]
@@ -155,6 +156,7 @@
     (is (m/validate [:string {:palindrome true}] ""))
     (is (m/validate [:string {:palindrome true}] "a"))
     (is (m/validate [:string {:palindrome true}] "abcba"))
+    (is (m/validate [:string {:palindrome true}] "𓅡abcba𓅡"))
     (is (not (m/validate [:string {:palindrome true}] "abcbab")))
     (is (= ["should be a palindrome"]
            (me/humanize (m/explain [:string {:palindrome true}] "[]"))

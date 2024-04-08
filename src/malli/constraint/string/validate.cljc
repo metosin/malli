@@ -3,6 +3,7 @@
             [clojure.edn :as edn]
             [malli.core :as-alias m]
             [malli.constraint.char :as char]
+            [malli.constraint.string.util :refer [code-point-seq]]
             [malli.impl.util :as miu])
   #?(:clj (:import java.lang.Character$UnicodeScript)))
 
@@ -24,6 +25,8 @@
    :non-numeric-string (-wrap (fn [s] (not-any? char/numeric? s)))
    :alphanumeric-string (-wrap (fn [s] (every? char/alphanumeric? s)))
    :non-alphanumeric-string (-wrap (fn [s] (not-any? char/alphanumeric? s)))
+   :distinct-string (-wrap (fn [s] (or (zero? (count s)) (apply distinct? (code-point-seq s)))))
+   :palindrome-string (-idempotent (fn [^String s] (str (.reverse (StringBuilder. s)))))
    :trim-string (-idempotent str/trim)
    :triml-string (-idempotent str/triml)
    :trimr-string (-idempotent str/trimr)

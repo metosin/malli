@@ -54,6 +54,8 @@
                                               :non-numeric :non-numeric-string
                                               :alpha :alpha-string
                                               :non-alpha :non-alpha-string
+                                              :distinct :distinct-string
+                                              :palindrome :palindrome-string
                                               :trim :trim-string
                                               :triml :triml-string
                                               :trimr :trimr-string

@@ -9,7 +9,8 @@
             [malli.constraint.countable.validate :as mcv-count]
             [malli.constraint.keyset.validate :as mcv-keys]
             [malli.constraint.number.validate :as mcv-num]
-            [malli.constraint.sequential.validate :as mcv-seq]
+            [malli.constraint.seqable.validate :as mcv-seqable]
+            [malli.constraint.sequential.validate :as mcv-sequential]
             [malli.constraint.sortable.validate :as mcv-sort]
             [malli.constraint.string.validate :as mcv-str]
             [malli.impl.util :as miu :refer [-fail!]]))
@@ -29,7 +30,8 @@
          (mcv-count/validators)
          (mcv-keys/validators)
          (mcv-num/validators)
-         (mcv-seq/validators)
+         (mcv-seqable/validators)
+         (mcv-sequential/validators)
          (mcv-sort/validators)
          (mcv-str/validators)))
 

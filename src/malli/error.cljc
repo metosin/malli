@@ -6,6 +6,7 @@
             [malli.constraint.countable.humanize :as mch-count]
             [malli.constraint.keyset.humanize :as mch-keyset]
             [malli.constraint.string.humanize :as mch-str]
+            [malli.constraint.seqable.humanize :as mch-seqable]
             [malli.constraint.sequential.humanize :as mch-seq]
             [malli.constraint.sortable.humanize :as mch-sort]
             [malli.core :as m]
@@ -28,7 +29,8 @@
 (defn default-constraint-humanizers []
   (merge (mch-str/humanizers)
          (mch-sort/humanizers)
-         (mch-seq/humanizers)
+         (mch-seqable/humanizers)
+         (mch-sequential/humanizers)
          (mch-compound/humanizers)
          (mch-count/humanizers)
          (mch-keyset/humanizers)))

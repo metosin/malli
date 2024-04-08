@@ -72,7 +72,7 @@
                                               :includes :includes-string
                                               :edn :edn-string
                                               ;;TODO
-                                              :re :re-string
+                                              ;:re :re-string
                                               ))]
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max

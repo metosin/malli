@@ -46,7 +46,7 @@
                                                         (when-not (char? c)
                                                           (miu/-fail! ::escapes-constraint-map-takes-characters
                                                                       {:constraint constraint}))
-                                                        (int c)))
+                                                        c))
                                              (keys m))]
                        (fn [s]
                          (not-any? not-allowed s))))

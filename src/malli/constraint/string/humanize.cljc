@@ -21,7 +21,6 @@
     (keep (fn [{:keys [code-point-offset
                        char-offset
                        code-point]}]
-            (prn (pr-str (code-point->string code-point)))
             (when-not (f code-point)
               (str msg ": "
                    "index "
@@ -29,7 +28,7 @@
                    (when (not= code-point-offset char-offset)
                      (str " (code point offset " code-point-offset ")"))
                    " has "
-                   (if (or ((some-fn mcc/ascii? mcc/whitespace?)
+                   (if (or ((some-fn mcc/printable-ascii? mcc/whitespace?)
                             code-point))
                      (pr-str (char code-point))
                      (str "code point " code-point))

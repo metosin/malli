@@ -10,7 +10,10 @@
      :cljs (miu/-fail! ::to-code-point-not-implemented-cljs)))
 
 (defn code-point->string [code-point]
-  #?(:clj (String. (Character/toChars code-point))
+  #?(;;https://www.oracle.com/technical-resources/articles/javase/supplementary.html
+     :clj (if (= 1 (Character/charCount (int code-point)))
+            (String/valueOf (char code-point))
+            (String. (Character/toChars code-point)))
      :cljs (miu/-fail! ::code-point->string-not-implemented-cljs)))
 
 (defn code-point-offset-seq

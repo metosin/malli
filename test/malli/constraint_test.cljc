@@ -908,7 +908,8 @@
     (is (not (m/validate [:string {:edn :keyword}] "\"a\"")))
     (is (m/validate [:string {:edn :keyword}] ":a"))
     (is (m/validate [:string {:or [:edn :alpha]}] ":a"))
-    (is (m/validate [:string {:xor [:edn :alpha]}] "a"))
+    (is (m/validate [:string {:alpha true}] "a"))
+    (is (not (m/validate [:string {:xor [:edn :alpha]}] "a")))
     ;;TODO not yet implemented
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
@@ -924,7 +925,7 @@
     (is (m/validate [:string {:xor [:edn :alpha]}] "1"))
     (is (= ["should contain a non-alphabetic character"]
            (me/humanize (m/explain [:string {:xor [:edn :alpha]}] "a"))))
-    (is (= ["should contain a non-alphabetic character"]
+    (is (= ["should not include substring \"foo\""]
            (me/humanize (m/explain [:string {:xor [:edn [:includes "foo"]]}] "foo1"))))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "1"))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a"))

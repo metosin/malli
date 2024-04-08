@@ -143,6 +143,7 @@
                     (:not-alpha :non-alpha :numeric) (string-gen min max (gen/fmap char (gen/choose 48 57)))
                     :includes (let [s (apply str argset)
                                     scount (count s)]
+                                ;;FIXME -fail! if includes will never fit in length bounds
                                 (gen/bind
                                   (gen/fmap inc (gen/large-integer* {:min 1 :max (some-> max (quot scount))}))
                                   (fn [times]

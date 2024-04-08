@@ -82,21 +82,38 @@
            (vec (mg/sample [:string {:not [:min 3]}]
                            {:seed 1}))))
     (is (every? seq (mg/sample [:string {:not [:max 0]}])))
+    ; [:not [:and [:min 1] [:max 1]]]
     ; [:or [:not [:min 1]] [:not [:max 1]]]
     ; [:or [:max 0] [:min 2]]
-    ;;FIXME why aren't we seeing min=2 strings?
-    (is (every? empty? (mg/sample [:string {:not [:and [:min 1] [:max 1]]}]
-                                  {:size 1000})))
-    ;;TODO what's the right answer here?
-    ;(is (every? empty? (mg/sample [:string {:not [:and [:min 2] [:max 2]]}])))
+    (is (= ["" "VuV" "fk" "j62" "" "" "" "" "" "lUm6Wj9gzzj" "Nk257" "Mo"
+            "" "" "" "" "A1X93e8d" "UMcSfA0pN6N" "pa3Oh3st" "75zyo"]
+           (mg/sample [:string {:not [:and [:min 1] [:max 1]]}]
+                      {:size 20
+                       :seed 0})
+           (mg/sample [:string {:or [[:max 0] [:min 2]]}]
+                      {:size 20
+                       :seed 0})))
+    (is (= ["" "Vu3H" "fR9" "j6pk" "p" "" "" "" "" "lUm6Wj9gzzRy" "Nk255d"
+            "M0O" "B" "" "" "m" "A1X93e89Z" "UMcSfA0pN6bu" "pa3Oh3sLG" "75zy7p"]
+          (mg/sample [:string {:not [:and [:min 2] [:max 2]]}]
+                     {:size 20
+                      :seed 0})
+          (mg/sample [:string {:or [[:max 1] [:min 3]]}]
+                     {:size 20
+                      :seed 0})))
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
           #":malli\.generator/unsatisfiable-string-constraint"
           (mg/generate [:string {:not [:min 0]}])))
-    (is (thrown-with-msg?
-          #?(:clj Exception, :cljs js/Error)
-          #":malli\.generator/unsatisfiable-string-constraint"
-          (mg/generate [:string {:not [:and [:min 0] [:max 10]]}])))
+    (is (= ["Q0o7BnE37EF" "6zNfuEdSsmmZ" "pwBdA45T9xxXu" "4t1X2NXEI96C6" "p6Xp7IS2qOc2"
+            "6h1299fiSw70z" "8K9e51XMppRz7c" "X4W88PP18l02g" "I4r432WZE70lE0" "sy3V813e055M00ei"
+            "NRQ2Gl195ax1V9UovVgd" "2So0R1gyU3011RcyD" "BtQmb9i90iW" "98ObX5CI5R2FIWse5"
+            "rLoTqt6g235W410S" "mW2SSgREaTk9VN" "IPXCS20FN87X3gB4RsRkM" "BqD6BGChjQYtN2OnRE8x564Crst"
+            "MJWJ1e325aR36vhwE0m71eDY0" "lLwqov5F4mFaqUL95TFgzMY7Wl"]
+           (mg/sample [:string {:not [:and [:min 0] [:max 10]]}]
+                      {:size 20 :seed 0})
+           (mg/sample [:string {:min 11}]
+                      {:size 20 :seed 0})))
     (is (= "5833307285"
            (mg/generate [:string {:min 10 :not :alpha}]
                         {:seed 0})))
@@ -111,4 +128,13 @@
   (testing ":includes"
     (is (= "54T0oJ7NCbWYeLkvm84iwiZblahblah"
            (mg/generate [:string {:min 10 :includes "blah"}]
-                        {:seed 0})))))
+                        {:seed 0})))
+    (is (= "54T0oJ7NCbWYeLkvm84iwiZblahblah"
+           (mg/generate [:string {:min 10 :and [[:includes "foo"]
+                                                [:includes "bar"]]}]
+                        {:seed 0})))
+    ;;FIXME
+    (is (thrown-with-msg?
+          #?(:clj Exception, :cljs js/Error)
+          #":malli\.generator/unsatisfiable-string-constraint"
+          (mg/generate [:string {:max 5 :includes "longerthan5chars"}])))))

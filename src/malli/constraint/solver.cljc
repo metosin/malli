@@ -81,6 +81,7 @@
 )
 
 (defn -conj-solutions [& sols]
+  (prn "-conj-solutions" (vec sols))
   (letfn [(rec [cart-sols]
             (lazy-seq
               (when-some [[[sol1 & sols :as all-sols]] (seq cart-sols)]
@@ -213,6 +214,7 @@ collected."
 
 (defn -constraint-solutions [constraint constraint-opts options]
   {:post [(every? map? %)]}
+  (prn "-constraint-solutions" constraint)
   (let [{:keys [generator-constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)
         ;;TODO parameterize
         solvers (default-constraint-solvers)]
@@ -233,43 +235,53 @@ collected."
                                      :present {k true}}])
                        (:<= :< :>= :>) (let [[n :as all] (subvec constraint 1)]
                                          [{op n}])
-                       :not (let [[c] (next constraint)
-                                  sol (-constraint-solutions c)]
-                              (if (empty? sol)
-                                [{:order [] :present {}}]
-                                (if (some #(= 0 (:min-count %)) sol)
-                                  [] ;;unsatisfiable
-                                  (sequence (comp (map (fn [s]
-                                                         (when-some [unsupported-keys
-                                                                     (not-empty
-                                                                       (disj (set (keys s))
-                                                                             :max-count :min-count
-                                                                             :< :> :<= :>=
-                                                                             :string-class))]
-                                                           (miu/-fail! ::unsupported-negated-solution
-                                                                       {:unsupported-keys unsupported-keys
-                                                                        :solution s}))
-                                                         (-> s
-                                                             (set/rename-keys {:< :>=
-                                                                               :> :<=
-                                                                               :<= :>
-                                                                               :>= :<})
-                                                             (cond->
-                                                               (:max-count s) (-> (assoc :min-count (inc (:max-count s)))
-                                                                                  (dissoc :max-count))
-                                                               (:min-count s) (-> (assoc :max-count (dec (:min-count s)))
-                                                                                  (dissoc :min-count))
+                       :not (let [[c] (next constraint)]
+                              (or (when (vector? c)
+                                    (some-> (case (first c)
+                                              :not c
+                                              :and (into [:or] (map #(do [:not %])) (next c))
+                                              :or (into [:and] (map #(do [:not %])) (next c))
+                                              nil)
+                                            -constraint-solutions))
+                                  ;; FIXME this definitely wrong, especially for other compound constraints
+                                  (distinct
+                                    (reduce (fn [acc s]
+                                              {:post [(do (prn "acc2" %) true)]}
+                                              (prn "acc1" acc)
+                                              (prn "s" s)
+                                              (when-some [unsupported-keys
+                                                          (not-empty
+                                                            (set/difference
+                                                              (-> s keys set)
+                                                              #{:max-count :min-count
+                                                                :< :> :<= :>=
+                                                                :string-class}))]
+                                                (miu/-fail! ::unsupported-negated-solution
+                                                            {:unsupported-keys unsupported-keys
+                                                             :solution s}))
+                                              (cond-> acc
+                                                (not= 0 (:min-count s))
+                                                (conj (-> s
+                                                          (set/rename-keys {:< :>=
+                                                                            :> :<=
+                                                                            :<= :>
+                                                                            :>= :<})
+                                                          (cond->
+                                                            (:max-count s) (-> (assoc :min-count (inc (:max-count s)))
+                                                                               (dissoc :max-count))
+                                                            (:min-count s) (-> (assoc :max-count (dec (:min-count s)))
+                                                                               (dissoc :min-count))
 
-                                                               (:string-class s)
-                                                               (update
-                                                                 :string-class
-                                                                 (fn [string-class]
-                                                                   (into {} (map mcg-str/negate-string-class)
-                                                                         string-class)))
-                                                               (:present s)
-                                                               (update :present update-vals not)))))
-                                                  (distinct))
-                                            (unchunk sol)))))
+                                                            (:string-class s)
+                                                            (update
+                                                              :string-class
+                                                              (fn [string-class]
+                                                                (into {} (map mcg-str/negate-string-class)
+                                                                      string-class)))
+                                                            ;; FIXME all combinations of at least one flipped presence
+                                                            (:present s)
+                                                            (update :present update-vals not))))))
+                                            [] (-constraint-solutions c)))))
                        :and (apply -conj-solutions (map -constraint-solutions (unchunk (next constraint))))
                        (:or :xor) (let [cs (subvec constraint 1)
                                         ndisjuncts (count cs)

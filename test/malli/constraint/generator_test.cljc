@@ -30,6 +30,7 @@
   (is (= 740 (mg/generate [:int {:> 739 :< 741}])))
   (is (= 740 (mg/generate [:int {:and [[:not [:<= 739]]
                                        [:not [:>= 741]]]}])))
+  (is (= 740 (shrinks [:int {:> 739 :< 741}])))
   (dotimes [_ 100]
     (is (every? #{740}
                 (mg/sample [:int {:> 739 :< 741}]
@@ -46,7 +47,8 @@
                      :seed 0})
          (mg/sample [:int {:gen/> 10 :gen/< 100}]
                     {:size 1000
-                     :seed 0}))))
+                     :seed 0})))
+  (is (= 11 (shrinks [:int {:> 10 :< 100}]))))
 
 (deftest double-constraint-generator-test
   (is (thrown?
@@ -65,12 +67,17 @@
       (is (< 500 (count (distinct vs))))
       (is (every? #(< 739.000001 % 739.000002)
                   vs))))
+  (is (= 739.0000015
+         (shrinks [:double {:> 739.000001 :< 739.000002}])
+         (shrinks [:double {:and [[:not [:<= 739.000001]]
+                                  [:not [:>= 739.000002]]]}])))
   (is (= (mg/sample [:double {:> 10 :< 100}]
                     {:size 1000
                      :seed 0})
          (mg/sample [:double {:gen/> 10 :gen/< 100}]
                     {:size 1000
-                     :seed 0}))))
+                     :seed 0})))
+  (is (= 16.0 (shrinks [:double {:> 10 :< 100}]))))
 
 (deftest string-constraint-generate-test
   (testing ":alphanumeric + :alpha :numeric"

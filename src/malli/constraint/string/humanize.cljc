@@ -35,8 +35,39 @@
                    ".")))
           (code-point-offset-seq value))))
 
+(defn- -count-code-points [s]
+  (count (code-point-offset-seq s)))
+
 (defn humanizers []
-  {:alphanumeric-string (-msg-check-each "should be alphanumeric" mcc/alphanumeric?)
+  {:max-code-points-string (fn [{:keys [constraint value]} _]
+                             (let [cnt (-count-code-points value)
+                                   max (nth constraint 1)]
+                               (when-not (<= cnt max)
+                                 (str "should be at most " max " code point"
+                                      (when-not (= 1 max) "s")
+                                      ", given " cnt))))
+   [:not :max-code-points-string] (fn [{:keys [constraint value]} _]
+                                    (let [cnt (-count-code-points value)
+                                          max (nth constraint 1)]
+                                      (when (<= cnt max)
+                                        (str "should be more than " max " code point"
+                                             (when-not (= 1 max) "s")
+                                             ", given " cnt))))
+   :min-code-points-string (fn [{:keys [constraint value]} _]
+                             (let [cnt (-count-code-points value)
+                                   min (nth constraint 1)]
+                               (when-not (<= min cnt)
+                                 (str "should be at least " min " code point"
+                                      (when-not (= 1 min) "s")
+                                      ", given " cnt))))
+   [:not :min-code-points-string] (fn [{:keys [constraint value]} _]
+                                    (let [cnt (-count-code-points value)
+                                          min (nth constraint 1)]
+                                      (when (<= min cnt)
+                                        (str "should be less than " min " code point"
+                                             (when-not (= 1 min) "s")
+                                             ", given " cnt))))
+   :alphanumeric-string (-msg-check-each "should be alphanumeric" mcc/alphanumeric?)
    [:not :alphanumeric-string] (-msg-or-validates "should contain a non-alphanumeric character")
    :non-alphanumeric-string (-msg-check-each "should not contain alphanumeric characters" (complement mcc/alphanumeric?))
    [:not :non-alphanumeric-string] (-msg-or-validates "should contain an alphanumeric character")
@@ -109,5 +140,4 @@
                                       (not (boolean? s)))
                                (when (valid s edn)
                                  (str "should not be a string of " (pr-str s)))
-                               "should not be valid edn")))))
-   })
+                               "should not be valid edn")))))})

@@ -12,13 +12,4 @@
                         (= (sequence %)
                            (if (reversible? %)
                              (-> % rseq sequence)
-                             (reverse %))))))
-   :distinct (fn [{:keys [constraint]} _]
-               (let [[v :as all] (subvec constraint 1)
-                     _ (when-not (#{[] [true]} all)
-                         (miu/-fail! ::distinct-constraint-takes-no-children {:constraint constraint}))]
-                 #(or (empty? %)
-                      (do (when (string? %)
-                            (assert (= (count %) (.codePointCount ^String % 0 (count %)))
-                                    "TODO distinct with surrogate pairs"))
-                          (apply distinct? %)))))})
+                             (reverse %))))))})

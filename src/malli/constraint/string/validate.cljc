@@ -22,17 +22,17 @@
   #?(:clj (str (.reverse (StringBuilder. ^String s)))
      :cljs (miu/-fail! ::reverse-string-cljs-nyi)))
 
-(defn- -distinct? [s]
+(defn- -distinct-code-points? [s]
   (or (zero? (count s))
       (apply distinct? (code-point-seq s))))
 
-(defn- -string-length-in [min max]
-  #?(:cljs (miu/-fail! ::string-length-in-cljs-nyi)
-     :clj (if (and (zero? min)
+(defn- -string-code-points-in [min max]
+  #?(:cljs (miu/-fail! ::string-code-points-in-cljs-nyi)
+     :clj (if (and (some-> min zero?)
                    (not max))
             (fn [_] true)
             (if (and (= 1 min)
-                     (pos? max))
+                     (some-> max pos?))
               (fn [s] (pos? (count s)))
               (fn [s]
                 (or (let [max-code-points (count s)
@@ -63,21 +63,29 @@
                               (recur (next cs) (inc len)))))))))))))
 
 (defn validators []
-  {:max-string (fn [{[_ min :as constraint] :constraint} _]
-                 (when-not (= 2 (count constraint))
-                   (miu/-fail! ::min-constraint-takes-one-child {:constraint constraint}))
-                 (-string-length-in nil max))
-   :min-string (fn [{[_ min :as constraint] :constraint} _]
-                 (when-not (= 2 (count constraint))
-                   (miu/-fail! ::min-constraint-takes-one-child {:constraint constraint}))
-                 (-string-length-in min nil))
+  {:max-code-points-string (fn [{[_ max :as constraint] :constraint} _]
+                             (when-not (= 2 (count constraint))
+                               (miu/-fail! ::max-code-points-takes-one-child {:constraint constraint}))
+                             (-string-code-points-in nil max))
+   :min-code-points-string (fn [{[_ min :as constraint] :constraint} _]
+                             (when-not (= 2 (count constraint))
+                               (miu/-fail! ::min-code-points-takes-one-child {:constraint constraint}))
+                             (-string-code-points-in min nil))
+   :max-chars-string (fn [{[_ max :as constraint] :constraint} _]
+                       (when-not (= 2 (count constraint))
+                         (miu/-fail! ::max-chars-constraint-takes-one-child {:constraint constraint}))
+                       (fn [s] (<= (count s) max)))
+   :min-chars-string (fn [{[_ min :as constraint] :constraint} _]
+                       (when-not (= 2 (count constraint))
+                         (miu/-fail! ::min-chars-constraint-takes-one-child {:constraint constraint}))
+                       (fn [s] (<= (count s) max)))
    :alpha-string (-wrap (fn [s] (every? char/alpha? s)))
    :non-alpha-string (-wrap (fn [s] (not-any? char/alpha? s)))
    :numeric-string (-wrap (fn [s] (every? char/numeric? s)))
    :non-numeric-string (-wrap (fn [s] (not-any? char/numeric? s)))
    :alphanumeric-string (-wrap (fn [s] (every? char/alphanumeric? s)))
    :non-alphanumeric-string (-wrap (fn [s] (not-any? char/alphanumeric? s)))
-   :distinct-string (-wrap -distinct?)
+   :distinct-code-points-string (-wrap -distinct-code-points?)
    :palindrome-string (-idempotent -reverse)
    :trim-string (-idempotent str/trim)
    :triml-string (-idempotent str/triml)

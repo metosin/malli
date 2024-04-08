@@ -7,6 +7,8 @@
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types #{:max
                                                                     :min
+                                                                    :max-code-points
+                                                                    :min-code-points
                                                                     :alphanumeric
                                                                     :non-alphanumeric
                                                                     :letters
@@ -17,6 +19,7 @@
                                                                     :non-alpha
                                                                     :sorted
                                                                     :distinct
+                                                                    :distinct-code-points
                                                                     :palindrome
                                                                     :trim
                                                                     :triml
@@ -46,15 +49,18 @@
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
                                        (into (map (fn [c] [c :any])) (keys generator-constraint-types))
-                                       (assoc :max :max-string
-                                              :min :min-string
+                                       (assoc :max :max-count
+                                              :min :min-count
+                                              :max-code-points :max-code-points-string
+                                              :min-code-points :min-code-points-string
                                               :alphanumeric :alphanumeric-string
                                               :non-alphanumeric :non-alphanumeric-string
                                               :numeric :numeric-string
                                               :non-numeric :non-numeric-string
                                               :alpha :alpha-string
                                               :non-alpha :non-alpha-string
-                                              :distinct :distinct-string
+                                              :distinct :distinct-seqable
+                                              :distinct-code-points :distinct-code-points-string
                                               :palindrome :palindrome-string
                                               :trim :trim-string
                                               :triml :triml-string
@@ -71,6 +77,8 @@
     {:flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:max
                                  :min
+                                 :max-code-points
+                                 :min-code-points
                                  :re
                                  :alphanumeric
                                  :non-alphanumeric
@@ -81,6 +89,7 @@
                                  :not
                                  :sorted
                                  :distinct
+                                 :distinct-code-points
                                  :palindrome
                                  :trim
                                  :triml

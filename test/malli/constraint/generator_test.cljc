@@ -187,8 +187,7 @@
            (shrink [:string {:min 10
                               :and [[:includes "foo"]
                                     [:includes "bar"]]}])))
-    ;;FIXME
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
-          #":malli\.generator/unsatisfiable-string-constraint"
+          #":malli\.generator/cannot-fit-includes-string"
           (mg/generate [:string {:max 5 :includes "longerthan5chars"}])))))

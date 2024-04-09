@@ -36,8 +36,7 @@
 
 (defn conj-string-class-solutions [all-sols]
   (if-some [string-classes (seq (keep :string-class all-sols))] 
-    (let [_ (prn "string-classes" (vec string-classes) )
-          sc (apply merge-with into string-classes)
+    (let [sc (apply merge-with into string-classes)
           sc (cond-> sc
                ;; numeric/alpha subsumes alphanumeric
                (and (:alphanumeric sc)

@@ -81,7 +81,6 @@
 )
 
 (defn -conj-solutions [& sols]
-  (prn "-conj-solutions" (vec sols))
   (letfn [(rec [cart-sols]
             (lazy-seq
               (when-some [[[sol1 & sols :as all-sols]] (seq cart-sols)]
@@ -214,7 +213,6 @@ collected."
 
 (defn -constraint-solutions [constraint constraint-opts options]
   {:post [(every? map? %)]}
-  (prn "-constraint-solutions" constraint)
   (let [{:keys [generator-constraint-types] :as constraint-opts} (mc/->constraint-opts constraint-opts)
         ;;TODO parameterize
         solvers (default-constraint-solvers)]
@@ -246,9 +244,6 @@ collected."
                                   ;; FIXME this definitely wrong, especially for other compound constraints
                                   (distinct
                                     (reduce (fn [acc s]
-                                              {:post [(do (prn "acc2" %) true)]}
-                                              (prn "acc1" acc)
-                                              (prn "s" s)
                                               (when-some [unsupported-keys
                                                           (not-empty
                                                             (set/difference

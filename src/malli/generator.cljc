@@ -122,7 +122,6 @@
                    max :max-count
                    :keys [string-class]} solution
                   string-gen (fn [min max char-gen]
-                               (prn {:min min :max max})
                                (cond
                                  (and min (= min max)) (gen/fmap str/join (gen/vector char-gen min))
                                  (and min max) (gen/fmap str/join (gen/vector char-gen min max))
@@ -142,10 +141,16 @@
                     :alphanumeric (string-gen min max gen/char-alphanumeric)
                     (:not-alpha :non-alpha :numeric) (string-gen min max (gen/fmap char (gen/choose 48 57)))
                     :includes (let [s (apply str argset)
-                                    scount (count s)]
-                                ;;FIXME -fail! if includes will never fit in length bounds
+                                    scount (count s)
+                                    min-s-times 1
+                                    max-s-times (some-> max (quot scount))]
+                                (when (some->> max-s-times (> min-s-times))
+                                  (m/-fail! ::cannot-fit-includes-string
+                                            {:schema schema
+                                             :max max
+                                             :max-s-times max-s-times}))
                                 (gen/bind
-                                  (gen/large-integer* {:min 1 :max (some-> max (quot scount))})
+                                  (gen/large-integer* {:min min-s-times :max max-s-times})
                                   (fn [times]
                                     (let [max (some-> max (- (* times scount)))
                                           _ (when max (assert (nat-int? max)))

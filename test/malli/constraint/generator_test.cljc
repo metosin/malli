@@ -80,7 +80,16 @@
                     {:size 1000
                      :seed 0})))
   (is (= 10.0 (shrink [:double {:>= 10}])))
-  (is (= 10.000000000000002 (shrink [:double {:> 10 :< 100}])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/double-generator-min-value-failure"
+        (shrink [:double {:> ##Inf}])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/double-generator-max-value-failure"
+        (shrink [:double {:< ##-Inf}])))
+  #?(:clj (is (= 10.000000000000002 (shrink [:double {:> 10 :< 100}])))
+     :cljs (is (= 10.001 (shrink [:double {:> 10 :< 100}]))))
   (is (= 10.00000000001 (shrink [:double {:>= 10.00000000001 :< 100}])))
   (is (= 9.999999999999999 (shrink [:double {:>= 9.999999999999999 :< 100}]))))
 

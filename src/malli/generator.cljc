@@ -757,13 +757,28 @@
       (m/-fail! ::unsatisfiable-double-schema {:schema schema}))
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
-              (let [min (or (some-> >= double) (some-> > double Math/nextUp))
-                    max (or (some-> < double Math/nextDown) (some-> <= double))]
-                (gen/double* (into (let [props (m/properties schema options)]
-                                     {:infinite? (get props :gen/infinite? false)
-                                      :NaN? (get props :gen/NaN? false)})
-                                   {:min min
-                                    :max max}))))
+              (let [props (m/properties schema options)
+                    infinite? (get props :gen/infinite? false)
+                    min (or (some-> >= double)
+                            (when >
+                              (let [min (-> > double #?(:clj Math/nextUp :cljs (+ 0.001)))]
+                                (if (cc/> min >)
+                                  min
+                                  (m/-fail! ::double-generator-min-value-failure
+                                            {:> >
+                                             :min min})))))
+                    max (or (when <
+                              (let [max (-> < double #?(:clj Math/nextDown :cljs (- 0.001)))]
+                                (if (cc/< max <)
+                                  max
+                                  (m/-fail! ::double-generator-max-value-failure
+                                            {:< <
+                                             :min min}))))
+                            (some-> <= double))]
+                (gen/double* {:infinite? infinite?
+                              :NaN? (get props :gen/NaN? false)
+                              :min min
+                              :max max})))
             solutions))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)

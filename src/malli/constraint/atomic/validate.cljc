@@ -1,5 +1,6 @@
 (ns malli.constraint.atomic.validate
-  (:require [malli.core :as-alias m] [malli.impl.util :as miu]))
+  (:require ;[malli.core :as-alias m] ;fails in cljs
+            [malli.impl.util :as miu]))
 
 (def path-elements
   #{:get :keys :vals :first :nth :count :class})
@@ -18,7 +19,7 @@
 
 (defn- -is []
   (fn [{:keys [constraint constraint-validator] :as constraint-opts}
-       {::m/keys [schema validator] :as options}]
+       {:malli.core /keys [schema validator] :as options}]
     (let [all (subvec constraint 1)
           _ (when-not (<= 1 (count all))
               (miu/-fail! ::is-constraint-takes-at-least-one-child {:constraint constraint}))

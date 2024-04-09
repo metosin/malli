@@ -50,7 +50,25 @@
          (mg/sample [:int {:gen/> 10 :gen/< 100}]
                     {:size 1000
                      :seed 0})))
-  (is (= 11 (shrink [:int {:> 10 :< 100}]))))
+  (is (= 11 (shrink [:int {:> 10 :< 100}])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/int-generator-min-value-failure"
+        (shrink [:int {:> ##Inf}])))
+  #?(:clj (is (thrown-with-msg?
+                Exception
+                #":malli\.generator/int-generator-min-value-failure"
+                (shrink [:int {:> Long/MAX_VALUE}]))))
+  (is (= 11 (shrink [:int {:min ##Inf :max ##Inf}])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/int-generator-max-value-failure"
+        (shrink [:int {:< ##-Inf}])))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/int-generator-max-value-failure"
+        (shrink [:int {:< Long/MIN_VALUE}])))
+  )
 
 (deftest double-constraint-generator-test
   (is (thrown?
@@ -74,7 +92,7 @@
          (shrink [:double {:and [[:not [:<= 739.000001]]
                                   [:not [:>= 739.000002]]]}])))
   (is (= (mg/sample [:double {:> 10 :< 100}]
-                    {:size 1000
+                    {:size 100
                      :seed 0})
          (mg/sample [:double {:gen/> 10 :gen/< 100}]
                     {:size 1000

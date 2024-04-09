@@ -11,6 +11,7 @@
       (f n))))
 
 (defn validators []
+  ;; aligns with existing :< :> schema semantics
   {:<  (-first-child (fn [n] #(<  % n)))
    :<= (-first-child (fn [n] #(<= % n)))
    :>  (-first-child (fn [n] #(>  % n)))

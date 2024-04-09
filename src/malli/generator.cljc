@@ -735,16 +735,33 @@
       (m/-fail! ::unsatisfiable-int-schema {:schema schema}))
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
-              (let [g (gen/large-integer* {:min (or >= >)
-                                           ;;TODO unit test this case
-                                           :max (or < <=)})]
-                (if (or < >)
-                  (gen/such-that (miu/-every-pred
-                                   (cond-> []
-                                     > (conj #(not (== % >)))
-                                     < (conj #(not (== % <)))))
-                                 g 100)
-                  g)))
+              (let [min (or >=
+                            (when >
+                              (let [min (try (inc >)
+                                             #?(:clj (catch ArithmeticException _
+                                                       (m/-fail! ::int-generator-min-value-failure
+                                                                 {:schema schema
+                                                                  :> >}))))]
+                                (if (cc/> min >)
+                                  min
+                                  (m/-fail! ::int-generator-min-value-failure
+                                            {:schema schema
+                                             :> >
+                                             :min min})))))
+                    max (or (when <
+                              (let [max (try (dec <)
+                                             #?(:clj (catch ArithmeticException _
+                                                       (m/-fail! ::int-generator-max-value-failure
+                                                                 {:schema schema :< <}))))]
+                                (if (cc/< < max)
+                                  max
+                                  (m/-fail! ::int-generator-max-value-failure
+                                            {:schema schema
+                                             :< <
+                                             :max max}))))
+                            <=)]
+                (gen/large-integer* {:min min
+                                     :max max})))
             solutions))))
 (defmethod -schema-generator :double [schema options]
   (let [solutions (or (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
@@ -763,14 +780,16 @@
                                 (if (cc/> min >)
                                   min
                                   (m/-fail! ::double-generator-min-value-failure
-                                            {:> >
+                                            {:schema schema
+                                             :> >
                                              :min min})))))
                     max (or (when <
                               (let [max (-> < double #?(:clj Math/nextDown :cljs (- 0.001)))]
                                 (if (cc/< max <)
                                   max
                                   (m/-fail! ::double-generator-max-value-failure
-                                            {:< <
+                                            {:schema schema
+                                             :< <
                                              :min min}))))
                             (some-> <= double))
                     ;;TODO move to constraints?

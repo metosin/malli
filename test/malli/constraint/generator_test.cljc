@@ -59,7 +59,10 @@
                 Exception
                 #":malli\.generator/int-generator-min-value-failure"
                 (shrink [:int {:> Long/MAX_VALUE}]))))
-  (is (= 11 (shrink [:int {:min ##Inf :max ##Inf}])))
+  (is (try
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/int-bounds-must-be-ints"
+        (shrink [:int {:min ##Inf :max ##Inf}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/int-generator-max-value-failure"

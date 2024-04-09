@@ -735,6 +735,10 @@
       (m/-fail! ::unsatisfiable-int-schema {:schema schema}))
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
+              ;;TODO check this earlier, perhaps :<-int etc.,
+              (when-not (every? int? (remove nil? [<= >= < >]))
+                (m/-fail! ::int-bounds-must-be-ints
+                          {:schema schema}))
               (let [min (or >=
                             (when >
                               (let [min (try (inc >)

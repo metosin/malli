@@ -260,8 +260,9 @@
                               (catch #?(:clj Exception, :cljs js/Error) e
                                 (if (= ::error-creating-schema-from-into-schema-without-children (:type (ex-data e)))
                                   (-fail! ::schema-definition-must-be-in-options-not-properties
-                                          {:bad-property-registry-entry k
-                                           :bad-registry m})
+                                          (into (:data (ex-data e) {})
+                                                {:bad-property-registry-entry k
+                                                 :bad-registry m}))
                                   (throw e))))]
                    (assoc acc k (f s))))
                {} m)))
@@ -2059,10 +2060,7 @@
                                  (catch #?(:clj Exception, :cljs js/Error) e
                                    (if (= ::child-error (:type (ex-data e)))
                                      (-fail! ::error-creating-schema-from-into-schema-without-children
-                                             {:schema ?schema
-                                              :message (str "When passing an IntoSchema to m/schema, a schema is constructed"
-                                                            " without children. " (-type ?schema)
-                                                            " does not seem to support zero children.")})
+                                             {:schema-not-supporting-zero-children ?schema})
                                      (throw e))))
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)

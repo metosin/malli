@@ -147,19 +147,4 @@
                    (fn [v]
                      (try (p (edn/read-string opts v))
                           (catch Exception _
-                            false)))))
-   :unicode-script (fn [{:keys [constraint value]} {::m/keys [schema validator -regex-op?]}]
-                     ;;TODO schema arg
-                     (when-not (= 1 (count constraint))
-                       (miu/-fail! ::unicode-script-takes-one-child
-                                   {:constraint constraint}))
-                     (assert nil "WIP")
-                     #_
-                     (let [script-name (str/replace (name (second constraint)) \- \_)]
-                       #?(:clj (let [uc (try (Character$UnicodeScript/of script-name)
-                                             (catch IllegalArgumentException _
-                                               (miu/-fail! ::unicode-script-not-found {:constraint constraint})))]
-                                 (fn [v]
-                                   (every? )
-                                   ))
-                          :cljs (miu/-fail! ::unicode-script-not-implemented-for-cljs))))})
+                            false)))))})

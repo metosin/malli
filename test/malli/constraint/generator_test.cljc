@@ -53,19 +53,19 @@
   (is (= 11 (shrink [:int {:> 10 :< 100}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #":malli\.generator/int-generator-min-value-failure"
+        #":malli\.generator/int-bounds-must-be-ints"
         (shrink [:int {:> ##Inf}])))
   #?(:clj (is (thrown-with-msg?
                 Exception
                 #":malli\.generator/int-generator-min-value-failure"
                 (shrink [:int {:> Long/MAX_VALUE}]))))
-  (is (try
+  (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/int-bounds-must-be-ints"
         (shrink [:int {:min ##Inf :max ##Inf}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #":malli\.generator/int-generator-max-value-failure"
+        #":malli\.generator/int-bounds-must-be-ints"
         (shrink [:int {:< ##-Inf}])))
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
@@ -90,12 +90,12 @@
       (is (< 500 (count (distinct vs))))
       (is (every? #(< 739.000001 % 739.000002)
                   vs))))
-  (is (= 739.0000015
+  (is (= 739.0000010000001
          (shrink [:double {:> 739.000001 :< 739.000002}])
          (shrink [:double {:and [[:not [:<= 739.000001]]
-                                  [:not [:>= 739.000002]]]}])))
+                                 [:not [:>= 739.000002]]]}])))
   (is (= (mg/sample [:double {:> 10 :< 100}]
-                    {:size 100
+                    {:size 1000
                      :seed 0})
          (mg/sample [:double {:gen/> 10 :gen/< 100}]
                     {:size 1000
@@ -176,17 +176,17 @@
            (mg/generate [:string {:min 10 :non-alpha true}]
                         {:seed 0}))))
   (testing ":includes"
-    (is (= "54T0oJ7NCbWYeLkvm84iwiZblahblah"
+    (is (= "54T0oJ7NCbWYeLkvm84iwi1POI68Cblah"
            (mg/generate [:string {:min 10 :includes "blah"}]
                         {:seed 0})))
-    (is (= "54T0oJ7NCbWYeLkvm84iwi1P3foobarfoobar"
+    (is (= "54T0oJ7NCbWYeLkvm84iwi1POISfoobar"
            (mg/generate [:string {:min 10 :and [[:includes "foo"]
                                                 [:includes "bar"]]}]
                         {:seed 0})))
-    (is (= "foobarfoobar"
+    (is (= "000Afoobar"
            (shrink [:string {:min 10
-                              :and [[:includes "foo"]
-                                    [:includes "bar"]]}])))
+                             :and [[:includes "foo"]
+                                   [:includes "bar"]]}])))
     (is (thrown-with-msg?
           #?(:clj Exception, :cljs js/Error)
           #":malli\.generator/cannot-fit-includes-string"

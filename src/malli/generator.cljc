@@ -154,7 +154,7 @@
                                   (fn [times]
                                     (let [max (some-> max (- (* times scount)))
                                           _ (when max (assert (nat-int? max)))
-                                          min (some->> min (- (* times scount)) (cc/max 0))]
+                                          min (some-> min (- (* times scount)) (cc/max 0))]
                                       (gen/fmap #(apply str % (repeat times s))
                                                 (string-gen min max gen/char-alphanumeric)))))))))))
           solutions)))
@@ -762,7 +762,7 @@
                                              #?(:clj (catch ArithmeticException _
                                                        (m/-fail! ::int-generator-max-value-failure
                                                                  {:schema schema :< <}))))]
-                                (if (cc/< < max)
+                                (if (cc/< max <)
                                   max
                                   (m/-fail! ::int-generator-max-value-failure
                                             {:schema schema

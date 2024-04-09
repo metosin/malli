@@ -92,9 +92,11 @@ jobs:
         with:
           path: |
             ~/.m2/repository
+            ~/.deps.clj
             ~/.gitlibs
-          key: ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}
+          key: ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-${{ hashFiles('**/bb.edn') }}
           restore-keys: |
+            ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-
             ${{ runner.os }}-test-deps-
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master

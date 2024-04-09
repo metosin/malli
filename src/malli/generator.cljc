@@ -757,9 +757,7 @@
       (m/-fail! ::unsatisfiable-double-schema {:schema schema}))
     (gen-one-of
       (mapv (fn [{:keys [<= >= < >]}]
-              (let [props (m/properties schema options)
-                    infinite? (get props :gen/infinite? false)
-                    min (or (some-> >= double)
+              (let [min (or (some-> >= double)
                             (when >
                               (let [min (-> > double #?(:clj Math/nextUp :cljs (+ 0.001)))]
                                 (if (cc/> min >)
@@ -774,8 +772,10 @@
                                   (m/-fail! ::double-generator-max-value-failure
                                             {:< <
                                              :min min}))))
-                            (some-> <= double))]
-                (gen/double* {:infinite? infinite?
+                            (some-> <= double))
+                    ;;TODO move to constraints?
+                    props (m/properties schema options)]
+                (gen/double* {:infinite? (get props :gen/infinite? false)
                               :NaN? (get props :gen/NaN? false)
                               :min min
                               :max max})))

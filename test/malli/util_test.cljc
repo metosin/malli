@@ -990,3 +990,25 @@
                  (mu/assoc-in [:foo :bar] :int)
                  (mu/assoc-in [:foo :baz] :int)
                  (mu/closed-schema)))))
+
+(deftest update-entry-properties-test
+  (is (= [:map [:me {:a 1, :b 1} :int]]
+         (m/form
+           (mu/update-entry-properties
+             [:map [:me {:a 1} :int]]
+             :me
+             assoc :b 1))))
+  (is (= [:orn [:me {:a 1 :b 1} :int]]
+         (m/form
+           (mu/update-entry-properties
+             [:orn [:me {:a 1} :int]]
+             :me
+             assoc :b 1))))
+  (is (= [:vector [:map [:me {:a 1, :b 1} :int]]]
+         (m/form
+           (-> [:vector [:map [:me {:a 1} :int]]]
+               (mu/update 0 mu/update-entry-properties :me assoc :b 1)))))
+  (is (= [:vector [:orn [:me {:a 1, :b 1} :int]]]
+         (m/form
+           (-> [:vector [:orn [:me {:a 1} :int]]]
+               (mu/update 0 mu/update-entry-properties :me assoc :b 1))))))

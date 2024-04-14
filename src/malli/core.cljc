@@ -216,13 +216,13 @@
 
 (defn -function-info [schema]
   (when (-fn-schema? schema)
-    (let [[input output guard] ((juxt -fn-input-schema -fn-output-schema -fn-guard-schema)
-                                schema)
+    (let [input (-fn-input-schema schema)
+          guard (-fn-guard-schema schema)
           {:keys [min max]} (-regex-min-max input false)]
       (cond-> {:min min
                :arity (if (= min max) min :varargs)
                :input input
-               :output output}
+               :output (-fn-output-schema schema)}
         guard (assoc :guard guard)
         max (assoc :max max)))))
 
@@ -1923,7 +1923,14 @@
           (-fn-input-schema [this] (-fn-input-schema schema))
           (-fn-output-schema [this] (-fn-output-schema schema))
           (-fn-guard-schema [this] (-fn-guard-schema schema))
-
+          RegexSchema
+          (-regex-op? [_] (-regex-op? schema))
+          (-regex-validator [_] (-regex-validator schema))
+          (-regex-explainer [_ path] (-regex-explainer schema path))
+          (-regex-unparser [_] (-regex-unparser schema))
+          (-regex-parser [_] (-regex-parser schema))
+          (-regex-transformer [_ transformer method options] (-regex-transformer schema transformer method options))
+          (-regex-min-max [_ nested?] (-regex-min-max schema nested?))
           RefSchema
           (-ref [_])
           (-deref [_] schema))))))

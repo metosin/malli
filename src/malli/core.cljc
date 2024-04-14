@@ -86,11 +86,11 @@
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
   (-regex-min-max [this nested?] "returns size of the sequence as {:min min :max max}. nil max means unbounded. nested? is true when this schema is nested inside an outer regex schema."))
 
-(defprotocol FnSchema
-  (-fn-schema? [this])
-  (-fn-input-schema [this])
-  (-fn-output-schema [this])
-  (-fn-guard-schema [this]))
+(defprotocol AritySchema
+  (-arity-schema? [this])
+  (-arity-input-schema [this])
+  (-arity-output-schema [this])
+  (-arity-guard-schema [this]))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
@@ -100,11 +100,11 @@
 (defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
 
 (extend-type #?(:clj Object, :cljs default)
-  FnSchema
-  (-fn-schema? [this] false)
-  (-fn-input-schema [this])
-  (-fn-output-schema [this])
-  (-fn-guard-schema [this])
+  AritySchema
+  (-arity-schema? [this] false)
+  (-arity-input-schema [this])
+  (-arity-output-schema [this])
+  (-arity-guard-schema [this])
 
   RegexSchema
   (-regex-op? [_] false)
@@ -215,14 +215,15 @@
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
 
 (defn -function-info [schema]
-  (when (-fn-schema? schema)
-    (let [input (-fn-input-schema schema)
-          guard (-fn-guard-schema schema)
+  (when (-arity-schema? schema)
+    (let [input (-arity-input-schema schema)
+          output (-arity-output-schema schema)
+          guard (-arity-guard-schema schema)
           {:keys [min max]} (-regex-min-max input false)]
       (cond-> {:min min
                :arity (if (= min max) min :varargs)
                :input input
-               :output (-fn-output-schema schema)}
+               :output output}
         guard (assoc :guard guard)
         max (assoc :max max)))))
 
@@ -1818,11 +1819,11 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
-          FnSchema
-          (-fn-schema? [_] true)
-          (-fn-input-schema [_] input)
-          (-fn-output-schema [_] output)
-          (-fn-guard-schema [_] guard)
+          AritySchema
+          (-arity-schema? [_] true)
+          (-arity-input-schema [_] input)
+          (-arity-output-schema [_] output)
+          (-arity-guard-schema [_] guard)
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1918,11 +1919,11 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
-          FnSchema
-          (-fn-schema? [this] (-fn-schema? schema))
-          (-fn-input-schema [this] (-fn-input-schema schema))
-          (-fn-output-schema [this] (-fn-output-schema schema))
-          (-fn-guard-schema [this] (-fn-guard-schema schema))
+          AritySchema
+          (-arity-schema? [this] (-arity-schema? schema))
+          (-arity-input-schema [this] (-arity-input-schema schema))
+          (-arity-output-schema [this] (-arity-output-schema schema))
+          (-arity-guard-schema [this] (-arity-guard-schema schema))
           RegexSchema
           (-regex-op? [_] (-regex-op? schema))
           (-regex-validator [_] (-regex-validator schema))
@@ -2632,7 +2633,7 @@
   ([?schema] (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
-     (if (or (-fn-schema? s) (= :function t)) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
+     (if (or (-arity-schema? s) (= :function t)) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
 ;; for cljs we cannot invoke `function-schema` at macroexpansion-time
 ;; - `?schema` could contain cljs vars that will only resolve at runtime.

@@ -994,21 +994,28 @@
 (deftest update-entry-properties-test
   (is (= [:map [:me {:a 1, :b 1} :int]]
          (m/form
-           (mu/update-entry-properties
-             [:map [:me {:a 1} :int]]
-             :me
-             assoc :b 1))))
+          (mu/update-entry-properties
+           [:map [:me {:a 1} :int]]
+           :me
+           assoc :b 1))))
   (is (= [:orn [:me {:a 1 :b 1} :int]]
          (m/form
-           (mu/update-entry-properties
-             [:orn [:me {:a 1} :int]]
-             :me
-             assoc :b 1))))
+          (mu/update-entry-properties
+           [:orn [:me {:a 1} :int]]
+           :me
+           assoc :b 1))))
   (is (= [:vector [:map [:me {:a 1, :b 1} :int]]]
          (m/form
-           (-> [:vector [:map [:me {:a 1} :int]]]
-               (mu/update 0 mu/update-entry-properties :me assoc :b 1)))))
+          (-> [:vector [:map [:me {:a 1} :int]]]
+              (mu/update 0 mu/update-entry-properties :me assoc :b 1)))))
   (is (= [:vector [:orn [:me {:a 1, :b 1} :int]]]
          (m/form
-           (-> [:vector [:orn [:me {:a 1} :int]]]
-               (mu/update 0 mu/update-entry-properties :me assoc :b 1))))))
+          (-> [:vector [:orn [:me {:a 1} :int]]]
+              (mu/update 0 mu/update-entry-properties :me assoc :b 1)))))
+  (is (thrown-with-msg?
+       #?(:clj Exception, :cljs js/Error)
+       #":malli.util/no-entry"
+       (mu/update-entry-properties
+        :map
+        :invalid
+        identity))))

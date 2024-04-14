@@ -115,11 +115,8 @@
   "Returns a Schema instance with updated properties for entry k."
   [?schema k f & args]
   (let [schema (m/schema ?schema)
-        e (or (find schema k)
-              (m/-fail! ::no-entry {:schema schema :k k}))
-        [k p v] (case (count e)
-                  2 [(first e) nil (second e)]
-                  3 e)]
+        [k p v] (or (find schema k)
+                    (m/-fail! ::no-entry {:schema schema :k k}))]
     (m/-set-entries schema [k (apply f p args)] v)))
 
 (defn closed-schema

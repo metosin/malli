@@ -373,45 +373,7 @@
      (clojure.core/update children 0 #(m/form % options))
      (apply f (conj children options))]))
 
-(defn -util-schema [{:keys [type min max childs type-properties fn]}]
-  ^{:type ::m/into-schema}
-  (reify m/IntoSchema
-    (-type [_] type)
-    (-type-properties [_] type-properties)
-    (-properties-schema [_ _])
-    (-children-schema [_ _])
-    (-into-schema [parent properties children options]
-      (m/-check-children! type properties children min max)
-      (let [[children forms schema] (fn properties (vec children) options)
-            form (delay (m/-create-form type properties forms options))
-            cache (m/-create-cache options)]
-        ^{:type ::m/schema}
-        (reify
-          m/Schema
-          (-validator [_] (m/-validator schema))
-          (-explainer [_ path] (m/-explainer schema path))
-          (-parser [_] (m/-parser schema))
-          (-unparser [_] (m/-unparser schema))
-          (-transformer [this transformer method options]
-            (m/-parent-children-transformer this [schema] transformer method options))
-          (-walk [this walker path options]
-            (let [children (if childs (subvec children 0 childs) children)]
-              (when (m/-accept walker this path options)
-                (m/-outer walker this path (m/-inner-indexed walker path children options) options))))
-          (-properties [_] properties)
-          (-options [_] options)
-          (-children [_] children)
-          (-parent [_] parent)
-          (-form [_] @form)
-          m/Cached
-          (-cache [_] cache)
-          m/LensSchema
-          (-keep [_])
-          (-get [_ key default] (clojure.core/get children key default))
-          (-set [_ key value] (m/into-schema type properties (clojure.core/assoc children key value)))
-          m/RefSchema
-          (-ref [_])
-          (-deref [_] schema))))))
+(defn -util-schema [m] (m/-proxy-schema m))
 
 (defn -merge [] (-util-schema {:type :merge, :fn (-reducing merge)}))
 (defn -union [] (-util-schema {:type :union, :fn (-reducing union)}))

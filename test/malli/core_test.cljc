@@ -2402,10 +2402,25 @@
   "Number of times to test a successful generative test involving :=>."
   1000)
 
+(defn fn-schema-info [?schema]
+  (-> (m/schema ?schema)
+      m/-function-info
+      (update :input m/form)
+      (update :output m/form)
+      (update :guard #(some-> % m/form))))
+
 (deftest function-schema-test
   ;; js allows invalid arity
 
   (testing ":=>"
+    (is (= {:min 2
+            :max 2
+            :arity 2
+            :input [:cat :int :int]
+            :output :int
+            :guard nil}
+           (fn-schema-info [:=> [:cat :int :int] :int])
+           (fn-schema-info [:-> :int :int :int])))
     (doseq [?schema [[:=> [:cat int? int?] int?]
                      [:-> int? int? int?]]]
       (let [valid-f (fn [x y]

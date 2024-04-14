@@ -2571,7 +2571,14 @@
                          :value invalid-f
                          :errors [{:path []
                                    :in []
-                                   :schema schema2
+                                   :schema (m/schema
+                                             (case (first ?schema)
+                                               :function [:function
+                                                          [:=> [:cat int?] int?]
+                                                          [:=> [:cat int? int?] int?]]
+                                               :ifn [:function
+                                                     [:-> int? int?]
+                                                     [:-> int? int? int?]]))
                                    :value invalid-f}]}
                         (m/explain schema2 invalid-f))))
 

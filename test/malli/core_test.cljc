@@ -2403,11 +2403,11 @@
   1000)
 
 (defn fn-schema-info [?schema]
-  (-> (m/schema ?schema)
-      m/-function-info
-      (update :input m/form)
-      (update :output m/form)
-      (update :guard #(some-> % m/form))))
+  (some-> (m/schema ?schema)
+          m/-function-info
+          (update :input m/form)
+          (update :output m/form)
+          (update :guard #(some-> % m/form))))
 
 (deftest function-schema-test
   ;; js allows invalid arity
@@ -2478,7 +2478,17 @@
                  (m/ast schema1)))))))
 
   (testing ":function"
-
+    (is (= nil
+           (fn-schema-info (m/schema [:function [:-> :int :int :int]]))
+           (fn-schema-info (m/schema [:ifn [:-> :int :int :int]]))))
+    (is (= [[:-> :int :int :int]
+            [:=> [:cat :int] :int]]
+           (map m/form (m/-function-schema-arities (m/schema [:function
+                                                              [:-> :int :int :int]
+                                                              [:=> [:cat :int] :int]])))
+           (map m/form (m/-function-schema-arities (m/schema [:ifn
+                                                              [:-> :int :int :int]
+                                                              [:=> [:cat :int] :int]])))))
     (is (thrown-with-msg?
          #?(:clj Exception, :cljs js/Error)
          #":malli.core/non-function-childs"

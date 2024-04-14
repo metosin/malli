@@ -582,11 +582,12 @@
                              explain-output (assoc ::m/explain-output explain-output)
                              explain-guard (assoc ::m/explain-guard explain-guard)
                              (ex-message result) (-> (update :result ex-message) (dissoc :result-data)))))))))]
-     (condp = (m/type schema)
-       :=> (check schema)
-       :function (let [checkers (map #(function-checker % options) (m/-children schema))]
-                   (fn [x] (->> checkers (keep #(% x)) (seq))))
-       (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
+     (if (m/-arity-schema? schema)
+       (check schema)
+       (if (m/-function-schema? schema)
+         (let [checkers (map #(function-checker % options) (m/-function-schema-arities schema))]
+           (fn [x] (->> checkers (keep #(% x)) (seq))))
+         (m/-fail! ::invalid-function-schema {:type (m/-type schema)}))))))
 
 (defn check
   ([?schema f] (check ?schema f nil))

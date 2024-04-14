@@ -105,6 +105,7 @@
 (defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
+(defmethod accept :-> [_ _ _ _] :fn)
 (defmethod accept :=> [_ _ _ _] :fn)
 (defmethod accept :function [_ _ _ _] :fn)
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
@@ -170,8 +171,7 @@
         config))))
 
 (defn from [{:keys [schema ns name]}]
-  (let [ns-name (-> ns str symbol)
-        schema (if (= :function (m/type schema)) schema (m/into-schema :function nil [schema] (m/options schema)))]
+  (let [ns-name (-> ns str symbol)]
     (reduce
      (fn [acc schema]
        (let [{:keys [input output arity min]} (m/-function-info schema)
@@ -183,7 +183,8 @@
                             :args args
                             :ret ret}
                      (= arity :varargs) (assoc :min-arity min)))))
-     [] (m/children schema))))
+     [] (or (seq (m/-function-schema-arities schema))
+            (m/-fail! ::from-requires-function-schema {:schema schema})))))
 
 (defn collect
   ([] (collect nil))

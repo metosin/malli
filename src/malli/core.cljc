@@ -2695,7 +2695,7 @@
   ([?schema] (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
-     (if (or (-arity-schema? s) (= :function t)) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
+     (if (-function-schema? s) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
 
 ;; for cljs we cannot invoke `function-schema` at macroexpansion-time
 ;; - `?schema` could contain cljs vars that will only resolve at runtime.

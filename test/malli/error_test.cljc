@@ -306,46 +306,54 @@
 
 (deftest string-test
   (is (= {:a ["should be a string"],
-          :b ["should be at least 1 characters"],
+          :b ["should be at least 1 character"],
           :c ["should be at most 4 characters"],
-          :d ["should be between 1 and 4 characters"],
+          :d [["should be at least 1 character"]
+              ["should be at most 4 characters"]],
           :e ["should be a string"]
-          :f ["should be 4 characters"]}
+          :f ["should be 4 characters"]
+          :g ["should be at most 1 character"]
+          :h ["should be 1 character"]}
          (-> [:map
               [:a :string]
               [:b [:string {:min 1}]]
               [:c [:string {:max 4}]]
-              [:d [:string {:min 1, :max 4}]]
+              [:d [:vector [:string {:min 1, :max 4}]]]
               [:e [:string {:min 1, :max 4}]]
-              [:f [:string {:min 4, :max 4}]]]
+              [:f [:string {:min 4, :max 4}]]
+              [:g [:string {:max 1}]]
+              [:h [:string {:min 1 :max 1}]]]
              (m/explain
               {:a 123
                :b ""
                :c "invalid"
-               :d ""
+               :d ["" "12345"]
                :e 123
-               :f "invalid"})
+               :f "invalid"
+               :g "ab"
+               :h ""})
              (me/humanize)))))
 
 (deftest int-test
   (is (= {:a ["should be an integer"]
           :b ["should be at least 1"]
           :c ["should be at most 4"]
-          :d ["should be between 1 and 4"]
+          :d [["should be at least 1"]
+              ["should be at most 4"]]
           :e ["should be an integer"]
           :f ["should be 4"]}
          (-> [:map
               [:a :int]
               [:b [:int {:min 1}]]
               [:c [:int {:max 4}]]
-              [:d [:int {:min 1, :max 4}]]
+              [:d [:vector [:int {:min 1, :max 4}]]]
               [:e [:int {:min 1, :max 4}]]
               [:f [:int {:min 4, :max 4}]]]
              (m/explain
               {:a "123"
                :b 0
                :c 5
-               :d 0
+               :d [0 5]
                :e "123"
                :f 5})
              (me/humanize)))))
@@ -354,21 +362,22 @@
   (is (= {:a ["should be a double"]
           :b ["should be at least 1"]
           :c ["should be at most 4"]
-          :d ["should be between 1 and 4"]
+          :d [["should be at least 1"]
+              ["should be at most 4"]]
           :e ["should be a double"]
           :f ["should be 4"]}
          (-> [:map
               [:a :double]
               [:b [:double {:min 1}]]
               [:c [:double {:max 4}]]
-              [:d [:double {:min 1, :max 4}]]
+              [:d [:vector [:double {:min 1, :max 4}]]]
               [:e [:double {:min 1, :max 4}]]
               [:f [:double {:min 4, :max 4}]]]
              (m/explain
               {:a "123"
                :b 0.0
                :c 5.0
-               :d 0.0
+               :d [0.0 5.0]
                :e "123"
                :f 5.0})
              (me/humanize)))))
@@ -604,21 +613,22 @@
   (is (= {:a [["should be an int"]]
           :b ["should have at least 2 elements"]
           :c ["should have at most 5 elements"]
-          :d ["should have between 2 and 5 elements"]
-          :e ["should have between 2 and 5 elements"]
+          :d [["should have at least 2 elements"]
+              ["should have at most 5 elements"]]
+          :e ["should have at least 2 elements"]
           :f ["should have 5 elements"]}
          (-> [:map
               [:a [:vector int?]]
               [:b [:vector {:min 2} int?]]
               [:c [:vector {:max 5} int?]]
-              [:d [:vector {:min 2, :max 5} int?]]
+              [:d [:vector [:vector {:min 2, :max 5} int?]]]
               [:e [:vector {:min 2, :max 5} int?]]
               [:f [:vector {:min 5, :max 5} int?]]]
              (m/explain
               {:a ["123"]
                :b [1]
                :c [1 2 3 4 5 6]
-               :d [1]
+               :d [[1] [1 2 3 4 5 6 7]]
                :e [1.2]
                :f [1 2 3 4]})
              (me/humanize)))))

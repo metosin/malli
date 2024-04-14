@@ -9,19 +9,17 @@
       (cond
         (not (pred value)) message
         (and min (= min max)) (str "should be " min)
-        (and min max) (str "should be between " min " and " max)
-        min (str "should be at least " min)
+        (and min (< value min)) (str "should be at least " min)
         max (str "should be at most " max)))))
 
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
-   ::m/limits {:error/fn {:en (fn [{:keys [schema _value]} _]
+   ::m/limits {:error/fn {:en (fn [{:keys [schema value]} _]
                                 (let [{:keys [min max]} (m/properties schema)]
                                   (cond
                                     (and min (= min max)) (str "should have " min " elements")
-                                    (and min max) (str "should have between " min " and " max " elements")
-                                    min (str "should have at least " min " elements")
+                                    (and min (< (count value) min)) (str "should have at least " min " elements")
                                     max (str "should have at most " max " elements"))))}}
    ::m/tuple-size {:error/fn {:en (fn [{:keys [schema value]} _]
                                     (let [size (count (m/children schema))]
@@ -97,10 +95,10 @@
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond
                                  (not (string? value)) "should be a string"
-                                 (and min (= min max)) (str "should be " min " characters")
-                                 (and min max) (str "should be between " min " and " max " characters")
-                                 min (str "should be at least " min " characters")
-                                 max (str "should be at most " max " characters"))))}}
+                                 (and min (= min max)) (str "should be " min " character" (when (not= 1 min) "s"))
+                                 (and min (< (count value) min)) (str "should be at least " min " character"
+                                                                      (when (not= 1 min) "s"))
+                                 max (str "should be at most " max " character" (when (not= 1 max) "s")))))}}
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
    :boolean {:error/message {:en "should be a boolean"}}

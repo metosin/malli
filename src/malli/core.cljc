@@ -1833,7 +1833,8 @@
           (-function-schema-arities [this] [this])
           (-instrument-f [schema {:keys [scope report gen] :as props} f options]
             (let [{:keys [min max input output guard]} (-function-info schema)]
-              (let [[validate-input validate-output validate-guard] (-vmap -validator [input output (or guard :any)])
+              (let [[validate-input validate-output] (-vmap -validator [input output])
+                    validate-guard (or (some-> guard -validator) any?)
                     [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
                     f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
                 (fn [& args]
@@ -1909,8 +1910,8 @@
           FunctionSchema
           (-function-schema? [this] true)
           (-function-schema-arities [this] children)
-          (-instrument-f [schema {:keys [scope report] :as props} f options]
-            (let [arity->info (->> (children schema)
+          (-instrument-f [this {:keys [scope report] :as props} f options]
+            (let [arity->info (->> children
                                    (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))
                                    (-group-by-arity!))
                   arities (-> arity->info keys set)
@@ -1920,7 +1921,7 @@
                 (fn [& args]
                   (let [arity (count args)
                         {:keys [input] :as info} (arity->info arity)
-                        report-arity #(report ::invalid-arity {:arity arity, :arities arities, :args args, :input input, :schema schema})]
+                        report-arity #(report ::invalid-arity {:arity arity, :arities arities, :args args, :input input, :schema this})]
                     (cond
                       info (apply (:f info) args)
                       varargs-info (if (< arity (:min varargs-info)) (report-arity) (apply (:f varargs-info) args))

@@ -2489,125 +2489,147 @@
            (map m/form (m/-function-schema-arities (m/schema [:ifn
                                                               [:-> :int :int :int]
                                                               [:=> [:cat :int] :int]])))))
-    (is (thrown-with-msg?
-         #?(:clj Exception, :cljs js/Error)
-         #":malli.core/non-function-childs"
-         (m/schema
-          [:function
-           :cat])))
+    (doseq [s [[:function :cat]
+               [:ifn :cat]]]
+      (is (thrown-with-msg?
+            #?(:clj Exception, :cljs js/Error)
+            #":malli.core/non-function-childs"
+            (m/schema
+              [:function :cat]))))
 
     (testing "varargs with identical min arity get +1 arity"
       (is (m/schema
            [:function
             [:=> :cat nil?]
+            [:=> [:cat [:? nil?]] nil?]]))
+      (is (m/schema
+           [:ifn
+            [:=> :cat nil?]
             [:=> [:cat [:? nil?]] nil?]])))
 
     (testing "invalid arities"
 
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/duplicate-arities"
-           (m/schema
-            [:function
-             [:=> :cat nil?]
-             [:=> :cat nil?]])))
+      (doseq [s [[:function
+                  [:=> :cat nil?]
+                  [:=> :cat nil?]]
+                 [:function
+                  [:-> nil?]
+                  [:=> :cat nil?]]
+                 [:ifn
+                  [:=> :cat nil?]
+                  [:=> :cat nil?]]
+                 [:ifn
+                  [:-> nil?]
+                  [:-> nil?]]]]
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/duplicate-arities"
+              (m/schema s))))
 
-      (is (thrown-with-msg?
-           #?(:clj Exception, :cljs js/Error)
-           #":malli.core/multiple-varargs"
-           (m/schema
-            [:function
-             [:=> :cat nil?]
-             [:=> [:cat [:? nil?]] nil?]
-             [:=> [:cat [:? nil?] [:? nil?]] nil?]]))))
+      (doseq [s [[:function
+                  [:=> :cat nil?]
+                  [:=> [:cat [:? nil?]] nil?]
+                  [:=> [:cat [:? nil?] [:? nil?]] nil?]]
+                 [:ifn
+                  [:-> nil?]
+                  [:-> [:? nil?] nil?]
+                  [:-> [:? nil?] [:? nil?] nil?]]]]
+        (is (thrown-with-msg?
+              #?(:clj Exception, :cljs js/Error)
+              #":malli.core/multiple-varargs"
+              (m/schema s)))))
 
-    (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
-          invalid-f (fn ([x] x) ([x y] (str x y)))
-          ?schema [:function
-                   [:=> [:cat int?] int?]
-                   [:=> [:cat int? int?] int?]]
-          schema1 (m/schema ?schema)
-          schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
+    (doseq [?schema [[:function
+                      [:=> [:cat int?] int?]
+                      [:=> [:cat int? int?] int?]]
+                     [:ifn
+                      [:-> int? int?]
+                      [:-> int? int? int?]]]]
+      (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
+            invalid-f (fn ([x] x) ([x y] (str x y)))
+            
+            schema1 (m/schema ?schema)
+            schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
 
-      (testing "by default, all ifn? are valid"
-        (is (true? (m/validate schema1 identity)))
-        (is (true? (m/validate schema1 #{}))))
+        (testing "by default, all ifn? are valid"
+          (is (true? (m/validate schema1 identity)))
+          (is (true? (m/validate schema1 #{}))))
 
-      (testing "using generative testing"
-        #?(:clj (is (false? (m/validate schema2 identity))))
-        (is (false? (m/validate schema2 #{})))
+        (testing "using generative testing"
+          #?(:clj (is (false? (m/validate schema2 identity))))
+          (is (false? (m/validate schema2 #{})))
 
-        (is (false? (m/validate schema2 single-arity)))
-        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
-        #?(:clj (is (false? (m/validate schema2 #{}))))
-        (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
-        (is (false? (m/validate schema2 (fn [x y] (str x y)))))
+          (is (false? (m/validate schema2 single-arity)))
+          #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
+          #?(:clj (is (false? (m/validate schema2 #{}))))
+          (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
+          (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
-        (is (nil? (explain-times function-schema-validation-times schema2 valid-f)))
+          (is (nil? (explain-times function-schema-validation-times schema2 valid-f)))
 
-        (is (results= {:schema schema2
-                       :value invalid-f
-                       :errors [{:path []
-                                 :in []
-                                 :schema schema2
-                                 :value invalid-f}]}
-                      (m/explain schema2 invalid-f))))
+          (is (results= {:schema schema2
+                         :value invalid-f
+                         :errors [{:path []
+                                   :in []
+                                   :schema schema2
+                                   :value invalid-f}]}
+                        (m/explain schema2 invalid-f))))
 
-      (testing "guards"
-        (let [guard (fn [[[x y] z]] (> (+ x y) z))
-              schema (m/schema
-                      [:=> [:cat :int :int] :int [:fn guard]]
-                      {::m/function-checker mg/function-checker})
-              valid (fn [x y] (dec (+ x y)))
-              invalid (fn [x y] (+ x y))]
+        (testing "guards"
+          (let [guard (fn [[[x y] z]] (> (+ x y) z))
+                schema (m/schema
+                        [:=> [:cat :int :int] :int [:fn guard]]
+                        {::m/function-checker mg/function-checker})
+                valid (fn [x y] (dec (+ x y)))
+                invalid (fn [x y] (+ x y))]
 
-          (is (= {:type :=>,
-                  :input {:type :cat
-                          :children [{:type :int} {:type :int}]},
-                  :output {:type :int},
-                  :guard {:type :fn
-                          :value guard}}
-                 (m/ast schema)))
+            (is (= {:type :=>,
+                    :input {:type :cat
+                            :children [{:type :int} {:type :int}]},
+                    :output {:type :int},
+                    :guard {:type :fn
+                            :value guard}}
+                   (m/ast schema)))
 
-          (is (= nil (m/explain schema valid)))
+            (is (= nil (m/explain schema valid)))
 
-          (testing "error in guard adds error on path 2"
+            (testing "error in guard adds error on path 2"
+              (is (results= {:schema schema,
+                             :value invalid
+                             :errors [{:path [],
+                                       :in [],
+                                       :schema schema
+                                       :value invalid}
+                                      {:path [2]
+                                       :in []
+                                       :schema [:fn guard]
+                                       :value ['(0 0) 0]}]}
+                            (m/explain schema invalid))))
+
+            (testing "instrument"
+              (let [schema [:=> [:cat :int] :int [:fn (fn [[[arg] ret]] (< arg ret))]]
+                    fn (m/-instrument {:schema schema} (fn [x] (* x x)))]
+
+                (is (= 4 (fn 2)))
+
+                (is (thrown-with-msg?
+                     #?(:clj Exception, :cljs js/Error)
+                     #":malli.core/invalid-guard"
+                     (fn 0)))))))
+
+        (testing "non-accumulating errors"
+          (let [schema (m/schema
+                        [:tuple :int [:function [:=> [:cat :int] :int]]]
+                        {::m/function-checker malli.generator/function-checker})
+                f (fn [_] 1)]
             (is (results= {:schema schema,
-                           :value invalid
-                           :errors [{:path [],
-                                     :in [],
-                                     :schema schema
-                                     :value invalid}
-                                    {:path [2]
-                                     :in []
-                                     :schema [:fn guard]
-                                     :value ['(0 0) 0]}]}
-                          (m/explain schema invalid))))
+                           :value ["1" f],
+                           :errors [{:path [0], :in [0], :schema :int, :value "1"}]}
+                          (m/explain schema ["1" f])))))
 
-          (testing "instrument"
-            (let [schema [:=> [:cat :int] :int [:fn (fn [[[arg] ret]] (< arg ret))]]
-                  fn (m/-instrument {:schema schema} (fn [x] (* x x)))]
+        (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
 
-              (is (= 4 (fn 2)))
-
-              (is (thrown-with-msg?
-                   #?(:clj Exception, :cljs js/Error)
-                   #":malli.core/invalid-guard"
-                   (fn 0)))))))
-
-      (testing "non-accumulating errors"
-        (let [schema (m/schema
-                      [:tuple :int [:function [:=> [:cat :int] :int]]]
-                      {::m/function-checker malli.generator/function-checker})
-              f (fn [_] 1)]
-          (is (results= {:schema schema,
-                         :value ["1" f],
-                         :errors [{:path [0], :in [0], :schema :int, :value "1"}]}
-                        (m/explain schema ["1" f])))))
-
-      (is (= valid-f (m/decode schema1 valid-f mt/string-transformer)))
-
-      (is (true? (m/validate (over-the-wire schema1) valid-f))))))
+        (is (true? (m/validate (over-the-wire schema1) valid-f)))))))
 
 (deftest test-415
   (testing "multi default is not transformed"

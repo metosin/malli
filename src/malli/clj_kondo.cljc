@@ -8,7 +8,7 @@
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
-(defmethod accept ::default [_ _ _ _] :any)
+(defmethod accept ::default [_ schema _ _] (if (m/-function-schema? schema) :fn :any))
 (defmethod accept 'any? [_ _ _ _] :any)
 (defmethod accept 'some? [_ _ _ _] :any) ;;??
 (defmethod accept 'number? [_ _ _ _] :number)
@@ -105,9 +105,6 @@
 (defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
-(defmethod accept :-> [_ _ _ _] :fn)
-(defmethod accept :=> [_ _ _ _] :fn)
-(defmethod accept :function [_ _ _ _] :fn)
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 
 (defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))

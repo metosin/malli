@@ -2446,7 +2446,7 @@
                           :value single-arity
                           :errors [{:path []
                                     :in []
-                                    :schema ?schema
+                                    :schema [:=> [:cat int? int?] int?]
                                     :value single-arity}]}
                          (m/explain schema2 single-arity))))
 
@@ -2456,7 +2456,7 @@
                              :value f
                              :errors [{:path []
                                        :in []
-                                       :schema ?schema
+                                       :schema [:=> [:cat int? int?] int?]
                                        :value f}
                                       {:path [1]
                                        :in []
@@ -2468,10 +2468,13 @@
 
           (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
-          (is (= {:type :=>
-                  :input {:type :cat
-                          :children [{:type 'int?} {:type 'int?}]}
-                  :output {:type 'int?}}
+          (is (= (case (first ?schema)
+                   :=> {:type :=>
+                        :input {:type :cat
+                                :children [{:type 'int?} {:type 'int?}]}
+                        :output {:type 'int?}}
+                   :-> {:type :->
+                        :children [{:type 'int?} {:type 'int?} {:type 'int?}]})
                  (m/ast schema1)))))))
 
   (testing ":function"

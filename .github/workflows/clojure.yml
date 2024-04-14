@@ -26,7 +26,15 @@ jobs:
         with:
           distribution: zulu
           java-version: ${{ matrix.jdk }}
-          cache: maven
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+          key: ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-${{ matrix.clojure }}-${{ matrix.jdk }}
+          restore-keys: |
+            ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-${{ matrix.clojure }}-
+            ${{ runner.os }}-test-deps-
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
@@ -48,7 +56,14 @@ jobs:
         with:
           distribution: zulu
           java-version: 11
-          cache: maven
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+          key: ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-test-deps-
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
@@ -73,7 +88,16 @@ jobs:
         with:
           distribution: zulu
           java-version: 11
-          cache: maven
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.deps.clj
+            ~/.gitlibs
+          key: ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-${{ hashFiles('**/bb.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-
+            ${{ runner.os }}-test-deps-
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@master
         with:

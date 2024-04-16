@@ -327,7 +327,7 @@
     (gen/return (m/-instrument {:schema schema} (fn [& _] (generate output-generator options))))))
 
 (defn -function-gen [schema options]
-  (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} options)))
+  (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} nil options)))
 
 (defn -regex-generator [schema options]
   (if (m/-regex-op? schema)

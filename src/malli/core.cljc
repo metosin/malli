@@ -1994,9 +1994,7 @@
   (-proxy-schema {:type :->
                   :fn (fn [{guard :fn :as p} c o]
                         (let [c (map #(schema % o) c)
-                              cc (cond-> (if (vector? c)
-                                           [(into [:cat] (pop c)) (peek c)]
-                                           [(into [:cat] (butlast c)) (last c)])
+                              cc (cond-> [(into [:cat] (pop c)) (peek c)]
                                    guard (conj [:fn guard]))]
                           [c (map -form c) (into-schema :=> (dissoc p :fn) cc o)]))}))
 

@@ -181,7 +181,13 @@
                             :ret ret}
                      (= arity :varargs) (assoc :min-arity min)))))
      [] (or (seq (m/-function-schema-arities schema))
-            (m/-fail! ::from-requires-function-schema {:schema schema})))))
+            (m/-fail! ::from-requires-function-schema {:schema schema
+                                                       :schema-class (type schema)
+                                                       :schema-form (m/form schema)
+                                                       ;dbg
+                                                       :arities (m/-function-schema-arities schema)
+                                                       :function? (m/-function-schema? schema)
+                                                       :arity? (m/-arity-schema? schema)})))))
 
 (defn collect
   ([] (collect nil))

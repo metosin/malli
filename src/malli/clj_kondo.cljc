@@ -167,9 +167,9 @@
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
         config))))
 
-(defn from [{:keys [schema ns name]}]
+(defn from [{?schema :schema :keys [ns name]}]
   (let [ns-name (-> ns str symbol)
-        schema (m/schema schema)]
+        schema (m/schema ?schema)]
     (reduce
      (fn [acc schema]
        (let [{:keys [input output arity min]} (m/-function-info schema)

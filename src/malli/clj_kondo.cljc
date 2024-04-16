@@ -168,7 +168,8 @@
         config))))
 
 (defn from [{:keys [schema ns name]}]
-  (let [ns-name (-> ns str symbol)]
+  (let [ns-name (-> ns str symbol)
+        schema (m/schema schema)]
     (reduce
      (fn [acc schema]
        (let [{:keys [input output arity min]} (m/-function-info schema)

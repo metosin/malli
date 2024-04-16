@@ -2525,17 +2525,17 @@
                       (m/explain schema2 invalid-f))))
 
       (testing "guards"
-        (let [guard (fn [[[x y] z]] (> (+ x y) z))
+        (let [guard (fn [[[x y] z]] (= (str x y) z))
               schema (m/schema
-                      [:=> [:cat :int :int] :int [:fn guard]]
+                      [:=> [:cat :int :int] string? [:fn guard]]
                       {::m/function-checker mg/function-checker})
-              valid (fn [x y] (dec (+ x y)))
-              invalid (fn [x y] (+ x y))]
+              valid (fn [x y] (str x y))
+              invalid (fn [x y] (str x "-" y))]
 
           (is (= {:type :=>,
                   :input {:type :cat
                           :children [{:type :int} {:type :int}]},
-                  :output {:type :int},
+                  :output {:type 'string?},
                   :guard {:type :fn
                           :value guard}}
                  (m/ast schema)))
@@ -2552,19 +2552,19 @@
                                     {:path [2]
                                      :in []
                                      :schema [:fn guard]
-                                     :value ['(0 0) 0]}]}
+                                     :value ['(0 0) "0-0"]}]}
                           (m/explain schema invalid))))
 
           (testing "instrument"
-            (let [schema [:=> [:cat :int] :int [:fn (fn [[[arg] ret]] (< arg ret))]]
-                  fn (m/-instrument {:schema schema} (fn [x] (* x x)))]
+            (let [schema [:=> [:cat :any] :any [:fn (fn [[[arg] ret]] (not= arg ret))]]
+                  fn (m/-instrument {:schema schema} str)]
 
-              (is (= 4 (fn 2)))
+              (is (= "2" (fn 2)))
 
               (is (thrown-with-msg?
                    #?(:clj Exception, :cljs js/Error)
                    #":malli.core/invalid-guard"
-                   (fn 0)))))))
+                   (fn "0")))))))
 
       (testing "non-accumulating errors"
         (let [schema (m/schema

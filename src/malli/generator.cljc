@@ -144,11 +144,17 @@
     (gen/one-of gs)))
 
 (defn- -seqable-gen [schema options]
-  (gen-one-of
-    (-> [nil-gen]
-        (into (map #(-coll-gen schema % options))
-              [identity vec eduction #(into-array #?(:clj Object) %)])
-        (conj (-coll-distinct-gen schema set options)))))
+  (let [el (-> schema m/children first)]
+    (gen-one-of
+      (-> [nil-gen]
+          (into (map #(-coll-gen schema % options))
+                [identity vec eduction #(into-array #?(:clj Object) %)])
+          (conj (-coll-distinct-gen schema set options))
+          (cond->
+            (and (= :tuple (m/type el))
+                 (= 2 (count (m/children el))))
+            (conj (let [[k v] (m/children el)]
+                    (generator [:map-of (or (m/properties schema) {}) k v] options))))))))
 
 (defn -or-gen [schema options]
   (if-some [gs (not-empty

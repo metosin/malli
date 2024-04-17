@@ -2523,7 +2523,7 @@
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
    :sequential (-collection-schema {:type :sequential, :pred sequential?})
    :seqable (-collection-schema {:type :seqable, :pred seqable?})
-   :every (-collection-schema {:type :every, :pred seqable? :bounded true})
+   :every (-collection-schema {:type :every, :pred seqable?, :bounded true})
    :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)})
    :enum (-enum-schema)
    :maybe (-maybe-schema)

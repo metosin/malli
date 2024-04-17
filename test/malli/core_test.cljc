@@ -3237,7 +3237,11 @@
   (is (nil? (m/explain [:every :int] #{1 2 3})))
   (is (not (m/validate [:every :int] #{1 nil 3})))
   (is (m/validate [:every :int] (concat (range 1000) [nil])))
+  ;; counted/indexed colls have everything validated
+  (is (not (m/validate [:every :int] (vec (concat (range 1000) [nil])))))
   (is (m/validate [:every {:min 1000} :int] (concat (range 1000) [nil])))
+  ;; counted/indexed colls have everything validated
+  (is (not (m/validate [:every {:min 1000} :int] (vec (concat (range 1000) [nil])))))
   (is (not (m/validate [:every {:min 1001} :int] (concat (range 1000) [nil]))))
   (is (m/validate [:every {:max 1000} :int] (range 1000)))
   (is (not (m/validate [:every {:max 1000} :int] (range 1001))))

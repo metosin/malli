@@ -1224,7 +1224,9 @@
                                                      (reduce
                                                        (fn [acc v]
                                                          (if (child-validator v) (reduced ::invalid) acc))
-                                                       x (eduction (take bounded) x)))
+                                                       x (cond->> x
+                                                           (or (counted? x) (indexed? x))
+                                                           (eduction (take bounded)))))
                                                    (let [x' (reduce
                                                               (fn [acc v]
                                                                 (let [v' (child-parser v)]
@@ -1246,14 +1248,17 @@
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true
                                          (cond->> x
-                                           bounded (eduction (take bounded))))))))
+                                           (and bounded (not (counted? x)) (not (indexed? x)))
+                                           (eduction (take bounded))))))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))]
                     (fn [x in acc]
                       (cond
                         (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
                         (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                        :else (let [size (or bounded (count x))]
+                        :else (let [size (if (and bounded (not (counted? x)) (not (indexed? x)))
+                                           bounded
+                                           (count x))]
                                 (loop [acc acc, i 0, [x & xs] x]
                                   (if (< i size)
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))

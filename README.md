@@ -382,7 +382,9 @@ default branching can be arbitrarily nested:
 
 The `:seqable` and `:every` schemas describe `seqable?` collections. They
 differ in their handling of `counted?` or `indexed?` collections and their
-[parsers](#parsing-values) (`:seqable` parses its elements but `:every?` does not).
+[parsers](#parsing-values) (`:seqable` parses its elements but `:every?` does not,
+and valid unparsed `:seqable` values lose the original collection type while `:every?`
+returns the identical input).
 
 `:seqable` validates the entire collection, while `:every` checks only the
 largest of `:min`, `(inc :max)`, and `(:coll-check-limit options 101)`, or

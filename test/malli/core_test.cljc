@@ -3238,15 +3238,18 @@
   (is (not (m/validate [:seqable :int] #{1 nil 3})))
   (is (= #{["should be an integer"]}
          (me/humanize (m/explain [:seqable :int] #{1 nil 3}))))
-
-  #_
   (let [original (interleave (range 10) (cycle [true false]))
-        parsed [[:l 0] [:r true] [:l 1] [:r false] [:l 2] [:r true] [:l 3] [:r false] [:l 4] [:r true] [:l 5]
-                [:r false] [:l 6] [:r true] [:l 7] [:r false] [:l 8] [:r true] [:l 9] [:r false]]]
-    (is (= parsed (m/parse [:seqable [:orn [:l :int] [:r :boolean]]] original)))
-    (is (= original (m/unparse [:seqable [:orn [:l :int] [:r :boolean]]] parsed))))
-  (m/unparse [:sequential [:orn [:a :int]]] [[:a 1]])
-)
+        parsed (m/parse [:seqable [:orn [:l :int] [:r :boolean]]] original)
+        unparsed (m/unparse [:seqable [:orn [:l :int] [:r :boolean]]] parsed)]
+    (is (= original unparsed))
+    (is (= [[:l 0] [:r true] [:l 1] [:r false] [:l 2] [:r true] [:l 3] [:r false] [:l 4] [:r true] [:l 5]
+            [:r false] [:l 6] [:r true] [:l 7] [:r false] [:l 8] [:r true] [:l 9] [:r false]]
+           parsed)))
+  (let [original (sorted-set 1 2 3)
+        parsed (m/parse [:seqable [:orn [:a :int]]] original)
+        unparsed (m/unparse [:seqable [:orn [:a :int]]] parsed)]
+    (is (= unparsed [1 2 3]))
+    (is (= parsed [[:a 1] [:a 2] [:a 3]]))))
 
 (deftest every-schema-test
   (is (m/validate [:every :int] #{1 2 3}))

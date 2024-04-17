@@ -638,8 +638,7 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
-(defn -validate-limits [min max]
-  (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
+(defn -validate-limits [min max] (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
 
 (defn -needed-bounded-checks [min max options]
   (or (some-> max inc)

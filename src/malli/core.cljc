@@ -1209,11 +1209,9 @@
                             (when fempty
                               (-fail! ::cannot-provide-empty-and-bounded-props))
                             (-needed-bounded-checks min max options))
-                  validate-limits (if (or min max)
-                                    (if bounded
-                                      (-validate-bounded-limits (c/min bounded (or max bounded)) min max)
-                                      (-validate-limits min max))
-                                    any?)
+                  validate-limits (if bounded
+                                    (-validate-bounded-limits (c/min bounded (or max bounded)) min max)
+                                    (-validate-limits min max))
                   ->parser (fn [f g] (let [child-parser (f schema)]
                                        (fn [x]
                                          (cond
@@ -1222,10 +1220,10 @@
                                            :else (if bounded
                                                    (let [child-validator child-parser]
                                                      (reduce
-                                                       (fn [acc v]
-                                                         (if (child-validator v) (reduced ::invalid) acc))
+                                                       (fn [x v]
+                                                         (if (child-validator v) x (reduced ::invalid)))
                                                        x (cond->> x
-                                                           (or (counted? x) (indexed? x))
+                                                           (not (or (counted? x) (indexed? x)))
                                                            (eduction (take bounded)))))
                                                    (let [x' (reduce
                                                               (fn [acc v]

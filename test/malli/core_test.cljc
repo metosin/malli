@@ -3237,7 +3237,16 @@
   (is (nil? (m/explain [:seqable :int] #{1 2 3})))
   (is (not (m/validate [:seqable :int] #{1 nil 3})))
   (is (= #{["should be an integer"]}
-         (me/humanize (m/explain [:seqable :int] #{1 nil 3})))))
+         (me/humanize (m/explain [:seqable :int] #{1 nil 3}))))
+
+  #_
+  (let [original (interleave (range 10) (cycle [true false]))
+        parsed [[:l 0] [:r true] [:l 1] [:r false] [:l 2] [:r true] [:l 3] [:r false] [:l 4] [:r true] [:l 5]
+                [:r false] [:l 6] [:r true] [:l 7] [:r false] [:l 8] [:r true] [:l 9] [:r false]]]
+    (is (= parsed (m/parse [:seqable [:orn [:l :int] [:r :boolean]]] original)))
+    (is (= original (m/unparse [:seqable [:orn [:l :int] [:r :boolean]]] parsed))))
+  (m/unparse [:sequential [:orn [:a :int]]] [[:a 1]])
+)
 
 (deftest every-schema-test
   (is (m/validate [:every :int] #{1 2 3}))
@@ -3263,4 +3272,22 @@
   (is (= (concat (repeat 1000 nil) [["should be an integer"]])
          (me/humanize (m/explain [:every {:min 1001} :int] (concat (range 1000) [nil])))))
   (is (= (concat (repeat 1000 nil) [["should be an integer"]])
-         (me/humanize (m/explain [:every {:max 1001} :int] (concat (range 1000) [nil]))))))
+         (me/humanize (m/explain [:every {:max 1001} :int] (concat (range 1000) [nil])))))
+  (doseq [parse [#'m/parse #'m/unparse]]
+    (testing parse
+      (let [good-sequence (interleave (range 10) (cycle [true false]))]
+        (is (identical? good-sequence
+                        (parse [:every [:orn [:l :int] [:r :boolean]]]
+                               good-sequence))))
+      (is (= ::m/invalid
+             (parse [:every [:orn [:l :int] [:r :boolean]]]
+                    (interleave (range 10) (cycle [true false nil])))))
+      (let [bad-long-seq (concat (interleave (range 1000) (cycle [true false]))
+                                 [nil])
+            bad-indexed-seq (vec bad-long-seq)]
+        (is (identical? bad-long-seq
+                        (parse [:every [:orn [:l :int] [:r :boolean]]]
+                               bad-long-seq)))
+        (is (= ::m/invalid
+               (parse [:every [:orn [:l :int] [:r :boolean]]]
+                      bad-indexed-seq)))))))

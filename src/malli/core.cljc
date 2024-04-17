@@ -1184,6 +1184,17 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
+(defn- -check-entire-bounded-collection? [x]
+  (or (nil? x)
+      (counted? x)
+      (indexed? x)
+      ;; note: js/Object not ISeqable
+      #?(:clj (instance? java.util.Map x))
+      #?(:clj (instance? CharSequence x)
+         :cljs (string? x))
+      #?(:clj (.isArray (class x))
+         :cljs (identical? js/Array (type x)))))
+
 (defn -collection-schema [props]
   (if (fn? props)
     (do (-deprecated! "-collection-schema doesn't take fn-props, use :compiled property instead")
@@ -1223,7 +1234,7 @@
                                                        (fn [x v]
                                                          (if (child-validator v) x (reduced ::invalid)))
                                                        x (cond->> x
-                                                           (not (or (counted? x) (indexed? x)))
+                                                           (not (-check-entire-bounded-collection? x))
                                                            (eduction (take bounded)))))
                                                    (let [x' (reduce
                                                               (fn [acc v]
@@ -1246,7 +1257,7 @@
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true
                                          (cond->> x
-                                           (and bounded (not (counted? x)) (not (indexed? x)))
+                                           (and bounded (not (-check-entire-bounded-collection? x)))
                                            (eduction (take bounded))))))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))]
@@ -1254,7 +1265,7 @@
                       (cond
                         (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
                         (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                        :else (let [size (if (and bounded (not (counted? x)) (not (indexed? x)))
+                        :else (let [size (if (and bounded (not (-check-entire-bounded-collection? x)))
                                            bounded
                                            (count x))]
                                 (loop [acc acc, i 0, [x & xs] x]

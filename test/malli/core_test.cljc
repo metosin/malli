@@ -3226,6 +3226,7 @@
                         {:registry registry, ::m/ref-key :id}))))))))
 
 (deftest seqable-schema-test
+  (is (m/validate [:seqable :int] nil))
   (is (m/validate [:seqable :int] #{1 2 3}))
   (is (m/validate [:seqable :int] [1 2 3]))
   (is (m/validate [:seqable :int] (sorted-set 1 2 3)))
@@ -3252,6 +3253,7 @@
     (is (= parsed [[:a 1] [:a 2] [:a 3]]))))
 
 (deftest every-schema-test
+  (is (m/validate [:every :int] nil))
   (is (m/validate [:every :int] #{1 2 3}))
   (is (m/validate [:every :int] [1 2 3]))
   (is (m/validate [:every :int] (sorted-set 1 2 3)))

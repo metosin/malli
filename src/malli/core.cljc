@@ -1190,6 +1190,9 @@
       (indexed? x)
       ;; note: js/Object not ISeqable
       #?(:clj (instance? java.util.Map x))
+      ;; many Seq's are List's, so just pick some popular classes
+      #?(:clj (instance? java.util.AbstractList x))
+      #?(:clj (instance? java.util.Vector x))
       #?(:clj (instance? CharSequence x)
          :cljs (string? x))
       #?(:clj (.isArray (class x))

@@ -130,13 +130,6 @@
                                             :ex-fn #(m/-exception ::distinct-generator-failure
                                                                   (assoc % :schema schema))})))))
 
-(defn- -seqable-gen [schema options]
-  (gen-one-of
-    (-> [nil-gen]
-        (into (map #(-coll-gen schema % options))
-              [identity vec eduction #(into-array #?(:clj Object) %)])
-        (conj (-coll-distinct-gen schema set options)))))
-
 (defn -and-gen [schema options]
   (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
     (gen/such-that (m/validator schema options) gen
@@ -149,6 +142,13 @@
   (if (= 1 (count gs))
     (first gs)
     (gen/one-of gs)))
+
+(defn- -seqable-gen [schema options]
+  (gen-one-of
+    (-> [nil-gen]
+        (into (map #(-coll-gen schema % options))
+              [identity vec eduction #(into-array #?(:clj Object) %)])
+        (conj (-coll-distinct-gen schema set options)))))
 
 (defn -or-gen [schema options]
   (if-some [gs (not-empty

@@ -3227,6 +3227,13 @@
 
 (deftest seqable-schema-test
   (is (m/validate [:seqable :int] #{1 2 3}))
+  (is (m/validate [:seqable :int] [1 2 3]))
+  (is (m/validate [:seqable :int] (sorted-set 1 2 3)))
+  (is (m/validate [:seqable :int] #{1 2 3}))
+  (is (m/validate [:seqable :int] (range 1000)))
+  (is (not (m/validate [:seqable :int] (conj (vec (range 1000)) nil))))
+  (is (not (m/validate [:seqable :int] (concat (range 1000) [nil]))))
+  (is (not (m/validate [:seqable {:min 1000} :int] (concat (range 1000) [nil]))))
   (is (nil? (m/explain [:seqable :int] #{1 2 3})))
   (is (not (m/validate [:seqable :int] #{1 nil 3})))
   (is (= #{["should be an integer"]}
@@ -3234,11 +3241,15 @@
 
 (deftest every-schema-test
   (is (m/validate [:every :int] #{1 2 3}))
+  (is (m/validate [:every :int] [1 2 3]))
+  (is (m/validate [:every :int] (sorted-set 1 2 3)))
+  (is (not (m/validate [:every :int] (conj (vec (range 1000)) nil))))
   (is (nil? (m/explain [:every :int] #{1 2 3})))
   (is (not (m/validate [:every :int] #{1 nil 3})))
   (is (m/validate [:every :int] (concat (range 1000) [nil])))
   ;; counted/indexed colls have everything validated
   (is (not (m/validate [:every :int] (vec (concat (range 1000) [nil])))))
+  (is (m/validate [:every :int] (concat (range 1000) [nil])))
   (is (m/validate [:every {:min 1000} :int] (concat (range 1000) [nil])))
   ;; counted/indexed colls have everything validated
   (is (not (m/validate [:every {:min 1000} :int] (vec (concat (range 1000) [nil])))))

@@ -641,9 +641,9 @@
 (defn -validate-limits [min max] (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
 
 (defn -needed-bounded-checks [min max options]
-  (or (some-> max inc)
-      min
-      (:coll-check-limit options 101)))
+  (c/max (or (some-> max inc) 0)
+         (or min 0)
+         (:coll-check-limit options 101)))
 
 (defn -validate-bounded-limits [needed min max]
   (or ((-min-max-pred #(bounded-count needed %)) {:min min :max max}) (constantly true)))
@@ -1211,7 +1211,7 @@
                             (-needed-bounded-checks min max options))
                   validate-limits (if (or min max)
                                     (if bounded
-                                      (-validate-bounded-limits bounded min max)
+                                      (-validate-bounded-limits (c/min bounded (or max bounded)) min max)
                                       (-validate-limits min max))
                                     any?)
                   ->parser (fn [f g] (let [child-parser (f schema)]

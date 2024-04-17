@@ -1210,7 +1210,6 @@
                             (when fempty
                               (-fail! ::cannot-provide-empty-and-bounded-props))
                             (-needed-bounded-checks min max options))
-                  _ (prn "bounded" bounded)
                   validate-limits (if (or min max)
                                     (if bounded
                                       (-validate-bounded-limits bounded min max)

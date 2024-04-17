@@ -3224,3 +3224,19 @@
                                              ::xymap [:merge ::xmap ::ymap]}}
                          ::xymap]
                         {:registry registry, ::m/ref-key :id}))))))))
+
+(deftest seqable-schema-test
+  (is (m/validate [:seqable :int] #{1 2 3}))
+  (is (nil? (m/explain [:seqable :int] #{1 2 3})))
+  (is (not (m/validate [:seqable :int] #{1 nil 3})))
+  (is (= #{["should be an integer"]}
+         (me/humanize (m/explain [:seqable :int] #{1 nil 3})))))
+
+(deftest every-schema-test
+  (is (m/validate [:every :int] #{1 2 3}))
+  (is (nil? (m/explain [:every :int] #{1 2 3})))
+  (is (not (m/validate [:every :int] #{1 nil 3})))
+  (is (m/validate [:every :int] (concat (range 1000) [nil])))
+  (is (= #{["should be an integer"]}
+         (me/humanize (m/explain [:every :int] #{1 nil 3}))))
+  (is (nil? (m/explain [:every :int] (concat (range 1000) [nil])))))

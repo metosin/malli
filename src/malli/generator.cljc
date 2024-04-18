@@ -16,9 +16,6 @@
 
 (declare generator generate -create sampling-eduction)
 
-; {'x {:last-nth 2 :examples [1 2 3 4]}}
-(def ^:private +type-variable-examples+ (atom {}))
-
 (defprotocol Generator
   (-generator [this options] "returns generator for schema"))
 

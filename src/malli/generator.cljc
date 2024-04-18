@@ -98,13 +98,6 @@
                                       (throw (m/-exception ::failed-to-recover-seed))))]
        (gen/call-gen seeded-gen rnd size)))))
 
-(comment
-  (gen/sample (seeded (fn [seed] (gen/return seed))))
-  ((requiring-resolve 'clojure.pprint/pprint) (gen/sample (seeded (fn [seed]
-                        (gen/tuple (gen/return seed)
-                                   (generator :int {:seed seed}))))))
-  )
-
 (defn ^:deprecated -recur [_schema options]
   (println (str `-recur " is deprecated, please update your generators. See instructions in malli.generator."))
   [true options])

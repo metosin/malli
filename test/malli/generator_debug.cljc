@@ -46,5 +46,6 @@
 (defn not-empty [gen] {:op :not-empty :gen gen})
 (defn generator? [& args] (assert nil "no stub for generator?"))
 (defn call-gen [& args] (assert nil "no stub for call-gen"))
+(defn make-gen [& args] (assert nil "no stub for make-gen"))
 (defn make-size-range-seq [& args] (assert nil "no stub for make-size-range-seq"))
 (defn lazy-random-states [& args] (assert nil "no stub for lazy-random-states"))

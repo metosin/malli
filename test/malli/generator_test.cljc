@@ -1034,3 +1034,35 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/and-generator-failure"
         (mg/generate [:and pos? neg?]))))
+
+(deftest deterministic-pure-fn-gen-test
+  (is (every? #{-106} (repeatedly 10 (partial (mg/generate [:=> [:cat :int] :int] {:seed 0 :size 10}) 2))))
+  (is (= '(-11901892 -5288 -85 -1 -1380 479 -28741703 57202930 0 -46414)
+         (map (mg/generate [:=> [:cat :int] :int] {:seed 1 :size 30}) (range 10))))
+  (is (every? #{2483} (repeatedly 10 (partial (mg/generate [:=> [:cat [:=> [:cat :any] :any]] :int] {:seed 1 :size 30})
+                                              identity))))
+  (is (every? #{117} (repeatedly 10 (partial (mg/generate [:=> [:cat [:=> [:cat :any] :any]] :int] {:seed 1 :size 30})
+                                             str))))
+  (is (every? #{-7458} (repeatedly 10 (partial (mg/generate [:=> [:cat [:=> [:cat :any] :any]] :int] {:seed 1 :size 30})
+                                               boolean))))
+  (is (= '(-11901892 -5288 -85 -1 -1380 479 -28741703 57202930 0 -46414)
+         (map #(%1 %2)
+              (repeatedly (mg/generate [:=> :cat [:=> [:cat :int] :int]] {:seed 1 :size 30}))
+              (range 10)))))
+
+(deftest deterministic-impure-fn-gen-test
+  (is (= '(0 -1 0 -3 0 1 16 0 7 3)
+         (repeatedly 10 (partial (mg/generate [:=> {:gen/impure true} [:cat :int] :int] {:seed 0 :size 10}) 2))))
+  ;;TODO make more interesting results
+  (is (= '(-1 0 1 -2 1 -1 -2 -4 0 -113)
+         (map (mg/generate [:=> {:gen/impure true} [:cat :int] :int] {:seed 1 :size 30}) (range 10))
+         (repeatedly 10 (partial (mg/generate [:=> {:gen/impure true} [:cat [:=> [:cat :any] :any]] :int] {:seed 1 :size 30})
+                                 identity))
+         (repeatedly 10 (partial (mg/generate [:=> {:gen/impure true} [:cat [:=> [:cat :any] :any]] :int] {:seed 1 :size 30})
+                                 str))
+         (repeatedly 10 (partial (mg/generate [:=> {:gen/impure true} [:cat [:=> [:cat :any] :any]] :int] {:seed 1 :size 30})
+                                 boolean))))
+  (is (= '(-11901892 -5288 -85 -1 -1380 479 -28741703 57202930 0 -46414)
+         (map #(%1 %2)
+              (repeatedly (mg/generate [:=> :cat [:=> [:cat :int] :int]] {:seed 1 :size 30}))
+              (range 10)))))

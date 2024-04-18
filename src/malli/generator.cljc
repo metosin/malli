@@ -383,30 +383,12 @@
         options (m/options schema)
         _ (assert (= :=> (m/type schema)))
         [input output guard] (m/children schema)
-        _ (assert (not guard) "NYI guards")
-        ;;TODO only generate a validator if it's 100% accurate
-        valid-out? (m/validator output)]
+        _ (assert (not guard) "NYI guards")]
     (fn [& args]
-      (let [;;TODO this kind of thing would help generate polymorphic functions
-            ;; e.g., (all [x] [:-> x x]) would instantiate to something like:
-            ;;       [:-> [:any {:tv x'}] [:any {:tv x'}]]
-            ;;       Then we can remember seeing the input when generating the output
-            ;;       and match them up.
-            ;; might be more challenges with higher-order polymorphic functions.
-            output-candidates (atom {}) ;; TODO how to best use this? maybe small size == reuse more input?
-            n (letfn [(record
-                        ([x] (record nil x))
-                        ([schema x]
-                         (let [poly (when schema (::poly-poc (m/properties schema)))]
-                           (when poly
-                             (swap! output-candidates update-in [::poly poly] (fnil conj []) x))
-                           #_(when (valid-out? x)
-                               (swap! output-candidates conj x)))))
-                      (summarize-ident [x]
+      (let [n (letfn [(summarize-ident [x]
                         (non-zero (unchecked-add (unknown (namespace x))
                                                  (unknown (name x)))))
                       (unknown [x]
-                        (record nil x)
                         (cond
                           (boolean? x) (if x 1 0)
                           (int? x) x
@@ -430,12 +412,11 @@
                           (instance? clojure.lang.IAtom2 x) (unchecked-add (unknown @x) 1024)
                           :else 0))
                       (known [schema x]
-                        (record schema x)
                         (unchecked-multiply
                           (let []
                             (case (m/type schema)
                               :cat (let [cs (m/children schema)
-                                         vs (m/parse schema x options)]
+                                         vs (m/parse schema (or x ()) options)]
                                      (if (= vs ::m/invalid)
                                        (throw (m/-exception ::invalid-cat {:schema schema :x x}))
                                        (reduce (fn [n i]
@@ -445,9 +426,7 @@
                                                0 (range (count cs)))))
                               :=> (let [[input output guard] (m/children schema)
                                         _ (assert (not guard) (str `generate-pure-=> " TODO :=> guard"))
-                                        ;;TODO use output-candidates
                                         args (generate input {:size size :seed seed})]
-                                    (prn ":=>" {:f x :args args :schema schema :input input :output output})
                                     (known output (apply x args)))
                               (do (or (m/validate schema x)
                                       (throw (m/-exception ::invalid-cat {:schema schema :x x})))
@@ -457,50 +436,7 @@
                           (unchecked-inc size)))]
                 (known input args))
             seed (cond-> n seed (unchecked-add seed))]
-        (generate output (update options ::poly-examples
-                                 (fn [poly-examples]
-                                   (merge-with (fn [l r]
-                                                 )
-                                               poly-examples
-                                               (update-vals (::poly @output-candidates))))))))))
-
-(comment
-
-  ((generate (all [x] [:=> [:cat x] x]))
-   1)
-  (m/parse [:cat :int :int] [1 2])
-  (m/parse [:cat] [])
-  (m/parse [:cat :int :int] [1 2 3])
-  (m/parse [:cat [:* :int] :int] [1 2 3])
-  (generate-pure-=> 0 10 [:=> [:cat :int] :int])
-  (clojure.test/is (= -106 ((generate-pure-=> [:=> [:cat :int] :int] {:seed 0 :size 10}) 2)))
-  (clojure.test/is (= -7 ((generate-pure-=> [:=> [:cat :int] :int] {:seed 2 :size 5}) 8)))
-  (clojure.test/is (= -1134619 ((generate-pure-=> [:=> [:cat :boolean] :int] {:seed 0}) true)))
-  (clojure.test/is (= -6 ((generate-pure-=> [:=> [:cat :boolean] :int] {:seed 1}) true)))
-  (clojure.test/is (= true ((generate-pure-=> [:=> [:cat :boolean] :boolean] {:size 2 :seed 1}) false)))
-  (clojure.test/is (= false ((generate-pure-=> [:=> [:cat :boolean] :boolean] {:size 2 :seed 2}) false)))
-  (clojure.test/is (= true ((generate-pure-=> [:=> [:cat :string] :boolean] {:size 4 :seed 5}) "abc")))
-  (clojure.test/is (= false ((generate-pure-=> [:=> [:cat :string] :boolean] {:size 4 :seed 5}) "abcd")))
-  (clojure.test/is (= true ((generate-pure-=> [:=> [:cat :any] :boolean] {:size 4 :seed 5}) nil)))
-  (clojure.test/is (= true ((generate-pure-=> [:=> [:cat :any] :boolean] {:size 4 :seed 5}) nil)))
-  (clojure.test/is (= nil ((generate-pure-=> [:=> [:cat :any] :any] {:size 0 :seed 5}) nil)))
-  (clojure.test/is (= 0 ((generate-pure-=> [:=> [:cat [:=> [:cat :int] :int]] :int] {:size 0 :seed 0}) identity)))
-  (clojure.test/is (= -1 ((generate-pure-=> [:=> [:cat [:=> [:cat :int] :int]] :int] {:size 1 :seed 0}) identity)))
-  (clojure.test/is (= -585680477447
-                      ((generate-pure-=> [:=>
-                                          [:cat
-                                           [:=>
-                                            [:cat [:=> [:cat :int] :int]]
-                                            :int]]
-                                          :int] {:size 50 :seed 1}) (fn me [f] 
-                                                                      (prn "arg" f)
-                                                                      (f 13)))))
-  (generate [:cat :int])
-  (let [f (generate [:=> {:gen/impure true} [:cat :int] :int]
-                    {:seed 0})]
-    (clojure.test/is (= '(0 -1 0 -3 0 1 16 0 7 3)
-                        (repeatedly 10 #(f 1)))))
-  )
+        (generate output (assoc options :seed seed))))))
 
 (defn generate-impure-=> [schema options]
   (let [a (atom (sampling-eduction (:output (m/-function-info schema)) options))]

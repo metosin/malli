@@ -92,7 +92,7 @@
           [5327329620473603684 34]
           [8284970028005224634 12])"
   [seeded-gen]
-  (#'gen/make-gen
+  (#'gen/make-gen ;;FIXME bb
    (fn [^clojure.test.check.random.JavaUtilSplittableRandom rnd size]
      (let [seeded-gen (seeded-gen (or (.-state rnd)
                                       (throw (m/-exception ::failed-to-recover-seed))))]

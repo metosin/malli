@@ -1066,3 +1066,25 @@
          (map #(%1 %2)
               (repeatedly (mg/generate [:=> :cat [:=> [:cat :int] :int]] {:seed 1 :size 30}))
               (range 10)))))
+(comment
+;; This sequence of results should be reproducible.
+(def pure   (mg/generate [:=>                    [:cat :int] :int] {:seed 0 :size 10}))
+(def impure (mg/generate [:=> {:gen/impure true} [:cat :int] :int] {:seed 0 :size 10}))
+(repeatedly 10 #(pure 2))
+;=> (-106 -106 -106 -106 -106 -106 -106 -106 -106 -106)
+(repeatedly 10 #(pure 2))
+;=> (-106 -106 -106 -106 -106 -106 -106 -106 -106 -106)
+(repeatedly 10 #(impure 2))
+;=> (0 -1 0 -3 0 1 16 0 7 3)
+(repeatedly 10 #(impure 2))
+;=> (0 -1 -1 1 2 3 -2 38 -5 -12)
+
+(mapv pure (range 10))
+;=> [5 511 -106 20 -51 -322 1 0 434 -1]
+(mapv pure (range 10))
+;=> [5 511 -106 20 -51 -322 1 0 434 -1]
+(mapv impure (range 10))
+;=> [-1 0 -2 -4 -3 -4 -15 -15 -16 -2]
+(mapv impure (range 10))
+;=> [-1 -1 -1 0 1 3 -12 30 -2 1]
+)

@@ -325,6 +325,10 @@
                                                        [:country "Country"]]]]]]}}
            "Order"]))))
 
+(def Request [:map-of :keyword :any])
+(def SuccessWorked [:= "worked"])
+(def Success [:map [:it #'SuccessWorked]])
+
 (deftest swagger-spec-test
   (testing "generates swagger for ::parameters and ::responses w/ basic schema"
     (is (= {:definitions nil
@@ -477,4 +481,20 @@
                                     {200 {:schema (m/schema ::success-resp
                                                             {:registry registry})}
                                      400 {:schema (m/schema ::error-resp
-                                                            {:registry registry})}}}))))))
+                                                            {:registry registry})}}})))))
+
+  (testing "generates swagger for ::parameters and ::responses w/ var schema"
+    (is (= {:definitions {"malli.swagger-test/Request" {:additionalProperties {}, :type "object"},
+                          "malli.swagger-test/Success" {:properties {:it {:$ref "#/definitions/malli.swagger-test~1SuccessWorked"}},
+                                                        :required [:it]
+                                                        :type "object"}
+                          "malli.swagger-test/SuccessWorked" {:const "worked"}}
+            :parameters [{:description ""
+                          :in "body"
+                          :name "body"
+                          :required true
+                          :schema {:$ref "#/definitions/malli.swagger-test~1Request"}}]
+            :responses {200 {:description ""
+                             :schema {:$ref "#/definitions/malli.swagger-test~1Success"}}}}
+           (swagger/swagger-spec {::swagger/parameters {:body #'Request}
+                                  ::swagger/responses {200 {:schema #'Success}}})))))

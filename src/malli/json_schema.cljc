@@ -8,7 +8,9 @@
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
-(defn -ref [schema {::keys [transform definitions] :as options}]
+(defn -ref [schema {::keys [transform definitions definitions-path]
+                    :or {definitions-path "#/definitions/"}
+                    :as options}]
   (let [ref (as-> (m/-ref schema) $
               (cond (var? $) (let [{:keys [ns name]} (meta $)]
                                (str (symbol (str ns) (str name))))
@@ -19,7 +21,7 @@
         (swap! definitions assoc ref ::recursion-stopper)
         (swap! definitions assoc ref (transform child options))))
     ;; '/' must be encoded as '~1' in JSON Schema - https://www.rfc-editor.org/rfc/rfc6901
-    {:$ref (apply str "#/definitions/" (str/replace ref #"/" "~1"))}))
+    {:$ref (apply str definitions-path (str/replace ref #"/" "~1"))}))
 
 (defn -schema [schema {::keys [transform] :as options}]
   (if (m/-ref schema)

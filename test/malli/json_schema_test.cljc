@@ -295,7 +295,15 @@
   (testing "circular definitions are not created for closed schemas"
     (is (= {:$ref "#/definitions/Foo", :definitions {"Foo" {:type "integer"}}}
            (json-schema/transform
-            (mu/closed-schema [:schema {:registry {"Foo" :int}} "Foo"]))))))
+            (mu/closed-schema [:schema {:registry {"Foo" :int}} "Foo"])))))
+  (testing "definition path can be changed"
+    (is (= {:type "object"
+            :properties {:foo {:$ref "#/foo/bar/Foo"}}
+            :required [:foo]
+            :definitions {"Foo" {:type "integer"}}}
+           (json-schema/transform
+            [:schema {:registry {"Foo" :int}} [:map [:foo "Foo"]]]
+            {:malli.json-schema/definitions-path "#/foo/bar/"})))))
 
 (deftest mutual-recursion-test
   (is (= {:$ref "#/definitions/Foo"

@@ -14,8 +14,9 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## 0.15.1 (2024-04-20)
+## 0.16.0 (2024-04-20)
 
+* **BREAKING**: minimum Java-version is now Java11
 * allow changing prefix of json-schema $refs via option `:malli.json-schema/definitions-path` [#1045](https://github.com/metosin/malli/pull/1045)
 * Inline refs in non-`:body` swagger parameters [#1044](https://github.com/metosin/malli/pull/1044)
 * Fix flaky test [#1040](https://github.com/metosin/malli/pull/1040)

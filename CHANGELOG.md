@@ -14,6 +14,17 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* allow changing prefix of json-schema $refs via option `:malli.json-schema/definitions-path` [#1045](https://github.com/metosin/malli/pull/1045)
+* Inline refs in non-`:body` swagger parameters [#1044](https://github.com/metosin/malli/pull/1044)
+* Fix flaky test [#1040](https://github.com/metosin/malli/pull/1040)
+* Utility to update entry properties: `mu/update-entry-properties` [#1037](https://github.com/metosin/malli/pull/1037)
+* Fix actions cache [#1036](https://github.com/metosin/malli/pull/1036)
+* Only humanize one of `:min` / `:max` when different [#1032](https://github.com/metosin/malli/pull/1032)
+* Distinguish between symbols and strings in humanize [#1031](https://github.com/metosin/malli/pull/1031)
+* Fix `:map-of` `:min` and unreachable generator, explain such-that failures [#1029](https://github.com/metosin/malli/pull/1029)
+
 ## 0.15.0 (2024-03-23)
 
 * `:=>` takes optional 3rd child, the guard schema validating vector of arguments and return value `[args ret]`. See [Function Guards](docs/function-schemas.md#function-guards) for more details. Fixes [#764](https://github.com/metosin/malli/issues/764) and [#764](https://github.com/metosin/malli/issues/764).
@@ -561,14 +572,14 @@ No need to play with Compiler options or JVM properties to swap the default regi
 
 ;; look ma, just works
 (mr/set-default-registry!
-  (mr/composite-registry
-    (m/default-schemas)
-    (mu/schemas)))
+ (mr/composite-registry
+  (m/default-schemas)
+  (mu/schemas)))
 
 (mg/generate
-  [:merge
-   [:map [:x :int]]
-   [:map [:y :int]]])
+ [:merge
+  [:map [:x :int]]
+  [:map [:y :int]]])
 ; => {:x 0, :y 92}
 ```
 

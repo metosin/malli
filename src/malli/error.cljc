@@ -3,9 +3,7 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
-(defn- -pr-str [v]
-  #?(:clj (pr-str v)
-     :cljs (str v)))
+(defn -pr-str [v] #?(:clj (pr-str v), :cljs (str v)))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
   (fn [{:keys [schema value]} _]

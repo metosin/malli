@@ -2426,13 +2426,13 @@
         (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
 
         (testing "exception in execution causes single error to root schema path"
-         (is (results= {:schema [:=> [:cat int? int?] int?]
-                        :value single-arity
-                        :errors [{:path []
-                                  :in []
-                                  :schema [:=> [:cat int? int?] int?]
-                                  :value single-arity}]}
-                       (m/explain schema2 single-arity))))
+          (is (results= {:schema [:=> [:cat int? int?] int?]
+                         :value single-arity
+                         :errors [{:path []
+                                   :in []
+                                   :schema [:=> [:cat int? int?] int?]
+                                   :value single-arity}]}
+                        (m/explain schema2 single-arity))))
 
         (testing "error in output adds error to child in path 1"
           (let [f (fn [x y] (str x y))]
@@ -2527,7 +2527,7 @@
       (testing "guards"
         (let [guard (fn [[[x y] z]] (= (str x y) z))
               schema (m/schema
-                      [:=> [:cat :int :int] string? [:fn guard]]
+                      [:=> [:cat :int :int] :string [:fn guard]]
                       {::m/function-checker mg/function-checker})
               valid (fn [x y] (str x y))
               invalid (fn [x y] (str x "-" y))]
@@ -2535,7 +2535,7 @@
           (is (= {:type :=>,
                   :input {:type :cat
                           :children [{:type :int} {:type :int}]},
-                  :output {:type 'string?},
+                  :output {:type :string},
                   :guard {:type :fn
                           :value guard}}
                  (m/ast schema)))

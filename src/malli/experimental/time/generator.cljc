@@ -135,22 +135,22 @@
         floor-min (fn [v] (if (nil? v) min-int (max min-int v)))
         {^Period mn :min ^Period mx :max ^Period gen-min :gen/min ^Period gen-max :gen/max}
         (merge
-          (m/type-properties schema options)
-          (m/properties schema options))
+         (m/type-properties schema options)
+         (m/properties schema options))
         _ (when (and mn gen-min (not (pos? (time/compare-periods gen-min min))))
             (m/-fail! ::mg/invalid-property {:key :gen/min, :value gen-min, :min min}))
-        _ (when (and mx gen-max (not (pos? (time/compare-periods  max gen-max))))
+        _ (when (and mx gen-max (not (pos? (time/compare-periods max gen-max))))
             (m/-fail! ::mg/invalid-property {:key :gen/max, :value gen-min, :max min}))
         mn (or mn gen-min)
         mx (or mx gen-max)
-        min-years  (when mn (zero->nil (.getYears mn))), max-years  (when mx (zero->nil (.getYears mx)))
+        min-years (when mn (zero->nil (.getYears mn))), max-years (when mx (zero->nil (.getYears mx)))
         min-months (when mn (zero->nil (.getMonths mn))), max-months (when mx (zero->nil (.getMonths mx)))
-        min-days   (when mn (zero->nil (.getDays mn))), max-days   (when mx (zero->nil (.getDays mx)))]
+        min-days (when mn (zero->nil (.getDays mn))), max-days (when mx (zero->nil (.getDays mx)))]
     (->>
-      (gen/tuple
-        ;; Period constructor only accepts java type `int` not `long`, clamp the values
-        (gen/large-integer* {:min (floor-min min-years) :max (ceil-max max-years)})
-        (gen/large-integer* {:min (floor-min min-months) :max (ceil-max max-months)})
-        (gen/large-integer* {:min (floor-min min-days) :max (ceil-max max-days)}))
-      (gen/fmap (fn [[years months days]]
-                  (. Period of years months days))))))
+     (gen/tuple
+      ;; Period constructor only accepts java type `int` not `long`, clamp the values
+      (gen/large-integer* {:min (floor-min min-years) :max (ceil-max max-years)})
+      (gen/large-integer* {:min (floor-min min-months) :max (ceil-max max-months)})
+      (gen/large-integer* {:min (floor-min min-days) :max (ceil-max max-days)}))
+     (gen/fmap (fn [[years months days]]
+                 (. Period of years months days))))))

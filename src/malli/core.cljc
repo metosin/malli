@@ -2366,7 +2366,8 @@
 
 (defn -default-sci-options []
   {:preset :termination-safe
-   :aliases {'str 'clojure.string}
+   :aliases {'str 'clojure.string
+             'm 'malli.core}
    :namespaces {'malli.core {'properties properties
                              'type type
                              'children children

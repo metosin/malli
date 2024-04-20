@@ -399,15 +399,15 @@
          strip-map-of (fn [stage]
                         {:compile (fn [schema options]
                                     (let [entry-schema (m/into-schema :tuple nil (m/children schema) options)
-                                          valid?       (m/validator entry-schema options)]
+                                          valid? (m/validator entry-schema options)]
                                       {stage (fn [x]
-                                              (reduce (fn [acc entry]
-                                                              (if (valid? entry)
-                                                                (apply assoc acc entry)
-                                                                acc)) (empty x) x))}))})]
+                                               (reduce (fn [acc entry]
+                                                         (if (valid? entry)
+                                                           (apply assoc acc entry)
+                                                           acc)) (empty x) x))}))})]
      (transformer
-       {:decoders {:map strip-map, :map-of (strip-map-of :leave)}
-        :encoders {:map strip-map, :map-of (strip-map-of :enter)}}))))
+      {:decoders {:map strip-map, :map-of (strip-map-of :leave)}
+       :encoders {:map strip-map, :map-of (strip-map-of :enter)}}))))
 
 (defn key-transformer [{:keys [decode encode types] :or {types #{:map}}}]
   (let [transform (fn [f stage] (when f {stage (-transform-map-keys f)}))]

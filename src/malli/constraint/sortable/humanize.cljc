@@ -13,7 +13,7 @@
                      (let [sv (delay (sort value))]
                        (or (try @sv
                                 nil
-                                (catch Exception _
+                                (catch #?(:clj Exception, :cljs js/Error) _
                                   "should be sorted but elements are not comparable"))
                            (let [[i v s] (some identity
                                                (map (fn [i v s]

@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 0.16.1 (2024-04-30)
+
+* Enabled Java8 tests back, no need to limit the version.
+
 ## 0.16.0 (2024-04-20)
 
 * **BREAKING**: minimum Java-version is now Java11

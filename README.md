@@ -68,7 +68,9 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 [![Clojars Project](http://clojars.org/metosin/malli/latest-version.svg)](http://clojars.org/metosin/malli)
 
-Malli requires Java 11 and Clojure 1.11.
+Malli requires Clojure 1.11.
+
+Malli is tested with the LTS releases Java 8, 11, 17 and 21.
 
 ## Quickstart
 
@@ -3423,10 +3425,6 @@ The API layers and stability:
 * **extender API**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
 * **experimental**: stuff in `malli.experimental` ns, code might change be moved under a separate support library, but you can always copy the old implementation to your project, so ok to use.
 * **private API**: private vars and `malli.impl` namespaces, all bets are off.
-
-## Supported Java versions
-
-Malli aims to support the LTS releases Java 8 and 11 and the latest Java release, Java 15.
 
 # Development
 

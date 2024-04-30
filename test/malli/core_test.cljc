@@ -2441,16 +2441,16 @@
 
           (is (nil? (explain-times function-schema-validation-times schema2 (fn [x y] (unchecked-add x y)))))
 
-          (testing "exception in execution causes single error to root schema path"
-           (is (results= {:schema ?schema
-                          :value single-arity
-                          :errors [{:path []
-                                    :in []
-                                    :schema [:=> [:cat int? int?] int?]
-                                    :value single-arity}]}
-                         (m/explain schema2 single-arity))))
+        (testing "exception in execution causes single error to root schema path"
+          (is (results= {:schema ?schema
+                         :value single-arity
+                         :errors [{:path []
+                                   :in []
+                                   :schema [:=> [:cat int? int?] int?]
+                                   :value single-arity}]}
+                        (m/explain schema2 single-arity))))
 
-          (testing "error in output adds error to child in path 1"
+        (testing "error in output adds error to child in path 1"
             (let [f (fn [x y] (str x y))]
               (is (results= {:schema ?schema
                              :value f

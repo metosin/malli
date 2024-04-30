@@ -3399,7 +3399,7 @@ You can call describe on a schema to get its description in english:
 - Schema https://github.com/plumatic/schema
 - Clojure.spec https://clojure.org/guides/spec
 - Spell-spec https://github.com/bhauman/spell-spec
-- JSON Schema https://json-schema.org/understanding-json-schema/index.html
+- JSON Schema https://json-schema.org/understanding-json-schema
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Minimallist https://github.com/green-coder/minimallist

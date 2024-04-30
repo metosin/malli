@@ -325,6 +325,12 @@
                                                        [:country "Country"]]]]]]}}
            "Order"]))))
 
+(def Request [:map-of :keyword :any])
+(def QueryB [:string {:min 10}])
+(def Query [:map [:a :int] [:b #'QueryB]])
+(def SuccessWorked [:= "worked"])
+(def Success [:map [:it #'SuccessWorked]])
+
 (deftest swagger-spec-test
   (testing "generates swagger for ::parameters and ::responses w/ basic schema"
     (is (= {:definitions nil
@@ -391,6 +397,8 @@
   (testing "generates swagger for ::parameters and ::responses w/ basic schema + registry"
     (let [registry (merge (m/base-schemas) (m/type-schemas) (m/comparator-schemas)
                           {::req-body [:map-of :keyword :any]
+                           ::query-b [:string {:min 10}]
+                           ::query [:map [:a :int] [:b ::query-b]]
                            ::success-resp [:map [:it [:= "worked"]]]
                            ::error-resp [:string {:min 1}]})]
       (is (= {:definitions {"malli.swagger-test/error-resp" {:minLength 1, :type "string"}
@@ -402,14 +410,28 @@
                             :in "body"
                             :name "body"
                             :required true
-                            :schema {:$ref "#/definitions/malli.swagger-test~1req-body"}}]
+                            :schema {:$ref "#/definitions/malli.swagger-test~1req-body"}}
+                           {:description ""
+                            :in "query"
+                            :name :a
+                            :required true
+                            :type "integer"
+                            :format "int64"}
+                           {:description ""
+                            :in "query"
+                            :name :b
+                            :required true
+                            :type "string"
+                            :minLength 10}]
               :responses {200 {:description ""
                                :schema {:$ref "#/definitions/malli.swagger-test~1success-resp"}}
                           400 {:description ""
                                :schema {:$ref "#/definitions/malli.swagger-test~1error-resp"}}}}
              (swagger/swagger-spec {::swagger/parameters
                                     {:body (m/schema ::req-body
-                                                     {:registry registry})}
+                                                     {:registry registry})
+                                     :query (m/schema ::query
+                                                      {:registry registry})}
                                     ::swagger/responses
                                     {200 {:schema (m/schema ::success-resp
                                                             {:registry registry})}
@@ -477,4 +499,36 @@
                                     {200 {:schema (m/schema ::success-resp
                                                             {:registry registry})}
                                      400 {:schema (m/schema ::error-resp
-                                                            {:registry registry})}}}))))))
+                                                            {:registry registry})}}})))))
+
+  (testing "generates swagger for ::parameters and ::responses w/ var schema"
+    (is (= {:definitions {"malli.swagger-test/Request" {:additionalProperties {}, :type "object"},
+                          "malli.swagger-test/Success" {:properties {:it {:$ref "#/definitions/malli.swagger-test~1SuccessWorked"}},
+                                                        :required [:it]
+                                                        :type "object"}
+                          "malli.swagger-test/SuccessWorked" {:const "worked"}}
+            :parameters [{:description ""
+                          :in "body"
+                          :name "body"
+                          :required true
+                          :schema {:$ref "#/definitions/malli.swagger-test~1Request"}}]
+            :responses {200 {:description ""
+                             :schema {:$ref "#/definitions/malli.swagger-test~1Success"}}}}
+           (swagger/swagger-spec {::swagger/parameters {:body #'Request}
+                                  ::swagger/responses {200 {:schema #'Success}}}))))
+  (testing "::parameters :query w/ var schema"
+    ;; NB! all refs get inlined!
+    (is (= {:definitions nil
+            :parameters [{:description ""
+                          :in "query"
+                          :name :a
+                          :required true
+                          :format "int64"
+                          :type "integer"}
+                         {:description ""
+                          :in "query"
+                          :name :b
+                          :required true
+                          :type "string"
+                          :minLength 10}]}
+           (swagger/swagger-spec {::swagger/parameters {:query #'Query}})))))

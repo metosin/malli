@@ -70,6 +70,8 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 Malli requires Clojure 1.11.
 
+Malli is tested with the LTS releases Java 8, 11, 17 and 21.
+
 ## Quickstart
 
 ```clojure
@@ -3444,7 +3446,7 @@ You can call describe on a schema to get its description in english:
 - Schema https://github.com/plumatic/schema
 - Clojure.spec https://clojure.org/guides/spec
 - Spell-spec https://github.com/bhauman/spell-spec
-- JSON Schema https://json-schema.org/understanding-json-schema/index.html
+- JSON Schema https://json-schema.org/understanding-json-schema
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Minimallist https://github.com/green-coder/minimallist
@@ -3468,10 +3470,6 @@ The API layers and stability:
 * **extender API**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
 * **experimental**: stuff in `malli.experimental` ns, code might change be moved under a separate support library, but you can always copy the old implementation to your project, so ok to use.
 * **private API**: private vars and `malli.impl` namespaces, all bets are off.
-
-## Supported Java versions
-
-Malli aims to support the LTS releases Java 8 and 11 and the latest Java release, Java 15.
 
 # Development
 

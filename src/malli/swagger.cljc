@@ -104,7 +104,15 @@
       :schema swagger-schema}]))
 
 (defmethod extract-parameter :default [in schema]
-  (let [{:keys [properties required]} (transform schema {:in in, :type :parameter})]
+  ;; We can't have a $ref on the top level since we are only
+  ;; interested in the properties of the top-level schema.
+  ;; We also can't have a $ref on the second level, because it would
+  ;; mean overwriting the whole {:in i :name k ...} map
+  ;; ($ref replaces the whole object it is in).
+  ;;
+  ;; Until we come up with a usecase for $refs inside non-:body
+  ;; parameters, let's just deref-recursive here.
+  (let [{:keys [properties required]} (transform (m/deref-recursive schema) {:in in, :type :parameter})]
     (mapv
      (fn [[k {:keys [type] :as schema}]]
        (merge

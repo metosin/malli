@@ -47,6 +47,19 @@
                  (m/explain {:orders true, :deliverz true})
                  (me/with-spell-checking)
                  (me/with-error-messages)
+                 (get-errors))))
+      (is (= [{:path ["deliverz"]
+               :type ::me/misspelled-key
+               ::me/likely-misspelling-of [["deliver"]]
+               :message #?(:clj "should be spelled \"deliver\""
+                           :cljs "should be spelled deliver")}]
+             (-> [:map
+                  ["orders" boolean?]
+                  ["deliver" boolean?]]
+                 (mu/closed-schema)
+                 (m/explain {"orders" true, "deliverz" true})
+                 (me/with-spell-checking)
+                 (me/with-error-messages)
                  (get-errors)))))
 
     (testing "nested"
@@ -420,21 +433,25 @@
                (m/explain "foo")
                (me/humanize)))))
   (testing "error with 1 value"
-    (is (= ["should be foo"]
+    (is (= [#?(:clj "should be \"foo\""
+               :cljs "should be foo")]
            (-> [:enum "foo"]
                (m/explain "baz")
                (me/humanize)))))
   (testing "error with 2 values"
-    (is (= ["should be either foo or bar"]
+    (is (= [#?(:clj "should be either \"foo\" or \"bar\""
+               :cljs "should be either foo or bar")]
            (-> [:enum "foo" "bar"]
                (m/explain "baz")
                (me/humanize)))))
   (testing "more than 2 values"
-    (is (= ["should be either foo, bar or buzz"]
-           (-> [:enum "foo" "bar" "buzz"]
+    (is (= [#?(:clj "should be either \"foo\", \"bar\", bar or \"buzz\""
+               :cljs "should be either foo, bar, bar or buzz")]
+           (-> [:enum "foo" "bar" 'bar "buzz"]
                (m/explain "baz")
                (me/humanize))))
-    (is (= ["should be either foo, bar, buzz or biff"]
+    (is (= [#?(:clj "should be either \"foo\", \"bar\", \"buzz\" or \"biff\""
+               :cljs "should be either foo, bar, buzz or biff")]
            (-> [:enum "foo" "bar" "buzz" "biff"]
                (m/explain "baz")
                (me/humanize))))))
@@ -458,14 +475,16 @@
 (deftest multi-error-test
   (let [schema [:multi {:dispatch :type}
                 ["plus" [:map [:value int?]]]
-                ["minus" [:map [:value int?]]]]]
+                ["minus" [:map [:value int?]]]
+                ['minus [:map [:value int?]]]]]
 
     (is (= {:type ["invalid dispatch value"]}
            (-> schema
                (m/explain {:type "minuz"})
                (me/humanize))))
 
-    (is (= {:type ["did you mean minus"]}
+    (is (= {:type [#?(:clj "did you mean \"minus\" or minus"
+                      :cljs "did you mean minus or minus")]}
            (-> schema
                (m/explain {:type "minuz"})
                (me/with-spell-checking)
@@ -552,9 +571,10 @@
                (me/humanize {:resolve me/-resolve-root-error})))))
 
   (testing "enum #553"
-    (is (= {:a ["should be either a or b"]}
+    (is (= {:a [#?(:clj "should be either \"a\", \"b\", a or b"
+                   :cljs "should be either a, b, a or b")]}
            (-> [:map
-                [:a [:enum "a" "b"]]]
+                [:a [:enum "a" "b" 'a 'b]]]
                (m/explain {:a nil})
                (me/humanize {:resolve me/-resolve-root-error})))))
 
@@ -757,3 +777,14 @@
                (-> (m/explain Address address)
                    (me/error-value {::me/wrap-error #(select-keys % [:value :type])
                                     ::me/keep-valid-values true}))))))))
+
+#?(:clj
+   (deftest pr-str-humanize-test
+     (is (= ["should be \"a\""] (me/humanize (m/explain [:enum "a"] 1))))
+     (is (= ["should be a"] (me/humanize (m/explain [:enum 'a] 1))))
+     (is (= ["should be either \"a\" or \"b\""] (me/humanize (m/explain [:enum "a" "b"] 1))))
+     (is (= ["should be either a or b"] (me/humanize (m/explain [:enum 'a 'b] 1))))
+     (is (= ["should be \"a\""] (me/humanize (m/explain [:= "a"] 1))))
+     (is (= ["should be a"] (me/humanize (m/explain [:= 'a] 1))))
+     (is (= ["should not be \"a\""] (me/humanize (m/explain [:not= "a"] "a"))))
+     (is (= ["should not be a"] (me/humanize (m/explain [:not= 'a] 'a))))))

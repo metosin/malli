@@ -2585,8 +2585,8 @@
       (testing "guards"
         (let [guard (fn [[[x y] z]] (= (str x y) z))
               schema (m/schema
-                       [:=> [:cat :int :int] :string [:fn guard]]
-                       {::m/function-checker mg/function-checker})
+                      [:=> [:cat :int :int] :string [:fn guard]]
+                      {::m/function-checker mg/function-checker})
               valid (fn [x y] (str x y))
               invalid (fn [x y] (str x "-" y))]
 

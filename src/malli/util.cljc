@@ -3,7 +3,7 @@
   (:require [clojure.core :as c]
             [malli.core :as m]))
 
-(declare path->in)
+(declare path->in find)
 
 (defn ^:no-doc equals
   ([?schema1 ?schema2]
@@ -110,6 +110,14 @@
   [?schema f & args]
   (let [schema (m/schema ?schema)]
     (apply m/-update-properties schema f args)))
+
+(defn update-entry-properties
+  "Returns a Schema instance with updated properties for entry k."
+  [?schema k f & args]
+  (let [schema (m/schema ?schema)
+        [k p v] (or (find schema k)
+                    (m/-fail! ::no-entry {:schema schema :k k}))]
+    (m/-set-entries schema [k (apply f p args)] v)))
 
 (defn closed-schema
   "Maps are implicitly open by default. They can be explicitly closed or

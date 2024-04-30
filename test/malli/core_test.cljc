@@ -2593,7 +2593,7 @@
           (is (= {:type :=>,
                   :input {:type :cat
                           :children [{:type :int} {:type :int}]},
-                  :output {:type :int},
+                  :output {:type :string},
                   :guard {:type :fn
                           :value guard}}
                  (m/ast schema)))
@@ -2610,19 +2610,19 @@
                                     {:path [2]
                                      :in []
                                      :schema [:fn guard]
-                                     :value ['(0 0) 0]}]}
+                                     :value ['(0 0) "0-0"]}]}
                           (m/explain schema invalid))))
 
           (testing "instrument"
-            (let [schema [:=> [:cat :int] :int [:fn (fn [[[arg] ret]] (< arg ret))]]
-                  fn (m/-instrument {:schema schema} (fn [x] (* x x)))]
+            (let [schema [:=> [:cat :any] :any [:fn (fn [[[arg] ret]] (not= arg ret))]]
+                  fn (m/-instrument {:schema schema} str)]
 
-              (is (= 4 (fn 2)))
+              (is (= "2" (fn 2)))
 
               (is (thrown-with-msg?
                    #?(:clj Exception, :cljs js/Error)
                    #":malli.core/invalid-guard"
-                   (fn 0)))))))
+                   (fn "0")))))))
 
         (testing "non-accumulating errors"
           (let [schema (m/schema

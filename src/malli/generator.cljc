@@ -53,15 +53,10 @@
 (defn -never-gen
   "Return a generator of no values that is compatible with -unreachable-gen?."
   [{::keys [original-generator-schema] :as _options}]
-  (with-meta (gen/such-that (fn [_]
-                              (throw (ex-info
-                                      (str "Cannot generate values due to infinitely expanding schema: "
-                                           (if original-generator-schema
-                                             (m/form original-generator-schema)
-                                             "<no schema form>"))
-                                      (cond-> {}
-                                        original-generator-schema (assoc :schema (m/form original-generator-schema))))))
-                            gen/any)
+  (with-meta (gen/sized (fn [_]
+                          (m/-fail! ::infinitely-expanding-schema
+                                    (cond-> {}
+                                      original-generator-schema (assoc :schema original-generator-schema)))))
              {::never-gen true
               ::original-generator-schema original-generator-schema}))
 
@@ -113,7 +108,7 @@
         child (-> schema m/children first)
         gen (generator child options)]
     (if (-unreachable-gen? gen)
-      (if (<= (or min 0) 0 (or max 0))
+      (if (= 0 (or min 0))
         (gen/fmap f (gen/return []))
         (-never-gen options))
       (gen/fmap f (cond
@@ -127,15 +122,20 @@
   (let [{:keys [min max]} (-min-max schema options)
         child (-> schema m/children first)
         gen (generator child options)]
-    (gen/fmap f (if (-unreachable-gen? gen)
-                  (if (<= (or min 0) 0 (or max 0))
-                    (gen/return [])
-                    (-never-gen options))
-                  (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100})))))
+    (if (-unreachable-gen? gen)
+      (if (= 0 (or min 0))
+        (gen/return (f []))
+        (-never-gen options))
+      (gen/fmap f (gen/vector-distinct gen {:min-elements min, :max-elements max, :max-tries 100
+                                            :ex-fn #(m/-exception ::distinct-generator-failure
+                                                                  (assoc % :schema schema))})))))
 
 (defn -and-gen [schema options]
   (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
-    (gen/such-that (m/validator schema options) gen 100)
+    (gen/such-that (m/validator schema options) gen
+                   {:max-tries 100
+                    :ex-fn #(m/-exception ::and-generator-failure
+                                          (assoc % :schema schema))})
     (-never-gen options)))
 
 (defn- gen-one-of [gs]
@@ -191,18 +191,18 @@
 
 (defn -map-of-gen [schema options]
   (let [{:keys [min max]} (-min-max schema options)
-        [k-gen v-gen :as gs] (map #(generator % options) (m/children schema options))
-        opts (cond
-               (and min (= min max)) {:num-elements min}
-               (and min max) {:min-elements min :max-elements max}
-               min {:min-elements min}
-               max {:max-elements max}
-               :else {})]
+        [k-gen v-gen :as gs] (map #(generator % options) (m/children schema options))]
     (if (some -unreachable-gen? gs)
-      (if (= 0 (or min 0) (or max 0))
+      (if (= 0 (or min 0))
         (gen/return {})
         (-never-gen options))
-      (gen/fmap #(into {} %) (gen/vector-distinct (gen/tuple k-gen v-gen) opts)))))
+      (let [opts (-> (cond
+                       (and min (= min max)) {:num-elements min}
+                       (and min max) {:min-elements min :max-elements max}
+                       min {:min-elements min}
+                       max {:max-elements max})
+                     (assoc :ex-fn #(m/-exception ::distinct-generator-failure (assoc % :schema schema))))]
+        (gen/fmap #(into {} %) (gen/vector-distinct-by first (gen/tuple k-gen v-gen) opts))))))
 
 #?(:clj
    (defn -re-gen [schema options]
@@ -390,7 +390,7 @@
 (defn -qualified-ident-gen [schema mk-value-with-ns value-with-ns-gen-size pred gen]
   (if-let [namespace-unparsed (:namespace (m/properties schema))]
     (gen/fmap (fn [k] (mk-value-with-ns (name namespace-unparsed) (name k))) value-with-ns-gen-size)
-    (gen/such-that pred gen)))
+    (gen/such-that pred gen {:ex-fn #(m/-exception ::qualified-ident-gen-failure (assoc % :schema schema))})))
 
 (defn -qualified-keyword-gen [schema]
   (-qualified-ident-gen schema keyword gen/keyword qualified-keyword? gen/keyword-ns))
@@ -412,11 +412,15 @@
 (defmethod -schema-generator :< [schema options] (-double-gen {:max (-> schema (m/children options) first dec)}))
 (defmethod -schema-generator :<= [schema options] (-double-gen {:max (-> schema (m/children options) first)}))
 (defmethod -schema-generator := [schema options] (gen/return (first (m/children schema options))))
-(defmethod -schema-generator :not= [schema options] (gen/such-that #(not= % (-> schema (m/children options) first)) gen/any-printable 100))
+(defmethod -schema-generator :not= [schema options] (gen/such-that #(not= % (-> schema (m/children options) first)) gen/any-printable
+                                                                   {:max-tries 100
+                                                                    :ex-fn #(m/-exception ::not=-generator-failure (assoc % :schema schema))}))
 (defmethod -schema-generator 'pos? [_ _] (gen/one-of [(-double-gen {:min 0.00001}) (gen/fmap inc gen/nat)]))
 (defmethod -schema-generator 'neg? [_ _] (gen/one-of [(-double-gen {:max -0.0001}) (gen/fmap (comp dec -) gen/nat)]))
 
-(defmethod -schema-generator :not [schema options] (gen/such-that (m/validator schema options) (ga/gen-for-pred any?) 100))
+(defmethod -schema-generator :not [schema options] (gen/such-that (m/validator schema options) (ga/gen-for-pred any?)
+                                                                  {:max-tries 100
+                                                                   :ex-fn #(m/-exception ::not-generator-failure (assoc % :schema schema))}))
 (defmethod -schema-generator :and [schema options] (-and-gen schema options))
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))
 (defmethod -schema-generator :orn [schema options] (-or-gen (m/into-schema :or (m/properties schema) (map last (m/children schema)) (m/options schema)) options))

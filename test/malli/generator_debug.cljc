@@ -15,6 +15,7 @@
   ([generator min-elements max-elements]
    {:op :vector :generator generator :min-elements min-elements :max-elements max-elements}))
 (defmacro vector-distinct [& args] (let [args (vec args)] `{:op :vector-distinct :args-form '~args :args ~args}))
+(defmacro vector-distinct-by [& args] (let [args (vec args)] `{:op :vector-distinct-by :args-form '~args :args ~args}))
 (def char {:op :char})
 (def nat {:op :nat})
 (def char-alphanumeric {:op :char-alphanumeric})

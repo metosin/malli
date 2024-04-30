@@ -91,9 +91,9 @@
         ->arg (fn [[k t]] [:cat [:= k] (if (and references (qualified-keyword? k)) k t)])
         schema (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))]
     (if (or rest sequential-maps)
-      [:altn [:map schema] [:args (-> (into [:alt] (map ->arg) keys)
-                                      (cond-> (not closed-maps) (conj [:cat [:not (into [:enum] (map first) keys)] :any]))
-                                      (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]]
+      [:orn [:map schema] [:args (-> (into [:alt] (map ->arg) keys)
+                                     (cond-> (not closed-maps) (conj [:cat [:not (into [:enum] (map first) keys)] :any]))
+                                     (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]]
       schema)))
 
 (defn -transform [{[k v] :arg schema :schema :as all} options rest]

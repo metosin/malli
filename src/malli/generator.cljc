@@ -10,9 +10,7 @@
             [clojure.test.check.random :as random]
             [clojure.test.check.rose-tree :as rose]
             [malli.constraint :as mc]
-            [malli.constraint.solver :refer [-conj-number-constraints
-                                             -conj-solutions]
-             :as solver]
+            [malli.constraint.solver :as solver]
             [malli.core :as m]
             [malli.registry :as mr]
             [malli.impl.util :as miu :refer [-last -merge]]

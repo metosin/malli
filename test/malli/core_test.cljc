@@ -3302,7 +3302,9 @@
       (is (= ::m/invalid
              (parse [:every [:orn [:l :int] [:r :boolean]]]
                     (interleave (range 10) (cycle [true false nil])))))
-      (doseq [coerce [#'identity #'eduction]]
+      (doseq [coerce [#'identity #?(:clj #'eduction
+                                    ;;TODO :cljs ?
+                                    )]]
         (testing coerce
           (let [bad-but-too-big (coerce
                                   (concat (interleave (range 1000) (cycle [true false]))

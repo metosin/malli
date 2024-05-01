@@ -358,16 +358,7 @@
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
    (when explanation
-     (update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors))))
-     #_ ;;TODO [:xor ... ] format
-     (update explanation :errors (fn [errors]
-                                   (doall (mapcat (fn [error]
-                                                    (let [msg (error-message error options)
-                                                          wrap-msg #(f (assoc error :message %))]
-                                                      (if (string? msg)
-                                                        (wrap-msg msg)
-                                                        (map wrap-msg msg))))
-                                                  errors)))))))
+     (update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors)))))))
 
 (defn with-spell-checking
   ([explanation]
@@ -419,11 +410,7 @@
      (reduce
       (fn [acc error]
         (let [[path message] (resolve explanation error options)]
-          (-push-in acc value path (wrap (assoc error :message message)))
-          ;;TODO [:xor ... ] format
-          #_(reduce (fn [acc msg] (-push-in acc value path (wrap (assoc error :message msg))))
-                  acc (cond-> message
-                        (string? message) vector))))
+          (-push-in acc value path (wrap (assoc error :message message)))))
       nil errors))))
 
 (defn error-value

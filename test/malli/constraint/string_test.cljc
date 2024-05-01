@@ -68,11 +68,11 @@
     (is (m/validate [:string {:not [:alpha]}] "1"))
     (is (not (m/validate [:string {:not [:alpha]}] "")))
     (is (m/validate [:string {:not [:alpha]}] "𓅡"))
-    (is (= ["should be alphabetic: index 0 has \\space."]
+    (is (= [["should be alphabetic: index 0 has \\space."]]
            (me/humanize (m/explain [:string {:alpha true}] " ab"))
            (me/humanize (m/explain [:string {:alpha true}] " "))))
-    (is (= ["should be alphabetic: index 0 has code point 78177."
-            "should be alphabetic: index 4 (code point offset 3) has code point 78177."]
+    (is (= [["should be alphabetic: index 0 has code point 78177."
+             "should be alphabetic: index 4 (code point offset 3) has code point 78177."]]
            (me/humanize (m/explain [:string {:alpha true}] "𓅡ab𓅡"))))
     (is (= ["should contain a non-alphabetic character"]
            (me/humanize (m/explain [:string {:not [:alpha]}] "ab"))
@@ -82,9 +82,9 @@
     (is (m/validate [:string {:non-alpha true}] ""))
     (is (not (m/validate [:string {:non-alpha true}] "a2")))
     (is (not (m/validate [:string {:not [:non-alpha]}] "12")))
-    (is (= ["should not contain alphabetic characters: index 0 has \\a."
-            "should not contain alphabetic characters: index 1 has \\b."
-            "should not contain alphabetic characters: index 3 has \\c."]
+    (is (= [["should not contain alphabetic characters: index 0 has \\a."
+             "should not contain alphabetic characters: index 1 has \\b."
+             "should not contain alphabetic characters: index 3 has \\c."]]
            (me/humanize (m/explain [:string {:non-alpha true}] "ab1c*"))))
     (is (= ["should contain an alphabetic character"]
            (me/humanize (m/explain [:string {:not [:non-alpha]}] "12")))))
@@ -92,9 +92,9 @@
     (is (m/validate [:string {:numeric true}] ""))
     (is (m/validate [:string {:numeric true}] "12"))
     (is (not (m/validate [:string {:numeric true}] "1a2")))
-    (is (= ["should be numeric: index 0 has \\a."
-            "should be numeric: index 1 has \\b."
-            "should be numeric: index 3 has \\c." "should be numeric: index 4 has \\*."]
+    (is (= [["should be numeric: index 0 has \\a."
+             "should be numeric: index 1 has \\b."
+             "should be numeric: index 3 has \\c." "should be numeric: index 4 has \\*."]]
            (me/humanize (m/explain [:string {:numeric true}] "ab1c*"))))
     (is (not (m/validate [:string {:not [:numeric]}] "")))
     (is (not (m/validate [:string {:not [:numeric]}] "12")))
@@ -108,8 +108,8 @@
     (is (m/validate [:string {:non-numeric true}] "abc]["))
     (is (not (m/validate [:string {:non-numeric true}] "12")))
     (is (not (m/validate [:string {:non-numeric true}] "1a2")))
-    (is (= ["should not contain numeric characters: index 0 has \\1."
-            "should not contain numeric characters: index 2 has \\2."]
+    (is (= [["should not contain numeric characters: index 0 has \\1."
+             "should not contain numeric characters: index 2 has \\2."]]
            (me/humanize (m/explain [:string {:non-numeric true}] "1a2"))))
     (is (not (m/validate [:string {:not [:non-numeric]}] "")))
     (is (not (m/validate [:string {:not [:non-numeric]}] "abc")))
@@ -124,8 +124,8 @@
     (is (m/validate [:string {:alphanumeric true}] "12"))
     (is (m/validate [:string {:alphanumeric true}] "12ab"))
     (is (not (m/validate [:string {:alphanumeric true}] "[a1]")))
-    (is (= ["should be alphanumeric: index 0 has \\[."
-            "should be alphanumeric: index 3 has \\]."]
+    (is (= [["should be alphanumeric: index 0 has \\[."
+             "should be alphanumeric: index 3 has \\]."]]
            (me/humanize (m/explain [:string {:alphanumeric true}] "[a1]"))))
     (is (not (m/validate [:string {:not [:alphanumeric]}] "")))
     (is (not (m/validate [:string {:not [:alphanumeric]}] "12")))
@@ -139,8 +139,8 @@
     (is (not (m/validate [:string {:non-alphanumeric true}] "[12]")))
     (is (not (m/validate [:string {:non-alphanumeric true}] "[ab]")))
     (is (not (m/validate [:string {:non-alphanumeric true}] "12")))
-    (is (= ["should not contain alphanumeric characters: index 1 has \\a."
-            "should not contain alphanumeric characters: index 2 has \\1."]
+    (is (= [["should not contain alphanumeric characters: index 1 has \\a."
+             "should not contain alphanumeric characters: index 2 has \\1."]]
            (me/humanize (m/explain [:string {:non-alphanumeric true}] "[a1]"))))
     (is (not (m/validate [:string {:not [:non-alphanumeric]}] "")))
     (is (not (m/validate [:string {:not [:non-alphanumeric]}] "[]")))
@@ -185,12 +185,12 @@
     (is (not (m/validate [:string {:trim true}] "  a")))
     (is (not (m/validate [:string {:trim true}] "a  ")))
     (is (not (m/validate [:string {:trim true}] " a ")))
-    (is (= ["should not have leading whitespace"]
+    (is (= [["should not have leading whitespace"]]
            (me/humanize (m/explain [:string {:trim true}] " a"))))
-    (is (= ["should not have trailing whitespace"]
+    (is (= [["should not have trailing whitespace"]]
            (me/humanize (m/explain [:string {:trim true}] "a "))))
-    (is (= ["should not have leading whitespace"
-            "should not have trailing whitespace"]
+    (is (= [["should not have leading whitespace"
+             "should not have trailing whitespace"]]
            (me/humanize (m/explain [:string {:trim true}] " a "))))
     (is (= ["should have leading or trailing whitespace"]
            (me/humanize (m/explain [:string {:not [:trim]}] ""))
@@ -269,7 +269,7 @@
           #?(:clj Exception, :cljs js/Error)
           #":malli\.constraint\.string\.validate/escape-constraint-map-cannot-overlap-keys-vals"
           (m/validator [:string {:escapes {\c "c"}}])))
-    (is (= ["should escape character \\c"]
+    (is (= [["should escape character \\c"]]
            (me/humanize (m/explain [:string {:escapes {\c "b"}}] "c"))))
     (is (= ["should include at least one unescaped character: \\c"]
            (me/humanize (m/explain [:string {:not [:escapes {\c "b"}]}] "b")))))
@@ -301,10 +301,10 @@
           #?(:clj Exception, :cljs js/Error)
           #":malli\.constraint\.string\.validate/edn-string-regex-schema-not-yet-implemented"
           (m/validate [:string {:edn [:+ :keyword]}] "\"a\"")))
-    (is (= ["should be a string of :keyword" :constraint-failure ["invalid type"]]
+    (is (= [["should be a string of :keyword" :constraint-failure ["invalid type"]]]
            (me/humanize (m/explain [:string {:edn :keyword}] "a"))))
-    (is (= ["should be a string of [:map [:a :int]]"
-            :constraint-failure {:a ["missing required key"]}]
+    (is (= [["should be a string of [:map [:a :int]]"
+             :constraint-failure {:a ["missing required key"]}]]
            (me/humanize (m/explain [:string {:edn [:map [:a :int]]}]
                                    "{}"))))
     (is (m/validate [:string {:xor [:edn :alpha]}] "a1"))
@@ -318,7 +318,7 @@
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "1"))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a"))
     (is (m/validate [:string {:implies [:alphanumeric :edn]}] "a1"))
-    (is (= ["should be valid edn"]
+    (is (= [["should be valid edn"]]
            (me/humanize (m/explain [:string {:implies [:alphanumeric :edn]}] "1a"))))))
 
 (def Password
@@ -332,20 +332,20 @@
 (deftest string-password-test
   (is (not (m/validate Password "12345abc")))
   (is (m/validate Password "12345abc^"))
-  (is (= [:and
-          "should contain an alphabetic character"
-          "should contain a numeric character"
-          [:or
-           "should include substring \";\""
-           "should include substring \"!\""
-           "should include substring \"@\""
-           "should include substring \"#\""
-           "should include substring \"$\""
-           "should include substring \"%\""
-           "should include substring \"^\""
-           "should include substring \"&\""
-           "should include substring \"*\""]
-          "should be at least 5 characters, given 0"]
+  (is (= [[:and
+           "should contain an alphabetic character"
+           "should contain a numeric character"
+           [:or
+            "should include substring \";\""
+            "should include substring \"!\""
+            "should include substring \"@\""
+            "should include substring \"#\""
+            "should include substring \"$\""
+            "should include substring \"%\""
+            "should include substring \"^\""
+            "should include substring \"&\""
+            "should include substring \"*\""]
+           "should be at least 5 characters, given 0"]]
          (me/humanize (m/explain Password ""))))
   #_;;TODO
   (is (mg/generate Password)))

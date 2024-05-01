@@ -129,7 +129,6 @@
                        "should be valid edn"))))
   [:not :edn-string] (fn [{[_ s] :constraint :keys [validator value humanize]}
                           {::m/keys [valid schema explain]}]
-                       (prn "no edn")
                        (assert (not (false? s)))
                        (when (validator value)
                          (let [eof (Object.)

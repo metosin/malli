@@ -41,10 +41,15 @@
         op (or (get constraint-types op)
                (-fail! ::disallowed-constraint {:type op :constraint constraint
                                                 :allowed (keys constraint-types)}))]
-    (loop [op op]
+    (loop [op op
+           seen #{}]
+      (assert (not (seen op))
+              {:constraint constraint :constraint-types constraint-types
+               :seen seen
+               :options options})
       (let [op' (get constraint-types op op)]
-        (cond-> op
-          (not (identical? op op')) recur)))))
+        (cond-> op'
+          (not= op op') (recur (conj seen op)))))))
 
 (defn -resolve-constraint-sugar [constraint {:keys [keyword-sugar]} options]
   (if (keyword? constraint)

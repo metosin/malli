@@ -282,7 +282,6 @@
                                                seqex-child))]
     (m/validate s coll)))
 
-#_ ;;FIXME diverges!!
 (deftest min-max-test
 
   (testing "valid properties"

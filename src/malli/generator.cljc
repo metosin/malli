@@ -59,15 +59,10 @@
 (defn -never-gen
   "Return a generator of no values that is compatible with -unreachable-gen?."
   [{::keys [original-generator-schema] :as _options}]
-  (with-meta (gen/such-that (fn [_]
-                              (throw (ex-info
-                                      (str "Cannot generate values due to infinitely expanding schema: "
-                                           (if original-generator-schema
-                                             (m/form original-generator-schema)
-                                             "<no schema form>"))
-                                      (cond-> {}
-                                        original-generator-schema (assoc :schema (m/form original-generator-schema))))))
-                            gen/any)
+  (with-meta (gen/sized (fn [_]
+                          (m/-fail! ::infinitely-expanding-schema
+                                    (cond-> {}
+                                      original-generator-schema (assoc :schema original-generator-schema)))))
              {::never-gen true
               ::original-generator-schema original-generator-schema}))
 
@@ -298,9 +293,13 @@
                                                   gen
                                                   {:min-elements (some-> min (- nbase))
                                                    :max-elements (some-> max (- nbase))
-                                                   :max-tries 100})
+                                                   :max-tries 100
+                                                   :ex-fn #(m/-exception ::distinct-generator-failure
+                                                                         (assoc % :schema schema))})
                                                 ;;TODO custom :ex-fn that prints schema
-                                                (gen/vector-distinct gen {:max-tries 100}))
+                                                (gen/vector-distinct gen {:max-tries 100
+                                                                          :ex-fn #(m/-exception ::distinct-generator-failure
+                                                                                                (assoc % :schema schema))}))
                                               (fn [extra-ks]
                                                 (let [base (into base (remove #(false? (present %)))
                                                                  extra-ks)]
@@ -359,10 +358,8 @@
   (if-some [gen (-not-unreachable (-> schema (m/children options) first (generator options)))]
     (gen/such-that (m/validator schema options) gen
                    {:max-tries 100
-                    :ex-fn #(ex-info (str "Could not generate a value for schema "
-                                          (pr-str (m/form schema))
-                                          ". Consider providing a custom generator.")
-                                     %)})
+                    :ex-fn #(m/-exception ::and-generator-failure
+                                          (assoc % :schema schema))})
     (-never-gen options)))
 
 (defn- gen-one-of [gs]
@@ -462,10 +459,7 @@
                        (and min max) {:min-elements min :max-elements max}
                        min {:min-elements min}
                        max {:max-elements max})
-                     (assoc :ex-fn #(ex-info (str "Could not generate enough distinct keys for schema "
-                                                  (pr-str (m/form schema))
-                                                  ". Consider providing a custom generator.")
-                                             %)))]
+                     (assoc :ex-fn #(m/-exception ::distinct-generator-failure (assoc % :schema schema))))]
         (gen/fmap #(into {} %) (gen/vector-distinct-by first (gen/tuple k-gen v-gen) opts))))))
 
 #?(:clj
@@ -654,10 +648,7 @@
 (defn -qualified-ident-gen [schema mk-value-with-ns value-with-ns-gen-size pred gen]
   (if-let [namespace-unparsed (:namespace (m/properties schema))]
     (gen/fmap (fn [k] (mk-value-with-ns (name namespace-unparsed) (name k))) value-with-ns-gen-size)
-    (gen/such-that pred gen {:ex-fn #(ex-info (str "Could not generate a value for schema "
-                                                   (pr-str (m/form schema))
-                                                   ". Consider providing a custom generator.")
-                                              %)})))
+    (gen/such-that pred gen {:ex-fn #(m/-exception ::qualified-ident-gen-failure (assoc % :schema schema))})))
 
 (defn -qualified-keyword-gen [schema]
   (-qualified-ident-gen schema keyword gen/keyword qualified-keyword? gen/keyword-ns))
@@ -681,19 +672,13 @@
 (defmethod -schema-generator := [schema options] (gen/return (first (m/children schema options))))
 (defmethod -schema-generator :not= [schema options] (gen/such-that #(not= % (-> schema (m/children options) first)) gen/any-printable
                                                                    {:max-tries 100
-                                                                    :ex-fn #(ex-info (str "Could not generate a value for schema "
-                                                                                          (pr-str (m/form schema))
-                                                                                          ". Consider providing a custom generator.")
-                                                                                     %)}))
+                                                                    :ex-fn #(m/-exception ::not=-generator-failure (assoc % :schema schema))}))
 (defmethod -schema-generator 'pos? [_ _] (gen/one-of [(-double-gen {:min 0.00001}) (gen/fmap inc gen/nat)]))
 (defmethod -schema-generator 'neg? [_ _] (gen/one-of [(-double-gen {:max -0.0001}) (gen/fmap (comp dec -) gen/nat)]))
 
 (defmethod -schema-generator :not [schema options] (gen/such-that (m/validator schema options) (ga/gen-for-pred any?)
                                                                   {:max-tries 100
-                                                                   :ex-fn #(ex-info (str "Could not generate a value for schema "
-                                                                                         (pr-str (m/form schema))
-                                                                                         ". Consider providing a custom generator.")
-                                                                                    %)}))
+                                                                   :ex-fn #(m/-exception ::not-generator-failure (assoc % :schema schema))}))
 (defmethod -schema-generator :and [schema options] (-and-gen schema options))
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))
 (defmethod -schema-generator :orn [schema options] (-or-gen (m/into-schema :or (m/properties schema) (map last (m/children schema)) (m/options schema)) options))

@@ -129,10 +129,10 @@
     {:op :rest :spec child}
     :seqable))
 
-(defmethod accept :+ [_ _  children options] (-seqable-or-rest children options))
-(defmethod accept :* [_ _  children options] (-seqable-or-rest children options))
-(defmethod accept :? [_ _  children options] (-seqable-or-rest children options))
-(defmethod accept :repeat [_ _  children options] (-seqable-or-rest children options))
+(defmethod accept :+ [_ _ children options] (-seqable-or-rest children options))
+(defmethod accept :* [_ _ children options] (-seqable-or-rest children options))
+(defmethod accept :? [_ _ children options] (-seqable-or-rest children options))
+(defmethod accept :repeat [_ _ children options] (-seqable-or-rest children options))
 
 (defmethod accept :cat [_ _ children _] children)
 (defmethod accept :catn [_ _ children _] (mapv last children))

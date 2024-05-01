@@ -358,7 +358,8 @@
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
    (when explanation
-     #_(update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors))))
+     (update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors))))
+     #_ ;;TODO [:xor ... ] format
      (update explanation :errors (fn [errors]
                                    (doall (mapcat (fn [error]
                                                     (let [msg (error-message error options)
@@ -418,7 +419,9 @@
      (reduce
       (fn [acc error]
         (let [[path message] (resolve explanation error options)]
-          (reduce (fn [acc msg] (-push-in acc value path (wrap (assoc error :message msg))))
+          (-push-in acc value path (wrap (assoc error :message message)))
+          ;;TODO [:xor ... ] format
+          #_(reduce (fn [acc msg] (-push-in acc value path (wrap (assoc error :message msg))))
                   acc (cond-> message
                         (string? message) vector))))
       nil errors))))

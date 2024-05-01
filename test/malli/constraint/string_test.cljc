@@ -160,7 +160,7 @@
     (is (m/validate [:string {:distinct true}] "[]"))
     (is (not (m/validate [:string {:distinct true}] "[[")))
     (is (m/validate [:string {:distinct true}] "abcde"))
-    (is (m/validate [:string {:distinct true}] "🌉🜉")) ;; same lower surrogate
+    (is (not (m/validate [:string {:distinct true}] "🌉🜉"))) ;; same lower surrogate
     (is (m/validate [:string {:distinct-code-points true}] "🌉🜉")) ;; same lower surrogate
     (is (= ["invalid type"]
            (me/humanize (m/explain [:string {:distinct true}] nil))))
@@ -330,7 +330,8 @@
                         [\; \! \@ \# \$ \% \^ \& \*])]}])
 
 (deftest string-password-test
-  (is (m/validate Password "12345abc"))
+  (is (not (m/validate Password "12345abc")))
+  (is (m/validate Password "12345abc^"))
   (is (= [:and
           "should contain an alphabetic character"
           "should contain a numeric character"

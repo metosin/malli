@@ -140,4 +140,10 @@
                                       (not (boolean? s)))
                                (when (valid s edn)
                                  (str "should not be a string of " (pr-str s)))
-                               "should not be valid edn")))))})
+                               "should not be valid edn")))))
+  :palindrome-string (fn [{:keys [validator value]} _]
+                       (when-not (validator value)
+                         "should be a palindrome"))
+  [:not :palindrome-string] (fn [{:keys [validator value]} _]
+                              (when-not (validator value)
+                                "should not be a palindrome"))})

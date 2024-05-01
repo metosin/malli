@@ -106,6 +106,7 @@
 (defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
 (defmethod accept :=> [_ _ _ _] :fn)
+(defmethod accept :all [_ schema _ options] (transform (m/deref schema) options))
 (defmethod accept :function [_ _ _ _] :fn)
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 
@@ -171,6 +172,7 @@
 
 (defn from [{:keys [schema ns name]}]
   (let [ns-name (-> ns str symbol)
+        schema (cond-> schema (= :all (m/type schema)) m/deref)
         schema (if (= :function (m/type schema)) schema (m/into-schema :function nil [schema] (m/options schema)))]
     (reduce
      (fn [acc schema]

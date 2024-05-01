@@ -9,6 +9,7 @@
 (def any-printable {:op :any-printable})
 (defn double* [& args] {:op :double* :args args})
 (defmacro fmap [& args] (let [args (vec args)] `{:op :fmap :args-form '~args :args ~args}))
+(defmacro bind [& args] (let [args (vec args)] `{:op :bind :args-form '~args :args ~args}))
 (defmacro vector
   ([generator] {:op :vector :generator generator})
   ([generator num-elements] {:op :vector :generator generator :num-elements num-elements})

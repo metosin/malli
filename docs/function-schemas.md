@@ -7,7 +7,9 @@
   * [Function Guards](#function-guards)
   * [Generating Functions](#generating-functions)
   * [Multi-arity Functions](#multi-arity-functions)
+  * [Polymorphic Functions](#polymorphic-functions)
   * [Instrumentation](#instrumentation)
+    * [Instrumentation of Polymorphic Functions](#instrumentation-of-polymorphic-functions)
 * [Defn Schemas](#defn-schemas)
   * [Defining Function Schemas](#defining-function-schemas)
     * [Function Schema Annotations](#function-schema-annotations)
@@ -21,6 +23,7 @@
   * [Pretty Errors](#pretty-errors)
 * [Defn Schemas via metadata](#defn-schemas-via-metadata)
   * [TL;DR](#tldr)
+* [Polymorphic Functions](#polymorphic-schemas)
 
 ## Functions
 
@@ -64,7 +67,7 @@ Enter, function schemas.
 
 ## Function Schemas
 
-Function values can be described with `:=>` and `:function` schemas. They allows description of both function arguments (as [sequence schemas](https://github.com/metosin/malli#sequence-schemas)) and function return values.
+Function values can be described with `:=>`, `:function`, and `m/all` schemas. They allow descriptions of both function arguments (as [sequence schemas](https://github.com/metosin/malli#sequence-schemas)) and function return values.
 
 Examples of function definitions:
 
@@ -87,9 +90,19 @@ Examples of function definitions:
 [:function
  [:=> [:cat :int] :int]
  [:=> [:cat :int :int [:* :int]] :int]]      
+
+;; polymorphic identity function
+(m/all [a] [:=> [:cat a] a])
+
+;; polymorphic map function
+(m/all [a b]
+  [:=> [:cat
+        [:=> [:cat a] b]
+        [:sequential a]]
+   [:sequential b]])
 ```
 
-Function definition for the `plus` looks like this:
+The schema for `plus` looks like this:
 
 ```clojure
 (def =>plus [:=> [:cat :int :int] :int])
@@ -313,11 +326,29 @@ Generating multi-arity functions:
 ; => -2326
 ```
 
+### Polymorphic Functions
+
+A polymorphic function using `m/all` is generatively tested by instantiating schema variables with small schemas.
+
+For example, the polymorphic identity schema
+
+```clojure
+(m/all [a] [:=> [:cat a] a])
+```
+
+is generatively tested with schemas like
+
+```clojure
+[:=> [:cat :nil] :nil]
+[:=> [:cat [:enum 50]] [:enum 50]]
+[:=> [:cat [:enum 5333344553]] [:enum 5333344553]]
+```
+
 ### Instrumentation
 
 Besides testing function schemas as values, we can also instrument functions to enable runtime validation of arguments and return values.
 
-Simplest way to do this is to use `m/-instrument` which takes an options map and a function and returns an instrumented function. Valid options include:
+The simplest way to do this is to use `m/-instrument` which takes an options map and a function and returns an instrumented function. Valid options include:
 
 | key       | description |
 | ----------|-------------|
@@ -389,6 +420,26 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 
 (pow-gen 10 20 30)
 ; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
+```
+
+### Instrumentation of Polymorphic Functions
+
+A polymorphic function will be instrumented as if all its schema variables were instantiated with
+their upper bounds, usually `:any`. The instrumented schema is calculated via `m/deref`.
+
+Schema variables by default do not allow regex splicing, so instantiations are wrapped in `:schema`.
+
+```clojure
+(-> (m/all [a] [:=> [:cat a] a]) m/deref)
+;=> [:=> [:cat [:schema :any]] [:schema :any]]
+
+(def options {:registry (mr/composite-registry m/default-registry (mu/schemas))})
+
+(-> (m/all [[M [:maybe :map]] X] [:=> [:cat M X] [:merge M [:map [:x X]]]])
+    (m/schema options)
+    m/deref)
+;=> [:=> [:cat [:schema [:maybe :map]] [:schema :any]]
+;    [:merge [:schema [:maybe :map]] [:map [:x [:schema :any]]]]]
 ```
 
 ## Defn Schemas

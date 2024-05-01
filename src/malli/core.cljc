@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
   #?(:cljs (:require-macros malli.core))
-  (:require #?(:clj [clojure.walk :as walk])
+  (:require [clojure.walk :as walk]
             [clojure.core :as c]
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]
@@ -14,7 +14,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast)
+         parser unparser ast from-ast inst)
 
 ;;
 ;; protocols and records
@@ -85,6 +85,10 @@
   (-regex-parser [this] "returns the raw internal regex parser implementation")
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
   (-regex-min-max [this nested?] "returns size of the sequence as {:min min :max max}. nil max means unbounded. nested? is true when this schema is nested inside an outer regex schema."))
+
+(defprotocol AllSchema
+  (-bounds [this] "return a vector of maps describing the binder")
+  (-inst [this schemas] "replace variables in polymorphic schema with schemas, or their defaults if nil"))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
@@ -2096,7 +2100,7 @@
    (-parent (schema ?schema options))))
 
 (defn walk
-  "Postwalks recursively over the Schema and it's children.
+  "Postwalks recursively over the Schema and its children.
    The walker callback is a arity4 function with the following
    arguments: schema, path, (walked) children and options."
   ([?schema f]
@@ -2490,6 +2494,283 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
+(defn- -all-binder-bounds [binder]
+  (into [] (map (fn [b]
+                  (if (simple-ident? b)
+                    {:kind :Schema
+                     :default :any
+                     :lower nil
+                     :upper :any}
+                    (if (and (vector? b)
+                             (= 2 (count b))
+                             (simple-ident? (first b)))
+                      {:kind :Schema
+                       :default (second b)
+                       :lower nil
+                       :upper (second b)}
+                      (if (and (map? b)
+                               (simple-ident? (:name b)))
+                        (dissoc b :name)
+                        (-fail! ::invalid-all-binder {:binder binder}))))))
+        binder))
+
+(defn- -visit-binder-names [binder f]
+  (mapv (fn [b]
+          (if (simple-ident? b)
+            (f b)
+            (if (and (vector? b)
+                     (= 2 (count b))
+                     (simple-ident? (first b)))
+              (update b 0 f)
+              (if (and (map? b)
+                       (simple-ident? (:name b)))
+                (update b :name f)
+                (-fail! ::invalid-all-binder {:binder binder})))))
+        binder))
+
+(defn -all-binder-names [binder]
+  (let [vol (volatile! [])]
+    (-visit-binder-names binder #(do (vswap! vol conj %) %))
+    @vol))
+
+(defn- -find-allowed-kw [base vforbidden]
+  (if-not (@vforbidden base)
+    base
+    (loop [i 0]
+      (let [base (keyword (str (name base) i))]
+        (if-not (@vforbidden base)
+          (do (vswap! vforbidden conj base)
+              base)
+          (recur (inc i)))))))
+
+(defn- -alpha-rename [s vforbidden options]
+  (let [inner (fn [this s path options]
+                (case (type s)
+                  :all (-alpha-rename s vforbidden options)
+                  (-walk s this path options)))
+        outer (fn [s path children options]
+                (case (type s)
+                  ::val (first children)
+                  (-set-children s children)))
+        walk (fn [s]
+               (inner
+                 (reify Walker
+                   (-accept [_ s path options] true)
+                   (-inner [this s path options] (inner this s path options))
+                   (-outer [_ schema path children options]
+                     (outer schema path children options)))
+                 s
+                 []
+                 (assoc options
+                        ::walk-refs false
+                        ::walk-schema-refs false
+                        ::walk-entry-vals true)))
+        [binder body] (-children s)
+        names (-all-binder-names binder)
+        bounds (-all-binder-bounds binder)
+        renames (into {} (map (fn [n]
+                                [n (-find-allowed-kw n vforbidden)]))
+                      names)
+        binder (-visit-binder-names binder renames)
+        defaults (into {} (map-indexed
+                            (fn [i n]
+                              (let [{:keys [default]} (nth bounds i)
+                                    rename (renames n)]
+                                [n (form
+                                     (-update-properties
+                                       (schema default options)
+                                       #(assoc % ::alpha-rename rename))
+                                     options)])))
+                       names)
+        invert (into {} (map (fn [[k v]]
+                               [v (renames k)]))
+                     defaults)
+        body (-> body
+                 (->> (walk/postwalk-replace defaults))
+                 (schema options)
+                 walk
+                 (form options)
+                 (->> (walk/postwalk-replace invert)))]
+    (schema [:all binder body] options)))
+
+(defn- -inst* [binder body insts options]
+  (when-not (= (count insts)
+               (count binder))
+    (-fail! ::wrong-number-of-schemas-to-inst
+            {:binder binder :schemas insts}))
+  (let [kws (-all-binder-names binder)
+        bounds (-all-binder-bounds binder)
+        insts (mapv (fn [bound s]
+                      ;;TODO regex kinds like [:* :Schema] that allow splicing schemas like
+                      ;; [:all [[Xs [:* :Schema]]] [:=> [:cat Xs] :any]]
+                      ;; which can instantiate to [:=> [:cat [:* :int] :any]] rather than just
+                      ;; [:=> [:cat [:schema [:* :int]] :any]]
+                      (case (:kind bound)
+                        :Schema (let [{:keys [upper lower]} bound
+                                      s (form s options)
+                                      upper (form upper options)]
+                                  (when (some? lower)
+                                    (-fail! ::nyi-lower-bounds))
+                                  (form
+                                    [:schema ;;disallow regex splicing
+                                     (if (or (= s upper)
+                                             (= :any upper))
+                                       s
+                                       [:and s upper])]
+                                    options))))
+                    bounds insts)
+        vforbidden-kws (volatile! (set kws))
+        _ (walk/postwalk (fn [v]
+                           (when (keyword? v)
+                             (vswap! vforbidden-kws conj v))
+                           v)
+                         insts)
+        [binder body] (-> [:all binder body]
+                          (schema options)
+                          (-alpha-rename vforbidden-kws options)
+                          -children)
+        kws (-all-binder-names binder)]
+    (-> (walk/postwalk-replace (zipmap kws insts) body)
+        (schema options))))
+
+(defn -all-binder-defaults [binder]
+  (mapv :default (-all-binder-bounds binder)))
+
+(defn -all-schema [_]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-type [_] :all)
+    (-type-properties [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent properties children {::keys [function-checker] :as options}]
+      (-check-children! :all properties children 2 2)
+      (let [[binder body] children
+            form (delay (-simple-form parent properties children identity options))
+            cache (-create-cache options)
+            self-inst (delay (inst [:all binder body] options))
+            ->checker (if function-checker #(function-checker % options) (constantly nil))]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-validator [this]
+            (if-let [checker (->checker this)]
+              (let [validator (fn [x] (nil? (checker x)))]
+                (fn [x] (and (ifn? x) (validator x))))
+              ifn?))
+          (-explainer [this path]
+            (if-let [checker (->checker this)]
+              (fn explain [x in acc]
+                (if (not (fn? x))
+                  (conj acc (miu/-error path in this x))
+                  (if-let [res (checker x)]
+                    (conj acc (assoc (miu/-error path in this x) :check res))
+                    acc)))
+              (let [validator (-validator this)]
+                (fn explain [x in acc]
+                  (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
+          (-parser [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x ::invalid))))
+          (-unparser [this] (-parser this))
+          (-transformer [_ _ _ _])
+          (-walk [this walker path options] (-walk-leaf this walker path options))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] parent)
+          (-form [_] @form)
+          AllSchema
+          (-bounds [_] (-all-binder-bounds binder))
+          (-inst [_ insts] (-inst* binder body (or insts (-all-binder-defaults binder)) options))
+          Cached
+          (-cache [_] cache)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (get children key default))
+          (-set [this key value] (-set-assoc-children this key value))
+          RefSchema
+          (-ref [_])
+          (-deref [_] @self-inst))))))
+
+
+(defn- -find-kws [vol form]
+  (walk/postwalk (fn [v]
+                   (when (simple-keyword? v)
+                     (vswap! vol conj v))
+                   v)
+                 form))
+
+(defn- -rename-all-binder [forbidden-kws binder]
+  (-visit-binder-names
+    binder
+    (fn [k]
+      (if (@forbidden-kws k)
+        (loop [i 0]
+          (let [k' (keyword (str (name k) i))]
+            (if (@forbidden-kws k')
+              (recur (inc i))
+              (do (vswap! forbidden-kws conj k')
+                  k'))))
+        k))))
+
+(defn -all-form [binder body]
+  (let [nbound (count binder)
+        binder (-visit-binder-names binder (fn [k]
+                                             (when-not (simple-symbol? k)
+                                               (-fail! ::binder-must-use-simple-symbols {:k k}))
+                                             (keyword k)))
+        forbidden-kws (doto (volatile! #{})
+                        (-find-kws (apply body (repeatedly nbound random-uuid))))
+        binder (-rename-all-binder forbidden-kws binder)
+        body (apply body (-all-binder-names binder))]
+    [:all binder body]))
+
+#?(:clj
+   (defmacro all
+     "Children of :all are read-only. Only construct an :all with this macro.
+     Children will not be walked.
+
+     The only public interface for :all is inst and -bounds.
+
+     Treat type variables as opaque variables in body. i.e., only pass them around,
+     don't inspect or test them.
+
+     Use deref to instantiate the body with each type variable's upper bounds."
+     [binder body]
+     (let [bv (mapv (fn [b]
+                      (if (symbol? b)
+                        b
+                        (if (vector? b)
+                          (first b)
+                          (if (map? b)
+                            (:name b)
+                            (-fail! ::bad-all-binder {:binder binder})))))
+                    binder)]
+       `(-all-form '~binder (fn ~bv ~body)))))
+
+(defn -quoted [[q v :as l]]
+  (when-not (and (seq? l)
+                 (= 2 (count l))
+                 (= 'quote (first l)))
+    (-fail! ::children-of-all-schema-must-be-quoted
+            {:l l}))
+  (second v))
+
+(defn -binder [all]
+  (first (-children all)))
+
+(defn inst
+  "Instantiate an :all schema with a vector of schemas. If a schema
+  is nil, its upper bound will be used. If ?schemas is nil or not provided, same as
+  vector of nils. ?schemas-or-options are treated as options if map?, otherwise ?schemas."
+  ([?all] (inst ?all nil nil))
+  ([?all ?schemas-or-options] (let [options? (map? ?schemas-or-options)
+                                    ?schemas (when-not options? ?schemas-or-options)
+                                    options (when options? ?schemas-or-options)]
+                                (inst ?all ?schemas options)))
+  ([?all insts options] (-inst (schema ?all options) insts)))
+
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
@@ -2508,6 +2789,7 @@
    :fn (-fn-schema)
    :ref (-ref-schema)
    :=> (-=>-schema)
+   :all (-all-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
@@ -2552,7 +2834,12 @@
   ([?schema] (function-schema ?schema nil))
   ([?schema options]
    (let [s (schema ?schema options), t (type s)]
-     (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
+     (if (= :all t)
+       (let [d (deref s)]
+         (when (= :all (type d))
+           (-fail! ::infinite-loop {:s s :d d}))
+         (function-schema d options))
+       (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s}))))))
 
 ;; for cljs we cannot invoke `function-schema` at macroexpansion-time
 ;; - `?schema` could contain cljs vars that will only resolve at runtime.
@@ -2565,24 +2852,26 @@
        (-fail! ::register-function-schema {:ns ns, :name name, :schema ?schema, :data data, :key key, :exception ex})))))
 
 #?(:clj
-   (defmacro => [given-sym value]
-     (let [cljs-resolve (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve))
-           cljs-resolve-symbols (fn [env d]
-                                  (walk/postwalk (fn [x] (cond->> x (symbol? x) (or (:name (cljs-resolve env x)))))
-                                                 d))
-           name-str (name given-sym)
-           ns-str (str (or (not-empty (namespace given-sym)) *ns*))
-           name' `'~(symbol name-str)
-           ns' `'~(symbol ns-str)
-           sym `'~(symbol ns-str name-str)
-           value' (cond->> value (:ns &env) (cljs-resolve-symbols &env))]
-       ;; in cljs we need to register the schema in clojure (the cljs compiler)
-       ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
-       (if (:ns &env)
-         (do
-           (-register-function-schema! (symbol ns-str) (symbol name-str) value' (meta given-sym) :cljs identity)
-           `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta given-sym) :cljs identity) ~sym))
-         `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta given-sym)) ~sym)))))
+   (defmacro =>
+     ([given-sym value] `(=> ~given-sym ~value nil))
+     ([given-sym value options]
+      (let [cljs-resolve (when (:ns &env) (ns-resolve 'cljs.analyzer.api 'resolve))
+            cljs-resolve-symbols (fn [env d]
+                                   (walk/postwalk (fn [x] (cond->> x (symbol? x) (or (:name (cljs-resolve env x)))))
+                                                  d))
+            name-str (name given-sym)
+            ns-str (str (or (not-empty (namespace given-sym)) *ns*))
+            name' `'~(symbol name-str)
+            ns' `'~(symbol ns-str)
+            sym `'~(symbol ns-str name-str)
+            value' (cond->> value (:ns &env) (cljs-resolve-symbols &env))]
+        ;; in cljs we need to register the schema in clojure (the cljs compiler)
+        ;; so it is visible in the (function-schemas :cljs) map at macroexpansion time.
+        (if (:ns &env)
+          (do
+            (-register-function-schema! (symbol ns-str) (symbol name-str) value' (meta given-sym) :cljs identity)
+            `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta given-sym) :cljs #(schema % ~options)) ~sym))
+          `(do (-register-function-schema! ~ns' ~name' ~value' ~(meta given-sym) :clj #(function-schema (schema % ~options))) ~sym))))))
 
 (defn -instrument
   "Takes an instrumentation properties map and a function and returns a wrapped function,
@@ -2633,4 +2922,5 @@
                          (cond
                            info (apply (:f info) args)
                            varargs-info (if (< arity (:min varargs-info)) (report-arity) (apply (:f varargs-info) args))
-                           :else (report-arity))))))))))
+                           :else (report-arity))))))
+       :all (recur (assoc props :schema (deref schema options)) f options)))))

@@ -88,9 +88,9 @@
                          :type :malli.core/constraint-violation
                          :message nil})}
              (with-schema-forms (m/explain NonEmptyMapGroup {}))))
-      (is (= [:or
-              "should provide key: :a1"
-              "should provide key: :a2"]
+      (is (= [[:or
+               "should provide key: :a1"
+               "should provide key: :a2"]]
              (me/humanize (m/explain NonEmptyMapGroup {}))))))
   (testing ":disjoint"
     (testing "validate"
@@ -115,9 +115,9 @@
                :type :malli.core/constraint-violation
                :message nil}]
             (:errors (with-schema-forms (m/explain UserPwGroups {:user "a"})))))
-      (is (= [:or
-              "should provide key: :secret"
-              "should provide key: :pass"]
+      (is (= [[:or
+               "should provide key: :secret"
+               "should provide key: :pass"]]
              (me/humanize (m/explain UserPwGroups {:user "a"}))))
       (is (= [{:path []
                :in []
@@ -128,11 +128,11 @@
              (-> (m/explain UserPwGroups {})
                  with-schema-forms
                  :errors)))
-      (is (= [:or
-              "should provide key: :secret"
-              [:and
-               "should provide key: :user"
-               "should provide key: :pass"]]
+      (is (= [[:or
+               "should provide key: :secret"
+               [:and
+                "should provide key: :user"
+                "should provide key: :pass"]]]
              (me/humanize (m/explain UserPwGroups {}))))
       (is (= [{:path []
                :in []
@@ -177,41 +177,41 @@
       (is (nil? (m/explain IffGroups {})))
       (is (nil? (m/explain IffGroups {:a1 "a" :a2 "b" :a3 "c"})))
       (is (nil? (m/explain IffGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"})))
-      (is (= [:xor
-              "should provide key: :a3"
-              [:and
-               "should not provide key: :a1"
-               "should not provide key: :a2"]]
+      (is (= [[:xor
+               "should provide key: :a3"
+               [:and
+                "should not provide key: :a1"
+                "should not provide key: :a2"]]]
              (me/humanize (m/explain IffGroups {:a1 "a" :a2 "b"}))))
-      (is (= [:xor
-              "should provide key: :a2"
-              [:and
-               "should not provide key: :a1"
-               "should not provide key: :a3"]]
-             (me/humanize (m/explain IffGroups {:a1 "a" :a3 "c"}))))
-      (is (= [:xor
-              "should provide key: :a1"
-              [:and
-               "should not provide key: :a2"
-               "should not provide key: :a3"]]
-             (me/humanize (m/explain IffGroups {:a2 "b" :a3 "c"}))))
-      (is (= [:xor
-              [:and
+      (is (= [[:xor
                "should provide key: :a2"
-               "should provide key: :a3"]
-              "should not provide key: :a1"]
+               [:and
+                "should not provide key: :a1"
+                "should not provide key: :a3"]]]
+             (me/humanize (m/explain IffGroups {:a1 "a" :a3 "c"}))))
+      (is (= [[:xor
+               "should provide key: :a1"
+               [:and
+                "should not provide key: :a2"
+                "should not provide key: :a3"]]]
+             (me/humanize (m/explain IffGroups {:a2 "b" :a3 "c"}))))
+      (is (= [[:xor
+               [:and
+                "should provide key: :a2"
+                "should provide key: :a3"]
+               "should not provide key: :a1"]]
              (me/humanize (m/explain IffGroups {:a1 "a"}))))
-      (is (= [:xor
-              [:and
-               "should provide key: :a1"
-               "should provide key: :a3"]
-              "should not provide key: :a2"]
+      (is (= [[:xor
+               [:and
+                "should provide key: :a1"
+                "should provide key: :a3"]
+               "should not provide key: :a2"]]
              (me/humanize (m/explain IffGroups {:a2 "b"}))))
-      (is (= [:xor
-              [:and
-               "should provide key: :a1"
-               "should provide key: :a2"]
-              "should not provide key: :a3"]
+      (is (= [[:xor
+               [:and
+                "should provide key: :a1"
+                "should provide key: :a2"]
+               "should not provide key: :a3"]]
              (me/humanize (m/explain IffGroups {:a3 "c"}))))))
   (testing ":implies"
     (testing "validate"
@@ -228,13 +228,13 @@
       (is (nil? (m/explain ImpliesGroups {})))
       (is (nil? (m/explain ImpliesGroups {:a1 "a" :a2 "b" :a3 "c"})))
       (is (nil? (m/explain ImpliesGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"})))
-      (is (= ["should provide key: :a3"]
+      (is (= [["should provide key: :a3"]]
              (me/humanize (m/explain ImpliesGroups {:a1 "a" :a2 "b"}))))
-      (is (= ["should provide key: :a2"]
+      (is (= [["should provide key: :a2"]]
              (me/humanize (m/explain ImpliesGroups {:a1 "a" :a3 "c"}))))
       (is (nil? (m/explain ImpliesGroups {:a2 "b" :a3 "c"})))
-      (is (= ["should provide key: :a2"
-              "should provide key: :a3"]
+      (is (= [["should provide key: :a2"
+               "should provide key: :a3"]]
              (me/humanize (m/explain ImpliesGroups {:a1 "a"}))))
       (is (nil? (m/explain ImpliesGroups {:a2 "b"})))
       (is (nil? (m/explain ImpliesGroups {:a3 "c"})))))
@@ -250,32 +250,32 @@
       (is (m/validate XOrGroups {:a2 "b"}))
       (is (m/validate XOrGroups {:a3 "c"})))
     (testing "explain"
-      (is (= [:xor
-              "should provide key: :a1"
-              "should provide key: :a2"
-              "should provide key: :a3"]
+      (is (= [[:xor
+               "should provide key: :a1"
+               "should provide key: :a2"
+               "should provide key: :a3"]]
              (me/humanize (m/explain XOrGroups {}))))
-      (is (= [:xor
-              [:and "should not provide key: :a1" "should not provide key: :a2"]
-              [:and "should not provide key: :a1" "should not provide key: :a3"]
-              [:and "should not provide key: :a2" "should not provide key: :a3"]]
+      (is (= [[:xor
+               [:and "should not provide key: :a1" "should not provide key: :a2"]
+               [:and "should not provide key: :a1" "should not provide key: :a3"]
+               [:and "should not provide key: :a2" "should not provide key: :a3"]]]
              (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"}))))
-      (is (= [:xor
-              [:and "should not provide key: :a1" "should not provide key: :a2"]
-              [:and "should not provide key: :a1" "should not provide key: :a3"]
-              [:and "should not provide key: :a2" "should not provide key: :a3"]]
+      (is (= [[:xor
+               [:and "should not provide key: :a1" "should not provide key: :a2"]
+               [:and "should not provide key: :a1" "should not provide key: :a3"]
+               [:and "should not provide key: :a2" "should not provide key: :a3"]]]
             (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b" :a3 "c"}))))
-      (is (= [:xor
-              "should not provide key: :a1"
-              "should not provide key: :a2"]
+      (is (= [[:xor
+               "should not provide key: :a1"
+               "should not provide key: :a2"]]
              (me/humanize (m/explain XOrGroups {:a1 "a" :a2 "b"}))))
-      (is (= [:xor
-              "should not provide key: :a1"
-              "should not provide key: :a3"]
+      (is (= [[:xor
+               "should not provide key: :a1"
+               "should not provide key: :a3"]]
              (me/humanize (m/explain XOrGroups {:a1 "a" :a3 "c"}))))
-      (is (= [:xor
-              "should not provide key: :a2"
-              "should not provide key: :a3"]
+      (is (= [[:xor
+               "should not provide key: :a2"
+               "should not provide key: :a3"]]
              (me/humanize (m/explain XOrGroups {:a2 "b" :a3 "c"}))))
       (is (nil? (m/explain XOrGroups {:a1 "a"})))
       (is (nil? (m/explain XOrGroups {:a2 "b"})))
@@ -305,19 +305,19 @@
       (is (nil? (m/explain NotGroups {:a1 "a" :a2 "b" :a3 "c"})))
       (is (nil? (m/explain NotGroups {:a1 "a" :a2 "b" :a3 "c" :a4 "d"})))
       (is (nil? (m/explain NotGroups {:a1 "a" :a2 "b"})))
-      (is (= [:or
-              "should provide key: :a2"
-              "should not provide key: :a3"]
+      (is (= [[:or
+               "should provide key: :a2"
+               "should not provide key: :a3"]]
              (me/humanize (m/explain NotGroups {:a1 "a" :a3 "c"}))))
-      (is (= [:or "should provide key: :a1" "should not provide key: :a3"]
+      (is (= [[:or "should provide key: :a1" "should not provide key: :a3"]]
              (me/humanize (m/explain NotGroups {:a2 "b" :a3 "c"}))))
       (is (nil? (m/explain NotGroups {:a1 "a"})))
       (is (nil? (m/explain NotGroups {:a2 "b"})))
-      (is (= [:or
-              [:and
-               "should provide key: :a1"
-               "should provide key: :a2"]
-              "should not provide key: :a3"]
+      (is (= [[:or
+               [:and
+                "should provide key: :a1"
+                "should provide key: :a2"]
+               "should not provide key: :a3"]]
              (me/humanize (m/explain NotGroups {:a3 "c"})))))))
 
 (def Address
@@ -411,9 +411,9 @@
              [:map {:and [[:contains nil]
                           [:contains []]]}]
              {}))
-         [:and
-          "should provide key: nil"
-          "should provide key: []"]))
+         [[:and
+           "should provide key: nil"
+           "should provide key: []"]]))
   (is (= (me/humanize
            (m/explain
              [:map
@@ -429,17 +429,17 @@
               [:a2 {:optional true} :string]]
              {}))
 
-         [:or
-          "should provide key: :a1"
-          "should provide key: :a2"]))
+         [[:or
+           "should provide key: :a1"
+           "should provide key: :a2"]]))
   (is (= (m/validate Address {})
          true))
   (is (= (me/humanize (m/explain Address {:zip 5555}))
-         [:xor
-          [:and
-           "should provide key: :street"
-           "should provide key: :city"]
-          "should not provide key: :zip"]))
+         [[:xor
+           [:and
+            "should provide key: :street"
+            "should provide key: :city"]
+           "should not provide key: :zip"]]))
   (testing "GitOrMvn"
     (is (= (m/validate GitOrMvn {:mvn/version "1.0.0"})
            true))
@@ -448,15 +448,15 @@
                         {:mvn/version "1.0.0"
                          :git/sha "123"}))
 
-           [:xor
-            "should not provide key: :mvn/version"
-            "should not provide key: :git/sha"]))
+           [[:xor
+             "should not provide key: :mvn/version"
+             "should not provide key: :git/sha"]]))
     (is (= (me/humanize
              (m/explain GitOrMvn {}))
 
-           [:xor
-            "should provide key: :mvn/version"
-            "should provide key: :git/sha"])))
+           [[:xor
+             "should provide key: :mvn/version"
+             "should provide key: :git/sha"]])))
   (testing "TagImpliesSha"
     (is (= (m/validate TagImpliesSha {:git/sha "abc123"})
            true))
@@ -464,7 +464,7 @@
            true))
     (is (= (me/humanize
              (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
-           ["should provide key: :git/sha"])))
+           [["should provide key: :git/sha"]])))
   (testing "UserPass"
     (is (= (m/validate UserPass {})
            true))
@@ -472,9 +472,9 @@
            true))
     (is (= (me/humanize
              (m/explain UserPass {:user "a"}))
-           [:xor
-            "should provide key: :pass"
-            "should not provide key: :user"])))
+           [[:xor
+             "should provide key: :pass"
+             "should not provide key: :user"]])))
   (testing "SeparateMvnGit"
     (is (= (m/validate SeparateMvnGit {})
            true))
@@ -495,9 +495,9 @@
     (is (= (me/humanize
              (m/explain SecretOrCreds {:user "user"}))
            ;;FIXME should say: either remove user and add secret, or add pass, but not both
-           [:or
-            "should provide key: :secret"
-            "should provide key: :pass"]))
+           [[:or
+             "should provide key: :secret"
+             "should provide key: :pass"]]))
     (is (= (me/humanize
              (m/explain SecretOrCreds {:secret "1234" :user "user"}))
            ["should not combine key :secret with key: :user"])))
@@ -516,14 +516,14 @@
     (doseq [DPad [DPadNot DPadDeMorgan]]
       (is (= (me/humanize
                (m/explain DPad {:up 1 :down 1}))
-             [:or
-              "should not provide key: :down"
-              "should not provide key: :up"]))
+             [[:or
+               "should not provide key: :down"
+               "should not provide key: :up"]]))
       (is (= (me/humanize
                (m/explain DPad {:left 1 :right 1}))
-             [:or
-              "should not provide key: :left"
-              "should not provide key: :right"])))
+             [[:or
+               "should not provide key: :left"
+               "should not provide key: :right"]])))
     (is (= (me/humanize
              (m/explain DPad {:up 1 :down 1}))
            ["should not combine key :down with key: :up"]))
@@ -534,11 +534,11 @@
     (is (m/validate Padding {:left 1 :right 10 :up 25 :down 50}))
     (is (= (me/humanize
              (m/explain Padding {}))
-           [:or
-            "should provide key: :top"
-            "should provide key: :bottom"
-            "should provide key: :left"
-            "should provide key: :right"]))
+           [[:or
+             "should provide key: :top"
+             "should provide key: :bottom"
+             "should provide key: :left"
+             "should provide key: :right"]]))
     (is (= '({:top 0} {:bottom 0.5} {:left -1} {:left 0} {:bottom 1.5})
            (mg/sample Padding {:size 5 :seed 0})))))
 

@@ -13,6 +13,8 @@
             [malli.error.utils :refer [-flatten-errors]]
             [malli.util :as mu]))
 
+(defn -pr-str [v] #?(:clj (pr-str v), :cljs (str v)))
+
 (declare humanize)
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
@@ -21,8 +23,7 @@
       (cond
         (not (pred value)) message
         (and min (= min max)) (str "should be " min)
-        (and min max) (str "should be between " min " and " max)
-        min (str "should be at least " min)
+        (and min (< value min)) (str "should be at least " min)
         max (str "should be at most " max)))))
 
 ;;TODO add to options
@@ -79,12 +80,11 @@
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
    ::m/missing-key {:error/message {:en "missing required key"}}
-   ::m/limits {:error/fn {:en (fn [{:keys [schema _value]} _]
+   ::m/limits {:error/fn {:en (fn [{:keys [schema value]} _]
                                 (let [{:keys [min max]} (m/properties schema)]
                                   (cond
                                     (and min (= min max)) (str "should have " min " elements")
-                                    (and min max) (str "should have between " min " and " max " elements")
-                                    min (str "should have at least " min " elements")
+                                    (and min (< (count value) min)) (str "should have at least " min " elements")
                                     max (str "should have at most " max " elements"))))}}
    ::m/tuple-size {:error/fn {:en (fn [{:keys [schema value]} _]
                                     (let [size (count (m/children schema))]
@@ -101,9 +101,11 @@
                                                 (m/-options-with-malli-core-fns options)))}}
    :malli.core/invalid-dispatch-value {:error/message {:en "invalid dispatch value"}}
    ::misspelled-key {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
-                                      (str "should be spelled " (str/join " or " (map last likely-misspelling-of))))}}
+                                      (str "should be spelled "
+                                           (str/join " or " (map (comp -pr-str last) likely-misspelling-of))))}}
    ::misspelled-value {:error/fn {:en (fn [{::keys [likely-misspelling-of]} _]
-                                        (str "did you mean " (str/join " or " (map last likely-misspelling-of))))}}
+                                        (str "did you mean "
+                                             (str/join " or " (map (comp -pr-str last) likely-misspelling-of))))}}
    ::m/input-remaining {:error/message {:en "input remaining"}}
    ::m/end-of-input {:error/message {:en "end of input"}}
    'any? {:error/message {:en "should be any"}}
@@ -159,9 +161,9 @@
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
                            (str "should be "
                                 (if (= 1 (count (m/children schema)))
-                                  (first (m/children schema))
-                                  (str "either " (->> (m/children schema) butlast (str/join ", "))
-                                       " or " (last (m/children schema))))))}}
+                                  (-pr-str (first (m/children schema)))
+                                  (str "either " (->> (m/children schema) butlast (map -pr-str) (str/join ", "))
+                                       " or " (-pr-str (last (m/children schema)))))))}}
    :any {:error/message {:en "should be any"}}
    :nil {:error/message {:en "should be nil"}}
    :string {:error/fn {:en "should be a string"}}
@@ -190,9 +192,9 @@
                            (str "should be at most " (first (m/children schema)))
                            "should be a number"))}}
    := {:error/fn {:en (fn [{:keys [schema]} _]
-                        (str "should be " (first (m/children schema))))}}
+                        (str "should be " (-pr-str (first (m/children schema)))))}}
    :not= {:error/fn {:en (fn [{:keys [schema]} _]
-                           (str "should not be " (first (m/children schema))))}}})
+                           (str "should not be " (-pr-str (first (m/children schema)))))}}})
 
 (defn- -maybe-localized [x locale]
   (if (map? x) (get x locale) x))
@@ -356,6 +358,7 @@
    (with-error-messages explanation nil))
   ([explanation {f :wrap :or {f identity} :as options}]
    (when explanation
+     #_(update explanation :errors (fn [errors] (doall (map #(f (with-error-message % options)) errors))))
      (update explanation :errors (fn [errors]
                                    (doall (mapcat (fn [error]
                                                     (let [msg (error-message error options)

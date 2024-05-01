@@ -250,7 +250,8 @@ collected."
                                                               (-> s keys set)
                                                               #{:max-count :min-count
                                                                 :< :> :<= :>=
-                                                                :string-class}))]
+                                                                :string-class
+                                                                :present :order}))]
                                                 (miu/-fail! ::unsupported-negated-solution
                                                             {:unsupported-keys unsupported-keys
                                                              :solution s}))

@@ -730,12 +730,10 @@
                                                    :constraint constraint}))
     (-string-gen schema solutions options)))
 (defmethod -schema-generator :int [schema options]
-  (let [solutions (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
-                          ;;FIXME something is wrong with this. nil vs () ?
-                          ;;also fix :double
-                          (-> (-constraint-solutions :int options)
-                              ;;FIXME why are we collapsing all solutions into one?
-                              -conj-number-constraints))]
+  (let [constraint (mc/-constraint-from-properties (m/properties schema) :int options)
+        solutions (if constraint
+                    (-constraint-solutions constraint (m/type schema) options)
+                    [{}])]
     (when (empty? solutions)
       (m/-fail! ::unsatisfiable-int-schema {:schema schema}))
     (gen-one-of
@@ -773,12 +771,10 @@
                                      :max max})))
             solutions))))
 (defmethod -schema-generator :double [schema options]
-  (let [solutions (or (some-> (mc/-constraint-from-properties (m/properties schema) :int options)
-                              (-constraint-solutions :int options)
-                              seq
-                              ;;FIXME drops unrelated constraints silently like :min-count
-                              -conj-number-constraints)
-                      [{}])]
+  (let [constraint (mc/-constraint-from-properties (m/properties schema) (m/type schema) options)
+        solutions (if constraint
+                    (-constraint-solutions constraint (m/type schema) options)
+                    [{}])]
     (when (empty? solutions)
       (m/-fail! ::unsatisfiable-double-schema {:schema schema}))
     (gen-one-of

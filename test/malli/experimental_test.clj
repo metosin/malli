@@ -1,6 +1,9 @@
 (ns malli.experimental-test
   (:require [clojure.test :refer [deftest is testing]]
             [malli.dev]
+            [malli.core :as m]
+            [malli.util :as mu]
+            [malli.registry :as mr]
             [malli.experimental :as mx]
             [malli.instrument :as mi]))
 
@@ -18,6 +21,29 @@
   "int int -> int functions"
   [x :- [:int {:min 0}], y :- :int]
   (+ x y))
+
+(mx/defn :all [A]
+  poly :- A [x :- A] x)
+
+(mx/defn :all [[A :int]]
+  poly-usage :- A [x :- A]
+  (if (= x 42)
+    (m/coerce A 'a)
+    (when (and (integer? x) (even? x))
+      (m/coerce A x)))
+  x)
+
+(def options {:registry (mr/composite-registry m/default-registry (mu/schemas))})
+
+(mx/defn :all [[M [:maybe :map]] X]
+  assoc-x
+  :- [:merge M [:map [:x X]]]
+  {::m/options options}
+  [m :- M,
+   x :- X]
+  (if (= :breaks x)
+    (dissoc m :x)
+    (assoc m :x x)))
 
 (def AB [:map [:a [:int {:min 0}]] [:b :int]])
 (def CD [:map [:c [:int {:min 0}]] [:d :int]])
@@ -124,7 +150,38 @@
             [[{:outer {:not-inner 'foo}}] nil]]
     :instrumented [[[(list :outer [:not-inner])] ::throws]
                    [[{:outer {:inner "here"}}] "here"]
-                   [[{:outer {:not-inner 'foo}}] nil]]}])
+                   [[{:outer {:not-inner 'foo}}] nil]]}
+   {:var #'poly
+    :calls [[[1] 1]
+            [["kikka"] "kikka"]
+            [[] ::throws]
+            [[1 2] ::throws]]
+    :instrumented [[[1] 1]
+                   [["kikka"] "kikka"]
+                   [[] ::throws]
+                   [[1 2] ::throws]]}
+   {:var #'poly-usage
+    :calls [[[1] 1]
+            [[2] 2]
+            [[3] 3]
+            [[42] ::throws]
+            [["kikka"] "kikka"]
+            [[] ::throws]
+            [[1 2] ::throws]]
+    :instrumented [[[1] 1]
+                   [[2] 2]
+                   [[3] 3]
+                   [["kikka"] ::throws]
+                   [[42] ::throws]
+                   [[] ::throws]
+                   [[1 2] ::throws]]}
+   {:var #'assoc-x
+    :calls [[[{} 1] {:x 1}]
+            [[{:x 2} 3] {:x 3}]
+            [[{:x 2 :y 42} :breaks] {:y 42}]]
+    :instrumented [[[{} 1] {:x 1}]
+                   [[{:x 2} 3] {:x 3}]
+                   [[{:x 2 :y 42} :breaks] ::throws]]}])
 
 (defn -strument! [mode v]
   (with-out-str

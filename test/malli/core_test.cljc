@@ -3224,3 +3224,42 @@
                                              ::xymap [:merge ::xmap ::ymap]}}
                          ::xymap]
                         {:registry registry, ::m/ref-key :id}))))))))
+
+(deftest all-test
+  ;; no alpha-renaming needed
+  (is (= [:all [:x] [:=> [:cat :x] :x]]
+         (m/form (m/all [x] [:=> [:cat x] x]))))
+  ;; alpha-rename binder if clashing keyword in body form
+  (is (= [:all [:x0] [:=> [:x :x0] :x0]]
+         (m/form (m/all [x] [:=> [:x x] x]))))
+  (is (= [:all [:x] [:=> [:cat [:all [:y] :y]] :x]]
+         (m/form (m/all [x] [:=> [:cat (m/all [y] y)] x]))))
+  ;; alpha-rename outer binder if clashing :all inside (actually just 
+  ;; a naive keyword occurrence check on the form of the body).
+  (is (= [:all [:x0] [:=> [:cat [:all [:x] :x]] :x0]]
+         (m/form (m/all [x] [:=> [:cat (m/all [x] x)] x]))))
+  (is (= [:=> [:cat [:schema :any]] [:schema :any]]
+         (m/form (m/inst (m/all [x] [:=> [:cat x] x]) [:any]))))
+  (is (= [:=>
+          [:cat
+           [:schema [:all [:x] [:=> [:cat :x] :x]]]]
+          [:schema [:all [:x] [:=> [:cat :x] :x]]]]
+         (m/form (m/inst (m/all [x] [:=> [:cat x] x])
+                         [(m/all [x] [:=> [:cat x] x])])))) ;;FIXME
+  (is (= [:all [:y0] [:schema [:all [:y] :y]]]
+         (m/form (m/inst (m/all [x] (m/all [y] x))
+                         [(m/all [y] y)]))))
+  ;;TODO could be smarter here since no substitution occurs
+  (is (= [:all [:x1] :x1]
+         (m/form (m/inst (m/all [x] (m/all [x] x))
+                         [(m/all [x] x)]))))
+  (is (= [:=> [:cat [:schema :any]] [:schema :any]]
+         (m/form (m/deref (m/all [a] [:=> [:cat a] a])))))
+  (is (= [:=> [:cat [:schema [:maybe :map]] [:schema :any]]
+          [:merge [:schema [:maybe :map]] [:map [:x [:schema :any]]]]]
+         (m/form
+           (let [options {:registry (mr/composite-registry m/default-registry (mu/schemas))}]
+             (-> (m/all [[M [:maybe :map]] X] [:=> [:cat M X] [:merge M [:map [:x X]]]])
+                 (m/schema options)
+                 m/deref)))))
+)

@@ -176,6 +176,7 @@
 
 (defmethod accept :=> [_ _ _ _] {})
 (defmethod accept :function [_ _ _ _] {})
+(defmethod accept :all [_ schema _ {::keys [transform] :as options}] (transform (m/deref schema) options))
 (defmethod accept :ref [_ schema _ options] (-ref schema options))
 (defmethod accept :schema [_ schema _ options] (-schema schema options))
 (defmethod accept ::m/schema [_ schema _ options] (-schema schema options))

@@ -2,6 +2,7 @@
 (ns malli.generator
   (:require [clojure.spec.gen.alpha :as ga]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.test.check :as check]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
@@ -9,6 +10,7 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
+            [malli.util :as u]
             [malli.impl.util :refer [-last -merge]]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
@@ -561,9 +563,11 @@
 ;; functions
 ;;
 
+(def ^:private default-=>iterations 100)
+
 (defn function-checker
   ([?schema] (function-checker ?schema nil))
-  ([?schema {::keys [=>iterations] :or {=>iterations 100} :as options}]
+  ([?schema {::keys [=>iterations all-iterations] :or {=>iterations default-=>iterations all-iterations 10} :as options}]
    (let [schema (m/schema ?schema options)
          -try (fn [f] (try [(f) true] (catch #?(:clj Exception, :cljs js/Error) e [e false])))
          check (fn [schema]
@@ -590,6 +594,36 @@
        :=> (check schema)
        :function (let [checkers (map #(function-checker % options) (m/-children schema))]
                    (fn [x] (->> checkers (keep #(% x)) (seq))))
+       :all (fn [x]
+              (let [bounds (mapv (fn [{:keys [kind] :as m}]
+                                   (case kind
+                                     :Schema (:upper m)))
+                                 (m/-bounds schema))
+                    examples (mapv (fn [s]
+                                     (vec (sample s {:size all-iterations})))
+                                   bounds)
+                    {:keys [result shrunk]} (->> (prop/for-all* [(gen/bind (apply gen/tuple
+                                                                                  (map #(gen/fmap
+                                                                                          (fn [v]
+                                                                                            [:fn {:gen/return v} (fn [r] (= v r))])
+                                                                                          (gen/elements %)) examples))
+                                                                           (fn [schemas]
+                                                                             (let [schema (m/inst schema schemas options)]
+                                                                               (gen/return
+                                                                                 {:explain (delay
+                                                                                             ((function-checker
+                                                                                                schema
+                                                                                                (update options ::=>iterations
+                                                                                                        (fn [=>iterations]
+                                                                                                          (or =>iterations default-=>iterations))))
+                                                                                              x))
+                                                                                  :schemas schemas
+                                                                                  :schema schema}))))]
+                                                                (fn [{:keys [explain]}] (nil? @explain)))
+                                                 (check/quick-check all-iterations))
+                    smallest (-> shrunk :smallest first)]
+                (when-not (true? result)
+                  @(:explain smallest))))
        (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
 
 (defn check

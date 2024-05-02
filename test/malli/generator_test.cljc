@@ -1034,3 +1034,36 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/and-generator-failure"
         (mg/generate [:and pos? neg?]))))
+
+(deftest poly-generator-test
+  ;;TODO :P
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli.generator/no-generator"
+        (mg/generate (m/all [X] [:=> [:cat X] X]))))
+  ;;via deref
+  (is (= {} ((mg/generate (m/deref (m/all [X] [:=> [:cat X] X])) {:seed 1 :size 2}) 1))))
+
+(defn is-all-good [schema vs]
+  (testing "good"
+    (doseq [[i f] (map-indexed vector vs)]
+      (testing i
+        (is (nil? (mg/check schema f)))))))
+
+(defn is-all-bad  [schema vs]
+  (testing "bad"
+    (doseq [[i f] (map-indexed vector vs)]
+      (testing i
+        (is (mg/check schema f {::mg/all-iterations 1000}))))))
+
+(def good-identities [identity
+                      (fn [a] a)
+                      (fn [a] (identity a))])
+(def bad-identities [(fn [_] nil)
+                     (fn [a] (when (uuid? a) a))])
+
+(def identity-spec (m/all [a] [:=> [:cat a] a]))
+
+(deftest identity-test
+  (is-all-good identity-spec good-identities)
+  (is-all-bad identity-spec bad-identities))

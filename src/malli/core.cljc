@@ -2749,17 +2749,6 @@
                     binder)]
        `(-all-form '~binder (fn ~bv ~body)))))
 
-(defn -quoted [[q v :as l]]
-  (when-not (and (seq? l)
-                 (= 2 (count l))
-                 (= 'quote (first l)))
-    (-fail! ::children-of-all-schema-must-be-quoted
-            {:l l}))
-  (second v))
-
-(defn -binder [all]
-  (first (-children all)))
-
 (defn inst
   "Instantiate an :all schema with a vector of schemas. If a schema
   is nil, its upper bound will be used. If ?schemas is nil or not provided, same as

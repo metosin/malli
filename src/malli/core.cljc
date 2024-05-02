@@ -2661,7 +2661,7 @@
           (-explainer [this path]
             (if-let [checker (->checker this)]
               (fn explain [x in acc]
-                (if (not (fn? x))
+                (if (not (ifn? x))
                   (conj acc (miu/-error path in this x))
                   (if-let [res (checker x)]
                     (conj acc (assoc (miu/-error path in this x) :check res))

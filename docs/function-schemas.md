@@ -23,7 +23,6 @@
   * [Pretty Errors](#pretty-errors)
 * [Defn Schemas via metadata](#defn-schemas-via-metadata)
   * [TL;DR](#tldr)
-* [Polymorphic Functions](#polymorphic-schemas)
 
 ## Functions
 

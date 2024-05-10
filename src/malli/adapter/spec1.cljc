@@ -62,9 +62,6 @@
 (defn -spec [{:keys [s options]}]
   (assert (or (qualified-keyword? s)
               (s/spec? s)))
-  ^{'malli.generator/-generator
-    (fn [_ {::keys [overrides rmap] :as options}]
-      (s/gen* (s/spec s) overrides [] rmap))}
   (reify
     s/Specize
     (specize* [s] s)

@@ -5,6 +5,9 @@
             [malli.util :as mu]
             [clojure.spec.alpha :as s]))
 
+;;simpler cljs compat
+(def -malli-gen* (atom nil))
+
 (defn -malli
   [{:keys [m options]}]
   (assert (or (m/schema? m)
@@ -43,8 +46,9 @@
                       :in in #_(into in path) ;;FIXME
                       :val value}))))
       (gen* [_ overrides path rmap]
-        ((requiring-resolve 'malli.generator/generator)
-         (m/-update-options m #(into (or % {}) {::overrides overrides ::rmap rmap}))))
+        (if-some [gen* @-malli-gen*]
+          (gen* m overrides path rmap)
+          (throw (ex-info "must require malli.adapter.spec1.generator for spec1 adapter generator"))))
       (with-gen* [_ gfn]
         (malli
           (m/-update-properties m assoc :gen #(gfn))))

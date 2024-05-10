@@ -15,7 +15,6 @@
 (declare generator generate -create)
 
 (defprotocol Generator
-  :extend-via-metadata true
   (-generator [this options] "returns generator for schema"))
 
 ;;
@@ -501,8 +500,7 @@
 
 (defn- -create-from-gen
   [props schema options]
-  (or (when-some [g (:gen/gen props)]
-        (if (fn? g) (g) g))
+  (or (:gen/gen props)
       (when-not (:gen/elements props)
         (-generator schema options))))
 

@@ -1,7 +1,8 @@
 (ns malli.adapter.spec1-test
   (:require [malli.adapter.spec1 :as from]
-            [malli.registry :as mr]
             [malli.core :as m]
+            [malli.generator :as mg]
+            [malli.registry :as mr]
             [clojure.test :refer [deftest is]]
             [clojure.spec.alpha :as s]))
 (set! *print-namespace-maps* false)
@@ -16,7 +17,7 @@
 (def from-malli :int)
 
 (def malli-map-int-int
-  (schema [:map-of from-malli [::from/spec ::from-spec]]))
+  (schema [:map-of from-malli (from/spec ::from-spec)]))
 
 (s/def ::spec-map-int-int
   (s/map-of (from/malli from-malli options)
@@ -160,4 +161,9 @@
   (is (= {1 2 3 4} (m/unparse (from/spec ::spec-map-int-int) {1 2 3 4})))
   ;;unspecified, but returns {nil nil} instead of ::s/invalid here
   #_(is (= ::m/invalid (m/unparse (from/spec ::spec-map-int-int) {nil nil})))
+  )
+
+(deftest generator-test
+  (is (= 1784201 (mg/generate :int {:seed 0})))
+  (is (= 1784201 (mg/generate (from/spec ::from-spec) (assoc options :seed 0))))
   )

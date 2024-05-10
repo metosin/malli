@@ -1,4 +1,5 @@
 (ns malli.adapter.spec1
+  "Cannot validate values containing ::m/invalid or ::s/invalid."
   (:require [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.util :as mu]
@@ -85,11 +86,11 @@
                                                 :schema (-spec {:s (eval `(s/spec ~pred)) :options options})
                                                 :value val}))
                                    acc problems))))))
-    (-parser [this] #(let [c (s/conform* (s/spec s) %)]
+    (-parser [_] #(let [c (s/conform* (s/spec s) %)]
                        (if (s/invalid? c)
                          ::m/invalid
                          c)))
-    (-unparser [this] #(let [u (s/unform* (s/spec s) %)]
+    (-unparser [_] #(let [u (s/unform* (s/spec s) %)]
                          (if (s/invalid? u)
                            ::m/invalid
                            u)))

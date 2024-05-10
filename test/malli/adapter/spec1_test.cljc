@@ -116,6 +116,7 @@
          (-> (s/explain-data (from/malli malli-map-int-int) {nil nil :a :a})
              (update ::s/spec s/form)))))
 
+;;TODO non-trivial conform
 (deftest conform-test
   ;;reference 
   (is (= {} (s/conform ::spec-map-int-int {})))
@@ -134,4 +135,29 @@
   (is (= {} (m/parse (from/spec ::spec-map-int-int) {})))
   (is (= {1 2 3 4} (m/parse (from/spec ::spec-map-int-int) {1 2 3 4})))
   (is (= ::m/invalid (m/parse (from/spec ::spec-map-int-int) {nil nil})))
+  )
+
+;;TODO non-trivial unform
+(deftest unform-test
+  ;;reference 
+  (is (= {} (s/unform ::spec-map-int-int {})))
+  (is (= {1 2 3 4} (s/unform ::spec-map-int-int {1 2 3 4})))
+  ;;unspecified
+  #_(is (= {nil nil} (s/unform ::spec-map-int-int {nil nil})))
+
+  (is (= {} (s/unform (from/malli malli-map-int-int) {})))
+  (is (= {1 2 3 4} (s/unform (from/malli malli-map-int-int) {1 2 3 4})))
+  ;;unspecified, but returns ::s/invalid instead of {nil nil} here
+  #_(is (= {nil nil} (s/unform (from/malli malli-map-int-int) {nil nil})))
+
+  ;;reference 
+  (is (= {} (m/unparse malli-map-int-int {})))
+  (is (= {1 2 3 4} (m/unparse malli-map-int-int {1 2 3 4})))
+  ;;unspecified
+  #_(is (= ::m/invalid (m/unparse malli-map-int-int {nil nil})))
+
+  (is (= {} (m/unparse (from/spec ::spec-map-int-int) {})))
+  (is (= {1 2 3 4} (m/unparse (from/spec ::spec-map-int-int) {1 2 3 4})))
+  ;;unspecified, but returns {nil nil} instead of ::s/invalid here
+  #_(is (= ::m/invalid (m/unparse (from/spec ::spec-map-int-int) {nil nil})))
   )

@@ -8,6 +8,10 @@
 ;;simpler cljs compat
 (def -malli-gen* (atom nil))
 
+(defmacro malli
+  ([m] `(-malli {:m ~m}))
+  ([m options] `(-malli {:m ~m :options ~options})))
+
 (defn -malli
   [{:keys [m options]}]
   (assert (or (m/schema? m)
@@ -54,10 +58,6 @@
           (m/-update-properties m assoc :gen #(gfn))))
       (describe* [_]
         (list `malli (m/form m))))))
-
-(defmacro malli
-  ([m] `(-malli {:m ~m}))
-  ([m options] `(-malli {:m ~m :options ~options})))
 
 (defn -spec [{:keys [s options]}]
   (assert (or (qualified-keyword? s)

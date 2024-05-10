@@ -122,8 +122,16 @@
   (is (= {1 2 3 4} (s/conform ::spec-map-int-int {1 2 3 4})))
   (is (s/invalid? (s/conform ::spec-map-int-int {nil nil})))
 
+  (is (= {} (s/conform (from/malli malli-map-int-int) {})))
+  (is (= {1 2 3 4} (s/conform (from/malli malli-map-int-int) {1 2 3 4})))
+  (is (s/invalid? (s/conform (from/malli malli-map-int-int) {nil nil})))
+
   ;;reference 
   (is (= {} (m/parse malli-map-int-int {})))
   (is (= {1 2 3 4} (m/parse malli-map-int-int {1 2 3 4})))
   (is (= ::m/invalid (m/parse malli-map-int-int {nil nil})))
+
+  (is (= {} (m/parse (from/spec ::spec-map-int-int) {})))
+  (is (= {1 2 3 4} (m/parse (from/spec ::spec-map-int-int) {1 2 3 4})))
+  (is (= ::m/invalid (m/parse (from/spec ::spec-map-int-int) {nil nil})))
   )

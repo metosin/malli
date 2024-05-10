@@ -982,7 +982,8 @@
                                                       (if-let [e (find m key)]
                                                         (let [v (val e)
                                                               v* (parser v)]
-                                                          (cond (miu/-invalid? v*) (reduced v*) (identical? v* v) m
+                                                          (cond (miu/-invalid? v*) (reduced v*)
+                                                                (identical? v* v) m
                                                                 :else (assoc m key v*)))
                                                         (if optional m (reduced ::invalid))))))
                                                 @explicit-children)

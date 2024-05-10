@@ -165,5 +165,5 @@
 
 (deftest generator-test
   (is (= 1784201 (mg/generate :int {:seed 0})))
-  (is (= 1784201 (mg/generate (from/spec ::from-spec) (assoc options :seed 0))))
+  (is (= 1784201 (mg/generate (from/spec ::spec-map-int-int) (assoc options :seed 0))))
   )

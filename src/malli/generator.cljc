@@ -456,6 +456,20 @@
                       (-> (-min-max schema options)
                           (update :min #(some-> % double))
                           (update :max #(some-> % double))))))
+(defmethod -schema-generator :float [schema options]
+  (let [max-float #?(:clj Float/MAX_VALUE :cljs (.-MAX_VALUE js/Number))
+        min-float #?(:clj Float/MIN_VALUE :cljs (.-MIN_VALUE js/Number))
+        ceil-max (fn [v] (if (nil? v) max-float (min max-float v)))
+        floor-min (fn [v] (if (nil? v) min-float (max min-float v)))
+        props (m/properties schema options)
+        min-max-props (-min-max schema options)
+        infinite? (get props :gen/infinite? false)
+        NaN? (get props :gen/NaN? false)]
+    (gen/double* (merge {:infinite? infinite?
+                         :NaN? NaN?}
+                        (when (or (not infinite?) NaN?)
+                          {:min (floor-min (:min min-max-props))
+                           :max (ceil-max (:max min-max-props))})))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

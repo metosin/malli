@@ -68,6 +68,25 @@
       (is (test-presence special? {:gen/infinite? true
                                    :gen/NaN? true}))
       (is (not (test-presence special? nil)))))
+  
+  (testing "float properties"
+    (let [infinity? #(or (= % ##Inf)
+                         (= % ##-Inf))
+          NaN? (fn [x]
+                 (#?(:clj  (fn [v]
+                             (or (infinity? v) (Float/isNaN v)))
+                     :cljs js/isNaN)
+                  x))
+          special? #(or (NaN? %)
+                        (infinity? %))
+          test-presence (fn [f options]
+                          (some f (mg/sample [:float options]
+                                             {:size 1000})))]
+      (is (test-presence infinity? {:gen/infinite? true}))
+      (is (test-presence NaN? {:gen/NaN? true}))
+      (is (test-presence special? {:gen/infinite? true
+                                   :gen/NaN? true}))
+      (is (not (test-presence special? nil)))))
 
   (testing "qualified-keyword properties"
     (testing "no namespace => random"

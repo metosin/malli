@@ -39,7 +39,7 @@
                      {:path path
                       :pred (-> schema (malli options) s/form)
                       :via via
-                      :in (into in path)
+                      :in in #_(into in path) ;;FIXME
                       :val value}))))
       (gen* [_ overrides path rmap]
         ((requiring-resolve 'malli.generator/generator)
@@ -104,7 +104,7 @@
 
 (defmacro spec
   ([s] `(-spec {:s ~s}))
-  ([s options] `(-spec {:s ~s :options options})))
+  ([s options] `(-spec {:s ~s :options ~options})))
 
 (defn schemas []
   {::spec (mu/-util-schema {:type ::spec

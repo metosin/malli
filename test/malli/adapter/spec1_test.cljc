@@ -114,3 +114,8 @@
            ::s/value {nil nil, :a :a}}
          (-> (s/explain-data (from/malli malli-map-int-int) {nil nil :a :a})
              (update ::s/spec s/form)))))
+
+(deftest conform-test
+  ;;reference 
+  (s/conform ::mall)
+  )

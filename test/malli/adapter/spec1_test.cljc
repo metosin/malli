@@ -1,5 +1,6 @@
 (ns malli.adapter.spec1-test
   (:require [malli.adapter.spec1 :as from]
+            malli.adapter.spec1.generator
             [malli.core :as m]
             [malli.generator :as mg]
             [malli.registry :as mr]
@@ -165,5 +166,9 @@
 
 (deftest generator-test
   (is (= 1784201 (mg/generate :int {:seed 0})))
+  ;;FIXME
   (is (= 1784201 (mg/generate (from/spec ::spec-map-int-int) (assoc options :seed 0))))
+
+  (is (every? vector? (s/exercise int?)))
+  (is (every? vector? (s/exercise (from/malli :int options))))
   )

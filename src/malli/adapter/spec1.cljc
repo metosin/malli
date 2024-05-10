@@ -52,7 +52,8 @@
       (gen* [_ overrides path rmap]
         (if-some [gen* @-malli-gen*]
           (gen* m overrides path rmap)
-          (throw (ex-info "must require malli.adapter.spec1.generator for spec1 adapter generator"))))
+          (throw (ex-info "must require malli.adapter.spec1.generator for spec1 adapter generator"
+                          {}))))
       (with-gen* [_ gfn]
         (malli
           (m/-update-properties m assoc :gen #(gfn))))

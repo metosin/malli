@@ -124,7 +124,7 @@
 (defmacro spec
   ([s] `(spec ~s nil))
   ([s options] `(let [s# ~s]
-                  (m/schema (if (s/spec? s#)
-                              [::spec '~s s#]
-                              [::spec s#])
+                  (m/schema (if (keyword? s#)
+                              [::spec s#]
+                              [::spec '~s (s/spec s#)])
                             (update ~options :registry #(mr/composite-registry (schemas) (or % {})))))))

@@ -80,7 +80,7 @@
           :value {1 nil}
           :errors [{:path [1]
                     :in [1]
-                    :schema [::from/spec 'clojure.core/int?]
+                    :schema [:not {:malli.adapter.spec1/pred 'clojure.core/int?} :any]
                     :value nil}]}
          (-> (m/explain malli-map-int-int {1 nil} options)
              (update :schema m/form)
@@ -88,7 +88,7 @@
   (is (= {:schema [:map-of :int [:malli.adapter.spec1/spec :malli.adapter.spec1-test/from-spec]]
           :value {nil nil}
           :errors [{:path [0], :in [nil], :schema :int, :value nil}
-                   {:path [1], :in [nil], :schema [:malli.adapter.spec1/spec 'clojure.core/int?], :value nil}]}
+                   {:path [1], :in [nil], :schema [:not {:malli.adapter.spec1/pred 'clojure.core/int?} :any], :value nil}]}
          (-> (m/explain malli-map-int-int {nil nil} options)
              (update :schema m/form)
              (update :errors #(mapv (fn [m] (update m :schema m/form)) %)))))
@@ -109,9 +109,9 @@
   (is (= '{::s/problems
            ;;FIXME :in
            [{:path [0], :pred (malli.adapter.spec1/malli :int), :val nil, :via [], :in [nil #_0]}
-            {:path [1], :pred (malli.adapter.spec1/malli [:malli.adapter.spec1/spec clojure.core/int?]), :val nil, :via [], :in [nil #_1]}
+            {:path [1], :pred (malli.adapter.spec1/malli [:not {:malli.adapter.spec1/pred clojure.core/int?} :any]), :val nil, :via [], :in [nil #_1]}
             {:path [0], :pred (malli.adapter.spec1/malli :int), :val :a, :via [], :in [:a #_0]}
-            {:path [1], :pred (malli.adapter.spec1/malli [:malli.adapter.spec1/spec clojure.core/int?]), :val :a, :via [], :in [:a #_1]}]
+            {:path [1], :pred (malli.adapter.spec1/malli [:not {:malli.adapter.spec1/pred clojure.core/int?} :any]), :val :a, :via [], :in [:a #_1]}]
            ::s/spec (malli.adapter.spec1/malli [:map-of :int [:malli.adapter.spec1/spec :malli.adapter.spec1-test/from-spec]])
            ::s/value {nil nil, :a :a}}
          (-> (s/explain-data (from/malli malli-map-int-int) {nil nil :a :a})
@@ -165,7 +165,7 @@
 
 (deftest generator-test
   (is (= 1784201 (mg/generate :int {:seed 0})))
-  (is (= 1784201 (mg/generate (from/spec (s/spec int?)) {:seed 0})))
+  (is (= 1784201 (mg/generate (from/spec int?) {:seed 0})))
   (is (= {-4 -13, -3570485 1096685, -2 131807357, -13524428 39436, -14680951 1153921, 347743661 -2751,
           -103615943 -648438, -38928 -16, 69268 -107, 57 -1639299, -148186477 42426, -2983045 129753,
           -18747 -6, -30222466 28, 18476 65, -6893431 -605609}

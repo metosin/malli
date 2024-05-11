@@ -67,8 +67,6 @@
                           [children children (-spec {:s s :options options})])}))
 
 (defn -spec [{:keys [s options parent]}]
-  (assert (or (qualified-keyword? s)
-              (s/spec? s)))
   (reify
     s/Specize
     (specize* [s] s)

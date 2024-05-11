@@ -60,6 +60,12 @@
       (describe* [_]
         (list `malli (m/form m))))))
 
+(defn- -spec-schema-ctor []
+  (mu/-util-schema {:type ::spec
+                    :childs 1 :min 1 :max 1
+                    :fn (fn [_ [s :as children] options]
+                          [children children (-spec {:s s :options options})])}))
+
 (defn -spec [{:keys [s options]}]
   (assert (or (qualified-keyword? s)
               (s/spec? s)))
@@ -99,10 +105,10 @@
     (-transformer [this transformer method options]
       (assert nil "TODO spec -> -transformer"))
     (-walk [this walker path options] (m/-walk-leaf this walker path options))
-    (-properties [_] nil)
+    (-properties [_] {})
     (-options [_] options)
-    (-children [_] nil)
-    (-parent [_] nil)
+    (-children [_] [s])
+    (-parent [_] (-spec-schema-ctor))
     (-form [_] [::spec (s/form s)])))
 
 (defmacro spec
@@ -110,7 +116,4 @@
   ([s options] `(-spec {:s ~s :options ~options})))
 
 (defn schemas []
-  {::spec (mu/-util-schema {:type ::spec
-                            :childs 1 :min 1 :max 1
-                            :fn (fn [_ [s :as children] options]
-                                  [children children (-spec {:s s :options options})])})})
+  {::spec (-spec-schema-ctor)})

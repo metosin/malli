@@ -166,8 +166,10 @@
 
 (deftest generator-test
   (is (= 1784201 (mg/generate :int {:seed 0})))
-  ;;FIXME
-  (is (= 1784201 (mg/generate (from/spec ::spec-map-int-int) (assoc options :seed 0))))
+  (is (= {-4 -13, -3570485 1096685, -2 131807357, -13524428 39436, -14680951 1153921, 347743661 -2751,
+          -103615943 -648438, -38928 -16, 69268 -107, 57 -1639299, -148186477 42426, -2983045 129753,
+          -18747 -6, -30222466 28, 18476 65, -6893431 -605609}
+         (mg/generate (from/spec ::spec-map-int-int) (assoc options :seed 0))))
 
   (is (every? vector? (s/exercise int?)))
   (is (every? vector? (s/exercise (from/malli :int options))))

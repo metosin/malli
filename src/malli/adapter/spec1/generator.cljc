@@ -6,7 +6,7 @@
             [malli.generator :as mg]))
 
 (defmethod mg/-schema-generator ::from/spec [schema {::keys [overrides rmap] :as options}]
-  (s/gen* (-> schema m/children first) overrides [] rmap))
+  (s/gen* (-> schema m/children first s/spec) overrides [] rmap))
 
 (defn -malli-gen* [m overrides path rmap]
   (mg/generator

@@ -3262,6 +3262,8 @@ This is useful if you want to gradually port spec1 to malli or vice-versa.
 (m/form (from/spec int?))
 ;; => [::from/spec 'int? int?]
 
+;; they can be nested arbitrarily
+
 (mg/generate [:tuple
               (from/spec
                 (s/tuple
@@ -3269,6 +3271,23 @@ This is useful if you want to gradually port spec1 to malli or vice-versa.
                     [:tuple (from/spec int?)])))]
              {:seed 0})
 ;; => [[[0]]]
+
+;; you can gradually port spec to malli by using `from/malli` in s/def
+
+(def email-regex #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$")
+(s/def :acct/email-type (from/malli [:re email-regex]))
+
+(s/def :acct/first-name string?)
+(s/def :acct/last-name string?)
+(s/def :acct/email :acct/email-type)
+
+(s/def :acct/person (s/keys :req [:acct/first-name :acct/last-name :acct/email]))
+
+(s/valid? :acct/person
+  {:acct/first-name "Bugs"
+   :acct/last-name "Bunny"
+   :acct/email "bugs@example.com"})
+;; => true
 ```
 
 ## Built-in schemas

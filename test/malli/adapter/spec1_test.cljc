@@ -6,7 +6,6 @@
             [malli.registry :as mr]
             [clojure.test :refer [deftest is]]
             [clojure.spec.alpha :as s]))
-(set! *print-namespace-maps* false)
 
 (def options {:registry (mr/composite-registry
                           (m/default-schemas)
@@ -171,6 +170,15 @@
           -103615943 -648438, -38928 -16, 69268 -107, 57 -1639299, -148186477 42426, -2983045 129753,
           -18747 -6, -30222466 28, 18476 65, -6893431 -605609}
          (mg/generate (from/spec ::spec-map-int-int) (assoc options :seed 0))))
+
+  ;; use mg/sample to exercise s/gen's with seed
+  (is (= [0 -1 -1 -1 0 3 1 1 7 109]
+         (mg/sample (s/gen (from/malli :int options))
+                    {:seed 0})))
+  (is (= [0 -1 -1 -1 0 3 1 1 7 109]
+         (mg/sample (s/gen int?)
+                    {:seed 0})))
+
 
   (is (every? vector? (s/exercise int?)))
   (is (every? vector? (s/exercise (from/malli :int options))))

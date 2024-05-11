@@ -4,11 +4,6 @@
             [malli.core :as m]
             [malli.registry :as mr]))
 
-(def malli-options
-  {:registry (mr/composite-registry
-               (m/default-schemas)
-               (malli.adapter.spec1/schemas))})
-
 ;; to migrate from spec1 to malli, gradually replace spec registry
 ;; entries with malli schemas via the `from/malli` macro.
 ;; to escape back to spec inside malli, use `from/spec`.
@@ -18,12 +13,12 @@
 ;;old
 ;(s/def :acct/email-type (s/and string? #(re-matches email-regex %)))
 ;;new
-(s/def :acct/email-type (from/malli [:re email-regex] malli-options))
+(s/def :acct/email-type (from/malli [:re email-regex]))
 
 ;;old
 ;(s/def :acct/acctid int?)
 ;;new
-(s/def :acct/acctid (from/malli :int malli-options)) ;; new
+(s/def :acct/acctid (from/malli :int)) ;; new
 
 (s/def :acct/first-name string?)
 (s/def :acct/last-name string?)
@@ -31,8 +26,7 @@
 
 ;; example escaping back to spec from malli
 (s/def :person/relatives (from/malli [:sequential
-                                      (from/spec :acct/person malli-options)]
-                                     malli-options))
+                                      (from/spec :acct/person)]))
 
 (s/def :acct/person (s/keys :req [:acct/first-name :acct/last-name :acct/email]
                             :opt [:demo-escape-spec/recursive :acct/phone]))

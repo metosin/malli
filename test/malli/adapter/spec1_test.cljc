@@ -183,3 +183,14 @@
   (is (every? vector? (s/exercise int?)))
   (is (every? vector? (s/exercise (from/malli :int options))))
   )
+
+(deftest readme-test
+  (is (= (s/form (from/malli :int))
+         `(from/malli :int)))
+  (is (= (m/form (from/malli :int))
+         :int))
+  (is (= (s/form (from/spec int?))
+         'int?))
+  (is (= (m/form (from/spec int?))
+         [:malli.adapter.spec1/spec 'int? int?]))
+  )

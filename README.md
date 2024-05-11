@@ -3236,8 +3236,23 @@ Malli schemas can be made compatible with other runtime verification libraries.
 
 ### Spec1 Adapter
 
-Malli schemas and spec1 specs can be mixed using
-`malli.adapter.spec1` contains 
+Malli schemas and spec1 specs can be mixed using the macros in `malli.adapter.spec1`.
+This is useful if you want to gradually port spec1 to malli or vice-versa.
+
+```clojure
+(require '[malli.adapter.spec1 :as from]
+         '[clojure.spec.alpha :as s]
+         '[malli.core :as m)
+
+(def malli-to-spec (from/malli :int))
+(def spec-to-malli (from/spec int?))
+
+(s/form malli-to-spec)
+;; => `(from/malli :int)
+
+(m/form malli-to-spec)
+;; => :int
+```
 
 ## Built-in schemas
 

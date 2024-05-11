@@ -6,17 +6,15 @@
             [clojure.spec.alpha :as s]))
 
 ;;simpler cljs compat
-(defonce -malli-gen* (atom nil))
+(defonce ^:internal -malli-gen* (atom nil))
 
-(defmacro malli
-  ([m] `(-malli {:m ~m}))
-  ([m options] `(-malli {:m ~m :options ~options})))
+#?(:clj
+   (defmacro malli
+     ([m] `(-malli {:m ~m}))
+     ([m options] `(-malli {:m ~m :options ~options}))))
 
 (defn ^:internal -malli
   [{:keys [m options]}]
-  (assert (or (m/schema? m)
-              (some? options))
-          "malli: Must provide options or Schema")
   (let [m (m/schema m options)]
     (reify
       m/Schema
@@ -116,15 +114,16 @@
           (explain* [_ path via in x] (s/explain* (s/spec s) path via in x))
           (gen* [_ overrides path rmap] (s/gen* (s/spec s) overrides path rmap))
           (with-gen* [_ gfn] (s/with-gen s gfn))
-          (describe* [_] s))))))
+          (describe* [_] (if (keyword? s) s (s/describe s))))))))
 
 (defn schemas []
   {::spec (-spec-into-schema {})})
 
-(defmacro spec
-  ([s] `(spec ~s nil))
-  ([s options] `(let [s# ~s]
-                  (m/schema (if (keyword? s#)
-                              [::spec s#]
-                              [::spec '~s (s/spec s#)])
-                            (update ~options :registry #(mr/composite-registry (schemas) (or % {})))))))
+#?(:clj
+   (defmacro spec
+     ([s] `(spec ~s nil))
+     ([s options] `(let [s# ~s]
+                     (m/schema (if (keyword? s#)
+                                 [::spec s#]
+                                 [::spec '~s s#])
+                               (update ~options :registry #(mr/composite-registry (schemas) (or % {}))))))))

@@ -30,7 +30,7 @@
 
 (deftest form-test
   (is (= {:m/form :int
-          :s/form `(from/malli :int options)}
+          :s/form `(from/malli :int)}
          (forms (from/malli from-malli options))
          (forms (from/malli (schema from-malli)))))
   (is (= {:m/form [::from/spec ::from-spec]
@@ -166,6 +166,7 @@
 
 (deftest generator-test
   (is (= 1784201 (mg/generate :int {:seed 0})))
+  (is (= 1784201 (mg/generate (from/spec (s/spec int?)) {:seed 0})))
   (is (= {-4 -13, -3570485 1096685, -2 131807357, -13524428 39436, -14680951 1153921, 347743661 -2751,
           -103615943 -648438, -38928 -16, 69268 -107, 57 -1639299, -148186477 42426, -2983045 129753,
           -18747 -6, -30222466 28, 18476 65, -6893431 -605609}

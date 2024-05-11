@@ -6,7 +6,7 @@
             [clojure.spec.alpha :as s]))
 
 ;;simpler cljs compat
-(def -malli-gen* (atom nil))
+(defonce -malli-gen* (atom nil))
 
 (defmacro malli
   ([m] `(-malli {:m ~m}))
@@ -60,13 +60,13 @@
       (describe* [_]
         (list `malli (m/form m))))))
 
-(defn- -spec-schema-ctor []
+(defn- -spec-into-schema []
   (mu/-util-schema {:type ::spec
                     :childs 1 :min 1 :max 1
                     :fn (fn [_ [s :as children] options]
                           [children children (-spec {:s s :options options})])}))
 
-(defn -spec [{:keys [s options]}]
+(defn -spec [{:keys [s options parent]}]
   (assert (or (qualified-keyword? s)
               (s/spec? s)))
   (reify
@@ -108,12 +108,13 @@
     (-properties [_] {})
     (-options [_] options)
     (-children [_] [s])
-    (-parent [_] (-spec-schema-ctor))
-    (-form [_] [::spec (s/form s)])))
+    (-parent [_] (-spec-into-schema))
+    (-form [_] [::spec (cond-> s
+                         (s/spec? s) s/form)])))
 
 (defmacro spec
   ([s] `(-spec {:s ~s}))
   ([s options] `(-spec {:s ~s :options ~options})))
 
 (defn schemas []
-  {::spec (-spec-schema-ctor)})
+  {::spec (-spec-into-schema)})

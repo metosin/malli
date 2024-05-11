@@ -3242,7 +3242,9 @@ This is useful if you want to gradually port spec1 to malli or vice-versa.
 ```clojure
 (require '[malli.adapter.spec1 :as from]
          '[clojure.spec.alpha :as s]
-         '[malli.core :as m)
+         '[malli.core :as m]
+         ;; require this namespace for generator support
+         'malli.adapter.spec1.generator)
 
 ;; use from/malli to wrap a Malli Schema to also work with spec functions
 
@@ -3259,6 +3261,14 @@ This is useful if you want to gradually port spec1 to malli or vice-versa.
 
 (m/form (from/spec int?))
 ;; => [::from/spec 'int? int?]
+
+(mg/generate [:tuple
+              (from/spec
+                (s/tuple
+                  (from/malli
+                    [:tuple (from/spec int?)])))]
+             {:seed 0})
+;; => [[[0]]]
 ```
 
 ## Built-in schemas

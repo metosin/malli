@@ -193,4 +193,12 @@
          'int?))
   (is (= (m/form (from/spec int?))
          [:malli.adapter.spec1/spec 'int? int?]))
+
+  (is (= (mg/generate [:tuple
+                       (from/spec
+                         (s/tuple
+                           (from/malli
+                             [:tuple (from/spec int?)])))]
+                      {:seed 0})
+         [[[0]]]))
   )

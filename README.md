@@ -3244,14 +3244,21 @@ This is useful if you want to gradually port spec1 to malli or vice-versa.
          '[clojure.spec.alpha :as s]
          '[malli.core :as m)
 
-(def malli-to-spec (from/malli :int))
-(def spec-to-malli (from/spec int?))
+;; use from/malli to wrap a Malli Schema to also work with spec functions
 
-(s/form malli-to-spec)
+(s/form (from/malli :int))
 ;; => `(from/malli :int)
 
-(m/form malli-to-spec)
+(m/form (from/malli :int))
 ;; => :int
+
+;; use from/spec to wrap a Spec1 spec to also work with malli functions
+
+(s/form (from/spec int?))
+;; => 'int?
+
+(m/form (from/spec int?))
+;; => [::from/spec 'int? int?]
 ```
 
 ## Built-in schemas

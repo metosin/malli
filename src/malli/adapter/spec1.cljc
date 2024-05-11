@@ -60,26 +60,20 @@
       (describe* [_]
         (list `malli (m/form m))))))
 
-(defn- -spec-into-schema []
-  (mu/-util-schema {:type ::spec
-                    :childs 1 :min 1 :max 1
-                    :fn (fn [_ [s :as children] options]
-                          [children children (-spec {:s s :options options})])}))
-
-(defn ^:internal -spec-into-schema [{:keys [s options parent type] :or {type ::spec}}]
+(defn ^:internal -spec-into-schema [{:keys [type] :or {type ::spec}}]
   (reify
     m/IntoSchema
     (-type [_] type)
-    (-type-properties [_] type-properties)
+    (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
-      (m/-check-children! type properties children 1 1)
+      ;; [::spec ::kw]
+      ;; [::spec form spec]
+      (m/-check-children! type properties children 1 2)
       ^{:type ::m/schema}
-      (let [s (first children)
-            form (delay (m/-create-form type properties [(cond-> s
-                                                           ;;good idea??
-                                                           (s/spec s) (s/form s))] options))
+      (let [s (peek children)
+            form (delay (m/-create-form type properties children options))
             cache (m/-create-cache options)]
         (reify
           m/Schema
@@ -93,8 +87,7 @@
                                          (fn [acc {path' :path in' :in :keys [pred val via]}]
                                            (conj acc {:path path'
                                                       :in in'
-                                                      ;;FIXME don't try and recover a schema here, pred is not a schema form
-                                                      :schema (-spec {:s (eval `(s/spec ~pred)) :options options})
+                                                      :schema (m/schema [:not {::pred pred} :any])
                                                       :value val}))
                                          acc problems))))))
           (-parser [_] #(let [c (s/conform* (s/spec s) %)]
@@ -112,8 +105,7 @@
           (-options [_] options)
           (-children [_] children)
           (-parent [_] parent)
-          (-form [_] [::spec (cond-> s
-                               (s/spec? s) s/form)])
+          (-form [_] @form)
 
           s/Specize
           (specize* [s] s)
@@ -127,8 +119,12 @@
           (describe* [_] s))))))
 
 (defn schemas []
-  {::spec (-spec-into-schema)})
+  {::spec (-spec-into-schema {})})
 
 (defmacro spec
   ([s] `(spec ~s nil))
-  ([s options] `(m/schema [::spec ~s] (update ~options :registry #(mr/composite-registry (schemas) (or % {}))))))
+  ([s options] `(let [s# ~s]
+                  (m/schema (if (s/spec? s#)
+                              [::spec '~s s#]
+                              [::spec s#])
+                            (update ~options :registry #(mr/composite-registry (schemas) (or % {})))))))

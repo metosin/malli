@@ -12,7 +12,7 @@
   ([m] `(-malli {:m ~m}))
   ([m options] `(-malli {:m ~m :options ~options})))
 
-(defn -malli
+(defn ^:internal -malli
   [{:keys [m options]}]
   (assert (or (m/schema? m)
               (some? options))
@@ -66,53 +66,69 @@
                     :fn (fn [_ [s :as children] options]
                           [children children (-spec {:s s :options options})])}))
 
-(defn -spec [{:keys [s options parent]}]
+(defn ^:internal -spec-into-schema [{:keys [s options parent type] :or {type ::spec}}]
   (reify
-    s/Specize
-    (specize* [s] s)
-    (specize* [s _] s)
-    s/Spec
-    (conform* [_ x] (s/conform s x))
-    (unform* [_ x] (s/unform s x))
-    (explain* [_ path via in x] (s/explain* (s/spec s) path via in x))
-    (gen* [_ overrides path rmap] (s/gen* (s/spec s) overrides path rmap))
-    (with-gen* [_ gfn] (s/with-gen s gfn))
-    (describe* [_] s)
-    m/Schema
-    (-validator [_] (fn _validator [x] (s/valid? s x)))
-    (-explainer [_ path] (fn _explainer [x in acc]
-                           (let [r (s/explain-data* (s/spec s) path [] in x)]
-                             (if (nil? r)
-                               acc
-                               (let [{::s/keys [problems spec value]} r]
-                                 (reduce
-                                   (fn [acc {path' :path in' :in :keys [pred val via]}]
-                                     (conj acc {:path path'
-                                                :in in'
-                                                :schema (-spec {:s (eval `(s/spec ~pred)) :options options})
-                                                :value val}))
-                                   acc problems))))))
-    (-parser [_] #(let [c (s/conform* (s/spec s) %)]
-                       (if (s/invalid? c)
-                         ::m/invalid
-                         c)))
-    (-unparser [_] #(let [u (s/unform* (s/spec s) %)]
-                         (if (s/invalid? u)
-                           ::m/invalid
-                           u)))
-    (-transformer [this transformer method options]
-      (assert nil "TODO spec -> -transformer"))
-    (-walk [this walker path options] (m/-walk-leaf this walker path options))
-    (-properties [_] {})
-    (-options [_] options)
-    (-children [_] [s])
-    (-parent [_] (-spec-into-schema))
-    (-form [_] [::spec (cond-> s
-                         (s/spec? s) s/form)])))
+    m/IntoSchema
+    (-type [_] type)
+    (-type-properties [_] type-properties)
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent properties children options]
+      (m/-check-children! type properties children 1 1)
+      ^{:type ::m/schema}
+      (let [s (first children)
+            form (delay (m/-create-form type properties [(cond-> s
+                                                           ;;good idea??
+                                                           (s/spec s) (s/form s))] options))
+            cache (m/-create-cache options)]
+        (reify
+          m/Schema
+          (-validator [_] (fn _validator [x] (s/valid? s x)))
+          (-explainer [_ path] (fn _explainer [x in acc]
+                                 (let [r (s/explain-data* (s/spec s) path [] in x)]
+                                   (if (nil? r)
+                                     acc
+                                     (let [{::s/keys [problems spec value]} r]
+                                       (reduce
+                                         (fn [acc {path' :path in' :in :keys [pred val via]}]
+                                           (conj acc {:path path'
+                                                      :in in'
+                                                      ;;FIXME don't try and recover a schema here, pred is not a schema form
+                                                      :schema (-spec {:s (eval `(s/spec ~pred)) :options options})
+                                                      :value val}))
+                                         acc problems))))))
+          (-parser [_] #(let [c (s/conform* (s/spec s) %)]
+                          (if (s/invalid? c)
+                            ::m/invalid
+                            c)))
+          (-unparser [_] #(let [u (s/unform* (s/spec s) %)]
+                            (if (s/invalid? u)
+                              ::m/invalid
+                              u)))
+          (-transformer [this transformer method options]
+            (m/-intercepting (m/-value-transformer transformer this method options)))
+          (-walk [this walker path options] (m/-walk-leaf this walker path options))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] parent)
+          (-form [_] [::spec (cond-> s
+                               (s/spec? s) s/form)])
 
-(defmacro spec
-  ([s] `(-spec {:s ~s}))
-  ([s options] `(-spec {:s ~s :options ~options})))
+          s/Specize
+          (specize* [s] s)
+          (specize* [s _] s)
+          s/Spec
+          (conform* [_ x] (s/conform s x))
+          (unform* [_ x] (s/unform s x))
+          (explain* [_ path via in x] (s/explain* (s/spec s) path via in x))
+          (gen* [_ overrides path rmap] (s/gen* (s/spec s) overrides path rmap))
+          (with-gen* [_ gfn] (s/with-gen s gfn))
+          (describe* [_] s))))))
 
 (defn schemas []
   {::spec (-spec-into-schema)})
+
+(defmacro spec
+  ([s] `(spec ~s nil))
+  ([s options] `(m/schema [::spec ~s] (update ~options :registry #(mr/composite-registry (schemas) (or % {}))))))

@@ -30,6 +30,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
+- Adapters for [Spec](#spec1-adapter)
 
 Presentations:
 
@@ -3228,6 +3229,15 @@ The transformation engine is smart enough to just transform parts of the schema 
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
 ```
+
+## Runtime Adapters
+
+Malli schemas can be made compatible with other runtime verification libraries.
+
+### Spec1 Adapter
+
+Malli schemas and spec1 specs can be mixed using
+`malli.adapter.spec1` contains 
 
 ## Built-in schemas
 

@@ -1,5 +1,6 @@
 (ns malli.adapter.spec1
   "Cannot validate values containing ::m/invalid or ::s/invalid."
+  #?(:cljs (:require-macros malli.adapter.spec1))
   (:require [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.util :as mu]

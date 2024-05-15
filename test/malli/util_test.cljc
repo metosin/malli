@@ -5,6 +5,7 @@
             [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
+            [malli.transform :as mt]
             [malli.util :as mu]))
 
 #?(:clj (defn from-json [s]
@@ -1019,3 +1020,21 @@
         :map
         :invalid
         identity))))
+
+(deftest transform-merge-test
+  (is (= {:name "kikka"
+          :description "kikka"}
+         (m/decode
+           [:map
+            [:name [:string {:default "kikka"}]]
+            [:description {:optional true} [:string {:default "kikka"}]] ]
+           {}
+           {:registry (merge (mu/schemas) (m/default-schemas))}
+           (mt/default-value-transformer {::mt/add-optional-keys true}))
+         (m/decode
+           [:merge
+            [:map [:name [:string {:default "kikka"}]] ]
+            [:map [:description {:optional true} [:string {:default "kikka"}]]]]
+           {}
+           {:registry (merge (mu/schemas) (m/default-schemas))}
+           (mt/default-value-transformer {::mt/add-optional-keys true})))))

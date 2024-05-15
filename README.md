@@ -1177,7 +1177,7 @@ Proxy schemas like `:merge` and `:union` transform as if `m/deref`ed.
   {:registry (merge (mu/schemas) (m/default-schemas))}
   (mt/default-value-transformer {::mt/add-optional-keys true}))
 ;; => {:name "kikka"
-       :description "kikka"}
+;;     :description "kikka"}
 ```
 
 ## To and from JSON

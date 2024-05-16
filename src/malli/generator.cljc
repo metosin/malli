@@ -465,11 +465,13 @@
         min-max-props (-min-max schema options)
         infinite? (get props :gen/infinite? false)
         NaN? (get props :gen/NaN? false)]
-    (gen/double* (merge {:infinite? infinite?
-                         :NaN? NaN?}
-                        (when (or (not infinite?) NaN?)
-                          {:min (floor-min (:min min-max-props))
-                           :max (ceil-max (:max min-max-props))})))))
+    (->> (merge {:infinite? infinite?
+                 :NaN? NaN?}
+                (when (or (not infinite?) NaN?)
+                  {:min (floor-min (:min min-max-props))
+                   :max (ceil-max (:max min-max-props))}))
+         (gen/double*)
+         (gen/fmap float))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

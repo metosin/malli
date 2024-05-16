@@ -1,5 +1,6 @@
 (ns malli.constraint.keyset.humanize
-  )
+  (:require [malli.core :as m]
+            [malli.impl.util :as miu]))
 
 (defn humanizers []
   {;;TODO [:not :disjoint]
@@ -24,4 +25,12 @@
    [:not :contains] (fn [{:keys [constraint validator value]} _]
                       (when-not (validator value)
                         (str "should not provide key: " (pr-str (nth constraint 1)))))
-   })
+   :dispatch (fn [{:keys [constraint value constraint-validator humanize-constraint-violation]} options]
+               (when-not (next constraint)
+                 (miu/-fail! ::dispatch-constraint-must-supply-dispatch-fn {:constraint constraint}))
+               (let [[_ dispatch & clauses] constraint
+                     dispatch (m/eval dispatch options)
+                     {::m/keys [default] :as dispatch-map} (into {} clauses)
+                     c (dispatch-map (dispatch value) default)]
+                 (when-not ((constraint-validator c) value)
+                   (humanize-constraint-violation c))))})

@@ -581,6 +581,51 @@ For multiple sets of disjoint keys, nest `:disjoint` in `:and`.
 ; => ["should not combine key :left with key: :right"]
 ```
 
+The `:dispatch` constraint works similarly to the `:dispatch` schema, except
+it maps dispatch values to constraints instead of schemas.
+
+```clojure
+(def DatomicValueType
+  [:map {:dispatch [:db/valueType
+                    [:db.type/tuple [:xor :db/tupleType :db/tupleAttrs :db/tupleTypes]]
+                    [:db.type/bigint :any]
+                    [:db.type/boolean :any]
+                    [:db.type/double :any]
+                    [:db.type/float :any]
+                    ;; etc https://docs.datomic.com/schema/schema-reference.html#db-valuetype
+                    [::m/default :any]]}
+   [:db/valueType :keyword]
+   [:db/tupleType {:optional true} keyword?]
+   [:db/tupleTypes {:optional true} [:sequential keyword?]]
+   [:db/tupleAttrs {:optional true} [:sequential keyword?]]])
+
+(m/validate DatomicValueType
+            {:db/valueType :db.type/tuple
+             :db/tupleTypes [:db.type/long :db.type/long]})
+;; => true
+
+(m/validate DatomicValueType
+            {:db/valueType :db.type/tuple
+             :db/tupleAttrs [:semester/year :semester/season]})
+;; => true
+
+
+(me/humanize (m/explain DatomicValueType {:db/valueType :db.type/tuple}))
+;; => [[:xor
+;;      "should provide key: :db/tupleType"
+;;      "should provide key: :db/tupleAttrs"
+;;      "should provide key: :db/tupleTypes"]]
+
+(me/humanize
+  (m/explain DatomicValueType
+             {:db/valueType :db.type/tuple
+              :db/tupleType :db.type/keyword
+              :db/tupleAttrs [:semester/year :semester/season]}))
+;; => [[:xor
+;;      "should not provide key: :db/tupleType"
+;;      "should not provide key: :db/tupleAttrs"]]
+```
+
 The `:and` constraint requires all of its children to be satisfied.
 
 In this example, we nest `:and` in `:or` to assert that either a secret or

@@ -607,3 +607,59 @@
                     :min 2}
               [:enum :a :b]]
              #{:a :b}))
+
+(def DatomicValueType
+  [:map {:dispatch [:db/valueType
+                    [:db.type/tuple [:xor :db/tupleType :db/tupleAttrs :db/tupleTypes]]
+                    [:db.type/bigint :any]
+                    [:db.type/boolean :any]
+                    [:db.type/double :any]
+                    [:db.type/float :any]
+                    ;; etc https://docs.datomic.com/schema/schema-reference.html#db-valuetype
+                    [::m/default :any]]}
+   [:db/valueType :keyword]
+   [:db/tupleType {:optional true} keyword?]
+   [:db/tupleTypes {:optional true} [:sequential keyword?]]
+   [:db/tupleAttrs {:optional true} [:sequential keyword?]]])
+
+(deftest datomic-tuple-test
+  (is (m/validate DatomicValueType
+                  {:db/valueType :db.type/tuple
+                   :db/tupleTypes [:db.type/long :db.type/long]}))
+  (is (nil? (m/explain
+              DatomicValueType
+              {:db/valueType :db.type/tuple
+               :db/tupleTypes [:db.type/long :db.type/long]})))
+  (is (m/validate DatomicValueType
+                  {:db/valueType :db.type/tuple
+                   :db/tupleAttrs [:semester/year :semester/season]}))
+  (is (nil? (m/explain
+              DatomicValueType
+              {:db/valueType :db.type/tuple
+               :db/tupleAttrs [:semester/year :semester/season]})))
+  (is (m/validate DatomicValueType
+                  {:db/valueType :db.type/tuple
+                   :db/tupleType :db.type/keyword}))
+  (is (nil? (m/explain
+              DatomicValueType
+              {:db/valueType :db.type/tuple
+               :db/tupleType :db.type/keyword})))
+  (is (not (m/validate DatomicValueType {:db/valueType :db.type/tuple})))
+  (is (m/explain DatomicValueType {:db/valueType :db.type/tuple}))
+  (is (= [[:xor
+           "should provide key: :db/tupleType"
+           "should provide key: :db/tupleAttrs"
+           "should provide key: :db/tupleTypes"]]
+         (me/humanize (m/explain DatomicValueType {:db/valueType :db.type/tuple}))))
+  (is (not (m/validate DatomicValueType
+                       {:db/valueType :db.type/tuple
+                        :db/tupleType :db.type/keyword
+                        :db/tupleAttrs [:semester/year :semester/season]})))
+  (is (= [[:xor
+           "should not provide key: :db/tupleType"
+           "should not provide key: :db/tupleAttrs"]]
+         (me/humanize
+           (m/explain DatomicValueType
+                      {:db/valueType :db.type/tuple
+                       :db/tupleType :db.type/keyword
+                       :db/tupleAttrs [:semester/year :semester/season]})))))

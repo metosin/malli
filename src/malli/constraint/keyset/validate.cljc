@@ -1,5 +1,6 @@
 (ns malli.constraint.keyset.validate
   (:require [clojure.set :as set]
+            [malli.core :as m]
             [malli.impl.util :as miu]))
 
 (defn validators []
@@ -32,4 +33,13 @@
                                          ps)]
                     (or (empty? rs)
                         (not (next rs))))))
+   :dispatch (fn [{:keys [constraint constraint-validator]} options]
+               (when-not (next constraint)
+                 (miu/-fail! ::dispatch-constraint-must-supply-dispatch-fn {:constraint constraint}))
+               (let [[_ dispatch & clauses] constraint
+                     dispatch (m/eval dispatch options)
+                     {::m/keys [default] :as dispatch-map} (into {} (map (fn [[k v]]
+                                                                           [k (constraint-validator v)]))
+                                                                 clauses)]
+                 (fn [x] (if-let [validator (dispatch-map (dispatch x) default)] (validator x) false))))
    })

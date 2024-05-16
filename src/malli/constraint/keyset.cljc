@@ -8,7 +8,7 @@
   (let [constraint-types (into {} (map (juxt identity identity))
                                (concat composite-constraint-types
                                        ;;TODO :sorted
-                                       [:disjoint :max :min :contains]))
+                                       [:disjoint :max :min :contains :dispatch]))
         generator-constraint-types (-generator-types (keys constraint-types))
         validator-constraint-types (-> constraint-types
                                        ;; :gen/foo :=> :any
@@ -20,7 +20,7 @@
      :flat-property-keys (into #{} (mapcat -add-gen-key)
                                #{:not :contains})
      :nested-property-keys (into #{} (mapcat -add-gen-key)
-                                 (-> composite-constraint-types (disj :not) (conj :disjoint)))
+                                 (-> composite-constraint-types (disj :not) (conj :disjoint :dispatch)))
      :validator-constraint-types validator-constraint-types
      :generator-constraint-types (into validator-constraint-types
                                        generator-constraint-types)}))

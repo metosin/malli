@@ -1147,6 +1147,7 @@ Going crazy:
    [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
   "kerran" mt/string-transformer)
 ;; => "3_1_kerran_2_4"
+```
 
 `:or` transforms using the first successful schema, left-to-right.
 

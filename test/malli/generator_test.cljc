@@ -77,12 +77,16 @@
                              (or (infinity? v) (Float/isNaN v)))
                      :cljs js/isNaN)
                   x))
+          is-float? (fn [n]
+                      #?(:clj (instance? Float n)
+                         :cljs (float? n)))
           special? #(or (NaN? %)
                         (infinity? %))
           test-presence (fn [f options]
                           (some f (mg/sample [:float options]
                                              {:size 1000})))]
       (is (test-presence (comp not infinity?) {:gen/infinite? true}))
+      (is (test-presence is-float? {}))
       (is (test-presence NaN? {:gen/NaN? true}))
       (is (test-presence special? {:gen/infinite? true
                                    :gen/NaN? true}))

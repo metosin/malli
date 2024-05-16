@@ -183,10 +183,10 @@
               (let [expanded (expand k v acc options)
                     parameters (:parameters expanded)
                     responses (:responses expanded)
-                    definitions (if parameters
-                                  (-> parameters first :schema :definitions)
-                                  (->> responses vals (map :schema)
-                                       (map :definitions) (apply merge)))]
+                    definitions (apply merge
+                                       (concat
+                                        (->> responses vals (map (comp :definitions :schema)))
+                                        (->> parameters (map (comp :definitions :schema)))))]
                 (-> acc (dissoc k) (merge expanded)
                     (update :definitions merge definitions)
                     dissoc-non-root-definitions))

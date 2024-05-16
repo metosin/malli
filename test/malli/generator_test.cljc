@@ -68,7 +68,7 @@
       (is (test-presence special? {:gen/infinite? true
                                    :gen/NaN? true}))
       (is (not (test-presence special? nil)))))
-  
+
   (testing "float properties"
     (let [infinity? #(or (= % ##Inf)
                          (= % ##-Inf))

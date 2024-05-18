@@ -73,8 +73,7 @@
     (let [infinity? #(or (= % ##Inf)
                          (= % ##-Inf))
           NaN? (fn [x]
-                 (#?(:clj  (fn [v]
-                             (or (infinity? v) (Float/isNaN v)))
+                 (#?(:clj  Float/isNaN
                      :cljs js/isNaN)
                   x))
           is-float? (fn [n]

@@ -465,8 +465,9 @@
         min-max-props (-min-max schema options)
         min-max-clamped #?(:clj {:min (floor-min (:min min-max-props))
                                  :max (ceil-max (:max min-max-props))}
-                           :cljs min-max-props)]
-    (->> (merge {:infinite? false
+                           :cljs min-max-props)
+        infinite? #?(:clj false :cljs (get props :gen/infinite? false))]
+    (->> (merge {:infinite? infinite?
                  :NaN? (get props :gen/NaN? false)}
                 min-max-clamped)
          (gen/double*)

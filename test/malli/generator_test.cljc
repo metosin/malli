@@ -84,7 +84,7 @@
           test-presence (fn [f options]
                           (some f (mg/sample [:float options]
                                              {:size 1000})))]
-      (is (test-presence (comp not infinity?) {:gen/infinite? true}))
+      (is (test-presence #?(:clj (comp not infinity?) :cljs infinity?) {:gen/infinite? true}))
       (is (test-presence is-float? {}))
       (is (test-presence NaN? {:gen/NaN? true}))
       (is (test-presence special? {:gen/infinite? true

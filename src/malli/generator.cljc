@@ -469,7 +469,9 @@
         infinite? #?(:clj false :cljs (get props :gen/infinite? false))]
     (->> (merge {:infinite? infinite?
                  :NaN? (get props :gen/NaN? false)}
-                min-max-clamped)
+                (-> min-max-clamped
+                    (update :min #(some-> % float))
+                    (update :max #(some-> % float))))
          (gen/double*)
          (gen/fmap float))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)

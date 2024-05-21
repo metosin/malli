@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Fix Swagger definitions collecting [#1002](https://github.com/metosin/malli/issues/1002)
+
 ## 0.16.1 (2024-04-30)
 
 * Enabled Java8 tests back, no need to limit the version.

@@ -56,9 +56,9 @@
                       (reduce-kv assoc-in {})
                       (assoc options :data)
                       (mi/instrument!))
-                 (clj-kondo/emit!))]
+                 (clj-kondo/emit! options))]
      (add-watch @#'m/-function-schemas* ::watch watch))
    (let [count (->> (mi/instrument! options) (count))]
      (when (pos? count) (-log! (format "instrumented %d function vars" count))))
-   (clj-kondo/emit!)
+   (clj-kondo/emit! options)
    (-log! "dev-mode started")))

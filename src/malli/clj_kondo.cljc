@@ -206,7 +206,9 @@
    {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
-   (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+   (defn emit!
+     ([] (emit! {}))
+     ([options] (->> (collect) (linter-config) (merge options) (save!)) nil)))
 
 (defn collect-cljs
   ([] (collect-cljs nil))

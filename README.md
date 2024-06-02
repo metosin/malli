@@ -249,7 +249,7 @@ Validating values against a schema:
 (m/validate [:enum 1 2] 1)
 ; => true
 
-(m/validate [:and :int [:> 6]] 7)
+(m/validate [:int {:> 6}] 7)
 ; => true
 
 (m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
@@ -354,6 +354,35 @@ pairs have the same type. For this use case, we can use the `:map-of` schema.
    "helsinki" {:lat 60 :long 24}})
 ;; => true
 ```
+
+Keysets can be further specified via [constraints](#constraints)
+and `:min`/`:max` count properties.
+
+```clojure
+(def OpenMapOfAB [:map-of {:or [:a :b]} keyword? :any])
+
+(m/validate OpenMapOfAB {:a 0}))      ;=> true
+(m/validate OpenMapOfAB {:a 0 :z 0})) ;=> true
+(m/validate OpenMapOfAB {:b 0}))      ;=> true
+(m/validate OpenMapOfAB {:b 0 :z 0})) ;=> true
+(m/validate OpenMapOfAB {:z 0})       ;=> false
+(m/validate OpenMapOfAB {})           ;=> false
+```
+
+To restrict the keys to just those permitted by the heterogeneous constraints,
+use the homogeneous keys schema to enumerate the valid keys.
+
+```clojure
+(def ClosedMapOfAB [:map-of {:or [:a :b]} [:enum :a :b] :any])
+
+(m/validate ClosedMapOfAB {:a 0}))      ;=> true
+(m/validate ClosedMapOfAB {:a 0 :z 0})) ;=> false
+(m/validate ClosedMapOfAB {:b 0}))      ;=> true
+(m/validate ClosedMapOfAB {:b 0 :z 0})) ;=> false
+(m/validate ClosedMapOfAB {:z 0})       ;=> false
+(m/validate ClosedMapOfAB {})           ;=> false
+```
+
 ## Map with default schemas
 
 Map schemas can define a special `:malli.core/default` key to handle extra keys:
@@ -378,6 +407,279 @@ default branching can be arbitrarily nested:
                 [::m/default [:map-of :int :int]]]]]
  {:x 1, :y 2, 1 1, 2 2})
 ; => true
+```
+
+## Map and Set Constraints
+
+Many schemas accept additional constraints that must be satisfied in addition to the
+schema itself. 
+
+Here we describe the constraints for `:map`, `:set`, and `:map-of` schemas.
+
+The simplest constraint `[:contains K]` asserts the key `K` must be present.
+In `:map`, `:set`, and `:map-of` constraints, this constraint can be abbreviated to `K`.
+This is different to constraints in other schemas, which abbreviate `[CONSTRAINT]` to `CONSTRAINT`.
+
+For example, `[:map {:and [:alpha]}]` is sugar for `[:map {:and [[:contains :alpha]]}]`
+and `[:string {:and [:alpha]}]` is sugar for `[:string {:and [[:alpha]]}]`.
+
+The `:and` constraint requires all of its children to be satisfied, and we
+nest contains constraints inside of it.
+
+```clojure
+(me/humanize
+  (m/explain
+    [:map {:and [:x]}]
+    {}))
+; => ["should provide key: :x"]
+
+(me/humanize
+  (m/explain
+    [:map {:and [[:contains nil]
+                 [:contains []]]}]
+    {}))
+; => [:and
+;     "should provide key: nil"
+;     "should provide key: []"]
+```
+
+Composite constraints are of the form `[:name constraint*]`. To avoid excessive nesting,
+some constraints can be named as a property, with its children as the property value. For example, 
+`{:or [:x :y] :iff [:z :a]}` is sugar for `{:and [[:iff :z :a] [:or :x :y]]}`.
+
+The `:or` constraint asserts that at least one of its children is satisfied.
+
+```clojure
+(def Padding
+  [:map {:or [:top :bottom :left :right]}
+   [:top {:optional true} number?]
+   [:bottom {:optional true} number?]
+   [:left {:optional true} number?]
+   [:right {:optional true} number?]])
+
+(m/validate Padding {:left 1 :right 10 :up 25 :down 50}) ;=> true
+(me/humanize
+  (m/explain Padding {}))
+; => [:or
+;     "should provide key: :top"
+;     "should provide key: :bottom"
+;     "should provide key: :left"
+;     "should provide key: :right"]
+```
+
+The `:xor` constraint requires exactly one of its children to be satisfied.
+
+```clojure
+(def GitOrMvn
+  [:map {:xor [:mvn/version :git/sha]}
+   [:mvn/version {:optional true} :string]
+   [:git/sha {:optional true} :string]])
+
+(m/validate GitOrMvn {:mvn/version "1.0.0"}) ; => true
+
+(me/humanize
+  (m/explain GitOrMvn
+             {:mvn/version "1.0.0"
+              :git/sha "123"}))
+; => [:xor
+;     "should not provide key: :mvn/version"
+;     "should not provide key: :git/sha"]
+
+(me/humanize
+  (m/explain GitOrMvn
+             {}))
+; => [:xor
+      "should provide key: :mvn/version"
+      "should provide key: :git/sha"]
+```
+
+The `:iff` constraint either requires either all or none of its children to be satisfied.
+
+```clojure
+(def UserPass
+  [:map {:iff [:user :pass]}
+   [:user {:optional true} string?]
+   [:pass {:optional true} string?]])
+
+(m/validate UserPass {}) ; => true
+(m/validate UserPass {:user "a" :pass "b"}) ; => true
+
+(me/humanize
+  (m/explain UserPass {:user "a"}))
+; => [:xor
+;     "should provide key: :pass"
+;     "should not provide key: :user"]
+```
+
+The `:implies` constraint is satisfied if either its first constraint is _not_ satisfied or
+all of its constraints are satisfied. It takes one or more constraints.
+
+
+```clojure
+(def TagImpliesSha
+  [:map {:implies [:git/tag :git/sha]}
+   [:git/sha {:optional true} :string]
+   [:git/tag {:optional true} :string]])
+
+(m/validate TagImpliesSha {:git/sha "abc123"}) ;=> true
+(m/validate TagImpliesSha {:git/tag "v1.0.0" :git/sha "abc123"}) ; => true
+
+(me/humanize
+  (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
+; => ["should provide key: :git/sha"]
+```
+
+The `:disjoint` constraint takes collections of keysets (vectors). Map keys can intersect with at most one keyset.
+
+```clojure
+(def SeparateMvnGit
+  [:map {:disjoint [[:mvn/version]
+                    [:git/sha :git/url :git/tag]]}
+   [:mvn/version {:optional true} :string]
+   [:git/sha {:optional true} :string]
+   [:git/tag {:optional true} :string]
+   [:git/url {:optional true} :string]])
+
+(m/validate SeparateMvnGit {}) ; => true
+(m/validate SeparateMvnGit {:mvn/version "1.0.0"}) ; => true
+(m/validate SeparateMvnGit {:git/sha "1.0.0"}) ; => true
+
+(me/humanize
+  (m/explain SeparateMvnGit
+             {:mvn/version "1.0.0"
+              :git/sha "abc123"}))
+; => ["should not combine key :mvn/version with key: :git/sha"]
+```
+
+For multiple sets of disjoint keys, nest `:disjoint` in `:and`.
+
+```clojure
+(def DPad
+  [:map {:and [[:disjoint [:down] [:up]]
+               [:disjoint [:left] [:right]]]}
+   [:down {:optional true} [:= 1]]
+   [:left {:optional true} [:= 1]]
+   [:right {:optional true} [:= 1]]
+   [:up {:optional true} [:= 1]]])
+
+(m/validate DPad {}) ; => true
+(m/validate DPad {:up 1}) ; => true
+(m/validate DPad {:down 1}) ; => true
+(m/validate DPad {:right 1}) ; => true
+(m/validate DPad {:left 1}) ; => true
+(m/validate DPad {:up 1 :left 1}) ; => true
+(m/validate DPad {:down 1 :left 1}) ; => true
+(m/validate DPad {:up 1 :right 1}) ; => true
+(m/validate DPad {:down 1 :right 1}) ; => true
+
+(me/humanize
+  (m/explain DPad {:up 1 :down 1}))
+; => ["should not combine key :down with key: :up"]
+
+(me/humanize
+  (m/explain DPad {:left 1 :right 1}))
+; => ["should not combine key :left with key: :right"]
+```
+
+The `:dispatch` constraint works similarly to the `:dispatch` schema, except
+it maps dispatch values to constraints instead of schemas.
+
+```clojure
+(def DatomicValueType
+  [:map {:dispatch [:db/valueType
+                    [:db.type/tuple [:xor :db/tupleType :db/tupleAttrs :db/tupleTypes]]
+                    [:db.type/bigint :any]
+                    [:db.type/boolean :any]
+                    [:db.type/double :any]
+                    [:db.type/float :any]
+                    ;; etc https://docs.datomic.com/schema/schema-reference.html#db-valuetype
+                    [::m/default :any]]}
+   [:db/valueType :keyword]
+   [:db/tupleType {:optional true} keyword?]
+   [:db/tupleTypes {:optional true} [:sequential keyword?]]
+   [:db/tupleAttrs {:optional true} [:sequential keyword?]]])
+
+(m/validate DatomicValueType
+            {:db/valueType :db.type/tuple
+             :db/tupleTypes [:db.type/long :db.type/long]})
+;; => true
+
+(m/validate DatomicValueType
+            {:db/valueType :db.type/tuple
+             :db/tupleAttrs [:semester/year :semester/season]})
+;; => true
+
+
+(me/humanize (m/explain DatomicValueType {:db/valueType :db.type/tuple}))
+;; => [[:xor
+;;      "should provide key: :db/tupleType"
+;;      "should provide key: :db/tupleAttrs"
+;;      "should provide key: :db/tupleTypes"]]
+
+(me/humanize
+  (m/explain DatomicValueType
+             {:db/valueType :db.type/tuple
+              :db/tupleType :db.type/keyword
+              :db/tupleAttrs [:semester/year :semester/season]}))
+;; => [[:xor
+;;      "should not provide key: :db/tupleType"
+;;      "should not provide key: :db/tupleAttrs"]]
+```
+
+The `:and` constraint requires all of its children to be satisfied.
+
+In this example, we nest `:and` in `:or` to assert that either a secret or
+user/pass must be provided. The `:disjoint` constraint is used to ensure
+both are not provided. Even if we used `:xor` instead of `:or`, it
+would still be legal to provide `{:secret "1234" :user "user"}` without
+this additional constraint.
+
+```clojure
+(def SecretOrCreds
+  [:map {:or [:secret [:and :user :pass]]
+         :disjoint [[:secret]
+                    [:user :pass]]}
+   [:secret {:optional true} string?]
+   [:user {:optional true} string?]
+   [:pass {:optional true} string?]])
+
+(m/validate SecretOrCreds {:secret "1234"}) ; => true
+(m/validate SecretOrCreds {:user "user" :pass "hello"}) ; => true
+
+(me/humanize
+  (m/explain SecretOrCreds {:user "user"}))
+; => [:or
+;     "should provide key: :secret"
+;     "should provide key: :pass"]
+;;^
+;;FIXME should say: either remove :user and add :secret, or add :pass, but not both
+
+;; combining :or with :disjoint helps enforce this case
+(me/humanize
+  (m/explain SecretOrCreds {:secret "1234" :user "user"}))
+; => ["should not combine key :secret with key: :user"]
+```
+
+The `:not` constraint is satisified if its child isn't.
+
+Since it has only one child, its sugar does not require a vector val: `[:map {:not :a}]`
+expands to `[:map {:and [[:not :a]]}]`.
+
+Constraints can be checked for satisfiability by calling `mg/generate`. Note that a required
+key can never omitted from a map regardless of constraints, since it is equivalent
+to a `[:contains K]` constraint, and `[:and K [:not K]]` is unsatisfiable.
+
+```clojure
+;; contradiction within constraints
+(mg/generate
+  [:map {:and [:a [:not :a]]}])
+; Exception: :malli.generator/unsatisfiable-keys
+
+;; constraint contradicts required key
+(mg/generate
+  [:map {:and [[:not :a]]}
+   [:a :int]])
+; Exception: :malli.generator/unsatisfiable-keys
 ```
 
 ## Sequence schemas
@@ -542,6 +844,47 @@ You can use `:set` to describe homogeneous Clojure sets.
 
 (m/validate [:set int?] #{:a :b})
 ;; => false
+```
+
+For heterogeneous sets,
+keysets can be further specified via [constraints](#keyset-constraints)
+and `:min`/`:max` count properties.
+
+```clojure
+(def OpenSetAB [:set {:or [:a :b]} :keyword])
+
+(m/validate OpenSetAB #{:a})    ; => true
+(m/validate OpenSetAB #{:a :z}) ; => true
+(m/validate OpenSetAB #{:b})    ; => true
+(m/validate OpenSetAB #{:b :z}) ; => true
+(m/validate OpenSetAB #{:z})    ; => false
+(m/validate OpenSetAB #{})      ; => false
+```
+
+To restrict the set to just the keys permitted by the heterogeneous constraints,
+use the homogeneous schema to enumerate the valid keys.
+
+```clojure
+(def ClosedSetAB [:set {:or [:a :b]} [:enum :a :b]])
+
+(m/validate ClosedSetAB #{:a})    ; => true
+(m/validate ClosedSetAB #{:a :z}) ; => false
+(m/validate ClosedSetAB #{:b})    ; => true
+(m/validate ClosedSetAB #{:b :z}) ; => false
+(m/validate ClosedSetAB #{:z})    ; => false
+(m/validate ClosedSetAB #{})      ; => false
+
+(m/validate [:set {:or [:a :b]
+                   :min 2}
+             [:enum :a :b]]
+            #{:a})
+; => false
+
+(m/validate [:set {:or [:a :b]
+                   :min 2}
+             [:enum :a :b]]
+            #{:a :b})
+; => true
 ```
 
 ## String schemas
@@ -830,6 +1173,9 @@ Looking up humanized errors from parent schemas with custom `:resolve` (BETA, su
     (me/humanize {:resolve me/-resolve-root-error}))
 ; => {:foo ["entry-failure"]}
 ```
+
+Error messages are either strings or collections of strings if you would like to return
+multiple error messages (in the case of more than one failure).
 
 ## Spell checking
 
@@ -1905,8 +2251,8 @@ Sampling values:
 
 ```clojure
 ;; sampling
-(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
-; => (25 39 51 13 53 43 57 15 26 27)
+(mg/sample [:int {:> 10 :< 100} {:seed 123})
+; => (11 12 11 13 11 26 11 11 17 11)
 ```
 
 Integration with test.check:

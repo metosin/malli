@@ -9,6 +9,7 @@
 (def any-printable {:op :any-printable})
 (defn double* [& args] {:op :double* :args args})
 (defmacro fmap [& args] (let [args (vec args)] `{:op :fmap :args-form '~args :args ~args}))
+(defmacro bind [& args] (let [args (vec args)] `{:op :bind :args-form '~args :args ~args}))
 (defmacro vector
   ([generator] {:op :vector :generator generator})
   ([generator num-elements] {:op :vector :generator generator :num-elements num-elements})
@@ -19,8 +20,10 @@
 (def char {:op :char})
 (def nat {:op :nat})
 (def char-alphanumeric {:op :char-alphanumeric})
+(def char-alpha {:op :char-alpha})
 (def string-alphanumeric {:op :string-alphanumeric})
 (defn sized [& args] {:op :sized :args args})
+(defn choose [& args] {:op :choose :args args})
 (defn return [value] {:op :return :value value})
 (defn one-of [generators] {:op :one-of :generators generators})
 (defn tuple [& generators] {:op :tuple :generators (vec generators)})

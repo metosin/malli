@@ -72,3 +72,15 @@
 (def ^{:arglists '([[& preds]])} -some-pred
   #?(:clj  (-pred-composer or 16)
      :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+
+(defn -exception [type data] (ex-info (str type) {:type type, :message type, :data data}))
+
+(defn -fail!
+  ([type] (-fail! type nil))
+  ([type data] (throw (-exception type data))))
+
+(defn -distinct-by
+  "Returns a sequence of distinct (f x) values)"
+  [f coll]
+  (let [seen (atom #{})]
+    (filter (fn [x] (let [v (f x)] (when-not (@seen v) (swap! seen conj v)))) coll)))

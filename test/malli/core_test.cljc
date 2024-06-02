@@ -9,21 +9,12 @@
             [malli.error :as me]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
+            [malli.test-utils :refer [with-schema-forms]]
             [malli.transform :as mt]
             [malli.util :as mu]
             #?(:clj [malli.test-macros :refer [when-env]]))
   #?(:clj  (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))
      :cljs (:require-macros [malli.test-macros :refer [when-env]])))
-
-(defn with-schema-forms [result]
-  (some-> result
-          (update :schema m/form)
-          (update :errors (partial map (fn [error]
-                                         (-> error
-                                             (update :schema m/form)
-                                             (update :type (fnil identity nil))
-                                             (update :message (fnil identity nil))
-                                             (dissoc :check)))))))
 
 (defn as-data [x] (walk/prewalk (fn [x] (cond-> x (m/schema? x) (m/form))) x))
 

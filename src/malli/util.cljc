@@ -1,7 +1,8 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.impl.util :as miu]))
 
 (declare path->in find)
 
@@ -73,8 +74,15 @@
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
-         bear (fn [p1 p2] (if (and p1 p2) (c/merge p1 p2) (or p1 p2)))
-         tear (fn [t s] (if (= :map t) [nil s] (concat [(m/properties s)] (m/children s))))
+         bear (fn [p1 p2]
+                (when (some :keys [p1 p2])
+                  (m/-fail! ::todo-merge-keys))
+                (if (and p1 p2) (c/merge p1 p2) (or p1 p2)))
+         tear (fn [t s] (if (= :map t)
+                          (do (when (:keys (m/properties t))
+                                (m/-fail! ::todo-merge-keys))
+                              [nil s])
+                          (concat [(m/properties s)] (m/children s))))
          join (fn [[p1 c1 & cs1] [p2 c2 & cs2]]
                 (m/into-schema :and (bear p1 p2) (concat [(merge c1 c2 options)] cs1 cs2) options))]
      (cond
@@ -177,8 +185,7 @@
 (defn distinct-by
   "Returns a sequence of distinct (f x) values)"
   [f coll]
-  (let [seen (atom #{})]
-    (filter (fn [x] (let [v (f x)] (when-not (@seen v) (swap! seen conj v)))) coll)))
+  (miu/-distinct-by f coll))
 
 (defn path->in
   "Returns a value path for a given Schema and schema path"

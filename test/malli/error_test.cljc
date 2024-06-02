@@ -108,19 +108,19 @@
                   (me/humanize)))))
 
   (testing "top-level error"
-    (is (= ["should be an int"]
+    (is (= '("1" :-> "should be an int")
            (-> int?
                (m/explain "1")
                (me/humanize)))))
 
   (testing "vector"
-    (is (= [nil nil [nil ["should be an int"]]]
+    (is (= '[_ _ [_ ("4" :-> "should be an int")]]
            (-> [:vector [:vector int?]]
                (m/explain [[1 2] [2 2] [3 "4"]])
                (me/humanize)))))
 
   (testing "set"
-    (is (= #{#{["should be a keyword"]}}
+    (is (= '#{#{(42 :-> "should be a keyword")}}
            (-> [:set [:set keyword?]]
                (m/explain #{#{42 :a {}}})
                (me/humanize)))))
@@ -143,6 +143,14 @@
                (me/humanize)))))
 
   (testing "so nested"
+    #_'{:data [{:x [("1" :-> "should be an int")
+                    _
+                    ("3" :-> "should be an int")]}
+               {:x [("1" :-> "should be an int")
+                    _
+                    ("3" "should be an int")]}
+               _
+               {:x [["should be an int"]]}]}
     (is (= {:data [{:x [["should be an int"] nil ["should be an int"]]}
                    {:x [["should be an int"] nil ["should be an int"]]}
                    nil
@@ -173,7 +181,7 @@
                (me/humanize)))))
 
   (testing "maps have errors inside"
-    (is (= {:person ["should be a seq"]}
+    (is (= '{:person ({} :-> "should be a seq")}
            (-> [:map [:person seq?]]
                (m/explain {:person {}})
                (me/humanize))))))
@@ -194,11 +202,11 @@
                :d {:f "invalid"}}]
 
     (testing "with default locale"
-      (is (= {:a ["should be an int"]
-              :b ["should be a positive int"]
-              :c ["STAY POSITIVE"],
-              :d {:e ["missing required key"]
-                  :f ["SHOULD BE ZIP"]}}
+      (is (= '{:a ("invalid" :-> "should be an int")
+               :b ("invalid" :-> "should be a positive int")
+               :c ("invalid" :-> "STAY POSITIVE"),
+               :d {:e "missing required key"
+                   :f ("invalid" :-> "SHOULD BE ZIP")}}
              (-> (m/explain schema value)
                  (me/humanize)))))
 
@@ -248,6 +256,7 @@
 
   (testing "top-level map-schemas are written in :malli/error"
     (let [schema [:and [:map
+                        {:> [:x :y]}
                         [:x int?]
                         [:y int?]
                         [:z int?]]
@@ -543,7 +552,7 @@
              (m/explain [1 2 :foo])
              (me/humanize)))))
 
-(deftest error-definion-lookup-test
+(deftest error-definition-lookup-test
   (is (= {:foo ["should be an integer"]}
          (-> [:map
               [:foo :int]]
@@ -630,13 +639,18 @@
                (me/humanize {:resolve me/-resolve-root-error}))))))
 
 (deftest limits
+  ;;FIXME constraints made these errors worse, probably because min/max is still hardcoded in some places
   (is (= {:a [["should be an int"]]
-          :b ["should have at least 2 elements"]
-          :c ["should have at most 5 elements"]
-          :d [["should have at least 2 elements"]
-              ["should have at most 5 elements"]]
-          :e ["should have at least 2 elements"]
-          :f ["should have 5 elements"]}
+          :b ["should have at least 2 elements"
+              "should be at least 2 elements, given 1"]
+          :c ["should have at most 5 elements"
+              "should be at most 5 elements, given 6"]
+          :d [["should have at least 2 elements" "should be at least 2 elements, given 1"]
+              ["should have at most 5 elements" "should be at most 5 elements, given 7"]]
+          :e ["should have at least 2 elements"
+              "should be at least 2 elements, given 1"]
+          :f ["should have 5 elements"
+              "should be at least 5 elements, given 4"]}
          (-> [:map
               [:a [:vector int?]]
               [:b [:vector {:min 2} int?]]

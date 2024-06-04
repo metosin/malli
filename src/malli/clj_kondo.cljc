@@ -159,12 +159,18 @@
 
 #?(:clj
    (defn save!
+     "config:
+      - :clj-kondo-dir-path : optional, path to the .clj-kondo directory"
      ([config]
       (save! config :clj))
      ([config key]
-      (let [cfg-file (io/file ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")]
+      (let [cfg-file (apply io/file (conj
+                                     (get config :clj-kondo-dir-path [])
+                                     ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn"))]
         ;; delete the old file if exists (does not throw)
-        (.delete (io/file ".clj-kondo" "configs" "malli" "config.edn"))
+        (.delete (apply io/file (conj
+                                 (get config :clj-kondo-dir-path [])
+                                 ".clj-kondo" "configs" "malli" "config.edn")))
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
         config))))
@@ -200,7 +206,9 @@
    {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
-   (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+   (defn emit!
+     ([] (emit! {}))
+     ([options] (->> (collect) (linter-config) (merge options) (save!)) nil)))
 
 (defn collect-cljs
   ([] (collect-cljs nil))

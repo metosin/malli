@@ -453,7 +453,9 @@
   (gen/double* (merge (let [props (m/properties schema options)]
                         {:infinite? (get props :gen/infinite? false)
                          :NaN? (get props :gen/NaN? false)})
-                      (-min-max schema options))))
+                      (-> (-min-max schema options)
+                          (update :min #(some-> % double))
+                          (update :max #(some-> % double))))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [are deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
+            [clojure.test.check :refer [quick-check]]
             [clojure.test.check.properties :refer [for-all]]
             [malli.core :as m]
             [malli.generator :as mg]
@@ -10,6 +11,12 @@
             #?(:clj  [malli.test-macros :refer [when-env]]
                :cljs ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
   #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
+
+(defn shrink [?schema]
+  (-> (quick-check 1 (for-all [s (mg/generator ?schema)] false) {:seed 0})
+      :shrunk
+      :smallest
+      first))
 
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
@@ -1034,3 +1041,7 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.generator/and-generator-failure"
         (mg/generate [:and pos? neg?]))))
+
+(deftest double-with-long-min-test
+  (is (m/validate :double (shrink [:double {:min 3}])))
+  (is (= 3.0 (shrink [:double {:min 3}]))))

@@ -504,6 +504,17 @@
       (when-not (:gen/elements props)
         (-generator schema options))))
 
+(defn- -create-from-resolve
+  [props]
+  (when (contains? props :gen/resolve)
+    (let [sym (-> (:gen/resolve props))]
+      #?(:clj (let [v (requiring-resolve sym)]
+                (if (instance? clojure.lang.IDeref v)
+                  @v
+                  v))
+         :cljs (when (cljs.core/exists? sym)
+                 (resolve sym))))))
+
 (defn- -create-from-schema [props options]
   (some-> (:gen/schema props) (generator options)))
 
@@ -511,6 +522,7 @@
   (when-some [fmap (:gen/fmap props)]
     (gen/fmap (m/eval fmap (or options (m/options schema)))
               (or (-create-from-return props)
+                  (-create-from-resolve props)
                   (-create-from-elements props)
                   (-create-from-schema props options)
                   (-create-from-gen props schema options)
@@ -521,6 +533,7 @@
                       (m/properties schema))]
     (or (-create-from-fmap props schema options)
         (-create-from-return props)
+        (-create-from-resolve props)
         (-create-from-elements props)
         (-create-from-schema props options)
         (-create-from-gen props schema options)

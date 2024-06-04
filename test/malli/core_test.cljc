@@ -268,6 +268,24 @@
              (m/decode
               [:and {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}} string?]
               "kerran" mt/string-transformer)))
+      (is (= "3_1_kerran_2_4"
+             (m/decode
+              [:and
+               [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+               [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+              "kerran" mt/string-transformer)))
+      (is (= "1_kerran_2"
+             (m/decode
+              [:or
+               [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+               [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+              "kerran" mt/string-transformer)))
+      (is (= "3_kerran_4"
+             (m/decode
+              [:or
+               :map
+               [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+              "kerran" mt/string-transformer)))
 
       (doseq [schema [schema schema*]]
         (is (true? (m/validate (over-the-wire schema) 1))))

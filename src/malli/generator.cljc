@@ -459,12 +459,14 @@
 (defmethod -schema-generator :float [schema options]
   (let [max-float #?(:clj Float/MAX_VALUE :cljs (.-MAX_VALUE js/Number))
         min-float (- max-float)
-        ceil-max (fn [v] (if (nil? v) max-float (min max-float v)))
-        floor-min (fn [v] (if (nil? v) min-float (max min-float v)))
         props (m/properties schema options)
         min-max-props (-min-max schema options)
-        min-max-clamped #?(:clj {:min (floor-min (:min min-max-props))
-                                 :max (ceil-max (:max min-max-props))}
+        min-max-clamped #?(:clj {:min (if-not (nil? (:min min-max-props))
+                                        (:min min-max-props)
+                                        min-float)
+                                 :max (if-not (nil? (:max min-max-props))
+                                        (:max min-max-props)
+                                        max-float)}
                            :cljs min-max-props)
         infinite? #?(:clj false :cljs (get props :gen/infinite? false))]
     (->> (merge {:infinite? infinite?

@@ -461,19 +461,14 @@
         min-float (- max-float)
         props (m/properties schema options)
         min-max-props (-min-max schema options)
-        min-max-clamped #?(:clj {:min (if-not (nil? (:min min-max-props))
-                                        (:min min-max-props)
-                                        min-float)
-                                 :max (if-not (nil? (:max min-max-props))
-                                        (:max min-max-props)
-                                        max-float)}
-                           :cljs min-max-props)
         infinite? #?(:clj false :cljs (get props :gen/infinite? false))]
     (->> (merge {:infinite? infinite?
                  :NaN? (get props :gen/NaN? false)}
-                (-> min-max-clamped
-                    (update :min #(some-> % float))
-                    (update :max #(some-> % float))))
+                (-> min-max-props
+                    (update :min #(or (some-> % float)
+                                      #?(:clj min-float :cljs nil)))
+                    (update :max #(or (some-> % float)
+                                      #?(:clj max-float :cljs nil)))))
          (gen/double*)
          (gen/fmap float))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)

@@ -339,11 +339,12 @@
    (get-in ?schema ks nil nil))
   ([?schema ks default]
    (get-in ?schema ks default nil))
-  ([?schema [k & ks] default options]
+  ([?schema ks default options]
    (let [schema (m/schema (or ?schema :map) options)]
-     (if-not k
+     (if-not (seq ks)
        schema
-       (let [sentinel #?(:clj (Object.), :cljs (js-obj))
+       (let [[k & ks] ks
+             sentinel #?(:clj (Object.), :cljs (js-obj))
              schema (get schema k sentinel)]
          (cond
            (identical? schema sentinel) default

@@ -428,6 +428,12 @@
                   [:x 0 0 0 1 :y 9]
                   pos-int?)
                  pos-int?))
+  (is (mu/equals (mu/get-in
+                  [:multi {:dispatch :x}
+                   [true [:map [:x :boolean]]]
+                   [false [:map [:x :boolean] [:y :boolean]]]]
+                  [false])
+                 [:map [:x :boolean] [:y :boolean]]))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
                  (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
   (is (form= (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))

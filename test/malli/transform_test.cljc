@@ -143,6 +143,9 @@
       (is (= 1.0 (m/decode double? 1 mt/json-transformer)))
       (is (= 1 (m/decode double? 1 mt/string-transformer)))
       (is (= "1.0x" (m/decode double? "1.0x" mt/string-transformer)))
+      (is (= 1.0 (m/decode float? 1 mt/json-transformer)))
+      (is (= 1 (m/decode float? 1 mt/string-transformer)))
+      (is (= "1.0x" (m/decode float? "1.0x" mt/string-transformer)))
       (is (= :user/kikka (m/decode keyword? "user/kikka" mt/string-transformer))))
     (testing "encode"
       (is (= "1" (m/encode int? 1 mt/string-transformer)))

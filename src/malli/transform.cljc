@@ -67,10 +67,29 @@
          (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
+(defn parse-float [s]
+  #?(:clj
+     (if (string? s)
+       (try
+         (Float/parseFloat s)
+         (catch NumberFormatException _ nil))
+       (throw (IllegalArgumentException.
+               (str "Expected string, got " (if (nil? s) "nil" (-> s class .getName))))))
+     :cljs
+     (parse-double s)))
+
+(defn -string->float [x]
+  (if (string? x)
+    (or (parse-float x) x)
+    x))
+
 (defn -string->double [x]
   (if (string? x)
     (or (parse-double x) x)
     x))
+
+(defn -number->float [x]
+  (if (number? x) (float x) x))
 
 (defn -number->double [x]
   (if (number? x) (double x) x))
@@ -210,6 +229,7 @@
                        :encode m/-keyword->string}
              :symbol {:decode -string->symbol}
              :int {:decode -string->long}
+             :float {:decode -string->float}
              :double {:decode -string->double}}
             (method -any->string))))
 
@@ -231,6 +251,7 @@
    'qualified-symbol? -string->symbol
 
    'uuid? -string->uuid
+   'float? -number->float
    'double? -number->double
    'inst? -string->date
    #?@(:clj ['uri? -string->uri])
@@ -238,6 +259,7 @@
    :enum {:compile (-infer-child-compiler :decode)}
    := {:compile (-infer-child-compiler :decode)}
 
+   :float -number->float
    :double -number->double
    :keyword -string->keyword
    :symbol -string->symbol
@@ -285,6 +307,7 @@
     'zero? -string->long
 
     :int -string->long
+    :float -string->float
     :double -string->double
     :boolean -string->boolean
 
@@ -295,7 +318,7 @@
     :not= -string->long
 
     'number? -string->double
-    'float? -string->double
+    'float? -string->float
     'double? -string->double
     #?@(:clj ['rational? -string->double])
     #?@(:clj ['decimal? -string->decimal])
@@ -318,6 +341,7 @@
     'zero? -any->string
 
     :int -any->string
+    :float -any->string
     :double -any->string
     ;:boolean -any->string
 
@@ -327,6 +351,7 @@
     :<= -any->string
     :not= -any->string
 
+    'float -any->string
     'double -any->string}))
 
 ;;

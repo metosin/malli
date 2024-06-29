@@ -30,6 +30,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
+- Adapters for [Spec](#spec1-adapter)
 
 Presentations:
 
@@ -3270,6 +3271,66 @@ The transformation engine is smart enough to just transform parts of the schema 
       parse (m/parser schema)]
   (cc/quick-bench
     (parse ["-server" "foo" "-verbose" "-verbose" "-user" "joe"])))
+```
+
+## Runtime Adapters
+
+Malli schemas can be made compatible with other runtime verification libraries.
+
+### Spec1 Adapter
+
+Malli schemas and spec1 specs can be mixed using the macros in `malli.adapter.spec1`.
+This is useful if you want to gradually port spec1 to malli or vice-versa.
+
+```clojure
+(require '[malli.adapter.spec1 :as from]
+         '[clojure.spec.alpha :as s]
+         '[malli.core :as m]
+         ;; require this namespace for generator support
+         'malli.adapter.spec1.generator)
+
+;; use from/malli to wrap a Malli Schema to also work with spec functions
+
+(s/form (from/malli :int))
+;; => `(from/malli :int)
+
+(m/form (from/malli :int))
+;; => :int
+
+;; use from/spec to wrap a Spec1 spec to also work with malli functions
+
+(s/form (from/spec int?))
+;; => 'int?
+
+(m/form (from/spec int?))
+;; => [::from/spec 'int? int?]
+
+;; they can be nested arbitrarily
+
+(mg/generate [:tuple
+              (from/spec
+                (s/tuple
+                  (from/malli
+                    [:tuple (from/spec int?)])))]
+             {:seed 0})
+;; => [[[0]]]
+
+;; you can gradually port spec to malli by using `from/malli` in s/def
+
+(def email-regex #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$")
+(s/def :acct/email-type (from/malli [:re email-regex]))
+
+(s/def :acct/first-name string?)
+(s/def :acct/last-name string?)
+(s/def :acct/email :acct/email-type)
+
+(s/def :acct/person (s/keys :req [:acct/first-name :acct/last-name :acct/email]))
+
+(s/valid? :acct/person
+  {:acct/first-name "Bugs"
+   :acct/last-name "Bunny"
+   :acct/email "bugs@example.com"})
+;; => true
 ```
 
 ## Built-in schemas

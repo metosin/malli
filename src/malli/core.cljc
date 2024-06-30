@@ -14,7 +14,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast -function-info -instrument)
+         parser unparser ast from-ast -instrument)
 
 ;;
 ;; protocols and records
@@ -89,13 +89,8 @@
 (defprotocol FunctionSchema
   (-function-schema? [this])
   (-function-schema-arities [this])
+  (-function-info [this])
   (-instrument-f [schema props f options]))
-
-(defprotocol AritySchema
-  (-arity-schema? [this])
-  (-arity-input-schema [this])
-  (-arity-output-schema [this])
-  (-arity-guard-schema [this]))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
@@ -106,14 +101,10 @@
 
 (extend-type #?(:clj Object, :cljs default)
   FunctionSchema
-  (-function-schema? [this] false)
-  (-function-schema-arities [this])
-  (-instrument-f [schema props f options])
-  AritySchema
-  (-arity-schema? [this] false)
-  (-arity-input-schema [this])
-  (-arity-output-schema [this])
-  (-arity-guard-schema [this])
+  (-function-schema? [_] false)
+  (-function-info [_])
+  (-function-schema-arities [_])
+  (-instrument-f [_ _ _ _])
 
   RegexSchema
   (-regex-op? [_] false)
@@ -222,19 +213,6 @@
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
-
-(defn -function-info [schema]
-  (when (-arity-schema? schema)
-    (let [input (-arity-input-schema schema)
-          output (-arity-output-schema schema)
-          guard (-arity-guard-schema schema)
-          {:keys [min max]} (-regex-min-max input false)]
-      (cond-> {:min min
-               :arity (if (= min max) min :varargs)
-               :input input
-               :output output}
-        guard (assoc :guard guard)
-        max (assoc :max max)))))
 
 (defn -group-by-arity! [infos]
   (let [aritys (atom #{})]
@@ -1829,32 +1807,35 @@
           (-parent [_] parent)
           (-form [_] @form)
           FunctionSchema
-          (-function-schema? [this] true)
+          (-function-schema? [_] true)
           (-function-schema-arities [this] [this])
-          (-instrument-f [schema {:keys [scope report gen] :as props} f options]
-            (let [{:keys [min max input output guard]} (-function-info schema)]
-              (let [[validate-input validate-output] (-vmap -validator [input output])
-                    validate-guard (or (some-> guard -validator) any?)
-                    [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
-                    f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
-                (fn [& args]
-                  (let [args (vec args), arity (count args)]
-                    (when wrap-input
-                      (when-not (<= min arity (or max miu/+max-size+))
-                        (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
-                      (when-not (validate-input args)
-                        (report ::invalid-input {:input input, :args args, :schema schema})))
-                    (let [value (apply f args)]
-                      (when (and wrap-output (not (validate-output value)))
-                        (report ::invalid-output {:output output, :value value, :args args, :schema schema}))
-                      (when (and wrap-guard (not (validate-guard [args value])))
-                        (report ::invalid-guard {:guard guard, :value value, :args args, :schema schema}))
-                      value))))))
-          AritySchema
-          (-arity-schema? [_] true)
-          (-arity-input-schema [_] input)
-          (-arity-output-schema [_] output)
-          (-arity-guard-schema [_] guard)
+          (-function-info [_]
+            (let [{:keys [min max]} (-regex-min-max input false)]
+              (cond-> {:min min
+                       :arity (if (= min max) min :varargs)
+                       :input input
+                       :output output}
+                guard (assoc :guard guard)
+                max (assoc :max max))))
+          (-instrument-f [schema {:keys [scope report gen] :as props} f _options]
+            (let [{:keys [min max input output guard]} (-function-info schema)
+                  [validate-input validate-output] (-vmap -validator [input output])
+                  validate-guard (or (some-> guard -validator) any?)
+                  [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
+                  f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
+              (fn [& args]
+                (let [args (vec args), arity (count args)]
+                  (when wrap-input
+                    (when-not (<= min arity (or max miu/+max-size+))
+                      (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
+                    (when-not (validate-input args)
+                      (report ::invalid-input {:input input, :args args, :schema schema})))
+                  (let [value (apply f args)]
+                    (when (and wrap-output (not (validate-output value)))
+                      (report ::invalid-output {:output output, :value value, :args args, :schema schema}))
+                    (when (and wrap-guard (not (validate-guard [args value])))
+                      (report ::invalid-guard {:guard guard, :value value, :args args, :schema schema}))
+                    value)))))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1875,7 +1856,7 @@
             form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
-        (when-not (every? (every-pred -function-schema? -arity-schema?) children)
+        (when-not (every? (every-pred -function-schema? -function-info) children)
           (-fail! ::non-function-childs {:children children}))
         (-group-by-arity! (-vmap -function-info children))
         ^{:type ::schema}
@@ -1908,9 +1889,10 @@
           (-parent [_] parent)
           (-form [_] @form)
           FunctionSchema
-          (-function-schema? [this] true)
-          (-function-schema-arities [this] children)
-          (-instrument-f [this {:keys [scope report] :as props} f options]
+          (-function-schema? [_] true)
+          (-function-schema-arities [_] children)
+          (-function-info [_])
+          (-instrument-f [this {:keys [_scope report] :as props} f options]
             (let [arity->info (->> children
                                    (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))
                                    (-group-by-arity!))
@@ -1971,13 +1953,9 @@
           (-set [_ key value] (into-schema type properties (assoc children key value)))
           FunctionSchema
           (-function-schema? [_] (-function-schema? schema))
+          (-function-info [_] (-function-info schema))
           (-function-schema-arities [_] (-function-schema-arities schema))
-          (-instrument-f [this props f options] (-instrument-f schema  props f options))
-          AritySchema
-          (-arity-schema? [this] (-arity-schema? schema))
-          (-arity-input-schema [this] (-arity-input-schema schema))
-          (-arity-output-schema [this] (-arity-output-schema schema))
-          (-arity-guard-schema [this] (-arity-guard-schema schema))
+          (-instrument-f [_ props f options] (-instrument-f schema props f options))
           RegexSchema
           (-regex-op? [_] (-regex-op? schema))
           (-regex-validator [_] (-regex-validator schema))

@@ -586,7 +586,7 @@
                              explain-output (assoc ::m/explain-output explain-output)
                              explain-guard (assoc ::m/explain-guard explain-guard)
                              (ex-message result) (-> (update :result ex-message) (dissoc :result-data)))))))))]
-     (if (m/-arity-schema? schema)
+     (if (m/-function-info schema)
        (check schema)
        (if (m/-function-schema? schema)
          (let [checkers (map #(function-checker % options) (m/-function-schema-arities schema))]

@@ -462,6 +462,7 @@
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
+(defmethod -schema-generator :-> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
 (defmethod -schema-generator 'ifn? [_ _] gen/keyword)
 (defmethod -schema-generator :ref [schema options] (-ref-gen schema options))

@@ -1915,7 +1915,7 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
 
-(defn -proxy-schema [{:keys [type min max childs type-properties fn fn-schema]}]
+(defn -proxy-schema [{:keys [type min max childs type-properties fn]}]
   ^{:type ::into-schema}
   (reify IntoSchema
     (-type [_] type)
@@ -1970,11 +1970,11 @@
 
 (defn -->-schema [_]
   (-proxy-schema {:type :->
-                  :fn (fn [{guard :fn :as p} c o]
+                  :fn (fn [{:keys [guard] :as p} c o]
                         (let [c (mapv #(schema % o) c)
                               cc (cond-> [(into [:cat] (pop c)) (peek c)]
                                    guard (conj [:fn guard]))]
-                          [c (map -form c) (into-schema :=> (dissoc p :fn) cc o)]))}))
+                          [c (map -form c) (into-schema :=> (dissoc p :guard) cc o)]))}))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 

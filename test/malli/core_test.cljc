@@ -2556,9 +2556,12 @@
 
         (testing "guards"
           (let [guard (fn [[[x y] z]] (= (str x y) z))
-                schema (m/schema
-                        [:=> [:cat :int :int] :string [:fn guard]]
-                        {::m/function-checker mg/function-checker})
+                schema1 (m/schema
+                         [:=> [:cat :int :int] :string [:fn guard]]
+                         {::m/function-checker mg/function-checker})
+                schema2 (m/schema
+                         [:-> {:guard guard} :int :int :string]
+                         {::m/function-checker mg/function-checker})
                 valid (fn [x y] (str x y))
                 invalid (fn [x y] (str x "-" y))]
 
@@ -2568,33 +2571,52 @@
                     :output {:type :string},
                     :guard {:type :fn
                             :value guard}}
-                   (m/ast schema)))
+                   (m/ast schema1)))
 
-            (is (= nil (m/explain schema valid)))
+            ;; TODO: this is not perfect
+            (is (= {:type :->
+                    :children [{:type :int} {:type :int} {:type :string}]
+                    :properties {:guard guard}}
+                   (m/ast schema2)))
+
+            (is (= nil (m/explain schema1 valid)))
+            (is (= nil (m/explain schema2 valid)))
 
             (testing "error in guard adds error on path 2"
-              (is (results= {:schema schema,
+              (is (results= {:schema schema1,
                              :value invalid
                              :errors [{:path [],
                                        :in [],
-                                       :schema schema
+                                       :schema schema1
                                        :value invalid}
                                       {:path [2]
                                        :in []
                                        :schema [:fn guard]
                                        :value ['(0 0) "0-0"]}]}
-                            (m/explain schema invalid))))
+                            (m/explain schema1 invalid)))
+              (is (results= {:schema schema2,
+                             :value invalid
+                             :errors [{:path [],
+                                       :in [],
+                                       :schema schema1 ;; shows the underlaying schema here
+                                       :value invalid}
+                                      {:path [2]
+                                       :in []
+                                       :schema [:fn guard]
+                                       :value ['(0 0) "0-0"]}]}
+                            (m/explain schema2 invalid))))
 
             (testing "instrument"
-              (let [schema [:=> [:cat :any] :any [:fn (fn [[[arg] ret]] (not= arg ret))]]
-                    fn (m/-instrument {:schema schema} str)]
+              (doseq [schema [[:=> [:cat :any] :any [:fn (fn [[[arg] ret]] (not= arg ret))]]
+                              [:-> {:guard (fn [[[arg] ret]] (not= arg ret))} :any :any]]]
+                (let [fn (m/-instrument {:schema schema} str)]
 
-                (is (= "2" (fn 2)))
+                  (is (= "2" (fn 2)))
 
-                (is (thrown-with-msg?
-                     #?(:clj Exception, :cljs js/Error)
-                     #":malli.core/invalid-guard"
-                     (fn "0")))))))
+                  (is (thrown-with-msg?
+                       #?(:clj Exception, :cljs js/Error)
+                       #":malli.core/invalid-guard"
+                       (fn "0"))))))))
 
         (testing "non-accumulating errors"
           (let [schema (m/schema

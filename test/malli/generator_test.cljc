@@ -11,6 +11,9 @@
                :cljs ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
   #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
+;; not part of default registry
+(def --> (m/-->-schema nil))
+
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
           ;; cljs doesn't have a regex generator :(
@@ -345,7 +348,7 @@
 #?(:clj
    (deftest function-schema-test
      (doseq [?schema [[:=> [:cat int? int?] int?]
-                      [:-> int? int? int?]]]
+                      [--> int? int? int?]]]
        (let [f (m/schema ?schema)
              {:keys [input output]} (m/-function-info f)]
          (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample f {:size 1000})))))
@@ -354,8 +357,8 @@
                        [:=> [:cat int?] int?]
                        [:=> [:cat int? int?] int?]]
                       [:function
-                       [:-> int? int?]
-                       [:-> int? int? int?]]]]
+                       [--> int? int?]
+                       [--> int? int? int?]]]]
        (is (every? #(m/validate int? (apply % (mg/generate [:or [:cat int?] [:cat int? int?]]))) (mg/sample ?schema {:size 1000}))))))
 
 (deftest recursive-schema-generation-test-307

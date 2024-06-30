@@ -15,6 +15,9 @@
   #?(:clj  (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))
      :cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
+;; not part of default registry
+(def --> (m/-->-schema nil))
+
 (defn with-schema-forms [result]
   (some-> result
           (update :schema m/form)
@@ -2420,9 +2423,9 @@
             :output :int
             :guard nil}
            (fn-schema-info [:=> [:cat :int :int] :int])
-           (fn-schema-info [:-> :int :int :int])))
+           (fn-schema-info [--> :int :int :int])))
     (doseq [?schema [[:=> [:cat int? int?] int?]
-                     [:-> int? int? int?]]]
+                     [--> int? int? int?]]]
       (let [valid-f (fn [x y]
                       (unchecked-subtract x y))
             schema1 (m/schema ?schema)
@@ -2468,7 +2471,7 @@
 
           (is (true? (validate-times function-schema-validation-times (over-the-wire schema1) valid-f)))
 
-          (is (= (case (first ?schema)
+          (is (= (case (m/type schema1)
                    :=> {:type :=>
                         :input {:type :cat
                                 :children [{:type 'int?} {:type 'int?}]}
@@ -2479,11 +2482,11 @@
 
   (testing ":function"
     (is (= nil
-           (fn-schema-info (m/schema [:function [:-> :int :int :int]]))))
+           (fn-schema-info (m/schema [:function [--> :int :int :int]]))))
     (is (= [[:-> :int :int :int]
             [:=> [:cat :int] :int]]
            (map m/form (m/-function-schema-arities (m/schema [:function
-                                                              [:-> :int :int :int]
+                                                              [--> :int :int :int]
                                                               [:=> [:cat :int] :int]])))))
     (doseq [s [[:function :cat]]]
       (is (thrown-with-msg?
@@ -2503,7 +2506,7 @@
                   [:=> :cat nil?]
                   [:=> :cat nil?]]
                  [:function
-                  [:-> nil?]
+                  [--> nil?]
                   [:=> :cat nil?]]]]
         (is (thrown-with-msg?
              #?(:clj Exception, :cljs js/Error)
@@ -2560,7 +2563,7 @@
                          [:=> [:cat :int :int] :string [:fn guard]]
                          {::m/function-checker mg/function-checker})
                 schema2 (m/schema
-                         [:-> {:guard guard} :int :int :string]
+                         [--> {:guard guard} :int :int :string]
                          {::m/function-checker mg/function-checker})
                 valid (fn [x y] (str x y))
                 invalid (fn [x y] (str x "-" y))]
@@ -2608,7 +2611,7 @@
 
             (testing "instrument"
               (doseq [schema [[:=> [:cat :any] :any [:fn (fn [[[arg] ret]] (not= arg ret))]]
-                              [:-> {:guard (fn [[[arg] ret]] (not= arg ret))} :any :any]]]
+                              [--> {:guard (fn [[[arg] ret]] (not= arg ret))} :any :any]]]
                 (let [fn (m/-instrument {:schema schema} str)]
 
                   (is (= "2" (fn 2)))

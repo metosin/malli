@@ -4,8 +4,10 @@
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
-            [malli.registry :as mr]
             [malli.util :as mu]))
+
+;; not part of default registry
+(def --> (m/-->-schema nil))
 
 (def expectations
   [;; predicates
@@ -110,6 +112,7 @@
    [:uuid {:type "string", :format "uuid"}]
 
    [[:=> :cat int?] {} :fn]
+   [[--> :cat int?] {} :fn]
    [[:function [:=> :cat int?]] {} :fn]
    [ifn? {}]
 

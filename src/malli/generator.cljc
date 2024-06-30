@@ -327,7 +327,7 @@
     (gen/return (m/-instrument {:schema schema} (fn [& _] (generate output-generator options))))))
 
 (defn -function-gen [schema options]
-  (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} options)))
+  (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} nil options)))
 
 (defn -regex-generator [schema options]
   (if (m/-regex-op? schema)
@@ -479,6 +479,7 @@
 (defmethod -schema-generator :uuid [_ _] gen/uuid)
 
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
+(defmethod -schema-generator :-> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
 (defmethod -schema-generator 'ifn? [_ _] gen/keyword)
 (defmethod -schema-generator :ref [schema options] (-ref-gen schema options))
@@ -603,11 +604,12 @@
                              explain-output (assoc ::m/explain-output explain-output)
                              explain-guard (assoc ::m/explain-guard explain-guard)
                              (ex-message result) (-> (update :result ex-message) (dissoc :result-data)))))))))]
-     (condp = (m/type schema)
-       :=> (check schema)
-       :function (let [checkers (map #(function-checker % options) (m/-children schema))]
-                   (fn [x] (->> checkers (keep #(% x)) (seq))))
-       (m/-fail! ::invalid-function-schema {:type (m/-type schema)})))))
+     (if (m/-function-info schema)
+       (check schema)
+       (if (m/-function-schema? schema)
+         (let [checkers (map #(function-checker % options) (m/-function-schema-arities schema))]
+           (fn [x] (->> checkers (keep #(% x)) (seq))))
+         (m/-fail! ::invalid-function-schema {:type (m/-type schema)}))))))
 
 (defn check
   ([?schema f] (check ?schema f nil))

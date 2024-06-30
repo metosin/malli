@@ -1998,12 +1998,6 @@
                                    guard (conj [:fn guard]))]
                           [c (map -form c) (into-schema :=> (dissoc p :fn) cc o)]))}))
 
-(defn -ifn-schema [_]
-  (-proxy-schema {:type :ifn
-                  :fn (fn [p c o]
-                        (let [c (map #(schema % o) c)]
-                          [c (map -form c) (into-schema :function p c o)]))}))
-
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 
 (defn- regex-explainer [schema path] (re/explainer schema path (-regex-explainer schema path)))
@@ -2650,7 +2644,6 @@
    :=> (-=>-schema)
    :-> (-->-schema nil)
    :function (-function-schema nil)
-   :ifn (-ifn-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
 

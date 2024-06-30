@@ -2479,31 +2479,21 @@
 
   (testing ":function"
     (is (= nil
-           (fn-schema-info (m/schema [:function [:-> :int :int :int]]))
-           (fn-schema-info (m/schema [:ifn [:-> :int :int :int]]))))
+           (fn-schema-info (m/schema [:function [:-> :int :int :int]]))))
     (is (= [[:-> :int :int :int]
             [:=> [:cat :int] :int]]
            (map m/form (m/-function-schema-arities (m/schema [:function
                                                               [:-> :int :int :int]
-                                                              [:=> [:cat :int] :int]])))
-           (map m/form (m/-function-schema-arities (m/schema [:ifn
-                                                              [:-> :int :int :int]
                                                               [:=> [:cat :int] :int]])))))
-    (doseq [s [[:function :cat]
-               [:ifn :cat]]]
+    (doseq [s [[:function :cat]]]
       (is (thrown-with-msg?
             #?(:clj Exception, :cljs js/Error)
             #":malli.core/non-function-childs"
-            (m/schema
-              [:function :cat]))))
+            (m/schema s))))
 
     (testing "varargs with identical min arity get +1 arity"
       (is (m/schema
            [:function
-            [:=> :cat nil?]
-            [:=> [:cat [:? nil?]] nil?]]))
-      (is (m/schema
-           [:ifn
             [:=> :cat nil?]
             [:=> [:cat [:? nil?]] nil?]])))
 
@@ -2514,13 +2504,7 @@
                   [:=> :cat nil?]]
                  [:function
                   [:-> nil?]
-                  [:=> :cat nil?]]
-                 [:ifn
-                  [:=> :cat nil?]
-                  [:=> :cat nil?]]
-                 [:ifn
-                  [:-> nil?]
-                  [:-> nil?]]]]
+                  [:=> :cat nil?]]]]
         (is (thrown-with-msg?
               #?(:clj Exception, :cljs js/Error)
               #":malli.core/duplicate-arities"
@@ -2529,11 +2513,7 @@
       (doseq [s [[:function
                   [:=> :cat nil?]
                   [:=> [:cat [:? nil?]] nil?]
-                  [:=> [:cat [:? nil?] [:? nil?]] nil?]]
-                 [:ifn
-                  [:-> nil?]
-                  [:-> [:? nil?] nil?]
-                  [:-> [:? nil?] [:? nil?] nil?]]]]
+                  [:=> [:cat [:? nil?] [:? nil?]] nil?]]]]
         (is (thrown-with-msg?
               #?(:clj Exception, :cljs js/Error)
               #":malli.core/multiple-varargs"
@@ -2541,10 +2521,7 @@
 
     (doseq [?schema [[:function
                       [:=> [:cat int?] int?]
-                      [:=> [:cat int? int?] int?]]
-                     [:ifn
-                      [:-> int? int?]
-                      [:-> int? int? int?]]]]
+                      [:=> [:cat int? int?] int?]]]]
       (let [valid-f (fn ([x] x) ([x y] (unchecked-subtract x y)))
             invalid-f (fn ([x] x) ([x y] (str x y)))
             
@@ -2571,22 +2548,17 @@
                          :value invalid-f
                          :errors [{:path []
                                    :in []
-                                   :schema (m/schema
-                                             (case (first ?schema)
-                                               :function [:function
-                                                          [:=> [:cat int?] int?]
-                                                          [:=> [:cat int? int?] int?]]
-                                               :ifn [:function
-                                                     [:-> int? int?]
-                                                     [:-> int? int? int?]]))
+                                   :schema [:function
+                                            [:=> [:cat int?] int?]
+                                            [:=> [:cat int? int?] int?]]
                                    :value invalid-f}]}
                         (m/explain schema2 invalid-f))))
 
-      (testing "guards"
-        (let [guard (fn [[[x y] z]] (= (str x y) z))
-              schema (m/schema
-                      [:=> [:cat :int :int] :string [:fn guard]]
-                      {::m/function-checker mg/function-checker})
+        (testing "guards"
+          (let [guard (fn [[[x y] z]] (= (str x y) z))
+                schema (m/schema
+                        [:=> [:cat :int :int] :string [:fn guard]]
+                        {::m/function-checker mg/function-checker})
               valid (fn [x y] (str x y))
               invalid (fn [x y] (str x "-" y))]
 

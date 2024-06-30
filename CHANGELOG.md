@@ -19,11 +19,14 @@ Malli is in well matured [alpha](README.md#alpha).
 * Experimental `:->` for simpler function defintions (not available on default schema registry) [#1027](https://github.com/metosin/malli/pull/1027)
 
 ```clojure
-[:=> [:cat :int] :int]
-[:-> :int :int]
+[:-> :any] ; [:=> :cat :any]
+[:-> :int :any] ; [:=> [:cat :int] :any]
+[:-> [:cat :int] :any]  ; [:=> [:cat [:cat :int]] :any]
+[:-> a b c d :any] ; [:=> [:cat a b c d] :any]
 
-[:=> [:cat :int [:? :int]] :int]
-[:-> :int [:? :int] :int]
+;; guard property
+[:-> {:guard (fn [[[arg] ret]] ...)} :string :boolean]
+; [:=> [:cat :string] :boolean [:fn (fn [[[arg] ret]] ...)]]
 ```
 
 * Fix `mu/get-in` for false-y keys [#1065](https://github.com/metosin/malli/pull/1065)

@@ -1968,7 +1968,9 @@
           (-ref [_])
           (-deref [_] schema))))))
 
-(defn -->-schema [_]
+(defn -->-schema
+  "Experimental simple schema for :=> schema. AST and explain results subject to change."
+  [_]
   (-proxy-schema {:type :->
                   :fn (fn [{:keys [guard] :as p} c o]
                         (let [c (mapv #(schema % o) c)

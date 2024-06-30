@@ -4,7 +4,6 @@
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
-            [malli.registry :as mr]
             [malli.util :as mu]))
 
 (def expectations

@@ -4,6 +4,9 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
+;; not part of default registry
+(def --> (m/-->-schema nil))
+
 (def Schema
   (m/schema
    [:map {:registry {::id string?
@@ -35,6 +38,14 @@
 (m/=> kikka [:function
              [:=> [:cat :int] [:int {:min 0}]]
              [:=> [:cat :int :int [:* :int]] :int]])
+
+(defn kikka2
+  ([x] (* x x))
+  ([x y & z] (apply + (* x y) z)))
+
+(m/=> kikka2 [:function
+              [--> :int [:int {:min 0}]]
+              [--> :int :int [:* :int] :int]])
 
 (defn siren [f coll]
   (into {} (map (juxt f identity) coll)))
@@ -94,6 +105,12 @@
   (let [expected-out
         {'malli.clj-kondo-test
          {'kikka
+          {:arities {1 {:args [:int],
+                        :ret :int},
+                     :varargs {:args [:int :int {:op :rest :spec :int}],
+                               :ret :int,
+                               :min-arity 2}}}
+          'kikka2
           {:arities {1 {:args [:int],
                         :ret :int},
                      :varargs {:args [:int :int {:op :rest :spec :int}],

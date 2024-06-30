@@ -532,3 +532,39 @@
                           :type "string"
                           :minLength 10}]}
            (swagger/swagger-spec {::swagger/parameters {:query #'Query}})))))
+
+(deftest request-parameter-definition-regression-test
+  ;; For issue #1002
+  (testing "collects :definitions for all parameters"
+    (let [registry (merge (m/base-schemas) (m/type-schemas) (m/comparator-schemas)
+                          {::req-body [:map-of :keyword :any]})
+          expected {:definitions {"malli.swagger-test/req-body" {:additionalProperties {}, :type "object"}}
+                    :parameters [{:description ""
+                                  :in "body"
+                                  :name "body"
+                                  :required true
+                                  :schema {:$ref "#/definitions/malli.swagger-test~1req-body"}}
+                                 {:description ""
+                                  :in "header"
+                                  :name :h
+                                  :required true
+                                  :type "string"}
+                                 {:description ""
+                                  :in "query"
+                                  :name :q
+                                  :required true
+                                  :type "string"}]}
+          fix #(update % :parameters (partial sort-by :in))]
+      (is (= expected
+             (fix
+              (swagger/swagger-spec {::swagger/parameters
+                                     {:body (m/schema ::req-body {:registry registry})
+                                      :header [:map [:h :string]]
+                                      :query [:map [:q :string]]}}))))
+      ;; bug #1002 was sensitive to the order of the ::swagger/parameters map
+      (is (= expected
+             (fix
+              (swagger/swagger-spec {::swagger/parameters
+                                     {:header [:map [:h :string]]
+                                      :query [:map [:q :string]]
+                                      :body (m/schema ::req-body {:registry registry})}})))))))

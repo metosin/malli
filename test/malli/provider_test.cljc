@@ -130,6 +130,12 @@
      {:name (mp/-hinted "Tiina" :string), :gender "female"}]]
 
    [[:map
+     [:speed #?(:clj :float, :cljs :double)]
+     [:position [:vector #?(:clj :float, :cljs :double)]]]
+    [{:speed (float 1.5)
+      :position [(float 300.33) (float 663.66)]}]]
+
+   [[:map
      [:id :string]
      [:tags [:set :keyword]]
      [:address

@@ -271,6 +271,24 @@
              (m/decode
               [:and {:decode/string '{:enter #(str "olipa_" %), :leave #(str % "_avaruus")}} string?]
               "kerran" mt/string-transformer)))
+      (is (= "3_1_kerran_2_4"
+             (m/decode
+              [:and
+               [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+               [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+              "kerran" mt/string-transformer)))
+      (is (= "1_kerran_2"
+             (m/decode
+              [:or
+               [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+               [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+              "kerran" mt/string-transformer)))
+      (is (= "3_kerran_4"
+             (m/decode
+              [:or
+               :map
+               [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+              "kerran" mt/string-transformer)))
 
       (doseq [schema [schema schema*]]
         (is (true? (m/validate (over-the-wire schema) 1))))
@@ -2083,6 +2101,24 @@
                             [1 3 mt/string-transformer [:int {:encode/string {:enter inc, :leave inc}}]]]
                    :ast {:type :int, :properties {:min 1, :max 4}}
                    :form [:int {:min 1, :max 4}]}
+             :float  {:schema [:float {:min 1.0, :max 4.0}]
+                      :validate {:success [1.0 2.2 4.0]
+                                 :failure [nil "invalid" 0.5]}
+                      :explain [[1.0]
+                                [false {:schema [:float {:min 1.0, :max 4.0}]
+                                        :value false
+                                        :errors [{:path []
+                                                  :in []
+                                                  :schema [:float {:min 1.0, :max 4.0}]
+                                                  :value false}]}]]
+                      :decode [["1.1" (float 1.1) mt/string-transformer]
+                               ["1.1" "1.1" mt/json-transformer]
+                               [(float 1.2) (float 3.2) mt/string-transformer [:float {:decode/string {:enter inc, :leave inc}}]]]
+                      :encode [[(float 1.1) "1.1" mt/string-transformer]
+                               [(float 1.1) (float 1.1) mt/json-transformer]
+                               [(float 1.2) (float 3.2) mt/string-transformer [:float {:encode/string {:enter inc, :leave inc}}]]]
+                      :ast {:type :float, :properties {:min 1.0, :max 4.0}}
+                      :form [:float {:min 1.0, :max 4.0}]}
              :double {:schema [:double {:min 1.0, :max 4.0}]
                       :validate {:success [1.0 2.2 4.0]
                                  :failure [nil "invalid" 0.5]}

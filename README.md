@@ -1138,6 +1138,49 @@ Going crazy:
 ; => {:x 24}
 ```
 
+`:and` accumulates the transformed value left-to-right.
+
+```clojure
+(m/decode
+  [:and
+   [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+   [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+  "kerran" mt/string-transformer)
+;; => "3_1_kerran_2_4"
+```
+
+`:or` transforms using the first successful schema, left-to-right.
+
+```clojure
+(m/decode
+  [:or
+   [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+   [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+  "kerran" mt/string-transformer)
+;; => "1_kerran_2"
+
+(m/decode
+  [:or
+   :map
+   [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+  "kerran" mt/string-transformer)
+;; => "3_kerran_4"
+```
+
+Proxy schemas like `:merge` and `:union` transform as if `m/deref`ed.
+
+```clojure
+(m/decode
+  [:merge
+   [:map [:name [:string {:default "kikka"}]] ]
+   [:map [:description {:optional true} [:string {:default "kikka"}]]]]
+  {}
+  {:registry (merge (mu/schemas) (m/default-schemas))}
+  (mt/default-value-transformer {::mt/add-optional-keys true}))
+;; => {:name "kikka"
+;;     :description "kikka"}
+```
+
 ## To and from JSON
 
 The `m/encode` and `m/decode` functions work on clojure data. To go

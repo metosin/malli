@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [are deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
+            [clojure.test.check :refer [quick-check]]
             [clojure.test.check.properties :refer [for-all]]
             [malli.core :as m]
             [malli.generator :as mg]
@@ -13,6 +14,12 @@
 
 ;; not part of default registry
 (def --> (m/-->-schema nil))
+
+(defn shrink [?schema]
+  (-> (quick-check 1 (for-all [s (mg/generator ?schema)] false) {:seed 0})
+      :shrunk
+      :smallest
+      first))
 
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
@@ -60,6 +67,28 @@
                           (some f (mg/sample [:double options]
                                              {:size 1000})))]
       (is (test-presence infinity? {:gen/infinite? true}))
+      (is (test-presence NaN? {:gen/NaN? true}))
+      (is (test-presence special? {:gen/infinite? true
+                                   :gen/NaN? true}))
+      (is (not (test-presence special? nil)))))
+
+  (testing "float properties"
+    (let [infinity? #(or (= % ##Inf)
+                         (= % ##-Inf))
+          NaN? (fn [x]
+                 (#?(:clj  Float/isNaN
+                     :cljs js/isNaN)
+                  x))
+          is-float? (fn [n]
+                      #?(:clj (instance? Float n)
+                         :cljs (float? n)))
+          special? #(or (NaN? %)
+                        (infinity? %))
+          test-presence (fn [f options]
+                          (some f (mg/sample [:float options]
+                                             {:size 1000})))]
+      (is (test-presence #?(:clj (comp not infinity?) :cljs infinity?) {:gen/infinite? true}))
+      (is (test-presence is-float? {}))
       (is (test-presence NaN? {:gen/NaN? true}))
       (is (test-presence special? {:gen/infinite? true
                                    :gen/NaN? true}))
@@ -1044,3 +1073,10 @@
        #?(:clj Exception, :cljs js/Error)
        #":malli\.generator/and-generator-failure"
        (mg/generate [:and pos? neg?]))))
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.generator/and-generator-failure"
+        (mg/generate [:and pos? neg?]))))
+
+(deftest double-with-long-min-test
+  (is (m/validate :double (shrink [:double {:min 3}])))
+  (is (= 3.0 (shrink [:double {:min 3}]))))

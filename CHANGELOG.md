@@ -14,7 +14,17 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.16.2 (2024-06-30)
+
+* Experimental `:->` for simpler function defintions (not available on default schema registry) [#1027](https://github.com/metosin/malli/pull/1027)
+
+```clojure
+[:=> [:cat :int] :int]
+[:-> :int :int]
+
+[:=> [:cat :int [:? :int]] :int]
+[:-> :int [:? :int] :int]
+```
 
 * Fix `mu/get-in` for false-y keys [#1065](https://github.com/metosin/malli/pull/1065)
 * Add `:float` [#1055](https://github.com/metosin/malli/pull/1055)

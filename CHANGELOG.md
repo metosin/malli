@@ -16,6 +16,11 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Fix `mu/get-in` for false-y keys [#1065](https://github.com/metosin/malli/pull/1065)
+* Add `:float` [#1055](https://github.com/metosin/malli/pull/1055)
+* Make clj-kondo dir configurable [#1062](https://github.com/metosin/malli/pull/1062)
+* Improve doc for transformers [#1058](https://github.com/metosin/malli/pull/1058)
+* `:double` generates Long if `:`min is Long [#1034](https://github.com/metosin/malli/issues/1034)
 * Fix Swagger definitions collecting [#1002](https://github.com/metosin/malli/issues/1002)
 
 ## 0.16.1 (2024-04-30)

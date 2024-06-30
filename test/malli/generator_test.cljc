@@ -80,7 +80,7 @@
                      :cljs js/isNaN)
                   x))
           is-float? (fn [n]
-                      #?(:clj (instance? Float n)
+                      #?(:clj  (instance? Float n)
                          :cljs (float? n)))
           special? #(or (NaN? %)
                         (infinity? %))
@@ -1073,9 +1073,6 @@
        #?(:clj Exception, :cljs js/Error)
        #":malli\.generator/and-generator-failure"
        (mg/generate [:and pos? neg?]))))
-        #?(:clj Exception, :cljs js/Error)
-        #":malli\.generator/and-generator-failure"
-        (mg/generate [:and pos? neg?]))))
 
 (deftest double-with-long-min-test
   (is (m/validate :double (shrink [:double {:min 3}])))

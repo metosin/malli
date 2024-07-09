@@ -86,9 +86,9 @@ Malli is tested with the LTS releases Java 8, 11, 17 and 21.
 
 (def User
   [:map
-   [:id #'UserId]
-   [:address #'Address]
-   [:friends [:set {:gen/max 2} [:ref #'User]]]])
+   [:id UserId]
+   [:address Address]
+   [:friends [:set {:gen/max 2} [:ref User]]]])
 
 (require '[malli.generator :as mg])
 

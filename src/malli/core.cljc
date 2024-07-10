@@ -1974,6 +1974,7 @@
   [_]
   (-proxy-schema {:type :->
                   :fn (fn [{:keys [guard] :as p} c o]
+                        (-check-children! :-> p c 1 nil)
                         (let [c (mapv #(schema % o) c)
                               cc (cond-> [(into [:cat] (pop c)) (peek c)]
                                    guard (conj [:fn guard]))]

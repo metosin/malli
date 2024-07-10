@@ -16,7 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* `:->` added to dedault registry, added to [documentation](docs/function-schemas.md#flat-arrow-function-schemas).
+* `:->` added to dedault registry, also to [documentation](docs/function-schemas.md#flat-arrow-function-schemas).
 
 ## 0.16.2 (2024-06-30)
 

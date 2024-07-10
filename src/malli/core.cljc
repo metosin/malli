@@ -2625,7 +2625,7 @@
    :fn (-fn-schema)
    :ref (-ref-schema)
    :=> (-=>-schema)
-   ;:-> (-->-schema nil)
+   :-> (-->-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})

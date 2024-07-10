@@ -4,9 +4,6 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
-;; not part of default registry
-(def --> (m/-->-schema nil))
-
 (def Schema
   (m/schema
    [:map {:registry {::id string?
@@ -44,8 +41,8 @@
   ([x y & z] (apply + (* x y) z)))
 
 (m/=> kikka2 [:function
-              [--> :int [:int {:min 0}]]
-              [--> :int :int [:* :int] :int]])
+              [:-> :int [:int {:min 0}]]
+              [:-> :int :int [:* :int] :int]])
 
 (defn siren [f coll]
   (into {} (map (juxt f identity) coll)))

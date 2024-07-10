@@ -1,11 +1,6 @@
 (ns malli.instrument.fn-schemas
-  (:require
-   [malli.core :as m]
-   [malli.experimental :as mx]
-   [malli.instrument.fn-schemas2 :as schemas :refer [small-int int-arg VecOfStrings]]))
-
-;; not part of default registry
-(def --> (m/-->-schema nil))
+  (:require [malli.experimental :as mx]
+            [malli.instrument.fn-schemas2 :as schemas :refer [small-int int-arg VecOfStrings]]))
 
 (def VecOfInts [:vector :int])
 
@@ -27,7 +22,7 @@
 (def str-join-schema [:=> [:cat VecOfStrings] schemas/string])
 
 (defn str-join2
-  {:malli/schema [--> VecOfStrings schemas/string]}
+  {:malli/schema [:-> VecOfStrings schemas/string]}
   [args]
   (apply str args))
 

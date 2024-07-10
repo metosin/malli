@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `:->` added to dedault registry, also to [documentation](docs/function-schemas.md#flat-arrow-function-schemas).
+
 ## 0.16.2 (2024-06-30)
 
 * Experimental `:->` for simpler function defintions (not available on default schema registry) [#1027](https://github.com/metosin/malli/pull/1027)

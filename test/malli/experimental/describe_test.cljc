@@ -1,10 +1,6 @@
 (ns malli.experimental.describe-test
   (:require [clojure.test :refer [deftest is testing]]
-            [malli.core :as m]
             [malli.experimental.describe :as med]))
-
-;; not part of default registry
-(def --> (m/-->-schema nil))
 
 (deftest descriptor-test
   (testing "vector"
@@ -20,7 +16,7 @@
     (is (= "function that takes input: [integer] and returns integer"
            (med/describe [:=> [:cat int?] int?])))
     (is (= "function that takes input: [integer] and returns integer"
-           (med/describe [--> int? int?]))))
+           (med/describe [:-> int? int?]))))
 
   (testing "map"
     (is (= "map" (med/describe map?)))

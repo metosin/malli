@@ -6,9 +6,6 @@
             [malli.json-schema :as json-schema]
             [malli.util :as mu]))
 
-;; not part of default registry
-(def --> (m/-->-schema nil))
-
 (def expectations
   [;; predicates
    [pos-int? {:type "integer", :minimum 1}]
@@ -112,7 +109,7 @@
    [:uuid {:type "string", :format "uuid"}]
 
    [[:=> :cat int?] {} :fn]
-   [[--> :cat int?] {} :fn]
+   [[:-> :cat int?] {} :fn]
    [[:function [:=> :cat int?]] {} :fn]
    [ifn? {}]
 

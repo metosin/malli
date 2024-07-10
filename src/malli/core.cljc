@@ -1932,7 +1932,7 @@
         (reify
           Schema
           (-validator [_] (-validator schema))
-          (-explainer [_ path] (-explainer schema path))
+          (-explainer [_ path] (-explainer schema (conj path ::in)))
           (-parser [_] (-parser schema))
           (-unparser [_] (-unparser schema))
           (-transformer [this transformer method options]
@@ -1950,7 +1950,7 @@
           (-cache [_] cache)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (get children key default))
+          (-get [_ key default] (if (= ::in key) schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
           FunctionSchema
           (-function-schema? [_] (-function-schema? schema))
@@ -1974,6 +1974,7 @@
   [_]
   (-proxy-schema {:type :->
                   :fn (fn [{:keys [guard] :as p} c o]
+                        (-check-children! :-> p c 1 nil)
                         (let [c (mapv #(schema % o) c)
                               cc (cond-> [(into [:cat] (pop c)) (peek c)]
                                    guard (conj [:fn guard]))]
@@ -2624,7 +2625,7 @@
    :fn (-fn-schema)
    :ref (-ref-schema)
    :=> (-=>-schema)
-   ;:-> (-->-schema nil)
+   :-> (-->-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})

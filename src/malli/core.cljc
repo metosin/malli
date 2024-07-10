@@ -1932,7 +1932,7 @@
         (reify
           Schema
           (-validator [_] (-validator schema))
-          (-explainer [_ path] (-explainer schema path))
+          (-explainer [_ path] (-explainer schema (conj path ::in)))
           (-parser [_] (-parser schema))
           (-unparser [_] (-unparser schema))
           (-transformer [this transformer method options]
@@ -1950,7 +1950,7 @@
           (-cache [_] cache)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (get children key default))
+          (-get [_ key default] (if (= ::in key) schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
           FunctionSchema
           (-function-schema? [_] (-function-schema? schema))

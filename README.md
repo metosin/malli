@@ -129,6 +129,7 @@ Examples:
 [:tuple {:title "location"} :double :double]
 
 ;; a function schema of :int -> :int
+[:-> :int :int]
 [:=> [:cat :int] :int]
 ```
 
@@ -177,6 +178,8 @@ Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 {:type :=>
  :input {:type :cat, :children [{:type :int}]}
  :output :int}
+{:type :->
+ :children [{:type :int} {:type :int}]}
 ```
 
 Usage:
@@ -3296,7 +3299,7 @@ Sequence/regex-schemas: `:+`, `:*`, `:?`, `:repeat`, `:cat`, `:alt`, `:catn`, `:
 
 ### `malli.core/base-schemas`
 
-Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:enum`, `:maybe`, `:tuple`, `:multi`, `:re`, `:fn`, `:ref`, `:=>`, `:function` and `:schema`.
+Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:enum`, `:maybe`, `:tuple`, `:multi`, `:re`, `:fn`, `:ref`, `:=>`, `:->`, `:function` and `:schema`.
 
 ### `malli.util/schemas`
 

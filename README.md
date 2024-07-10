@@ -129,8 +129,8 @@ Examples:
 [:tuple {:title "location"} :double :double]
 
 ;; a function schema of :int -> :int
-[:-> :int :int]
 [:=> [:cat :int] :int]
+[:-> :int :int]
 ```
 
 Usage:

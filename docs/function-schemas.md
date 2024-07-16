@@ -8,6 +8,7 @@
   * [Generating Functions](#generating-functions)
   * [Multi-arity Functions](#multi-arity-functions)
   * [Instrumentation](#instrumentation)
+  * [Flat Arrow Function Schemas](#flat-arrow-function-schemas)
 * [Defn Schemas](#defn-schemas)
   * [Defining Function Schemas](#defining-function-schemas)
     * [Function Schema Annotations](#function-schema-annotations)
@@ -81,13 +82,18 @@ Examples of function definitions:
       [:xs [:+ :int]]] :int]
 
 ;; arg:int -> ret:int, arg > ret
-[:=> [:cat :int] :int [:fn (fn [[arg] ret] (> arg ret))]]
+(defn guard [[arg] ret]
+  (> arg ret))
+
+[:=> [:cat :int] :int [:fn guard]]
 
 ;; multi-arity function
 [:function
  [:=> [:cat :int] :int]
  [:=> [:cat :int :int [:* :int]] :int]]      
 ```
+
+What is that `:cat` all about in the input schemas? Wouldn't it be simpler without it? Sure, check out [Flat Arrow Function Schema](#flat-arrow-function-schemas).
 
 Function definition for the `plus` looks like this:
 
@@ -389,6 +395,62 @@ With `:gen` we can omit the function body. Here's an example to generate random 
 
 (pow-gen 10 20 30)
 ; =throws=> :malli.core/invalid-arity {:arity 3, :arities #{1 2}, :args (10 20 30), :input nil, :schema [:function [:=> [:cat :int] [:int {:max 6}]] [:=> [:cat :int :int] [:int {:max 6}]]]}
+```
+
+### Flat Arrow Function Schemas
+
+Function schema `:=>` requires input arguments to be wrapped in `:cat` or `:catn`. Since `0.16.2` there is also flat arrow schema: `:->` that allows input schema to be defined as flat sequence:
+
+```clojure
+;; no args, no return
+[:-> :nil]
+
+;; int -> int
+[:-> :int :int]
+
+;; arg:int -> ret:int, arg > ret
+(defn guard [[arg] ret] 
+  (> arg ret))
+
+[:-> {:guard guard} :int :int]
+
+;; multi-arity function
+[:function
+ [:-> :int :int]
+ [:-> :int :int [:* :int] :int]]
+```
+
+Technically `:->` is implemented as a proxy to `:=>`. To get the actual schema:
+
+```clojure
+(m/deref [:-> :int :int])
+; [:=> [:cat :int] :int]
+```
+
+This can be seen also in explain results:
+
+```clojure
+(m/explain
+ [:-> :int :int]
+ (fn [x] (str x))
+ {::m/function-checker mg/function-checker})
+;{:schema [:-> :int :int],
+; :value #object[...],
+; :errors ({:path [:malli.core/in],
+;           :in [],
+;           :schema [:=> [:cat :int] :int],
+;           :value #object[...],
+;           :check {:total-nodes-visited 0,
+;                   :result false,
+;                   :result-data nil,
+;                   :smallest [(0)],
+;                   :time-shrinking-ms 0,
+;                   :pass? false,
+;                   :depth 0,
+;                   :malli.core/result "0"}}
+;          {:path [:malli.core/in 1]
+;           :in [], :schema :int
+;           :value "0"})}
 ```
 
 ## Defn Schemas

@@ -191,9 +191,11 @@
 (defmethod accept :qualified-symbol [_ _ _ _] "qualified symbol")
 (defmethod accept :uuid [_ _ _ _] "uuid")
 
-(defmethod accept :=> [_ s _ _]
+(defn -accept-=> [s]
   (let [{:keys [input output]} (m/-function-info s)]
     (str "function that takes input: [" (describe input) "] and returns " (describe output))))
+(defmethod accept :=> [_ s _ _] (-accept-=> s))
+(defmethod accept :-> [_ s _ _] (-accept-=> s))
 
 (defmethod accept :function [_ _ _children _] "function")
 (defmethod accept :fn [_ _ _ _] "function")

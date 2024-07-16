@@ -5,6 +5,7 @@
             [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
+            [malli.transform :as mt]
             [malli.util :as mu]))
 
 #?(:clj (defn from-json [s]
@@ -427,6 +428,12 @@
                   [:x 0 0 0 1 :y 9]
                   pos-int?)
                  pos-int?))
+  (is (mu/equals (mu/get-in
+                  [:multi {:dispatch :x}
+                   [true [:map [:x :boolean]]]
+                   [false [:map [:x :boolean] [:y :boolean]]]]
+                  [false])
+                 [:map [:x :boolean] [:y :boolean]]))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
                  (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
   (is (form= (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))
@@ -1019,3 +1026,21 @@
         :map
         :invalid
         identity))))
+
+(deftest transform-merge-test
+  (is (= {:name "kikka"
+          :description "kikka"}
+         (m/decode
+           [:map
+            [:name [:string {:default "kikka"}]]
+            [:description {:optional true} [:string {:default "kikka"}]] ]
+           {}
+           {:registry (merge (mu/schemas) (m/default-schemas))}
+           (mt/default-value-transformer {::mt/add-optional-keys true}))
+         (m/decode
+           [:merge
+            [:map [:name [:string {:default "kikka"}]] ]
+            [:map [:description {:optional true} [:string {:default "kikka"}]]]]
+           {}
+           {:registry (merge (mu/schemas) (m/default-schemas))}
+           (mt/default-value-transformer {::mt/add-optional-keys true})))))

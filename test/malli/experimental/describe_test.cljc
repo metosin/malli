@@ -14,7 +14,9 @@
 
   (testing "function"
     (is (= "function that takes input: [integer] and returns integer"
-           (med/describe [:=> [:cat int?] int?]))))
+           (med/describe [:=> [:cat int?] int?])))
+    (is (= "function that takes input: [integer] and returns integer"
+           (med/describe [:-> int? int?]))))
 
   (testing "map"
     (is (= "map" (med/describe map?)))

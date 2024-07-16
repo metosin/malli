@@ -14,6 +14,32 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `:->` added to dedault registry, also to [documentation](docs/function-schemas.md#flat-arrow-function-schemas).
+
+## 0.16.2 (2024-06-30)
+
+* Experimental `:->` for simpler function defintions (not available on default schema registry) [#1027](https://github.com/metosin/malli/pull/1027)
+
+```clojure
+[:-> :any] ; [:=> :cat :any]
+[:-> :int :any] ; [:=> [:cat :int] :any]
+[:-> [:cat :int] :any]  ; [:=> [:cat [:cat :int]] :any]
+[:-> a b c d :any] ; [:=> [:cat a b c d] :any]
+
+;; guard property
+[:-> {:guard (fn [[[arg] ret]] ...)} :string :boolean]
+; [:=> [:cat :string] :boolean [:fn (fn [[[arg] ret]] ...)]]
+```
+
+* Fix `mu/get-in` for false-y keys [#1065](https://github.com/metosin/malli/pull/1065)
+* Add `:float` [#1055](https://github.com/metosin/malli/pull/1055)
+* Make clj-kondo dir configurable [#1062](https://github.com/metosin/malli/pull/1062)
+* Improve doc for transformers [#1058](https://github.com/metosin/malli/pull/1058)
+* `:double` generates Long if `:`min is Long [#1034](https://github.com/metosin/malli/issues/1034)
+* Fix Swagger definitions collecting [#1002](https://github.com/metosin/malli/issues/1002)
+
 ## 0.16.1 (2024-04-30)
 
 * Enabled Java8 tests back, no need to limit the version.

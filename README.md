@@ -70,6 +70,8 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 Malli requires Clojure 1.11.
 
+Malli is tested with the LTS releases Java 8, 11, 17 and 21.
+
 ## Quickstart
 
 ```clojure
@@ -128,6 +130,7 @@ Examples:
 
 ;; a function schema of :int -> :int
 [:=> [:cat :int] :int]
+[:-> :int :int]
 ```
 
 Usage:
@@ -175,6 +178,8 @@ Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 {:type :=>
  :input {:type :cat, :children [{:type :int}]}
  :output :int}
+{:type :->
+ :children [{:type :int} {:type :int}]}
 ```
 
 Usage:
@@ -393,7 +398,7 @@ You can use `:sequential` to describe homogeneous sequential Clojure collections
 ;; => false
 ```
 
-Malli also supports sequence regexes (also called sequence expresions) like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
+Malli also supports sequence regexes (also called sequence expressions) like [Seqexp](https://github.com/cgrand/seqexp) and Spec.
 The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 ```clojure
@@ -454,7 +459,7 @@ while `:cat` and `:alt` just use numeric indices for paths:
 ;;              {:path [0 1 1], :in [3], :schema boolean?, :value 11})}
 ```
 
-As all these examples show, the sequence experssion (seqex) operators take any non-seqex child schema to
+As all these examples show, the sequence expression (seqex) operators take any non-seqex child schema to
 mean a sequence of one element that matches that schema. To force that behaviour for
 a seqex child `:schema` can be used:
 
@@ -1134,6 +1139,49 @@ Going crazy:
   {:x 1}
   (mt/transformer {:name :math}))
 ; => {:x 24}
+```
+
+`:and` accumulates the transformed value left-to-right.
+
+```clojure
+(m/decode
+  [:and
+   [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+   [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+  "kerran" mt/string-transformer)
+;; => "3_1_kerran_2_4"
+```
+
+`:or` transforms using the first successful schema, left-to-right.
+
+```clojure
+(m/decode
+  [:or
+   [:string {:decode/string '{:enter #(str "1_" %), :leave #(str % "_2")}}]
+   [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+  "kerran" mt/string-transformer)
+;; => "1_kerran_2"
+
+(m/decode
+  [:or
+   :map
+   [:string {:decode/string '{:enter #(str "3_" %), :leave #(str % "_4")}}]]
+  "kerran" mt/string-transformer)
+;; => "3_kerran_4"
+```
+
+Proxy schemas like `:merge` and `:union` transform as if `m/deref`ed.
+
+```clojure
+(m/decode
+  [:merge
+   [:map [:name [:string {:default "kikka"}]] ]
+   [:map [:description {:optional true} [:string {:default "kikka"}]]]]
+  {}
+  {:registry (merge (mu/schemas) (m/default-schemas))}
+  (mt/default-value-transformer {::mt/add-optional-keys true}))
+;; => {:name "kikka"
+;;     :description "kikka"}
 ```
 
 ## To and from JSON
@@ -3251,7 +3299,7 @@ Sequence/regex-schemas: `:+`, `:*`, `:?`, `:repeat`, `:cat`, `:alt`, `:catn`, `:
 
 ### `malli.core/base-schemas`
 
-Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:enum`, `:maybe`, `:tuple`, `:multi`, `:re`, `:fn`, `:ref`, `:=>`, `:function` and `:schema`.
+Contains `:and`, `:or`, `:orn`, `:not`, `:map`, `:map-of`, `:vector`, `:sequential`, `:set`, `:enum`, `:maybe`, `:tuple`, `:multi`, `:re`, `:fn`, `:ref`, `:=>`, `:->`, `:function` and `:schema`.
 
 ### `malli.util/schemas`
 
@@ -3399,7 +3447,7 @@ You can call describe on a schema to get its description in english:
 - Schema https://github.com/plumatic/schema
 - Clojure.spec https://clojure.org/guides/spec
 - Spell-spec https://github.com/bhauman/spell-spec
-- JSON Schema https://json-schema.org/understanding-json-schema/index.html
+- JSON Schema https://json-schema.org/understanding-json-schema
 - Spec-provider: https://github.com/stathissideris/spec-provider
 - F# Type Providers: https://docs.microsoft.com/en-us/dotnet/fsharp/tutorials/type-providers/
 - Minimallist https://github.com/green-coder/minimallist
@@ -3423,10 +3471,6 @@ The API layers and stability:
 * **extender API**: public vars, name starts with `-`, e.g. `malli.core/-collection-schema`. Not needed with basic use cases, might evolve during the alpha, follow [CHANGELOG](CHANGELOG.md) for details
 * **experimental**: stuff in `malli.experimental` ns, code might change be moved under a separate support library, but you can always copy the old implementation to your project, so ok to use.
 * **private API**: private vars and `malli.impl` namespaces, all bets are off.
-
-## Supported Java versions
-
-Malli aims to support the LTS releases Java 8 and 11 and the latest Java release, Java 15.
 
 # Development
 

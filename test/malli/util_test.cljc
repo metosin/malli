@@ -5,6 +5,7 @@
             [malli.core :as m]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
+            [malli.transform :as mt]
             [malli.util :as mu]))
 
 #?(:clj (defn from-json [s]
@@ -427,6 +428,12 @@
                   [:x 0 0 0 1 :y 9]
                   pos-int?)
                  pos-int?))
+  (is (mu/equals (mu/get-in
+                  [:multi {:dispatch :x}
+                   [true [:map [:x :boolean]]]
+                   [false [:map [:x :boolean] [:y :boolean]]]]
+                  [false])
+                 [:map [:x :boolean] [:y :boolean]]))
   (is (mu/equals [:maybe [:tuple int? boolean?]]
                  (mu/get-in (m/schema [:maybe [:tuple int? boolean?]]) [])))
   (is (form= (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))
@@ -990,3 +997,50 @@
                  (mu/assoc-in [:foo :bar] :int)
                  (mu/assoc-in [:foo :baz] :int)
                  (mu/closed-schema)))))
+
+(deftest update-entry-properties-test
+  (is (= [:map [:me {:a 1, :b 1} :int]]
+         (m/form
+          (mu/update-entry-properties
+           [:map [:me {:a 1} :int]]
+           :me
+           assoc :b 1))))
+  (is (= [:orn [:me {:a 1 :b 1} :int]]
+         (m/form
+          (mu/update-entry-properties
+           [:orn [:me {:a 1} :int]]
+           :me
+           assoc :b 1))))
+  (is (= [:vector [:map [:me {:a 1, :b 1} :int]]]
+         (m/form
+          (-> [:vector [:map [:me {:a 1} :int]]]
+              (mu/update 0 mu/update-entry-properties :me assoc :b 1)))))
+  (is (= [:vector [:orn [:me {:a 1, :b 1} :int]]]
+         (m/form
+          (-> [:vector [:orn [:me {:a 1} :int]]]
+              (mu/update 0 mu/update-entry-properties :me assoc :b 1)))))
+  (is (thrown-with-msg?
+       #?(:clj Exception, :cljs js/Error)
+       #":malli.util/no-entry"
+       (mu/update-entry-properties
+        :map
+        :invalid
+        identity))))
+
+(deftest transform-merge-test
+  (is (= {:name "kikka"
+          :description "kikka"}
+         (m/decode
+           [:map
+            [:name [:string {:default "kikka"}]]
+            [:description {:optional true} [:string {:default "kikka"}]] ]
+           {}
+           {:registry (merge (mu/schemas) (m/default-schemas))}
+           (mt/default-value-transformer {::mt/add-optional-keys true}))
+         (m/decode
+           [:merge
+            [:map [:name [:string {:default "kikka"}]] ]
+            [:map [:description {:optional true} [:string {:default "kikka"}]]]]
+           {}
+           {:registry (merge (mu/schemas) (m/default-schemas))}
+           (mt/default-value-transformer {::mt/add-optional-keys true})))))

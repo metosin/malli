@@ -8,7 +8,9 @@
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
-(defn -ref [schema {::keys [transform definitions] :as options}]
+(defn -ref [schema {::keys [transform definitions definitions-path]
+                    :or {definitions-path "#/definitions/"}
+                    :as options}]
   (let [ref (as-> (m/-ref schema) $
               (cond (var? $) (let [{:keys [ns name]} (meta $)]
                                (str (symbol (str ns) (str name))))
@@ -19,7 +21,7 @@
         (swap! definitions assoc ref ::recursion-stopper)
         (swap! definitions assoc ref (transform child options))))
     ;; '/' must be encoded as '~1' in JSON Schema - https://www.rfc-editor.org/rfc/rfc6901
-    {:$ref (apply str "#/definitions/" (str/replace ref #"/" "~1"))}))
+    {:$ref (apply str definitions-path (str/replace ref #"/" "~1"))}))
 
 (defn -schema [schema {::keys [transform] :as options}]
   (if (m/-ref schema)
@@ -41,6 +43,7 @@
 (defmethod accept 'nat-int? [_ _ _ _] {:type "integer", :minimum 0})
 (defmethod accept 'float? [_ _ _ _] {:type "number"})
 (defmethod accept 'double? [_ _ _ _] {:type "number"})
+(defmethod accept 'float? [_ _ _ _] {:type "number"})
 (defmethod accept 'pos? [_ _ _ _] {:type "number" :exclusiveMinimum 0})
 (defmethod accept 'neg? [_ _ _ _] {:type "number" :exclusiveMaximum 0})
 (defmethod accept 'boolean? [_ _ _ _] {:type "boolean"})
@@ -160,6 +163,10 @@
 
 (defmethod accept :int [_ schema _ _]
   (merge {:type "integer"} (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
+
+(defmethod accept :float [_ schema _ _]
+  (merge {:type "number"}
+         (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
 
 (defmethod accept :double [_ schema _ _]
   (merge {:type "number"}

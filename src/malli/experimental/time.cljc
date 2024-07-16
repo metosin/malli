@@ -33,12 +33,12 @@
   "Periods are not comparable in the java Comparable sense, instead this performs simple units-by-units comparison.
    So a period of 1 year will always compare greater than a period of 13 months and similar for days and months."
   [^Period p1 ^Period p2]
-  (let [years1  #?(:clj (.getYears p1) :cljs (.years p1))
-        years2  #?(:clj (.getYears p2) :cljs (.years p2))
+  (let [years1 #?(:clj (.getYears p1) :cljs (.years p1))
+        years2 #?(:clj (.getYears p2) :cljs (.years p2))
         months1 #?(:clj (.getMonths p1) :cljs (.months p1))
         months2 #?(:clj (.getMonths p2) :cljs (.months p2))
-        days1   #?(:clj (.getDays p1) :cljs (.days p1))
-        days2   #?(:clj (.getDays p2) :cljs (.days p2))]
+        days1 #?(:clj (.getDays p1) :cljs (.days p1))
+        days2 #?(:clj (.getDays p2) :cljs (.days p2))]
     (cond
       (not (= years1 years2)) (- years1 years2)
       (not (= months1 months2)) (- months1 months2)
@@ -52,8 +52,8 @@
       (if (and (instance? Period min) (instance? Period max))
         (fn [^Period x]
           (and
-            (not (pos? (compare-periods x max)))
-            (not (pos? (compare-periods min x)))))
+           (not (pos? (compare-periods x max)))
+           (not (pos? (compare-periods min x)))))
         (fn [x] (and (<= x max) (<= min x))))
       min (fn [x]
             (if (instance? Period min)
@@ -66,14 +66,14 @@
 
 (defn -temporal-schema [{:keys [type class type-properties]}]
   (m/-simple-schema
-    (cond->
-      {:type type
-       :pred (fn pred [x]
-               #?(:clj (.isInstance ^Class class x)
-                  :cljs (instance? class x)))
-       :property-pred (-min-max-pred nil)}
-      type-properties
-      (assoc :type-properties type-properties))))
+   (cond->
+     {:type type
+      :pred (fn pred [x]
+              #?(:clj  (.isInstance ^Class class x)
+                 :cljs (instance? class x)))
+      :property-pred (-min-max-pred nil)}
+     type-properties
+     (assoc :type-properties type-properties))))
 
 #?(:cljs
    (defn createTemporalQuery [f]

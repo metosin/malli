@@ -14,7 +14,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast)
+         parser unparser ast from-ast -instrument)
 
 ;;
 ;; protocols and records
@@ -86,6 +86,12 @@
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
   (-regex-min-max [this nested?] "returns size of the sequence as {:min min :max max}. nil max means unbounded. nested? is true when this schema is nested inside an outer regex schema."))
 
+(defprotocol FunctionSchema
+  (-function-schema? [this])
+  (-function-schema-arities [this])
+  (-function-info [this])
+  (-instrument-f [schema props f options]))
+
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
@@ -94,6 +100,12 @@
 (defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
 
 (extend-type #?(:clj Object, :cljs default)
+  FunctionSchema
+  (-function-schema? [_] false)
+  (-function-info [_])
+  (-function-schema-arities [_])
+  (-instrument-f [_ _ _ _])
+
   RegexSchema
   (-regex-op? [_] false)
 
@@ -201,17 +213,6 @@
 (defn -memoize [f]
   (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
     (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
-
-(defn -function-info [schema]
-  (when (= (type schema) :=>)
-    (let [[input output guard] (-children schema)
-          {:keys [min max]} (-regex-min-max input false)]
-      (cond-> {:min min
-               :arity (if (= min max) min :varargs)
-               :input input
-               :output output}
-        guard (assoc :guard guard)
-        max (assoc :max max)))))
 
 (defn -group-by-arity! [infos]
   (let [aritys (atom #{})]
@@ -716,6 +717,7 @@
 (defn -some-schema [] (-simple-schema {:type :some, :pred some?}))
 (defn -string-schema [] (-simple-schema {:type :string, :pred string?, :property-pred (-min-max-pred count)}))
 (defn -int-schema [] (-simple-schema {:type :int, :pred int?, :property-pred (-min-max-pred nil)}))
+(defn -float-schema [] (-simple-schema {:type :float, :pred float?, :property-pred (-min-max-pred nil)}))
 (defn -double-schema [] (-simple-schema {:type :double, :pred double?, :property-pred (-min-max-pred nil)}))
 (defn -boolean-schema [] (-simple-schema {:type :boolean, :pred boolean?}))
 (defn -keyword-schema [] (-simple-schema {:type :keyword, :pred keyword?}))
@@ -1815,6 +1817,36 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
+          FunctionSchema
+          (-function-schema? [_] true)
+          (-function-schema-arities [this] [this])
+          (-function-info [_]
+            (let [{:keys [min max]} (-regex-min-max input false)]
+              (cond-> {:min min
+                       :arity (if (= min max) min :varargs)
+                       :input input
+                       :output output}
+                guard (assoc :guard guard)
+                max (assoc :max max))))
+          (-instrument-f [schema {:keys [scope report gen] :as props} f _options]
+            (let [{:keys [min max input output guard]} (-function-info schema)
+                  [validate-input validate-output] (-vmap -validator [input output])
+                  validate-guard (or (some-> guard -validator) any?)
+                  [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
+                  f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
+              (fn [& args]
+                (let [args (vec args), arity (count args)]
+                  (when wrap-input
+                    (when-not (<= min arity (or max miu/+max-size+))
+                      (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
+                    (when-not (validate-input args)
+                      (report ::invalid-input {:input input, :args args, :schema schema})))
+                  (let [value (apply f args)]
+                    (when (and wrap-output (not (validate-output value)))
+                      (report ::invalid-output {:output output, :value value, :args args, :schema schema}))
+                    (when (and wrap-guard (not (validate-guard [args value])))
+                      (report ::invalid-guard {:guard guard, :value value, :args args, :schema schema}))
+                    value)))))
           Cached
           (-cache [_] cache)
           LensSchema
@@ -1835,7 +1867,7 @@
             form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
-        (when-not (every? #(= :=> (type %)) children)
+        (when-not (every? (every-pred -function-schema? -function-info) children)
           (-fail! ::non-function-childs {:children children}))
         (-group-by-arity! (-vmap -function-info children))
         ^{:type ::schema}
@@ -1867,12 +1899,96 @@
           (-children [_] children)
           (-parent [_] parent)
           (-form [_] @form)
+          FunctionSchema
+          (-function-schema? [_] true)
+          (-function-schema-arities [_] children)
+          (-function-info [_])
+          (-instrument-f [this {:keys [_scope report] :as props} f options]
+            (let [arity->info (->> children
+                                   (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))
+                                   (-group-by-arity!))
+                  arities (-> arity->info keys set)
+                  varargs-info (arity->info :varargs)]
+              (if (= 1 (count arities))
+                (-> arity->info first val :f)
+                (fn [& args]
+                  (let [arity (count args)
+                        {:keys [input] :as info} (arity->info arity)
+                        report-arity #(report ::invalid-arity {:arity arity, :arities arities, :args args, :input input, :schema this})]
+                    (cond
+                      info (apply (:f info) args)
+                      varargs-info (if (< arity (:min varargs-info)) (report-arity) (apply (:f varargs-info) args))
+                      :else (report-arity)))))))
           Cached
           (-cache [_] cache)
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value)))))))
+
+(defn -proxy-schema [{:keys [type min max childs type-properties fn]}]
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-type [_] type)
+    (-type-properties [_] type-properties)
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent properties children options]
+      (-check-children! type properties children min max)
+      (let [[children forms schema] (fn properties (vec children) options)
+            form (delay (-create-form type properties forms options))
+            cache (-create-cache options)]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-validator [_] (-validator schema))
+          (-explainer [_ path] (-explainer schema (conj path ::in)))
+          (-parser [_] (-parser schema))
+          (-unparser [_] (-unparser schema))
+          (-transformer [this transformer method options]
+            (-parent-children-transformer this [schema] transformer method options))
+          (-walk [this walker path options]
+            (let [children (if childs (subvec children 0 childs) children)]
+              (when (-accept walker this path options)
+                (-outer walker this path (-inner-indexed walker path children options) options))))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] children)
+          (-parent [_] parent)
+          (-form [_] @form)
+          Cached
+          (-cache [_] cache)
+          LensSchema
+          (-keep [_])
+          (-get [_ key default] (if (= ::in key) schema (get children key default)))
+          (-set [_ key value] (into-schema type properties (assoc children key value)))
+          FunctionSchema
+          (-function-schema? [_] (-function-schema? schema))
+          (-function-info [_] (-function-info schema))
+          (-function-schema-arities [_] (-function-schema-arities schema))
+          (-instrument-f [_ props f options] (-instrument-f schema props f options))
+          RegexSchema
+          (-regex-op? [_] (-regex-op? schema))
+          (-regex-validator [_] (-regex-validator schema))
+          (-regex-explainer [_ path] (-regex-explainer schema path))
+          (-regex-unparser [_] (-regex-unparser schema))
+          (-regex-parser [_] (-regex-parser schema))
+          (-regex-transformer [_ transformer method options] (-regex-transformer schema transformer method options))
+          (-regex-min-max [_ nested?] (-regex-min-max schema nested?))
+          RefSchema
+          (-ref [_])
+          (-deref [_] schema))))))
+
+(defn -->-schema
+  "Experimental simple schema for :=> schema. AST and explain results subject to change."
+  [_]
+  (-proxy-schema {:type :->
+                  :fn (fn [{:keys [guard] :as p} c o]
+                        (-check-children! :-> p c 1 nil)
+                        (let [c (mapv #(schema % o) c)
+                              cc (cond-> [(into [:cat] (pop c)) (peek c)]
+                                   guard (conj [:fn guard]))]
+                          [c (map -form c) (into-schema :=> (dissoc p :guard) cc o)]))}))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 
@@ -2381,7 +2497,8 @@
 
 (defn -default-sci-options []
   {:preset :termination-safe
-   :aliases {'str 'clojure.string}
+   :aliases {'str 'clojure.string
+             'm 'malli.core}
    :namespaces {'malli.core {'properties properties
                              'type type
                              'children children
@@ -2438,6 +2555,7 @@
    :nil (-nil-schema)
    :string (-string-schema)
    :int (-int-schema)
+   :float (-float-schema)
    :double (-double-schema)
    :boolean (-boolean-schema)
    :keyword (-keyword-schema)
@@ -2522,6 +2640,7 @@
    :fn (-fn-schema)
    :ref (-ref-schema)
    :=> (-=>-schema)
+   :-> (-->-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
@@ -2565,8 +2684,8 @@
 (defn function-schema
   ([?schema] (function-schema ?schema nil))
   ([?schema options]
-   (let [s (schema ?schema options), t (type s)]
-     (if (#{:=> :function} t) s (-fail! ::invalid-=>schema {:type t, :schema s})))))
+   (let [s (schema ?schema options)]
+     (if (-function-schema? s) s (-fail! ::invalid-=>schema {:type (type s), :schema s})))))
 
 ;; for cljs we cannot invoke `function-schema` at macroexpansion-time
 ;; - `?schema` could contain cljs vars that will only resolve at runtime.
@@ -2613,38 +2732,10 @@
    (-instrument props nil nil))
   ([props f]
    (-instrument props f nil))
-  ([{:keys [scope report gen] :or {scope #{:input :output :guard}, report -fail!} :as props} f options]
-   (let [schema (-> props :schema (schema options))]
-     (case (type schema)
-       :=> (let [{:keys [min max input output guard]} (-function-info schema)
-                 [validate-input validate-output validate-guard] (-vmap validator [input output (or guard :any)])
-                 [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
-                 f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
-             (fn [& args]
-               (let [args (vec args), arity (count args)]
-                 (when wrap-input
-                   (when-not (<= min arity (or max miu/+max-size+))
-                     (report ::invalid-arity {:arity arity, :arities #{{:min min :max max}}, :args args, :input input, :schema schema}))
-                   (when-not (validate-input args)
-                     (report ::invalid-input {:input input, :args args, :schema schema})))
-                 (let [value (apply f args)]
-                   (when (and wrap-output (not (validate-output value)))
-                     (report ::invalid-output {:output output, :value value, :args args, :schema schema}))
-                   (when (and wrap-guard (not (validate-guard [args value])))
-                     (report ::invalid-guard {:guard guard, :value value, :args args, :schema schema}))
-                   value))))
-       :function (let [arity->info (->> (children schema)
-                                        (map (fn [s] (assoc (-function-info s) :f (-instrument (assoc props :schema s) f options))))
-                                        (-group-by-arity!))
-                       arities (-> arity->info keys set)
-                       varargs-info (arity->info :varargs)]
-                   (if (= 1 (count arities))
-                     (-> arity->info first val :f)
-                     (fn [& args]
-                       (let [arity (count args)
-                             {:keys [input] :as info} (arity->info arity)
-                             report-arity #(report ::invalid-arity {:arity arity, :arities arities, :args args, :input input, :schema schema})]
-                         (cond
-                           info (apply (:f info) args)
-                           varargs-info (if (< arity (:min varargs-info)) (report-arity) (apply (:f varargs-info) args))
-                           :else (report-arity))))))))))
+  ([props f options]
+   (let [props (-> props
+                   (update :scope #(or % #{:input :output :guard}))
+                   (update :report #(or % -fail!)))
+         s (-> props :schema (schema options))]
+     (or (-instrument-f s props f options)
+         (-fail! ::instrument-requires-function-schema {:schema s})))))

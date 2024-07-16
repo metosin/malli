@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [are deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
+            [clojure.test.check :refer [quick-check]]
             [clojure.test.check.properties :refer [for-all]]
             [malli.core :as m]
             [malli.generator :as mg]
@@ -10,6 +11,12 @@
             #?(:clj  [malli.test-macros :refer [when-env]]
                :cljs ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
   #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
+
+(defn shrink [?schema]
+  (-> (quick-check 1 (for-all [s (mg/generator ?schema)] false) {:seed 0})
+      :shrunk
+      :smallest
+      first))
 
 (deftest generator-test
   (doseq [[?schema _ ?fn] json-schema-test/expectations
@@ -57,6 +64,28 @@
                           (some f (mg/sample [:double options]
                                              {:size 1000})))]
       (is (test-presence infinity? {:gen/infinite? true}))
+      (is (test-presence NaN? {:gen/NaN? true}))
+      (is (test-presence special? {:gen/infinite? true
+                                   :gen/NaN? true}))
+      (is (not (test-presence special? nil)))))
+
+  (testing "float properties"
+    (let [infinity? #(or (= % ##Inf)
+                         (= % ##-Inf))
+          NaN? (fn [x]
+                 (#?(:clj  Float/isNaN
+                     :cljs js/isNaN)
+                  x))
+          is-float? (fn [n]
+                      #?(:clj  (instance? Float n)
+                         :cljs (float? n)))
+          special? #(or (NaN? %)
+                        (infinity? %))
+          test-presence (fn [f options]
+                          (some f (mg/sample [:float options]
+                                             {:size 1000})))]
+      (is (test-presence #?(:clj (comp not infinity?) :cljs infinity?) {:gen/infinite? true}))
+      (is (test-presence is-float? {}))
       (is (test-presence NaN? {:gen/NaN? true}))
       (is (test-presence special? {:gen/infinite? true
                                    :gen/NaN? true}))
@@ -344,12 +373,19 @@
 
 #?(:clj
    (deftest function-schema-test
-     (let [=> (m/schema [:=> [:cat int? int?] int?])
-           {:keys [input output]} (m/-function-info =>)]
-       (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample => {:size 1000}))))
+     (doseq [?schema [[:=> [:cat int? int?] int?]
+                      [:-> int? int? int?]]]
+       (let [f (m/schema ?schema)
+             {:keys [input output]} (m/-function-info f)]
+         (is (every? #(m/validate output (apply % (mg/generate input))) (mg/sample f {:size 1000})))))
 
-     (let [=> (m/schema [:function [:=> [:cat int?] int?] [:=> [:cat int? int?] int?]])]
-       (is (every? #(m/validate int? (apply % (mg/generate [:or [:cat int?] [:cat int? int?]]))) (mg/sample => {:size 1000}))))))
+     (doseq [?schema [[:function
+                       [:=> [:cat int?] int?]
+                       [:=> [:cat int? int?] int?]]
+                      [:function
+                       [:-> int? int?]
+                       [:-> int? int? int?]]]]
+       (is (every? #(m/validate int? (apply % (mg/generate [:or [:cat int?] [:cat int? int?]]))) (mg/sample ?schema {:size 1000}))))))
 
 (deftest recursive-schema-generation-test-307
   (let [sample (mg/generate [:schema {:registry {::A
@@ -844,27 +880,47 @@
                       {:seed 0})))))
 
 (deftest map-of-schema-simplify-test
-  (is (= '({} {} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {}})
-         (mg/sample [:schema {:registry {::rec [:map-of [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
-                    {:seed 0})
-         (mg/sample (gen/recursive-gen
-                     (fn [rec]
-                       (gen/fmap #(into {} %)
-                                 (gen/vector-distinct (gen/tuple rec rec))))
-                     (gen/return {}))
-                    {:seed 0}))))
+  (testing "empty maps allowed if :min is not positive"
+    (is (= '({} {} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
+           (mg/sample [:schema {:registry {::rec [:map-of [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:map-of {:min 0} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/fmap #(into {} %)
+                                   (gen/vector-distinct-by first (gen/tuple rec rec))))
+                       (gen/return {}))
+                      {:seed 0}))))
+  (testing "cannot generate empty for positive :min"
+    (try (mg/generate [:schema {:registry {::rec [:map-of {:min 1} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+         (is false)
+         (catch #?(:clj Exception, :cljs js/Error) e
+           (is (re-find #":malli\.generator/infinitely-expanding-schema"
+                        (ex-message e)))
+           (is (= [:map-of {:min 1} [:ref :malli.generator-test/rec] [:ref :malli.generator-test/rec]]
+                  (-> e ex-data :data :schema m/form))))))
+  (testing "can generate empty regardless of :max"
+    (is (= '({{} {}} {{} {}} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
+           (mg/sample [:schema {:registry {::rec [:map-of {:max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:map-of {:min 0 :max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})))))
 
 (deftest vector-schema-simplify-test
-  (testing "empty vectors allowed"
+  (testing "empty vectors allowed if :min is not positive"
     (is (= '([] [] [[] []] [[] []] [] [[]] [] [[] []] [[]] [[[] []] [[] []]])
            (mg/sample [:schema {:registry {::rec [:vector [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:vector {:min 0} [:ref ::rec]]}} [:ref ::rec]]
                       {:seed 0})
            (mg/sample (gen/recursive-gen
                        (fn [rec]
                          (gen/vector rec))
                        (gen/return []))
                       {:seed 0}))))
-  (testing "no empty vectors allowed"
+  (testing "no empty vectors allowed with positive :min"
     (is (= [nil nil [nil nil nil] [nil] nil [nil nil] nil [nil nil nil] nil [[nil nil nil]]]
            (mg/sample [:schema {:registry {::rec [:maybe [:vector {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
                       {:seed 0})
@@ -873,6 +929,72 @@
                          (gen/one-of [(gen/return nil)
                                       (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
                        (gen/one-of [(gen/return nil)]))
+                      {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '([[] [] [] []] [[] [] [] []] [[] [] [] [] [] [] []] [[] [] [] [] [] [] [] []] [[] []]
+             [[] [] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] [] []]
+             [[[] [] [] [] [] [] [] []] [[] [] []] [] [[] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] []]])
+           (mg/sample [:schema {:registry {::rec [:vector {:max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:vector {:min 0 :max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})))))
+
+(deftest sequential-schema-simplify-test
+  (testing "empty sequentials allowed"
+    (is (= '([] [] [[] []] [[] []] [] [[]] [] [[] []] [[]] [[[] []] [[] []]])
+           (mg/sample [:schema {:registry {::rec [:sequential [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/vector rec))
+                       (gen/return []))
+                      {:seed 0}))))
+  (testing "no empty sequentials allowed with positive :min"
+    (is (= [nil nil [nil nil nil] [nil] nil [nil nil] nil [nil nil nil] nil [[nil nil nil]]]
+           (mg/sample [:schema {:registry {::rec [:maybe [:sequential {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/one-of [(gen/return nil)
+                                      (gen/sized #(gen/vector rec 1 (+ 1 %)))]))
+                       (gen/one-of [(gen/return nil)]))
+                      {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '([[] [] [] []] [[] [] [] []] [[] [] [] [] [] [] []] [[] [] [] [] [] [] [] []] [[] []]
+             [[] [] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] [] []]
+             [[[] [] [] [] [] [] [] []] [[] [] []] [] [[] [] [] []] [] [[] [] [] [] [] [] [] []] [[] [] []]])
+           (mg/sample [:schema {:registry {::rec [:sequential {:max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:sequential {:min 0 :max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})))))
+
+(deftest set-schema-simplify-test
+  (testing "empty sets allowed if :min is not positive"
+    (is (= '(#{} #{} #{#{}} #{#{}} #{} #{#{}} #{} #{#{}} #{#{}} #{#{} #{#{}}})
+           (mg/sample [:schema {:registry {::rec [:set [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:set {:min 0} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/fmap set (gen/vector-distinct rec)))
+                       (gen/return #{}))
+                      {:seed 0}))))
+  (testing "no empty sets allowed with positive :min"
+    (is (= '(nil nil #{nil} #{nil} nil #{nil} nil #{nil} nil #{#{nil}})
+           (mg/sample [:schema {:registry {::rec [:maybe [:set {:min 1} [:ref ::rec]]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample (gen/recursive-gen
+                       (fn [rec]
+                         (gen/one-of [(gen/return nil)
+                                      (gen/fmap set (gen/vector-distinct rec {:min-elements 1}))]))
+                       (gen/one-of [(gen/return nil)]))
+                      {:seed 0}))))
+  (testing "can generate empty regardless of :max"
+    (is (= '(#{#{}} #{#{}} #{#{}} #{#{}} #{#{}} #{#{}} #{} #{#{}} #{#{}} #{#{} #{#{}}})
+           (mg/sample [:schema {:registry {::rec [:set {:max 10} [:ref ::rec]]}} [:ref ::rec]]
+                      {:seed 0})
+           (mg/sample [:schema {:registry {::rec [:set {:min 0 :max 10} [:ref ::rec]]}} [:ref ::rec]]
                       {:seed 0})))))
 
 (defn alphanumeric-char? [c]
@@ -919,3 +1041,36 @@
                        {:seed 2})]
     (is (vector? v))
     (is (seq v))))
+
+(deftest map-of-min-max-test
+  (is (empty? (remove #(<= 2 (count %))
+                      (mg/sample [:map-of {:min 2} [:enum 1 2 3] :any]
+                                 {:size 100}))))
+  (is (empty? (remove #(<= (count %) 2)
+                      (mg/sample [:map-of {:max 2} [:enum 1 2 3] :any]
+                                 {:size 100}))))
+  (is (empty? (remove #(<= 2 (count %) 3)
+                      (mg/sample [:map-of {:min 2 :max 3} [:enum 1 2 3] :any]
+                                 {:size 100})))))
+
+(deftest such-that-generator-failure-test
+  (is (thrown-with-msg?
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.generator/not-generator-failure"
+       (mg/generate [:not :any])))
+  (is (thrown-with-msg?
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.generator/distinct-generator-failure"
+       (mg/generate [:set {:min 2} [:= 1]])))
+  (is (thrown-with-msg?
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.generator/distinct-generator-failure"
+       (mg/generate [:map-of {:min 2} [:= 1] :any])))
+  (is (thrown-with-msg?
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.generator/and-generator-failure"
+       (mg/generate [:and pos? neg?]))))
+
+(deftest double-with-long-min-test
+  (is (m/validate :double (shrink [:double {:min 3}])))
+  (is (= 3.0 (shrink [:double {:min 3}]))))

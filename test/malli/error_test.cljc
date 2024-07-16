@@ -47,6 +47,19 @@
                  (m/explain {:orders true, :deliverz true})
                  (me/with-spell-checking)
                  (me/with-error-messages)
+                 (get-errors))))
+      (is (= [{:path ["deliverz"]
+               :type ::me/misspelled-key
+               ::me/likely-misspelling-of [["deliver"]]
+               :message #?(:clj "should be spelled \"deliver\""
+                           :cljs "should be spelled deliver")}]
+             (-> [:map
+                  ["orders" boolean?]
+                  ["deliver" boolean?]]
+                 (mu/closed-schema)
+                 (m/explain {"orders" true, "deliverz" true})
+                 (me/with-spell-checking)
+                 (me/with-error-messages)
                  (get-errors)))))
 
     (testing "nested"
@@ -306,46 +319,54 @@
 
 (deftest string-test
   (is (= {:a ["should be a string"],
-          :b ["should be at least 1 characters"],
+          :b ["should be at least 1 character"],
           :c ["should be at most 4 characters"],
-          :d ["should be between 1 and 4 characters"],
+          :d [["should be at least 1 character"]
+              ["should be at most 4 characters"]],
           :e ["should be a string"]
-          :f ["should be 4 characters"]}
+          :f ["should be 4 characters"]
+          :g ["should be at most 1 character"]
+          :h ["should be 1 character"]}
          (-> [:map
               [:a :string]
               [:b [:string {:min 1}]]
               [:c [:string {:max 4}]]
-              [:d [:string {:min 1, :max 4}]]
+              [:d [:vector [:string {:min 1, :max 4}]]]
               [:e [:string {:min 1, :max 4}]]
-              [:f [:string {:min 4, :max 4}]]]
+              [:f [:string {:min 4, :max 4}]]
+              [:g [:string {:max 1}]]
+              [:h [:string {:min 1 :max 1}]]]
              (m/explain
               {:a 123
                :b ""
                :c "invalid"
-               :d ""
+               :d ["" "12345"]
                :e 123
-               :f "invalid"})
+               :f "invalid"
+               :g "ab"
+               :h ""})
              (me/humanize)))))
 
 (deftest int-test
   (is (= {:a ["should be an integer"]
           :b ["should be at least 1"]
           :c ["should be at most 4"]
-          :d ["should be between 1 and 4"]
+          :d [["should be at least 1"]
+              ["should be at most 4"]]
           :e ["should be an integer"]
           :f ["should be 4"]}
          (-> [:map
               [:a :int]
               [:b [:int {:min 1}]]
               [:c [:int {:max 4}]]
-              [:d [:int {:min 1, :max 4}]]
+              [:d [:vector [:int {:min 1, :max 4}]]]
               [:e [:int {:min 1, :max 4}]]
               [:f [:int {:min 4, :max 4}]]]
              (m/explain
               {:a "123"
                :b 0
                :c 5
-               :d 0
+               :d [0 5]
                :e "123"
                :f 5})
              (me/humanize)))))
@@ -354,21 +375,22 @@
   (is (= {:a ["should be a double"]
           :b ["should be at least 1"]
           :c ["should be at most 4"]
-          :d ["should be between 1 and 4"]
+          :d [["should be at least 1"]
+              ["should be at most 4"]]
           :e ["should be a double"]
           :f ["should be 4"]}
          (-> [:map
               [:a :double]
               [:b [:double {:min 1}]]
               [:c [:double {:max 4}]]
-              [:d [:double {:min 1, :max 4}]]
+              [:d [:vector [:double {:min 1, :max 4}]]]
               [:e [:double {:min 1, :max 4}]]
               [:f [:double {:min 4, :max 4}]]]
              (m/explain
               {:a "123"
                :b 0.0
                :c 5.0
-               :d 0.0
+               :d [0.0 5.0]
                :e "123"
                :f 5.0})
              (me/humanize)))))
@@ -411,21 +433,25 @@
                (m/explain "foo")
                (me/humanize)))))
   (testing "error with 1 value"
-    (is (= ["should be foo"]
+    (is (= [#?(:clj "should be \"foo\""
+               :cljs "should be foo")]
            (-> [:enum "foo"]
                (m/explain "baz")
                (me/humanize)))))
   (testing "error with 2 values"
-    (is (= ["should be either foo or bar"]
+    (is (= [#?(:clj "should be either \"foo\" or \"bar\""
+               :cljs "should be either foo or bar")]
            (-> [:enum "foo" "bar"]
                (m/explain "baz")
                (me/humanize)))))
   (testing "more than 2 values"
-    (is (= ["should be either foo, bar or buzz"]
-           (-> [:enum "foo" "bar" "buzz"]
+    (is (= [#?(:clj "should be either \"foo\", \"bar\", bar or \"buzz\""
+               :cljs "should be either foo, bar, bar or buzz")]
+           (-> [:enum "foo" "bar" 'bar "buzz"]
                (m/explain "baz")
                (me/humanize))))
-    (is (= ["should be either foo, bar, buzz or biff"]
+    (is (= [#?(:clj "should be either \"foo\", \"bar\", \"buzz\" or \"biff\""
+               :cljs "should be either foo, bar, buzz or biff")]
            (-> [:enum "foo" "bar" "buzz" "biff"]
                (m/explain "baz")
                (me/humanize))))))
@@ -449,14 +475,16 @@
 (deftest multi-error-test
   (let [schema [:multi {:dispatch :type}
                 ["plus" [:map [:value int?]]]
-                ["minus" [:map [:value int?]]]]]
+                ["minus" [:map [:value int?]]]
+                ['minus [:map [:value int?]]]]]
 
     (is (= {:type ["invalid dispatch value"]}
            (-> schema
                (m/explain {:type "minuz"})
                (me/humanize))))
 
-    (is (= {:type ["did you mean minus"]}
+    (is (= {:type [#?(:clj "did you mean \"minus\" or minus"
+                      :cljs "did you mean minus or minus")]}
            (-> schema
                (m/explain {:type "minuz"})
                (me/with-spell-checking)
@@ -543,9 +571,10 @@
                (me/humanize {:resolve me/-resolve-root-error})))))
 
   (testing "enum #553"
-    (is (= {:a ["should be either a or b"]}
+    (is (= {:a [#?(:clj "should be either \"a\", \"b\", a or b"
+                   :cljs "should be either a, b, a or b")]}
            (-> [:map
-                [:a [:enum "a" "b"]]]
+                [:a [:enum "a" "b" 'a 'b]]]
                (m/explain {:a nil})
                (me/humanize {:resolve me/-resolve-root-error})))))
 
@@ -604,21 +633,22 @@
   (is (= {:a [["should be an int"]]
           :b ["should have at least 2 elements"]
           :c ["should have at most 5 elements"]
-          :d ["should have between 2 and 5 elements"]
-          :e ["should have between 2 and 5 elements"]
+          :d [["should have at least 2 elements"]
+              ["should have at most 5 elements"]]
+          :e ["should have at least 2 elements"]
           :f ["should have 5 elements"]}
          (-> [:map
               [:a [:vector int?]]
               [:b [:vector {:min 2} int?]]
               [:c [:vector {:max 5} int?]]
-              [:d [:vector {:min 2, :max 5} int?]]
+              [:d [:vector [:vector {:min 2, :max 5} int?]]]
               [:e [:vector {:min 2, :max 5} int?]]
               [:f [:vector {:min 5, :max 5} int?]]]
              (m/explain
               {:a ["123"]
                :b [1]
                :c [1 2 3 4 5 6]
-               :d [1]
+               :d [[1] [1 2 3 4 5 6 7]]
                :e [1.2]
                :f [1 2 3 4]})
              (me/humanize)))))
@@ -747,3 +777,14 @@
                (-> (m/explain Address address)
                    (me/error-value {::me/wrap-error #(select-keys % [:value :type])
                                     ::me/keep-valid-values true}))))))))
+
+#?(:clj
+   (deftest pr-str-humanize-test
+     (is (= ["should be \"a\""] (me/humanize (m/explain [:enum "a"] 1))))
+     (is (= ["should be a"] (me/humanize (m/explain [:enum 'a] 1))))
+     (is (= ["should be either \"a\" or \"b\""] (me/humanize (m/explain [:enum "a" "b"] 1))))
+     (is (= ["should be either a or b"] (me/humanize (m/explain [:enum 'a 'b] 1))))
+     (is (= ["should be \"a\""] (me/humanize (m/explain [:= "a"] 1))))
+     (is (= ["should be a"] (me/humanize (m/explain [:= 'a] 1))))
+     (is (= ["should not be \"a\""] (me/humanize (m/explain [:not= "a"] "a"))))
+     (is (= ["should not be a"] (me/humanize (m/explain [:not= 'a] 'a))))))

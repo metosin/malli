@@ -14,6 +14,48 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* `:->` added to dedault registry, also to [documentation](docs/function-schemas.md#flat-arrow-function-schemas).
+
+## 0.16.2 (2024-06-30)
+
+* Experimental `:->` for simpler function defintions (not available on default schema registry) [#1027](https://github.com/metosin/malli/pull/1027)
+
+```clojure
+[:-> :any] ; [:=> :cat :any]
+[:-> :int :any] ; [:=> [:cat :int] :any]
+[:-> [:cat :int] :any]  ; [:=> [:cat [:cat :int]] :any]
+[:-> a b c d :any] ; [:=> [:cat a b c d] :any]
+
+;; guard property
+[:-> {:guard (fn [[[arg] ret]] ...)} :string :boolean]
+; [:=> [:cat :string] :boolean [:fn (fn [[[arg] ret]] ...)]]
+```
+
+* Fix `mu/get-in` for false-y keys [#1065](https://github.com/metosin/malli/pull/1065)
+* Add `:float` [#1055](https://github.com/metosin/malli/pull/1055)
+* Make clj-kondo dir configurable [#1062](https://github.com/metosin/malli/pull/1062)
+* Improve doc for transformers [#1058](https://github.com/metosin/malli/pull/1058)
+* `:double` generates Long if `:`min is Long [#1034](https://github.com/metosin/malli/issues/1034)
+* Fix Swagger definitions collecting [#1002](https://github.com/metosin/malli/issues/1002)
+
+## 0.16.1 (2024-04-30)
+
+* Enabled Java8 tests back, no need to limit the version.
+
+## 0.16.0 (2024-04-20)
+
+* **BREAKING**: minimum Java-version is now Java11
+* allow changing prefix of json-schema $refs via option `:malli.json-schema/definitions-path` [#1045](https://github.com/metosin/malli/pull/1045)
+* Inline refs in non-`:body` swagger parameters [#1044](https://github.com/metosin/malli/pull/1044)
+* Fix flaky test [#1040](https://github.com/metosin/malli/pull/1040)
+* Utility to update entry properties: `mu/update-entry-properties` [#1037](https://github.com/metosin/malli/pull/1037)
+* Fix actions cache [#1036](https://github.com/metosin/malli/pull/1036)
+* Only humanize one of `:min` / `:max` when different [#1032](https://github.com/metosin/malli/pull/1032)
+* Distinguish between symbols and strings in humanize [#1031](https://github.com/metosin/malli/pull/1031)
+* Fix `:map-of` `:min` and unreachable generator, explain such-that failures [#1029](https://github.com/metosin/malli/pull/1029)
+
 ## 0.15.0 (2024-03-23)
 
 * `:=>` takes optional 3rd child, the guard schema validating vector of arguments and return value `[args ret]`. See [Function Guards](docs/function-schemas.md#function-guards) for more details. Fixes [#764](https://github.com/metosin/malli/issues/764) and [#764](https://github.com/metosin/malli/issues/764).
@@ -561,14 +603,14 @@ No need to play with Compiler options or JVM properties to swap the default regi
 
 ;; look ma, just works
 (mr/set-default-registry!
-  (mr/composite-registry
-    (m/default-schemas)
-    (mu/schemas)))
+ (mr/composite-registry
+  (m/default-schemas)
+  (mu/schemas)))
 
 (mg/generate
-  [:merge
-   [:map [:x :int]]
-   [:map [:y :int]]])
+ [:merge
+  [:map [:x :int]]
+  [:map [:y :int]]])
 ; => {:x 0, :y 92}
 ```
 

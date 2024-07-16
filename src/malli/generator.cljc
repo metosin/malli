@@ -1,8 +1,8 @@
 ;; See also `malli.generator-ast` for viewing generators as data
 (ns malli.generator
   (:require [clojure.spec.gen.alpha :as ga]
-            [clojure.string :as str]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test.check :as check]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
@@ -10,8 +10,8 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
-            [malli.util :as u]
             [malli.impl.util :refer [-last -merge]]
+            [malli.util :as u]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)

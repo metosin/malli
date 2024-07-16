@@ -34,9 +34,8 @@
          (every? #(not (fn? (g/get f (str "cljs$core$IFn$_invoke$arity$" %)))) (range 20)))))
 
 (defn -replace-variadic-arity [original-fn n s opts]
-  (let [accessor "cljs$core$IFn$_invoke$arity$variadic"
-        arity-fn (g/get original-fn accessor)]
-    (when arity-fn
+  (let [accessor "cljs$core$IFn$_invoke$arity$variadic"]
+    (when-some [arity-fn (g/get original-fn accessor)]
       (g/set original-fn "malli$instrument$instrumented?" true)
       ;; the shape of the argument in the following apply calls are needed to match the call style of the cljs compiler
       ;; so the user's function gets the arguments as expected
@@ -52,32 +51,38 @@
         (g/set instrumented-wrapper "malli$instrument$original" arity-fn)
         (g/set (-get-prop n s) "malli$instrument$instrumented?" true)
         (g/set (-get-prop n s) accessor instrumented-wrapper)
-        (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))))))
+        (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))
+        :ok))))
 
 (defn -replace-variadic-fn [original-fn n s opts]
   (-replace-variadic-arity original-fn n s opts))
 
 (defn -replace-fixed-arity [original-fn arity n s opts]
-  (let [accessor (str "cljs$core$IFn$_invoke$arity$" arity)
-        arity-fn (g/get original-fn accessor)]
-    (when arity-fn
+  (let [accessor (str "cljs$core$IFn$_invoke$arity$" arity)]
+    (when-some [arity-fn (g/get original-fn accessor)]
       (let [instrumented-fn (m/-instrument (assoc opts :schema f-schema) arity-fn)]
         (g/set instrumented-fn "malli$instrument$original" arity-fn)
         (g/set instrumented-fn "malli$instrument$instrumented?" true)
-        (g/set (-get-prop n s) accessor instrumented-fn)))))
+        (g/set (-get-prop n s) accessor instrumented-fn))
+      :ok)))
 
 (defn -replace-multi-arity [original-fn n s opts]
-  (let [schema (:schema opts)]
+  (let [schema (:schema opts)
+        replaced (atom #{})]
     (g/set original-fn "malli$instrument$instrumented?" true)
     (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))
-    (doseq [f-schema (rest schema)
+    (doseq [f-schema (reverse (rest schema)) ;; instrument most general :=> specs first
             {:keys [arity min max]} (m/-function-info (m/schema f-schema))]
       (when-some [max (or max (-max-fixed-arity original-fn))]
         (doseq [arity (range min (inc max))]
-          (-replace-fixed-arity original-fn arity n s opts)))
+          (when-not (@replaced arity)
+            (when (-replace-fixed-arity original-fn arity n s opts)
+              (swap! replaced conj arity)))))
       (when (and (= arity :varargs)
                  (not max))
-        (-replace-variadic-arity original-fn n s opts)))))
+        (when-not (@replaced arity)
+          (when (-replace-variadic-arity original-fn n s opts)
+            (swap! replaced conj arity)))))))
 
 (defn -replace-fn [original-fn n s opts]
   (try

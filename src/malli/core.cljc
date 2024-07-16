@@ -2612,37 +2612,37 @@
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
 (defn- -all-binder-bounds [binder]
-  (into [] (map (fn [b]
-                  (if (simple-ident? b)
-                    {:kind :Schema
-                     :default :any
-                     :lower nil
-                     :upper :any}
-                    (if (and (vector? b)
-                             (= 2 (count b))
-                             (simple-ident? (first b)))
-                      {:kind :Schema
-                       :default (second b)
-                       :lower nil
-                       :upper (second b)}
-                      (if (and (map? b)
-                               (simple-ident? (:name b)))
-                        (dissoc b :name)
-                        (-fail! ::invalid-all-binder {:binder binder}))))))
+  (-vmap (fn [b]
+           (if (simple-ident? b)
+             {:kind :Schema
+              :default :any
+              :lower nil
+              :upper :any}
+             (if (and (vector? b)
+                      (= 2 (count b))
+                      (simple-ident? (first b)))
+               {:kind :Schema
+                :default (second b)
+                :lower nil
+                :upper (second b)}
+               (if (and (map? b)
+                        (simple-ident? (:name b)))
+                 (dissoc b :name)
+                 (-fail! ::invalid-all-binder {:binder binder})))))
         binder))
 
 (defn- -visit-binder-names [binder f]
-  (mapv (fn [b]
-          (if (simple-ident? b)
-            (f b)
-            (if (and (vector? b)
-                     (= 2 (count b))
-                     (simple-ident? (first b)))
-              (update b 0 f)
-              (if (and (map? b)
-                       (simple-ident? (:name b)))
-                (update b :name f)
-                (-fail! ::invalid-all-binder {:binder binder})))))
+  (-vmap (fn [b]
+           (if (simple-ident? b)
+             (f b)
+             (if (and (vector? b)
+                      (= 2 (count b))
+                      (simple-ident? (first b)))
+               (update b 0 f)
+               (if (and (map? b)
+                        (simple-ident? (:name b)))
+                 (update b :name f)
+                 (-fail! ::invalid-all-binder {:binder binder})))))
         binder))
 
 (defn -all-binder-names [binder]

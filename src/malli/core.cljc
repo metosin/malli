@@ -256,7 +256,17 @@
 
 (defn -property-registry [m options f]
   (let [options (assoc options ::allow-invalid-refs true)]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (schema v options)))) {} m)))
+    (reduce-kv (fn [acc k v]
+                 (let [s (try (schema v options)
+                              (catch #?(:clj Exception, :cljs js/Error) e
+                                (if (= ::error-creating-schema-from-into-schema-without-children (:type (ex-data e)))
+                                  (-fail! ::schema-definition-must-be-in-options-not-properties
+                                          (into (:data (ex-data e) {})
+                                                {:bad-property-registry-entry k
+                                                 :bad-registry m}))
+                                  (throw e))))]
+                   (assoc acc k (f s))))
+               {} m)))
 
 (defn -delayed-registry [m f]
   (reduce-kv (fn [acc k v] (assoc acc k (reify IntoSchema (-into-schema [_ _ _ options] (f v options))))) {} m))
@@ -2154,7 +2164,7 @@
   "Creates a Schema object from any of the following:
 
    - Schema instance (just returns it)
-   - IntoSchema instance
+   - IntoSchema instance (attempts to construct a Schema with no children)
    - Schema vector syntax, e.g. [:string {:min 1}]
    - Qualified Keyword or String, using a registry lookup"
   ([?schema]
@@ -2162,7 +2172,12 @@
   ([?schema options]
    (cond
      (schema? ?schema) ?schema
-     (into-schema? ?schema) (-into-schema ?schema nil nil options)
+     (into-schema? ?schema) (try (-into-schema ?schema nil nil options)
+                                 (catch #?(:clj Exception, :cljs js/Error) e
+                                   (if (= ::child-error (:type (ex-data e)))
+                                     (-fail! ::error-creating-schema-from-into-schema-without-children
+                                             {:schema-not-supporting-zero-children ?schema})
+                                     (throw e))))
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))

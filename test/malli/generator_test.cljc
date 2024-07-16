@@ -1098,11 +1098,14 @@
 (def bad-identities [(fn [_] nil)
                      (fn [a] (when (uuid? a) a))])
 
-(def identity-spec (m/all [a] [:=> [:cat a] a]))
+(def identity-specs [(m/all [a] [:=> [:cat a] a])
+                     (m/all [a] [:-> a a])])
 
 (deftest identity-test
-  (is-all-good identity-spec good-identities)
-  (is-all-bad identity-spec bad-identities))
+  (doseq [identity-spec identity-specs]
+    (testing (pr-str identity-spec)
+      (is-all-good identity-spec good-identities)
+      (is-all-bad identity-spec bad-identities))))
 
 (deftest double-with-long-min-test
   (is (m/validate :double (shrink [:double {:min 3}])))

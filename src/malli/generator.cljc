@@ -612,7 +612,8 @@
        (fn [x]
          (let [bounds (mapv (fn [{:keys [kind] :as m}]
                               (case kind
-                                :Schema (:upper m)))
+                                :Schema (:upper m)
+                                (m/-fail! ::bounds-not-yet-implemented {:schema schema :bounds m})))
                             (m/-bounds schema))
                examples (mapv (fn [s]
                                 (vec (sample s {:size all-iterations})))

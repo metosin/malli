@@ -330,7 +330,11 @@ Generating multi-arity functions:
 
 ### Polymorphic Functions
 
-A polymorphic function using `m/all` is generatively tested by instantiating schema variables with small schemas.
+A polymorphic function using `m/all` is generatively tested by instantiating schema variables with generated schemas
+and then using the resulting schema for generative testing.
+
+In the same way as function arguments are chosen during generative testing, schema variable instantiations start
+small and then grow after successful runs, and failures are shrunk for reporting purposes.
 
 For example, the polymorphic identity schema
 
@@ -338,13 +342,51 @@ For example, the polymorphic identity schema
 (m/all [a] [:-> a a])
 ```
 
-is generatively tested with schemas like
+is tested by choosing progressively largers schemas for `a`,
+and then checking the instantiated schema against the function like usual
+using generative testing.
+
+The current implementation for generating schemas for `a` is unsophisticated.
+The upper bound of `a` (implicitly `:any`) is used to generate (successively larger)
+values, and those values are wrapped in singleton schema. On failure, the `:any`
+generator will be shrunk, and in turn the schemas will also shrink.
+
+A run might generate values `nil`, `50` and `5333344553` from `a`'s upper bound,
+which are then converted to schemas like so:
 
 ```clojure
-[:=> [:cat :nil] :nil]
-[:=> [:cat [:enum 50]] [:enum 50]]
-[:=> [:cat [:enum 5333344553]] [:enum 5333344553]]
+(def first-a  [:fn {:gen/return nil}         (fn [r] (= nil        r))])
+(def second-a [:fn {:gen/return 50}          (fn [r] (= 50         r))])
+(def third-a  [:fn {:gen/return 5333344553}  (fn [r] (= 5333344553 r))])
 ```
+
+Then, the first three runs will use these schemas to instantiate the polymorphic schema,
+resulting in:
+
+```clojure
+;; first run
+[:-> [:schema first-a] [:schema first-a]]
+
+;; second run
+[:-> [:schema second-a] [:schema second-a]]
+
+;; third run
+[:-> [:schema third-a] [:schema third-a]]
+```
+
+The extra `:schema` calls are added by `m/inst` to prevent regex schema splicing.
+
+If the third run fails, the value `5333344553` will be shrunk using `:any`'s generator,
+perhaps resulting in the final shrunk failing schema
+
+```clojure
+[:->
+ [:schema [:fn {:gen/return 51}  (fn [r] (= 51 r))]]
+ [:schema [:fn {:gen/return 51}  (fn [r] (= 51 r))]]]
+```
+
+Generating schemas for other kinds of schema variables such as regexes is not yet implemented
+and will throw an error.
 
 ### Instrumentation
 

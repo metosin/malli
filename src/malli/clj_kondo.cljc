@@ -8,7 +8,7 @@
 
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
-(defmethod accept ::default [_ _ _ _] :any)
+(defmethod accept ::default [_ schema _ _] (if (m/-function-schema? schema) :fn :any))
 (defmethod accept 'any? [_ _ _ _] :any)
 (defmethod accept 'some? [_ _ _ _] :any) ;;??
 (defmethod accept 'number? [_ _ _ _] :number)
@@ -105,9 +105,6 @@
 (defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??
-(defmethod accept :=> [_ _ _ _] :fn)
-(defmethod accept :all [_ schema _ options] (transform (m/deref schema) options))
-(defmethod accept :function [_ _ _ _] :fn)
 (defmethod accept :schema [_ schema _ options] (transform (m/deref schema) options))
 
 (defmethod accept ::m/schema [_ schema _ options] (transform (m/deref schema) options))
@@ -160,20 +157,25 @@
 
 #?(:clj
    (defn save!
+     "config:
+      - :clj-kondo-dir-path : optional, path to the .clj-kondo directory"
      ([config]
       (save! config :clj))
      ([config key]
-      (let [cfg-file (io/file ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")]
+      (let [cfg-file (apply io/file (conj
+                                     (get config :clj-kondo-dir-path [])
+                                     ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn"))]
         ;; delete the old file if exists (does not throw)
-        (.delete (io/file ".clj-kondo" "configs" "malli" "config.edn"))
+        (.delete (apply io/file (conj
+                                 (get config :clj-kondo-dir-path [])
+                                 ".clj-kondo" "configs" "malli" "config.edn")))
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
         config))))
 
-(defn from [{:keys [schema ns name]}]
+(defn from [{?schema :schema :keys [ns name]}]
   (let [ns-name (-> ns str symbol)
-        schema (cond-> schema (= :all (m/type schema)) m/deref)
-        schema (if (= :function (m/type schema)) schema (m/into-schema :function nil [schema] (m/options schema)))]
+        schema (m/function-schema ?schema)]
     (reduce
      (fn [acc schema]
        (let [{:keys [input output arity min]} (m/-function-info schema)
@@ -185,7 +187,8 @@
                             :args args
                             :ret ret}
                      (= arity :varargs) (assoc :min-arity min)))))
-     [] (m/children schema))))
+     [] (or (seq (m/-function-schema-arities schema))
+            (m/-fail! ::from-requires-function-schema {:schema schema})))))
 
 (defn collect
   ([] (collect nil))
@@ -202,7 +205,9 @@
    {:linters {:unresolved-symbol {:exclude ['(malli.core/=>)]}}} xs))
 
 #?(:clj
-   (defn emit! [] (-> (collect) (linter-config) (save!)) nil))
+   (defn emit!
+     ([] (emit! {}))
+     ([options] (->> (collect) (linter-config) (merge options) (save!)) nil)))
 
 (defn collect-cljs
   ([] (collect-cljs nil))

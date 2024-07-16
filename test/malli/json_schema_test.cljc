@@ -4,7 +4,6 @@
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
-            [malli.registry :as mr]
             [malli.util :as mu]))
 
 (def expectations
@@ -101,6 +100,7 @@
    [:nil {:type "null"}]
    [[:string {:min 1, :max 4}] {:type "string", :minLength 1, :maxLength 4}]
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
+   [[:float {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
    [[:double {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
    [:keyword {:type "string"}]
    [:qualified-keyword {:type "string"}]
@@ -109,6 +109,7 @@
    [:uuid {:type "string", :format "uuid"}]
 
    [[:=> :cat int?] {} :fn]
+   [[:-> :cat int?] {} :fn]
    [[:function [:=> :cat int?]] {} :fn]
    [ifn? {}]
 

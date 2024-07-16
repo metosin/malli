@@ -300,7 +300,7 @@
           has-properties [type properties]
           has-children (reduce conj
                                (cond-> [type]
-                                 (-> children first map?) (conj nil))
+                                 (-> children (nth 0) map?) (conj nil))
                                children)
           :else type)))
 

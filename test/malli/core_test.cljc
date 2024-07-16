@@ -545,10 +545,21 @@
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
       #_(is (= "1" (m/decode schema "1" mt/json-transformer)))
 
-      (testing "map enums require nil properties"
-        (let [schema [:enum nil {:a 1} {:b 2}]]
-          (is (= nil (m/properties schema)))
-          (is (= [{:a 1} {:b 2}] (m/children schema)))))
+      (testing "map enums without properties require empty properties"
+        (doseq [schema [[:enum nil {:a 1} {:b 2}]
+                        [:enum {} {:a 1} {:b 2}]]]
+          (testing (pr-str schema)
+            (is (= nil (m/properties schema)))
+            (is (= [{:a 1} {:b 2}] (m/children schema)))
+            (is (= [:enum nil {:a 1} {:b 2}] (m/form schema)))
+            (is (= [:enum nil {:a 1} {:b 2}] (-> schema m/form m/schema m/form))))))
+
+      (testing "map enums support properties"
+        (let [schema [:enum {:foo :bar} {:a 1} {:b 2}]]
+          (is (= {:foo :bar} (m/properties schema)))
+          (is (= [{:a 1} {:b 2}] (m/children schema)))
+          (is (= schema (m/form schema)))
+          (is (= schema (-> schema m/form m/schema m/form)))))
 
       (is (true? (m/validate (over-the-wire schema) 1)))
 

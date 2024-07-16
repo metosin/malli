@@ -298,7 +298,10 @@
   (let [has-children (seq children), has-properties (seq properties)]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
-          has-children (reduce conj [type] children)
+          has-children (reduce conj
+                               (cond-> [type]
+                                 (-> children first map?) (conj nil))
+                               children)
           :else type)))
 
 (defn -create-form [type properties children options]

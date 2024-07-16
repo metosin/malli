@@ -3376,5 +3376,6 @@
 (deftest catch-infinitely-expanding-schema
   (is (thrown-with-msg?
         #?(:clj Exception, :cljs js/Error)
-        #":malli\.core/infinitely-expanding-schema"
+        #?(:clj #":malli\.core/infinitely-expanding-schema"
+           :cljs #":malli\.core/invalid-schema")
         (m/schema [(m/schema :any)]))))

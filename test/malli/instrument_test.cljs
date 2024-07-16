@@ -17,6 +17,11 @@
    :malli/scope #{:input :output}}
   [x] (dec x))
 
+(defn myfn-b
+  {:malli/schema [:=> [:cat :int [:? :int] :string] :keyword]}
+  ([a b] :res3)
+  ([a b c] :res4))
+
 (defn multi-arity-fn
   {:malli/schema
    [:function
@@ -107,7 +112,12 @@
     (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-full 6)))
 
     (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (schemas/power-int? "2")))
-    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-int? 6))))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-output" (schemas/power-int? 6)))
+
+    (is (= :res3 (myfn-b 1 "a")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (myfn-b 1 2)))
+    (is (= :res4 (myfn-b 1 2 "a")))
+    (is (thrown-with-msg? js/Error #":malli.core/invalid-input" (myfn-b 1 2 3))))
 
   (testing "without instrumentation"
     (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})
@@ -140,7 +150,12 @@
     (is (= 36 (schemas/power-arg-ns 6)))
 
     (is (= 4 (schemas/power-full "2")))
-    (is (= 36 (schemas/power-full 6)))))
+    (is (= 36 (schemas/power-full 6)))
+
+    (is (= :res3 (myfn-b 1 "a")))
+    (is (= :res3 (myfn-b 1 2)))
+    (is (= :res4 (myfn-b 1 2 "a")))
+    (is (= :res4 (myfn-b 1 2 3)))))
 
 (deftest ^:simple collect!-test
 

@@ -39,6 +39,11 @@
 
 (defn ->minus [] minus)
 
+(defn myfn-b
+  {:malli/schema [:=> [:cat :int [:? :int] :string] :keyword]}
+  ([a b] :res3)
+  ([a b c] :res4))
+
 (mi/collect!)
 
 (deftest collect!-test
@@ -48,7 +53,11 @@
     (is (thrown?
          ClassCastException
          ((->minus) "2")))
-    (is (= 5 ((->minus) 6))))
+    (is (= 5 ((->minus) 6)))
+    (is (= :res3 (myfn-b 1 2)))
+    (is (= :res3 (myfn-b 1 "a")))
+    (is (= :res4 (myfn-b 1 2 3)))
+    (is (= :res4 (myfn-b 1 2 "a"))))
 
   (testing "with instrumentation"
     (instrument!)
@@ -59,7 +68,17 @@
     (is (thrown-with-msg?
          Exception
          #":malli.core/invalid-output"
-         ((->minus) 6)))))
+         ((->minus) 6)))
+    (is (= :res3 (myfn-b 1 "a")))
+    (is (thrown-with-msg?
+          Exception
+          #":malli.core/invalid-input"
+          (myfn-b 1 2)))
+    (is (= :res4 (myfn-b 1 2 "a")))
+    (is (thrown-with-msg?
+          Exception
+          #":malli.core/invalid-input"
+          (myfn-b 1 2 3)))))
 
 (defn f1
   "accumulated schema from arities"

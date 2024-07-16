@@ -4,7 +4,7 @@
             [malli.registry :as mr]))
 
 (deftest mutable-test
-  (let [registry* (atom (m/default-schemas))
+  (let [registry* (atom {})
         registry (mr/mutable-registry registry*)
         register! (fn [t ?s] (swap! registry* assoc t ?s))]
     (testing "default registy"

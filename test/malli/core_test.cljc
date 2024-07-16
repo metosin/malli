@@ -545,6 +545,21 @@
       #_(is (= 1 (m/decode schema "1" mt/string-transformer)))
       #_(is (= "1" (m/decode schema "1" mt/json-transformer)))
 
+      (testing "nil enums without properties require empty properties"
+        (let [schema [:enum nil nil]]
+          (testing (pr-str schema)
+            (is (= nil (m/properties schema)))
+            (is (= [nil] (m/children schema)))
+            (is (= schema (m/form schema)))
+            (is (= schema (-> schema m/form m/schema m/form))))))
+
+      (testing "nil nums support properties"
+        (let [schema [:enum {:foo :bar} nil]]
+          (is (= {:foo :bar} (m/properties schema)))
+          (is (= [nil] (m/children schema)))
+          (is (= schema (m/form schema)))
+          (is (= schema (-> schema m/form m/schema m/form)))))
+
       (testing "map enums without properties require empty properties"
         (doseq [schema [[:enum nil {:a 1} {:b 2}]
                         [:enum {} {:a 1} {:b 2}]]]

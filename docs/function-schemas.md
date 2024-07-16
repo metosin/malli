@@ -95,14 +95,11 @@ Examples of function definitions:
  [:=> [:cat :int :int [:* :int]] :int]]      
 
 ;; polymorphic identity function
-(m/all [a] [:=> [:cat a] a])
+(m/all [a] [:-> a a])
 
 ;; polymorphic map function
 (m/all [a b]
-  [:=> [:cat
-        [:=> [:cat a] b]
-        [:sequential a]]
-   [:sequential b]])
+  [:-> [:-> a b] [:sequential a] [:sequential b]])
 ```
 
 What is that `:cat` all about in the input schemas? Wouldn't it be simpler without it? Sure, check out [Flat Arrow Function Schema](#flat-arrow-function-schemas).
@@ -338,7 +335,7 @@ A polymorphic function using `m/all` is generatively tested by instantiating sch
 For example, the polymorphic identity schema
 
 ```clojure
-(m/all [a] [:=> [:cat a] a])
+(m/all [a] [:-> a a])
 ```
 
 is generatively tested with schemas like
@@ -435,15 +432,15 @@ their upper bounds, usually `:any`. The instrumented schema is calculated via `m
 Schema variables by default do not allow regex splicing, so instantiations are wrapped in `:schema`.
 
 ```clojure
-(-> (m/all [a] [:=> [:cat a] a]) m/deref)
-;=> [:=> [:cat [:schema :any]] [:schema :any]]
+(-> (m/all [a] [:-> a a]) m/deref)
+;=> [:-> [:schema :any] [:schema :any]]
 
 (def options {:registry (mr/composite-registry m/default-registry (mu/schemas))})
 
-(-> (m/all [[M [:maybe :map]] X] [:=> [:cat M X] [:merge M [:map [:x X]]]])
+(-> (m/all [[M [:maybe :map]] X] [:-> M X [:merge M [:map [:x X]]]])
     (m/schema options)
     m/deref)
-;=> [:=> [:cat [:schema [:maybe :map]] [:schema :any]]
+;=> [:-> [:schema [:maybe :map]] [:schema :any]
 ;    [:merge [:schema [:maybe :map]] [:map [:x [:schema :any]]]]]
 
 ### Flat Arrow Function Schemas

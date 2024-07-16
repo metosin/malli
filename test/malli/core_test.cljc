@@ -3372,3 +3372,9 @@
                    :errors [{:path [::m/in :y], :in [:y], :schema y-schema, :value "2"}]}
                   explain))
     (is (form= y-schema (mu/get-in schema (-> explain :errors first :path))))))
+
+(deftest catch-infinitely-expanding-schema
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli\.core/infinitely-expanding-schema"
+        (m/schema [(m/schema :any)]))))

@@ -26,7 +26,7 @@
 (defn -filter-var [f] (fn [n s d] (f (Var. (constantly (-find-var n s)) (symbol n s) d))))
 (defn -filter-schema [f] (fn [_ _ {:keys [schema]}] (f schema)))
 
-(defn -replace-fn [original-fn n s {:keys [schema] :as opts}]
+(defn -replace-fn [original-fn n s opts]
   (try
     (let [instrumented-fn (meta-fn (m/-instrument opts original-fn) {:instrumented-symbol (symbol (name n) (name s))})]
       (g/set original-fn "malli$instrument$instrumented?" true)

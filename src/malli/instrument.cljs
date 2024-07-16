@@ -26,11 +26,6 @@
 (defn -filter-var [f] (fn [n s d] (f (Var. (constantly (-find-var n s)) (symbol n s) d))))
 (defn -filter-schema [f] (fn [_ _ {:keys [schema]}] (f schema)))
 
-(defn -arity->schema
-  [fn-schema]
-  (into {} (map (fn [schema] [(:arity (m/-function-info (m/schema schema))) schema])
-                (rest fn-schema))))
-
 (defn -variadic? [f] (g/get f "cljs$core$IFn$_invoke$arity$variadic"))
 (defn -max-fixed-arity [f] (g/get f "cljs$lang$maxFixedArity"))
 (defn -pure-variadic? [f]
@@ -38,7 +33,7 @@
     (and max-fixed-arity (-variadic? f)
          (every? #(not (fn? (g/get f (str "cljs$core$IFn$_invoke$arity$" %)))) (range 20)))))
 
-(defn -replace-variadic-fn [original-fn n s opts]
+(defn -replace-variadic-arity [original-fn n s opts]
   (let [accessor "cljs$core$IFn$_invoke$arity$variadic"
         arity-fn (g/get original-fn accessor)]
     (when arity-fn
@@ -59,20 +54,30 @@
         (g/set (-get-prop n s) accessor instrumented-wrapper)
         (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))))))
 
+(defn -replace-variadic-fn [original-fn n s opts]
+  (-replace-variadic-arity original-fn n s opts))
+
+(defn -replace-fixed-arity [original-fn arity n s opts]
+  (let [accessor (str "cljs$core$IFn$_invoke$arity$" arity)
+        arity-fn (g/get original-fn accessor)]
+    (when arity-fn
+      (let [instrumented-fn (m/-instrument (assoc opts :schema f-schema) arity-fn)]
+        (g/set instrumented-fn "malli$instrument$original" arity-fn)
+        (g/set instrumented-fn "malli$instrument$instrumented?" true)
+        (g/set (-get-prop n s) accessor instrumented-fn)))))
+
 (defn -replace-multi-arity [original-fn n s opts]
   (let [schema (:schema opts)]
     (g/set original-fn "malli$instrument$instrumented?" true)
     (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))
-    (doseq [[arity f-schema] (-arity->schema schema)]
-      (if (= arity :varargs)
-        (-replace-variadic-fn original-fn n s opts)
-        (let [accessor (str "cljs$core$IFn$_invoke$arity$" arity)
-              arity-fn (g/get original-fn accessor)]
-          (when arity-fn
-            (let [instrumented-fn (m/-instrument (assoc opts :schema f-schema) arity-fn)]
-              (g/set instrumented-fn "malli$instrument$original" arity-fn)
-              (g/set instrumented-fn "malli$instrument$instrumented?" true)
-              (g/set (-get-prop n s) accessor instrumented-fn))))))))
+    (doseq [f-schema (rest schema)
+            {:keys [arity min max]} (m/-function-info (m/schema f-schema))]
+      (when-some [max (or max (-max-fixed-arity original-fn))]
+        (doseq [arity (range min (inc max))]
+          (-replace-fixed-arity original-fn arity n s opts)))
+      (when (and (= arity :varargs)
+                 (not max))
+        (-replace-variadic-arity original-fn n s opts)))))
 
 (defn -replace-fn [original-fn n s opts]
   (try

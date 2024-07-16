@@ -20,7 +20,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Inferring Schemas](#inferring-schemas) from sample values and [Destructuring](#destructuring).
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values) and [Unparsing](#unparsing-values) values
-- [Sequence](#sequence-schemas), [Vector](#vector-schemas), and [Set](#set-schemas) Schemas
+- [Enumeration](#enumeration-schemas) [Sequence](#sequence-schemas), [Vector](#vector-schemas), and [Set](#set-schemas) Schemas
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
@@ -328,6 +328,12 @@ Most core-predicates are mapped to Schemas:
 ```
 
 See [the full list of default schemas](#schema-registry).
+
+## Enumeration schemas
+
+Enumeration schemas represent a enumerated set of values.
+
+They mostly work 
 
 ## Qualified keys in a map
 

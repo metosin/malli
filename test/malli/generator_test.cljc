@@ -1090,7 +1090,10 @@
   (testing "bad"
     (doseq [[i f] (map-indexed vector vs)]
       (testing i
-        (is (mg/check schema f {::mg/all-iterations 1000}))))))
+        (try (let [res (mg/check schema f {::mg/all-iterations 1000})]
+               (is res))
+             (catch #?(:clj Exception, :cljs js/Error) e
+               (is (= ::m/invalid-input (:type (ex-data e))))))))))
 
 (def good-identities [identity
                       (fn [a] a)
@@ -1106,6 +1109,23 @@
     (testing (pr-str identity-spec)
       (is-all-good identity-spec good-identities)
       (is-all-bad identity-spec bad-identities))))
+
+(def good-maps [map
+                (fn [f c] (map f c))
+                (fn [f c] (mapv f c))])
+(def bad-maps [(comp #(map str %) map)
+               (fn [f c] (map (comp f str) c))
+               (fn [f c] (map (comp str f) c))])
+
+(def map-specs [(m/all [a b] [:=> [:cat [:=> [:cat a] b] [:sequential a]] [:sequential b]])
+                (m/all [a b] [:-> [:-> a b] [:sequential a] [:sequential b]])])
+
+;; TODO catch higher-order failures and shrink them.
+(deftest map-test
+  (doseq [map-spec map-specs]
+    (testing (pr-str map-spec)
+      (is-all-good map-spec good-maps)
+      (is-all-bad map-spec bad-maps))))
 
 (deftest double-with-long-min-test
   (is (m/validate :double (shrink [:double {:min 3}])))

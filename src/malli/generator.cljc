@@ -621,7 +621,12 @@
                {:keys [result shrunk]} (->> (prop/for-all* [(gen/bind (apply gen/tuple
                                                                              (map #(gen/fmap
                                                                                      (fn [v]
-                                                                                       [:fn {:gen/return v} (fn [r] (= v r))])
+                                                                                       (if (some? v)
+                                                                                         (if (map? v)
+                                                                                           ;; map enums require nil properties
+                                                                                           [:enum nil v]
+                                                                                           [:enum v])
+                                                                                         :nil))
                                                                                      (gen/elements %)) examples))
                                                                       (fn [schemas]
                                                                         (let [schema (m/inst schema schemas options)]

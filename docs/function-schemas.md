@@ -355,9 +355,9 @@ A run might generate values `nil`, `50` and `5333344553` from `a`'s upper bound,
 which are then converted to schemas like so:
 
 ```clojure
-(def first-a  [:fn {:gen/return nil}         (fn [r] (= nil        r))])
-(def second-a [:fn {:gen/return 50}          (fn [r] (= 50         r))])
-(def third-a  [:fn {:gen/return 5333344553}  (fn [r] (= 5333344553 r))])
+:nil
+[:enum 50]
+[:enum 5333344553]
 ```
 
 Then, the first three runs will use these schemas to instantiate the polymorphic schema,
@@ -365,13 +365,13 @@ resulting in:
 
 ```clojure
 ;; first run
-[:-> [:schema first-a] [:schema first-a]]
+[:-> [:schema :nil] [:schema :nil]]
 
 ;; second run
-[:-> [:schema second-a] [:schema second-a]]
+[:-> [:schema [:enum 50]] [:schema [:enum 50]]]
 
 ;; third run
-[:-> [:schema third-a] [:schema third-a]]
+[:-> [:schema [:enum 5333344553]] [:schema [:enum 5333344553]]]
 ```
 
 The extra `:schema` calls are added by `m/inst` to prevent regex schema splicing.
@@ -380,10 +380,13 @@ If the third run fails, the value `5333344553` will be shrunk using `:any`'s gen
 perhaps resulting in the final shrunk failing schema
 
 ```clojure
-[:->
- [:schema [:fn {:gen/return 51}  (fn [r] (= 51 r))]]
- [:schema [:fn {:gen/return 51}  (fn [r] (= 51 r))]]]
+[:-> [:schema [:enum 51]] [:schema [:enum 51]]]
 ```
+
+Note a gotcha with generated `:enum` schemas: if the first child is a map, it will print with `nil` properties.
+For example, `[:enum nil {}]` validates `{}` but not `nil`.
+
+Shrinking is currently not supported for higher-order polymorphic functions.
 
 Generating schemas for other kinds of schema variables such as regexes is not yet implemented
 and will throw an error.

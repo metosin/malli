@@ -1187,22 +1187,19 @@
            (-set [this key value] (-set-assoc-children this key value))))))))
 
 (defn- -check-entire-bounded-collection? [x]
-  (let [res (or (nil? x)
-                (counted? x)
-                (indexed? x)
-                ;; note: js/Object not ISeqable
-                #?(:clj (instance? java.util.Map x))
-                ;; many Seq's are List's, so just pick some popular classes
-                #?@(:bb []
-                        :clj [(instance? java.util.AbstractList x)
-                              (instance? java.util.Vector x)])
-                #?(:clj (instance? CharSequence x)
-                   :cljs (string? x))
-                #?(:clj (.isArray (class x))
-                   :cljs (identical? js/Array (type x))))]
-    (prn "-check-entire-bounded-collection?" (type x) res)
-    res
-    ))
+  (or (nil? x)
+      (counted? x)
+      (indexed? x)
+      ;; note: js/Object not ISeqable
+      #?(:clj (instance? java.util.Map x))
+      ;; many Seq's are List's, so just pick some popular classes
+      #?@(:bb []
+              :clj [(instance? java.util.AbstractList x)
+                    (instance? java.util.Vector x)])
+      #?(:clj (instance? CharSequence x)
+         :cljs (string? x))
+      #?(:clj (.isArray (class x))
+         :cljs (identical? js/Array (c/type x)))))
 
 (defn -collection-schema [props]
   (if (fn? props)

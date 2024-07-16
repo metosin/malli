@@ -343,7 +343,7 @@ For example, the polymorphic identity schema
 ```
 
 is tested by choosing progressively largers schemas for `a`,
-and then checking the instantiated schema against the function like usual
+and then checking each instantiated schema against the function like usual
 using generative testing.
 
 The current implementation for generating schemas for `a` is unsophisticated.

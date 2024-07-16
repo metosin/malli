@@ -1051,7 +1051,8 @@
                                  {:size 100}))))
   (is (empty? (remove #(<= 2 (count %) 3)
                       (mg/sample [:map-of {:min 2 :max 3} [:enum 1 2 3] :any]
-                                 {:size 100})))))
+                                 {:size 250
+                                  :seed 0})))))
 
 (deftest such-that-generator-failure-test
   (is (thrown-with-msg?

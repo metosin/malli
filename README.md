@@ -353,7 +353,7 @@ If your `:enum` has properties, the leading map with be interpreted as propertie
 [:enum {:foo :bar} nil] ;; singleton schema of nil, with properties {:foo :bar}
 ```
 
-In fact, these syntax rules apply to all schemas, but you will rarely encounter them outside `:enum`, so it deserves a special mention.
+In fact, these syntax rules apply to all schemas, but `:enum` is the most common schema where this is relevant so it deserves a special mention.
 
 ## Qualified keys in a map
 

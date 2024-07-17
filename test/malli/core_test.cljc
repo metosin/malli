@@ -3376,6 +3376,9 @@
 (deftest local-registry-shadow-test
   (let [options {:registry (assoc (m/default-schemas) ::string (:string (m/default-schemas)))}
         validate #(m/validate %1 %2 options)]
+    (is (m/schema ::string options))
+    (is (m/schema [::string] options))
+    (is (m/schema [::string {:foo :bar}] options))
     (is (validate ::string "a"))
     (is (not (validate ::string 1)))
     (is (validate [:schema {:registry {::string :int}} [::string {:foo :bar}]] 1))

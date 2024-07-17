@@ -275,10 +275,12 @@
         (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
 (defn- -lookup-into-schema [?schema options]
-  (if (into-schema? ?schema)
-    ?schema
-    (some-> (-lookup ?schema options)
-            (recur options))))
+  (let [registry (-registry options)]
+    (loop [?schema ?schema]
+      (if (into-schema? ?schema)
+        ?schema
+        (some-> (mr/-schema registry ?schema)
+                (-lookup-into-schema options))) )))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]

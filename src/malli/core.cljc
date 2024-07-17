@@ -274,10 +274,11 @@
         (cond-> ?schema rec (recur ?form f rec options))
         (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
-(defn- -lookup-root [?schema options]
-  (if-let [?schema (-lookup ?schema options)]
-    (recur ?schema options)
-    ?schema))
+(defn- -lookup-into-schema [?schema options]
+  (if (into-schema? ?schema)
+    ?schema
+    (when-some [?schema (-lookup ?schema options)]
+      (recur ?schema options))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -2172,7 +2173,6 @@
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              v0 #?(:clj (.nth v 0), :cljs (nth v 0))
-                             t (-lookup-root v0 options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))
                              props? (or (nil? ?p) (map? ?p))
@@ -2180,7 +2180,7 @@
                              children (if props?
                                         (when (< 2 n) (subvec ?schema 2 n))
                                         (when (< 1 n) (subvec ?schema 1 n)))]
-                         (if (into-schema? t)
+                         (if-some [t (-lookup-into-schema v0 options)]
                            (into-schema t properties children options)
                            (if-let [?schema' (and (-reference? v0) (-lookup v0 options))]
                              (if (pos? (count children))

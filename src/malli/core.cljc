@@ -280,7 +280,7 @@
       (if (into-schema? ?schema)
         ?schema
         (some-> (mr/-schema registry ?schema)
-                (-lookup-into-schema options))) )))
+                recur)))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -1692,8 +1692,13 @@
         (-check-children! type properties children 1 1)
         (let [children (-vmap #(schema % options) children)
               child (nth children 0)
-              form (delay (or (and (empty? properties) (or id (and raw (-form child))))
-                              (-simple-form parent properties children -form options)))
+              form (delay (let [no-props? (empty? properties)]
+                            (or (if id
+                                  (if no-props?
+                                    id
+                                    [id properties]))
+                                (and no-props? raw (-form child))
+                                (-simple-form parent properties children -form options))))
               cache (-create-cache options)]
           ^{:type ::schema}
           (reify
@@ -2192,7 +2197,7 @@
                                ;; =m/deref=>
                                ;; [:map-of :int :any]
                                (-fail! ::references-do-not-support-children {:schema ?schema})
-                               (-pointer ?schema (schema ?schema' options) properties options))
+                               (-pointer v0 (schema ?schema' options) properties options))
                              (-fail! ::invalid-schema {:schema ?schema}))))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) nil options)

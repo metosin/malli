@@ -12,8 +12,19 @@
       (register! :str (m/-string-schema))
       (is (true? (m/validate :str "kikka" {:registry registry})))
       (register! ::foo (m/schema [:tuple :int]))
-      (is (m/schema ::foo {:registry registry}))
-      (is (m/schema [::foo {:doc ""}] {:registry registry})))))
+      (is (= ::foo
+             (-> (m/schema ::foo {:registry registry})
+                 m/form)))
+      (is (= [::foo {:doc ""}]
+             (-> (m/schema [::foo {:doc ""}] {:registry registry})
+                 m/form)))
+      (register! ::bare [:tuple :int])
+      (is (= ::bare
+             (-> (m/schema ::bare {:registry registry})
+                 m/form)))
+      (is (= [::bare {:doc ""}]
+             (-> (m/schema [::bare {:doc ""}] {:registry registry})
+                 m/form))))))
 
 (deftest composite-test
   (let [registry* (atom {})

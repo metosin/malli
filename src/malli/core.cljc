@@ -1691,11 +1691,12 @@
         (-check-children! type properties children 1 1)
         (let [children (-vmap #(schema % options) children)
               child (nth children 0)
+              child-children (not-empty (-children child))
               form (delay (let [no-props? (empty? properties)]
                             (or (when id
-                                  (if no-props?
+                                  (if (and no-props? (not child-children))
                                     id
-                                    [id properties]))
+                                    (into [id properties] child-children)))
                                 (and no-props? raw (-form child))
                                 (-simple-form parent properties children -form options))))
               cache (-create-cache options)]
@@ -2189,14 +2190,11 @@
                          (if-some [t (-lookup-into-schema v0 options)]
                            (into-schema t properties children options)
                            (if-let [?schema' (and (-reference? v0) (-lookup v0 options))]
-                             (if (pos? (count children))
-                               ;;TODO schema functions
-                               ;; [:schema {:registry {::MapWithKeys (m/sfn [ks] [:map-of ks :any])}}
-                               ;;  [::MapWithKeys {:some :props} :int]]
-                               ;; =m/deref=>
-                               ;; [:map-of :int :any]
-                               (-fail! ::references-do-not-support-children {:schema ?schema})
-                               (-pointer v0 (schema ?schema' options) properties options))
+                             (let [inner (schema ?schema' options)]
+                               (when (seq (-children inner))
+                                 (when (seq children)
+                                   (-fail! ::cannot-provide-children-to-schema {:schema ?schema})))
+                               (-pointer v0 (-set-children inner children) properties options))
                              (-fail! ::invalid-schema {:schema ?schema}))))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
              (-pointer ?schema (schema ?schema' options) nil options)

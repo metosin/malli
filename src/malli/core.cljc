@@ -277,8 +277,8 @@
 (defn- -lookup-into-schema [?schema options]
   (if (into-schema? ?schema)
     ?schema
-    (when-some [?schema (-lookup ?schema options)]
-      (recur ?schema options))))
+    (some-> (-lookup ?schema options)
+            (recur options))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]

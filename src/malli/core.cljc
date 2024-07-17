@@ -275,12 +275,11 @@
         (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
 (defn- -lookup-into-schema [?schema options]
-  (let [registry (-registry options)]
-    (loop [?schema ?schema]
-      (if (into-schema? ?schema)
-        ?schema
-        (some-> (mr/-schema registry ?schema)
-                recur)))))
+  (if (into-schema? ?schema)
+    ?schema
+    (let [?schema (mr/-schema (-registry options) ?schema)]
+      (when (into-schema? ?schema)
+        ?schema))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]
@@ -1693,7 +1692,7 @@
         (let [children (-vmap #(schema % options) children)
               child (nth children 0)
               form (delay (let [no-props? (empty? properties)]
-                            (or (if id
+                            (or (when id
                                   (if no-props?
                                     id
                                     [id properties]))

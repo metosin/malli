@@ -3379,9 +3379,20 @@
     (is (m/schema ::string options))
     (is (m/schema [::string] options))
     (is (m/schema [::string {:foo :bar}] options))
+    (is (m/schema [::string {:foo :bar}] options))
     (is (validate ::string "a"))
     (is (not (validate ::string 1)))
+    (is (validate [:schema {:registry {::string :int}} ::string] 1))
+    (is (= [:schema {:registry {::string :int}} ::string]
+           (-> [:schema {:registry {::string :int}} ::string]
+               (m/form options))))
     (is (validate [:schema {:registry {::string :int}} [::string {:foo :bar}]] 1))
+    (is (= [:schema {:registry {::string :int}} [::string {:foo :bar}]]
+           (-> [:schema {:registry {::string :int}} [::string {:foo :bar}]]
+               (m/form options))))
+    (is (= [:schema {:registry {::string [:tuple :int]}} [::string {:foo :bar}]]
+           (-> [:schema {:registry {::string [:tuple :int]}} [::string {:foo :bar}]]
+               (m/form options))))
     (is (not (validate [:schema {:registry {::string :int}} [::string]] "a")))
     (is (not (validate [:schema {:registry {::string :int}} [::string {:foo :bar}]] "a")))))
 

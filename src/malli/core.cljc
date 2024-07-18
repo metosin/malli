@@ -86,6 +86,10 @@
   (-regex-transformer [this transformer method options] "returns the raw internal regex transformer implementation")
   (-regex-min-max [this nested?] "returns size of the sequence as {:min min :max max}. nil max means unbounded. nested? is true when this schema is nested inside an outer regex schema."))
 
+(defprotocol AllSchema
+  (-bounds [this] "return a vector of maps describing the binder")
+  (-inst [this schemas] "replace variables in polymorphic schema with schemas, or their defaults if nil"))
+
 (defprotocol FunctionSchema
   (-function-schema? [this])
   (-function-schema-arities [this])

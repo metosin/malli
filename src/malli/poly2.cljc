@@ -1,4 +1,4 @@
-(ns malli.poly
+(ns malli.poly2
   (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
   #?(:cljs (:require-macros malli.core))
   (:require [clojure.walk :as walk]
@@ -11,6 +11,154 @@
             [malli.poly-protocols :refer [AllSchema -bounds -inst]]))
 
 (declare inst)
+
+;;;
+
+
+;; -abstract / -instantiate for locally nameless representation
+;; See "I am not a number: I am a free variable" - Conor McBride and James McKinna
+
+(defn -abstract [?schema nme options]
+  (let [inner (fn [this s path options]
+                (m/-walk s this path
+                         (cond-> options
+                           (::scope (m/-properties s)) (update ::abstract-index inc))))
+        outer (fn [s path children {::keys [abstract-index] :as options}]
+                (let [s (m/-set-children s children)]
+                  (case (m/type s)
+                    ::f (let [[id] children]
+                          (if (= nme id)
+                            (m/schema [::b abstract-index] options)
+                            s))
+                    ::m/val (first children)
+                    s)))]
+    (m/schema
+      [:schema {::scope true}
+       (inner
+         (reify m/Walker
+           (-accept [_ s path options] true)
+           (-inner [this s path options] (inner this s path options))
+           (-outer [_ schema path children options]
+             (outer schema path children options)))
+         (m/schema ?schema options)
+         []
+         (assoc options
+                ::m/walk-refs false
+                ::m/walk-schema-refs false
+                ::m/walk-entry-vals true
+                ::abstract-index 0))]
+      options)))
+
+(defn -abstract-many [s names options]
+  (reduce (fn [s nme]
+            (-abstract s nme options))
+          s names))
+
+(defn -instantiate [?scope to options]
+  (let [to (m/schema to options)
+        inner (fn [this s path options]
+                (m/-walk s this path
+                         (cond-> options
+                           (::scope (m/-properties s)) (update ::instantiate-index inc))))
+        outer (fn [s path children {::keys [instantiate-index] :as options}]
+                (let [s (m/-set-children s children)]
+                  (case (m/type s)
+                    ::b (let [[id] children]
+                          (if (= instantiate-index id)
+                            to
+                            s))
+                    ::m/val (first children)
+                    s)))
+        s (m/schema ?scope options)
+        _ (when-not (-> s m/-properties ::scope)
+            (m/-fail! ::instantiate-non-scope {:schema s}))]
+    (inner
+      (reify m/Walker
+        (-accept [_ s path options] true)
+        (-inner [this s path options] (inner this s path options))
+        (-outer [_ schema path children options]
+          (outer schema path children options)))
+      (first (m/-children s))
+      []
+      (assoc options
+             ::m/walk-refs false
+             ::m/walk-schema-refs false
+             ::m/walk-entry-vals true
+             ::instantiate-index 0))))
+
+(defn -instantiate-many [s images options]
+  (reduce (fn [s image]
+            (-instantiate s image options))
+          s (rseq images)))
+
+(defn -all-names [s]
+  (map #(nth % 0) (-bounds s)))
+
+(defn -fv [?schema options]
+  (let [fvs (atom #{})
+        inner (fn [this s p options]
+                (case (m/type s)
+                  :all (m/-walk s this p (update options ::bound-tvs into (-all-names s)))
+                  (m/-walk s this p options)))]
+    (inner (reify m/Walker
+             (-accept [_ s _ _] s)
+             (-inner [this s p options]
+               (inner this s p options))
+             (-outer [_ s p c {::keys [bound-tvs] :as options}]
+               (case (m/type s)
+                 ::local (let [id (first c)]
+                           ;;TODO when id is simple-symbol?
+                           (when-not (contains? bound-tvs id)
+                             (swap! fvs conj (assoc (m/-properties s) :id id))))
+                 ;;TODO think harder about :..
+                 nil)
+               s))
+           (m/schema ?schema options)
+           []
+           (assoc options
+                  ::m/walk-refs false
+                  ::m/walk-schema-refs false
+                  ::m/walk-entry-vals true
+                  ::bound-tvs #{}))
+    @fvs))
+
+;;TODO capture avoidance
+(defn -subst-tv [?schema tv->schema options]
+  (let [inner (fn [this s path options]
+                (case (m/type s)
+                  ;; TODO rename :all binder if name capturing will occur
+                  :all (m/-walk s this path (update options ::tv->schema
+                                                    (fn [tv->schema]
+                                                      (let [shadowed (-all-names s)]
+                                                        (apply dissoc tv->schema shadowed)))))
+                  :.. (m/-fail! ::todo-subst-tv-for-dotted-schema)
+                  (m/-walk s this path options)))
+        outer (fn [s path children {::keys [tv->schema] :as options}]
+                (let [s (m/-set-children s children)]
+                  (case (m/type s)
+                    ::local (let [[id] children]
+                              (if-some [[_ v] (find tv->schema id)]
+                                v
+                                s))
+                    ::m/val (first children)
+                    s)))]
+    (inner
+      (reify m/Walker
+        (-accept [_ s path options] true)
+        (-inner [this s path options] (inner this s path options))
+        (-outer [_ schema path children options]
+          (outer schema path children options)))
+      (m/schema ?schema options)
+      []
+      (assoc options
+             ::m/walk-refs false
+             ::m/walk-schema-refs false
+             ::m/walk-entry-vals true
+             ::tv->schema tv->schema))))
+
+
+;;;
+
 
 (defn- -all-binder-bounds [binder]
   (m/-vmap (fn [b]
@@ -154,11 +302,11 @@
 (defn -all-binder-defaults [binder]
   (mapv :default (-all-binder-bounds binder)))
 
-(defn -free-schema [{:keys [type] :or {type :free}}]
+(defn -free-schema [{:keys [type] :or {type ::f}}]
   ^{:type ::m/into-schema}
   (reify
     m/AST
-    (-from-ast [parent ast options] (m/from-ast parent ast options))
+    (-from-ast [parent ast options] (m/-from-value-ast parent ast options))
     m/IntoSchema
     (-type [_] type)
     (-type-properties [_])
@@ -166,14 +314,18 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (m/-check-children! type properties children 1 1)
-      (when-not (-> children first simple-symbol?)
+      (when-not (case type
+                  ::f (-> children first simple-keyword?)
+                  ::b (-> children first nat-int?))
         (m/-fail! ::free-should-have-simple-symbol {:children children}))
-      (let [form (delay (m/-simple-form parent properties children identity options))
+      (let [form (delay (case type
+                          ::f (-> children first)
+                          (m/-simple-form parent properties children identity options)))
             cache (m/-create-cache options)]
         ^{:type ::m/schema}
         (reify
           m/AST
-          (-to-ast [this _] (m/-to-type-ast this))
+          (-to-ast [this _] (m/-to-value-ast this))
           m/Schema
           (-validator [_] (m/-fail! ::cannot-validate-free))
           (-explainer [this path] (m/-fail! ::cannot-explain-free))
@@ -324,4 +476,10 @@
 
 (defn schemas []
   {:all (-all-schema nil)
-   :free (-free-schema nil)})
+   ::f (-free-schema {:type ::f})
+   ::b (-free-schema {:type ::b})})
+
+(comment
+  (m/ast [:schema {:registry {::a :int}} ::a])
+  (m/ast [:enum :foo :bar])
+  )

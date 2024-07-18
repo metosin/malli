@@ -20,9 +20,21 @@
 
 (defn -abstract [?schema nme options]
   (let [inner (fn [this s path options]
-                (m/-walk s this path
-                         (cond-> options
-                           (::scope (m/-properties s)) (update ::abstract-index inc))))
+                (let [properties (m/properties s)
+                      options (cond-> options
+                                (::scope properties) (update ::abstract-index inc))
+                      s (cond-> s
+                          (:registry properties)
+                          (-> (m/ast options)
+                              (update :registry #(not-empty
+                                                   (into {} (map (fn [[k ast]]
+                                                                   (-> ast
+                                                                       (m/from-ast options)
+                                                                       (m/-walk this (conj path :registry k) options)
+                                                                       (m/ast options))))
+                                                         %)))
+                              (m/from-ast options)))]
+                  (m/-walk s this path options)))
         outer (fn [s path children {::keys [abstract-index] :as options}]
                 (let [s (m/-set-children s children)]
                   (case (m/type s)
@@ -317,7 +329,7 @@
       (when-not (case type
                   ::f (-> children first simple-keyword?)
                   ::b (-> children first nat-int?))
-        (m/-fail! ::free-should-have-simple-symbol {:children children}))
+        (m/-fail! ::free-should-have-simple-keyword {:children children}))
       (let [form (delay (case type
                           ::f (-> children first)
                           (m/-simple-form parent properties children identity options)))

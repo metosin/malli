@@ -149,13 +149,27 @@
 (comment
   (m/schema :a (update options :registry
                        mr/composite-registry
-                       {:a (m/schema [::poly/f 'a] options)}))
-  (m/schema [::poly/b 0] options)
+                       {:a (m/schema [::poly/f :a] options)}))
+
+  (m/from-ast (m/ast (m/schema [::poly/b 0] options)) options)
+  (m/from-ast (m/ast (m/schema [:re #""] options)))
+
+  (-> (m/schema [:schema
+                 {:registry {::a :a}}
+                 ::a]
+                (update options :registry
+                        mr/composite-registry
+                        {:a (m/schema [::poly/f :a] options)}))
+      m/deref
+      m/deref
+      m/type)
   )
 
 (deftest -abstract-test
   (is (= [:schema {::poly/scope true} [::poly/b 0]]
          (m/form (poly/-abstract [::poly/f :a] :a options))))
+  (is (= [:schema {::poly/scope true} [:schema {:registry {::a [::poly/b 0]}} ::a]]
+         (m/form (poly/-abstract [:schema {:registry {::a [::poly/f :a]}} ::a] :a options))))
   (is (= [:schema {::poly/scope true} [:schema {::poly/scope true} [::poly/b 1]]]
          (m/form (poly/-abstract [:schema {::poly/scope true} [::poly/f :a]] :a options))))
   (is (= [:schema {::poly/scope true}
@@ -214,10 +228,12 @@
 
 #_
 (deftest all-smart-constructor-destructor-test
-  (is (= '[:all [x] [:=> [:cat x] x]]
-         (m/form (m/schema (poly/all [x] [:=> [:cat x] x])))))
-  (is (= '[:all [x y] [:=> [:cat x] y]]
-         (m/form (m/schema (poly/all [x y] [:=> [:cat x] y])))))
+  (is (= [:all [:x] [:-> :x :x]]
+         (m/form (m/schema (poly/all [x] [:-> x x])
+                           options))))
+  (is (= [:all [:x :y] [:-> :x :y]]
+         (m/form (m/schema (poly/all [x y] [:=> [:cat x] y])
+                           options))))
   (is (= '[:=> [:cat a] b]
          (m/form
            (m/-all-body (m/schema (poly/all [x y] [:=> [:cat x] y]))

@@ -73,6 +73,11 @@
              m/deref
              m/form))))
 
+(deftest f-in-registry-test
+  (is (= [:-> [:schema {:registry {::a [:schema :any]}} [:schema :any]] [:schema :any]]
+         (m/form (m/deref (poly/all [a] [:-> [:schema {:registry {::a a}} a] a])
+                          options)))))
+
 (deftest poly-generator-test
   ;;TODO :P
   (is (thrown-with-msg?

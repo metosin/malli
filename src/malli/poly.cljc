@@ -7,13 +7,10 @@
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]
             [malli.registry :as mr]
-            [malli.sci :as ms]))
+            [malli.sci :as ms]
+            [malli.poly-protocols :refer [AllSchema -bounds -inst]]))
 
 (declare inst)
-
-(defprotocol AllSchema
-  (-bounds [this] "return a vector of maps describing the binder")
-  (-inst [this schemas] "replace variables in polymorphic schema with schemas, or their defaults if nil"))
 
 (defn- -all-binder-bounds [binder]
   (m/-vmap (fn [b]

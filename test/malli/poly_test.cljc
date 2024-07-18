@@ -72,3 +72,59 @@
              (m/schema options)
              m/deref
              m/form))))
+
+(deftest poly-generator-test
+  ;;TODO :P
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #":malli.generator/no-generator"
+        (mg/generate (poly/all [X] [:=> [:cat X] X]) options)))
+  ;;via deref
+  (is (= {} ((mg/generate (m/deref (poly/all [X] [:=> [:cat X] X]) options) {:seed 1 :size 2}) 1))))
+
+(defn is-all-good [schema vs]
+  (testing "good"
+    (doseq [[i f] (map-indexed vector vs)]
+      (testing i
+        (is (nil? (mg/check schema f options)))))))
+
+(defn is-all-bad  [schema vs]
+  (testing "bad"
+    (doseq [[i f] (map-indexed vector vs)]
+      (testing i
+        (try (let [res (mg/check schema f (assoc options ::mg/all-iterations 1000))]
+               (is res))
+             (catch #?(:clj Exception, :cljs js/Error) e
+               (is (= ::m/invalid-input (:type (ex-data e))))))))))
+
+(def good-identities [identity
+                      (fn [a] a)
+                      (fn [a] (identity a))])
+(def bad-identities [(fn [_] nil)
+                     (fn [a] (when (uuid? a) a))])
+
+(def identity-specs [(poly/all [a] [:=> [:cat a] a])
+                     (poly/all [a] [:-> a a])])
+
+(deftest identity-test
+  (doseq [identity-spec identity-specs]
+    (testing (pr-str identity-spec)
+      (is-all-good identity-spec good-identities)
+      (is-all-bad identity-spec bad-identities))))
+
+(def good-maps [map
+                (fn [f c] (map f c))
+                (fn [f c] (mapv f c))])
+(def bad-maps [(comp #(map str %) map)
+               (fn [f c] (map (comp f str) c))
+               (fn [f c] (map (comp str f) c))])
+
+(def map-specs [(poly/all [a b] [:=> [:cat [:=> [:cat a] b] [:sequential a]] [:sequential b]])
+                (poly/all [a b] [:-> [:-> a b] [:sequential a] [:sequential b]])])
+
+;; TODO catch higher-order failures and shrink them.
+(deftest map-test
+  (doseq [map-spec map-specs]
+    (testing (pr-str map-spec)
+      (is-all-good map-spec good-maps)
+      (is-all-bad map-spec bad-maps))))

@@ -12,6 +12,7 @@
             [malli.registry :as mr]
             [malli.impl.util :refer [-last -merge]]
             [malli.util :as u]
+            [malli.poly-protocols :as poly-prot]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
 (declare generator generate -create)
@@ -614,7 +615,7 @@
                               (case kind
                                 :Schema (:upper m)
                                 (m/-fail! ::bounds-not-yet-implemented {:schema schema :bounds m})))
-                            (m/-bounds schema))
+                            (poly-prot/-bounds schema))
                examples (mapv (fn [s]
                                 (vec (sample s {:size all-iterations})))
                               bounds)
@@ -629,7 +630,7 @@
                                                                                          :nil))
                                                                                      (gen/elements %)) examples))
                                                                       (fn [schemas]
-                                                                        (let [schema (m/inst schema schemas options)]
+                                                                        (let [schema (poly-prot/-inst schema schemas)]
                                                                           (gen/return
                                                                             {:explain (delay
                                                                                         ((function-checker

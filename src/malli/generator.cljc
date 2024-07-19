@@ -143,6 +143,19 @@
     (first gs)
     (gen/one-of gs)))
 
+(defn- -seqable-gen [schema options]
+  (let [el (-> schema m/children first)]
+    (gen-one-of
+     (-> [nil-gen]
+         (into (map #(-coll-gen schema % options))
+               [identity vec eduction #(into-array #?(:clj Object) %)])
+         (conj (-coll-distinct-gen schema set options))
+         (cond->
+           (and (= :tuple (m/type el))
+                (= 2 (count (m/children el))))
+           (conj (let [[k v] (m/children el)]
+                   (generator [:map-of (or (m/properties schema) {}) k v] options))))))))
+
 (defn -or-gen [schema options]
   (if-some [gs (not-empty
                 (into [] (keep #(-not-unreachable (generator % options)))
@@ -432,6 +445,8 @@
 (defmethod -schema-generator :sequential [schema options] (-coll-gen schema identity options))
 (defmethod -schema-generator :set [schema options] (-coll-distinct-gen schema set options))
 (defmethod -schema-generator :enum [schema options] (gen-elements (m/children schema options)))
+(defmethod -schema-generator :seqable [schema options] (-seqable-gen schema options))
+(defmethod -schema-generator :every [schema options] (-seqable-gen schema options)) ;;infinite seqs?
 
 (defmethod -schema-generator :maybe [schema options]
   (let [g (-> schema (m/children options) first (generator options) -not-unreachable)]

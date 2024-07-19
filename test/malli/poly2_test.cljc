@@ -26,8 +26,6 @@
   (is (= [:all [:x] [:-> :x :x]]
          (m/form (poly/all [x] [:-> x x]) options)))
   ;; alpha-rename binder if clashing keyword in body form
-  (is (= [:all [:x0] [:=> [:x :x0] :x0]]
-         (m/form (poly/all [x] [:=> [:x x] x]) options)))
   (is (= [:all [:x] [:=> [:cat [:all [:y] :y]] :x]]
          (m/form (poly/all [x] [:=> [:cat (poly/all [y] y)] x]) options)))
   ;; alpha-rename outer binder if clashing :all inside (actually just 
@@ -231,29 +229,25 @@
              :int
              options)))))
 
-#_
 (deftest all-smart-constructor-destructor-test
   (is (= [:all [:x] [:-> :x :x]]
          (m/form (m/schema (poly/all [x] [:-> x x])
                            options))))
   (is (= [:all [:x :y] [:-> :x :y]]
-         (m/form (m/schema (poly/all [x y] [:=> [:cat x] y])
+         (m/form (m/schema (poly/all [x y] [:-> x y])
                            options))))
-  (is (= '[:=> [:cat a] b]
+  (is (= [:-> :int :boolean]
          (m/form
-           (m/-all-body (m/schema (poly/all [x y] [:=> [:cat x] y]))
-                        '[a b]))))
-  (is (= '[:=> [:cat x] y]
-         (let [s (m/schema (poly/all [x y] [:=> [:cat x] y]))]
-           (m/form
-             (m/-all-body (m/schema (poly/all [x y] [:=> [:cat x] y]))
-                          (m/-all-fresh-names s))))))
-  (is (= '[:=> [:cat x__] y__]
-         (let [s (m/schema (poly/all [x y] [:=> [:cat x] y]))]
-           (m/form
-             (m/-all-body (m/schema (poly/all [x y] [:=> [:cat x] y])
-                                    {::m/verbose-locals true})
-                          (mapv #(with-meta (symbol (subs (name %) 0 3)) (meta %)) (m/-all-fresh-names s))))))))
+           (poly/inst (m/schema (poly/all [x y] [:-> x y]) options)
+                      [:int :boolean]
+                      options))))
+  (is (= [:-> :x :y]
+         (m/form
+           (poly/inst (m/schema (poly/all [x y] [:-> x y]) options)
+                      [[::poly/f :x]
+                       [::poly/f :y]]
+                      options))))
+  )
 
 (comment
   (m/form

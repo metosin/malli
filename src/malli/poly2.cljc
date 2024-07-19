@@ -113,7 +113,7 @@
 (defn -instantiate-many [s images options]
   (reduce (fn [s image]
             (-instantiate s image options))
-          s (rseq images)))
+          s images))
 
 (defn -all-names [s]
   (map #(nth % 0) (-bounds s)))
@@ -288,40 +288,7 @@
                (count binder))
     (m/-fail! ::wrong-number-of-schemas-to-inst
               {:binder binder :schemas insts}))
-  (let [kws (-all-binder-names binder)
-        bounds (-all-binder-bounds binder)
-        insts (mapv (fn [bound s]
-                      ;;TODO regex kinds like [:* :Schema] that allow splicing schemas like
-                      ;; [:all [[Xs [:* :Schema]]] [:=> [:cat Xs] :any]]
-                      ;; which can instantiate to [:=> [:cat [:* :int] :any]] rather than just
-                      ;; [:=> [:cat [:schema [:* :int]] :any]]
-                      (case (:kind bound)
-                        :Schema (let [{:keys [upper lower]} bound
-                                      s (m/form s options)
-                                      upper (m/form upper options)]
-                                  (when (some? lower)
-                                    (m/-fail! ::nyi-lower-bounds))
-                                  (m/form
-                                    [:schema ;;disallow regex splicing
-                                     (if (or (= s upper)
-                                             (= :any upper))
-                                       s
-                                       [:and s upper])]
-                                    options))))
-                    bounds insts)
-        vforbidden-kws (volatile! (set kws))
-        _ (walk/postwalk (fn [v]
-                           (when (keyword? v)
-                             (vswap! vforbidden-kws conj v))
-                           v)
-                         insts)
-        [binder body] (-> [:all binder body]
-                          (m/schema options)
-                          (-alpha-rename vforbidden-kws options)
-                          m/children)
-        kws (-all-binder-names binder)]
-    (-> (walk/postwalk-replace (zipmap kws insts) body)
-        (m/schema options))))
+  (-instantiate-many body insts options))
 
 (defn -all-binder-defaults [binder]
   (mapv :default (-all-binder-bounds binder)))
@@ -379,10 +346,31 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children {::m/keys [function-checker] :as options}]
       (m/-check-children! :all properties children 2 2)
-      (let [[binder body] children
-            form (delay (m/-simple-form parent properties children identity options))
+      (let [[binder body-syntax] children
+            self-inst (delay (inst [:all binder body-syntax] options))
+            body' (reduce
+                    (fn [s _]
+                      (m/schema [:schema {::scope true} s] options))
+                    (m/schema body-syntax
+                              (update options :registry
+                                      #(mr/composite-registry
+                                         (doto (into {} (map-indexed (fn [i n] [n (m/schema [::b i] options)]))
+                                                     (rseq (-all-binder-names binder)))
+                                           prn)
+                                         (or % {}))))
+                    (range (count binder)))
+            _ (prn "body'" body')
+            form (delay
+                   (m/-simple-form parent properties
+                                   (assoc children 1
+                                          (-> body'
+                                              (-instantiate-many 
+                                                (mapv (fn [n] (m/schema [::f n] options))
+                                                      (-all-binder-names binder))
+                                                options)
+                                              m/form))
+                                   identity options))
             cache (m/-create-cache options)
-            self-inst (delay (inst [:all binder body] options))
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         ^{:type ::m/schema}
         (reify
@@ -416,7 +404,7 @@
           (-form [_] @form)
           AllSchema
           (-bounds [_] (-all-binder-bounds binder))
-          (-inst [_ insts] (-inst* binder body (or insts (-all-binder-defaults binder)) options))
+          (-inst [_ insts] (-inst* binder body' (or insts (-all-binder-defaults binder)) options))
           m/FunctionSchema
           (-function-schema? [this] (m/-function-schema? @self-inst))
           (-function-schema-arities [this] (m/-function-schema-arities @self-inst))
@@ -432,38 +420,6 @@
           (-ref [_])
           (-deref [_] @self-inst))))))
 
-(defn- -find-kws [vol form]
-  (walk/postwalk (fn [v]
-                   (when (simple-keyword? v)
-                     (vswap! vol conj v))
-                   v)
-                 form))
-
-(defn- -rename-all-binder [forbidden-kws binder]
-  (-visit-binder-names
-    binder
-    (fn [k]
-      (if (@forbidden-kws k)
-        (loop [i 0]
-          (let [k' (keyword (str (name k) i))]
-            (if (@forbidden-kws k')
-              (recur (inc i))
-              (do (vswap! forbidden-kws conj k')
-                  k'))))
-        k))))
-
-(defn -all-form [binder body]
-  (let [nbound (count binder)
-        binder (-visit-binder-names binder (fn [k]
-                                             (when-not (simple-symbol? k)
-                                               (m/-fail! ::binder-must-use-simple-symbols {:k k}))
-                                             (keyword k)))
-        forbidden-kws (doto (volatile! #{})
-                        (-find-kws (apply body (repeatedly nbound random-uuid))))
-        binder (-rename-all-binder forbidden-kws binder)
-        body (apply body (-all-binder-names binder))]
-    [:all binder body]))
-
 #?(:clj
    (defmacro all
      "Children of :all are read-only. Only construct an :all with this macro.
@@ -476,16 +432,18 @@
 
      Use deref to instantiate the body with each type variable's upper bounds."
      [binder body]
-     (let [bv (mapv (fn [b]
-                      (if (symbol? b)
-                        b
-                        (if (vector? b)
-                          (first b)
-                          (if (map? b)
-                            (:name b)
-                            (m/-fail! ::bad-all-binder {:binder binder})))))
-                    binder)]
-       `(-all-form '~binder (fn ~bv ~body)))))
+     `(let ~(into [] (mapcat (fn [b]
+                               (let [sym (if (symbol? b)
+                                           b
+                                           (if (vector? b)
+                                             (first b)
+                                             (if (map? b)
+                                               (:name b)
+                                               (m/-fail! ::bad-all-binder {:binder binder}))))]
+                                 (c/assert (simple-symbol? sym))
+                                 [sym (keyword sym)])))
+                  binder)
+        [:all ~binder ~body])))
 
 (defn inst
   "Instantiate an :all schema with a vector of schemas. If a schema

@@ -241,6 +241,7 @@
     (-into-schema [parent properties children {::m/keys [function-checker] :as options}]
       (m/-check-children! :all properties children 2 2)
       (let [[binder body-syntax] children
+            ;;TODO parse binder + kind
             self-inst (delay (inst [:all binder body-syntax] options))
             body' (reduce
                     (fn [s _]
@@ -297,13 +298,13 @@
           AllSchema
           (-bounds [_] (-all-binder-bounds binder))
           (-inst [_ insts] (-inst* binder body' (mapv (fn [{:keys [kind]} x]
-                                                        (let [x (m/schema x)]
+                                                        (let [x (m/schema x options)]
                                                           (case kind
                                                             :Schema (when (m/-regex-op? x)
                                                                       (m/-fail! ::regex-not-kind-schema)))
                                                           x))
                                                       (-all-binder-bounds binder)
-                                                      (or insts (-all-binder-defaults binder)))
+                                                      (or (seq insts) (-all-binder-defaults binder)))
                                    options))
           m/FunctionSchema
           (-function-schema? [this] (m/-function-schema? @self-inst))
@@ -329,7 +330,7 @@
                                     ?schemas (when-not options? ?schemas-or-options)
                                     options (when options? ?schemas-or-options)]
                                 (inst ?all ?schemas options)))
-  ([?all insts options] (-inst (m/schema ?all options) insts)))
+  ([?all insts options] (-inst (m/schema ?all options) (mapv #(m/schema % options) insts))))
 
 (defn schemas []
   {:all (-all-schema nil)

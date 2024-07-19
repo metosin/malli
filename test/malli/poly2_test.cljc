@@ -29,11 +29,11 @@
   ;; a naive keyword occurrence check on the form of the body).
   (is (= [:all [:x] [:-> [:all [:x] :x] :x]]
          (m/form [:all [:x] [:-> [:all [:x] :x] :x]] options)))
-  (is (= [:=> [:cat [:schema :any]] [:schema :any]]
-         (m/form (poly/inst (poly/all [x] [:=> [:cat x] x]) [:any] options))))
+  (is (= [:=> [:cat :any] :any]
+         (m/form (poly/inst [:all [:x] [:=> [:cat :x] :x]] [:any] options))))
   (is (= [:->
-          [:schema [:all [:x] [:-> :x :x]]]
-          [:schema [:all [:x] [:-> :x :x]]]]
+          [:all [:x] [:-> :x :x]]
+          [:all [:x] [:-> :x :x]]]
          (m/form (poly/inst [:all [:x] [:-> :x :x]]
                             [[:all [:x] [:-> :x :x]]]
                             options))))
@@ -45,23 +45,23 @@
          (m/form (poly/inst [:all [:x] [:all [:x] :x]]
                             [[:all [:x] :x]]
                             options))))
-  (is (= [:=> [:cat [:schema :any]] [:schema :any]]
+  (is (= [:=> [:cat :any] :any]
          (m/form (m/deref [:all [:a] [:=> [:cat :a] :a]] options))))
-  (is (= [:-> [:schema :any] [:schema :any]]
+  (is (= [:-> :any :any]
          (m/form (m/deref [:all [:a] [:-> :a :a]] options))))
-  (is (= [:=> [:cat [:schema [:maybe :map]] [:schema :any]]
-          [:merge [:schema [:maybe :map]] [:map [:x [:schema :any]]]]]
+  (is (= [:=> [:cat [:maybe :map] :any]
+          [:merge [:maybe :map] [:map [:x :any]]]]
          (-> [:all [[:M [:maybe :map]] :X]
               [:=> [:cat :M :X] [:merge :M [:map [:x :X]]]]]
              (m/schema options)
              m/deref
              m/form)))
   (is (= [:->
-          [:schema [:maybe :map]]
-          [:schema :any]
+          [:maybe :map]
+          :any
           [:merge
-           [:schema [:maybe :map]]
-           [:map [:x [:schema :any]]]]]
+           [:maybe :map]
+           [:map [:x :any]]]]
          (-> [:all [[:M [:maybe :map]] :X]
               [:-> :M :X [:merge :M [:map [:x :X]]]]]
              (m/schema options)
@@ -213,11 +213,10 @@
                    options)))
   (is (= [:-> :x :y]
          (m/form
-           (poly/inst (m/schema (poly/all [x y] [:-> x y]) options)
+           (poly/inst (m/schema [:all [:x :y] [:-> :x :y]] options)
                       [[::poly/f :x]
                        [::poly/f :y]]
-                      options))))
-  )
+                      options)))))
 
 (comment
   (m/form

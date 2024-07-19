@@ -644,7 +644,7 @@
 (defn -needed-bounded-checks [min max options]
   (c/max (or (some-> max inc) 0)
          (or min 0)
-         (:coll-check-limit options 101)))
+         (::coll-check-limit options 101)))
 
 (defn -validate-bounded-limits [needed min max]
   (or ((-min-max-pred #(bounded-count needed %)) {:min min :max max}) (constantly true)))

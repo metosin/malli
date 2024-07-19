@@ -388,12 +388,12 @@ default branching can be arbitrarily nested:
 The `:seqable` and `:every` schemas describe `seqable?` collections. They
 differ in their handling of collections that are neither `counted?` nor `indexed?`, and their
 [parsers](#parsing-values):
-1. `:seqable` parses its elements but `:every?` does not and returns the identical input, and
-2. valid unparsed `:seqable` values lose the original collection type while `:every?`
+1. `:seqable` parses its elements but `:every` does not and returns the identical input, and
+2. valid unparsed `:seqable` values lose the original collection type while `:every`
    returns the identical input.
 
 `:seqable` validates the entire collection, while `:every` checks only the
-largest of `:min`, `(inc :max)`, and `(:coll-check-limit options 101)`, or
+largest of `:min`, `(inc :max)`, and `(::m/coll-check-limit options 101)`, or
 the entire collection if the input is `counted?` or `indexed?`.
 
 ```clojure

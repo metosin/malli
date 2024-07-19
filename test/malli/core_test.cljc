@@ -3404,6 +3404,7 @@
   (is (m/validate [:every :int] (concat (range 1000) [nil])))
   (is (m/validate [:every :int] (eduction (concat (range 1000) [nil]))))
   (is (m/validate [:every {:min 1000} :int] (concat (range 1000) [nil])))
+  (is (m/validate [:every :int] (concat (range 1000) [nil]) {::m/coll-check-limit 1000}))
   (is (m/validate [:every {:min 1000} :int] (eduction (concat (range 1000) [nil]))))
   ;; counted/indexed colls have everything validated
   (is (not (m/validate [:every {:min 1000} :int] (vec (concat (range 1000) [nil])))))
@@ -3415,7 +3416,7 @@
   (is (not (m/validate [:every {:max 1001} :int] (eduction (concat (range 1000) [nil])))))
   (is (= #{["should be an integer"]}
          (me/humanize (m/explain [:every :int] #{1 nil 3}))))
-  (is (nil? (m/explain [:every :int] (concat (range 1000) [nil]))))
+  (is (nil? (m/explain [:every :int] (concat (range 100) [nil]))))
   (is (nil? (m/explain [:every :int] (eduction (concat (range 1000) [nil])))))
   (is (= (concat (repeat 1000 nil) [["should be an integer"]])
          (me/humanize (m/explain [:every {:min 1001} :int] (concat (range 1000) [nil])))))
@@ -3439,8 +3440,8 @@
                                     )]]
         (testing coerce
           (let [bad-but-too-big (coerce
-                                  (concat (interleave (range 1000) (cycle [true false]))
-                                          [nil]))
+                                 (concat (interleave (range 1000) (cycle [true false]))
+                                         [nil]))
                 bad-indexed-seq (vec bad-but-too-big)]
             (is (identical? bad-but-too-big
                             (parse [:every [:orn [:l :int] [:r :boolean]]]
@@ -3462,4 +3463,4 @@
                    :value {:x 1, :y "2"}
                    :errors [{:path [::m/in :y], :in [:y], :schema y-schema, :value "2"}]}
                   explain))
-    (is (form= y-schema (mu/get-in schema (-> explain :errors first :path))))))
+    (is (form= y-schema (mu/get-in schema (-> explain :errors first :path)))))) :ever

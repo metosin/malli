@@ -17,7 +17,7 @@ Malli is in well matured [alpha](README.md#alpha).
 ## UNRELEASED
 
 * `:->` added to dedault registry, also to [documentation](docs/function-schemas.md#flat-arrow-function-schemas).
-* New `:sequable` and `:every` schemas [#1041](https://github.com/metosin/malli/pull/1041)
+* New `:sequable` and `:every` schemas [#1041](https://github.com/metosin/malli/pull/1041), see [docs](README.md#seqable-schemas)
 * Fix OOM error with infinitely expanding schema [#1069](https://github.com/metosin/malli/pull/1069)
 * Correctly form prop-less schemas that have map/nil as first child [#1071](https://github.com/metosin/malli/pull/1071)
 

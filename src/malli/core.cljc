@@ -264,7 +264,11 @@
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
+        (when-some [p (some-> registry (mr/-schema (c/type ?schema)))]
+          (when (schema? ?schema)
+            (when (= p (-parent ?schema))
+              (-fail! ::infinitely-expanding-schema {:schema ?schema})))
+          (-into-schema p nil [?schema] options)))))
 
 (defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)

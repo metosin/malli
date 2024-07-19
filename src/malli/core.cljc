@@ -264,7 +264,11 @@
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
+        (when-some [p (some-> registry (mr/-schema (c/type ?schema)))]
+          (when (schema? ?schema)
+            (when (= p (-parent ?schema))
+              (-fail! ::infinitely-expanding-schema {:schema ?schema})))
+          (-into-schema p nil [?schema] options)))))
 
 (defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
@@ -298,7 +302,12 @@
   (let [has-children (seq children), has-properties (seq properties)]
     (cond (and has-properties has-children) (reduce conj [type properties] children)
           has-properties [type properties]
-          has-children (reduce conj [type] children)
+          has-children (let [fchild (nth children 0)]
+                         (reduce conj
+                                 (cond-> [type]
+                                   (or (map? fchild)
+                                       (nil? fchild)) (conj nil))
+                                 children))
           :else type)))
 
 (defn -create-form [type properties children options]

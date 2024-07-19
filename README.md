@@ -20,7 +20,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Inferring Schemas](#inferring-schemas) from sample values and [Destructuring](#destructuring).
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values) and [Unparsing](#unparsing-values) values
-- [Sequence](#sequence-schemas), [Vector](#vector-schemas), and [Set](#set-schemas) Schemas
+- [Enumeration](#enumeration-schemas), [Sequence](#sequence-schemas), [Vector](#vector-schemas), and [Set](#set-schemas) Schemas
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
@@ -328,6 +328,32 @@ Most core-predicates are mapped to Schemas:
 ```
 
 See [the full list of default schemas](#schema-registry).
+
+## Enumeration schemas
+
+`:enum` schemas `[:enum V1 V2 ...]` represent an enumerated set of values `V1 V2 ...`.
+
+This mostly works as you'd expect, with values passing the schema if it is contained in the set and generators returning one of the values,
+shrinking to the left-most value.
+
+There are some special cases to keep in mind around syntax. Since schema properties can be specified with a map or nil, enumerations starting with
+a map or nil must use slightly different syntax.
+
+If your `:enum` does not have properties, you must provide `nil` as the properties.
+
+```clojure
+[:enum nil {}]  ;; singleton schema of {}
+[:enum nil nil] ;; singleton schema of nil
+```
+
+If your `:enum` has properties, the leading map with be interpreted as properties, not an enumerated value.
+
+```clojure
+[:enum {:foo :bar} {}]  ;; singleton schema of {}, with properties {:foo :bar}
+[:enum {:foo :bar} nil] ;; singleton schema of nil, with properties {:foo :bar}
+```
+
+In fact, these syntax rules apply to all schemas, but `:enum` is the most common schema where this is relevant so it deserves a special mention.
 
 ## Qualified keys in a map
 

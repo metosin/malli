@@ -1193,12 +1193,12 @@
       ;; note: js/Object not ISeqable
       #?(:clj (instance? java.util.Map x))
       ;; many Seq's are List's, so just pick some popular classes
-      #?@(:bb []
-              :clj [(instance? java.util.AbstractList x)
-                    (instance? java.util.Vector x)])
-      #?(:clj (instance? CharSequence x)
+      #?@(:bb  []
+          :clj [(instance? java.util.AbstractList x)
+                (instance? java.util.Vector x)])
+      #?(:clj  (instance? CharSequence x)
          :cljs (string? x))
-      #?(:clj (.isArray (class x))
+      #?(:clj  (.isArray (class x))
          :cljs (identical? js/Array (c/type x)))))
 
 (defn -collection-schema [props]
@@ -1237,16 +1237,16 @@
                                            :else (if bounded
                                                    (let [child-validator child-parser]
                                                      (reduce
-                                                       (fn [x v]
-                                                         (if (child-validator v) x (reduced ::invalid)))
-                                                       x (cond->> x
-                                                           (not (-check-entire-bounded-collection? x))
-                                                           (eduction (take bounded)))))
+                                                      (fn [x v]
+                                                        (if (child-validator v) x (reduced ::invalid)))
+                                                      x (cond->> x
+                                                          (not (-check-entire-bounded-collection? x))
+                                                          (eduction (take bounded)))))
                                                    (let [x' (reduce
-                                                              (fn [acc v]
-                                                                (let [v' (child-parser v)]
-                                                                  (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                              [] x)]
+                                                             (fn [acc v]
+                                                               (let [v' (child-parser v)]
+                                                                 (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                             [] x)]
                                                      (cond
                                                        (miu/-invalid? x') x'
                                                        g (g x')

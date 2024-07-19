@@ -1067,24 +1067,24 @@
        #":malli\.generator/distinct-generator-failure"
        (mg/generate [:map-of {:min 2} [:= 1] :any])))
   (is (thrown-with-msg?
-        #?(:clj Exception, :cljs js/Error)
-        #":malli\.generator/and-generator-failure"
-        (mg/generate [:and pos? neg?]))))
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.generator/and-generator-failure"
+       (mg/generate [:and pos? neg?]))))
 
 (deftest seqable-every-generator-test
   (doseq [op [:seqable :every]]
     (testing op
-      #?(:clj (is (= '[[nil ()]
-                       ["Eduction" (0)]
-                       ["PersistentHashSet" ()]
-                       ["Object[]" (0)]
-                       ["PersistentVector" (-2 2 0 1)]
-                       ["PersistentVector" (1 -2)]
-                       ["PersistentVector" (-9)]
-                       ["PersistentVector" (3 -49 -4)]
-                       ["PersistentVector" (-23 1 82)]
-                       ["Eduction" (126 -24 -236 0 -18 0 0 2 -1)]]
-                     (mapv (juxt #(some-> (class %) .getSimpleName) sequence) (mg/sample [op :int] {:seed 0}))))
+      #?(:clj  (is (= '[[nil ()]
+                        ["Eduction" (0)]
+                        ["PersistentHashSet" ()]
+                        ["Object[]" (0)]
+                        ["PersistentVector" (-2 2 0 1)]
+                        ["PersistentVector" (1 -2)]
+                        ["PersistentVector" (-9)]
+                        ["PersistentVector" (3 -49 -4)]
+                        ["PersistentVector" (-23 1 82)]
+                        ["Eduction" (126 -24 -236 0 -18 0 0 2 -1)]]
+                      (mapv (juxt #(some-> (class %) .getSimpleName) sequence) (mg/sample [op :int] {:seed 0}))))
          :cljs (is (= '[() (0) () (0) (-2 2 0 1) (1 -2) (-9) (3 -49 -4) (-23 1 82) (126 -24 -236 0 -18 0 0 2 -1)]
                       (mapv sequence (mg/sample [op :int] {:seed 0})))))
       (is (= '({-1 false}

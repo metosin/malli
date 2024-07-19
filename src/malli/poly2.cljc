@@ -12,9 +12,6 @@
 
 (declare inst)
 
-;;;
-
-
 ;; -abstract / -instantiate for locally nameless representation
 ;; See "I am not a number: I am a free variable" - Conor McBride and James McKinna
 
@@ -146,44 +143,6 @@
                   ::bound-tvs #{}))
     @fvs))
 
-;;TODO capture avoidance
-(defn -subst-tv [?schema tv->schema options]
-  (let [inner (fn [this s path options]
-                (case (m/type s)
-                  ;; TODO rename :all binder if name capturing will occur
-                  :all (m/-walk s this path (update options ::tv->schema
-                                                    (fn [tv->schema]
-                                                      (let [shadowed (-all-names s)]
-                                                        (apply dissoc tv->schema shadowed)))))
-                  :.. (m/-fail! ::todo-subst-tv-for-dotted-schema)
-                  (m/-walk s this path options)))
-        outer (fn [s path children {::keys [tv->schema] :as options}]
-                (let [s (m/-set-children s children)]
-                  (case (m/type s)
-                    ::local (let [[id] children]
-                              (if-some [[_ v] (find tv->schema id)]
-                                v
-                                s))
-                    ::m/val (first children)
-                    s)))]
-    (inner
-      (reify m/Walker
-        (-accept [_ s path options] true)
-        (-inner [this s path options] (inner this s path options))
-        (-outer [_ schema path children options]
-          (outer schema path children options)))
-      (m/schema ?schema options)
-      []
-      (assoc options
-             ::m/walk-refs false
-             ::m/walk-schema-refs false
-             ::m/walk-entry-vals true
-             ::tv->schema tv->schema))))
-
-
-;;;
-
-
 (defn- -all-binder-bounds [binder]
   (m/-vmap (fn [b]
              (if (simple-ident? b)
@@ -204,84 +163,19 @@
                    (m/-fail! ::invalid-all-binder {:binder binder})))))
            binder))
 
-(defn- -visit-binder-names [binder f]
+(defn -all-binder-names [binder]
   (m/-vmap (fn [b]
              (if (simple-ident? b)
-               (f b)
+               b
                (if (and (vector? b)
                         (= 2 (count b))
                         (simple-ident? (first b)))
-                 (update b 0 f)
+                 (first b)
                  (if (and (map? b)
                           (simple-ident? (:name b)))
-                   (update b :name f)
+                   (:name b)
                    (m/-fail! ::invalid-all-binder {:binder binder})))))
            binder))
-
-(defn -all-binder-names [binder]
-  (let [vol (volatile! [])]
-    (-visit-binder-names binder #(do (vswap! vol conj %) %))
-    @vol))
-
-(defn- -find-allowed-kw [base vforbidden]
-  (if-not (@vforbidden base)
-    base
-    (loop [i 0]
-      (let [base (keyword (str (name base) i))]
-        (if-not (@vforbidden base)
-          (do (vswap! vforbidden conj base)
-              base)
-          (recur (inc i)))))))
-
-(defn- -alpha-rename [s vforbidden options]
-  (let [inner (fn [this s path options]
-                (case (m/type s)
-                  :all (-alpha-rename s vforbidden options)
-                  (m/-walk s this path options)))
-        outer (fn [s path children options]
-                (case (m/type s)
-                  ::m/val (first children)
-                  (m/-set-children s children)))
-        walk (fn [s]
-               (inner
-                 (reify m/Walker
-                   (-accept [_ s path options] true)
-                   (-inner [this s path options] (inner this s path options))
-                   (-outer [_ schema path children options]
-                     (outer schema path children options)))
-                 s
-                 []
-                 (assoc options
-                        ::m/walk-refs false
-                        ::m/walk-schema-refs false
-                        ::m/walk-entry-vals true)))
-        [binder body] (m/children s)
-        names (-all-binder-names binder)
-        bounds (-all-binder-bounds binder)
-        renames (into {} (map (fn [n]
-                                [n (-find-allowed-kw n vforbidden)]))
-                      names)
-        binder (-visit-binder-names binder renames)
-        defaults (into {} (map-indexed
-                            (fn [i n]
-                              (let [{:keys [default]} (nth bounds i)
-                                    rename (renames n)]
-                                [n (m/form
-                                     (m/-update-properties
-                                       (m/schema default options)
-                                       #(assoc % ::alpha-rename rename))
-                                     options)])))
-                       names)
-        invert (into {} (map (fn [[k v]]
-                               [v (renames k)]))
-                     defaults)
-        body (-> body
-                 (->> (walk/postwalk-replace defaults))
-                 (m/schema options)
-                 walk
-                 (m/form options)
-                 (->> (walk/postwalk-replace invert)))]
-    (m/schema [:all binder body] options)))
 
 (defn- -inst* [binder body insts options]
   (when-not (= (count insts)

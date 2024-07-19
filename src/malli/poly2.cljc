@@ -296,7 +296,13 @@
           (-form [_] @form)
           AllSchema
           (-bounds [_] (-all-binder-bounds binder))
-          (-inst [_ insts] (-inst* binder body' (mapv #(vector :schema %)
+          (-inst [_ insts] (-inst* binder body' (mapv (fn [{:keys [kind]} x]
+                                                        (let [x (m/schema x)]
+                                                          (case kind
+                                                            :Schema (when (m/-regex-op? x)
+                                                                      (m/-fail! ::regex-not-kind-schema)))
+                                                          x))
+                                                      (-all-binder-bounds binder)
                                                       (or insts (-all-binder-defaults binder)))
                                    options))
           m/FunctionSchema
@@ -313,31 +319,6 @@
           m/RefSchema
           (-ref [_])
           (-deref [_] @self-inst))))))
-
-#?(:clj
-   (defmacro all
-     "Children of :all are read-only. Only construct an :all with this macro.
-     Children will not be walked.
-
-     The only public interface for :all is inst and -bounds.
-
-     Treat type variables as opaque variables in body. i.e., only pass them around,
-     don't inspect or test them.
-
-     Use deref to instantiate the body with each type variable's upper bounds."
-     [binder body]
-     `(let ~(into [] (mapcat (fn [b]
-                               (let [sym (if (symbol? b)
-                                           b
-                                           (if (vector? b)
-                                             (first b)
-                                             (if (map? b)
-                                               (:name b)
-                                               (m/-fail! ::bad-all-binder {:binder binder}))))]
-                                 (c/assert (simple-symbol? sym))
-                                 [sym (keyword sym)])))
-                  binder)
-        [:all ~binder ~body])))
 
 (defn inst
   "Instantiate an :all schema with a vector of schemas. If a schema

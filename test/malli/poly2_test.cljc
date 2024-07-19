@@ -69,7 +69,7 @@
              m/form))))
 
 (deftest f-in-registry-test
-  (is (= [:-> [:schema {:registry {::a [:schema :any]}} [:schema :any]] [:schema :any]]
+  (is (= [:-> [:schema {:registry {::a :any}} :any] :any]
          (m/form (m/deref [:all [:a] [:-> [:schema {:registry {::a :a}} :a] :a]]
                           options)))))
 
@@ -197,16 +197,20 @@
 
 (deftest all-smart-constructor-destructor-test
   (is (= [:all [:x] [:-> :x :x]]
-         (m/form (m/schema (poly/all [x] [:-> x x])
-                           options))))
+         (m/form [:all [:x] [:-> :x :x]] options)))
   (is (= [:all [:x :y] [:-> :x :y]]
-         (m/form (m/schema (poly/all [x y] [:-> x y])
-                           options))))
+         (m/form [:all [:x :y] [:-> :x :y]] options)))
   (is (= [:-> :int :boolean]
          (m/form
-           (poly/inst (m/schema (poly/all [x y] [:-> x y]) options)
+           (poly/inst (m/schema [:all [:x :y] [:-> :x :y]] options)
                       [:int :boolean]
                       options))))
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #"regex-not-kind-schema"
+        (poly/inst (m/schema [:all [:x :y] [:-> :x :y]] options)
+                   [[:? :int] [:* :boolean]]
+                   options)))
   (is (= [:-> :x :y]
          (m/form
            (poly/inst (m/schema (poly/all [x y] [:-> x y]) options)

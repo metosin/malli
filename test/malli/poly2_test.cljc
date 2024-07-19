@@ -197,6 +197,11 @@
            (poly/-instantiate [:schema {::poly/scope true} [::poly/b 0]]
                               :any
                               options))))
+  (is (= [:schema {:registry {::a :a}} ::a]
+         (m/form
+           (poly/-instantiate [:schema {::poly/scope true} [:schema {:registry {::a [::poly/b 0]}} ::a]]
+                              [::poly/f :a]
+                              options))))
   (is (= [:schema {::poly/scope true} :int]
          (m/form
            (poly/-instantiate

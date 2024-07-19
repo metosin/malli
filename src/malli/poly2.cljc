@@ -69,9 +69,21 @@
 (defn -instantiate [?scope to options]
   (let [to (m/schema to options)
         inner (fn [this s path options]
-                (m/-walk s this path
-                         (cond-> options
-                           (::scope (m/-properties s)) (update ::instantiate-index inc))))
+                (let [properties (m/properties s)
+                      options (cond-> options
+                                (::scope (m/-properties s)) (update ::instantiate-index inc))
+                      s (cond-> s
+                          (:registry properties)
+                          (-> (m/ast options)
+                              (update :registry #(not-empty
+                                                   (into {} (map (fn [[k ast]]
+                                                                   [k (-> ast
+                                                                          (m/from-ast options)
+                                                                          (m/-walk this (conj path :registry k) options)
+                                                                          (m/ast options))]))
+                                                         %)))
+                              (m/from-ast options)))]
+                  (m/-walk s this path options)))
         outer (fn [s path children {::keys [instantiate-index] :as options}]
                 (let [s (m/-set-children s children)]
                   (case (m/type s)

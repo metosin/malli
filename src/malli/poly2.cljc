@@ -28,10 +28,10 @@
                           (-> (m/ast options)
                               (update :registry #(not-empty
                                                    (into {} (map (fn [[k ast]]
-                                                                   (-> ast
-                                                                       (m/from-ast options)
-                                                                       (m/-walk this (conj path :registry k) options)
-                                                                       (m/ast options))))
+                                                                   [k (-> ast
+                                                                          (m/from-ast options)
+                                                                          (m/-walk this (conj path :registry k) options)
+                                                                          (m/ast options))]))
                                                          %)))
                               (m/from-ast options)))]
                   (m/-walk s this path options)))

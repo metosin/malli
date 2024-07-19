@@ -354,14 +354,12 @@
                     (m/schema body-syntax
                               (update options :registry
                                       #(mr/composite-registry
-                                         (doto (into {} (map-indexed (fn [i n] [n (m/schema [::b i] options)]))
-                                                     (rseq (-all-binder-names binder)))
-                                           prn)
+                                         (into {} (map-indexed (fn [i n] [n (m/schema [::b i] options)]))
+                                               (rseq (-all-binder-names binder)))
                                          (or % {}))))
                     (range (count binder)))
-            _ (prn "body'" body')
             form (delay
-                   (m/-simple-form parent properties
+                   (m/-create-form :all properties
                                    (assoc children 1
                                           (-> body'
                                               (-instantiate-many 
@@ -369,7 +367,7 @@
                                                       (-all-binder-names binder))
                                                 options)
                                               m/form))
-                                   identity options))
+                                   options))
             cache (m/-create-cache options)
             ->checker (if function-checker #(function-checker % options) (constantly nil))]
         ^{:type ::m/schema}
@@ -404,7 +402,9 @@
           (-form [_] @form)
           AllSchema
           (-bounds [_] (-all-binder-bounds binder))
-          (-inst [_ insts] (-inst* binder body' (or insts (-all-binder-defaults binder)) options))
+          (-inst [_ insts] (-inst* binder body' (mapv #(vector :schema %)
+                                                      (or insts (-all-binder-defaults binder)))
+                                   options))
           m/FunctionSchema
           (-function-schema? [this] (m/-function-schema? @self-inst))
           (-function-schema-arities [this] (m/-function-schema-arities @self-inst))

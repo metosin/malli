@@ -409,6 +409,51 @@ default branching can be arbitrarily nested:
 ; => true
 ```
 
+## Seqable schemas
+
+The `:seqable` and `:every` schemas describe `seqable?` collections. They
+differ in their handling of collections that are neither `counted?` nor `indexed?`, and their
+[parsers](#parsing-values):
+1. `:seqable` parses its elements but `:every` does not and returns the identical input, and
+2. valid unparsed `:seqable` values lose the original collection type while `:every`
+   returns the identical input.
+
+`:seqable` validates the entire collection, while `:every` checks only the
+largest of `:min`, `(inc :max)`, and `(::m/coll-check-limit options 101)`, or
+the entire collection if the input is `counted?` or `indexed?`.
+
+```clojure
+;; :seqable and :every validate identically with small, counted, or indexed collections.
+(m/validate [:seqable :int] #{1 2 3})
+;=> true
+(m/validate [:seqable :int] [1 2 3])
+;=> true
+(m/validate [:seqable :int] (sorted-set 1 2 3))
+;=> true
+(m/validate [:seqable :int] (range 1000))
+;=> true
+(m/validate [:seqable :int] (conj (vec (range 1000)) nil))
+;=> false
+
+(m/validate [:every :int] #{1 2 3})
+;=> true
+(m/validate [:every :int] [1 2 3])
+;=> true
+(m/validate [:every :int] (sorted-set 1 2 3))
+;=> true
+(m/validate [:every :int] (vec (range 1000)))
+;=> true
+(m/validate [:every :int] (conj (vec (range 1000)) nil))
+;=> false
+
+;; for large uncounted and unindexed collections, :every only checks a certain length
+(m/validate [:seqable :int] (concat (range 1000) [nil]))
+;=> false
+(m/validate [:every :int] (concat (range 1000) [nil]))
+;=> true
+```
+
+
 ## Sequence schemas
 
 You can use `:sequential` to describe homogeneous sequential Clojure collections.

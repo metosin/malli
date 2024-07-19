@@ -1071,6 +1071,27 @@
         #":malli\.generator/and-generator-failure"
         (mg/generate [:and pos? neg?]))))
 
+(deftest seqable-every-generator-test
+  (doseq [op [:seqable :every]]
+    (testing op
+      #?(:clj  (is (= '[[nil ()]
+                        ["Eduction" (0)]
+                        ["PersistentHashSet" ()]
+                        ["Object[]" (0)]
+                        ["PersistentVector" (-2 2 0 1)]
+                        ["PersistentVector" (1 -2)]
+                        ["PersistentVector" (-9)]
+                        ["PersistentVector" (3 -49 -4)]
+                        ["PersistentVector" (-23 1 82)]
+                        ["Eduction" (126 -24 -236 0 -18 0 0 2 -1)]]
+                      (mapv (juxt #(some-> (class %) .getSimpleName) sequence) (mg/sample [op :int] {:seed 0}))))
+         :cljs (is (= '[() (0) () (0) (-2 2 0 1) (1 -2) (-9) (3 -49 -4) (-23 1 82) (126 -24 -236 0 -18 0 0 2 -1)]
+                      (mapv sequence (mg/sample [op :int] {:seed 0})))))
+      (is (= '({-1 false}
+               {-4399 true, 59 false, -4049 false, -49 false, -1 false, 15 false, -967 false, -3 false, -674 false, 2730 true, -2104 false, 3 false, -444 true, 8 false}
+               {119 true, 1324 false, 7276 false, -2410 true})
+             (filter map? (mg/sample [op [:tuple :int :boolean]] {:seed 1 :size 30})))))))
+
 (deftest double-with-long-min-test
   (is (m/validate :double (shrink [:double {:min 3}])))
   (is (= 3.0 (shrink [:double {:min 3}]))))

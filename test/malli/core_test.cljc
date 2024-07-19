@@ -3384,6 +3384,97 @@
                          ::xymap]
                         {:registry registry, ::m/ref-key :id}))))))))
 
+(deftest seqable-schema-test
+  (is (m/validate [:seqable :int] nil))
+  (is (m/validate [:seqable :int] #{1 2 3}))
+  (is (m/validate [:seqable :int] [1 2 3]))
+  (is (m/validate [:seqable :int] (sorted-set 1 2 3)))
+  (is (m/validate [:seqable :int] #{1 2 3}))
+  (is (m/validate [:seqable :int] (range 1000)))
+  (is (not (m/validate [:seqable :int] (conj (vec (range 1000)) nil))))
+  (is (not (m/validate [:seqable :int] (concat (range 1000) [nil]))))
+  (is (not (m/validate [:seqable :int] (eduction (concat (range 1000) [nil])))))
+  ;;FIXME need to handle eductions better, they don't support .count(). should count
+  ;; them as we check elements so we don't recompute each element.
+  #_(is (not (m/validate [:seqable {:min 1000} :int] (eduction (concat (range 1000) [nil])))))
+  (is (not (m/validate [:seqable {:min 1000} :int] (concat (range 1000) [nil]))))
+  (is (nil? (m/explain [:seqable :int] #{1 2 3})))
+  (is (not (m/validate [:seqable :int] #{1 nil 3})))
+  (is (= #{["should be an integer"]}
+         (me/humanize (m/explain [:seqable :int] #{1 nil 3}))))
+  (let [original (interleave (range 10) (cycle [true false]))
+        parsed (m/parse [:seqable [:orn [:l :int] [:r :boolean]]] original)
+        unparsed (m/unparse [:seqable [:orn [:l :int] [:r :boolean]]] parsed)]
+    (is (= original unparsed))
+    (is (= [[:l 0] [:r true] [:l 1] [:r false] [:l 2] [:r true] [:l 3] [:r false] [:l 4] [:r true] [:l 5]
+            [:r false] [:l 6] [:r true] [:l 7] [:r false] [:l 8] [:r true] [:l 9] [:r false]]
+           parsed)))
+  (let [original (sorted-set 1 2 3)
+        parsed (m/parse [:seqable [:orn [:a :int]]] original)
+        unparsed (m/unparse [:seqable [:orn [:a :int]]] parsed)]
+    (is (= unparsed [1 2 3]))
+    (is (= parsed [[:a 1] [:a 2] [:a 3]]))))
+
+(deftest every-schema-test
+  (is (m/validate [:every :int] nil))
+  (is (m/validate [:every :int] #{1 2 3}))
+  (is (m/validate [:every :int] [1 2 3]))
+  (is (m/validate [:every :int] (sorted-set 1 2 3)))
+  (is (not (m/validate [:every :int] (conj (vec (range 1000)) nil))))
+  (is (nil? (m/explain [:every :int] #{1 2 3})))
+  (is (not (m/validate [:every :int] #{1 nil 3})))
+  (is (m/validate [:every :int] (concat (range 1000) [nil])))
+  (is (m/validate [:every :int] (eduction (concat (range 1000) [nil]))))
+  ;; counted/indexed colls have everything validated
+  (is (not (m/validate [:every :int] (vec (concat (range 1000) [nil])))))
+  (is (m/validate [:every :int] (concat (range 1000) [nil])))
+  (is (m/validate [:every :int] (eduction (concat (range 1000) [nil]))))
+  (is (m/validate [:every {:min 1000} :int] (concat (range 1000) [nil])))
+  (is (m/validate [:every :int] (concat (range 1000) [nil]) {::m/coll-check-limit 1000}))
+  (is (m/validate [:every {:min 1000} :int] (eduction (concat (range 1000) [nil]))))
+  ;; counted/indexed colls have everything validated
+  (is (not (m/validate [:every {:min 1000} :int] (vec (concat (range 1000) [nil])))))
+  (is (not (m/validate [:every {:min 1001} :int] (concat (range 1000) [nil]))))
+  (is (not (m/validate [:every {:min 1001} :int] (eduction (concat (range 1000) [nil])))))
+  (is (m/validate [:every {:max 1000} :int] (range 1000)))
+  (is (not (m/validate [:every {:max 1000} :int] (range 1001))))
+  (is (not (m/validate [:every {:max 1001} :int] (concat (range 1000) [nil]))))
+  (is (not (m/validate [:every {:max 1001} :int] (eduction (concat (range 1000) [nil])))))
+  (is (= #{["should be an integer"]}
+         (me/humanize (m/explain [:every :int] #{1 nil 3}))))
+  (is (nil? (m/explain [:every :int] (concat (range 1000) [nil]))))
+  (is (nil? (m/explain [:every :int] (eduction (concat (range 1000) [nil])))))
+  (is (= (concat (repeat 1000 nil) [["should be an integer"]])
+         (me/humanize (m/explain [:every {:min 1001} :int] (concat (range 1000) [nil])))))
+  (is (= (concat (repeat 1000 nil) [["should be an integer"]])
+         (me/humanize (m/explain [:every {:min 1001} :int] (eduction (concat (range 1000) [nil]))))))
+  (is (= (concat (repeat 1000 nil) [["should be an integer"]])
+         (me/humanize (m/explain [:every {:max 1001} :int] (concat (range 1000) [nil])))))
+  (is (= (concat (repeat 1000 nil) [["should be an integer"]])
+         (me/humanize (m/explain [:every {:max 1001} :int] (eduction (concat (range 1000) [nil]))))))
+  (doseq [parse [#'m/parse #'m/unparse]]
+    (testing parse
+      (let [good-sequence (interleave (range 10) (cycle [true false]))]
+        (is (identical? good-sequence
+                        (parse [:every [:orn [:l :int] [:r :boolean]]]
+                               good-sequence))))
+      (is (= ::m/invalid
+             (parse [:every [:orn [:l :int] [:r :boolean]]]
+                    (interleave (range 10) (cycle [true false nil])))))
+      (doseq [coerce [#'identity #?(:clj #'eduction
+                                    ;;TODO :cljs ?
+                                    )]]
+        (testing coerce
+          (let [bad-but-too-big (coerce
+                                 (concat (interleave (range 1000) (cycle [true false]))
+                                         [nil]))
+                bad-indexed-seq (vec bad-but-too-big)]
+            (is (identical? bad-but-too-big
+                            (parse [:every [:orn [:l :int] [:r :boolean]]]
+                                   bad-but-too-big)))
+            (is (= ::m/invalid
+                   (parse [:every [:orn [:l :int] [:r :boolean]]]
+                          bad-indexed-seq)))))))))
 
 (deftest proxy-schema-explain-path
   (let [y-schema [:int {:doc "int"}]
@@ -3399,3 +3490,10 @@
                    :errors [{:path [::m/in :y], :in [:y], :schema y-schema, :value "2"}]}
                   explain))
     (is (form= y-schema (mu/get-in schema (-> explain :errors first :path))))))
+
+(deftest catch-infinitely-expanding-schema
+  (is (thrown-with-msg?
+        #?(:clj Exception, :cljs js/Error)
+        #?(:clj #":malli\.core/infinitely-expanding-schema"
+           :cljs #":malli\.core/invalid-schema")
+        (m/schema [(m/schema :any)]))))

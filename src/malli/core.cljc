@@ -268,7 +268,11 @@
 (defn- -lookup [?schema options]
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
-        (some-> registry (mr/-schema (c/type ?schema)) (-into-schema nil [?schema] options)))))
+        (when-some [p (some-> registry (mr/-schema (c/type ?schema)))]
+          (when (schema? ?schema)
+            (when (= p (-parent ?schema))
+              (-fail! ::infinitely-expanding-schema {:schema ?schema})))
+          (-into-schema p nil [?schema] options)))))
 
 (defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
@@ -649,6 +653,14 @@
       max (fn [x] (<= x max)))))
 
 (defn -validate-limits [min max] (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
+
+(defn -needed-bounded-checks [min max options]
+  (c/max (or (some-> max inc) 0)
+         (or min 0)
+         (::coll-check-limit options 101)))
+
+(defn -validate-bounded-limits [needed min max]
+  (or ((-min-max-pred #(bounded-count needed %)) {:min min :max max}) (constantly true)))
 
 (defn -qualified-keyword-pred [properties]
   (when-let [ns-name (some-> properties :namespace name)]
@@ -1187,6 +1199,21 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
+(defn- -check-entire-bounded-collection? [x]
+  (or (nil? x)
+      (counted? x)
+      (indexed? x)
+      ;; note: js/Object not ISeqable
+      #?(:clj (instance? java.util.Map x))
+      ;; many Seq's are List's, so just pick some popular classes
+      #?@(:bb  []
+          :clj [(instance? java.util.AbstractList x)
+                (instance? java.util.Vector x)])
+      #?(:clj  (instance? CharSequence x)
+         :cljs (string? x))
+      #?(:clj  (.isArray (class x))
+         :cljs (identical? js/Array (c/type x)))))
+
 (defn -collection-schema [props]
   (if (fn? props)
     (do (-deprecated! "-collection-schema doesn't take fn-props, use :compiled property instead")
@@ -1208,22 +1235,36 @@
             (let [[schema :as children] (-vmap #(schema % options) children)
                   form (delay (-simple-form parent properties children -form options))
                   cache (-create-cache options)
-                  validate-limits (-validate-limits min max)
+                  bounded (when (:bounded props)
+                            (when fempty
+                              (-fail! ::cannot-provide-empty-and-bounded-props))
+                            (-needed-bounded-checks min max options))
+                  validate-limits (if bounded
+                                    (-validate-bounded-limits (c/min bounded (or max bounded)) min max)
+                                    (-validate-limits min max))
                   ->parser (fn [f g] (let [child-parser (f schema)]
                                        (fn [x]
                                          (cond
                                            (not (fpred x)) ::invalid
                                            (not (validate-limits x)) ::invalid
-                                           :else (let [x' (reduce
-                                                           (fn [acc v]
-                                                             (let [v' (child-parser v)]
-                                                               (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                           [] x)]
-                                                   (cond
-                                                     (miu/-invalid? x') x'
-                                                     g (g x')
-                                                     fempty (into fempty x')
-                                                     :else x'))))))]
+                                           :else (if bounded
+                                                   (let [child-validator child-parser]
+                                                     (reduce
+                                                      (fn [x v]
+                                                        (if (child-validator v) x (reduced ::invalid)))
+                                                      x (cond->> x
+                                                          (not (-check-entire-bounded-collection? x))
+                                                          (eduction (take bounded)))))
+                                                   (let [x' (reduce
+                                                             (fn [acc v]
+                                                               (let [v' (child-parser v)]
+                                                                 (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
+                                                             [] x)]
+                                                     (cond
+                                                       (miu/-invalid? x') x'
+                                                       g (g x')
+                                                       fempty (into fempty x')
+                                                       :else x')))))))]
               ^{:type ::schema}
               (reify
                 AST
@@ -1233,20 +1274,25 @@
                   (let [validator (-validator schema)]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
-                                 (reduce (fn [acc v] (if (validator v) acc (reduced false))) true x)))))
+                                 (reduce (fn [acc v] (if (validator v) acc (reduced false))) true
+                                         (cond->> x
+                                           (and bounded (not (-check-entire-bounded-collection? x)))
+                                           (eduction (take bounded))))))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))]
                     (fn [x in acc]
                       (cond
                         (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
                         (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                        :else (let [size (count x)]
+                        :else (let [size (if (and bounded (not (-check-entire-bounded-collection? x)))
+                                           bounded
+                                           (count x))]
                                 (loop [acc acc, i 0, [x & xs] x]
                                   (if (< i size)
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
-                (-parser [_] (->parser -parser parse))
-                (-unparser [_] (->parser -unparser unparse))
+                (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))
+                (-unparser [_] (->parser (if bounded -validator -unparser) (if bounded identity unparse)))
                 (-transformer [this transformer method options]
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
@@ -2625,6 +2671,8 @@
    :map-of (-map-of-schema)
    :vector (-collection-schema {:type :vector, :pred vector?, :empty []})
    :sequential (-collection-schema {:type :sequential, :pred sequential?})
+   :seqable (-collection-schema {:type :seqable, :pred seqable?})
+   :every (-collection-schema {:type :every, :pred seqable?, :bounded true})
    :set (-collection-schema {:type :set, :pred set?, :empty #{}, :in (fn [_ x] x)})
    :enum (-enum-schema)
    :maybe (-maybe-schema)

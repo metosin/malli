@@ -3442,7 +3442,7 @@
   (is (not (m/validate [:every {:max 1001} :int] (eduction (concat (range 1000) [nil])))))
   (is (= #{["should be an integer"]}
          (me/humanize (m/explain [:every :int] #{1 nil 3}))))
-  (is (nil? (m/explain [:every :int] (concat (range 100) [nil]))))
+  (is (nil? (m/explain [:every :int] (concat (range 1000) [nil]))))
   (is (nil? (m/explain [:every :int] (eduction (concat (range 1000) [nil])))))
   (is (= (concat (repeat 1000 nil) [["should be an integer"]])
          (me/humanize (m/explain [:every {:min 1001} :int] (concat (range 1000) [nil])))))

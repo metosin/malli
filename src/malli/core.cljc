@@ -14,7 +14,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast -instrument)
+         parser unparser ast from-ast -instrument ^:private -safely-countable?)
 
 ;;
 ;; protocols and records
@@ -648,7 +648,12 @@
       (and max f) (fn [x] (<= (f x) max))
       max (fn [x] (<= x max)))))
 
-(defn -validate-limits [min max] (or ((-min-max-pred count) {:min min :max max}) (constantly true)))
+(defn- -safe-count [x]
+  (if (-safely-countable? x)
+    (count x)
+    (reduce (fn [cnt _] (inc cnt)) 0 x)))
+
+(defn -validate-limits [min max] (or ((-min-max-pred -safe-count) {:min min :max max}) (constantly true)))
 
 (defn -needed-bounded-checks [min max options]
   (c/max (or (some-> max inc) 0)
@@ -1195,7 +1200,9 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 
-(defn- -check-entire-bounded-collection? [x]
+;; also doubles as a predicate for the :every schema to bound the number
+;; of elements to check, so don't add potentially-infinite countable things like seq's.
+(defn- -safely-countable? [x]
   (or (nil? x)
       (counted? x)
       (indexed? x)
@@ -1249,7 +1256,7 @@
                                                       (fn [x v]
                                                         (if (child-validator v) x (reduced ::invalid)))
                                                       x (cond->> x
-                                                          (not (-check-entire-bounded-collection? x))
+                                                          (not (-safely-countable? x))
                                                           (eduction (take bounded)))))
                                                    (let [x' (reduce
                                                              (fn [acc v]
@@ -1272,7 +1279,7 @@
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true
                                          (cond->> x
-                                           (and bounded (not (-check-entire-bounded-collection? x)))
+                                           (and bounded (not (-safely-countable? x)))
                                            (eduction (take bounded))))))))
                 (-explainer [this path]
                   (let [explainer (-explainer schema (conj path 0))]
@@ -1280,11 +1287,10 @@
                       (cond
                         (not (fpred x)) (conj acc (miu/-error path in this x ::invalid-type))
                         (not (validate-limits x)) (conj acc (miu/-error path in this x ::limits))
-                        :else (let [size (if (and bounded (not (-check-entire-bounded-collection? x)))
-                                           bounded
-                                           (count x))]
-                                (loop [acc acc, i 0, [x & xs] x]
-                                  (if (< i size)
+                        :else (let [size (when (and bounded (not (-safely-countable? x)))
+                                           bounded)]
+                                (loop [acc acc, i 0, [x & xs :as ne] (seq x)]
+                                  (if (and ne (or (not size) (< i size)))
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
                 (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))

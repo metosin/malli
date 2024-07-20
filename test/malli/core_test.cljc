@@ -3394,9 +3394,7 @@
   (is (not (m/validate [:seqable :int] (conj (vec (range 1000)) nil))))
   (is (not (m/validate [:seqable :int] (concat (range 1000) [nil]))))
   (is (not (m/validate [:seqable :int] (eduction (concat (range 1000) [nil])))))
-  ;;FIXME need to handle eductions better, they don't support .count(). should count
-  ;; them as we check elements so we don't recompute each element.
-  #_(is (not (m/validate [:seqable {:min 1000} :int] (eduction (concat (range 1000) [nil])))))
+  (is (not (m/validate [:seqable {:min 1000} :int] (eduction (concat (range 1000) [nil])))))
   (is (not (m/validate [:seqable {:min 1000} :int] (concat (range 1000) [nil]))))
   (is (nil? (m/explain [:seqable :int] #{1 2 3})))
   (is (not (m/validate [:seqable :int] #{1 nil 3})))
@@ -3497,3 +3495,11 @@
         #?(:clj #":malli\.core/infinitely-expanding-schema"
            :cljs #":malli\.core/invalid-schema")
         (m/schema [(m/schema :any)]))))
+
+(deftest eduction-test
+  (is (m/validate [:sequential {:min 0} :int] (eduction identity (range 10))))
+  (is (m/validate [:sequential {:max 0} :int] (eduction)))
+  (is (not (m/validate [:sequential {:max 0} :int] (eduction [1]))))
+  (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
+  (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
+  (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))

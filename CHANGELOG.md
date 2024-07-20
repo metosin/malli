@@ -20,6 +20,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * New `:sequable` and `:every` schemas [#1041](https://github.com/metosin/malli/pull/1041), see [docs](https://github.com/metosin/malli#seqable-schemas)
 * Fix OOM error with infinitely expanding schema [#1069](https://github.com/metosin/malli/pull/1069)
 * Correctly form prop-less schemas that have map/nil as first child [#1071](https://github.com/metosin/malli/pull/1071)
+* Support min/max on uncountables like eductions [#1075](https://github.com/metosin/malli/pull/1075)
 
 ## 0.16.2 (2024-06-30)
 

@@ -544,8 +544,9 @@
                                m)) x ts))
      :clj  (apply -comp (map (fn child-transformer [[k t]]
                                (fn [^Associative x]
-                                 (if-let [e ^MapEntry (.entryAt x k)]
-                                   (.assoc x k (t (.val e))) x))) (rseq ts)))
+                                 (let [val (.valAt x k ::not-found)]
+                                   (if (identical? val ::not-found)
+                                     x (.assoc x k (t val)))))) (rseq ts)))
      :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
                              (if-let [entry (find m k)]
                                (assoc m k (t (val entry)))
@@ -1037,7 +1038,11 @@
                                          (let [valid? (-validator value)
                                                default (boolean optional)]
                                            #?(:bb   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
-                                              :clj  (fn [^Associative m] (if-let [map-entry (.entryAt m key)] (valid? (.val map-entry)) default))
+                                              :clj  (fn [^Associative m]
+                                                      (let [val (.valAt m key ::not-found)]
+                                                        (if (identical? val ::not-found)
+                                                          default
+                                                          (valid? val))))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        @explicit-children)
                                 default-validator

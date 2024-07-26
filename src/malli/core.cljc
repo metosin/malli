@@ -677,7 +677,7 @@
          :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} props]
     (if (fn? props)
       (do
-        (-deprecated! "-simple-schema doesn't take fn-props, use :compiled property instead")
+        (-deprecated! "-simple-schema doesn't take fn-props, use :compile property instead")
         (-simple-schema {:compile (fn [c p _] (props c p))}))
       ^{:type ::into-schema}
       (reify

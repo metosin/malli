@@ -106,7 +106,7 @@
   (testing "With instrumentation"
     ;; intentionally bad annotation ...
     (m/=> clojure.core/select-keys [:=> [:cat] string?])
-    ;; that is automatically unstrumented
+    ;; that is automatically unstrumented before we instrument with the correct annotation
     (m/=> clojure.core/select-keys [:=> [:cat map? sequential?] map?])
     (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'clojure.core)]}))
     (is (thrown-with-msg?

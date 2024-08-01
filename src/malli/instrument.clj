@@ -5,7 +5,8 @@
 
 (defn -find-var [n s] (find-var (symbol (str n "/" s))))
 (defn -sequential [x] (cond (set? x) x (sequential? x) x :else [x]))
-(defn -original [v] (let [f (deref v)] (-> f meta ::original (or f))))
+(defn -f->original [f] (-> f meta ::original (or f)))
+(defn -original [v] (let [f (deref v)] (-f->original f)))
 
 (defn -filter-ns [& ns] (fn [n _ _] ((set ns) n)))
 (defn -filter-var [f] (fn [n s _] (f (-find-var n s))))
@@ -24,8 +25,10 @@
                                      (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
                                            (true? (:gen d)) (dissoc $ :gen)
                                            :else $))]
-                          (alter-var-root v (fn [f] (-> (m/-instrument dgen f) (with-meta {::original f})))))
-            :unstrument (alter-var-root v (fn [f] (-> f meta ::original (or f))))
+                          (alter-var-root v (fn [f]
+                                              (let [f (-f->original f)]
+                                                (-> (m/-instrument dgen f) (with-meta {::original f}))))))
+            :unstrument (alter-var-root v -f->original)
             (mode v d))
           v))))))
 

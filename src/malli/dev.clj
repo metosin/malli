@@ -47,16 +47,15 @@
    (-capture-fail! options)
    (mi/collect! {:ns (all-ns)})
    (let [watch (bound-fn [_ _ old new]
-                 (let [options (->> (for [[n d] (:clj new)
-                                          :let [no (get-in old [:clj n])]
-                                          [s d] d
-                                          :when (not= d (get no s))]
-                                      [[n s] d])
-                                    (into {})
-                                    (reduce-kv assoc-in {})
-                                    (assoc options :data))]
-                   (mi/unstrument! options)
-                   (mi/instrument! options))
+                 (->> (for [[n d] (:clj new)
+                            :let [no (get-in old [:clj n])]
+                            [s d] d
+                            :when (not= d (get no s))]
+                        [[n s] d])
+                      (into {})
+                      (reduce-kv assoc-in {})
+                      (assoc options :data)
+                      (mi/instrument!))
                  (clj-kondo/emit! options))]
      (add-watch @#'m/-function-schemas* ::watch watch))
    (let [count (->> (mi/instrument! options) (count))]

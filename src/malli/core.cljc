@@ -542,11 +542,12 @@
                              (if-let [entry (find m k)]
                                (assoc m k (t (val entry)))
                                m)) x ts))
-     :clj  (apply -comp (map (fn child-transformer [[k t]]
-                               (fn [^Associative x]
-                                 (let [val (.valAt x k ::not-found)]
-                                   (if (identical? val ::not-found)
-                                     x (.assoc x k (t val)))))) (rseq ts)))
+     :clj  (let [not-found (Object.)]
+             (apply -comp (map (fn child-transformer [[k t]]
+                                 (fn [^Associative x]
+                                   (let [val (.valAt x k not-found)]
+                                     (if (identical? val not-found)
+                                       x (.assoc x k (t val)))))) (rseq ts))))
      :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
                              (if-let [entry (find m k)]
                                (assoc m k (t (val entry)))
@@ -1038,11 +1039,12 @@
                                          (let [valid? (-validator value)
                                                default (boolean optional)]
                                            #?(:bb   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
-                                              :clj  (fn [^Associative m]
-                                                      (let [val (.valAt m key ::not-found)]
-                                                        (if (identical? val ::not-found)
-                                                          default
-                                                          (valid? val))))
+                                              :clj  (let [not-found (Object.)]
+                                                      (fn [^Associative m]
+                                                        (let [val (.valAt m key not-found)]
+                                                          (if (identical? val not-found)
+                                                            default
+                                                            (valid? val)))))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        @explicit-children)
                                 default-validator

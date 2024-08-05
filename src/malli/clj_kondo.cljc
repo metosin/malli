@@ -162,12 +162,14 @@
      ([config]
       (save! config :clj))
      ([config key]
+      (save! config key nil))
+     ([config key options]
       (let [cfg-file (apply io/file (conj
-                                     (get config :clj-kondo-dir-path [])
+                                     (get options :clj-kondo-dir-path [])
                                      ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn"))]
         ;; delete the old file if exists (does not throw)
         (.delete (apply io/file (conj
-                                 (get config :clj-kondo-dir-path [])
+                                 (get options :clj-kondo-dir-path [])
                                  ".clj-kondo" "configs" "malli" "config.edn")))
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
@@ -207,7 +209,7 @@
 #?(:clj
    (defn emit!
      ([] (emit! {}))
-     ([options] (->> (collect) (linter-config) (merge options) (save!)) nil)))
+     ([options] (-> (collect) (linter-config) (save! :clj options)) nil)))
 
 (defn collect-cljs
   ([] (collect-cljs nil))

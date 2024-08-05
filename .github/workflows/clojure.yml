@@ -69,7 +69,7 @@ jobs:
         with:
           cli: latest
       - name: Setup Node.js
-        uses: actions/setup-node@v4.0.2
+        uses: actions/setup-node@v4.0.3
         with:
           node-version: 16
       - name: Install dependencies

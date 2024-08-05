@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.16.2</version>
+  <version>0.16.3</version>
   <name>malli</name>
   <licenses>
     <license>
@@ -15,9 +15,14 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.16.2</tag>
+    <tag>0.16.3</tag>
   </scm>
   <dependencies>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>clojure</artifactId>
+      <version>1.11.4</version>
+    </dependency>
     <dependency>
       <groupId>fipp</groupId>
       <artifactId>fipp</artifactId>
@@ -56,6 +61,10 @@
     <repository>
       <id>clojars</id>
       <url>https://repo.clojars.org/</url>
+    </repository>
+    <repository>
+      <id>sonatype</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
     </repository>
   </repositories>
   <distributionManagement>

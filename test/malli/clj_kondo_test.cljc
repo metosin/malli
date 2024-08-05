@@ -2,6 +2,8 @@
   (:require [clojure.test :refer [deftest is testing]]
             [malli.clj-kondo :as clj-kondo]
             [malli.core :as m]
+            #?@(:clj [[clojure.java.io :as io]
+                      [clojure.edn :as edn]])
             [malli.util :as mu]))
 
 (def Schema
@@ -155,3 +157,10 @@
   (testing "regular expressions"
     (is (= :string (clj-kondo/transform [:re "kikka"]))
         "the :re schema models a string, clj-kondo's :regex a Pattern object")))
+
+#?(:clj
+   (deftest fix-1083
+     (clj-kondo/emit! {:key "value"})
+     (let [data (edn/read-string (slurp (io/file ".clj-kondo/metosin/malli-types-clj/config.edn")))]
+       (is (map? data))
+       (is (= [:linters] (keys data))))))

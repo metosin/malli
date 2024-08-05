@@ -113,3 +113,16 @@
          (select-keys {:a 1} :a)))
     (is (= {:a 1} (select-keys {:a 1} [:a])))
     (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'clojure.core)]}))))
+
+(defn reinstrumented [] 1)
+
+(deftest reinstrument-test
+  (m/=> reinstrumented [:-> [:= 2]])
+  (instrument!)
+  (is (thrown-with-msg?
+        Exception
+        #":malli\.core/invalid-output"
+        (reinstrumented)))
+  (m/=> reinstrumented [:-> [:= 1]])
+  (instrument!)
+  (is (= 1 (reinstrumented))))

@@ -3,19 +3,19 @@
             [malli.dev :as dev]
             [malli.experimental :as mx]))
 
+;; via var metadata
 (defn kikka
-  "schema via var metadata"
-  {:malli/schema [:=> [:cat :int] :int]}
+  {:malli/schema [:-> :int :int]}
   [x] (inc x))
 
-(m/=> kukka [:=> [:cat :int] :int])
-(defn kukka
-  "schema via separate declaration"
-  [x] (inc x))
+;; external malli definition
+(m/=> kukka [:-> :int :int])
+(defn kukka [x]
+  (inc x))
 
-(mx/defn kakka :- :int
-  "inline schemas (plumatic-style)"
-  [x :- :int] (inc x))
+;; inline schemas (plumatic-style)
+(mx/defn kakka :- :int [x :- :int]
+  (inc x))
 
 (comment
  (dev/start!)
@@ -23,5 +23,5 @@
 
 (comment
  (kikka "1")
- (kukka 1 2)
+ (kukka "1")
  (kakka "1"))

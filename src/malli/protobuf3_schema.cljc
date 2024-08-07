@@ -164,6 +164,10 @@
          "\n\n"
          (generate-message (assoc main-message :name "Message")))))
 
+;;
+;; public api
+;;
+
 (defn transform [schema]
   (let [transformed-schema (transform-schema schema "Message")]
     (generate-protobuf3 transformed-schema)))

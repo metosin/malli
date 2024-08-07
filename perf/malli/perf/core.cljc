@@ -3,7 +3,7 @@
             [clj-async-profiler.core :as prof]))
 
 (defn serve! []
-  (with-out-str (prof/serve-files 8080))
+  (with-out-str (prof/serve-ui 8080))
   nil)
 
 (defn clear! []

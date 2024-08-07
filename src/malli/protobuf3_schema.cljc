@@ -135,19 +135,22 @@
     (concat enums other-messages [main-message])))
 
 (defn collect-definitions [schema]
-  (letfn [(collect-helper [s acc]
-            (if (map? s)
-              (case (:type s)
-                "message" (let [acc-with-message (conj acc s)]
-                            (reduce (fn [acc field]
-                                      (collect-helper (:type field) acc))
-                                    acc-with-message
-                                    (:fields s)))
-                "repeated" (collect-helper (:value-type s) acc)
-                "enum" (conj acc s)
-                acc)
-              acc))]
-    (collect-helper schema [])))
+  (loop [stack [schema]
+         acc []]
+    (if-let [s (first stack)]
+      (let [rest-stack (rest stack)]
+        (cond
+          (map? s)
+          (case (:type s)
+            "message" (let [new-acc (conj acc s)]
+                        (recur (into (map #(-> % :type) (:fields s)) rest-stack)
+                               new-acc))
+            "repeated" (recur (cons (:value-type s) rest-stack) acc)
+            "enum" (recur rest-stack (conj acc s))
+            (recur rest-stack acc))
+          :else (recur rest-stack acc)))
+      acc)))
+
 
 (defn generate-protobuf3
   "Generate a complete Protocol Buffer 3 definition from a transformed schema."

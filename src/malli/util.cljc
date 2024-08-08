@@ -70,6 +70,8 @@
          s2 (when ?schema2 (m/deref-all (m/schema ?schema2 options)))
          t1 (when s1 (m/type s1))
          t2 (when s2 (m/type s2))
+         distributive-allowed? (and (not (contains? options :merge-default))
+                                    (not (contains? options :merge-required)))
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
@@ -80,8 +82,8 @@
      (cond
        (nil? s1) s2
        (nil? s2) s1
-       (m/-distributive? s1) (m/-distribute-to-children s1 (fn [s _options] (merge s s2 options)) options)
-       (m/-distributive? s2) (m/-distribute-to-children s2 (fn [s _options] (merge s1 s options)) options)
+       (and distributive-allowed? (m/-distributive? s1)) (m/-distribute-to-children s1 (fn [s _options] (merge s s2 options)) options)
+       (and distributive-allowed? (m/-distributive? s2)) (m/-distribute-to-children s2 (fn [s _options] (merge s1 s options)) options)
        (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
        (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))
        :else (let [p (bear (m/-properties s1) (m/-properties s2))

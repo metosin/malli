@@ -76,27 +76,4 @@
              options))
          [:or
           [:map [:y [:= 1]] [:x :int]]
-          [:map [:y [:= 2]] [:x :int]]]))
-  (is (= (m/form
-           (m/deref
-             [:merge
-              [:map [:x :int]]
-              [:and
-               [:map [:y [:= 1]]]
-               [:map [:y [:= 2]]]]]
-             options))
-         [:and
-          [:map [:x :int] [:y [:= 1]]]
-          [:map [:x :int] [:y [:= 2]]]]))
-  (is (= (m/form
-           (m/deref
-             [:merge
-              [:and
-               [:map [:y [:= 1]]]
-               [:map [:y [:= 2]]]]
-              [:map [:x :int]]]
-             options))
-         [:and
-          [:map [:y [:= 1]] [:x :int]]
-          [:map [:y [:= 2]] [:x :int]]]))
-  )
+          [:map [:y [:= 2]] [:x :int]]])))

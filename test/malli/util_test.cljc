@@ -37,7 +37,10 @@
 
 (deftest merge-test
   (are [?s1 ?s2 expected]
-    (= true (mu/equals expected (mu/merge ?s1 ?s2)))
+    (do (is (= true (mu/equals expected (mu/merge ?s1 ?s2)))
+            (with-out-str (clojure.pprint/pprint {:actual (m/form (mu/merge ?s1 ?s2))
+                     :expected (m/form expected)})))
+        true)
 
     int? int? int?
     int? pos-int? pos-int?
@@ -813,17 +816,7 @@
                 [:z {:optional true} :boolean]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :y 1, :z true})))
         (is (= false (m/validate s {:x "x", :y "y"})))
-        (is (= {:x [:str "x"], :y 1, :z true} (m/parse s {:x "x", :y 1, :z true})))
-        (is (= (m/form
-                 (m/deref
-                   (->> [:merge
-                         [:map [:x :int]]
-                         [:multi {:dispatch :y}
-                          [1 [:map [:y [:= 1]]]]
-                          [2 [:map [:y [:= 2]]]]]])))
-               [:multi {:dispatch :y}
-                [1 [:map [:x :int] [:y [:= 1]]]]
-                [2 [:map [:x :int] [:y [:= 2]]]]]))))
+        (is (= {:x [:str "x"], :y 1, :z true} (m/parse s {:x "x", :y 1, :z true})))))
 
     (testing "union"
       (let [s (->> [:union

@@ -799,6 +799,9 @@
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
         (reify
+          DistributiveSchema
+          (-distribute-to-children [this f options']
+            (-into-schema parent properties (mapv #(f % options) children) options))
           Schema
           (-validator [_]
             (let [validators (-vmap -validator children)] (miu/-some-pred validators)))
@@ -844,6 +847,17 @@
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
+          DistributiveSchema
+          (-distribute-to-children [this f options']
+            (-into-schema parent
+                          properties
+                          (mapv (fn [c]
+                                  (when-not (and (vector? c)
+                                                 (= 2 (count c)))
+                                    (throw (ex-info "TODO" {})))
+                                  (update c 1 f options))
+                                children)
+                          options))
           AST
           (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
           Schema
@@ -1619,7 +1633,6 @@
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
            DistributiveSchema
            (-distribute-to-children [this f options']
-             (prn "-distribute-to-children")
              (-into-schema parent
                            properties
                            (mapv (fn [c]

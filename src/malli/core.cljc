@@ -92,12 +92,16 @@
   (-function-info [this])
   (-instrument-f [schema props f options]))
 
+(defprotocol DistributiveSchema
+  (-distribute-to-children [this f options]))
+
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
 (defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 (defn -ast? [x] (#?(:clj instance?, :cljs implements?) malli.core.AST x))
 (defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
+(defn -distributive? [x] (#?(:clj instance?, :cljs implements?) malli.core.DistributiveSchema x))
 
 (extend-type #?(:clj Object, :cljs default)
   FunctionSchema
@@ -1613,6 +1617,18 @@
          (reify
            AST
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
+           DistributiveSchema
+           (-distribute-to-children [this f options']
+             (prn "-distribute-to-children")
+             (-into-schema parent
+                           properties
+                           (mapv (fn [c]
+                                   (when-not (and (vector? c)
+                                                  (= 2 (count c)))
+                                     (throw (ex-info "TODO" {})))
+                                   (update c 1 f options))
+                                 children)
+                           options))
            Schema
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} @dispatch-map))]

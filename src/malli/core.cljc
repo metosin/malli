@@ -760,6 +760,9 @@
                                  #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
         ^{:type ::schema}
         (reify
+          DistributiveSchema
+          (-distribute-to-children [this f options']
+            (-into-schema parent properties (mapv #(f % options) children) options))
           Schema
           (-validator [_]
             (let [validators (-vmap -validator children)] (miu/-every-pred validators)))

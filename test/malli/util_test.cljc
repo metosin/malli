@@ -37,10 +37,7 @@
 
 (deftest merge-test
   (are [?s1 ?s2 expected]
-    (do (is (= true (mu/equals expected (mu/merge ?s1 ?s2)))
-            (with-out-str (clojure.pprint/pprint {:actual (m/form (mu/merge ?s1 ?s2))
-                     :expected (m/form expected)})))
-        true)
+    (= true (mu/equals expected (mu/merge ?s1 ?s2)))
 
     int? int? int?
     int? pos-int? pos-int?

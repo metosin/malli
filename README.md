@@ -1767,6 +1767,32 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 ; => true
 ```
 
+`:merge` also distributes over `:or`, `orn`, and `:multi` in the following manner:
+
+```clojure
+(m/deref
+ [:merge
+  [:map [:x :int]]
+  [:multi {:dispatch :y}
+   [1 [:map [:y [:= 1]]]]
+   [2 [:map [:y [:= 2]]]]]]
+ {:registry registry})
+; => [:multi {:dispatch :y}
+;     [1 [:map [:x :int] [:y [:= 1]]]]
+;     [2 [:map [:x :int] [:y [:= 2]]]]]
+
+(m/deref
+ [:merge
+  [:multi {:dispatch :y}
+   [1 [:map [:y [:= 1]]]]
+   [2 [:map [:y [:= 2]]]]]
+  [:map [:x :int]]]
+ {:registry registry})
+; => [:multi {:dispatch :y}
+;     [1 [:map [:y [:= 1]] [:x :int]]]
+;     [2 [:map [:y [:= 2]] [:x :int]]]]
+```
+
 
 ## Persisting schemas
 

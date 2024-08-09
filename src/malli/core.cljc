@@ -93,6 +93,7 @@
   (-instrument-f [schema props f options]))
 
 (defprotocol DistributiveSchema
+  (-distributive-schema? [this])
   (-distribute-to-children [this f options]))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
@@ -109,6 +110,9 @@
   (-function-info [_])
   (-function-schema-arities [_])
   (-instrument-f [_ _ _ _])
+
+  DistributiveSchema
+  (-distributive-schema? [_] false)
 
   RegexSchema
   (-regex-op? [_] false)
@@ -800,6 +804,7 @@
         ^{:type ::schema}
         (reify
           DistributiveSchema
+          (-distributive-schema? [_] true)
           (-distribute-to-children [this f options']
             (-into-schema parent properties (mapv #(f % options) children) options))
           Schema
@@ -848,7 +853,8 @@
         ^{:type ::schema}
         (reify
           DistributiveSchema
-          (-distribute-to-children [this f options']
+          (-distributive-schema? [_] true)
+          (-distribute-to-children [_ f options']
             (-into-schema parent
                           properties
                           (mapv (fn [c]
@@ -1813,6 +1819,9 @@
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
+            DistributiveSchema
+            (-distributive? [_] (-distributive? child))
+            (-distribute-to-children [_ f options] (-distribute-to-children child f options))
             RegexSchema
             (-regex-op? [_]
               (if internal
@@ -2045,6 +2054,9 @@
           (-keep [_])
           (-get [_ key default] (if (= ::in key) schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
+          DistributiveSchema
+          (-distributive? [_] (-distributive? schema))
+          (-distribute-to-children [_ f options] (-distribute-to-children schema f options))
           FunctionSchema
           (-function-schema? [_] (-function-schema? schema))
           (-function-info [_] (-function-info schema))

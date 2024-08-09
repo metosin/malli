@@ -82,8 +82,8 @@
      (cond
        (nil? s1) s2
        (nil? s2) s1
-       (and can-distribute? (m/-distributive? s1)) (m/-distribute-to-children s1 (fn [s _options] (merge s s2 options)) options)
-       (and can-distribute? (m/-distributive? s2)) (m/-distribute-to-children s2 (fn [s _options] (merge s1 s options)) options)
+       (and can-distribute? (m/-distributive-schema? s1)) (m/-distribute-to-children s1 (fn [s _options] (merge s s2 options)) options)
+       (and can-distribute? (m/-distributive-schema? s2)) (m/-distribute-to-children s2 (fn [s _options] (merge s1 s options)) options)
        (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
        (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))
        :else (let [p (bear (m/-properties s1) (m/-properties s2))

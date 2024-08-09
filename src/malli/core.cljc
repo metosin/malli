@@ -102,7 +102,6 @@
 (defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
 (defn -ast? [x] (#?(:clj instance?, :cljs implements?) malli.core.AST x))
 (defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
-(defn -distributive? [x] (#?(:clj instance?, :cljs implements?) malli.core.DistributiveSchema x))
 
 (extend-type #?(:clj Object, :cljs default)
   FunctionSchema
@@ -113,6 +112,8 @@
 
   DistributiveSchema
   (-distributive-schema? [_] false)
+  (-distribute-to-children [this f options']
+    (throw (ex-info "Not distributive" {:schema this})))
 
   RegexSchema
   (-regex-op? [_] false)
@@ -803,10 +804,6 @@
                                #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers)))]
         ^{:type ::schema}
         (reify
-          DistributiveSchema
-          (-distributive-schema? [_] true)
-          (-distribute-to-children [this f options']
-            (-into-schema parent properties (mapv #(f % options) children) options))
           Schema
           (-validator [_]
             (let [validators (-vmap -validator children)] (miu/-some-pred validators)))
@@ -852,18 +849,6 @@
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
-          DistributiveSchema
-          (-distributive-schema? [_] true)
-          (-distribute-to-children [_ f options']
-            (-into-schema parent
-                          properties
-                          (mapv (fn [c]
-                                  (when-not (and (vector? c)
-                                                 (= 2 (count c)))
-                                    (throw (ex-info "TODO" {})))
-                                  (update c 1 f options))
-                                children)
-                          options))
           AST
           (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
           Schema
@@ -1638,6 +1623,7 @@
            AST
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
            DistributiveSchema
+           (-distributive-schema? [_] true)
            (-distribute-to-children [this f options']
              (-into-schema parent
                            properties
@@ -1819,9 +1805,6 @@
             RefSchema
             (-ref [_] id)
             (-deref [_] child)
-            DistributiveSchema
-            (-distributive? [_] (-distributive? child))
-            (-distribute-to-children [_ f options] (-distribute-to-children child f options))
             RegexSchema
             (-regex-op? [_]
               (if internal
@@ -2055,7 +2038,7 @@
           (-get [_ key default] (if (= ::in key) schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
           DistributiveSchema
-          (-distributive? [_] (-distributive? schema))
+          (-distributive-schema? [_] (-distributive-schema? schema))
           (-distribute-to-children [_ f options] (-distribute-to-children schema f options))
           FunctionSchema
           (-function-schema? [_] (-function-schema? schema))

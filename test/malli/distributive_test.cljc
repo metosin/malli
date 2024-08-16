@@ -136,3 +136,16 @@
           [2 [:multi {:dispatch :z}
               [3 [:map [:y [:= 2]] [:z [:= 3]]]]
               [4 [:map [:y [:= 2]] [:z [:= 4]]]]]]])))
+
+(deftest parse-distributive-multi-test
+  (is (= [1 [3 {:y 1, :z 3}]]
+         (m/parse
+           [:merge
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]
+            [:multi {:dispatch :z}
+             [3 [:map [:z [:= 3]]]]
+             [4 [:map [:z [:= 4]]]]]]
+           {:y 1 :z 3}
+           options))))

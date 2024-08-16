@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [are deftest is testing]]
             [malli.core :as m]
             [malli.impl.util :as miu]
+            [malli.generator :as mg]
             [malli.registry :as mr]
             [malli.transform :as mt]
             [malli.util :as mu]))
@@ -149,3 +150,16 @@
              [4 [:map [:z [:= 4]]]]]]
            {:y 1 :z 3}
            options))))
+
+(deftest gen-distributive-multi-test
+  (is (= [{:y 1, :z 3} {:y 2, :z 4} {:y 2, :z 3} {:y 2, :z 3} {:y 1, :z 4}
+          {:y 1, :z 3} {:y 1, :z 3} {:y 1, :z 3} {:y 1, :z 3} {:y 2, :z 4}]
+         (mg/sample
+           [:merge
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]
+            [:multi {:dispatch :z}
+             [3 [:map [:z [:= 3]]]]
+             [4 [:map [:z [:= 4]]]]]]
+           (assoc options :seed 0)))))

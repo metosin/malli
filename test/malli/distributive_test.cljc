@@ -5,17 +5,12 @@
             [malli.registry :as mr]
             [malli.transform :as mt]
             [malli.util :as mu]))
-(comment
-  (m/type
-    [:schema
-     [:multi {:dispatch :y}
-      [1 [:map [:y [:= 1]]]]
-      [2 [:map [:y [:= 2]]]]]]))
-
 (def options {:registry (merge (mu/schemas) (m/default-schemas))})
 
 (defn dist [s]
   (m/form (m/deref s options)))
+
+(defn valid? [?schema value] (m/validate ?schema value options))
 
 (deftest distributive-multi-test
   (is (= (dist
@@ -51,6 +46,70 @@
             [:multi {:dispatch :y}
              [1 [:map [:y [:= 1]]]]
              [2 [:map [:y [:= 2]]]]]
+            [:map [:x :int]]
+            [:map [:z :int]]])
+         (dist
+           [:merge
+            [:merge
+             [:multi {:dispatch :y}
+              [1 [:map [:y [:= 1]]]]
+              [2 [:map [:y [:= 2]]]]]
+             [:map [:x :int]]]
+            [:map [:z :int]]])
+         [:multi {:dispatch :y}
+          [1 [:map [:y [:= 1]] [:x :int] [:z :int]]]
+          [2 [:map [:y [:= 2]] [:x :int] [:z :int]]]]))
+  (is (= (dist
+           [:merge
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]
+            [:map [:x :int]]
+            [:map [:z :int]]
+            [:multi {:dispatch :y}
+             [3 [:map [:y [:= 3]]]]
+             [4 [:map [:y [:= 4]]]]]])
+         (dist
+           [:merge
+            [:merge
+             [:merge
+              [:multi {:dispatch :y}
+               [1 [:map [:y [:= 1]]]]
+               [2 [:map [:y [:= 2]]]]]
+              [:map [:x :int]]]
+             [:map [:z :int]]]
+             [:multi {:dispatch :y}
+              [3 [:map [:y [:= 3]]]]
+              [4 [:map [:y [:= 4]]]]]])
+         [:multi {:dispatch :y}
+          [1 [:multi {:dispatch :y}
+              [3 [:map [:y [:= 3]] [:x :int] [:z :int]]]
+              [4 [:map [:y [:= 4]] [:x :int] [:z :int]]]]]
+          [2 [:multi {:dispatch :y}
+              [3 [:map [:y [:= 3]] [:x :int] [:z :int]]]
+              [4 [:map [:y [:= 4]] [:x :int] [:z :int]]]]]]))
+  (is (= (dist
+           [:merge
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]
+            [:map [:x :int]]
+            [:map [:z :int]]
+            [:multi {:dispatch :a}
+             [3 [:map [:a [:= 3]]]]
+             [4 [:map [:a [:= 4]]]]]])
+         [:multi {:dispatch :y}
+          [1 [:multi {:dispatch :a}
+              [3 [:map [:y [:= 1]] [:x :int] [:z :int] [:a [:= 3]]]]
+              [4 [:map [:y [:= 1]] [:x :int] [:z :int] [:a [:= 4]]]]]]
+          [2 [:multi {:dispatch :a}
+              [3 [:map [:y [:= 2]] [:x :int] [:z :int] [:a [:= 3]]]]
+              [4 [:map [:y [:= 2]] [:x :int] [:z :int] [:a [:= 4]]]]]]]))
+  (is (= (dist
+           [:merge
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]
             [:multi {:dispatch :y}
              [3 [:map [:y [:= 3]]]]
              [4 [:map [:y [:= 4]]]]]])
@@ -60,20 +119,42 @@
               [4 [:map [:y [:= 4]]]]]]
           [2 [:multi {:dispatch :y}
               [3 [:map [:y [:= 3]]]]
-              [4 [:map [:y [:= 4]]]]]]])))
-
-;;FIXME
-(deftest distribute-registry-test
+              [4 [:map [:y [:= 4]]]]]]]))
   (is (= (dist
            [:merge
-            [:map {:registry {::y boolean?}}
-             [:y :int]]
-            [:multi {:dispatch :z
-                     :registry {::y :int}}
-             [1 [:map [:z :int]]]
-             [2 [:map [:z :int]]]]])
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]
+            [:multi {:dispatch :z}
+             [3 [:map [:z [:= 3]]]]
+             [4 [:map [:z [:= 4]]]]]])
+         [:multi {:dispatch :y}
+          [1 [:multi {:dispatch :z}
+              [3 [:map [:y [:= 1]] [:z [:= 3]]]]
+              [4 [:map [:y [:= 1]] [:z [:= 4]]]]]]
+          [2 [:multi {:dispatch :z}
+              [3 [:map [:y [:= 2]] [:z [:= 3]]]]
+              [4 [:map [:y [:= 2]] [:z [:= 4]]]]]]])))
+
+(def dreg
+  [:merge
+   [:map
+    {::y boolean?}
+    [:y ::y]]
+   [:multi {:dispatch :z
+            :registry {::y :int}}
+    [1 [:map [:z ::y]]]
+    [2 [:map [:z ::y]]]]])
+
+;; distributing schemas with registries in them works in memory, but
+;; does not serialize cleanly. https://github.com/metosin/malli/issues/1088
+(deftest distribute-registry-test
+  (is (not (valid? dreg {:y 1 :z 1})))
+  (is (valid? dreg {:y true :z 1}))
+  (is (-> dreg dist (valid? {:y true :z 1})))
+  (is (-> dreg dist (valid? {:y 1 :z 1})))
+  (is (= (dist dreg)
          [:multi {:dispatch :z
-                  ;;problem!! shadowed by maps
                   :registry {::y :int}}
           [1 [:map {:registry {::y 'boolean?}}
               [:y :int]

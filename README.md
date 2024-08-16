@@ -1767,9 +1767,44 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 ; => true
 ```
 
-`:merge` also distributes over `:or`, `orn`, and `:multi` in the following manner:
+### Distributive property
+
+`:merge` also distributes over `:multi` in a [similar way](https://en.wikipedia.org/wiki/Distributive_property) to how multiplication
+distributes over addition in arithmetic. There are two transformation rules, applied in the following order:
 
 ```clojure
+;; right-distributive
+[:merge [:multi M1 M2 ...] M3]
+=>
+[:multi [:merge M1 M3] [:merge M2 M3] ...]
+
+;; left-distributive
+[:merge M1 [:multi M2 M3 ...]]
+=>
+[:multi [:merge M1 M2] [:merge M1 M3] ...]
+```
+
+For `:merge` with more than two arguments, the rules are applied iteratively left-to-right
+as if the following transformation was applied:
+
+```clojure
+[:merge M1 M2 M3 M4 ...]
+=>
+[:merge
+ [:merge
+  [:merge M1 M2]
+  M3]
+ M4]
+...
+```
+
+The distributive property of `:multi` is useful combined with `:merge`
+if you want all clauses of a `:multi` to share extra entries.
+
+Here are concrete examples of applying the rules:
+
+```clojure
+;; left-distributive
 (m/deref
  [:merge
   [:map [:x :int]]
@@ -1781,6 +1816,7 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 ;     [1 [:map [:x :int] [:y [:= 1]]]]
 ;     [2 [:map [:x :int] [:y [:= 2]]]]]
 
+;; right-distributive
 (m/deref
  [:merge
   [:multi {:dispatch :y}
@@ -1793,6 +1829,9 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 ;     [2 [:map [:y [:= 2]] [:x :int]]]]
 ```
 
+It is not recommended to use local registries in schemas that are transformed.
+Also be aware that merging non-maps via the distributive property inherits
+the same semantics as `:merge`, which is based on [meta-merge](https://github.com/weavejester/meta-merge).
 
 ## Persisting schemas
 

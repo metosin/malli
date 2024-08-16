@@ -82,7 +82,9 @@
      (cond
        (nil? s1) s2
        (nil? s2) s1
+       ;; right-distributive: [:merge [:multi M1 M2 ...] M3] => [:multi [:merge M1 M3] [:merge M2 M3] ...]
        (and can-distribute? (m/-distributive-schema? s1)) (m/-distribute-to-children s1 (fn [s _options] (merge s s2 options)) options)
+       ;; left-distributive:  [:merge M1 [:multi M2 M3 ...]] => [:multi [:merge M1 M2] [:merge M1 M3] ...]
        (and can-distribute? (m/-distributive-schema? s2)) (m/-distribute-to-children s2 (fn [s _options] (merge s1 s options)) options)
        (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
        (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))

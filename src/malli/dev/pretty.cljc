@@ -92,17 +92,25 @@
           (v/-block "Function Schema" (v/-visit schema printer) printer) :break :break
           (v/-block "More information" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT/doc/function-schemas" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-ref [_ {:keys [ref]} printer]
+(defmethod v/-format ::m/invalid-ref [_ {:malli.dev/keys [forms] :keys [ref]} printer]
   {:body [:group
           (v/-block "Invalid Reference" (v/-visit [:ref ref] printer) printer) :break :break
           (v/-block "Reason" (-ref-text printer) printer) :break :break
           (v/-block "More information" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-schema [_ {:keys [schema form]} printer]
+(defmethod v/-format ::m/invalid-schema [_ {:malli.dev/keys [forms] :keys [schema form]} printer]
   (let [proposals (seq (me/-most-similar-to #{schema} schema (set (keys (mr/schemas m/default-registry)))))]
     {:title "Schema Creation Error"
      :body [:group
             (v/-block "Invalid Schema" (v/-visit form printer) printer) :break :break
+            (when forms
+              [:group
+               (v/-block "Surrounding Syntax"
+                         (interpose :break (map (fn [{:keys [form level]}] 
+                                                  [:align level (v/-text (pr-str form) printer)])
+                                                forms))
+                         printer)
+               :break :break])
             (when proposals
               [:group (v/-block "Did you mean" (->> (for [proposal proposals] (v/-visit proposal printer)) (interpose :break)) printer)
                :break :break])

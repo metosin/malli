@@ -149,7 +149,8 @@
 
 (defn -fail!
   ([type] (-fail! type nil))
-  ([type data] (throw (-exception type data))))
+  ([type data] (throw (-exception type data)))
+  ([type data options] (throw (-exception type data))))
 
 (defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
 
@@ -267,14 +268,14 @@
         (when-some [p (some-> registry (mr/-schema (c/type ?schema)))]
           (when (schema? ?schema)
             (when (= p (-parent ?schema))
-              (-fail! ::infinitely-expanding-schema {:schema ?schema})))
+              (-fail! ::infinitely-expanding-schema {:schema ?schema} options)))
           (-into-schema p nil [?schema] options)))))
 
 (defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
       (if-let [?schema (-lookup ?schema options)]
         (cond-> ?schema rec (recur ?form f rec options))
-        (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
+        (-fail! ::invalid-schema {:schema ?schema, :form ?form} options))))
 
 (defn -properties-and-options [properties options f]
   (if-let [r (:registry properties)]

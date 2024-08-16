@@ -374,13 +374,13 @@
 (defn -reducing [f]
   (fn [_ [first & rest :as children] options]
     (let [children (mapv #(m/schema % options) children)]
-      [children (mapv m/form children) (reduce #(f %1 %2 options) first rest)])))
+      [children (mapv m/form children) (delay (reduce #(f %1 %2 options) first rest))])))
 
 (defn -applying [f]
   (fn [_ children options]
     [(clojure.core/update children 0 #(m/schema % options))
      (clojure.core/update children 0 #(m/form % options))
-     (apply f (conj children options))]))
+     (delay (apply f (conj children options)))]))
 
 (defn -util-schema [m] (m/-proxy-schema m))
 

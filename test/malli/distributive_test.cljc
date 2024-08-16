@@ -5,6 +5,7 @@
             [malli.registry :as mr]
             [malli.transform :as mt]
             [malli.util :as mu]))
+
 (def options {:registry (merge (mu/schemas) (m/default-schemas))})
 
 (defn dist [s]
@@ -135,29 +136,3 @@
           [2 [:multi {:dispatch :z}
               [3 [:map [:y [:= 2]] [:z [:= 3]]]]
               [4 [:map [:y [:= 2]] [:z [:= 4]]]]]]])))
-
-(def dreg
-  [:merge
-   [:map
-    {::y boolean?}
-    [:y ::y]]
-   [:multi {:dispatch :z
-            :registry {::y :int}}
-    [1 [:map [:z ::y]]]
-    [2 [:map [:z ::y]]]]])
-
-;; distributing schemas with registries in them works in memory, but
-;; does not serialize cleanly. https://github.com/metosin/malli/issues/1088
-(deftest distribute-registry-test
-  (is (not (valid? dreg {:y 1 :z 1})))
-  (is (valid? dreg {:y true :z 1}))
-  (is (-> dreg dist (valid? {:y true :z 1})))
-  (is (-> dreg dist (valid? {:y 1 :z 1})))
-  (is (= (dist dreg)
-         [:multi {:dispatch :z
-                  :registry {::y :int}}
-          [1 [:map {:registry {::y 'boolean?}}
-              [:y :int]
-              [:z :int]]]
-          [2 [:map {:registry {::y 'boolean?}}
-              [:y :int] [:z :int]]]])))

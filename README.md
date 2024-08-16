@@ -1767,7 +1767,7 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 ; => true
 ```
 
-### Distributive property
+### Distributive schemas
 
 `:merge` also distributes over `:multi` in a [similar way](https://en.wikipedia.org/wiki/Distributive_property) to how multiplication
 distributes over addition in arithmetic. There are two transformation rules, applied in the following order:

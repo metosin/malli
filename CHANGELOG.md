@@ -16,7 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## NEXT
 
-* Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-property)
+* Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-schemas)
 
 ## 0.16.3 (2024-08-05)
 

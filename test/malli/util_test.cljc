@@ -1044,3 +1044,38 @@
            {}
            {:registry (merge (mu/schemas) (m/default-schemas))}
            (mt/default-value-transformer {::mt/add-optional-keys true})))))
+
+;; not quite ready. does not walk inside registries and pointers expand
+;; when printing their properties.
+(defn walk-properties [?schema f & args]
+  (m/walk
+    ?schema
+    (fn [s _ c _]
+      (apply m/-update-properties (m/-set-children s c) f args))
+    {::m/walk-inherit-entry-props true
+     ::m/walk-entry-vals true}))
+
+(defn remove-swagger-keys [p]
+  (not-empty
+    (reduce-kv
+      (fn [acc k _]
+        (cond-> acc (some #{:swagger} [k (-> k namespace keyword)]) (dissoc k)))
+      p p)))
+
+(deftest walk-properties-test
+  (is (= [:map {:title "Organisation name"} [:ref :string] [:kikka :string]]
+         (m/form
+           (walk-properties
+             [:map {:title "Organisation name"}
+              [:ref {:swagger/description "Reference to the organisation"
+                     :swagger/example "Acme floor polish, Houston TX"} :string]
+              [:kikka [:string {:swagger {:title "kukka"}}]]]
+             remove-swagger-keys))))
+  (is (= [:map {:foo 1} [:a {:foo 1} [:int {:foo 1}]]]
+         (m/form (walk-properties [:map [:a :int]] assoc :foo 1))))
+  (is (= [:map [:a :int]]
+         (m/form (walk-properties [:map {:foo 1} [:a {:foo 1} [:int {:foo 1}]]] dissoc :foo))))
+  (is (= [:map {:foo 1 :registry {:foo :int}} [:a {:foo 1} [:int {:foo 1}]]]
+         (m/form (walk-properties [:map {:registry {:foo :int}} [:a :int]] assoc :foo 1))))
+  (is (= [:map {:registry {:foo :int}} [:a :int]]
+         (m/form (walk-properties [:map {:foo 1 :registry {:foo :int}} [:a {:foo 1} [:int {:foo 1}]]] dissoc :foo)))))

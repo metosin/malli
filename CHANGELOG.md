@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## NEXT
+
+* add `::m/walk-inherit-entry-props` to `-walk` for unwrapping `::val` nodes and inheriting their props after walking
+
 ## 0.16.3 (2024-08-05)
 
 * `:->` added to default registry, see [documentation](https://github.com/metosin/malli/blob/master/docs/function-schemas.md#flat-arrow-function-schemas).

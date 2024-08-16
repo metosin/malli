@@ -252,20 +252,14 @@ Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
 
 ## Walking Schema and Entry Properties
 
-1. walk entries on the way in
-2. unwalk entries on the way out
-
 ```clojure
-(defn walk-properties [schema f]
+(defn walk-properties [?schema f & args]
   (m/walk
-    schema
+    ?schema
     (fn [s _ c _]
-      (m/into-schema
-        (m/-parent s)
-        (f (m/-properties s))
-        (cond->> c (m/entries s) (map (fn [[k p s]] [k (f p) (first (m/children s))])))
-        (m/options s)))
-    {::m/walk-entry-vals true}))
+      (apply m/-update-properties (m/-set-children s c) f args))
+    {::m/walk-inherit-entry-props true
+     ::m/walk-entry-vals true}))
 ```
 
 Stripping all swagger-keys:

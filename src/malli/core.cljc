@@ -14,7 +14,7 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast -instrument ^:private -safely-countable?)
+         parser unparser ast from-ast -instrument ^:private -safely-countable? base-schemas)
 
 ;;
 ;; protocols and records
@@ -242,13 +242,14 @@
 ;; registry
 ;;
 
-(defn- -register-var [registry ?v]
-  (let [[v pred] (if (vector? ?v) ?v [?v @?v])
-        name (-> v meta :name)
-        schema (-simple-schema {:type name, :pred pred})]
-    (-> registry
-        (assoc name schema)
-        (assoc @v schema))))
+(defn- -register-vars [registry var->schema]
+  (reduce-kv
+    (fn [registry v schema]
+      (let [name (-> v meta :name)]
+        (-> registry
+            (assoc name schema)
+            (assoc @v schema))))
+    registry var->schema))
 
 (defn -registry {:arglists '([] [{:keys [registry]}])}
   ([] default-registry)
@@ -739,6 +740,8 @@
 (defn -qualified-keyword-schema [] (-simple-schema {:type :qualified-keyword, :pred qualified-keyword?, :property-pred -qualified-keyword-pred}))
 (defn -qualified-symbol-schema [] (-simple-schema {:type :qualified-symbol, :pred qualified-symbol?}))
 (defn -uuid-schema [] (-simple-schema {:type :uuid, :pred uuid?}))
+(defn -number-schema [] (-simple-schema {:type :number, :pred number?, :property-pred (-min-max-pred nil)}))
+(defn -integer-schema [] (-simple-schema {:type :integer, :pred integer?, :property-pred (-min-max-pred nil)}))
 
 (defn -and-schema []
   ^{:type ::into-schema}
@@ -2577,15 +2580,62 @@
 ;; registry
 ;;
 
-(defn predicate-schemas []
+(defn predicate-schemas
+  "Assumes (base-schemas) are present in registry."
+  []
   (let [-safe-empty? (fn [x] (and (seqable? x) (empty? x)))]
-    (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'pos? #'neg? #'float? #'double?
-          #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
-          #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #'inst? #'seqable?
-          #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
-          #'zero? #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #'ifn? #'fn?
-          #?@(:clj [#'rational? #'ratio? #'bytes? #'decimal?])]
-         (reduce -register-var {}))))
+    (-> {}
+        (-register-vars
+          {#'any? (-proxy-schema {:type 'any? :max 0 :fn (fn [p _ o] [[] [] (schema [:any p] o)])})
+           #'some? (-proxy-schema {:type 'some? :max 0 :fn (fn [p _ o] [[] [] (schema [:some p] o)])})
+           #'number? (-proxy-schema {:type 'number? :max 0 :fn (fn [p _ o] [[] [] (schema [:number p] o)])})
+           #'integer? (-proxy-schema {:type 'integer? :max 0 :fn (fn [p _ o] [[] [] (schema [:integer p] o)])})
+           #'int? (-proxy-schema {:type 'int? :max 0 :fn (fn [p _ o] [[] [] (schema [:int p] o)])})
+           #'pos-int? (-simple-schema {:type 'pos-int?, :pred pos-int?})
+           #'neg-int? (-simple-schema {:type 'neg-int?, :pred neg-int?})
+           #'nat-int? (-simple-schema {:type 'nat-int?, :pred nat-int?})
+           #'pos? (-simple-schema {:type 'pos?, :pred pos?})
+           #'neg? (-simple-schema {:type 'neg?, :pred neg?})
+           #'float? (-proxy-schema {:type 'float? :max 0 :fn (fn [p _ o] [[] [] (schema [:float p] o)])})
+           #'double? (-proxy-schema {:type 'double? :max 0 :fn (fn [p _ o] [[] [] (schema [:double p] o)])})
+           #'boolean? (-proxy-schema {:type 'boolean? :max 0 :fn (fn [p _ o] [[] [] (schema [:boolean p] o)])})
+           #'string? (-proxy-schema {:type 'string? :max 0 :fn (fn [p _ o] [[] [] (schema [:string p] o)])})
+           #'ident? (-simple-schema {:type 'ident?, :pred ident?})
+           #'simple-ident? (-simple-schema {:type 'simple-ident?, :pred simple-ident?})
+           #'qualified-ident? (-simple-schema {:type 'qualified-ident?, :pred qualified-ident?})
+           #'keyword? (-proxy-schema {:type 'keyword? :max 0 :fn (fn [p _ o] [[] [] (schema [:keyword p] o)])})
+           #'simple-keyword? (-simple-schema {:type 'simple-keyword?, :pred simple-keyword?})
+           #'qualified-keyword? (-proxy-schema {:type 'qualified-keyword? :max 0 :fn (fn [p _ o] [[] [] (schema [:qualified-keyword p] o)])})
+           #'symbol? (-proxy-schema {:type 'symbol? :max 0 :fn (fn [p _ o] [[] [] (schema [:symbol p] o)])})
+           #'simple-symbol? (-simple-schema {:type 'simple-symbol?, :pred simple-symbol?})
+           #'qualified-symbol? (-proxy-schema {:type 'qualified-symbol? :max 0 :fn (fn [p _ o] [[] [] (schema [:qualified-symbol p] o)])})
+           #'uuid? (-proxy-schema {:type 'uuid? :max 0 :fn (fn [p _ o] [[] [] (schema [:uuid p] o)])})
+           #'uri? (-simple-schema {:type 'uri?, :pred uri?})
+           #'inst? (-simple-schema {:type 'inst?, :pred inst?})
+           #'seqable? (-proxy-schema {:type 'uuid? :max 0 :fn (fn [p _ o] [[] [] (schema [:seqable p :any] o)])})
+           #'indexed? (-simple-schema {:type 'indexed?, :pred indexed?})
+           #'map? (-proxy-schema {:type 'map? :max 0 :fn (fn [p _ o] [[] [] (schema [:map-of p :any :any] o)])})
+           #'vector? (-proxy-schema {:type 'vector? :max 0 :fn (fn [p _ o] [[] [] (schema [:vector p :any] o)])})
+           #'list? (-simple-schema {:type 'list?, :pred list?}) ;;TODO
+           #'seq? (-simple-schema {:type 'seq?, :pred seq?}) ;;TODO
+           #'char? (-simple-schema {:type 'char?, :pred char?})
+           #'set? (-proxy-schema {:type 'set? :max 0 :fn (fn [p _ o] [[] [] (schema [:set p :any] o)])})
+           #'nil? (-proxy-schema {:type 'set? :max 0 :fn (fn [p _ o] [[] [] (schema [:nil p] o)])})
+           #'false? (-proxy-schema {:type 'false? :max 0 :fn (fn [p _ o] [[] [] (schema [:= p false] o)])})
+           #'true? (-proxy-schema {:type 'true? :max 0 :fn (fn [p _ o] [[] [] (schema [:= p true] o)])})
+           #'zero? (-proxy-schema {:type 'zero? :max 0 :fn (fn [p _ o] [[] [] (schema [:= p 0] o)])})
+           #'coll? (-simple-schema {:type 'coll?, :pred coll?}) ;;TODO
+           #'empty? (-simple-schema {:type 'empty?, :pred -safe-empty?})
+           #'associative? (-simple-schema {:type 'associative?, :pred associative?})
+           #'sequential? (-proxy-schema {:type 'sequential? :max 0 :fn (fn [p _ o] [[] [] (schema [:sequential p :any] o)])})
+           #'ifn? (-simple-schema {:type 'ifn?, :pred ifn?})
+           #'fn? (-simple-schema {:type 'fn?, :pred fn?})})
+       #?(:clj
+          (-register-vars
+            {#'rational? (-simple-schema {:type 'rational?, :pred rational?})
+             #'ratio? (-simple-schema {:type 'ratio?, :pred ratio?})
+             #'bytes? (-simple-schema {:type 'bytes?, :pred bytes?})
+             #'decimal? (-simple-schema {:type 'decimal?, :pred decimal?})})))))
 
 (defn class-schemas []
   {#?(:clj  Pattern,
@@ -2604,8 +2654,10 @@
    :nil (-nil-schema)
    :string (-string-schema)
    :int (-int-schema)
+   :integer (-integer-schema)
    :float (-float-schema)
    :double (-double-schema)
+   :number (-number-schema)
    :boolean (-boolean-schema)
    :keyword (-keyword-schema)
    :symbol (-symbol-schema)

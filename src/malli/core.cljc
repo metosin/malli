@@ -1297,7 +1297,8 @@
                         :else (let [size (when (and bounded (not (-safely-countable? x)))
                                            bounded)]
                                 (loop [acc acc, i 0, [x & xs :as ne] (seq x)]
-                                  (if (and ne (or (not size) (< i size)))
+                                  (if (and ne (or (not size) (< i #?(:cljs ^number size
+                                                                     :default size))))
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
                 (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))

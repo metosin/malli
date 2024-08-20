@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## Next
+
+* Fix ClojureScript [arithmetic warning](https://github.com/metosin/malli/issues/1093)
+
 ## 0.16.3 (2024-08-05)
 
 * `:->` added to default registry, see [documentation](https://github.com/metosin/malli/blob/master/docs/function-schemas.md#flat-arrow-function-schemas).

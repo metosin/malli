@@ -112,7 +112,7 @@
 
   DistributiveSchema
   (-distributive-schema? [_] false)
-  (-distribute-to-children [this f options']
+  (-distribute-to-children [this _ _]
     (throw (ex-info "Not distributive" {:schema this})))
 
   RegexSchema
@@ -1306,7 +1306,7 @@
                         :else (let [size (when (and bounded (not (-safely-countable? x)))
                                            bounded)]
                                 (loop [acc acc, i 0, [x & xs :as ne] (seq x)]
-                                  (if (and ne (or (not size) (< i #?(:cljs ^number size
+                                  (if (and ne (or (not size) (< i #?(:cljs    ^number size
                                                                      :default size))))
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
@@ -1625,7 +1625,7 @@
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
            DistributiveSchema
            (-distributive-schema? [_] true)
-           (-distribute-to-children [this f options']
+           (-distribute-to-children [_ f _]
              (-into-schema parent
                            properties
                            (mapv (fn [c]

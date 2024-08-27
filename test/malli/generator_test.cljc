@@ -1102,18 +1102,18 @@
                   ["duck" :map]
                   ["boss" :map]]]
       (is (every? #{{:type "duck"} {:type "boss"}} (mg/sample schema)))
-      (is (m/validator schema) (mg/sample schema))))
+      (is (every? (m/validator schema) (mg/sample schema)))))
 
   (testing "non keyword doesn't accumulate data"
     (let [schema [:multi {:dispatch (fn [x] (:type x))}
                   ["duck" :map]
                   ["boss" :map]]]
       (is (every? #{{}} (mg/sample schema)))
-      (is (m/validator schema) (mg/sample schema))))
+      (is (not (every? (m/validator schema) (mg/sample schema))))))
 
   (testing "::m/default works too"
     (let [schema [:multi {:dispatch :type}
                   ["duck" :map]
                   [::m/default [:= "boss"]]]]
       (is (every? #{{:type "duck"} "boss"} (mg/sample schema)))
-      (is (m/validator schema) (mg/sample schema)))))
+      (is (every? (m/validator schema) (mg/sample schema))))))

@@ -92,6 +92,10 @@
   (-function-info [this])
   (-instrument-f [schema props f options]))
 
+(defprotocol DistributiveSchema
+  (-distributive-schema? [this])
+  (-distribute-to-children [this f options]))
+
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
@@ -105,6 +109,11 @@
   (-function-info [_])
   (-function-schema-arities [_])
   (-instrument-f [_ _ _ _])
+
+  DistributiveSchema
+  (-distributive-schema? [_] false)
+  (-distribute-to-children [this _ _]
+    (throw (ex-info "Not distributive" {:schema this})))
 
   RegexSchema
   (-regex-op? [_] false)
@@ -1297,7 +1306,8 @@
                         :else (let [size (when (and bounded (not (-safely-countable? x)))
                                            bounded)]
                                 (loop [acc acc, i 0, [x & xs :as ne] (seq x)]
-                                  (if (and ne (or (not size) (< i size)))
+                                  (if (and ne (or (not size) (< i #?(:cljs    ^number size
+                                                                     :default size))))
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
                 (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))
@@ -1613,6 +1623,13 @@
          (reify
            AST
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
+           DistributiveSchema
+           (-distributive-schema? [_] true)
+           (-distribute-to-children [this f _]
+             (-into-schema parent
+                           properties
+                           (mapv (fn [c] (update c 2 f options)) (-children this))
+                           options))
            Schema
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} @dispatch-map))]
@@ -2017,6 +2034,9 @@
           (-keep [_])
           (-get [_ key default] (if (= ::in key) @schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
+          DistributiveSchema
+          (-distributive-schema? [_] (-distributive-schema? schema))
+          (-distribute-to-children [_ f options] (-distribute-to-children schema f options))
           FunctionSchema
           (-function-schema? [_] (-function-schema? @schema))
           (-function-info [_] (-function-info @schema))

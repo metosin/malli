@@ -9,6 +9,7 @@
             [clojure.test.check.rose-tree :as rose]
             [malli.core :as m]
             [malli.registry :as mr]
+            [malli.util :as mu]
             [malli.impl.util :refer [-last -merge]]
             #?(:clj [borkdude.dynaload :as dynaload])))
 
@@ -163,10 +164,21 @@
     (gen-one-of gs)
     (-never-gen options)))
 
+(defn- -merge-keyword-dispatch-map-into-entries [schema]
+  (let [dispatch (-> schema m/properties :dispatch)]
+    (cond-> schema
+      (keyword? dispatch)
+      (mu/transform-entries
+       #(map (fn [[k :as e]]
+               (cond-> e
+                 (not= ::m/default k)
+                 (update 2 mu/merge [:map [dispatch [:= k]]]))) %)
+       (m/options schema)))))
+
 (defn -multi-gen [schema options]
-  (if-some [gs (not-empty
-                (into [] (keep #(-not-unreachable (generator (last %) options)))
-                      (m/entries schema options)))]
+  (if-some [gs (->> (m/entries (-merge-keyword-dispatch-map-into-entries schema) options)
+                    (into [] (keep #(-not-unreachable (generator (last %) options))))
+                    (not-empty))]
     (gen-one-of gs)
     (-never-gen options)))
 

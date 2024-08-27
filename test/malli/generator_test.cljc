@@ -1095,3 +1095,25 @@
 (deftest double-with-long-min-test
   (is (m/validate :double (shrink [:double {:min 3}])))
   (is (= 3.0 (shrink [:double {:min 3}]))))
+
+(deftest multi-keyword-dispatch-test
+  (testing "keyword dispatch value accumulates to generated value"
+    (let [schema [:multi {:dispatch :type}
+                  ["duck" :map]
+                  ["boss" :map]]]
+      (is (every? #{{:type "duck"} {:type "boss"}} (mg/sample schema)))
+      (is (m/validator schema) (mg/sample schema))))
+
+  (testing "non keyword doesn't accumulate data"
+    (let [schema [:multi {:dispatch (fn [x] (:type x))}
+                  ["duck" :map]
+                  ["boss" :map]]]
+      (is (every? #{{}} (mg/sample schema)))
+      (is (m/validator schema) (mg/sample schema))))
+
+  (testing "::m/default works too"
+    (let [schema [:multi {:dispatch :type}
+                  ["duck" :map]
+                  [::m/default [:= "boss"]]]]
+      (is (every? #{{:type "duck"} "boss"} (mg/sample schema)))
+      (is (m/validator schema) (mg/sample schema)))))

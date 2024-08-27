@@ -193,10 +193,11 @@
     (reduce (fn [acc error] (cond-> acc (accept error) (-replace-in value (:in error) (wrap error) mask))) acc errors)))
 
 (defn -masked [mask x y]
-  (cond (map? x) (reduce-kv (fn [acc k v] (let [e (find y k)] (assoc acc k (if e (-masked mask v (val e)) mask)))) y x)
-        (set? x) (cond-> y (not= (count x) (count y)) (conj mask))
-        (sequential? x) (-fill y (count x) mask)
-        :else y))
+  (let [nested (and (map? x) (or (map? y) (nil? y)))]
+    (cond nested (reduce-kv (fn [acc k v] (let [e (find y k)] (assoc acc k (if e (-masked mask v (val e)) mask)))) y x)
+          (set? x) (cond-> y (not= (count x) (count y)) (conj mask))
+          (sequential? x) (-fill y (count x) mask)
+          :else y)))
 
 ;;
 ;; spell checking (kudos to https://github.com/bhauman/spell-spec)

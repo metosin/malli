@@ -758,6 +758,11 @@
                (for [error (:errors explain)]
                  (me/error-value (assoc explain :errors [error]) {::me/mask-valid-values '...}))))))
 
+    (testing "masked nested maps #1096"
+      (is (= {"foo" "foo"}
+             (-> (m/explain [:map-of :keyword [:map-of :keyword :any]] {"foo" {:bar 1}})
+                 (me/error-value {::me/mask-valid-values '...})))))
+
     (testing "custom painting of errors"
       (is (= {:EXTRA {:value "KEY", :type :malli.core/extra-key}
               :tags #{{:value "ground"} {:value "coffee"}}

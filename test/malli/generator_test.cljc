@@ -49,7 +49,7 @@
                     :symbol
                     :qualified-keyword
                     :qualified-symbol]]
-      (is (every? (partial m/validate schema) (mg/sample schema {:size 1000})))))
+      (is (every? (m/validator schema) (mg/sample schema {:size 1000})))))
 
   (testing "double properties"
     (let [infinity? #(or (= % ##Inf)
@@ -165,16 +165,16 @@
     (testing "recursion"
       (let [schema [:schema {:registry {::cons [:maybe [:tuple int? [:ref ::cons]]]}}
                     ::cons]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
+        (is (every? (m/validator schema) (mg/sample schema {:size 100})))))
     (testing "mutual recursion"
       (let [schema [:schema
                     {:registry {::ping [:maybe [:tuple [:= "ping"] [:ref ::pong]]]
                                 ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
                     ::ping]]
-        (is (every? (partial m/validate schema) (mg/sample schema {:size 100})))))
+        (is (every? (m/validator schema) (mg/sample schema {:size 100})))))
     (testing "recursion limiting"
       (are [schema]
-        (every? (partial m/validate schema) (mg/sample schema {:size 100}))
+        (every? (m/validator schema) (mg/sample schema {:size 100}))
 
         [:schema {:registry {::rec [:maybe [:ref ::rec]]}} ::rec]
         [:schema {:registry {::rec [:map [:rec {:optional true} [:ref ::rec]]]}} ::rec]
@@ -369,7 +369,7 @@
                      [:map [:x int?] [:y int?]]
                      [:x]]]
             :let [schema (m/schema schema {:registry registry})]]
-      (is (every? (partial m/validate schema) (mg/sample schema {:size 1000}))))))
+      (is (every? (m/validator schema) (mg/sample schema {:size 1000}))))))
 
 #?(:clj
    (deftest function-schema-test

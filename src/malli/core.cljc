@@ -2007,17 +2007,18 @@
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
+            schema (delay (force schema))
             form (delay (-create-form type properties forms options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
           Schema
-          (-validator [_] (-validator schema))
-          (-explainer [_ path] (-explainer schema (conj path ::in)))
-          (-parser [_] (-parser schema))
-          (-unparser [_] (-unparser schema))
+          (-validator [_] (-validator @schema))
+          (-explainer [_ path] (-explainer @schema (conj path ::in)))
+          (-parser [_] (-parser @schema))
+          (-unparser [_] (-unparser @schema))
           (-transformer [this transformer method options]
-            (-parent-children-transformer this [schema] transformer method options))
+            (-parent-children-transformer this [@schema] transformer method options))
           (-walk [this walker path options]
             (let [children (if childs (subvec children 0 childs) children)]
               (when (-accept walker this path options)
@@ -2031,27 +2032,27 @@
           (-cache [_] cache)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (if (= ::in key) schema (get children key default)))
+          (-get [_ key default] (if (= ::in key) @schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
           DistributiveSchema
           (-distributive-schema? [_] (-distributive-schema? schema))
           (-distribute-to-children [_ f options] (-distribute-to-children schema f options))
           FunctionSchema
-          (-function-schema? [_] (-function-schema? schema))
-          (-function-info [_] (-function-info schema))
-          (-function-schema-arities [_] (-function-schema-arities schema))
-          (-instrument-f [_ props f options] (-instrument-f schema props f options))
+          (-function-schema? [_] (-function-schema? @schema))
+          (-function-info [_] (-function-info @schema))
+          (-function-schema-arities [_] (-function-schema-arities @schema))
+          (-instrument-f [_ props f options] (-instrument-f @schema props f options))
           RegexSchema
-          (-regex-op? [_] (-regex-op? schema))
-          (-regex-validator [_] (-regex-validator schema))
-          (-regex-explainer [_ path] (-regex-explainer schema path))
-          (-regex-unparser [_] (-regex-unparser schema))
-          (-regex-parser [_] (-regex-parser schema))
-          (-regex-transformer [_ transformer method options] (-regex-transformer schema transformer method options))
-          (-regex-min-max [_ nested?] (-regex-min-max schema nested?))
+          (-regex-op? [_] (-regex-op? @schema))
+          (-regex-validator [_] (-regex-validator @schema))
+          (-regex-explainer [_ path] (-regex-explainer @schema path))
+          (-regex-unparser [_] (-regex-unparser @schema))
+          (-regex-parser [_] (-regex-parser @schema))
+          (-regex-transformer [_ transformer method options] (-regex-transformer @schema transformer method options))
+          (-regex-min-max [_ nested?] (-regex-min-max @schema nested?))
           RefSchema
           (-ref [_])
-          (-deref [_] schema))))))
+          (-deref [_] @schema))))))
 
 (defn -->-schema
   "Experimental simple schema for :=> schema. AST and explain results subject to change."
@@ -2059,10 +2060,10 @@
   (-proxy-schema {:type :->
                   :fn (fn [{:keys [guard] :as p} c o]
                         (-check-children! :-> p c 1 nil)
-                        (let [c (mapv #(schema % o) c)
-                              cc (cond-> [(into [:cat] (pop c)) (peek c)]
-                                   guard (conj [:fn guard]))]
-                          [c (map -form c) (into-schema :=> (dissoc p :guard) cc o)]))}))
+                        (let [c (mapv #(schema % o) c)]
+                          [c (map -form c) (delay (let [cc (cond-> [(into [:cat] (pop c)) (peek c)]
+                                                             guard (conj [:fn guard]))]
+                                                    (into-schema :=> (dissoc p :guard) cc o)))]))}))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 

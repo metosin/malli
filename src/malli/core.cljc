@@ -1625,15 +1625,10 @@
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
            DistributiveSchema
            (-distributive-schema? [_] true)
-           (-distribute-to-children [_ f _]
+           (-distribute-to-children [this f _]
              (-into-schema parent
                            properties
-                           (mapv (fn [c]
-                                   (when-not (and (vector? c)
-                                                  (= 2 (count c)))
-                                     (throw (ex-info "TODO" {})))
-                                   (update c 1 f options))
-                                 children)
+                           (mapv (fn [c] (update c 2 f options)) (-children this))
                            options))
            Schema
            (-validator [_]

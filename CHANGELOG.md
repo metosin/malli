@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## NEXT
 
+* Fix ClojureScript [arithmetic warning](https://github.com/metosin/malli/issues/1093)
 * Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-schemas)
 
 ## 0.16.3 (2024-08-05)

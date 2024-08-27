@@ -19,6 +19,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * Fix ClojureScript [arithmetic warning](https://github.com/metosin/malli/issues/1093)
 * Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-schemas)
 * allow `m/-proxy-schema` child to be a `delay`
+* add `::m/walk-inherit-entry-props` to `-walk` for unwrapping `::val` nodes and inheriting their props after walking
 * Fix `malli.dev.pretty` throws when explaining errors in nested maps [#1094](https://github.com/metosin/malli/issues/1096)
 
 ## 0.16.3 (2024-08-05)

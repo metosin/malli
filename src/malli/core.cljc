@@ -35,7 +35,7 @@
   (-transformer [this transformer method options]
     "returns a function to transform the value for the given schema and method.
     Can also return nil instead of `identity` so that more no-op transforms can be elided.")
-  (-walk [this walker path options] "walks the schema and it's children, ::m/walk-entry-vals, ::m/walk-refs, ::m/walk-schema-refs options effect how walking is done.")
+  (-walk [this walker path options] "walks the schema and it's children, ::m/walk-entry-vals, ::m/walk-refs, ::m/walk-schema-refs, ::m/walk-inherit-entry-props options effect how walking is done.")
   (-properties [this] "returns original schema properties")
   (-options [this] "returns original options")
   (-children [this] "returns schema children")
@@ -338,8 +338,15 @@
 (defn -inner-indexed [walker path children options]
   (-vmap (fn [[i c]] (-inner walker c (conj path i) options)) (map-indexed vector children)))
 
-(defn -inner-entries [walker path entries options]
-  (-vmap (fn [[k s]] [k (-properties s) (-inner walker s (conj path k) options)]) entries))
+(defn -inner-entries [walker path entries {::keys [walk-inherit-entry-props] :as options}]
+  (-vmap (fn [[k s]]
+           (let [s' (-inner walker s (conj path k) options)]
+             (if (and walk-inherit-entry-props
+                      (schema? s')
+                      (= ::val (type s')))
+               [k (-properties s') (-deref s')]
+               [k (-properties s) s'])))
+         entries))
 
 (defn -walk-entries [schema walker path options]
   (when (-accept walker schema path options)

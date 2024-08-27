@@ -92,6 +92,10 @@
   (-function-info [this])
   (-instrument-f [schema props f options]))
 
+(defprotocol DistributiveSchema
+  (-distributive-schema? [this])
+  (-distribute-to-children [this f options]))
+
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
@@ -105,6 +109,11 @@
   (-function-info [_])
   (-function-schema-arities [_])
   (-instrument-f [_ _ _ _])
+
+  DistributiveSchema
+  (-distributive-schema? [_] false)
+  (-distribute-to-children [this _ _]
+    (throw (ex-info "Not distributive" {:schema this})))
 
   RegexSchema
   (-regex-op? [_] false)
@@ -1304,7 +1313,8 @@
                         :else (let [size (when (and bounded (not (-safely-countable? x)))
                                            bounded)]
                                 (loop [acc acc, i 0, [x & xs :as ne] (seq x)]
-                                  (if (and ne (or (not size) (< i size)))
+                                  (if (and ne (or (not size) (< i #?(:cljs    ^number size
+                                                                     :default size))))
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
                 (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))
@@ -1620,6 +1630,13 @@
          (reify
            AST
            (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
+           DistributiveSchema
+           (-distributive-schema? [_] true)
+           (-distribute-to-children [this f _]
+             (-into-schema parent
+                           properties
+                           (mapv (fn [c] (update c 2 f options)) (-children this))
+                           options))
            Schema
            (-validator [_]
              (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} @dispatch-map))]
@@ -1997,17 +2014,18 @@
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
       (let [[children forms schema] (fn properties (vec children) options)
+            schema (delay (force schema))
             form (delay (-create-form type properties forms options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
           Schema
-          (-validator [_] (-validator schema))
-          (-explainer [_ path] (-explainer schema (conj path ::in)))
-          (-parser [_] (-parser schema))
-          (-unparser [_] (-unparser schema))
+          (-validator [_] (-validator @schema))
+          (-explainer [_ path] (-explainer @schema (conj path ::in)))
+          (-parser [_] (-parser @schema))
+          (-unparser [_] (-unparser @schema))
           (-transformer [this transformer method options]
-            (-parent-children-transformer this [schema] transformer method options))
+            (-parent-children-transformer this [@schema] transformer method options))
           (-walk [this walker path options]
             (let [children (if childs (subvec children 0 childs) children)]
               (when (-accept walker this path options)
@@ -2021,24 +2039,27 @@
           (-cache [_] cache)
           LensSchema
           (-keep [_])
-          (-get [_ key default] (if (= ::in key) schema (get children key default)))
+          (-get [_ key default] (if (= ::in key) @schema (get children key default)))
           (-set [_ key value] (into-schema type properties (assoc children key value)))
+          DistributiveSchema
+          (-distributive-schema? [_] (-distributive-schema? schema))
+          (-distribute-to-children [_ f options] (-distribute-to-children schema f options))
           FunctionSchema
-          (-function-schema? [_] (-function-schema? schema))
-          (-function-info [_] (-function-info schema))
-          (-function-schema-arities [_] (-function-schema-arities schema))
-          (-instrument-f [_ props f options] (-instrument-f schema props f options))
+          (-function-schema? [_] (-function-schema? @schema))
+          (-function-info [_] (-function-info @schema))
+          (-function-schema-arities [_] (-function-schema-arities @schema))
+          (-instrument-f [_ props f options] (-instrument-f @schema props f options))
           RegexSchema
-          (-regex-op? [_] (-regex-op? schema))
-          (-regex-validator [_] (-regex-validator schema))
-          (-regex-explainer [_ path] (-regex-explainer schema path))
-          (-regex-unparser [_] (-regex-unparser schema))
-          (-regex-parser [_] (-regex-parser schema))
-          (-regex-transformer [_ transformer method options] (-regex-transformer schema transformer method options))
-          (-regex-min-max [_ nested?] (-regex-min-max schema nested?))
+          (-regex-op? [_] (-regex-op? @schema))
+          (-regex-validator [_] (-regex-validator @schema))
+          (-regex-explainer [_ path] (-regex-explainer @schema path))
+          (-regex-unparser [_] (-regex-unparser @schema))
+          (-regex-parser [_] (-regex-parser @schema))
+          (-regex-transformer [_ transformer method options] (-regex-transformer @schema transformer method options))
+          (-regex-min-max [_ nested?] (-regex-min-max @schema nested?))
           RefSchema
           (-ref [_])
-          (-deref [_] schema))))))
+          (-deref [_] @schema))))))
 
 (defn -->-schema
   "Experimental simple schema for :=> schema. AST and explain results subject to change."
@@ -2046,10 +2067,10 @@
   (-proxy-schema {:type :->
                   :fn (fn [{:keys [guard] :as p} c o]
                         (-check-children! :-> p c 1 nil)
-                        (let [c (mapv #(schema % o) c)
-                              cc (cond-> [(into [:cat] (pop c)) (peek c)]
-                                   guard (conj [:fn guard]))]
-                          [c (map -form c) (into-schema :=> (dissoc p :guard) cc o)]))}))
+                        (let [c (mapv #(schema % o) c)]
+                          [c (map -form c) (delay (let [cc (cond-> [(into [:cat] (pop c)) (peek c)]
+                                                             guard (conj [:fn guard]))]
+                                                    (into-schema :=> (dissoc p :guard) cc o)))]))}))
 
 (defn- regex-validator [schema] (re/validator (-regex-validator schema)))
 

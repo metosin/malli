@@ -70,6 +70,8 @@
          s2 (when ?schema2 (m/deref-all (m/schema ?schema2 options)))
          t1 (when s1 (m/type s1))
          t2 (when s2 (m/type s2))
+         can-distribute? (and (not (contains? options :merge-default))
+                              (not (contains? options :merge-required)))
          {:keys [merge-default merge-required]
           :or {merge-default (fn [_ s2 _] s2)
                merge-required (fn [_ r2] r2)}} options
@@ -80,6 +82,10 @@
      (cond
        (nil? s1) s2
        (nil? s2) s1
+       ;; right-distributive: [:merge [:multi M1 M2 ...] M3] => [:multi [:merge M1 M3] [:merge M2 M3] ...]
+       (and can-distribute? (m/-distributive-schema? s1)) (m/-distribute-to-children s1 (fn [s _options] (merge s s2 options)) options)
+       ;; left-distributive:  [:merge M1 [:multi M2 M3 ...]] => [:multi [:merge M1 M2] [:merge M1 M3] ...]
+       (and can-distribute? (m/-distributive-schema? s2)) (m/-distribute-to-children s2 (fn [s _options] (merge s1 s options)) options)
        (not (and (-> t1 #{:map :and}) (-> t2 #{:map :and}))) (merge-default s1 s2 options)
        (not (and (-> t1 (= :map)) (-> t2 (= :map)))) (join (tear t1 s1) (tear t2 s2))
        :else (let [p (bear (m/-properties s1) (m/-properties s2))
@@ -374,13 +380,13 @@
 (defn -reducing [f]
   (fn [_ [first & rest :as children] options]
     (let [children (mapv #(m/schema % options) children)]
-      [children (mapv m/form children) (reduce #(f %1 %2 options) first rest)])))
+      [children (mapv m/form children) (delay (reduce #(f %1 %2 options) first rest))])))
 
 (defn -applying [f]
   (fn [_ children options]
     [(clojure.core/update children 0 #(m/schema % options))
      (clojure.core/update children 0 #(m/form % options))
-     (apply f (conj children options))]))
+     (delay (apply f (conj children options)))]))
 
 (defn -util-schema [m] (m/-proxy-schema m))
 

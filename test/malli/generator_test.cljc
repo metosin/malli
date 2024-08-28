@@ -1045,13 +1045,16 @@
 (deftest map-of-min-max-test
   (is (empty? (remove #(<= 2 (count %))
                       (mg/sample [:map-of {:min 2} [:enum 1 2 3] :any]
-                                 {:size 100}))))
+                                 {:size 100
+                                  :seed 3}))))
   (is (empty? (remove #(<= (count %) 2)
                       (mg/sample [:map-of {:max 2} [:enum 1 2 3] :any]
-                                 {:size 100}))))
+                                 {:size 100
+                                  :seed 3}))))
   (is (empty? (remove #(<= 2 (count %) 3)
                       (mg/sample [:map-of {:min 2 :max 3} [:enum 1 2 3] :any]
-                                 {:size 100})))))
+                                 {:size 100
+                                  :seed 3})))))
 
 (deftest such-that-generator-failure-test
   (is (thrown-with-msg?

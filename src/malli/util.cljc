@@ -292,7 +292,7 @@
     options)))
 
 (defn dissoc
-  "Like [[clojure.core/dissoc]], but for EntrySchemas."
+  "Like [[clojure.core/dissoc]], but for EntrySchemas. Only supports one key at a time."
   ([?schema key]
    (dissoc ?schema key nil))
   ([?schema key options]
@@ -328,7 +328,7 @@
      (when schema (m/-get schema k default)))))
 
 (defn assoc
-  "Like [[clojure.core/assoc]], but for LensSchemas."
+  "Like [[clojure.core/assoc]], but for LensSchemas. Only supports one key-value pair at a time."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]

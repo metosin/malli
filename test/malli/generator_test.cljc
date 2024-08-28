@@ -1116,4 +1116,11 @@
                   ["duck" :map]
                   [::m/default [:= "boss"]]]]
       (is (every? #{{:type "duck"} "boss"} (mg/sample schema)))
+      (is (every? (m/validator schema) (mg/sample schema)))))
+
+  (testing "works with nil & {} too"
+    (let [schema [:multi {:dispatch :type}
+                  [nil :map]
+                  [{} :map]]]
+      (is (every? #{{:type nil} {:type {}}} (mg/sample schema)))
       (is (every? (m/validator schema) (mg/sample schema))))))

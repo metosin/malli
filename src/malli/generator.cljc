@@ -172,7 +172,7 @@
        #(map (fn [[k :as e]]
                (cond-> e
                  (not= ::m/default k)
-                 (update 2 mu/merge [:map [dispatch [:= k]]]))) %)
+                 (update 2 mu/merge [:map [dispatch [:= nil k]]]))) %)
        (m/options schema)))))
 
 (defn -multi-gen [schema options]

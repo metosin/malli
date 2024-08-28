@@ -1,6 +1,7 @@
 (ns malli.transform
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
   (:require [malli.core :as m]
+            [clojure.math :as math]
             #?(:cljs [goog.date.UtcDateTime])
             #?(:cljs [goog.date.Date]))
   #?(:clj (:import (java.time Instant ZoneId)
@@ -93,6 +94,12 @@
 
 (defn -number->double [x]
   (if (number? x) (double x) x))
+
+(defn -number->long [x]
+  (cond
+    (integer? x) x
+    (and (number? x) (== x (math/round x))) (math/round x)
+    :else x))
 
 (defn -string->keyword [x]
   (if (string? x) (keyword x) x))
@@ -254,6 +261,13 @@
    'float? -number->float
    'double? -number->double
    'inst? -string->date
+   'integer? -number->long
+   'int? -number->long
+   'pos-int? -number->long
+   'neg-int? -number->long
+   'nat-int? -number->long
+   'zero? -number->long
+
    #?@(:clj ['uri? -string->uri])
 
    :enum {:compile (-infer-child-compiler :decode)}
@@ -261,6 +275,7 @@
 
    :float -number->float
    :double -number->double
+   :int -number->long
    :keyword -string->keyword
    :symbol -string->symbol
    :qualified-keyword -string->keyword

@@ -102,8 +102,6 @@ jobs:
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: latest
-          # bb: latest
-      - name: Download bb master
-        run: bash <(curl -s https://raw.githubusercontent.com/babashka/babashka/master/install) --version 0.8.157-SNAPSHOT
+          bb: latest
       - name: Run tests
         run: bb test-bb

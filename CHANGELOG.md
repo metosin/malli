@@ -18,6 +18,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 * Fix ClojureScript [arithmetic warning](https://github.com/metosin/malli/issues/1093)
 * Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-schemas)
+* allow `m/-proxy-schema` child to be a `delay` [#1090](https://github.com/metosin/malli/pull/1090)
+* `:multi` with keyword `:dispatch` accumulates data to generated values [#1095](https://github.com/metosin/malli/pull/1095)
 * allow `m/-proxy-schema` child to be a `delay`
 * Fix `malli.dev.pretty` throws when explaining errors in nested maps [#1094](https://github.com/metosin/malli/issues/1096)
 * `json-transformer` decodes 123.0 into 123 for schemas like `:int`, `pos-int?` etc. [#986](https://github.com/metosin/malli/issues/986)

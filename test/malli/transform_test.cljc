@@ -119,6 +119,16 @@
   (is (= 1.0 (mt/-number->double 1)))
   (is (= "kikka" (mt/-number->double "kikka"))))
 
+(deftest number->long
+  (is (= 1 (mt/-number->long 1.0)))
+  (is (= 2 (mt/-number->long 2.0)))
+  (is (= 2.5 (mt/-number->long 2.5)))
+  (is (= "2.5" (mt/-number->long "2.5")))
+  #?(:clj (is (= 2 (mt/-number->long 4/2))))
+  #?(:clj (is (= 2 (mt/-number->long (float 2.0)))))
+  #?(:clj (is (= 2 (mt/-number->long (double 2.0)))))
+  (is (= 2 (mt/-number->long 2))))
+
 (deftest any->string
   #?(:clj (is (= "1/2" (mt/-any->string 1/2))))
   #?(:clj (is (= "http://example.com" (mt/-any->string (URI. "http://example.com")))))
@@ -140,6 +150,12 @@
       (is (= 1 (m/decode int? "+1" mt/string-transformer)))
       (is (= -1 (m/decode int? "-1" mt/string-transformer)))
       (is (= "1" (m/decode int? "1" mt/json-transformer)))
+      (is (= 1 (m/decode int? 1.0 mt/json-transformer)))
+      (is (= 1 (m/decode :int 1.0 mt/json-transformer)))
+      (is (= 1.5 (m/decode int? 1.5 mt/json-transformer)))
+      (is (= 1.5 (m/decode :int 1.5 mt/json-transformer)))
+      (is (= 1 (m/decode pos-int? 1.0 mt/json-transformer)))
+      (is (= 0 (m/decode zero? 0.0 mt/json-transformer)))
       (is (= 1.0 (m/decode double? 1 mt/json-transformer)))
       (is (= 1 (m/decode double? 1 mt/string-transformer)))
       (is (= "1.0x" (m/decode double? "1.0x" mt/string-transformer)))

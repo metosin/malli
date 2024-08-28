@@ -60,7 +60,7 @@
                    (fn [x#] (~c (p# x#) (q# x#))))]
        `(fn ~f [~preds]
           (case (count ~preds)
-            0 (constantly true)
+            0 (constantly (boolean (~c)))
             1 (first ~preds)
             ~@cases
             ~else)))))

@@ -946,7 +946,10 @@
          (is (true? ((miu/-some-pred tf) nil)))
          (is (true? ((miu/-some-pred ft) nil)))
          (is (false? ((miu/-some-pred ff) nil)))
-         (is (true? ((miu/-some-pred tt) nil)))))))
+         (is (true? ((miu/-some-pred tt) nil))))
+       (testing "empty inputs"
+         (is (true? ((miu/-every-pred []) :anything)))
+         (is (false? ((miu/-some-pred []) :anything)))))))
 
 (deftest explain-data-test
   (let [schema (m/schema [:map [:a [:vector [:maybe :string]]]])

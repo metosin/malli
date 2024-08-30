@@ -14,15 +14,22 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## NEXT
+## 0.16.4 (2024-08-30)
 
-* Fix ClojureScript [arithmetic warning](https://github.com/metosin/malli/issues/1093)
 * Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-schemas)
-* allow `m/-proxy-schema` child to be a `delay` [#1090](https://github.com/metosin/malli/pull/1090)
 * `:multi` with keyword `:dispatch` accumulates data to generated values [#1095](https://github.com/metosin/malli/pull/1095)
-* allow `m/-proxy-schema` child to be a `delay`
-* Fix `malli.dev.pretty` throws when explaining errors in nested maps [#1094](https://github.com/metosin/malli/issues/1096)
+* Allow `m/-proxy-schema` child to be a `delay` [#1090](https://github.com/metosin/malli/pull/1090)
 * `json-transformer` decodes 123.0 into 123 for schemas like `:int`, `pos-int?` etc. [#986](https://github.com/metosin/malli/issues/986)
+* Fix `malli.dev.pretty` throws when explaining errors in nested maps [#1094](https://github.com/metosin/malli/issues/1096)
+* Fix ClojureScript [arithmetic warning](https://github.com/metosin/malli/issues/1093)
+* Fix `(-some-pred [])` should return `false` [#1101](https://github.com/metosin/malli/pull/1101)
+* Doc `mu/assoc` and `mu/dissoc` only handle one key at a time [#1099](https://github.com/metosin/malli/pull/1099)
+* Try to make `map-of-min-max-test` less flaky by fixing seed [#1098](https://github.com/metosin/malli/pull/1098)
+* Updated dependencies:
+
+```
+borkdude/edamame '1.4.25' to '1.4.27'
+```
 
 ## 0.16.3 (2024-08-05)
 

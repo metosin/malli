@@ -652,8 +652,9 @@
   (fn [{:keys [min max]}]
     (cond
       (not (or min max)) nil
-      (and (and min max) f) (fn [x] (let [size (f x)] (<= min size max)))
-      (and min max) (fn [x] (<= min x max))
+      (and (and min max) f) (fn [x] (let [size (f x)]
+                                      (and (<= min size) (<= size max))))
+      (and min max) (fn [x] (and (<= min x) (<= x max)))
       (and min f) (fn [x] (<= min (f x)))
       min (fn [x] (<= min x))
       (and max f) (fn [x] (<= (f x) max))

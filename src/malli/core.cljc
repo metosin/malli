@@ -1467,6 +1467,8 @@
       (-check-children! :re properties children 1 1)
       (let [children (vec children)
             re (re-pattern child)
+            matches? #(and #?(:clj (instance? CharSequence %), :cljs (string? %))
+                           (re-find re %))
             form (delay (if class? re (-simple-form parent properties children identity options)))
             cache (-create-cache options)]
         ^{:type ::schema}
@@ -1475,11 +1477,11 @@
           (-to-ast [this _] (-to-value-ast this))
           Schema
           (-validator [_]
-            (-safe-pred #(re-find re %)))
+            (-safe-pred matches?))
           (-explainer [this path]
             (fn explain [x in acc]
               (try
-                (if-not (re-find re x)
+                (if-not (matches? x)
                   (conj acc (miu/-error path in this x))
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e

@@ -265,7 +265,13 @@
 
   (testing "gen/gen"
     (is (every? #{1 2} (mg/sample [:and {:gen/gen (gen/elements [1 2])} int?] {:size 1000})))
-    (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000})))))
+    (is (every? #{"1" "2"} (mg/sample [:and {:gen/gen (gen/elements [1 2]) :gen/fmap str} int?] {:size 1000}))))
+  (testing "gen/resolve"
+    (is (every? #{1 2} (mg/sample [:and {:gen/resolve 'malli.generator-test/resolvable-gen} int?] {:size 1000})))
+    (is (every? #{"1" "2"} (mg/sample [:and {:gen/resolve 'malli.generator-test/resolvable-gen :gen/fmap str} int?] {:size 1000})))))
+
+(def resolvable-gen
+  (gen/elements [1 2]))
 
 (defn- schema+coll-gen [type children-gen]
   (gen/let [children children-gen]

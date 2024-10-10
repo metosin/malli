@@ -48,6 +48,10 @@ Want to contribute? See the [Development](#development) guide.
 
 <img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli-defn.png" width="600" />
 
+> Hi! We are [Metosin](https://metosin.fi), a consulting company. These libraries have evolved out of the work we do for our clients.
+> We maintain & develop this project, for you, for free. Issues and pull requests welcome!
+> However, if you want more help using the libraries, or want us to build something as cool for you, consider our [commercial support](https://www.metosin.fi/en/open-source-support).
+
 ## Motivation
 
 We are building dynamic multi-tenant systems where data models should be first-class: they should drive the runtime value transformations, forms and processes. We should be able to edit the models at runtime, persist them and load them back from a database and over the wire, for both Clojure and ClojureScript. Think of [JSON Schema](https://json-schema.org/), but for Clojure/Script.

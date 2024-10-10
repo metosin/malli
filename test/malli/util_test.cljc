@@ -509,7 +509,24 @@
       (is (true? (m/validate
                   (mu/update schema :b identity)
                   {:a 1
-                   :c "a string"}))))))
+                   :c "a string"}))))
+    (testing "Multi schema can update its individual dispatch schemas"
+      (is (mu/equals (-> (m/schema [:multi {:dispatch :type}
+                                    [:sized [:map
+                                             [:type keyword?]
+                                             [:size int?]]]
+                                    [:human [:map
+                                             [:type keyword?]
+                                             [:name string?]
+                                             [:address [:map [:country keyword?]]]]]])
+                         (mu/update :sized mu/select-keys [:size])
+                         (mu/update :human mu/select-keys [:name :address]))
+                     [:multi {:dispatch :type}
+                      [:sized [:map
+                               [:size int?]]]
+                      [:human [:map
+                               [:name string?]
+                               [:address [:map [:country keyword?]]]]]])))))
 
 (deftest assoc-in-test
   (is (mu/equals (mu/assoc-in (m/schema [:vector int?]) [0] string?) [:vector string?]))
@@ -523,7 +540,55 @@
   (is (mu/equals (mu/assoc-in (m/schema [:map]) [:a :b :c :d] int?)
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
   (is (mu/equals (mu/assoc-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
-  (is (mu/equals (mu/assoc-in (m/schema [:schema int?]) [0] string?) [:schema string?])))
+  (is (mu/equals (mu/assoc-in (m/schema [:schema int?]) [0] string?) [:schema string?]))
+
+  (testing "Multi schema can use assoc-in to introduce new dispatch schemas"
+    (is (mu/equals (-> (m/schema [:multi {:dispatch :type}
+                                  [:sized [:map
+                                           [:type keyword?]
+                                           [:size int?]]]
+                                  [:human [:map
+                                           [:type keyword?]
+                                           [:name string?]
+                                           [:address [:map [:country keyword?]]]]]])
+                       (mu/assoc-in [:robot] [:map
+                                              [:type keyword?]
+                                              [:serial-number string?]
+                                              [:charging-station [:map [:id string?]]]]))
+                   [:multi {:dispatch :type}
+                    [:sized [:map
+                             [:type keyword?]
+                             [:size int?]]]
+                    [:human [:map
+                             [:type keyword?]
+                             [:name string?]
+                             [:address [:map [:country keyword?]]]]]
+                    [:robot [:map
+                             [:type keyword?]
+                             [:serial-number string?]
+                             [:charging-station [:map [:id string?]]]]]])))
+  (testing "Multi schema can use assoc-in to extend existing schemas"
+    (is (mu/equals (-> (m/schema [:multi {:dispatch :type}
+                                  [:sized [:map
+                                           [:type keyword?]
+                                           [:size int?]]]
+                                  [:human [:map
+                                           [:type keyword?]
+                                           [:name string?]
+                                           [:address [:map [:country keyword?]]]]]])
+                       (mu/assoc-in [:sized :unit] string?)
+                       (mu/assoc-in [:human :address :state] string?))
+                   [:multi {:dispatch :type}
+                    [:sized [:map
+                             [:type keyword?]
+                             [:size int?]
+                             [:unit string?]]]
+                    [:human [:map
+                             [:type keyword?]
+                             [:name string?]
+                             [:address [:map
+                                        [:country keyword?]
+                                        [:state string?]]]]]]))))
 
 (deftest update-in-test
   (is (mu/equals (mu/update-in (m/schema [:vector int?]) [0] (constantly string?)) [:vector string?]))

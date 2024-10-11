@@ -75,19 +75,35 @@
         :when f, v vs] (f (namespace k) (str v))))
 
 (defn -keys [{:keys [keys strs syms] :as arg} {:keys [::references] :or {references true} :as options}]
-  (let [any (fn [f ks] (map (fn [k] [(f k) :any]) ks))]
+  (let [any (fn [f ks] (map (fn [k] [(f k) :any {:metadata (meta k)}]) ks))]
     (->> (concat (any keyword keys) (any str strs) (any identity syms)
-                 (map (fn [k] [k (if (and references (qualified-keyword? k)) k :any)]) (-qualified-keys arg))
-                 (map (fn [[k v]] [v (-transform {:arg k} options false)]) (filter #(miu/-tagged? (key %)) arg)))
+                 (map (fn [k]
+                        [k
+                         (if (and references (qualified-keyword? k))
+                           k
+                           :any)
+                         {:metadata (meta k)}])
+                      (-qualified-keys arg))
+                 (map (fn [[k v]]
+                        [v
+                         (-transform {:arg k} options false)
+                         {:metadata (meta k)}])
+                      (filter #(miu/-tagged? (key %)) arg)))
          (distinct))))
 
 (defn -map [arg {:keys [::references ::required-keys ::closed-maps ::sequential-maps]
                  :or {references true, sequential-maps true} :as options} rest]
   (let [keys (-keys arg options)
-        ->entry (fn [[k t]] (let [ref (and references (qualified-keyword? k))]
-                              (cond (and ref required-keys) k
-                                    required-keys [k t]
-                                    :else (cond-> [k {:optional true}] (not ref) (conj t)))))
+        ->entry (fn [[k t metadata]] (let [ref (and references (qualified-keyword? k)) ]
+                                       (if metadata
+                                         (cond (and ref required-keys) [k metadata]
+                                               required-keys [k metadata t]
+                                               :else (cond-> [k (merge {:optional true} metadata)]
+                                                       (not ref)
+                                                       (conj t)))
+                                         (cond (and ref required-keys) k
+                                               required-keys [k t]
+                                               :else (cond-> [k {:optional true}] (not ref) (conj t))))))
         ->arg (fn [[k t]] [:cat [:= k] (if (and references (qualified-keyword? k)) k t)])
         schema (cond-> [:map] closed-maps (conj {:closed true}) :always (into (map ->entry keys)))]
     (if (or rest sequential-maps)

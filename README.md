@@ -1458,10 +1458,22 @@ Making keys optional or required:
 ; [:x {:optional true} int?]
 ; [:y {:optional true} int?]]
 
-(mu/required-keys [:map [:x {:optional true} int?] [:y int?]])
+(mu/optional-keys [:map [:x int?] [:y int?]]
+                  [:x])
+;[:map
+; [:x {:optional true} int?]
+; [:y int?]]
+
+(mu/required-keys [:map [:x {:optional true} int?] [:y {:optional true} int?]])
 ;[:map
 ; [:x int?]
 ; [:y int?]]
+
+(mu/required-keys [:map [:x {:optional true} int?] [:y {:optional true} int?]]
+                  [:x])
+;[:map
+; [:x int?]
+; [:y {:optional true} int?]]
 ```
 
 Closing and opening all `:map` schemas recursively:

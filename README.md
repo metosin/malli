@@ -2775,7 +2775,7 @@ You can also build content-dependent schemas by using a callback function `:comp
     :compile (fn [_properties [min max] _options]
                (when-not (and (int? min) (int? max))
                  (m/-fail! ::invalid-children {:min min, :max max}))
-               {:pred #(and (int? %) (>= min % max))
+               {:pred #(and (int? %) (<= min % max))
                 :min 2 ;; at least 1 child
                 :max 2 ;; at most 1 child
                 :type-properties {:error/fn (fn [error _] (str "should be between " min " and " max ", was " (:value error)))

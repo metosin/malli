@@ -1010,6 +1010,10 @@
         (<= (int \A) i (int \Z))
         (<= (int \0) i (int \9)))))
 
+(deftest alphanumeric-char?-test
+  (is (alphanumeric-char? \a))
+  (is (not (alphanumeric-char? \-))))
+
 (defn alphanumeric-string? [s]
   {:pre [(string? s)]}
   (every? alphanumeric-char? s))

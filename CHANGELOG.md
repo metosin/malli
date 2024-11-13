@@ -14,6 +14,12 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## NEXT
+
+* **BREAKING**: `:gen/fmap` property requires its schema to create a generator.
+  * previous behavior defaulted to a `nil`-returning generator, even if the schema doesn't accept `nil`
+  * use `:gen/return nil` property to restore this behavior
+
 ## 0.16.4 (2024-08-30)
 
 * Distribute `:merge` over `:multi` [#1086](https://github.com/metosin/malli/pull/1086), see [documentation](README.md#distributive-schemas)

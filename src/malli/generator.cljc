@@ -552,25 +552,22 @@
 (defn- -create-from-schema [props options]
   (some-> (:gen/schema props) (generator options)))
 
-(defn- -create-from-fmap [props schema options]
+(defn- -create-from-fmap [gen props schema options]
   (when-some [fmap (:gen/fmap props)]
     (gen/fmap (m/eval fmap (or options (m/options schema)))
-              (or (-create-from-return props)
-                  (-create-from-elements props)
-                  (-create-from-schema props options)
-                  (-create-from-gen props schema options)
-                  nil-gen))))
+              gen)))
 
 (defn- -create [schema options]
   (let [props (-merge (m/type-properties schema)
-                      (m/properties schema))]
-    (or (-create-from-fmap props schema options)
-        (-create-from-return props)
-        (-create-from-elements props)
-        (-create-from-schema props options)
-        (-create-from-gen props schema options)
-        (m/-fail! ::no-generator {:options options
-                                  :schema schema}))))
+                      (m/properties schema))
+        gen (or (-create-from-return props)
+                (-create-from-elements props)
+                (-create-from-schema props options)
+                (-create-from-gen props schema options)
+                (m/-fail! ::no-generator {:options options
+                                          :schema schema}))]
+    (or (-create-from-fmap gen props schema options)
+        gen)))
 
 ;;
 ;; public api

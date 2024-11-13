@@ -1002,7 +1002,10 @@
 
 (defn alphanumeric-char? [c]
   {:pre [(char? c)]}
-  (let [i (int c)]
+  (let [int (fn [c]
+              #?(:clj (int c)
+                 :cljs (.charCodeAt c 0)))
+        i (int c)]
     (or (<= (int \a) i (int \z))
         (<= (int \A) i (int \Z))
         (<= (int \0) i (int \9)))))

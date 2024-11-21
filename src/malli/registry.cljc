@@ -3,10 +3,10 @@
   #?(:clj (:import (java.util HashMap Map))))
 
 #?(:cljs (goog-define mode "default")
-   :clj  (def mode (as-> (or (System/getProperty "malli.registry/mode") "default") $ (.intern $))))
+   :clj  (def mode (or (System/getProperty "malli.registry/mode") "default")))
 
 #?(:cljs (goog-define type "default")
-   :clj  (def type (as-> (or (System/getProperty "malli.registry/type") "default") $ (.intern $))))
+   :clj  (def type (or (System/getProperty "malli.registry/type") "default")))
 
 (defprotocol Registry
   (-schema [this type] "returns the schema from a registry")
@@ -40,7 +40,8 @@
 (def ^:private registry* (atom (simple-registry {})))
 
 (defn set-default-registry! [?registry]
-  (if-not (identical? mode "strict")
+  (if-not #?(:cljs (identical? mode "strict")
+             :default (= mode "strict"))
     (reset! registry* (registry ?registry))
     (throw (ex-info "can't set default registry, invalid mode" {:mode mode, :type type}))))
 

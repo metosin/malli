@@ -2724,8 +2724,10 @@
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
-  (let [strict (identical? mr/mode "strict")
-        custom (identical? mr/type "custom")
+  (let [strict #?(:cljs (identical? mr/mode "strict")
+                  :default (= mr/mode "strict"))
+        custom #?(:cljs (identical? mr/type "custom")
+                  :default (= mr/type "custom"))
         registry (if custom (mr/fast-registry {}) (mr/composite-registry (mr/fast-registry (default-schemas)) (mr/var-registry)))]
     (when-not strict (mr/set-default-registry! registry))
     (mr/registry (if strict registry (mr/custom-default-registry)))))

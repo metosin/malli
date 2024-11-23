@@ -241,11 +241,14 @@
 
   (testing "generator override"
     (testing "without generator"
-      (let [schema [:fn {:gen/fmap '(fn [_] (rand-int 10))}
+      (let [schema [:fn {:gen/elements [5]
+                         :gen/fmap '(fn [i] (rand-int i))}
                     '(fn [x] (<= 0 x 10))]
             generator (mg/generator schema)]
         (dotimes [_ 100]
-          (m/validate schema (mg/generate generator)))))
+          (let [v (mg/generate generator)]
+            (is (m/validate schema v))
+            (is (<= 0 v 5))))))
     (testing "with generator"
       (is (re-matches #"kikka_\d+" (mg/generate [:and {:gen/fmap '(partial str "kikka_")} pos-int?])))))
 
@@ -999,10 +1002,17 @@
 
 (defn alphanumeric-char? [c]
   {:pre [(char? c)]}
-  (let [i (int c)]
+  (let [int (fn [c]
+              #?(:clj (int c)
+                 :cljs (.charCodeAt c 0)))
+        i (int c)]
     (or (<= (int \a) i (int \z))
         (<= (int \A) i (int \Z))
         (<= (int \0) i (int \9)))))
+
+(deftest alphanumeric-char?-test
+  (is (alphanumeric-char? \a))
+  (is (not (alphanumeric-char? \-))))
 
 (defn alphanumeric-string? [s]
   {:pre [(string? s)]}

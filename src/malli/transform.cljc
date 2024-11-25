@@ -415,6 +415,8 @@
                                                             (-transform-if-valid key-schema)
                                                             (-transform-map-keys))
                                                     (-transform-map-keys m/-keyword->string))))})
+                   (assoc :map {:compile (fn [_ _]
+                                           (-transform-map-keys -string->keyword))})
                    (cond-> json-vectors (assoc :vector -sequential->vector)))
      :encoders (-json-encoders)})))
 

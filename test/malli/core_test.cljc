@@ -997,6 +997,18 @@
                                                (mt/key-transformer
                                                 {:decode #(-> % name (str "_key") keyword)}))))
 
+      (testing "JSON transformer decodes map schema keys"
+        (let [schema [:map
+                      [:a :uuid]
+                      [:b [:enum :x :y :z]]]
+              value {"a" "b699671c-d34d-b33f-1337-dbdbfd337e73"
+                     "b" "x"}
+              decoded-value (m/decode schema value mt/json-transformer)]
+          (is (= {:a #uuid "b699671c-d34d-b33f-1337-dbdbfd337e73"
+                  :b :x}
+                 decoded-value))
+          (is (m/validate schema decoded-value))))
+
       (is (= {:x 32}
              (m/decode
               [:map {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}

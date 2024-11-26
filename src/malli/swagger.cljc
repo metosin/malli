@@ -184,11 +184,12 @@
                     parameters (:parameters expanded)
                     responses (:responses expanded)
                     definitions (apply merge
+                                       (:definitions acc)
                                        (concat
                                         (->> responses vals (map (comp :definitions :schema)))
                                         (->> parameters (map (comp :definitions :schema)))))]
                 (-> acc (dissoc k) (merge expanded)
-                    (update :definitions merge definitions)
+                    (merge (when-not (empty? definitions) [:definitions definitions]))
                     dissoc-non-root-definitions))
               acc))
           x x)

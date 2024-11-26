@@ -817,7 +817,50 @@ Or if you already have a malli validation exception (e.g. in a catch form):
 
 ## Custom error messages
 
-Error messages can be customized with `:error/message` and `:error/fn` properties:
+Error messages can be customized with `:error/message` and `:error/fn` properties.
+
+If `:error/message` is of a predictable structure, it will automatically support custom `[:not schema]` failures for the following locales:
+- `:en` if message starts with `should` or `should not` then they will be swapped automatically. Otherwise, message is ignored.
+```clojure
+;; e.g.,
+(me/humanize
+  (m/explain
+    [:not
+     [:fn {:error/message {:en "should be a multiple of 3"}}
+      #(= 0 (mod % 3))]]
+    3))
+; => ["should not be a multiple of 3"]
+```
+
+The first argument to `:error/fn` is a map with keys:
+- `:schema`, the schema to explain
+- `:value` (optional), the value to explain
+- `:negated` (optional), a function returning the explanation of `(m/explain [:not schema] value)`.
+  If provided, then we are explaining the failure of negating this schema via `(m/explain [:not schema] value)`.
+  Note in this scenario, `(m/validate schema value)` is true.
+  If returning a string, 
+  the resulting error message will be negated by the `:error/fn` caller in the same way as `:error/message`.
+  Returning `(negated string)` disables this behavior and `string` is used as the negated error message.
+```clojure
+;; automatic negation
+(me/humanize
+  (m/explain
+    [:not [:fn {:error/fn {:en (fn [_ _] "should not be a multiple of 3")}}
+           #(not= 0 (mod % 3))]]
+    1))
+; => ["should be a multiple of 3"]
+
+;; manual negation
+(me/humanize
+  (m/explain [:not [:fn {:error/fn {:en (fn [{:keys [negated]} _]
+                                          (if negated
+                                            (negated "should not avoid being a multiple of 3")
+                                            "should not be a multiple of 3"))}}
+                    #(not= 0 (mod % 3))]] 1))
+; => ["should not avoid being a multiple of 3"]
+```
+
+Here are some basic examples of `:error/message` and `:error/fn`:
 
 ```clojure
 (-> [:map

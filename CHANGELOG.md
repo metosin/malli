@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## 0.17.0 (UNRELEASED)
 
+* `unparse` accepts vectors in addition to MapEntry values for `:orn` and `:multi` [#1123](https://github.com/metosin/malli/issues/1123)
 * Don't output `:definitions nil` in swagger. [#1134](https://github.com/metosin/malli/issues/1134)
 * **BREAKING**: `:gen/fmap` property requires its schema to create a generator.
   * previous behavior defaulted to a `nil`-returning generator, even if the schema doesn't accept `nil`

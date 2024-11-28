@@ -257,7 +257,9 @@
       (is (= (miu/-tagged :pos 1) (m/parse schema* 1)))
       (is (= ::m/invalid (m/parse schema* 0)))
       (is (= 1 (m/unparse schema* (miu/-tagged :pos 1))))
+      (is (= 1 (m/unparse schema* [:pos 1])))
       (is (= ::m/invalid (m/unparse schema* (miu/-tagged :pos 0))))
+      (is (= ::m/invalid (m/unparse schema* [:pos 0])))
 
       (doseq [schema [schema schema*]]
         (testing (m/form schema)
@@ -1151,8 +1153,11 @@
       (is (= ::m/invalid (m/parse schema invalid5)))
       (is (= ::m/invalid (m/parse schema invalid6)))
       (is (= valid1 (m/unparse schema (m/parse schema valid1))))
+      (is (= valid1 (m/unparse schema [:sized valid1])))
       (is (= valid2 (m/unparse schema (m/parse schema valid2))))
+      (is (= valid2 (m/unparse schema [:human valid2])))
       (is (= valid3 (m/unparse schema (m/parse schema valid3))))
+      (is (= valid3 (m/unparse schema [:sized valid3])))
       (is (= ::m/invalid (m/unparse schema invalid1)))
       (is (= ::m/invalid (m/unparse schema invalid2)))
       (is (= ::m/invalid (m/unparse schema invalid3)))

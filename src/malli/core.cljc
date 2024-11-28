@@ -872,8 +872,8 @@
             (let [unparsers (into {} (map (fn [[k _ c]] [k (-unparser c)])) (-children this))]
               (fn [x]
                 (if (miu/-tagged? x)
-                  (if-some [unparse (get unparsers (key x))]
-                    (unparse (val x))
+                  (if-some [unparse (get unparsers (first x))]
+                    (unparse (second x))
                     ::invalid)
                   ::invalid))))
           (-transformer [this transformer method options]
@@ -1650,7 +1650,7 @@
                (fn [x] (if-some [parser (find (dispatch x))] (parser x) ::invalid))))
            (-unparser [_]
              (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} @dispatch-map)]
-               (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (key x))] (f (val x)) ::invalid) ::invalid))))
+               (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (first x))] (f (second x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
             ;; FIXME: Probably should not use `dispatch`
             ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:

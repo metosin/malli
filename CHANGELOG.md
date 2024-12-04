@@ -21,6 +21,7 @@ Malli is in well matured [alpha](README.md#alpha).
   * previous behavior defaulted to a `nil`-returning generator, even if the schema doesn't accept `nil`
   * use `:gen/return nil` property to restore this behavior
 * FIX: `malli.registry/{mode,type}` not respected in Babashka [#1124](https://github.com/metosin/malli/issues/1124)
+* FIX: `:float` accepts doubles but never generates them [#1132](https://github.com/metosin/malli/issues/1132)
 * Updated dependencies:
 
 ```

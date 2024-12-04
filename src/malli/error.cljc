@@ -105,6 +105,7 @@
                                  max (str "should be at most " max " character" (when (not= 1 max) "s")))))}}
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
+   :float {:error/fn {:en (-pred-min-max-error-fn {:pred float?, :message "should be a float"})}}
    :boolean {:error/message {:en "should be a boolean"}}
    :keyword {:error/message {:en "should be a keyword"}}
    :symbol {:error/message {:en "should be a symbol"}}

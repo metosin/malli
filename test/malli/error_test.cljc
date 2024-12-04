@@ -372,28 +372,29 @@
              (me/humanize)))))
 
 (deftest double-test
-  (is (= {:a ["should be a double"]
-          :b ["should be at least 1"]
-          :c ["should be at most 4"]
-          :d [["should be at least 1"]
-              ["should be at most 4"]]
-          :e ["should be a double"]
-          :f ["should be 4"]}
-         (-> [:map
-              [:a :double]
-              [:b [:double {:min 1}]]
-              [:c [:double {:max 4}]]
-              [:d [:vector [:double {:min 1, :max 4}]]]
-              [:e [:double {:min 1, :max 4}]]
-              [:f [:double {:min 4, :max 4}]]]
-             (m/explain
-              {:a "123"
-               :b 0.0
-               :c 5.0
-               :d [0.0 5.0]
-               :e "123"
-               :f 5.0})
-             (me/humanize)))))
+  (doseq [t [:double :float]]
+    (is (= {:a [(str "should be a " (name t))]
+            :b ["should be at least 1"]
+            :c ["should be at most 4"]
+            :d [["should be at least 1"]
+                ["should be at most 4"]]
+            :e [(str "should be a " (name t))]
+            :f ["should be 4"]}
+           (-> [:map
+                [:a t]
+                [:b [t {:min 1}]]
+                [:c [t {:max 4}]]
+                [:d [:vector [t {:min 1, :max 4}]]]
+                [:e [t {:min 1, :max 4}]]
+                [:f [t {:min 4, :max 4}]]]
+               (m/explain
+                 {:a "123"
+                  :b 0.0
+                  :c 5.0
+                  :d [0.0 5.0]
+                  :e "123"
+                  :f 5.0})
+               (me/humanize))))))
 
 (deftest any-test
   (testing "success"

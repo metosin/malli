@@ -87,8 +87,6 @@
   (let [{:gen/keys [infinite? NaN?]} (m/properties schema)]
     {:infinite? infinite? :NaN? NaN?}))
 
-(defn- -double-gen [schema options] (gen-double (into (inf-nan schema options) (-min-max schema options))))
-
 (defn- gen-fmap [f gen] (or (-unreachable gen) (gen/fmap f gen)))
 (defn- gen-fcat [gen] (gen-fmap #(apply concat %) gen))
 (defn- gen-tuple [gens] (or (some -unreachable gens) (apply gen/tuple gens)))

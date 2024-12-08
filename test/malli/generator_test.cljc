@@ -51,45 +51,27 @@
                     :qualified-symbol]]
       (is (every? (m/validator schema) (mg/sample schema {:size 1000})))))
 
-  (testing "double properties"
-    (let [infinity? #(or (= % ##Inf)
-                         (= % ##-Inf))
-          NaN? (fn [x]
-                 (#?(:clj  Double/isNaN
-                     :cljs js/isNaN)
-                  x))
-          special? #(or (NaN? %)
-                        (infinity? %))
-          test-presence (fn [f options]
-                          (some f (mg/sample [:double options]
-                                             {:size 1000})))]
-      (is (test-presence infinity? {:gen/infinite? true}))
-      (is (test-presence NaN? {:gen/NaN? true}))
-      (is (test-presence special? {:gen/infinite? true
-                                   :gen/NaN? true}))
-      (is (not (test-presence special? nil)))))
-
-  (testing "float properties"
-    (let [infinity? #(or (= % ##Inf)
-                         (= % ##-Inf))
-          NaN? (fn [x]
-                 (#?(:clj  Float/isNaN
-                     :cljs js/isNaN)
-                  x))
-          is-float? (fn [n]
-                      #?(:clj  (instance? Float n)
-                         :cljs (float? n)))
-          special? #(or (NaN? %)
-                        (infinity? %))
-          test-presence (fn [f options]
-                          (some f (mg/sample [:float options]
-                                             {:size 1000})))]
-      (is (test-presence #?(:clj (comp not infinity?) :cljs infinity?) {:gen/infinite? true}))
-      (is (test-presence is-float? {}))
-      (is (test-presence NaN? {:gen/NaN? true}))
-      (is (test-presence special? {:gen/infinite? true
-                                   :gen/NaN? true}))
-      (is (not (test-presence special? nil)))))
+  (doseq [s [:double :float]]
+    (testing (str s " properties")
+      (let [infinity? #(or (= % ##Inf)
+                           (= % ##-Inf))
+            NaN? (fn [x]
+                   (#?(:clj  Double/isNaN
+                       :cljs js/isNaN)
+                            x))
+            special? #(or (NaN? %)
+                          (infinity? %))
+            valid? (m/validator s)
+            test-presence (fn [f options]
+                            (let [vs (mg/sample [s options]
+                                                {:size 1000})]
+                              (and (every? valid? vs)
+                                   (some f vs))))]
+        (is (test-presence infinity? {:gen/infinite? true}))
+        (is (test-presence NaN? {:gen/NaN? true}))
+        (is (test-presence special? {:gen/infinite? true
+                                     :gen/NaN? true}))
+        (is (not (test-presence special? nil))))))
 
   (testing "qualified-keyword properties"
     (testing "no namespace => random"

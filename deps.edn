@@ -73,7 +73,7 @@
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                org.clojure/clojure {:mvn/version "1.12.0"}
-                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.5.0"}}
+                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.5.1"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"
                              "-Dclojure.compiler.direct-linking=true"]}}}

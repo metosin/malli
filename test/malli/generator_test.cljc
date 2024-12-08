@@ -708,8 +708,8 @@
                      (fn [formula]
                        (gen/one-of [gen/boolean
                                     (gen/tuple (gen/return :not) gen/boolean)
-                                    (gen/tuple (gen/return :and) (#'mg/gen-vector-min formula 1 {}))
-                                    (gen/tuple (gen/return :or) (#'mg/gen-vector-min formula 1 {}))]))
+                                    (gen/tuple (gen/return :and) (#'mg/gen-vector {:min 1} formula))
+                                    (gen/tuple (gen/return :or) (#'mg/gen-vector {:min 1} formula))]))
                      (gen/one-of [gen/boolean
                                   (gen/tuple (gen/return :not) gen/boolean)]))
                     {:seed 0}))))
@@ -900,10 +900,9 @@
                       {:seed 0})
          (is false)
          (catch #?(:clj Exception, :cljs js/Error) e
-           (is (re-find #":malli\.generator/infinitely-expanding-schema"
+           (is (re-find #":malli\.generator/unsatisfiable-schema"
                         (ex-message e)))
-           (is (= [:map-of {:min 1} [:ref :malli.generator-test/rec] [:ref :malli.generator-test/rec]]
-                  (-> e ex-data :data :schema m/form))))))
+           (is (= [:ref :malli.generator-test/rec] (-> e ex-data :data :schema m/form))))))
   (testing "can generate empty regardless of :max"
     (is (= '({{} {}} {{} {}} {{} {}} {{} {}} {} {{} {}} {} {{} {}} {{} {}} {{{} {}} {{} {}}, {} {}})
            (mg/sample [:schema {:registry {::rec [:map-of {:max 3} [:ref ::rec] [:ref ::rec]]}} [:ref ::rec]]
@@ -1069,7 +1068,7 @@
 (deftest such-that-generator-failure-test
   (is (thrown-with-msg?
        #?(:clj Exception, :cljs js/Error)
-       #":malli\.generator/not-generator-failure"
+       #":malli\.generator/such-that-failure"
        (mg/generate [:not :any])))
   (is (thrown-with-msg?
        #?(:clj Exception, :cljs js/Error)
@@ -1081,7 +1080,7 @@
        (mg/generate [:map-of {:min 2} [:= 1] :any])))
   (is (thrown-with-msg?
        #?(:clj Exception, :cljs js/Error)
-       #":malli\.generator/and-generator-failure"
+       #":malli\.generator/such-that-failure"
        (mg/generate [:and pos? neg?]))))
 
 (deftest seqable-every-generator-test

@@ -140,6 +140,7 @@
   (let [{:keys [min]} (-min-max schema options)
         el (-child schema options)]
     (gen-one-of
+     options
      (-> []
          (cond->
            (or (nil? min) (zero? min))

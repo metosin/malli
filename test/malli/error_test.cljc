@@ -6,7 +6,8 @@
             [malli.generator :as mg]
             [malli.util :as mu]
             #?(:clj [malli.test-macros :refer [when-env]]))
-  #?(:cljs (:require-macros [malli.test-macros :refer [when-env]])))
+  #?(:cljs (:require-macros [malli.test-macros :refer [when-env]]))
+  #?(:cljs (:import (goog Uri))))
 
 (deftest error-message-test
   (let [msg "should be an int"
@@ -372,28 +373,29 @@
              (me/humanize)))))
 
 (deftest double-test
-  (is (= {:a ["should be a double"]
-          :b ["should be at least 1"]
-          :c ["should be at most 4"]
-          :d [["should be at least 1"]
-              ["should be at most 4"]]
-          :e ["should be a double"]
-          :f ["should be 4"]}
-         (-> [:map
-              [:a :double]
-              [:b [:double {:min 1}]]
-              [:c [:double {:max 4}]]
-              [:d [:vector [:double {:min 1, :max 4}]]]
-              [:e [:double {:min 1, :max 4}]]
-              [:f [:double {:min 4, :max 4}]]]
-             (m/explain
-              {:a "123"
-               :b 0.0
-               :c 5.0
-               :d [0.0 5.0]
-               :e "123"
-               :f 5.0})
-             (me/humanize)))))
+  (doseq [t [:double :float]]
+    (is (= {:a [(str "should be a " (name t))]
+            :b ["should be at least 1"]
+            :c ["should be at most 4"]
+            :d [["should be at least 1"]
+                ["should be at most 4"]]
+            :e [(str "should be a " (name t))]
+            :f ["should be 4"]}
+           (-> [:map
+                [:a t]
+                [:b [t {:min 1}]]
+                [:c [t {:max 4}]]
+                [:d [:vector [t {:min 1, :max 4}]]]
+                [:e [t {:min 1, :max 4}]]
+                [:f [t {:min 4, :max 4}]]]
+               (m/explain
+                 {:a "123"
+                  :b 0.0
+                  :c 5.0
+                  :d [0.0 5.0]
+                  :e "123"
+                  :f 5.0})
+               (me/humanize))))))
 
 (deftest any-test
   (testing "success"
@@ -457,11 +459,11 @@
                (me/humanize))))))
 
 (deftest function-test
-  (is (= ["invalid function"]
+  (is (= ["should be a valid function"]
          (-> [:=> [:cat int? int?] int?]
              (m/explain malli.core-test/single-arity {::m/function-checker mg/function-checker})
              (me/humanize))))
-  (is (= ["invalid function"]
+  (is (= ["should be a valid function"]
          (-> [:=> [:cat int? int?] int?]
              (m/explain 123)
              (me/humanize)))))
@@ -793,3 +795,139 @@
      (is (= ["should be a"] (me/humanize (m/explain [:= 'a] 1))))
      (is (= ["should not be \"a\""] (me/humanize (m/explain [:not= "a"] "a"))))
      (is (= ["should not be a"] (me/humanize (m/explain [:not= 'a] 'a))))))
+
+(deftest not-humanize-test
+  (is (= ["should not be any"] (me/humanize (m/explain [:not any?] true))))
+  (is (= ["should not be some"] (me/humanize (m/explain [:not some?] true))))
+  (is (= ["should not be a number"] (me/humanize (m/explain [:not number?] 1))))
+  (is (= ["should not be an integer"] (me/humanize (m/explain [:not integer?] 1))))
+  (is (= ["should not be an int"] (me/humanize (m/explain [:not int?] 1))))
+  (is (= ["should not be a positive int"] (me/humanize (m/explain [:not pos-int?] 1))))
+  (is (= ["should not be a negative int"] (me/humanize (m/explain [:not neg-int?] -1))))
+  (is (= ["should not be a non-negative int"] (me/humanize (m/explain [:not nat-int?] 1))))
+  (is (= ["should not be positive"] (me/humanize (m/explain [:not pos?] 1))))
+  (is (= ["should not be negative"] (me/humanize (m/explain [:not neg?] -1))))
+  (is (= ["should not be a float"] (me/humanize (m/explain [:not float?] 1.23))))
+  (is (= ["should not be a double"] (me/humanize (m/explain [:not double?] 1.23))))
+  (is (= ["should not be a boolean"] (me/humanize (m/explain [:not boolean?] true))))
+  (is (= ["should not be a string"] (me/humanize (m/explain [:not string?] ""))))
+  (is (= ["should not be an ident"] (me/humanize (m/explain [:not ident?] 'a))))
+  (is (= ["should not be a simple ident"] (me/humanize (m/explain [:not simple-ident?] 'a))))
+  (is (= ["should not be a qualified ident"] (me/humanize (m/explain [:not qualified-ident?] ::a))))
+  (is (= ["should not be a keyword"] (me/humanize (m/explain [:not keyword?] :a))))
+  (is (= ["should not be a simple keyword"] (me/humanize (m/explain [:not simple-keyword?] :a))))
+  (is (= ["should not be a qualified keyword"] (me/humanize (m/explain [:not qualified-keyword?] ::a))))
+  (is (= ["should not be a symbol"] (me/humanize (m/explain [:not symbol?] 'a))))
+  (is (= ["should not be a simple symbol"] (me/humanize (m/explain [:not simple-symbol?] 'a))))
+  (is (= ["should not be a qualified symbol"] (me/humanize (m/explain [:not qualified-symbol?] `a))))
+  (is (= ["should not be a uuid"] (me/humanize (m/explain [:not uuid?] (random-uuid)))))
+  (is (= ["should not be a uri"] (me/humanize (m/explain [:not uri?] (#?(:clj java.net.URI.
+                                                                         :cljs Uri.
+                                                                         :default (throw (ex-info "Create URI" {})))
+                                                                              "http://asdf.com")))))
+  #?(:clj (is (= ["should not be a decimal"] (me/humanize (m/explain [:not decimal?] 1M)))))
+  (is (= ["should not be an inst"] (me/humanize (m/explain [:not inst?] #inst "2018-04-27T18:25:37Z"))))
+  (is (= ["should not be seqable"] (me/humanize (m/explain [:not seqable?] nil))))
+  (is (= ["should not be indexed"] (me/humanize (m/explain [:not indexed?] []))))
+  (is (= ["should not be a map"] (me/humanize (m/explain [:not map?] {}))))
+  (is (= ["should not be a vector"] (me/humanize (m/explain [:not vector?] []))))
+  (is (= ["should not be a list"] (me/humanize (m/explain [:not list?] (list)))))
+  (is (= ["should not be a seq"] (me/humanize (m/explain [:not seq?] (list)))))
+  (is (= ["should not be a char"] (me/humanize (m/explain [:not char?] \a))))
+  (is (= ["should not be a set"] (me/humanize (m/explain [:not set?] #{}))))
+  (is (= ["should not be nil"] (me/humanize (m/explain [:not nil?] nil))))
+  (is (= ["should not be false"] (me/humanize (m/explain [:not false?] false))))
+  (is (= ["should not be true"] (me/humanize (m/explain [:not true?] true))))
+  (is (= ["should not be zero"] (me/humanize (m/explain [:not zero?] 0))))
+  #?(:clj (is (= ["should not be a rational"] (me/humanize (m/explain [:not rational?] 1/2)))))
+  (is (= ["should not be a coll"] (me/humanize (m/explain [:not coll?] []))))
+  (is (= ["should not be empty"] (me/humanize (m/explain [:not empty?] []))))
+  (is (= ["should not be associative"] (me/humanize (m/explain [:not associative?] []))))
+  (is (= ["should not be sequential"] (me/humanize (m/explain [:not sequential?] []))))
+  #?(:clj (is (= ["should not be a ratio"] (me/humanize (m/explain [:not ratio?] 1/2)))))
+  #?(:clj (is (= ["should not be bytes"] (me/humanize (m/explain [:not bytes?] (byte-array 0))))))
+  (is (= ["should not match regex"] (me/humanize (m/explain [:not [:re #""]] ""))))
+  (is (= ["should not be a valid function"] (me/humanize (m/explain [:not [:=> :cat :any]] (fn [])))))
+  (is (= ["should not be an ifn"] (me/humanize (m/explain [:not ifn?] (fn [])))))
+  (is (= ["should not be a fn"] (me/humanize (m/explain [:not fn?] (fn [])))))
+  (is (= ["should not be 1"] (me/humanize (m/explain [:not [:enum 1]] 1))))
+  (is (= ["should not be either 1, 2 or 3"] (me/humanize (m/explain [:not [:enum 1 2 3]] 1))))
+  (is (= ["should not be any"] (me/humanize (m/explain [:not :any] 1))))
+  (is (= ["should not be nil"] (me/humanize (m/explain [:not :nil] nil))))
+  (is (= ["should not be a string"] (me/humanize (m/explain [:not :string] "a"))))
+  (is (= ["should not be at least 1 character"] (me/humanize (m/explain [:not [:string {:min 1}]] "a"))))
+  (is (= ["should not be at most 1 character"] (me/humanize (m/explain [:not [:string {:max 1}]] "a"))))
+  (is (= ["should not be 1 character"] (me/humanize (m/explain [:not [:string {:min 1 :max 1}]] "a"))))
+  (is (= ["should not be an integer"] (me/humanize (m/explain [:not :int] 1))))
+  (is (= ["should not be at least 1"] (me/humanize (m/explain [:not [:int {:min 1}]] 1))))
+  (is (= ["should not be at most 1"] (me/humanize (m/explain [:not [:int {:max 1}]] 1))))
+  (is (= ["should not be 1"] (me/humanize (m/explain [:not [:int {:min 1 :max 1}]] 1))))
+  (is (= ["should not be a double"] (me/humanize (m/explain [:not :double] 1.5))))
+  (is (= ["should not be at least 1.5"] (me/humanize (m/explain [:not [:double {:min 1.5}]] 1.5))))
+  (is (= ["should not be at most 1.5"] (me/humanize (m/explain [:not [:double {:max 1.5}]] 1.5))))
+  (is (= ["should not be 1.5"] (me/humanize (m/explain [:not [:double {:min 1.5 :max 1.5}]] 1.5))))
+  (is (= ["should not be a boolean"] (me/humanize (m/explain [:not :boolean] true))))
+  (is (= ["should not be a keyword"] (me/humanize (m/explain [:not :keyword] :a))))
+  (is (= ["should not be a symbol"] (me/humanize (m/explain [:not :symbol] 'a))))
+  (is (= ["should not be a qualified keyword"] (me/humanize (m/explain [:not :qualified-keyword] ::a))))
+  (is (= ["should not be a qualified symbol"] (me/humanize (m/explain [:not :qualified-symbol] `a))))
+  (is (= ["should not be a uuid"] (me/humanize (m/explain [:not :uuid] (random-uuid)))))
+  (is (= ["should be at most 1"] (me/humanize (m/explain [:not [:> 1]] 2))))
+  (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:>= 1]] 2))))
+  (is (= ["should be at least 1"] (me/humanize (m/explain [:not [:< 1]] 0))))
+  (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:<= 1]] 0))))
+  (is (= ["should not be 1"] (me/humanize (m/explain [:not [:= 1]] 1))))
+  (is (= ["should be 1"] (me/humanize (m/explain [:not [:not= 1]] nil)))))
+
+(deftest nested-not-humanize-test
+  (testing ":="
+    (is (= ["should be 1"]     (me/humanize (m/explain [:= 1] nil))))
+    (is (= ["should not be 1"] (me/humanize (m/explain [:not [:= 1]] 1))))
+    (is (= ["should be 1"]     (me/humanize (m/explain [:not [:not [:= 1]]] nil))))
+    (is (= ["should not be 1"] (me/humanize (m/explain [:not [:not [:not [:= 1]]]] 1))))
+    (is (= ["should be 1"]     (me/humanize (m/explain [:not [:not [:not [:not [:= 1]]]]] nil)))))
+  (testing ":>"
+    (is (= ["should be larger than 1"] (me/humanize (m/explain [:> 1] 0))))
+    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:> 1]] 2))))
+    (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:not [:> 1]]] 0))))
+    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:not [:not [:> 1]]]] 2))))
+    (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:not [:not [:not [:> 1]]]]] 0)))))
+  (testing ":>="
+    (is (= ["should be at least 1"]     (me/humanize (m/explain [:>= 1] 0))))
+    (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:>= 1]] 2))))
+    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:not [:>= 1]]] 0))))
+    (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:not [:not [:>= 1]]]] 2))))
+    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:not [:not [:not [:>= 1]]]]] 0)))))
+  (testing ":<"
+    (is (= ["should be smaller than 1"] (me/humanize (m/explain [:< 1] 2))))
+    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:< 1]] 0))))
+    (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:not [:< 1]]] 2))))
+    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:not [:not [:< 1]]]] 0))))
+    (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:not [:not [:not [:< 1]]]]] 2)))))
+  (testing ":<="
+    (is (= ["should be at most 1"]     (me/humanize (m/explain [:<= 1] 2))))
+    (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:<= 1]] 0))))
+    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:not [:<= 1]]] 2))))
+    (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:not [:not [:<= 1]]]] 0))))
+    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:not [:not [:not [:<= 1]]]]] 2))))))
+
+(deftest custom-negating-test
+  (is (= ["should be a multiple of 3"]
+         (me/humanize (m/explain [:fn {:error/message {:en "should be a multiple of 3"}} #(= 0 (mod % 3))] 2))))
+  (is (= ["should not be a multiple of 3"]
+         (me/humanize (m/explain [:not [:fn {:error/message {:en "should be a multiple of 3"}} #(= 0 (mod % 3))]] 3))))
+  (is (= ["should not be a multiple of 3 negated=false"]
+         (me/humanize (m/explain [:fn {:error/fn {:en (fn [{:keys [negated]} _] (str "should not be a multiple of 3 negated="
+                                                                                     (boolean negated)))}}
+                                  #(not= 0 (mod % 3))] 0))))
+  (is (= ["should be a multiple of 3 negating=true"]
+         (me/humanize (m/explain [:not [:fn {:error/fn {:en (fn [{:keys [negated]} _] (str "should not be a multiple of 3 negating="
+                                                                                            (boolean negated)))}}
+                                        #(not= 0 (mod % 3))]] 1))))
+  (testing ":negated disables implicit negation"
+    (is (= ["should not avoid being a multiple of 3"]
+           (me/humanize (m/explain [:not [:fn {:error/fn {:en (fn [{:keys [negated]} _]
+                                                                (if negated
+                                                                  (negated "should not avoid being a multiple of 3")
+                                                                  "should not be a multiple of 3"))}}
+                                          #(not= 0 (mod % 3))]] 1))))))

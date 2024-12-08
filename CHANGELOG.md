@@ -20,7 +20,9 @@ Malli is in well matured [alpha](README.md#alpha).
 * **BREAKING**: `:gen/fmap` property requires its schema to create a generator.
   * previous behavior defaulted to a `nil`-returning generator, even if the schema doesn't accept `nil`
   * use `:gen/return nil` property to restore this behavior
+* Support decoding map keys into keywords for `[:map` schemas in `json-transformer` [#1135](https://github.com/metosin/malli/issues/1135)
 * FIX: `malli.registry/{mode,type}` not respected in Babashka [#1124](https://github.com/metosin/malli/issues/1124)
+* FIX: `:float` missing humanizer [#1122](https://github.com/metosin/malli/issues/1122)
 * Updated dependencies:
 
 ```

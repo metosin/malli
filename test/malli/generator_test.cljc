@@ -1136,3 +1136,9 @@
                   [{} :map]]]
       (is (every? #{{:type nil} {:type {}}} (mg/sample schema)))
       (is (every? (m/validator schema) (mg/sample schema))))))
+
+(deftest seqable-generates-non-empty-with-positive-min-test
+  (is (seq (mg/generate [:seqable {:min 4 :max 4} :int] {:seed 0})))
+  (doseq [_ (range 100)
+          v (mg/sample [:seqable {:min 1} :any])]
+    (is (seq v))))

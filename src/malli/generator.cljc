@@ -137,9 +137,13 @@
     (-never-gen options)))
 
 (defn- -seqable-gen [schema options]
-  (let [el (-child schema options)]
-    (gen-one-of options
-     (-> [nil-gen]
+  (let [{:keys [min]} (-min-max schema options)
+        el (-child schema options)]
+    (gen-one-of
+     (-> []
+         (cond->
+           (or (nil? min) (zero? min))
+           (conj nil-gen))
          (into (map #(-coll-gen schema % options))
                [identity vec eduction #(into-array #?(:clj Object) %)])
          (conj (-coll-distinct-gen schema set options))

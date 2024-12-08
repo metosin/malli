@@ -3,16 +3,43 @@
             [malli.core :as m]
             [malli.util :as mu]))
 
+(declare default-errors error-message)
+
 (defn -pr-str [v] #?(:clj (pr-str v), :cljs (str v)))
 
 (defn -pred-min-max-error-fn [{:keys [pred message]}]
-  (fn [{:keys [schema value]} _]
+  (fn [{:keys [schema value negated]} _]
     (let [{:keys [min max]} (m/properties schema)]
       (cond
         (not (pred value)) message
         (and min (= min max)) (str "should be " min)
-        (and min (< value min)) (str "should be at least " min)
-        max (str "should be at most " max)))))
+        (and min ((if negated >= <) value min)) (str "should be at least " min)
+        max (str "should be at most " max)
+        negated message))))
+
+(let [prefix (str "-en-humanize-negation-" (random-uuid))]
+  (defn- -en-humanize-negation [{:keys [schema negated] :as error} options]
+    (if negated
+      (negated (error-message (dissoc error :negated) options))
+      (let [remove-prefix #(str/replace-first % prefix "")
+            negated? #(str/starts-with? % prefix)]
+        (loop [schema schema]
+          (or (when-some [s (error-message (assoc error :negated #(some->> % (str prefix))) options)]
+                (if (negated? s)
+                  (remove-prefix s)
+                  (or (when (and (string? s)
+                                 (str/starts-with? s "should not "))
+                        (str/replace-first s "should not" "should"))
+                      (when (and (string? s)
+                                 (str/starts-with? s "should "))
+                        (str/replace-first s "should" "should not")))))
+              (let [dschema (m/deref schema)]
+                (when-not (identical? schema dschema)
+                  (recur dschema)))))))))
+
+(defn- -forward-negation [?schema {:keys [negated] :as error} options]
+  (let [schema (m/schema ?schema options)]
+    (negated (error-message (-> error (dissoc :negated) (assoc :schema schema)) options))))
 
 (def default-errors
   {::unknown {:error/message {:en "unknown error"}}
@@ -64,8 +91,8 @@
    'uri? {:error/message {:en "should be a uri"}}
    #?@(:clj ['decimal? {:error/message {:en "should be a decimal"}}])
    'inst? {:error/message {:en "should be an inst"}}
-   'seqable? {:error/message {:en "should be a seqable"}}
-   'indexed? {:error/message {:en "should be an indexed"}}
+   'seqable? {:error/message {:en "should be seqable"}}
+   'indexed? {:error/message {:en "should be indexed"}}
    'map? {:error/message {:en "should be a map"}}
    'vector? {:error/message {:en "should be a vector"}}
    'list? {:error/message {:en "should be a list"}}
@@ -79,54 +106,66 @@
    #?@(:clj ['rational? {:error/message {:en "should be a rational"}}])
    'coll? {:error/message {:en "should be a coll"}}
    'empty? {:error/message {:en "should be empty"}}
-   'associative? {:error/message {:en "should be an associative"}}
-   'sequential? {:error/message {:en "should be a sequential"}}
+   'associative? {:error/message {:en "should be associative"}}
+   'sequential? {:error/message {:en "should be sequential"}}
    #?@(:clj ['ratio? {:error/message {:en "should be a ratio"}}])
    #?@(:clj ['bytes? {:error/message {:en "should be bytes"}}])
    :re {:error/message {:en "should match regex"}}
-   :=> {:error/message {:en "invalid function"}}
+   :=> {:error/message {:en "should be a valid function"}}
    'ifn? {:error/message {:en "should be an ifn"}}
-   'fn? {:error/message {:en "should be an fn"}}
+   'fn? {:error/message {:en "should be a fn"}}
    :enum {:error/fn {:en (fn [{:keys [schema]} _]
                            (str "should be "
                                 (if (= 1 (count (m/children schema)))
                                   (-pr-str (first (m/children schema)))
                                   (str "either " (->> (m/children schema) butlast (map -pr-str) (str/join ", "))
                                        " or " (-pr-str (last (m/children schema)))))))}}
+   :not {:error/fn {:en (fn [{:keys [schema] :as error} options]
+                          (-en-humanize-negation (assoc error :schema (-> schema m/children first)) options))}}
    :any {:error/message {:en "should be any"}}
    :nil {:error/message {:en "should be nil"}}
-   :string {:error/fn {:en (fn [{:keys [schema value]} _]
+   :string {:error/fn {:en (fn [{:keys [schema value negated]} _]
                              (let [{:keys [min max]} (m/properties schema)]
                                (cond
                                  (not (string? value)) "should be a string"
                                  (and min (= min max)) (str "should be " min " character" (when (not= 1 min) "s"))
-                                 (and min (< (count value) min)) (str "should be at least " min " character"
-                                                                      (when (not= 1 min) "s"))
-                                 max (str "should be at most " max " character" (when (not= 1 max) "s")))))}}
+                                 (and min ((if negated >= <) (count value) min)) (str "should be at least " min " character"
+                                                                                      (when (not= 1 min) "s"))
+                                 max (str "should be at most " max " character" (when (not= 1 max) "s"))
+                                 negated "should be a string")))}}
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
+   :float {:error/fn {:en (-pred-min-max-error-fn {:pred float?, :message "should be a float"})}}
    :boolean {:error/message {:en "should be a boolean"}}
    :keyword {:error/message {:en "should be a keyword"}}
    :symbol {:error/message {:en "should be a symbol"}}
    :qualified-keyword {:error/message {:en "should be a qualified keyword"}}
    :qualified-symbol {:error/message {:en "should be a qualified symbol"}}
    :uuid {:error/message {:en "should be a uuid"}}
-   :> {:error/fn {:en (fn [{:keys [schema value]} _]
-                        (if (number? value)
-                          (str "should be larger than " (first (m/children schema)))
-                          "should be a number"))}}
-   :>= {:error/fn {:en (fn [{:keys [schema value]} _]
-                         (if (number? value)
-                           (str "should be at least " (first (m/children schema)))
-                           "should be a number"))}}
-   :< {:error/fn {:en (fn [{:keys [schema value]} _]
-                        (if (number? value)
-                          (str "should be smaller than " (first (m/children schema)))
-                          "should be a number"))}}
-   :<= {:error/fn {:en (fn [{:keys [schema value]} _]
-                         (if (number? value)
-                           (str "should be at most " (first (m/children schema)))
-                           "should be a number"))}}
+   :> {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
+                        (if negated
+                          (-forward-negation [:<= (first (m/children schema))] error options)
+                          (if (number? value)
+                            (str "should be larger than " (first (m/children schema)))
+                            "should be a number")))}}
+   :>= {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
+                         (if negated
+                           (-forward-negation [:< (first (m/children schema))] error options)
+                           (if (number? value)
+                             (str "should be at least " (first (m/children schema)))
+                             "should be a number")))}}
+   :< {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
+                        (if negated
+                          (-forward-negation [:>= (first (m/children schema))] error options)
+                          (if (number? value)
+                            (str "should be smaller than " (first (m/children schema)))
+                            "should be a number")))}}
+   :<= {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
+                         (if negated
+                           (-forward-negation [:> (first (m/children schema))] error options)
+                           (if (number? value)
+                             (str "should be at most " (first (m/children schema)))
+                             "should be a number")))}}
    := {:error/fn {:en (fn [{:keys [schema]} _]
                         (str "should be " (-pr-str (first (m/children schema)))))}}
    :not= {:error/fn {:en (fn [{:keys [schema]} _]

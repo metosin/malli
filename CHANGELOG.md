@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## 0.17.0 (8.12.2024)
+## 0.17.0 (2024-12-08)
 
 * Don't output `:definitions nil` in swagger. [#1134](https://github.com/metosin/malli/issues/1134)
 * **BREAKING**: `:gen/fmap` property requires its schema to create a generator.

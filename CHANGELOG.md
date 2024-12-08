@@ -14,13 +14,15 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## 0.17.0 (UNRELEASED)
+## 0.17.0 (8.12.2024)
 
 * Don't output `:definitions nil` in swagger. [#1134](https://github.com/metosin/malli/issues/1134)
 * **BREAKING**: `:gen/fmap` property requires its schema to create a generator.
   * previous behavior defaulted to a `nil`-returning generator, even if the schema doesn't accept `nil`
   * use `:gen/return nil` property to restore this behavior
 * Support decoding map keys into keywords for `[:map` schemas in `json-transformer` [#1135](https://github.com/metosin/malli/issues/1135)
+* `:not` humanizer [#1138](https://github.com/metosin/malli/pull/1138)
+* FIX: `:seqable` generates `nil` when `:min` is greater than 0 [#1121](https://github.com/metosin/malli/issues/1121)
 * FIX: `malli.registry/{mode,type}` not respected in Babashka [#1124](https://github.com/metosin/malli/issues/1124)
 * FIX: `:float` accepts doubles but never generates them [#1132](https://github.com/metosin/malli/issues/1132)
 * FIX: `:float` missing humanizer [#1122](https://github.com/metosin/malli/issues/1122)

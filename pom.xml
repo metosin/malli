@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.16.4</version>
+  <version>0.17.0</version>
   <name>malli</name>
   <licenses>
     <license>
@@ -15,7 +15,7 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.16.4</tag>
+    <tag>0.17.0</tag>
   </scm>
   <dependencies>
     <dependency>

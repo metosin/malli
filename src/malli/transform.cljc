@@ -1,6 +1,7 @@
 (ns malli.transform
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
   (:require [malli.core :as m]
+            [malli.util :as mu]
             [clojure.math :as math]
             #?(:cljs [goog.date.UtcDateTime])
             #?(:cljs [goog.date.Date]))
@@ -191,8 +192,11 @@
          (catch #?(:clj Exception, :cljs js/Error) _ x))
     x))
 
-(defn -transform-map-keys [f]
-  #(cond->> % (map? %) (into {} (map (fn [[k v]] [(f k) v])))))
+(defn -transform-map-keys
+  ([f]
+   #(cond->> % (map? %) (into {} (map (fn [[k v]] [(f k) v])))))
+  ([ks f]
+   #(cond->> % (map? %) (into {} (map (fn [[k v]] [(cond-> k (contains? ks k) f) v]))))))
 
 (defn -transform-if-valid [f schema]
   (let [validator (m/-validator schema)]
@@ -403,7 +407,9 @@
 
 (defn json-transformer
   ([] (json-transformer nil))
-  ([{::keys [json-vectors map-of-key-decoders] :or {map-of-key-decoders (-string-decoders)}}]
+  ([{::keys [json-vectors
+             keywordize-map-keys
+             map-of-key-decoders] :or {map-of-key-decoders (-string-decoders)}}]
    (transformer
     {:name :json
      :decoders (-> (-json-decoders)
@@ -415,6 +421,13 @@
                                                             (-transform-if-valid key-schema)
                                                             (-transform-map-keys))
                                                     (-transform-map-keys m/-keyword->string))))})
+                   (cond-> keywordize-map-keys
+                     (assoc :map {:compile (fn [schema _]
+                                             (let [keyword-keys (->> (mu/keys schema)
+                                                                     (filter keyword?)
+                                                                     (map name)
+                                                                     set)]
+                                               (-transform-map-keys keyword-keys -string->keyword)))}))
                    (cond-> json-vectors (assoc :vector -sequential->vector)))
      :encoders (-json-encoders)})))
 

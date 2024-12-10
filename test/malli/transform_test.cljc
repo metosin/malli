@@ -1042,11 +1042,9 @@
       (is (= 7 (m/decode [:ref "bing"] nil opts transformer)))
       (is (= [7] (m/decode [:vector [:ref "bing"]] [nil] opts transformer)))
       (is (= {:a 7} (m/decode [:map [:a [:ref "bing"]]] {:a nil} opts transformer)))
-      ;; TODO fails
-      #_(is (= {:a 7} (m/decode [:map [:a [:ref "bing"]]] {} opts transformer)))
+      (is (= {:a 7} (m/decode [:map [:a [:ref "bing"]]] {} opts transformer)))
       (is (= {:a 8} (m/decode [:map [:a [:ref {:default 8} "bing"]]] {:a nil} opts transformer)))
-      ;; TODO fails
-      #_(is (= {:a 8} (m/decode [:map [:a [:ref {:default 8} "bing"]]] {} opts transformer))))))
+      (is (= {:a 8} (m/decode [:map [:a [:ref {:default 8} "bing"]]] {} opts transformer))))))
 
 (deftest type-properties-based-transformations
   (is (= 12 (m/decode malli.core-test/Over6 "12" mt/string-transformer))))

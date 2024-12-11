@@ -72,7 +72,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 [![Clojars Project](http://clojars.org/metosin/malli/latest-version.svg)](http://clojars.org/metosin/malli)
 
-Malli requires Clojure 1.11.
+Malli requires Clojure 1.11 or ClojureScript 1.11.51.
 
 Malli is tested with the LTS releases Java 8, 11, 17 and 21.
 

@@ -379,6 +379,8 @@
 
 (defn -reducing [f]
   (fn [_ children options]
+    (when (empty? children)
+      (m/-fail! ::reducing-children-must-be-non-empty))
     (let [[first & rest :as children] (mapv #(m/schema % options) children)]
       [children (mapv m/form children) (delay (reduce #(f %1 %2 options) first rest))])))
 

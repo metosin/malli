@@ -257,6 +257,7 @@
       (is (= (miu/-tagged :pos 1) (m/parse schema* 1)))
       (is (= ::m/invalid (m/parse schema* 0)))
       (is (= 1 (m/unparse schema* (miu/-tagged :pos 1))))
+      (is (= ::m/invalid (m/unparse schema* [:pos 1])))
       (is (= ::m/invalid (m/unparse schema* (miu/-tagged :pos 0))))
 
       (doseq [schema [schema schema*]]
@@ -1169,8 +1170,11 @@
       (is (= ::m/invalid (m/parse schema invalid5)))
       (is (= ::m/invalid (m/parse schema invalid6)))
       (is (= valid1 (m/unparse schema (m/parse schema valid1))))
+      (is (= valid1 (m/unparse schema (miu/-tagged :sized valid1))))
       (is (= valid2 (m/unparse schema (m/parse schema valid2))))
+      (is (= valid2 (m/unparse schema (miu/-tagged :human valid2))))
       (is (= valid3 (m/unparse schema (m/parse schema valid3))))
+      (is (= valid3 (m/unparse schema (miu/-tagged :sized valid3))))
       (is (= ::m/invalid (m/unparse schema invalid1)))
       (is (= ::m/invalid (m/unparse schema invalid2)))
       (is (= ::m/invalid (m/unparse schema invalid3)))
@@ -3206,10 +3210,10 @@
                     ["name" 'str]
                     [::m/default [:map-of 'str 'str]]]
             valid {:id 1, "name" "tommi", "kikka" "kukka", "abba" "jabba"}]
-        (is (= {:id [::int 1],
-                "name" [::str "tommi"]
-                [::str "kikka"] [::str "kukka"]
-                [::str "abba"] [::str "jabba"]}
+        (is (= {:id (miu/-tagged ::int 1)
+                "name" (miu/-tagged ::str "tommi")
+                (miu/-tagged ::str "kikka") (miu/-tagged ::str "kukka")
+                (miu/-tagged ::str "abba") (miu/-tagged ::str "jabba")}
                (m/parse schema valid)))
         (is (= valid (->> valid (m/parse schema) (m/unparse schema))))
         (is (= ::m/invalid (m/parse schema {"kukka" 42})))))
@@ -3310,7 +3314,7 @@
           value [:a]]
       (is (= true (m/validate schema value)))
       (is (= nil (m/explain schema value)))
-      (is (= [[:a :a]] (m/parse schema value)))
+      (is (= [(miu/-tagged :a :a)] (m/parse schema value)))
       (is (= value (m/unparse schema (m/parse schema value))))
       (is (= value (m/decode schema value nil))))))
 
@@ -3422,14 +3426,14 @@
         parsed (m/parse [:seqable [:orn [:l :int] [:r :boolean]]] original)
         unparsed (m/unparse [:seqable [:orn [:l :int] [:r :boolean]]] parsed)]
     (is (= original unparsed))
-    (is (= [[:l 0] [:r true] [:l 1] [:r false] [:l 2] [:r true] [:l 3] [:r false] [:l 4] [:r true] [:l 5]
-            [:r false] [:l 6] [:r true] [:l 7] [:r false] [:l 8] [:r true] [:l 9] [:r false]]
+    (is (= [(miu/-tagged :l 0) (miu/-tagged :r true) (miu/-tagged :l 1) (miu/-tagged :r false) (miu/-tagged :l 2) (miu/-tagged :r true) (miu/-tagged :l 3) (miu/-tagged :r false) (miu/-tagged :l 4) (miu/-tagged :r true) (miu/-tagged :l 5)
+            (miu/-tagged :r false) (miu/-tagged :l 6) (miu/-tagged :r true) (miu/-tagged :l 7) (miu/-tagged :r false) (miu/-tagged :l 8) (miu/-tagged :r true) (miu/-tagged :l 9) (miu/-tagged :r false)]
            parsed)))
   (let [original (sorted-set 1 2 3)
         parsed (m/parse [:seqable [:orn [:a :int]]] original)
         unparsed (m/unparse [:seqable [:orn [:a :int]]] parsed)]
     (is (= unparsed [1 2 3]))
-    (is (= parsed [[:a 1] [:a 2] [:a 3]]))))
+    (is (= parsed [(miu/-tagged :a 1) (miu/-tagged :a 2) (miu/-tagged :a 3)]))))
 
 (deftest every-schema-test
   (is (m/validate [:every :int] nil))

@@ -385,7 +385,7 @@
 ;;
 
 (defn -simple-entry-parser [keyset children forms]
-  (let [entries (map (fn [[k p s]] (miu/-tagged k (-val-schema s p))) children)]
+  (let [entries (map (fn [[k p s]] (miu/-entry k (-val-schema s p))) children)]
     (reify EntryParser
       (-entry-keyset [_] keyset)
       (-entry-children [_] children)
@@ -606,7 +606,7 @@
     (reify EntryParser
       (-entry-keyset [_] keyset)
       (-entry-children [_] @children)
-      (-entry-entries [_] (-vmap (fn [[k p s]] (miu/-tagged k (-val-schema s p))) @children))
+      (-entry-entries [_] (-vmap (fn [[k p s]] (miu/-entry k (-val-schema s p))) @children))
       (-entry-forms [_] (->> @children (-vmap (fn [[k p v]] (if p [k p (-form v)] [k (-form v)]))))))))
 
 (defn -from-entry-ast [parent ast options]
@@ -872,8 +872,8 @@
             (let [unparsers (into {} (map (fn [[k _ c]] [k (-unparser c)])) (-children this))]
               (fn [x]
                 (if (miu/-tagged? x)
-                  (if-some [unparse (get unparsers (key x))]
-                    (unparse (val x))
+                  (if-some [unparse (get unparsers (:key x))]
+                    (unparse (:value x))
                     ::invalid)
                   ::invalid))))
           (-transformer [this transformer method options]
@@ -1650,7 +1650,7 @@
                (fn [x] (if-some [parser (find (dispatch x))] (parser x) ::invalid))))
            (-unparser [_]
              (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} @dispatch-map)]
-               (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (key x))] (f (val x)) ::invalid) ::invalid))))
+               (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (:key x))] (f (:value x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
             ;; FIXME: Probably should not use `dispatch`
             ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:

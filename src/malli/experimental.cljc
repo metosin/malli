@@ -41,8 +41,8 @@
         _ (when (= ::m/invalid parsed) (m/-fail! ::parse-error {:schema schema, :args args}))
         parse (fn [{:keys [args] :as parsed}] (merge (md/parse args) parsed))
         ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
-        single (= :single (key arities))
-        parglists (if single (->> arities val parse vector) (->> arities val :arities (map parse)))
+        single (= :single (:key arities))
+        parglists (if single (->> arities :value parse vector) (->> arities :value :arities (map parse)))
         raw-arglists (map :raw-arglist parglists)
         schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
         bodies (map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
@@ -60,7 +60,7 @@
                        ~@(some-> doc vector)
                        ~enriched-meta
                        ~@bodies
-                       ~@(when-not single (some->> arities val :meta vector))))]
+                       ~@(when-not single (some->> arities :value :meta vector))))]
        (m/=> ~name ~schema)
        defn#)))
 

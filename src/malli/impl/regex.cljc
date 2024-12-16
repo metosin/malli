@@ -256,8 +256,8 @@
   (let [unparsers (into {} unparsers)]
     (fn [x]
       (if (miu/-tagged? x)
-        (if-some [kv (find unparsers (key x))]
-          ((val kv) (val x))
+        (if-some [kv (find unparsers (:key x))]
+          ((val kv) (:value x))
           :malli.core/invalid)
         :malli.core/invalid))))
 

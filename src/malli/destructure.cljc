@@ -96,7 +96,7 @@
                                      (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]]
       schema)))
 
-(defn -transform [{[k v] :arg schema :schema :as all} options rest]
+(defn -transform [{{k :key v :value} :arg schema :schema :as all} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
         schema schema
         (= :vec k) (-vector v options)

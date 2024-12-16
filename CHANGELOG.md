@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* **BREAKING** Output of `parse` now uses a `malli.impl.util.Tagged` record instead of a `clojure.lang.MapEntry` for `:orn`, `:multi`, `:altn`, etc. [#1123](https://github.com/metosin/malli/issues/1123)
+
 ## 0.17.0 (2024-12-08)
 
 * Don't output `:definitions nil` in swagger. [#1134](https://github.com/metosin/malli/issues/1134)

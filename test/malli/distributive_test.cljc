@@ -139,7 +139,7 @@
               [4 [:map [:y [:= 2]] [:z [:= 4]]]]]]])))
 
 (deftest parse-distributive-multi-test
-  (is (= [1 [3 {:y 1, :z 3}]]
+  (is (= (miu/-tagged 1 (miu/-tagged 3 {:y 1, :z 3}))
          (m/parse
            [:merge
             [:multi {:dispatch :y}

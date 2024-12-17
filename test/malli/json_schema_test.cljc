@@ -91,8 +91,8 @@
    [[:enum 'kikka 'kukka] {:type "string" :enum ['kikka 'kukka]}]
    [[:maybe string?] {:oneOf [{:type "string"} {:type "null"}]}]
    [[:tuple string? string?] {:type "array"
-                              :items [{:type "string"} {:type "string"}]
-                              :additionalItems false}]
+                              :prefixItems [{:type "string"} {:type "string"}]
+                              :items false}]
    [[:re "^[a-z]+\\.[a-z]+$"] {:type "string", :pattern "^[a-z]+\\.[a-z]+$"}]
    [[:fn {:gen/elements [1]} int?] {}]
    [:any {}]
@@ -355,8 +355,8 @@
           :required [:id :malli.json-schema-test/location `description],
           :definitions {"malli.json-schema-test/UserId" {:type "string"},
                         "malli.json-schema-test/location" {:type "array",
-                                                           :items [{:type "number"} {:type "number"}],
-                                                           :additionalItems false},
+                                                           :prefixItems [{:type "number"} {:type "number"}],
+                                                           :items false},
                         "malli.json-schema-test/description" {:type "string"},
                         "malli.json-schema-test/User" {:type "object",
                                                        :properties {:id {:$ref "#/definitions/malli.json-schema-test~1UserId"},

@@ -305,7 +305,8 @@
               dschema (m/deref schema)]
           (cond->> (generator dschema (assoc-in options [::rec-gen ref-id] scalar-ref-gen))
             (realized? scalar-ref-gen) (gen/recursive-gen
-                                        #(generator dschema (assoc-in options [::rec-gen ref-id] %))))))))
+                                        #(do #?(:clj (when (Thread/interrupted) (throw (InterruptedException.))))
+                                             (generator dschema (assoc-in options [::rec-gen ref-id] %)))))))))
 
 (defn -=>-gen [schema options]
   (let [output-generator (generator (:output (m/-function-info schema)) options)]

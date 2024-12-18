@@ -1124,3 +1124,19 @@
   (doseq [_ (range 100)
           v (mg/sample [:seqable {:min 1} :any])]
     (is (seq v))))
+
+#?(:clj
+   (deftest interrupt-recursive-gen-test
+     (let [started (promise)
+           finished (promise)
+           f (future
+               (deliver started true)
+               (try (mg/generate [:schema {:registry {::cons [:maybe [:vector [:tuple pos-int? [:ref ::cons]]]]}}
+                                  [:vector [:ref ::cons]]]
+                                 {:seed 1
+                                  :size 10000})
+                    (catch InterruptedException _ (deliver finished :interrupted))
+                    (finally (deliver finished :not-interrupted))))]
+       @started
+       (future-cancel f)
+       (is (= :interrupted (deref finished 1000 :interrupted))))))

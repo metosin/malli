@@ -39,7 +39,10 @@
   (let [{:keys [name return doc arities] body-meta :meta :as parsed} (m/parse schema args)
         var-meta (meta name)
         _ (when (= ::m/invalid parsed) (m/-fail! ::parse-error {:schema schema, :args args}))
-        parse (fn [{:keys [args] :as parsed}] (merge (md/parse args) parsed))
+        required-keys (or (:malli/required-keys var-meta) (:malli/required-keys body-meta))
+        parse (fn [{:keys [args] :as parsed}]
+                (merge (md/parse args {::md/required-keys (boolean required-keys)})
+                       parsed))
         ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
         single (= :single (key arities))
         parglists (if single (->> arities val parse vector) (->> arities val :arities (map parse)))

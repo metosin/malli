@@ -1099,28 +1099,28 @@
   (is (= {:name "kikka"
           :description "kikka"}
          (m/decode
-           [:map
-            [:name [:string {:default "kikka"}]]
-            [:description {:optional true} [:string {:default "kikka"}]] ]
-           {}
-           {:registry (merge (mu/schemas) (m/default-schemas))}
-           (mt/default-value-transformer {::mt/add-optional-keys true}))
+          [:map
+           [:name [:string {:default "kikka"}]]
+           [:description {:optional true} [:string {:default "kikka"}]]]
+          {}
+          {:registry (merge (mu/schemas) (m/default-schemas))}
+          (mt/default-value-transformer {::mt/add-optional-keys true}))
          (m/decode
-           [:merge
-            [:map [:name [:string {:default "kikka"}]] ]
-            [:map [:description {:optional true} [:string {:default "kikka"}]]]]
-           {}
-           {:registry (merge (mu/schemas) (m/default-schemas))}
-           (mt/default-value-transformer {::mt/add-optional-keys true})))))
+          [:merge
+           [:map [:name [:string {:default "kikka"}]]]
+           [:map [:description {:optional true} [:string {:default "kikka"}]]]]
+          {}
+          {:registry (merge (mu/schemas) (m/default-schemas))}
+          (mt/default-value-transformer {::mt/add-optional-keys true})))))
 
 (deftest -reducing-test
   (is (= :map (m/form (m/deref-all (m/schema [:merge [:merge :map]] {:registry (merge (mu/schemas) (m/default-schemas))})))))
   (is (= :map (m/form (m/deref-all (m/schema [:union [:union :map]] {:registry (merge (mu/schemas) (m/default-schemas))})))))
   (is (thrown-with-msg?
-        #?(:clj Exception, :cljs js/Error)
-        #":malli\.core/child-error"
-        (m/schema :merge {:registry (merge (mu/schemas) (m/default-schemas))})))
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.core/child-error"
+       (m/schema :merge {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (thrown-with-msg?
-        #?(:clj Exception, :cljs js/Error)
-        #":malli\.core/child-error"
-        (m/schema :union {:registry (merge (mu/schemas) (m/default-schemas))}))))
+       #?(:clj Exception, :cljs js/Error)
+       #":malli\.core/child-error"
+       (m/schema :union {:registry (merge (mu/schemas) (m/default-schemas))}))))

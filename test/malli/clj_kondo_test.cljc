@@ -53,21 +53,21 @@
 
 (defn clj-kondo-issue-1922-1 [_x])
 (m/=> clj-kondo-issue-1922-1
-      [:=> [:cat [:map [:keys [:+ :keyword]]]] :nil])
+  [:=> [:cat [:map [:keys [:+ :keyword]]]] :nil])
 
 (defn clj-kondo-issue-1922-2 [_x])
 (m/=> clj-kondo-issue-1922-2
-      [:=> [:cat [:map [:keys [:* :int]]]] :nil])
+  [:=> [:cat [:map [:keys [:* :int]]]] :nil])
 
 (defn clj-kondo-issue-1922-3 [_x])
 (m/=> clj-kondo-issue-1922-3
-      [:=> [:cat [:map [:keys [:? :string]]]] :nil])
+  [:=> [:cat [:map [:keys [:? :string]]]] :nil])
 
 (defn clj-kondo-issue-1922-4 [_x])
 (m/=> clj-kondo-issue-1922-4
-      [:function
-       [:=> [:cat :int :int] :nil]
-       [:=> [:cat :int :int [:repeat :int]] :nil]])
+  [:function
+   [:=> [:cat :int :int] :nil]
+   [:=> [:cat :int :int [:repeat :int]] :nil]])
 
 (defn clj-kondo-issue-836-1
   "Predicate `:fn` schema's should be type-checked as expecting to be passed `:any`, not a fn."

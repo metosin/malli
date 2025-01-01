@@ -40,7 +40,7 @@
 (def ^:private registry* (atom (simple-registry {})))
 
 (defn set-default-registry! [?registry]
-  (if-not #?(:cljs (identical? mode "strict")
+  (if-not #?(:cljs    (identical? mode "strict")
              :default (= mode "strict"))
     (reset! registry* (registry ?registry))
     (throw (ex-info "can't set default registry, invalid mode" {:mode mode, :type type}))))

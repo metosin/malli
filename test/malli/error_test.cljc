@@ -52,7 +52,7 @@
       (is (= [{:path ["deliverz"]
                :type ::me/misspelled-key
                ::me/likely-misspelling-of [["deliver"]]
-               :message #?(:clj "should be spelled \"deliver\""
+               :message #?(:clj  "should be spelled \"deliver\""
                            :cljs "should be spelled deliver")}]
              (-> [:map
                   ["orders" boolean?]
@@ -389,12 +389,12 @@
                 [:e [t {:min 1, :max 4}]]
                 [:f [t {:min 4, :max 4}]]]
                (m/explain
-                 {:a "123"
-                  :b 0.0
-                  :c 5.0
-                  :d [0.0 5.0]
-                  :e "123"
-                  :f 5.0})
+                {:a "123"
+                 :b 0.0
+                 :c 5.0
+                 :d [0.0 5.0]
+                 :e "123"
+                 :f 5.0})
                (me/humanize))))))
 
 (deftest any-test
@@ -435,24 +435,24 @@
                (m/explain "foo")
                (me/humanize)))))
   (testing "error with 1 value"
-    (is (= [#?(:clj "should be \"foo\""
+    (is (= [#?(:clj  "should be \"foo\""
                :cljs "should be foo")]
            (-> [:enum "foo"]
                (m/explain "baz")
                (me/humanize)))))
   (testing "error with 2 values"
-    (is (= [#?(:clj "should be either \"foo\" or \"bar\""
+    (is (= [#?(:clj  "should be either \"foo\" or \"bar\""
                :cljs "should be either foo or bar")]
            (-> [:enum "foo" "bar"]
                (m/explain "baz")
                (me/humanize)))))
   (testing "more than 2 values"
-    (is (= [#?(:clj "should be either \"foo\", \"bar\", bar or \"buzz\""
+    (is (= [#?(:clj  "should be either \"foo\", \"bar\", bar or \"buzz\""
                :cljs "should be either foo, bar, bar or buzz")]
            (-> [:enum "foo" "bar" 'bar "buzz"]
                (m/explain "baz")
                (me/humanize))))
-    (is (= [#?(:clj "should be either \"foo\", \"bar\", \"buzz\" or \"biff\""
+    (is (= [#?(:clj  "should be either \"foo\", \"bar\", \"buzz\" or \"biff\""
                :cljs "should be either foo, bar, buzz or biff")]
            (-> [:enum "foo" "bar" "buzz" "biff"]
                (m/explain "baz")
@@ -485,7 +485,7 @@
                (m/explain {:type "minuz"})
                (me/humanize))))
 
-    (is (= {:type [#?(:clj "did you mean \"minus\" or minus"
+    (is (= {:type [#?(:clj  "did you mean \"minus\" or minus"
                       :cljs "did you mean minus or minus")]}
            (-> schema
                (m/explain {:type "minuz"})
@@ -573,7 +573,7 @@
                (me/humanize {:resolve me/-resolve-root-error})))))
 
   (testing "enum #553"
-    (is (= {:a [#?(:clj "should be either \"a\", \"b\", a or b"
+    (is (= {:a [#?(:clj  "should be either \"a\", \"b\", a or b"
                    :cljs "should be either a, b, a or b")]}
            (-> [:map
                 [:a [:enum "a" "b" 'a 'b]]]
@@ -821,10 +821,10 @@
   (is (= ["should not be a simple symbol"] (me/humanize (m/explain [:not simple-symbol?] 'a))))
   (is (= ["should not be a qualified symbol"] (me/humanize (m/explain [:not qualified-symbol?] `a))))
   (is (= ["should not be a uuid"] (me/humanize (m/explain [:not uuid?] (random-uuid)))))
-  (is (= ["should not be a uri"] (me/humanize (m/explain [:not uri?] (#?(:clj java.net.URI.
-                                                                         :cljs Uri.
+  (is (= ["should not be a uri"] (me/humanize (m/explain [:not uri?] (#?(:clj     java.net.URI.
+                                                                         :cljs    Uri.
                                                                          :default (throw (ex-info "Create URI" {})))
-                                                                              "http://asdf.com")))))
+                                                                      "http://asdf.com")))))
   #?(:clj (is (= ["should not be a decimal"] (me/humanize (m/explain [:not decimal?] 1M)))))
   (is (= ["should not be an inst"] (me/humanize (m/explain [:not inst?] #inst "2018-04-27T18:25:37Z"))))
   (is (= ["should not be seqable"] (me/humanize (m/explain [:not seqable?] nil))))
@@ -881,35 +881,35 @@
 
 (deftest nested-not-humanize-test
   (testing ":="
-    (is (= ["should be 1"]     (me/humanize (m/explain [:= 1] nil))))
+    (is (= ["should be 1"] (me/humanize (m/explain [:= 1] nil))))
     (is (= ["should not be 1"] (me/humanize (m/explain [:not [:= 1]] 1))))
-    (is (= ["should be 1"]     (me/humanize (m/explain [:not [:not [:= 1]]] nil))))
+    (is (= ["should be 1"] (me/humanize (m/explain [:not [:not [:= 1]]] nil))))
     (is (= ["should not be 1"] (me/humanize (m/explain [:not [:not [:not [:= 1]]]] 1))))
-    (is (= ["should be 1"]     (me/humanize (m/explain [:not [:not [:not [:not [:= 1]]]]] nil)))))
+    (is (= ["should be 1"] (me/humanize (m/explain [:not [:not [:not [:not [:= 1]]]]] nil)))))
   (testing ":>"
     (is (= ["should be larger than 1"] (me/humanize (m/explain [:> 1] 0))))
-    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:> 1]] 2))))
+    (is (= ["should be at most 1"] (me/humanize (m/explain [:not [:> 1]] 2))))
     (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:not [:> 1]]] 0))))
-    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:not [:not [:> 1]]]] 2))))
+    (is (= ["should be at most 1"] (me/humanize (m/explain [:not [:not [:not [:> 1]]]] 2))))
     (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:not [:not [:not [:> 1]]]]] 0)))))
   (testing ":>="
-    (is (= ["should be at least 1"]     (me/humanize (m/explain [:>= 1] 0))))
+    (is (= ["should be at least 1"] (me/humanize (m/explain [:>= 1] 0))))
     (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:>= 1]] 2))))
-    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:not [:>= 1]]] 0))))
+    (is (= ["should be at least 1"] (me/humanize (m/explain [:not [:not [:>= 1]]] 0))))
     (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:not [:not [:>= 1]]]] 2))))
-    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:not [:not [:not [:>= 1]]]]] 0)))))
+    (is (= ["should be at least 1"] (me/humanize (m/explain [:not [:not [:not [:not [:>= 1]]]]] 0)))))
   (testing ":<"
     (is (= ["should be smaller than 1"] (me/humanize (m/explain [:< 1] 2))))
-    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:< 1]] 0))))
+    (is (= ["should be at least 1"] (me/humanize (m/explain [:not [:< 1]] 0))))
     (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:not [:< 1]]] 2))))
-    (is (= ["should be at least 1"]     (me/humanize (m/explain [:not [:not [:not [:< 1]]]] 0))))
+    (is (= ["should be at least 1"] (me/humanize (m/explain [:not [:not [:not [:< 1]]]] 0))))
     (is (= ["should be smaller than 1"] (me/humanize (m/explain [:not [:not [:not [:not [:< 1]]]]] 2)))))
   (testing ":<="
-    (is (= ["should be at most 1"]     (me/humanize (m/explain [:<= 1] 2))))
+    (is (= ["should be at most 1"] (me/humanize (m/explain [:<= 1] 2))))
     (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:<= 1]] 0))))
-    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:not [:<= 1]]] 2))))
+    (is (= ["should be at most 1"] (me/humanize (m/explain [:not [:not [:<= 1]]] 2))))
     (is (= ["should be larger than 1"] (me/humanize (m/explain [:not [:not [:not [:<= 1]]]] 0))))
-    (is (= ["should be at most 1"]     (me/humanize (m/explain [:not [:not [:not [:not [:<= 1]]]]] 2))))))
+    (is (= ["should be at most 1"] (me/humanize (m/explain [:not [:not [:not [:not [:<= 1]]]]] 2))))))
 
 (deftest custom-negating-test
   (is (= ["should be a multiple of 3"]
@@ -922,7 +922,7 @@
                                   #(not= 0 (mod % 3))] 0))))
   (is (= ["should be a multiple of 3 negating=true"]
          (me/humanize (m/explain [:not [:fn {:error/fn {:en (fn [{:keys [negated]} _] (str "should not be a multiple of 3 negating="
-                                                                                            (boolean negated)))}}
+                                                                                           (boolean negated)))}}
                                         #(not= 0 (mod % 3))]] 1))))
   (testing ":negated disables implicit negation"
     (is (= ["should not avoid being a multiple of 3"]

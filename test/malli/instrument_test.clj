@@ -120,9 +120,9 @@
   (m/=> reinstrumented [:-> [:= 2]])
   (instrument!)
   (is (thrown-with-msg?
-        Exception
-        #":malli\.core/invalid-output"
-        (reinstrumented)))
+       Exception
+       #":malli\.core/invalid-output"
+       (reinstrumented)))
   (m/=> reinstrumented [:-> [:= 1]])
   (instrument!)
   (is (= 1 (reinstrumented))))

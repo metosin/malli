@@ -16,73 +16,73 @@
 
 (deftest distributive-multi-test
   (is (= (dist
-           [:merge
-            [:map [:x :int]]
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]])
+          [:merge
+           [:map [:x :int]]
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]])
          [:multi {:dispatch :y}
           [1 [:map [:x :int] [:y [:= 1]]]]
           [2 [:map [:x :int] [:y [:= 2]]]]]))
   (is (= (dist
-           [:merge
-            [:map [:x :int]]
-            [:schema
-             [:multi {:dispatch :y}
-              [1 [:map [:y [:= 1]]]]
-              [2 [:map [:y [:= 2]]]]]]])
+          [:merge
+           [:map [:x :int]]
+           [:schema
+            [:multi {:dispatch :y}
+             [1 [:map [:y [:= 1]]]]
+             [2 [:map [:y [:= 2]]]]]]])
          [:multi {:dispatch :y}
           [1 [:map [:x :int] [:y [:= 1]]]]
           [2 [:map [:x :int] [:y [:= 2]]]]]))
   (is (= (dist
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:map [:x :int]]])
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:map [:x :int]]])
          [:multi {:dispatch :y}
           [1 [:map [:y [:= 1]] [:x :int]]]
           [2 [:map [:y [:= 2]] [:x :int]]]]))
   (is (= (dist
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:map [:x :int]]
+           [:map [:z :int]]])
+         (dist
+          [:merge
            [:merge
             [:multi {:dispatch :y}
              [1 [:map [:y [:= 1]]]]
              [2 [:map [:y [:= 2]]]]]
-            [:map [:x :int]]
-            [:map [:z :int]]])
+            [:map [:x :int]]]
+           [:map [:z :int]]])
+         [:multi {:dispatch :y}
+          [1 [:map [:y [:= 1]] [:x :int] [:z :int]]]
+          [2 [:map [:y [:= 2]] [:x :int] [:z :int]]]]))
+  (is (= (dist
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:map [:x :int]]
+           [:map [:z :int]]
+           [:multi {:dispatch :y}
+            [3 [:map [:y [:= 3]]]]
+            [4 [:map [:y [:= 4]]]]]])
          (dist
+          [:merge
            [:merge
             [:merge
              [:multi {:dispatch :y}
               [1 [:map [:y [:= 1]]]]
               [2 [:map [:y [:= 2]]]]]
              [:map [:x :int]]]
-            [:map [:z :int]]])
-         [:multi {:dispatch :y}
-          [1 [:map [:y [:= 1]] [:x :int] [:z :int]]]
-          [2 [:map [:y [:= 2]] [:x :int] [:z :int]]]]))
-  (is (= (dist
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:map [:x :int]]
-            [:map [:z :int]]
-            [:multi {:dispatch :y}
-             [3 [:map [:y [:= 3]]]]
-             [4 [:map [:y [:= 4]]]]]])
-         (dist
-           [:merge
-            [:merge
-             [:merge
-              [:multi {:dispatch :y}
-               [1 [:map [:y [:= 1]]]]
-               [2 [:map [:y [:= 2]]]]]
-              [:map [:x :int]]]
-             [:map [:z :int]]]
-             [:multi {:dispatch :y}
-              [3 [:map [:y [:= 3]]]]
-              [4 [:map [:y [:= 4]]]]]])
+            [:map [:z :int]]]
+           [:multi {:dispatch :y}
+            [3 [:map [:y [:= 3]]]]
+            [4 [:map [:y [:= 4]]]]]])
          [:multi {:dispatch :y}
           [1 [:multi {:dispatch :y}
               [3 [:map [:y [:= 3]] [:x :int] [:z :int]]]
@@ -91,15 +91,15 @@
               [3 [:map [:y [:= 3]] [:x :int] [:z :int]]]
               [4 [:map [:y [:= 4]] [:x :int] [:z :int]]]]]]))
   (is (= (dist
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:map [:x :int]]
-            [:map [:z :int]]
-            [:multi {:dispatch :a}
-             [3 [:map [:a [:= 3]]]]
-             [4 [:map [:a [:= 4]]]]]])
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:map [:x :int]]
+           [:map [:z :int]]
+           [:multi {:dispatch :a}
+            [3 [:map [:a [:= 3]]]]
+            [4 [:map [:a [:= 4]]]]]])
          [:multi {:dispatch :y}
           [1 [:multi {:dispatch :a}
               [3 [:map [:y [:= 1]] [:x :int] [:z :int] [:a [:= 3]]]]
@@ -108,13 +108,13 @@
               [3 [:map [:y [:= 2]] [:x :int] [:z :int] [:a [:= 3]]]]
               [4 [:map [:y [:= 2]] [:x :int] [:z :int] [:a [:= 4]]]]]]]))
   (is (= (dist
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:multi {:dispatch :y}
-             [3 [:map [:y [:= 3]]]]
-             [4 [:map [:y [:= 4]]]]]])
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:multi {:dispatch :y}
+            [3 [:map [:y [:= 3]]]]
+            [4 [:map [:y [:= 4]]]]]])
          [:multi {:dispatch :y}
           [1 [:multi {:dispatch :y}
               [3 [:map [:y [:= 3]]]]
@@ -123,13 +123,13 @@
               [3 [:map [:y [:= 3]]]]
               [4 [:map [:y [:= 4]]]]]]]))
   (is (= (dist
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:multi {:dispatch :z}
-             [3 [:map [:z [:= 3]]]]
-             [4 [:map [:z [:= 4]]]]]])
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:multi {:dispatch :z}
+            [3 [:map [:z [:= 3]]]]
+            [4 [:map [:z [:= 4]]]]]])
          [:multi {:dispatch :y}
           [1 [:multi {:dispatch :z}
               [3 [:map [:y [:= 1]] [:z [:= 3]]]]
@@ -141,25 +141,25 @@
 (deftest parse-distributive-multi-test
   (is (= [1 [3 {:y 1, :z 3}]]
          (m/parse
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:multi {:dispatch :z}
-             [3 [:map [:z [:= 3]]]]
-             [4 [:map [:z [:= 4]]]]]]
-           {:y 1 :z 3}
-           options))))
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:multi {:dispatch :z}
+            [3 [:map [:z [:= 3]]]]
+            [4 [:map [:z [:= 4]]]]]]
+          {:y 1 :z 3}
+          options))))
 
 (deftest gen-distributive-multi-test
   (is (= [{:y 1, :z 3} {:y 2, :z 4} {:y 2, :z 3} {:y 2, :z 3} {:y 1, :z 4}
           {:y 1, :z 3} {:y 1, :z 3} {:y 1, :z 3} {:y 1, :z 3} {:y 2, :z 4}]
          (mg/sample
-           [:merge
-            [:multi {:dispatch :y}
-             [1 [:map [:y [:= 1]]]]
-             [2 [:map [:y [:= 2]]]]]
-            [:multi {:dispatch :z}
-             [3 [:map [:z [:= 3]]]]
-             [4 [:map [:z [:= 4]]]]]]
-           (assoc options :seed 0)))))
+          [:merge
+           [:multi {:dispatch :y}
+            [1 [:map [:y [:= 1]]]]
+            [2 [:map [:y [:= 2]]]]]
+           [:multi {:dispatch :z}
+            [3 [:map [:z [:= 3]]]]
+            [4 [:map [:z [:= 4]]]]]]
+          (assoc options :seed 0)))))

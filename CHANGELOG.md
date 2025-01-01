@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## 
+
+* Docs: elaborate optional-keys and required-keys [#1117](https://github.com/metosin/malli/pull/1117)
+
 ## 0.17.0 (2024-12-08)
 
 * Don't output `:definitions nil` in swagger. [#1134](https://github.com/metosin/malli/issues/1134)

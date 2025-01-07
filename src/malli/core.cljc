@@ -1011,6 +1011,8 @@
              ->parser (fn [this f]
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
+                              ;; prevent unparsing :catn/:orn/etc parse results as maps
+                              ok? #(and (pred? %) (not (miu/-tagged? %)) (not (miu/-tags? %)))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1035,7 +1037,7 @@
                                                 (reduce
                                                  (fn [m k] (if (contains? keyset k) m (reduced (reduced ::invalid))))
                                                  m (keys m)))))]
-                          (fn [x] (if (pred? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
+                          (fn [x] (if (ok? x) (reduce (fn [m parser] (parser m)) x parsers) ::invalid))))]
          ^{:type ::schema}
          (reify
            AST

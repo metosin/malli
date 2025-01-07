@@ -3018,6 +3018,26 @@
   (is (= ["1" 2 "3"] (m/unparse [:catn [:a string?] [:b int?] [:c string?]] (miu/-tags {:a "1" :b 2 :c "3"}))))
   (is (= ::m/invalid (m/unparse [:catn [:a string?] [:b int?] [:c string?]] (miu/-tags {:a 1 :b 2 :c 3})))))
 
+(deftest unparse-confusion-test
+  ;; parse-unparse should roundtrip even for weird situations where
+  ;; the schema tries to match on the result of unparse. See #1150 #1153.
+  (let [s [:or
+           [:tuple :string :keyword]
+           [:orn ["any" :keyword]]]]
+    (is (= :k (m/unparse s (m/parse s :k)))))
+  (let [s [:or
+           [:map [:key :string] [:value :keyword]]
+           [:orn ["any" :keyword]]]]
+    (is (= :k (m/unparse s (m/parse s :k)))))
+  (let [s [:or
+           [:map [:s :string]]
+           [:catn [:s :string]]]]
+    (is (= ["k"] (m/unparse s (m/parse s ["k"])))))
+  (let [s [:or
+           [:map [:values [:map [:s :string]]]]
+           [:catn [:s :string]]]]
+    (is (= ["k"] (m/unparse s (m/parse s ["k"]))))))
+
 (deftest repeat-unparse-test
   (is (m/validate [:repeat {:min 1 :max 2} [:cat :int :int]] [1 2 3 4]))
   (is (= [[1 2] [3 4]] (m/parse [:repeat {:min 1 :max 2} [:cat :int :int]] [1 2 3 4])))

@@ -12,6 +12,11 @@
 (defn -tagged [key value] (->Tagged key value))
 (defn -tagged? [x] (instance? Tagged x))
 
+(defrecord Tags [values])
+
+(defn -tags [values] (->Tags values))
+(defn -tags? [x] (instance? Tags x))
+
 (defn -invalid? [x] #?(:clj (identical? x :malli.core/invalid), :cljs (keyword-identical? x :malli.core/invalid)))
 (defn -map-valid [f v] (if (-invalid? v) v (f v)))
 (defn -map-invalid [f v] (if (-invalid? v) (f v) v))

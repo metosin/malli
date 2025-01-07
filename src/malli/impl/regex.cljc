@@ -173,13 +173,13 @@
      (fn [driver regs pos coll k] (sp driver regs [] pos coll k)))))
 
 (defn catn-parser
-  ([] (fn [_ _ pos coll k] (k {} pos coll)))
+  ([] (fn [_ _ pos coll k] (k (miu/-tags {}) pos coll)))
   ([kr & krs]
    (let [sp (reduce (fn [acc [tag r]]
                       (fn [driver regs m pos coll k]
                         (r driver regs pos coll
                            (fn [v pos coll] (acc driver regs (assoc m tag v) pos coll k)))))
-                    (fn [_ _ m pos coll k] (k m pos coll))
+                    (fn [_ _ m pos coll k] (k (miu/-tags m) pos coll))
                     (reverse (cons kr krs)))]
      (fn [driver regs pos coll k] (sp driver regs {} pos coll k)))))
 
@@ -194,9 +194,9 @@
 (defn catn-unparser [& unparsers]
   (let [unparsers (apply array-map (mapcat identity unparsers))]
     (fn [m]
-      (if (and (map? m) (= (count m) (count unparsers)))
+      (if (and (miu/-tags? m) (= (count (:values m)) (count unparsers)))
         (miu/-reduce-kv-valid (fn [coll tag unparser]
-                                (if-some [kv (find m tag)]
+                                (if-some [kv (find (:values m) tag)]
                                   (miu/-map-valid #(into coll %) (unparser (val kv)))
                                   :malli.core/invalid))
                               ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:

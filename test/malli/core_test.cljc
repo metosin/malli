@@ -1622,7 +1622,7 @@
               0 nil [{:path [], :in [], :schema s, :value 0, :type ::m/invalid-type}]
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
-              [] {} nil
+              [] (miu/-tags {}) nil
               [0] nil [{:path [], :in [0], :schema s, :value 0, :type ::m/input-remaining}])))
 
         (testing "single"
@@ -1638,7 +1638,7 @@
               "foo" nil [{:path [], :in [], :schema s, :value "foo", :type ::m/invalid-type}]
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
               [] nil [{:path [(case typ :catn :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
-              ["foo"] {:s "foo"} nil
+              ["foo"] (miu/-tags {:s "foo"}) nil
               [0] nil [{:path [(case typ :catn :s 0)], :in [0], :schema string?, :value 0}]
               ["foo" "bar"] nil [{:path [], :in [1], :schema s, :value "bar", :type ::m/input-remaining}])))
 
@@ -1656,7 +1656,7 @@
               nil nil [{:path [], :in [], :schema s, :value nil, :type ::m/invalid-type}]
               [] nil [{:path [(case typ :catn :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
               ["foo"] nil [{:path [(case typ :catn :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
-              ["foo" 0] {:s "foo", :n 0} nil
+              ["foo" 0] (miu/-tags {:s "foo", :n 0}) nil
               ["foo" "bar"] nil [{:path [(case typ :catn :n 1)], :in [1], :schema int?, :value "bar"}]
               [1 2] nil [{:path [(case typ :catn :s 0)], :in [0], :schema string?, :value 1}]
               ["foo" 0 1] nil [{:path [], :in [2], :schema s, :value 1, :type ::m/input-remaining}])))
@@ -1677,7 +1677,7 @@
               [] nil [{:path [(case typ :catn :s 0)], :in [0], :schema string?, :value nil, :type ::m/end-of-input}]
               ["foo"] nil [{:path [(case typ :catn :n 1)], :in [1], :schema int?, :value nil, :type ::m/end-of-input}]
               ["foo" 0] nil [{:path [(case typ :catn :k 2)], :in [2], :schema keyword?, :value nil, :type ::m/end-of-input}]
-              ["foo" 0 :bar] {:s "foo", :n 0, :k :bar} nil
+              ["foo" 0 :bar] (miu/-tags {:s "foo", :n 0, :k :bar}) nil
               ["foo" 0 "bar"] nil [{:path [(case typ :catn :k 2)], :in [2], :schema keyword?, :value "bar"}]
               ["foo" 0 :bar 0] nil [{:path [], :in [3], :schema s, :value 0, :type ::m/input-remaining}])))
 
@@ -1688,9 +1688,9 @@
             (is (m/validate s v))
 
             (is (= [[4 4 4] 4] (m/parse s v)))
-            (is (= {:pos [4 4 4], :four 4} (m/parse s* v)))
+            (is (= (miu/-tags {:pos [4 4 4], :four 4}) (m/parse s* v)))
             (is (= v (m/unparse s [[4 4 4] 4])))
-            (is (= v (m/unparse s* {:pos [4 4 4], :four 4})))))))
+            (is (= v (m/unparse s* (miu/-tags {:pos [4 4 4], :four 4}))))))))
 
     (doseq [typ [:alt :altn]]
       (testing typ
@@ -3013,8 +3013,10 @@
       (is (m/schema? (via-ast 'my/bigger-than-5))))))
 
 (deftest cat-catn-unparse-test
+  (is (= ["1" 2 "3"] (m/unparse [:cat string? int? string?] ["1" 2 "3"])))
   (is (= ::m/invalid (m/unparse [:cat string? int? string?] [1 2 3])))
-  (is (= ::m/invalid (m/unparse [:catn [:a string?] [:b int?] [:c string?]] {:a 1 :b 2 :c 3}))))
+  (is (= ["1" 2 "3"] (m/unparse [:catn [:a string?] [:b int?] [:c string?]] (miu/-tags {:a "1" :b 2 :c "3"}))))
+  (is (= ::m/invalid (m/unparse [:catn [:a string?] [:b int?] [:c string?]] (miu/-tags {:a 1 :b 2 :c 3})))))
 
 (deftest repeat-unparse-test
   (is (m/validate [:repeat {:min 1 :max 2} [:cat :int :int]] [1 2 3 4]))

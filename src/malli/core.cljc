@@ -148,6 +148,27 @@
 #?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
 
+(defrecord Tag [key value])
+
+(defn tag
+  "A tagged value, used eg. for results of `parse` for `:orn` schemas."
+  [key value] (->Tag key value))
+
+(defn tag?
+  "Is this a value constructed with `tag`?"
+  [x] (instance? Tag x))
+
+(defrecord Tags [values])
+
+(defn tags
+  "A collection of tagged values. `values` should be a map from tag to value.
+   Used eg. for results of `parse` for `:catn` schemas."
+  [values] (->Tags values))
+
+(defn tags?
+  "Is this a value constructed with `tags`?"
+  [x] (instance? Tags x))
+
 ;;
 ;; impl
 ;;
@@ -865,13 +886,13 @@
           (-parser [this]
             (let [parsers (-vmap (fn [[k _ c]]
                                    (let [c (-parser c)]
-                                     (fn [x] (miu/-map-valid #(reduced (miu/-tagged k %)) (c x)))))
+                                     (fn [x] (miu/-map-valid #(reduced (tag k %)) (c x)))))
                                  (-children this))]
               (fn [x] (reduce (fn [_ parser] (parser x)) x parsers))))
           (-unparser [this]
             (let [unparsers (into {} (map (fn [[k _ c]] [k (-unparser c)])) (-children this))]
               (fn [x]
-                (if (miu/-tagged? x)
+                (if (tag? x)
                   (if-some [unparse (get unparsers (:key x))]
                     (unparse (:value x))
                     ::invalid)
@@ -1012,7 +1033,7 @@
                         (let [keyset (-entry-keyset (-entry-parser this))
                               default-parser (some-> @default-schema (f))
                               ;; prevent unparsing :catn/:orn/etc parse results as maps
-                              ok? #(and (pred? %) (not (miu/-tagged? %)) (not (miu/-tags? %)))
+                              ok? #(and (pred? %) (not (tag? %)) (not (tags? %)))
                               parsers (cond->> (-vmap
                                                 (fn [[key {:keys [optional]} schema]]
                                                   (let [parser (f schema)]
@@ -1647,12 +1668,12 @@
                    (let [->path (if (and (map? x) (keyword? dispatch)) #(conj % dispatch) identity)]
                      (conj acc (miu/-error (->path path) (->path in) this x ::invalid-dispatch-value)))))))
            (-parser [_]
-             (let [parse (fn [k s] (let [p (-parser s)] (fn [x] (miu/-map-valid #(miu/-tagged k %) (p x)))))
+             (let [parse (fn [k s] (let [p (-parser s)] (fn [x] (miu/-map-valid #(tag k %) (p x)))))
                    find (finder (reduce-kv (fn [acc k s] (assoc acc k (parse k s))) {} @dispatch-map))]
                (fn [x] (if-some [parser (find (dispatch x))] (parser x) ::invalid))))
            (-unparser [_]
              (let [unparsers (reduce-kv (fn [acc k s] (assoc acc k (-unparser s))) {} @dispatch-map)]
-               (fn [x] (if (miu/-tagged? x) (if-some [f (unparsers (:key x))] (f (:value x)) ::invalid) ::invalid))))
+               (fn [x] (if (tag? x) (if-some [f (unparsers (:key x))] (f (:value x)) ::invalid) ::invalid))))
            (-transformer [this transformer method options]
             ;; FIXME: Probably should not use `dispatch`
             ;; Can't use `dispatch` as `x` might not be valid before it has been unparsed:
@@ -2685,15 +2706,15 @@
    :catn (-sequence-entry-schema {:type :catn, :child-bounds {}, :keep false
                                   :re-validator (fn [_ children] (apply re/cat-validator children))
                                   :re-explainer (fn [_ children] (apply re/cat-explainer children))
-                                  :re-parser (fn [_ children] (apply re/catn-parser children))
-                                  :re-unparser (fn [_ children] (apply re/catn-unparser children))
+                                  :re-parser (fn [_ children] (apply re/catn-parser tags children))
+                                  :re-unparser (fn [_ children] (apply re/catn-unparser tags? children))
                                   :re-transformer (fn [_ children] (apply re/cat-transformer children))
                                   :re-min-max (fn [_ children] (reduce (partial -re-min-max +) {:min 0, :max 0} (-vmap last children)))})
    :altn (-sequence-entry-schema {:type :altn, :child-bounds {:min 1}, :keep false
                                   :re-validator (fn [_ children] (apply re/alt-validator children))
                                   :re-explainer (fn [_ children] (apply re/alt-explainer children))
-                                  :re-parser (fn [_ children] (apply re/altn-parser children))
-                                  :re-unparser (fn [_ children] (apply re/altn-unparser children))
+                                  :re-parser (fn [_ children] (apply re/altn-parser tag children))
+                                  :re-unparser (fn [_ children] (apply re/altn-unparser tag? children))
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 

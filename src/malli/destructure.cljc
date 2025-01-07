@@ -1,7 +1,6 @@
 (ns malli.destructure
   (:require [clojure.walk :as walk]
-            [malli.core :as m]
-            [malli.impl.util :as miu]))
+            [malli.core :as m]))
 
 (defn -map-like? [x] (or (map? x) (and (seqable? x) (every? (fn [e] (and (vector? e) (= 2 (count e)))) x))))
 (defn -qualified-key? [k] (and (qualified-keyword? k) (-> k name #{"keys" "syms"})))
@@ -78,7 +77,7 @@
   (let [any (fn [f ks] (map (fn [k] [(f k) :any]) ks))]
     (->> (concat (any keyword keys) (any str strs) (any identity syms)
                  (map (fn [k] [k (if (and references (qualified-keyword? k)) k :any)]) (-qualified-keys arg))
-                 (map (fn [[k v]] [v (-transform (miu/-tags {:arg k}) options false)]) (filter #(miu/-tagged? (key %)) arg)))
+                 (map (fn [[k v]] [v (-transform (m/tags {:arg k}) options false)]) (filter #(m/tag? (key %)) arg)))
          (distinct))))
 
 (defn -map [arg {:keys [::references ::required-keys ::closed-maps ::sequential-maps]

@@ -2445,9 +2445,10 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
               [:s string?]
               [:b boolean?]]]]]
   ["-server" "foo" "-verbose" true "-user" "joe"])
-;[{:prop "-server", :val [:s "foo"]}
-; {:prop "-verbose", :val [:b true]}
-; {:prop "-user", :val [:s "joe"]}]
+;[#malli.core.Tags{:values {:prop "-server", :val #malli.core.Tag{:key :s, :value "foo"}}}
+; #malli.core.Tags{:values {:prop "-verbose", :val #malli.core.Tag{:key :b, :value true}}}
+; #malli.core.Tags{:values {:prop "-user", :val #malli.core.Tag{:key :s, :value "joe"}}}]
+
 ```
 
 `m/parser` to create an optimized parser:
@@ -2471,13 +2472,25 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 (parse-hiccup
   [:div {:class [:foo :bar]}
    [:p "Hello, world of data"]])
-;[:node
-; {:name :div
-;  :props {:class [:foo :bar]}
-;  :children [[:node
-;              {:name :p
-;               :props nil
-;               :children [[:primitive [:text "Hello, world of data"]]]}]]}]
+
+;#malli.core.Tag
+;{:key :node,
+; :value
+; #malli.core.Tags
+; {:values {:name :div,
+;           :props {:class [:foo :bar]},
+;           :children [#malli.core.Tag
+;                      {:key :node,
+;                       :value
+;                       #malli.core.Tags
+;                       {:values {:name :p,
+;                                 :props nil,
+;                                 :children [#malli.core.Tag
+;                                            {:key :primitive,
+;                                             :value
+;                                             #malli.core.Tag
+;                                             {:key :text,
+;                                              :value "Hello, world of data"}}]}}}]}}}
 ```
 
 Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
@@ -2489,10 +2502,10 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
    [::m/default :any]])
 
 (m/parse Multi {:type :user, :size 1})
-; => [:user {:type :user, :size 1}]
+; => #malli.core.Tag{:key :user, :value {:type :user, :size 1}}
 
 (m/parse Multi {:type "sized", :size 1})
-; => [:malli.core/default {:type "sized", :size 1}]
+; => #malli.core.Tag{:key :malli.core/default, :value {:type "sized", :size 1}}
 ```
 
 ## Unparsing values
@@ -2506,6 +2519,17 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
      (m/unparse Hiccup))
 ;[:div {:class [:foo :bar]}
 ; [:p "Hello, world of data"]]
+```
+
+```clojure
+(m/unparse [:orn [:name :string] [:id :int]]
+           (m/tagged :name "x"))
+; => "x"
+
+(m/unparse [:* [:catn [:name :string] [:id :int]]]
+           [(m/tags {:name "x" :id 1})
+            (m/tags {:name "y" :id 2})])
+; => ["x" 1 "y" 2]
 ```
 
 ## Serializable functions

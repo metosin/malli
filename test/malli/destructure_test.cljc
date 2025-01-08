@@ -46,25 +46,48 @@
     :schema [:cat
              :any
              [:orn
-              [:map [:map
-                     [:b {:optional true} :any]
-                     ["c" {:optional true} :any]
-                     ['d {:optional true} :any]
-                     ['demo/e {:optional true} :any]
-                     [:demo/f {:optional true}]
-                     [:demo/g {:optional true}]
-                     [123 {:optional true} :any]]]
+              ;; Unfortunately, the output order is different between clj and cljs, and we use strict equality in the test
+              [:map #?(:clj
+                       [:map
+                        [:b {:optional true} :any]
+                        ["c" {:optional true} :any]
+                        ['d {:optional true} :any]
+                        ['demo/e {:optional true} :any]
+                        [:demo/f {:optional true}]
+                        [123 {:optional true} :any]
+                        [:demo/g {:optional true}]]
+                       :cljs
+                       [:map
+                        [:b {:optional true} :any]
+                        ["c" {:optional true} :any]
+                        ['d {:optional true} :any]
+                        ['demo/e {:optional true} :any]
+                        [:demo/f {:optional true}]
+                        [:demo/g {:optional true}]
+                        [123 {:optional true} :any]])]
               [:args [:schema
-                      [:*
-                       [:alt
-                        [:cat [:= :b] :any]
-                        [:cat [:= "c"] :any]
-                        [:cat [:= 'd] :any]
-                        [:cat [:= 'demo/e] :any]
-                        [:cat [:= :demo/f] :demo/f]
-                        [:cat [:= :demo/g] :demo/g]
-                        [:cat [:= 123] :any]
-                        [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f :demo/g 123]] :any]]]]]]]
+                      #?(:clj
+                         [:*
+                          [:alt
+                           [:cat [:= :b] :any]
+                           [:cat [:= "c"] :any]
+                           [:cat [:= 'd] :any]
+                           [:cat [:= 'demo/e] :any]
+                           [:cat [:= :demo/f] :demo/f]
+                           [:cat [:= 123] :any]
+                           [:cat [:= :demo/g] :demo/g]
+                           [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f 123 :demo/g]] :any]]]
+                         :cljs
+                         [:*
+                          [:alt
+                           [:cat [:= :b] :any]
+                           [:cat [:= "c"] :any]
+                           [:cat [:= 'd] :any]
+                           [:cat [:= 'demo/e] :any]
+                           [:cat [:= :demo/f] :demo/f]
+                           [:cat [:= :demo/g] :demo/g]
+                           [:cat [:= 123] :any]
+                           [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f :demo/g 123]] :any]]])]]]]
     :errors '[[{::keysz [z]}]
               [{:kikka/keyz [z]}]]}
    {:name "map destructuring with required-keys"

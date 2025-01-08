@@ -172,14 +172,15 @@
                     (reverse (cons r rs)))]
      (fn [driver regs pos coll k] (sp driver regs [] pos coll k)))))
 
+;; we need to pass in the malli.core/tags function as an arg to avoid a cyclic reference
 (defn catn-parser
-  ([] (fn [_ _ pos coll k] (k {} pos coll)))
-  ([kr & krs]
+  ([tags] (fn [_ _ pos coll k] (k (tags {}) pos coll)))
+  ([tags kr & krs]
    (let [sp (reduce (fn [acc [tag r]]
                       (fn [driver regs m pos coll k]
                         (r driver regs pos coll
                            (fn [v pos coll] (acc driver regs (assoc m tag v) pos coll k)))))
-                    (fn [_ _ m pos coll k] (k m pos coll))
+                    (fn [_ _ m pos coll k] (k (tags m) pos coll))
                     (reverse (cons kr krs)))]
      (fn [driver regs pos coll k] (sp driver regs {} pos coll k)))))
 
@@ -191,12 +192,13 @@
                               [] unparsers)
         :malli.core/invalid))))
 
-(defn catn-unparser [& unparsers]
+;; cyclic ref avoidance here as well for malli.core/tags?
+(defn catn-unparser [tags? & unparsers]
   (let [unparsers (apply array-map (mapcat identity unparsers))]
     (fn [m]
-      (if (and (map? m) (= (count m) (count unparsers)))
+      (if (and (tags? m) (= (count (:values m)) (count unparsers)))
         (miu/-reduce-kv-valid (fn [coll tag unparser]
-                                (if-some [kv (find m tag)]
+                                (if-some [kv (find (:values m) tag)]
                                   (miu/-map-valid #(into coll %) (unparser (val kv)))
                                   :malli.core/invalid))
                               ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
@@ -237,14 +239,15 @@
               (park-validator! driver r regs pos coll k)))
           rs))
 
-(defn altn-parser [kr & krs]
-  (reduce (fn [r [tag r*]]
-            (let [r* (fmap-parser (fn [v] (miu/-tagged tag v)) r*)]
+;; cyclic ref avoidance for malli.core/tag
+(defn altn-parser [tag kr & krs]
+  (reduce (fn [r [t r*]]
+            (let [r* (fmap-parser (fn [v] (tag t v)) r*)]
               (fn [driver regs pos coll k]
                 (park-validator! driver r* regs pos coll k) ; remember fallback
                 (park-validator! driver r regs pos coll k))))
-          (let [[tag r] kr]
-            (fmap-parser (fn [v] (miu/-tagged tag v)) r))
+          (let [[t r] kr]
+            (fmap-parser (fn [v] (tag t v)) r))
           krs))
 
 (defn alt-unparser [& unparsers]
@@ -252,12 +255,13 @@
     (reduce (fn [_ unparse] (miu/-map-valid reduced (unparse x)))
             :malli.core/invalid unparsers)))
 
-(defn altn-unparser [& unparsers]
+;; cyclic ref avoidance for malli.core/tag?
+(defn altn-unparser [tag? & unparsers]
   (let [unparsers (into {} unparsers)]
     (fn [x]
-      (if (miu/-tagged? x)
-        (if-some [kv (find unparsers (key x))]
-          ((val kv) (val x))
+      (if (tag? x)
+        (if-some [kv (find unparsers (:key x))]
+          ((val kv) (:value x))
           :malli.core/invalid)
         :malli.core/invalid))))
 

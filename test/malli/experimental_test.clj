@@ -150,7 +150,8 @@
     (when-let [m (:meta e)]
       (testing "meta"
         (doseq [[k v] m]
-          (is (= v (k (meta var)))))))
+          (is (= v (k (meta var)))
+              (str k)))))
 
     (when instrumented
       (testing "instrumented calls"

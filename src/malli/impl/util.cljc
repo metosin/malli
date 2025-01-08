@@ -5,8 +5,7 @@
 
 (def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
 
-(defn -tagged [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
-(defn -tagged? [v] (instance? MapEntry v))
+(defn -entry [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil)))
 
 (defn -invalid? [x] #?(:clj (identical? x :malli.core/invalid), :cljs (keyword-identical? x :malli.core/invalid)))
 (defn -map-valid [f v] (if (-invalid? v) v (f v)))

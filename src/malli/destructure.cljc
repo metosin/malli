@@ -1,7 +1,6 @@
 (ns malli.destructure
   (:require [clojure.walk :as walk]
-            [malli.core :as m]
-            [malli.impl.util :as miu]))
+            [malli.core :as m]))
 
 (defn -map-like? [x] (or (map? x) (and (seqable? x) (every? (fn [e] (and (vector? e) (= 2 (count e)))) x))))
 (defn -qualified-key? [k] (and (qualified-keyword? k) (-> k name #{"keys" "syms"})))
@@ -62,10 +61,10 @@
 (defn -any? [x] (= :any x))
 (defn -maybe? [x] (and (vector? x) (= :maybe (first x))))
 
-(defn -vector [{:keys [as elems rest]} options]
-  (or (some->> as :schema :schema (conj [:schema]))
+(defn -vector [{{:keys [as elems rest]} :values} options]
+  (or (some->> as :values :schema :values :schema (conj [:schema]))
       (let [ess (map #(let [s (-transform % options false)] (cond->> s (not (-maybe? s)) (conj [:?]))) elems)
-            rs (if rest (-transform (:arg rest) options true) [:* :any])]
+            rs (if rest (-transform (:arg (:values rest)) options true) [:* :any])]
         [:maybe (if (seq ess) (-> [:cat] (into ess) (conj rs)) [:cat rs])])))
 
 (defn -qualified-keys [m]
@@ -78,7 +77,7 @@
   (let [any (fn [f ks] (map (fn [k] [(f k) :any]) ks))]
     (->> (concat (any keyword keys) (any str strs) (any identity syms)
                  (map (fn [k] [k (if (and references (qualified-keyword? k)) k :any)]) (-qualified-keys arg))
-                 (map (fn [[k v]] [v (-transform {:arg k} options false)]) (filter #(miu/-tagged? (key %)) arg)))
+                 (map (fn [[k v]] [v (-transform (m/tags {:arg k}) options false)]) (filter #(m/tag? (key %)) arg)))
          (distinct))))
 
 (defn -map [arg {:keys [::references ::required-keys ::closed-maps ::sequential-maps]
@@ -96,7 +95,7 @@
                                      (cond->> :always (conj [:*]) (not rest) (conj [:schema])))]]
       schema)))
 
-(defn -transform [{[k v] :arg schema :schema :as all} options rest]
+(defn -transform [{{{k :key v :value} :arg schema :schema :as all} :values} options rest]
   (cond (and schema rest) (let [s (-transform all options false)] (if (-any? s) schema s))
         schema schema
         (= :vec k) (-vector v options)
@@ -104,11 +103,11 @@
         rest [:* :any]
         :else :any))
 
-(defn -schema [{:keys [elems rest]} options]
+(defn -schema [{{:keys [elems rest]} :values} options]
   (cond-> :cat
     (or (seq elems) rest) (vector)
     (seq elems) (into (map #(-transform % options false) elems))
-    rest (conj (-transform (:arg rest) options true))))
+    rest (conj (-transform (:arg (:values rest)) options true))))
 
 (defn -unschematize [x]
   (walk/prewalk #(cond-> % (and (map? %) (:- %)) (dissoc :- :schema)) x))

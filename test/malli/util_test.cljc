@@ -878,7 +878,7 @@
                 [:z {:optional true} :boolean]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :y 1, :z true})))
         (is (= false (m/validate s {:x "x", :y "y"})))
-        (is (= {:x [:str "x"], :y 1, :z true} (m/parse s {:x "x", :y 1, :z true})))))
+        (is (= {:x (m/tag :str "x"), :y 1, :z true} (m/parse s {:x "x", :y 1, :z true})))))
 
     (testing "union"
       (let [s (->> [:union
@@ -891,7 +891,7 @@
         (is (= [:map [:x [:or [:orn [:str :string]] :int]]] (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x"}) (m/validate s {:x 1})))
         (is (= false (m/validate s {:x true})))
-        (is (= {:x [:str "x"]} (m/parse s {:x "x"})))
+        (is (= {:x (m/tag :str "x")} (m/parse s {:x "x"})))
         (is (= {:x 1} (m/parse s {:x 1})))))
 
     (testing "merge vs union"
@@ -942,7 +942,7 @@
                (m/form (m/deref s))))
         (is (= true (m/validate s {:x "x", :z "z"})))
         (is (= false (m/validate s {:x "x", :y "y" :z "z"})))
-        (is (= {:x [:str "x"], :z "z"} (m/parse s {:x "x", :z "z"})))))))
+        (is (= {:x (m/tag :str "x"), :z "z"} (m/parse s {:x "x", :z "z"})))))))
 
 (def Int (m/schema int?))
 

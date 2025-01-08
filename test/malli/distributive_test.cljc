@@ -1,10 +1,7 @@
 (ns malli.distributive-test
-  (:require [clojure.test :refer [are deftest is testing]]
+  (:require [clojure.test :refer [deftest is]]
             [malli.core :as m]
-            [malli.impl.util :as miu]
             [malli.generator :as mg]
-            [malli.registry :as mr]
-            [malli.transform :as mt]
             [malli.util :as mu]))
 
 (def options {:registry (merge (mu/schemas) (m/default-schemas))})
@@ -139,7 +136,7 @@
               [4 [:map [:y [:= 2]] [:z [:= 4]]]]]]])))
 
 (deftest parse-distributive-multi-test
-  (is (= [1 [3 {:y 1, :z 3}]]
+  (is (= (m/tag 1 (m/tag 3 {:y 1, :z 3}))
          (m/parse
            [:merge
             [:multi {:dispatch :y}

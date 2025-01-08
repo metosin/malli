@@ -331,7 +331,7 @@ Most core-predicates are mapped to Schemas:
 ; => true
 ```
 
-*NOTE*: Predicate Schemas do not cover any schema properties, e.g. `string?` can be modified with properties like `:min` and `:max`. If you want to use the schema properties, use real schema types instead, e.g. `:string` over `string?`.
+*NOTE*: Predicate Schemas do not cover any schema properties, e.g. `string?` can't be modified with properties like `:min` and `:max`. If you want to use the schema properties, use real schema types instead, e.g. `:string` over `string?`.
 
 See [the full list of default schemas](#schema-registry).
 
@@ -3502,7 +3502,7 @@ The transformation engine is smart enough to just transform parts of the schema 
 
 Contains both function values and unqualified symbol representations for all relevant core predicates. Having both representations enables reading forms from both code (function values) and EDN-files (symbols): `any?`, `some?`, `number?`, `integer?`, `int?`, `pos-int?`, `neg-int?`, `nat-int?`, `pos?`, `neg?`, `float?`, `double?`, `boolean?`, `string?`, `ident?`, `simple-ident?`, `qualified-ident?`, `keyword?`, `simple-keyword?`, `qualified-keyword?`, `symbol?`, `simple-symbol?`, `qualified-symbol?`, `uuid?`, `uri?`, `decimal?`, `inst?`, `seqable?`, `indexed?`, `map?`, `vector?`, `list?`, `seq?`, `char?`, `set?`, `nil?`, `false?`, `true?`, `zero?`, `rational?`, `coll?`, `empty?`, `associative?`, `sequential?`, `ratio?`, `bytes?`, `ifn?` and `fn?`.
 
-*NOTE*: Predicate Schemas do not cover any schema properties, e.g. `string?` can be modified with properties like `:min` and `:max`. If you want to use the schema properties, use real schema types instead, e.g. `:string` over `string?`.
+*NOTE*: Predicate Schemas do not cover any schema properties, e.g. `string?` can't be modified with properties like `:min` and `:max`. If you want to use the schema properties, use real schema types instead, e.g. `:string` over `string?`.
 
 ### `malli.core/class-schemas`
 

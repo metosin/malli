@@ -276,6 +276,8 @@
 ;; LensSchemas
 ;;
 
+(def Var :string)
+
 (deftest basic-lens-schema-test
   (let [re #"kikka"
         int? (m/schema int?)]
@@ -333,6 +335,8 @@
 
         [:ref {:registry {::a int?, ::b string?}} ::a] 0 ::a
         [:ref {:registry {::a int?, ::b string?}} ::a] 1 nil
+        [:ref #'Var] 0 #'Var
+        [:ref #'Var] 1 nil
 
         [:schema int?] 0 int?
         [:schema int?] 1 nil)
@@ -439,7 +443,12 @@
   (is (form= (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))
   (is (mu/equals (mu/get-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0 0]) int?))
   (is (form= (mu/get-in (m/schema [:schema {:registry {::a int?, ::b string?}} ::a]) [0]) ::a))
-  (is (mu/equals (mu/get-in (m/schema [:schema {:registry {::a int?, ::b string?}} ::a]) [0 0]) int?)))
+  (is (mu/equals (mu/get-in (m/schema [:schema {:registry {::a int?, ::b string?}} ::a]) [0 0]) int?))
+
+  (is (form= (mu/get-in (m/schema [:ref #'Var]) [0]) #'Var))
+  (is (form= (mu/get-in (m/schema [:ref #'Var]) [0 0]) :string))
+  (is (form= (mu/get-in (m/schema [:schema #'Var]) [0]) #'Var))
+  (is (form= (mu/get-in (m/schema [:schema #'Var]) [0 0]) :string)))
 
 (deftest dissoc-test
   (let [schema [:map {:title "map"}

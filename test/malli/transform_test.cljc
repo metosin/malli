@@ -8,10 +8,10 @@
   #?(:clj (:import (java.net URI))))
 
 (deftest ->interceptor-test
-  (is (m/-interceptor? (mt/-interceptor inc nil nil nil)))
+  (is (m/-interceptor? (mt/-interceptor inc nil nil nil nil)))
 
   (are [?interceptor expected]
-    (= (m/map->Interceptor expected) (mt/-interceptor ?interceptor nil nil nil))
+    (= (m/map->Interceptor expected) (mt/-interceptor ?interceptor nil nil nil nil))
 
     inc {:enter inc}
     {:enter inc} {:enter inc}

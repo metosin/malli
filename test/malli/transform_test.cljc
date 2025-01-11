@@ -8,8 +8,10 @@
   #?(:clj (:import (java.net URI))))
 
 (deftest ->interceptor-test
+  (is (m/-interceptor? (mt/-interceptor inc nil nil nil)))
+
   (are [?interceptor expected]
-    (= expected (is (#'mt/-interceptor ?interceptor {} {})))
+    (= (m/map->Interceptor expected) (mt/-interceptor ?interceptor nil nil nil))
 
     inc {:enter inc}
     {:enter inc} {:enter inc}
@@ -21,7 +23,7 @@
   (let [?interceptor {:compile (constantly {:compile (constantly inc)})}]
     (testing "shallow compilation succeeds"
       (binding [mt/*max-compile-depth* 2]
-        (is (= {:enter inc} (#'mt/-interceptor ?interceptor {} {})))))
+        (is (= (m/map->Interceptor {:enter inc}) (#'mt/-interceptor ?interceptor nil nil nil)))))
     (testing "too deep compilation fails"
       (binding [mt/*max-compile-depth* 1]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/-interceptor ?interceptor {} {})))))))

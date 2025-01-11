@@ -96,6 +96,10 @@
   (-distributive-schema? [this])
   (-distribute-to-children [this f options]))
 
+(defrecord Interceptor [enter leave schema name transformer])
+
+(defn -interceptor? [x] (instance? Interceptor x))
+
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
@@ -550,9 +554,36 @@
     (-transformer-chain [_])
     (-value-transformer [_ _ _ _])))
 
+(defn -interceptor [interceptor]
+  ((requiring-resolve 'malli.dev.virhe/-pprint) interceptor)
+  (map->Interceptor interceptor))
+
+(defn -interceptor [{:keys [schema name transformer] :as interceptor}]
+  (let [interceptor (map->Interceptor interceptor)]
+    ((requiring-resolve 'malli.dev.virhe/-pprint) (update interceptor :schema type))
+    (println)
+    interceptor
+    (let [f (fn [f phase]
+              (fn [x]
+                (let [value (f x)]
+                  (println "EXECUTING")
+                  ((requiring-resolve 'malli.dev.virhe/-pprint)
+                   {:schema (type schema)
+                    #_#_:chain (mapv :name (-transformer-chain transformer))
+                    :name name
+                    :phase phase
+                    :value {:input x
+                            :output value}})
+                  (println)
+                  value)))]
+      (cond-> interceptor
+        (:enter interceptor) (update :enter f :enter)
+        (:leave interceptor) (update :leave f :leave)))))
+
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
+  ([{:keys [enter leave]} f]
+   (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
 
 (defn -into-transformer [x]
   (cond

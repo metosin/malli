@@ -3535,10 +3535,10 @@
 
 (deftest catch-infinitely-expanding-schema
   (is (thrown-with-msg?
-        #?(:clj Exception, :cljs js/Error)
-        #?(:clj #":malli\.core/infinitely-expanding-schema"
-           :cljs #":malli\.core/invalid-schema")
-        (m/schema [(m/schema :any)]))))
+       #?(:clj Exception, :cljs js/Error)
+       #?(:clj  #":malli\.core/infinitely-expanding-schema"
+          :cljs #":malli\.core/invalid-schema")
+       (m/schema [(m/schema :any)]))))
 
 (deftest eduction-test
   (is (m/validate [:sequential {:min 0} :int] (eduction identity (range 10))))

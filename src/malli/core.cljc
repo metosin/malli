@@ -98,6 +98,7 @@
 
 (defrecord ^:private Interceptor [enter leave schema name transformer])
 (defn -interceptor? [x] (instance? Interceptor x))
+(defn -interceptor [interceptor] (map->Interceptor interceptor))
 
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
@@ -552,8 +553,6 @@
   (reify Transformer
     (-transformer-chain [_])
     (-value-transformer [_ _ _ _])))
-
-(defn -interceptor [interceptor] (map->Interceptor interceptor))
 
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))

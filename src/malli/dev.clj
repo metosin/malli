@@ -38,7 +38,7 @@
                                              :input input
                                              :output output})
                                        output)))]
-                           (cond-> interceptor
+                           (cond-> (m/map->Interceptor interceptor)
                              (:enter interceptor) (update :enter f :enter)
                              (:leave interceptor) (update :leave f :leave))))
                        (with-meta {::original original}))))))

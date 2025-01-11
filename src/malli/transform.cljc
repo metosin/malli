@@ -1,7 +1,6 @@
 (ns malli.transform
   #?(:cljs (:refer-clojure :exclude [Inst Keyword UUID]))
-  (:require [clojure.string :as str]
-            [malli.core :as m]
+  (:require [malli.core :as m]
             [malli.util :as mu]
             [clojure.math :as math]
             #?(:cljs [goog.date.UtcDateTime])

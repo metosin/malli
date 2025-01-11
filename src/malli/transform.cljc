@@ -405,8 +405,7 @@
                    from-properties (some-fn (from m/properties) (from m/type-properties))]
                (if-let [?interceptor (or (some from-properties keys) (get transformers (m/type schema)) default)]
                  (let [interceptor (-interceptor ?interceptor schema name this options)]
-                   (if (nil? acc) interceptor
-                                  (-interceptor [acc interceptor] schema [(:name acc) name] this options)))
+                   (if (nil? acc) interceptor (-interceptor [acc interceptor] schema [(:name acc) name] this options)))
                  acc))) nil chain'))))))
 
 (defn json-transformer

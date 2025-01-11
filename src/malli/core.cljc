@@ -556,8 +556,7 @@
 
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f]
-   (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
+  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
 
 (defn -into-transformer [x]
   (cond

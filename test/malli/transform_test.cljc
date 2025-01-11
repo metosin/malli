@@ -11,7 +11,7 @@
   (is (m/-interceptor? (mt/-interceptor inc nil nil nil nil)))
 
   (are [?interceptor expected]
-    (= (m/map->Interceptor expected) (mt/-interceptor ?interceptor nil nil nil nil))
+    (= (m/-interceptor expected) (mt/-interceptor ?interceptor nil nil nil nil))
 
     inc {:enter inc}
     {:enter inc} {:enter inc}
@@ -23,7 +23,7 @@
   (let [?interceptor {:compile (constantly {:compile (constantly inc)})}]
     (testing "shallow compilation succeeds"
       (binding [mt/*max-compile-depth* 2]
-        (is (= (m/map->Interceptor {:enter inc}) (mt/-interceptor ?interceptor nil nil nil nil)))))
+        (is (= (m/-interceptor {:enter inc}) (mt/-interceptor ?interceptor nil nil nil nil)))))
     (testing "too deep compilation fails"
       (binding [mt/*max-compile-depth* 1]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (mt/-interceptor ?interceptor nil nil nil nil)))))))

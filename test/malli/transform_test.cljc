@@ -23,10 +23,10 @@
   (let [?interceptor {:compile (constantly {:compile (constantly inc)})}]
     (testing "shallow compilation succeeds"
       (binding [mt/*max-compile-depth* 2]
-        (is (= (m/map->Interceptor {:enter inc}) (#'mt/-interceptor ?interceptor nil nil nil)))))
+        (is (= (m/map->Interceptor {:enter inc}) (mt/-interceptor ?interceptor nil nil nil nil)))))
     (testing "too deep compilation fails"
       (binding [mt/*max-compile-depth* 1]
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/-interceptor ?interceptor {} {})))))))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (mt/-interceptor ?interceptor nil nil nil nil)))))))
 
 (deftest string->long
   (is (= 1 (mt/-string->long "1")))

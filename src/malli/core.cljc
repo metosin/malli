@@ -553,7 +553,7 @@
     (-transformer-chain [_])
     (-value-transformer [_ _ _ _])))
 
-(defn -interceptor [interceptor] interceptor)
+(defn -interceptor [interceptor] (map->Interceptor interceptor))
 
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))

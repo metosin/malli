@@ -23,6 +23,29 @@
 (defn -uncapture-fail! []
   (alter-var-root #'m/-fail! (fn [f] (-> f meta ::original (or f)))))
 
+(defn -capture-interceptor
+  ([] (-capture-interceptor nil))
+  ([{:keys [tap] :or {tap tap>}}]
+   (alter-var-root
+    #'m/-interceptor
+    (fn [original] (-> (fn -interceptor [{:keys [schema name] :as interceptor}]
+                         (let [f (fn [f phase]
+                                   (fn [input]
+                                     (let [output (f input)]
+                                       (tap {:schema schema
+                                             :name name
+                                             :phase phase
+                                             :input input
+                                             :output output})
+                                       output)))]
+                           (cond-> interceptor
+                             (:enter interceptor) (update :enter f :enter)
+                             (:leave interceptor) (update :leave f :leave))))
+                       (with-meta {::original original}))))))
+
+(defn -uncapture-intercetor []
+  (alter-var-root #'m/-interceptor (fn [f] (-> f meta ::original (or f)))))
+
 ;;
 ;; Public API
 ;;

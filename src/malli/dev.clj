@@ -28,7 +28,7 @@
   ([{:keys [tap] :or {tap tap>}}]
    (alter-var-root
     #'m/-interceptor
-    (fn [original] (-> (fn -interceptor [{:keys [schema name] :as interceptor}]
+    (fn [original] (-> (fn -interceptor [{:keys [schema name transformer] :as interceptor}]
                          (let [f (fn [f phase]
                                    (fn [input]
                                      (let [output (f input)]
@@ -36,7 +36,8 @@
                                              :name name
                                              :phase phase
                                              :input input
-                                             :output output})
+                                             :output output
+                                             :transformer transformer})
                                        output)))]
                            (cond-> (m/map->Interceptor interceptor)
                              (:enter interceptor) (update :enter f :enter)

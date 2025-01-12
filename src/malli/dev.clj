@@ -43,7 +43,7 @@
                              (:leave interceptor) (update :leave f :leave))))
                        (with-meta {::original original}))))))
 
-(defn -uncapture-intercetor []
+(defn -uncapture-interceptor []
   (alter-var-root #'m/-interceptor (fn [f] (-> f meta ::original (or f)))))
 
 ;;

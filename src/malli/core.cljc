@@ -905,7 +905,7 @@
                            (then x in acc)
                            (else x in acc))))
                  :iff (let [[test & thens] explainers
-                            elses (-vmap (fn [[i c]] (-explainer (schema [:not nil c] options) (conj path (+ nchildren i)))) (map-indexed vector children))]
+                            elses (-vmap (fn [[i c]] (-explainer (schema [:not nil c] options) (conj path (+ nchildren (inc i))))) (map-indexed vector (next children)))]
                         (fn explain-iff [x in acc]
                           (reduce (fn [acc explainer] (explainer x in acc)) acc (if (identical? acc (test x in acc)) thens elses))))
                  (:disjoint :xor)

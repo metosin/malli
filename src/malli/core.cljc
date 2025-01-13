@@ -933,7 +933,8 @@
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
              ;;TODO
-             (-or-transformer this transformer children method options))
+             (case type
+               :or (-or-transformer this transformer children method options)))
            (-walk [this walker path options] (-walk-indexed this walker path options))
            (-properties [_] properties)
            (-options [_] options)

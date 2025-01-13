@@ -513,7 +513,7 @@ The `:iff` schema requires either all or none of its children to be satisfied.
 
 (me/humanize
   (m/explain UserPass {:user "a"}))
-; => {:pass ["missing required key"], :malli/error ["should not have key :user"]}
+; => {:pass ["missing required key"]}
 ```
 
 The `:implies` schema is satisfied if either its first child is _not_ satisfied or
@@ -534,7 +534,7 @@ all of its children are satisfied.
 
 (me/humanize
   (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
-; => {:git/sha ["missing required key"], :malli/error ["should not have key :git/tag"]}
+; => {:git/sha ["missing required key"]}
 ```
 
 The `:disjoint` schema is similar to `:xor` but also permits zero schemas to match.
@@ -630,7 +630,7 @@ this additional constraint.
 ;; combining :or with :disjoint helps enforce this case
 (me/humanize
   (m/explain SecretOrCreds {:secret "1234" :user "user"}))
-;=> ["should not have key :user"]
+; => ["should not have key :user"]
 ```
 
 ## Seqable schemas

@@ -3583,13 +3583,9 @@
   (is (true? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {:pass nil :secret nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (= {:user ["missing required key"],
-          :pass ["missing required key"],
-          :secret ["missing required key"]}
+  (is (= {:secret ["missing required key"]}
          (me/humanize (m/explain [:if [:has :user] [:has :pass] [:has :secret]] {} {:registry (merge (mu/schemas) (m/default-schemas))}))))
-  (is (= {:pass ["missing required key"],
-          :malli/error ["should not have key :user"],
-          :secret ["missing required key"]}
+  (is (= {:pass ["missing required key"]}
          (me/humanize (m/explain [:if [:has :user] [:has :pass] [:has :secret]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (deftest disjoint-test
@@ -3617,11 +3613,9 @@
   (is (true? (m/validate [:iff [:has :user] [:has :pass]] {} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:iff [:has :user] [:has :pass]] {:pass nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:iff [:has :user] [:has :pass]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (= {:user ["missing required key"],
-          :malli/error ["should not have key :pass"]}
+  (is (= ["should not have key :pass"]
          (me/humanize (m/explain [:iff [:has :user] [:has :pass]] {:pass nil} {:registry (merge (mu/schemas) (m/default-schemas))}))))
-  (is (= {:pass ["missing required key"],
-          :malli/error ["should not have key :user"]}
+  (is (= {:pass ["missing required key"]}
          (me/humanize (m/explain [:iff [:has :user] [:has :pass]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (def Address
@@ -3776,9 +3770,7 @@
          {:a1 ["missing required key"], :a2 ["missing required key"]}))
   (is (m/validate Address {}))
   (is (= (me/humanize (m/explain Address {:zip 5555}))
-         {:street ["missing required key"],
-          :city ["missing required key"],
-          :malli/error ["should not have key :zip"]}
+         ["should not have key :zip"]
          #_
          [[:xor
            [:and
@@ -3811,7 +3803,7 @@
     (is (false? (m/validate TagImpliesSha {:git/tag "v1.0.0"})))
     (is (= (me/humanize
              (m/explain TagImpliesSha {:git/tag "v1.0.0"}))
-           {:git/sha ["missing required key"], :malli/error ["should not have key :git/tag"]}
+           {:git/sha ["missing required key"]}
            #_
            [["should provide key: :git/sha"]])))
   (testing "UserPass"
@@ -3820,7 +3812,7 @@
     (is (false? (m/validate UserPass {:user "a"})))
     (is (= (me/humanize
              (m/explain UserPass {:user "a"}))
-           {:pass ["missing required key"], :malli/error ["should not have key :user"]}
+           {:pass ["missing required key"]}
            #_
            [[:xor
              "should provide key: :pass"

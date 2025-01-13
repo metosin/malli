@@ -144,9 +144,7 @@
    :uuid {:error/message {:en "should be a uuid"}}
    :has {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
                           (if negated
-                            (let [k (-> schema m/children first)]
-                              (when true #_(contains? value k)
-                                (negated (str "should not have key " (-pr-str k)))))
+                            (negated (str "should not have key " (-> schema m/children first -pr-str)))
                             "missing required key"))}}
    :> {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
                         (if negated

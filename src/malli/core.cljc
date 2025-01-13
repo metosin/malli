@@ -403,14 +403,6 @@
             (-children schema)) default))
 
 ;;
-;; parsers
-;;
-
-(defn -simple-parser [this]
-  (let [valid? (-validator this)]
-    (fn [x] (if (valid? x) x ::invalid))))
-
-;;
 ;; entries
 ;;
 
@@ -569,9 +561,6 @@
     (fn? x) (-into-transformer (x))
     (nil? x) (-no-op-transformer)
     :else (-fail! ::invalid-transformer {:value x})))
-
-(defn -simple-transformer [this transformer method options]
-  (-intercepting (-value-transformer transformer this method options)))
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
@@ -750,9 +739,12 @@
                   (let [validator (-validator this)]
                     (fn explain [x in acc]
                       (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
-                (-parser [this] (-simple-parser this))
+                (-parser [this]
+                  (let [validator (-validator this)]
+                    (fn [x] (if (validator x) x ::invalid))))
                 (-unparser [this] (-parser this))
-                (-transformer [this transformer method options] (-simple-transformer this transformer method options))
+                (-transformer [this transformer method options]
+                  (-intercepting (-value-transformer transformer this method options)))
                 (-walk [this walker path options] (-walk-leaf this walker path options))
                 (-properties [_] properties)
                 (-options [_] options)
@@ -1596,7 +1588,8 @@
           (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
           (-unparser [this] (-parser this))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
-          (-transformer [this transformer method options] (-simple-transformer this transformer method options))
+          (-transformer [this transformer method options]
+            (-intercepting (-value-transformer transformer this method options)))
           (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
           (-options [_] options)
@@ -1643,8 +1636,11 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
-          (-transformer [this transformer method options] (-simple-transformer this transformer method options))
-          (-parser [this] (-simple-parser this))
+          (-transformer [this transformer method options]
+            (-intercepting (-value-transformer transformer this method options)))
+          (-parser [this]
+            (let [valid? (-validator this)]
+              (fn [x] (if (valid? x) x ::invalid))))
           (-unparser [this] (-parser this))
           (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
@@ -1687,9 +1683,12 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
-          (-parser [this] (-simple-parser this))
+          (-parser [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x ::invalid))))
           (-unparser [this] (-parser this))
-          (-transformer [this transformer method options] (-simple-transformer this transformer method options))
+          (-transformer [this transformer method options]
+            (-intercepting (-value-transformer transformer this method options)))
           (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
           (-options [_] options)
@@ -2031,7 +2030,9 @@
               (let [validator (-validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
-          (-parser [this] (-simple-parser this))
+          (-parser [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x ::invalid))))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
           (-walk [this walker path options] (-walk-indexed this walker path options))
@@ -2111,7 +2112,9 @@
               (let [validator (-validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
-          (-parser [this] (-simple-parser this))
+          (-parser [this]
+            (let [validator (-validator this)]
+              (fn [x] (if (validator x) x ::invalid))))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
           (-walk [this walker path options] (-walk-indexed this walker path options))

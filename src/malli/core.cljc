@@ -834,26 +834,28 @@
              ->parser (fn [f] (case type
                                 :or (let [parsers (-vmap f children)]
                                       #(reduce (fn [_ parser] (miu/-map-valid reduced (parser %))) ::invalid parsers))
-                                :if (let [[test then else] (-vmap f children)]
+                                :if (let [[test then else] (-vmap f children)
+                                          neg-test (f (first children))]
                                       (fn [x]
                                         (let [x' (test x)]
                                           (if (miu/-invalid? x')
-                                            (else x)
+                                            (-> x neg-test else)
                                             (then x')))))
-                                :implies (let [[test then] (-vmap f children)]
+                                :implies (let [[test then] (-vmap f children)
+                                               neg-test (f (first children))]
                                            (fn [x]
                                              (let [x' (test x)]
                                                (if (miu/-invalid? x')
-                                                 x
+                                                 (neg-test x)
                                                  (then x')))))
-                                :iff (let [[test & thens] (-vmap f children)
-                                           test (f test)
-                                           then (-> [:and nil] (into thens) (schema options) f)
-                                           else (-> [:and nil] (into (map #(schema [:not nil %] options)) thens) (schema options) f)]
+                                :iff (let [test (f (first children))
+                                           neg-test (f (first @neg-children))
+                                           then (-> [:and nil] (into (next children)) (schema options) f)
+                                           else (-> [:and nil] (into (next @neg-children)) (schema options) f)]
                                        (fn [x]
                                          (let [x' (test x)]
                                            (if (miu/-invalid? x')
-                                             (else x)
+                                             (-> x neg-test else)
                                              (then x')))))
                                 (:disjoint :xor) (let [parsers (eduction (map f) children)
                                                        disjoint (= :disjoint type)]
@@ -905,7 +907,7 @@
                            (then x in acc)
                            (else x in acc))))
                  :iff (let [[test & thens] explainers
-                            elses (-vmap (fn [[i c]] (-explainer (schema [:not nil c] options) (conj path (+ nchildren (inc i))))) (map-indexed vector (next children)))]
+                            elses (-vmap (fn [[i c]] (-explainer c (conj path (+ nchildren (inc i))))) (map-indexed vector (next @neg-children)))]
                         (fn explain-iff [x in acc]
                           (reduce (fn [acc explainer] (explainer x in acc)) acc (if (identical? acc (test x in acc)) thens elses))))
                  (:disjoint :xor)
@@ -930,6 +932,7 @@
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
+             ;;TODO
              (-or-transformer this transformer children method options))
            (-walk [this walker path options] (-walk-indexed this walker path options))
            (-properties [_] properties)

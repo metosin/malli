@@ -142,6 +142,12 @@
    :qualified-keyword {:error/message {:en "should be a qualified keyword"}}
    :qualified-symbol {:error/message {:en "should be a qualified symbol"}}
    :uuid {:error/message {:en "should be a uuid"}}
+   :has {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
+                          (if negated
+                            (let [k (-> schema m/children first)]
+                              (when true #_(contains? value k)
+                                (negated (str "should not have key " (-pr-str k)))))
+                            "missing required key"))}}
    :> {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
                         (if negated
                           (-forward-negation [:<= (first (m/children schema))] error options)
@@ -371,6 +377,17 @@
                              (= type ::m/missing-key))) $)
               $))))))))
 
+(defn -humanize-expand-error [e]
+  (cond
+    (= :not (some-> e :schema m/type)) (let [s (-> e :schema m/children first m/deref-all)]
+                                         (case (m/type s)
+                                           :or (keep #(when (or (not (contains? e :value))
+                                                                (m/validate % (:value e)))
+                                                        (assoc e :schema (m/schema [:not nil %] (m/options %))))
+                                                     (m/children s))
+                                           [e]))
+    :else [e]))
+
 (defn humanize
   "Humanized a explanation. Accepts the following options:
 
@@ -387,7 +404,7 @@
       (fn [acc error]
         (let [[path message] (resolve explanation error options)]
           (-push-in acc value path (wrap (assoc error :message message)))))
-      nil errors))))
+      nil (eduction (mapcat -humanize-expand-error) errors)))))
 
 (defn error-value
   "Returns the parts of value that are in error. Accepts the following options:

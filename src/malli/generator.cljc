@@ -109,7 +109,8 @@
     (gen/vector-distinct-by f g (-> (assoc (if (and min (= min max))
                                              {:num-elements min}
                                              (set/rename-keys m {:min :min-elements :max :max-elements}))
-                                           :ex-fn #(m/-exception ::distinct-generator-failure (assoc % :schema schema)))))))
+                                           :ex-fn #(m/-exception ::distinct-generator-failure (assoc % :schema schema))
+                                           :max-tries 100)))))
 
 (defn- -string-gen [schema options]
   (gen-fmap str/join (gen-vector (-min-max schema options) gen/char-alphanumeric)))

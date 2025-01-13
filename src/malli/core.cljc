@@ -1024,14 +1024,7 @@
                                  [:or
                                   [:and test then]
                                   [:and [:not test] else]]
-                                 options)))
-                           {:validator
-                            (fn [_]
-                              (let [[test then else] (mapv -validator children)]
-                                (fn [v]
-                                  (if (test v)
-                                    (then v)
-                                    (else v)))))}]))
+                                 options)))]))
                   :min 3
                   ;;TODO fennel-like cond syntax [:if test then test then else] => [:if test then [:if test then else]]
                   :max 3}))
@@ -1048,18 +1041,7 @@
                                [:or
                                 (into [:and nil] children)
                                 (into [:and nil] (map #(do [:not nil %])) children)]
-                               options))
-                           {:validator
-                            (fn [_]
-                              (let [[p & ps] (mapv -validator children)]
-                                (fn [v]
-                                  (not= ::fail (reduce
-                                                 (fn [b p]
-                                                   (if (= b (p v))
-                                                     b
-                                                     (reduced ::fail)))
-                                                 (p v)
-                                                 ps)))))}]))
+                               options))]))
                   :min 2}))
 
 ;;TODO implement as primitive
@@ -2159,14 +2141,14 @@
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
       (-check-children! type properties children min max)
-      (let [[children forms schema {:keys [validator]}] (fn properties (vec children) options)
+      (let [[children forms schema] (fn properties (vec children) options)
             schema (delay (force schema))
             form (delay (-create-form type properties forms options))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
           Schema
-          (-validator [this] (if validator (validator {:this this}) (-validator @schema)))
+          (-validator [_] (-validator @schema))
           (-explainer [_ path] (-explainer @schema (conj path ::in)))
           (-parser [_] (-parser @schema))
           (-unparser [_] (-unparser @schema))

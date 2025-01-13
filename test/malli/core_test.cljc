@@ -3557,8 +3557,10 @@
   (is (false? (m/validate [:xor [:enum 1 2] [:enum 2 3]] nil {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (nil? (m/explain [:xor [:enum 1 2] [:enum 2 3]] 1 {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (nil? (m/explain [:xor [:enum 1 2] [:enum 2 3]] 3 {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (m/explain [:xor [:enum 1 2] [:enum 2 3]] 2 {:registry (merge (mu/schemas) (m/default-schemas))}))
-  (is (m/explain [:xor [:enum 1 2] [:enum 2 3]] nil {:registry (merge (mu/schemas) (m/default-schemas))})))
+  (is (= ["should not be either 2 or 3"]
+         (me/humanize (m/explain [:xor [:enum 1 2] [:enum 2 3]] 2 {:registry (merge (mu/schemas) (m/default-schemas))}))))
+  (is (= ["should be either 1 or 2" "should be either 2 or 3"]
+         (me/humanize (m/explain [:xor [:enum 1 2] [:enum 2 3]] nil {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (deftest has-test
   (is (= [:has :foo]
@@ -3567,8 +3569,10 @@
   (is (false? (m/validate [:has :foo] {} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:has :foo] 1 {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (nil? (m/explain [:has :foo] {:foo 1} {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (m/explain [:has :foo] {} {:registry (merge (mu/schemas) (m/default-schemas))}))
-  (is (m/explain [:has :foo] 1 {:registry (merge (mu/schemas) (m/default-schemas))})))
+  (is (= {:foo ["missing required key"]}
+         (me/humanize (m/explain [:has :foo] {} {:registry (merge (mu/schemas) (m/default-schemas))}))))
+  (is (= ["invalid type"]
+         (me/humanize (m/explain [:has :foo] 1 {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (deftest if-test
   (is (= [:if [:has :user] [:has :pass] [:has :secret]]
@@ -3578,7 +3582,15 @@
   (is (true? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {:user nil :pass nil :secret nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (true? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {:pass nil :secret nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {} {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (false? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))}))))
+  (is (false? (m/validate [:if [:has :user] [:has :pass] [:has :secret]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
+  (is (= {:user ["missing required key"],
+          :pass ["missing required key"],
+          :secret ["missing required key"]}
+         (me/humanize (m/explain [:if [:has :user] [:has :pass] [:has :secret]] {} {:registry (merge (mu/schemas) (m/default-schemas))}))))
+  (is (= {:pass ["missing required key"],
+          :malli/error ["should not have key :user"],
+          :secret ["missing required key"]}
+         (me/humanize (m/explain [:if [:has :user] [:has :pass] [:has :secret]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (deftest disjoint-test
   (is (= [:disjoint
@@ -3594,7 +3606,8 @@
   (is (nil? (m/explain [:disjoint [:= 2] [:or [:= 1] [:= 2] [:= 3]]] 1 {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (nil? (m/explain [:disjoint [:= 2] [:or [:= 1] [:= 2] [:= 3]]] 3 {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (nil? (m/explain [:disjoint [:= 2] [:or [:= 1] [:= 2] [:= 3]]] 4 {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (m/explain [:disjoint [:= 2] [:or [:= 1] [:= 2] [:= 3]]] 2 {:registry (merge (mu/schemas) (m/default-schemas))})))
+  (is (= ["should not be 2"]
+         (me/humanize (m/explain [:disjoint [:= 2] [:or [:= 1] [:= 2] [:= 3]]] 2 {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (deftest iff-test
   (is (= [:iff [:has :user] [:has :pass]]
@@ -3603,7 +3616,13 @@
   (is (true? (m/validate [:iff [:has :user] [:has :pass]] {:secret nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (true? (m/validate [:iff [:has :user] [:has :pass]] {} {:registry (merge (mu/schemas) (m/default-schemas))})))
   (is (false? (m/validate [:iff [:has :user] [:has :pass]] {:pass nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
-  (is (false? (m/validate [:iff [:has :user] [:has :pass]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))}))))
+  (is (false? (m/validate [:iff [:has :user] [:has :pass]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))
+  (is (= {:user ["missing required key"],
+          :malli/error ["should not have key :pass"]}
+         (me/humanize (m/explain [:iff [:has :user] [:has :pass]] {:pass nil} {:registry (merge (mu/schemas) (m/default-schemas))}))))
+  (is (= {:pass ["missing required key"],
+          :malli/error ["should not have key :user"]}
+         (me/humanize (m/explain [:iff [:has :user] [:has :pass]] {:user nil} {:registry (merge (mu/schemas) (m/default-schemas))})))))
 
 (def Address
   [:and

@@ -1,6 +1,7 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
+            [malli.impl.util :as miu]
             [malli.core :as m]))
 
 (declare path->in find)
@@ -372,6 +373,24 @@
             (assoc s k (if ks (up (get s k (m/schema :map (m/options schema))) ks f args)
                               (apply f (get s k) args))))]
     (up schema ks f args)))
+
+(defn extend-multi
+  "Extend a :multi schema. Overwrites existing entry by = dispatch value if already present.
+  If not present, added before the default entry (if any)."
+  ([?schema e] (extend-multi ?schema e nil))
+  ([?schema e options]
+   (let [s (m/schema ?schema options)
+         c (m/children s)
+         [before-default after-default] (map vec (split-with (complement m/-default-entry) c))
+         [d] e
+         i (some (fn [i]
+                   (when (= d (first (nth c i)))
+                     i))
+                 (range (count c)))
+         c (if i
+             (c/assoc c i e)
+             (-> before-default (conj e) (into after-default)))]
+     (m/-set-children s c))))
 
 ;;
 ;; Schemas

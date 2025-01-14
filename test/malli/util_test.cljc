@@ -1124,3 +1124,21 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.core/child-error"
         (m/schema :union {:registry (merge (mu/schemas) (m/default-schemas))}))))
+
+(def extend-multi-reg (atom {::multi (m/schema [:multi {:dispatch identity} [:a :any] [::m/default :any]])}))
+(swap! extend-multi-reg update ::multi mu/extend-multi [:a number?])
+(swap! extend-multi-reg update ::multi mu/extend-multi [::m/default number?])
+
+(deftest extend-multi-test
+  (is (= [:multi {:dispatch identity} [:a :any]]
+         (m/form (mu/extend-multi [:multi {:dispatch identity}] [:a :any]))))
+  (is (= [:multi {:dispatch identity} [:a 'number?]]
+         (m/form (mu/extend-multi [:multi {:dispatch identity} [:a :any]] [:a number?]))))
+  (is (= [:multi {:dispatch identity} [:b :any] [:a :any]]
+         (m/form (mu/extend-multi [:multi {:dispatch identity} [:b :any]] [:a :any]))))
+  (is (= [:multi {:dispatch identity} [::m/default 'number?]]
+         (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default :any]] [::m/default number?]))))
+  (is (= [:multi {:dispatch identity} [:a :any] [:malli.core/default 'number?]]
+         (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default number?]] [:a :any]))))
+  (is (= [:multi {:dispatch identity} [:a 'number?] [:malli.core/default 'number?]]
+         (m/form (m/deref (m/schema ::multi {:registry (mr/mutable-registry extend-multi-reg)}))))))

@@ -387,7 +387,7 @@
                  (range (count c)))]
      (m/-set-children s (if i
                           (c/assoc c i entry)
-                          (c/conj c entry))))))
+                          (conj c entry))))))
 
 ;;
 ;; Schemas

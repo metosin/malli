@@ -1125,9 +1125,13 @@
         #":malli\.core/child-error"
         (m/schema :union {:registry (merge (mu/schemas) (m/default-schemas))}))))
 
-(def extend-multi-reg (atom {::multi (m/schema [:multi {:dispatch identity} [:a :any] [::m/default :any]])}))
-(swap! extend-multi-reg update ::multi mu/extend-multi [:a number?])
-(swap! extend-multi-reg update ::multi mu/extend-multi [::m/default number?])
+(def extend-multi-reg* (atom {::multi (m/schema [:multi {:dispatch identity} [:a :any] [::m/default :any]])}))
+
+(defn extend-multi! [name entry]
+  (swap! extend-multi-reg* update name mu/extend-multi entry))
+
+(extend-multi! ::multi [:a number?])
+(extend-multi! ::multi [::m/default number?])
 
 (deftest extend-multi-test
   (is (= [:multi {:dispatch identity} [:a :any]]
@@ -1141,4 +1145,4 @@
   (is (= [:multi {:dispatch identity} [:malli.core/default 'number?] [:a :any]]
          (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default number?]] [:a :any]))))
   (is (= [:multi {:dispatch identity} [:a 'number?] [:malli.core/default 'number?]]
-         (m/form (m/deref (m/schema ::multi {:registry (mr/mutable-registry extend-multi-reg)}))))))
+         (m/form (m/deref (m/schema ::multi {:registry (mr/mutable-registry extend-multi-reg*)}))))))

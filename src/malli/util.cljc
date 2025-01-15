@@ -375,22 +375,19 @@
     (up schema ks f args)))
 
 (defn extend-multi
-  "Extend a :multi schema. Overwrites existing entry by = dispatch value if already present.
-  If not present, added before the default entry (if any)."
-  ([?schema e] (extend-multi ?schema e nil))
-  ([?schema e options]
+  "Extend a :multi schema. Overwrites existing entry by = dispatch value if already present."
+  ([?schema entry] (extend-multi ?schema entry nil))
+  ([?schema entry options]
    (let [s (m/schema ?schema options)
          c (m/children s)
-         [before-default after-default] (map vec (split-with (complement m/-default-entry) c))
-         [d] e
+         [d] entry
          i (some (fn [i]
                    (when (= d (first (nth c i)))
                      i))
-                 (range (count c)))
-         c (if i
-             (c/assoc c i e)
-             (-> before-default (conj e) (into after-default)))]
-     (m/-set-children s c))))
+                 (range (count c)))]
+     (m/-set-children s (if i
+                          (c/assoc c i entry)
+                          (c/conj c entry))))))
 
 ;;
 ;; Schemas

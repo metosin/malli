@@ -1138,7 +1138,7 @@
          (m/form (mu/extend-multi [:multi {:dispatch identity} [:b :any]] [:a :any]))))
   (is (= [:multi {:dispatch identity} [::m/default 'number?]]
          (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default :any]] [::m/default number?]))))
-  (is (= [:multi {:dispatch identity} [:a :any] [:malli.core/default 'number?]]
+  (is (= [:multi {:dispatch identity} [:malli.core/default 'number?] [:a :any]]
          (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default number?]] [:a :any]))))
   (is (= [:multi {:dispatch identity} [:a 'number?] [:malli.core/default 'number?]]
          (m/form (m/deref (m/schema ::multi {:registry (mr/mutable-registry extend-multi-reg)}))))))

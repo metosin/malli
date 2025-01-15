@@ -1,7 +1,6 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
-            [malli.impl.util :as miu]
             [malli.core :as m]))
 
 (declare path->in find)

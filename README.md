@@ -10,7 +10,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 
 [Metosin Open Source Status: Active](https://github.com/metosin/open-source/blob/main/project-status.md#active). Stability: well matured [*alpha*](#alpha).
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli.png" width=130 align="right"/>
+<img src="docs/img/malli.png" width=130 align="right"/>
 
 - Schema definitions as data
 - [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) syntaxes
@@ -46,7 +46,7 @@ Try the [online demo](https://malli.io), see also some [3rd Party Libraries](#3r
 
 Want to contribute? See the [Development](#development) guide.
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/malli-defn.png" width="600" />
+<img src="docs/img/malli-defn.png" width="600" />
 
 > Hi! We are [Metosin](https://metosin.fi), a consulting company. These libraries have evolved out of the work we do for our clients.
 > We maintain & develop this project, for you, for free. Issues and pull requests welcome!
@@ -1022,11 +1022,11 @@ Now, any exception thrown via `malli.core/-fail!` is being captured and pretty p
 
 Pretty Coercion:
 
-<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-coerce.png" width=800>
+<img src="docs/img/pretty-coerce.png" width=800>
 
 Custom exception (with default layout):
 
-<img src="https://github.com/metosin/malli/blob/master/docs/img/bats-in-the-attic.png" width=800>
+<img src="docs/img/bats-in-the-attic.png" width=800>
 
 Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `(-> exception (ex-data) :data)` as the default dispatch key. As fallback, exception class - or exception subclass can be used, e.g. the following will handle all `java.sql.SQLException` and it's parent exceptions:
 
@@ -1044,7 +1044,7 @@ Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `
 
 For pretty development-time error printing, try `malli.dev.pretty/explain`
 
-<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
+<img src="docs/img/pretty-explain.png" width=800>
 
 ## Value transformation
 
@@ -3277,7 +3277,7 @@ Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(grap
 
 Visualized with [Graphviz](https://graphviz.org/):
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/dot.png"/>
+![Graphviz image output](/docs/img/dot.png)
 
 ### PlantUML
 
@@ -3292,7 +3292,7 @@ Transforming Schemas into [PlantUML](https://plantuml.com/):
 
 Visualized with [PlantText](https://www.planttext.com/):
 
-<img src="https://raw.githubusercontent.com/metosin/malli/master/docs/img/plantuml.png"/>
+![PlanText image output](/docs/img/plantuml.png)
 
 ## Lite
 

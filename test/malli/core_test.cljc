@@ -3547,3 +3547,15 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest non-flowing-and-test
+  (is (= (m/tags {"a" 3, "b" :x})
+         (m/parse [:and [:catn ["a" :int] ["b" :keyword]] [:fn any?]] [3 :x])))
+  (is (= ::m/invalid
+         (m/parse [:and [:catn ["a" :int] ["b" :keyword]]
+                   [:fn vector?]]
+                  [3 :x])))
+  (is (= (m/tags {"a" 3, "b" :x})
+         (m/parse [:and {:parse :non-flowing} [:catn ["a" :int] ["b" :keyword]]
+                   [:fn vector?]]
+                  [3 :x]))))

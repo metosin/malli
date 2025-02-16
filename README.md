@@ -24,7 +24,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
-- [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
+- [Closed](#multi-schemas) and [Open](#open-multi-schemas) dispatch Multi schemas, [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
    - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
@@ -1983,6 +1983,26 @@ Any function can be used for `:dispatch`:
 ;{:type :human
 ; :name "Tiina"
 ; :address {:country :finland}}
+```
+
+## Open Multi schemas
+
+`:multi` schemas can be made open to extension by using [Mutable registries](#mutable-registry).
+
+```clojure
+(require '[malli.core :as m] '[malli.registry :as mr] '[malli.util :as mu])
+
+(def registry*
+  (atom {::open (m/schema [:multi {:dispatch :type}])}))
+
+(defn extend-multi! [name entry]
+  (swap! registry* update name mu/extend-multi entry))
+
+(extend-multi! ::open [:sized [:map [:type keyword?] [:size int?]]])
+(extend-multi! ::open [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]])
+
+(m/validate ::open {:type :sized, :size 10} {:registry (mr/mutable-registry registry*)})
+; => true
 ```
 
 ## Recursive schemas

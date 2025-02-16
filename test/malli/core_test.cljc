@@ -625,6 +625,19 @@
 
   (testing "ref schemas"
 
+    (let [schema [:ref {:registry {::referred [:map [:foo :int]]}} ::referred]]
+      (is (nil? (m/explain schema {:foo 2})))
+      (testing "explain path"
+        (let [exp (m/explain schema {:foo "2"})]
+          (is (results= {:value {:foo "2"}
+                         :schema schema
+                         :errors [{:in [:foo]
+                                   :path [0 0 :foo]
+                                   :schema :int
+                                   :value "2"}]}
+                        exp))
+          (is (form= :int (mu/get-in schema (-> exp :errors first :path)))))))
+
     (testing "invalid refs fail"
       (is (thrown?
            #?(:clj Exception, :cljs js/Error)
@@ -641,7 +654,7 @@
         (is (results= {:schema ConsCell
                        :value [1 [2]]
                        :errors [{:in [1]
-                                 :path [0 0 0 1 0 0]
+                                 :path [0 0 0 1 0 0 0]
                                  :schema (mu/get-in ConsCell [0 0 0])
                                  :type :malli.core/tuple-size
                                  :value [2]}]}
@@ -3359,7 +3372,28 @@
 
     (testing "it works"
       (is (= User (m/form schema)))
-      (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))))
+      (is (every? (m/validator schema) (mg/sample schema {:seed 100}))))
+
+    (testing "explain path"
+      (let [exp (m/explain schema {:id 1})]
+        (is (results= {:value {:id 1}
+                       :schema User
+                       :errors [{:in [:id]
+                                 :path [:id 0]
+                                 :schema :string
+                                 :value 1}]}
+                      exp))
+        (is (form= :string (mu/get-in schema (-> exp :errors first :path)))))
+      (let [explicit-ref [:ref #'UserId]
+            exp (m/explain explicit-ref 1)]
+        (is (results= {:value 1
+                       :schema explicit-ref
+                       :errors [{:in []
+                                 :path [0 0]
+                                 :schema :string
+                                 :value 1}]}
+                      exp))
+        (is (form= :string (mu/get-in explicit-ref (-> exp :errors first :path))))))))
 
 #?(:clj
    (deftest roundrobin-var-references

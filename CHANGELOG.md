@@ -58,7 +58,7 @@ borkdude/edamame '1.4.25' to '1.4.27'
 
 ## 0.16.3 (2024-08-05)
 
-* `:->` added to default registry, see [documentation](https://github.com/metosin/malli/blob/master/docs/function-schemas.md#flat-arrow-function-schemas).
+* `:->` added to default registry, see [documentation](/docs/function-schemas.md#flat-arrow-function-schemas).
 * New `:seqable` and `:every` schemas [#1041](https://github.com/metosin/malli/pull/1041), see [docs](https://github.com/metosin/malli#seqable-schemas)
 * Fix OOM error with infinitely expanding schema [#1069](https://github.com/metosin/malli/pull/1069)
 * Correctly form prop-less schemas that have map/nil as first child [#1071](https://github.com/metosin/malli/pull/1071)
@@ -112,9 +112,9 @@ borkdude/edamame '1.4.25' to '1.4.27'
 
 ```clojure
 ;; function of arg:int -> ret:int, where arg < ret
-[:=> 
- [:cat :int] 
- :int 
+[:=>
+ [:cat :int]
+ :int
  [:fn (fn [[[arg] ret]] (< arg ret))]]
 ```
 
@@ -455,7 +455,7 @@ borkdude/edamame 0.0.18 -> 0.0.19
 
 * `malli.dev.pretty/explain` for pretty-printing explanations
 
-<img src="https://github.com/metosin/malli/blob/master/docs/img/pretty-explain.png" width=800>
+<img src="docs/img/pretty-explain.png" width=800>
 
 * updated dependencies:
 
@@ -761,7 +761,8 @@ No need to play with Compiler options or JVM properties to swap the default regi
 
 * New experimental pretty printer for schema errors, using [fipp](https://github.com/brandonbloom/fipp).
 
-<img src="https://github.com/metosin/malli/blob/master/docs/img/defn-schema.png">
+    ![](/docs/img/defn-schema.png)
+
 
 ### Extender API
 

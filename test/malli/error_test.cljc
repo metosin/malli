@@ -545,6 +545,8 @@
              (m/explain [1 2 :foo])
              (me/humanize)))))
 
+(def VarSchema [:map [:foo :int]])
+
 (deftest error-definion-lookup-test
   (is (= {:foo ["should be an integer"]}
          (-> [:map
@@ -629,7 +631,17 @@
                     (= password password2))]]
                (m/explain {:password "secret"
                            :password2 "faarao"})
-               (me/humanize {:resolve me/-resolve-root-error}))))))
+               (me/humanize {:resolve me/-resolve-root-error})))))
+
+  (testing "refs #1106"
+    (is (= {:foo ["should be an integer"]}
+           (me/humanize
+            (m/explain [:ref #'VarSchema] {:foo "2"})
+            {:resolve me/-resolve-direct-error})))
+    (is (= {:foo ["should be an integer"]}
+           (me/humanize
+            (m/explain [:ref #'VarSchema] {:foo "2"})
+            {:resolve me/-resolve-root-error})))))
 
 (deftest limits
   (is (= {:a [["should be an int"]]

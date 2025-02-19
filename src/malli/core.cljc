@@ -784,7 +784,15 @@
             form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             ->parser (fn [f m] (let [parsers (m (-vmap f children))]
-                                 #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
+                                 (if (= :non-flowing (:parse properties))
+                                   (let [[f & parsers] parsers]
+                                     #(let [res (f %)]
+                                        (if (miu/-invalid? res)
+                                          res
+                                          (if (miu/-invalid? (reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers))
+                                            ::invalid
+                                            res))))
+                                   #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers))))]
         ^{:type ::schema}
         (reify
           Schema

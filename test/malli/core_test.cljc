@@ -3581,3 +3581,102 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest non-flowing-and-test
+  (testing "flowing"
+    (testing "parses successfully"
+      (is (= (m/tags {"a" 3, "b" :x})
+             (m/parse [:and [:catn ["a" :int] ["b" :keyword]] [:fn any?]] [3 :x])))
+      (is (= [3 :x]
+             (let [s [:and [:catn ["a" :int] ["b" :keyword]] [:fn any?]]]
+               (m/unparse s (m/parse s [3 :x]))))))
+    (testing "m/tags is not a vector, so fails second child"
+      (is (= ::m/invalid
+             (m/parse [:and
+                       [:catn ["a" :int] ["b" :keyword]]
+                       [:fn vector?]]
+                      [3 :x]))))
+    (testing "m/tags is map, so succeeds second child"
+      (is (= (m/tags {"a" 3, "b" :x})
+             (m/parse [:and
+                       [:catn ["a" :int] ["b" :keyword]]
+                       [:fn map?]]
+                      [3 :x])))))
+  (testing "non-flowing"
+    (testing "one child"
+      (testing "parses successfully"
+        (is (= (m/tags {"a" 3, "b" :x})
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :int] ["b" :keyword]]]
+                        [3 :x])))
+        (is (= [3 :x]
+               (let [s [:and {:parse :non-flowing}
+                        [:catn ["a" :int] ["b" :keyword]]]]
+                 (m/unparse s (m/parse s [3 :x]))))))
+      (testing "first child fails"
+        (is (= ::m/invalid
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :boolean] ["b" :keyword]]]
+                        [3 :x])))))
+    (testing "two children"
+      (testing "parses successfully"
+        (is (= (m/tags {"a" 3, "b" :x})
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :int] ["b" :keyword]]
+                         [:fn vector?]]
+                        [3 :x])))
+        ;;FIXME
+        (is (= (m/tags {"a" 3, "b" :x})
+               (let [s [:and {:parse :non-flowing}
+                        [:catn ["a" :int] ["b" :keyword]]
+                        [:fn vector?]]]
+                 (m/unparse s (m/parse s [3 :x]))))))
+      (testing "first child fails"
+        (is (= ::m/invalid
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :boolean] ["b" :keyword]]
+                         [:fn map?]]
+                        [3 :x]))))
+      (testing "second child fails"
+        (is (= ::m/invalid
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :int] ["b" :keyword]]
+                         [:fn map?]]
+                        [3 :x])))))
+    (testing "three children"
+      (testing "parses successfully"
+        (is (= (m/tags {"a" 3, "b" :x})
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :int] ["b" :keyword]]
+                         [:fn vector?]
+                         [:fn seq]]
+                        [3 :x])))
+        ;;FIXME
+        (is (= (m/tags {"a" 3, "b" :x})
+               (let [s [:and {:parse :non-flowing}
+                        [:catn ["a" :int] ["b" :keyword]]
+                        [:fn vector?]
+                        [:fn seq]]]
+                 (m/unparse s (m/parse s [3 :x]))))))
+      (testing "first child fails"
+        (is (= ::m/invalid
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :boolean] ["b" :keyword]]
+                         [:fn vector?]
+                         [:fn seq]]
+                        [3 :x]))))
+      (testing "second child fails"
+        (is (= ::m/invalid
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :int] ["b" :keyword]]
+                         [:fn map?]
+                         [:fn seq]]
+                        [3 :x]))))
+      (testing "third child fails"
+        (is (= ::m/invalid
+               (m/parse [:and {:parse :non-flowing}
+                         [:catn ["a" :int] ["b" :keyword]]
+                         [:fn vector?]
+                         [:fn map?]]
+                        [3 :x]))))))
+)

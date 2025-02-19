@@ -2508,6 +2508,32 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
 ; => #malli.core.Tag{:key :malli.core/default, :value {:type "sized", :size 1}}
 ```
 
+### :and parsing
+
+By default parsing an `:and` schema allows the intermediate results of parsing the value
+flow left-to-right. For example, the following parse fails because the output of
+parsing `:catn` is a map, not a vector.
+
+```clojure
+(m/parse [:and
+          [:catn ["a" :int] ["b" :keyword]]
+          [:fn vector?]]
+         [3 :x])
+; => ::m/invalid
+```
+
+The property `{:parse :non-flowing}` changes the `:and` schema to parse each
+child schema using the original input value, returning the result of parsing
+the first child if all parsers succeed.
+
+```clojure
+(m/parse [:and {:parse :non-flowing}
+          [:catn ["a" :int] ["b" :keyword]]
+          [:fn vector?]]
+         [3 :x])
+; => (m/tags {"a" 3, "b" :x})
+```
+
 ## Unparsing values
 
 The inverse of parsing, using `m/unparse` and `m/unparser`:

@@ -65,36 +65,36 @@
               not)))
   (t/testing "Period"
     (t/is (-> [:time/period {:min (. Period ofYears 9) :max (. Period ofYears 10)}]
-            (m/validate (. Period ofYears 10) {:registry r})))
+              (m/validate (. Period ofYears 10) {:registry r})))
     (t/is (-> [:time/period {:min (. Period ofMonths 9) :max (. Period ofMonths 10)}]
-            (m/validate (. Period ofMonths 12) {:registry r})
-            not))
+              (m/validate (. Period ofMonths 12) {:registry r})
+              not))
     (t/is (-> [:time/period {:min (. Period ofMonths 9) :max (. Period ofMonths 10)}]
-            (m/validate (. Period ofDays 12) {:registry r})
-            not))
+              (m/validate (. Period ofDays 12) {:registry r})
+              not))
     (t/is (-> [:time/period {:min (. Period ofYears 9)}]
-            (m/validate (. Period ofYears 9) {:registry r})))
+              (m/validate (. Period ofYears 9) {:registry r})))
     (t/is (-> [:time/period {:min (. Period ofYears 9)}]
-            (m/validate (. Period ofYears 10) {:registry r})))
+              (m/validate (. Period ofYears 10) {:registry r})))
     (t/is (-> [:time/period {:min (. Period ofYears 9)}]
-            (m/validate (. Period ofYears 8) {:registry r})
-            not))
+              (m/validate (. Period ofYears 8) {:registry r})
+              not))
     (t/is (-> [:time/period {:min (. Period of 0 10 2)}]
-            (m/validate (. Period of 1 9 3) {:registry r})))
+              (m/validate (. Period of 1 9 3) {:registry r})))
     (t/is (-> [:time/period {:max (. Period ofYears 9)}]
-            (m/validate (. Period ofYears 9) {:registry r})))
+              (m/validate (. Period ofYears 9) {:registry r})))
     (t/is (-> [:time/period {:max (. Period ofYears 9)}]
-            (m/validate (. Period ofYears 8) {:registry r})))
+              (m/validate (. Period ofYears 8) {:registry r})))
     (t/is (-> [:time/period {:max (. Period ofYears 9)}]
-            (m/validate (. Period ofDays 8) {:registry r})))
+              (m/validate (. Period ofDays 8) {:registry r})))
     (t/is (-> [:time/period {:max (. Period ofYears 1)}]
-            (m/validate (. Period ofMonths 23) {:registry r})))
+              (m/validate (. Period ofMonths 23) {:registry r})))
     (t/is (-> [:time/period {:max (. Period ofYears 9)}]
-            (m/validate (. Period ofYears 10) {:registry r})
-            not))
+              (m/validate (. Period ofYears 10) {:registry r})
+              not))
     (t/is (-> [:time/period {:max (. Period of 0 10 2)}]
-            (m/validate (. Period of 1 9 3) {:registry r})
-            not)))
+              (m/validate (. Period of 1 9 3) {:registry r})
+              not)))
   (t/testing "local date"
     (t/is (-> [:time/local-date {:min (. LocalDate parse "2020-01-01") :max (. LocalDate parse "2020-01-03")}]
               (m/validate (. LocalDate parse "2020-01-01") {:registry r})))

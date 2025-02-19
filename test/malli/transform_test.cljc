@@ -7,9 +7,16 @@
             [malli.transform :as mt])
   #?(:clj (:import (java.net URI))))
 
+(defn without-nils [x]
+  (reduce-kv (fn [acc k v] (cond-> acc v (assoc k v))) {} x))
+
+;; in BB, record don't get all fields populated
 (deftest ->interceptor-test
   (are [?interceptor expected]
-    (= expected (is (#'mt/-interceptor ?interceptor {} {})))
+    (let [i (mt/-interceptor ?interceptor nil nil nil nil)]
+      (and (= (m/-interceptor? i))
+           (= (without-nils expected)
+              (without-nils i))))
 
     inc {:enter inc}
     {:enter inc} {:enter inc}
@@ -21,10 +28,11 @@
   (let [?interceptor {:compile (constantly {:compile (constantly inc)})}]
     (testing "shallow compilation succeeds"
       (binding [mt/*max-compile-depth* 2]
-        (is (= {:enter inc} (#'mt/-interceptor ?interceptor {} {})))))
+        (is (= (without-nils (m/-interceptor {:enter inc}))
+               (without-nils (mt/-interceptor ?interceptor nil nil nil nil))))))
     (testing "too deep compilation fails"
       (binding [mt/*max-compile-depth* 1]
-        (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/-interceptor ?interceptor {} {})))))))
+        (is (thrown? #?(:clj Exception, :cljs js/Error) (mt/-interceptor ?interceptor nil nil nil nil)))))))
 
 (deftest string->long
   (is (= 1 (mt/-string->long "1")))

@@ -812,7 +812,7 @@ Or if you already have a malli validation exception (e.g. in a catch form):
 (require '[malli.error :as me])
 
 (try
-  (m/validate Address {:not "an address"})
+  (m/assert Address {:not "an address"})
   (catch Exception e
     (-> e ex-data :data :explain me/humanize)))
 ```

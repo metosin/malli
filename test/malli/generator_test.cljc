@@ -698,13 +698,15 @@
 
 (deftest infinite-generator-test
   ;; equivalent to :never, which is infinite
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (mg/generate [:schema {:registry {::a [:ref ::a]}}
-                             [:ref ::a]])))
+  (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                        #":malli\.generator/unsatisfiable-schema"
+                        (mg/generate [:schema {:registry {::a [:ref ::a]}}
+                                      [:ref ::a]])))
   ;; equivalent to [:tuple :never], which is infinite
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (mg/generate [:schema {:registry {::a [:tuple [:ref ::a]]}}
-                             [:ref ::a]])))
+  (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                        #":malli\.generator/unsatisfiable-schema"
+                        (mg/generate [:schema {:registry {::a [:tuple [:ref ::a]]}}
+                                      [:ref ::a]])))
   ;; equivalent to [:maybe :never] == [:maybe [:maybe :never]] == ..., which is just :nil
   (is (every? nil? (mg/sample [:schema {:registry {::a [:maybe [:ref ::a]]}}
                                [:ref ::a]]))))
@@ -1124,3 +1126,13 @@
   (doseq [_ (range 100)
           v (mg/sample [:seqable {:min 1} :any])]
     (is (seq v))))
+
+(deftest delay-generator-test
+  (testing "satisfiable child"
+    (is (delay? (mg/generate [:delay :int] {:seed 0})))
+    (is (= 1784201 @(mg/generate [:delay :int] {:seed 0}))))
+  (testing "unsatisfiable child"
+    (is (delay? (mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+    (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                          #":malli\.generator/unsatisfiable-schema"
+                          @(mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))))

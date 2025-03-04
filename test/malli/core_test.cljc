@@ -3581,3 +3581,11 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+;; wrapper for clojure.core/delay?
+(deftest delay-test
+  (is (m/validate [:delay :int] (delay 1)))
+  (is (m/validate [:delay :boolean] (delay 1)))
+  (is (nil? (m/explain [:delay :int] (delay 1))))
+  (is (nil? (m/explain [:delay :boolean] (delay 1))))
+  (is (m/explain [:delay :boolean] 1)))

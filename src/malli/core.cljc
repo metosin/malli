@@ -2718,6 +2718,13 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
+(defn -delay-schema [_]
+  (-proxy-schema {:type :delay
+                  :fn (fn [p c o]
+                        (-check-children! :delay p c 1 1)
+                        (let [c (mapv #(schema % o) c)]
+                          [c (map -form c) (schema [:fn delay?] o)]))}))
+
 (defn base-schemas []
   {:and (-and-schema)
    :or (-or-schema)
@@ -2741,6 +2748,7 @@
    :-> (-->-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
+   :delay (-delay-schema nil)
    ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []

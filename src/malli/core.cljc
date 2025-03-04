@@ -2718,6 +2718,7 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
+;;TODO make non-proxy for explain path
 (defn -delay-schema [_]
   (-proxy-schema {:type :delay
                   :fn (fn [{:keys [force] :as p} c o]

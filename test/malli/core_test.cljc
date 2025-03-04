@@ -3582,10 +3582,23 @@
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
 
-;; wrapper for clojure.core/delay?
 (deftest delay-test
-  (is (m/validate [:delay :int] (delay 1)))
-  (is (m/validate [:delay :boolean] (delay 1)))
-  (is (nil? (m/explain [:delay :int] (delay 1))))
-  (is (nil? (m/explain [:delay :boolean] (delay 1))))
-  (is (m/explain [:delay :boolean] 1)))
+  (testing "schema matches delay"
+    (is (m/validate [:delay :int] (delay 1)))
+    (is (m/validate [:delay :int] (doto (delay 1) deref)))
+    (is (m/validate [:delay {:force true} :int] (delay 1)))
+    (is (m/validate [:delay {:force true} :int] (doto (delay 1) deref)))
+    (is (nil? (m/explain [:delay :int] (delay 1))))
+    (is (nil? (m/explain [:delay :int] (doto (delay 1) deref))))
+    (is (nil? (m/explain [:delay {:force true} :int] (delay 1)))))
+  (testing "schema does not match delay"
+    (is (m/validate [:delay :boolean] (delay 1)))
+    (is (not (m/validate [:delay :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:delay {:force true} :boolean] (delay 1))))
+    (is (not (m/validate [:delay {:force true} :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:delay :boolean] 1)))
+    (is (nil? (m/explain [:delay :boolean] (delay 1))))
+    (is (m/explain [:delay :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:delay {:force true} :boolean] (delay 1)))
+    (is (m/explain [:delay {:force true} :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:delay :boolean] 1))))

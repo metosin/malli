@@ -2720,10 +2720,17 @@
 
 (defn -delay-schema [_]
   (-proxy-schema {:type :delay
-                  :fn (fn [p c o]
+                  :fn (fn [{:keys [force] :as p} c o]
                         (-check-children! :delay p c 1 1)
-                        (let [c (mapv #(schema % o) c)]
-                          [c (map -form c) (schema [:fn delay?] o)]))}))
+                        (let [c (mapv #(schema % o) c)
+                              v (-validator (first c))]
+                          [c (map -form c) (schema [:fn (fn [d]
+                                                          (if (delay? d)
+                                                            (if (or (realized? d) force)
+                                                              (v @d)
+                                                              true)
+                                                            false))]
+                                                   o)]))}))
 
 (defn base-schemas []
   {:and (-and-schema)

@@ -3598,6 +3598,7 @@
     (is (not (m/validate [:delay {:force true} :boolean] (doto (delay 1) deref))))
     (is (not (m/validate [:delay :boolean] 1)))
     (is (nil? (m/explain [:delay :boolean] (delay 1))))
+    ;;TODO make a non-proxy schema for :delay and describe problem.
     (is (m/explain [:delay :boolean] (doto (delay 1) deref)))
     (is (m/explain [:delay {:force true} :boolean] (delay 1)))
     (is (m/explain [:delay {:force true} :boolean] (doto (delay 1) deref)))

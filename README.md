@@ -2016,6 +2016,11 @@ This can be overridden to always validate with `:force true`.
 (m/validate [:promise {:force true} :int] (promise))    ; Blocks forever!
 ```
 
+Generators make a best-effort to return realizable values, however
+they may block indefinitely or throw exceptions when dereferenced
+depending on the child generator. `:promise` in particular will not receive
+a value if its child generator fails.
+
 ## Recursive schemas
 
 To create a recursive schema, introduce a [local registry](#local-registry) and wrap all recursive positions in the registry with `:ref`. Now you may reference the recursive schemas in the body of the schema.

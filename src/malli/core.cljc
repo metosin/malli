@@ -2718,20 +2718,62 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
-;;TODO make non-proxy for explain path
 (defn -delay-schema [_]
-  (-proxy-schema {:type :delay
-                  :fn (fn [{:keys [force] :as p} c o]
-                        (-check-children! :delay p c 1 1)
-                        (let [c (mapv #(schema % o) c)
-                              v (-validator (first c))]
-                          [c (map -form c) (schema [:fn (fn [d]
-                                                          (if (delay? d)
-                                                            (if (or (realized? d) force)
-                                                              (v @d)
-                                                              true)
-                                                            false))]
-                                                   o)]))}))
+  (let [type :delay]
+    ^{:type ::into-schema}
+    (reify
+      AST
+      (-from-ast [parent ast options] (-from-child-ast parent ast options))
+      IntoSchema
+      (-type [_] type)
+      (-type-properties [_])
+      (-properties-schema [_ _])
+      (-children-schema [_ _])
+      (-into-schema [parent {:keys [force] :as properties} children options]
+        (-check-children! type properties children 1 1)
+        (let [[schema :as children] (-vmap #(schema % options) children)
+              form (delay (-simple-form parent properties children -form options))
+              cache (-create-cache options)]
+          ^{:type ::schema}
+          (reify
+            AST
+            (-to-ast [this _] (-to-child-ast this))
+            Schema
+            (-validator [_]
+              (let [validator (-validator schema)]
+                (fn [d]
+                  (if (delay? d)
+                    (if (or (realized? d) force)
+                      (validator @d)
+                      true)
+                    false))))
+            (-explainer [this path]
+              (let [explainer (-explainer schema (conj path 0))]
+                (fn [x in acc]
+                  (cond
+                    (not (delay? x)) (conj acc (miu/-error path in this x ::invalid-type))
+                    ;;TODO in?
+                    (or (realized? x) force) (explainer @x (conj in ::deref) acc)))))
+            (-parser [this]
+              (let [validator (-validator this)]
+                (fn [x] (if (validator x) x ::invalid))))
+            (-unparser [this] (-parser this))
+            (-transformer [this transformer method options]
+              (-intercepting (-value-transformer transformer this method options)))
+            (-walk [this walker path options]
+              (when (-accept walker this path options)
+                (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
+            (-properties [_] properties)
+            (-options [_] options)
+            (-children [_] children)
+            (-parent [_] parent)
+            (-form [_] @form)
+            Cached
+            (-cache [_] cache)
+            LensSchema
+            (-keep [_] true)
+            (-get [_ _ _] schema)
+            (-set [this _ value] (-set-children this [value]))))))))
 
 (defn base-schemas []
   {:and (-and-schema)

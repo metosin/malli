@@ -3631,13 +3631,12 @@
 #?(:clj
    (deftest promise-test
      (testing "schema matches promise"
-       (is (m/validate [:promise :int] (promise 1)))
-       (is (m/validate [:promise :int] (doto (promise 1) deref)))
-       (is (m/validate [:promise {:force true} :int] (promise 1)))
-       (is (m/validate [:promise {:force true} :int] (doto (promise 1) deref)))
-       (is (nil? (m/explain [:promise :int] (promise 1))))
-       (is (nil? (m/explain [:promise :int] (doto (promise 1) deref))))
-       (is (nil? (m/explain [:promise {:force true} :int] (promise 1)))))
+       (is (m/validate [:promise :int] (doto (promise) (deliver 1))))
+       (is (m/validate [:promise {:force true} :int] (doto (promise) (deliver 1))))
+       (is (m/validate [:promise {:force true} :int] (doto (promise) (deliver 1))))
+       (is (nil? (m/explain [:promise :int] (doto (promise) (deliver 1)))))
+       (is (nil? (m/explain [:promise :int] (doto (promise) (deliver 1)))))
+       (is (nil? (m/explain [:promise {:force true} :int] (doto (promise) (deliver 1))))))
      (testing "schema does not match promise"
        (is (m/validate [:promise :boolean] (promise)))
        (is (not (m/validate [:promise :boolean] (doto (promise) (deliver 1)))))

@@ -2737,14 +2737,7 @@
                      :delay delay?
                      #?@(:clj [:future future?
                                :promise (let [c (class (promise))]
-                                          (fn [p]
-                                            (or (identical? c (class p))
-                                                (instance? c p))
-                                            #_
-                                            (and (instance? clojure.lang.IDeref p)
-                                                 (instance? clojure.lang.IBlockingDeref p)
-                                                 (instance? clojure.lang.IPending p)
-                                                 (instance? clojure.lang.IFn p))))]))
+                                          #(instance? c %))]))
               cache (-create-cache options)]
           ^{:type ::schema}
           (reify

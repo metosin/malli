@@ -2762,6 +2762,7 @@
               (-intercepting (-value-transformer transformer this method options)))
             (-walk [this walker path options]
               (when (-accept walker this path options)
+                ;; TODO
                 (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
             (-properties [_] properties)
             (-options [_] options)

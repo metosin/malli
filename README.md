@@ -27,6 +27,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
    - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
+- [Delay Schemas](#delay-schemas)
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
@@ -1983,6 +1984,24 @@ Any function can be used for `:dispatch`:
 ;{:type :human
 ; :name "Tiina"
 ; :address {:country :finland}}
+```
+
+## Delay schemas
+
+Delayed values can be specified with `:delay`.
+
+```clojure
+;; Fails if not delay?.
+(m/validate [:delay :any] (delay 42))   ; => true
+(m/validate [:delay :any] 42)           ; => false
+
+;; Unrealized values are not forced...
+(m/validate [:delay :int] (delay 42))   ; => true
+(m/validate [:delay :int] (delay "42")) ; => true
+
+;; ...unless :force property provided or delay is realized.
+(m/validate [:delay {:force true} :int] (delay "42")) ; => false
+(m/validate [:delay :int] (doto (delay "42") deref))  ; => false
 ```
 
 ## Recursive schemas

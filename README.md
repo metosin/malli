@@ -1995,11 +1995,11 @@ Any function can be used for `:dispatch`:
 (def registry*
   (atom {::open (m/schema [:multi {:dispatch :type}])}))
 
-(defn extend-multi! [name entry]
-  (swap! registry* update name mu/extend-multi entry))
+(defn extend-multi! [name k schema]
+  (swap! registry* update name mu/assoc k schema))
 
-(extend-multi! ::open [:sized [:map [:type keyword?] [:size int?]]])
-(extend-multi! ::open [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]])
+(extend-multi! ::open :sized [:map [:type keyword?] [:size int?]])
+(extend-multi! ::open :human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]])
 
 (m/validate ::open {:type :sized, :size 10} {:registry (mr/mutable-registry registry*)})
 ; => true

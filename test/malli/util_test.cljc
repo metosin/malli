@@ -1127,22 +1127,22 @@
 
 (def extend-multi-reg* (atom {::multi (m/schema [:multi {:dispatch identity} [:a :any] [::m/default :any]])}))
 
-(defn extend-multi! [name entry]
-  (swap! extend-multi-reg* update name mu/extend-multi entry))
+(defn extend-multi! [name k schema]
+  (swap! extend-multi-reg* update name mu/assoc k schema))
 
-(extend-multi! ::multi [:a number?])
-(extend-multi! ::multi [::m/default number?])
+(extend-multi! ::multi :a number?)
+(extend-multi! ::multi ::m/default number?)
 
 (deftest extend-multi-test
   (is (= [:multi {:dispatch identity} [:a :any]]
-         (m/form (mu/extend-multi [:multi {:dispatch identity}] [:a :any]))))
+         (m/form (mu/assoc [:multi {:dispatch identity}] :a :any))))
   (is (= [:multi {:dispatch identity} [:a 'number?]]
-         (m/form (mu/extend-multi [:multi {:dispatch identity} [:a :any]] [:a number?]))))
+         (m/form (mu/assoc [:multi {:dispatch identity} [:a :any]] :a number?))))
   (is (= [:multi {:dispatch identity} [:b :any] [:a :any]]
-         (m/form (mu/extend-multi [:multi {:dispatch identity} [:b :any]] [:a :any]))))
+         (m/form (mu/assoc [:multi {:dispatch identity} [:b :any]] :a :any))))
   (is (= [:multi {:dispatch identity} [::m/default 'number?]]
-         (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default :any]] [::m/default number?]))))
+         (m/form (mu/assoc [:multi {:dispatch identity} [::m/default :any]] ::m/default number?))))
   (is (= [:multi {:dispatch identity} [:malli.core/default 'number?] [:a :any]]
-         (m/form (mu/extend-multi [:multi {:dispatch identity} [::m/default number?]] [:a :any]))))
+         (m/form (mu/assoc [:multi {:dispatch identity} [::m/default number?]] :a :any))))
   (is (= [:multi {:dispatch identity} [:a 'number?] [:malli.core/default 'number?]]
          (m/form (m/deref (m/schema ::multi {:registry (mr/mutable-registry extend-multi-reg*)}))))))

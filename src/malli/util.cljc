@@ -373,21 +373,6 @@
                               (apply f (get s k) args))))]
     (up schema ks f args)))
 
-(defn extend-multi
-  "Extend a :multi schema. Overwrites existing entry by = dispatch value if already present."
-  ([?schema entry] (extend-multi ?schema entry nil))
-  ([?schema entry options]
-   (let [s (m/schema ?schema options)
-         c (m/children s)
-         [d] entry
-         i (some (fn [i]
-                   (when (= d (first (nth c i)))
-                     i))
-                 (range (count c)))]
-     (m/-set-children s (if i
-                          (c/assoc c i entry)
-                          (conj c entry))))))
-
 ;;
 ;; Schemas
 ;;

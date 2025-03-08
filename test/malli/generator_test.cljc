@@ -1130,9 +1130,28 @@
 (deftest delay-generator-test
   (testing "satisfiable child"
     (is (delay? (mg/generate [:delay :int] {:seed 0})))
-    (is (= 1784201 @(mg/generate [:delay :int] {:seed 0}))))
+    (is (= 1784201 @(mg/generate [:delay :int] {:seed 0})))
+    ;; TODO https://github.com/metosin/malli/issues/1039
+    (is (every? (m/validator :int) (mapv deref (mg/sample [:delay :int]))))
+    ;; TODO https://github.com/metosin/malli/issues/1039
+    (is (every? #{1784201} (mapv deref (mg/sample [:delay :int] {:seed 0})))))
   (testing "unsatisfiable child"
     (is (delay? (mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
     (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
                           #":malli\.generator/unsatisfiable-schema"
                           @(mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))))
+
+#?(:clj
+   (deftest future-generator-test
+     (testing "satisfiable child"
+       (is (future? (mg/generate [:future :int] {:seed 0})))
+       (is (= 1784201 @(mg/generate [:future :int] {:seed 0})))
+       ;; TODO https://github.com/metosin/malli/issues/1039
+       (is (every? (m/validator :int) (mapv deref (mg/sample [:future :int]))))
+       ;; TODO https://github.com/metosin/malli/issues/1039
+       (is (every? #{1784201} (mapv deref (mg/sample [:future :int] {:seed 0})))))
+     (testing "unsatisfiable child"
+       (is (future? (mg/generate [:future [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+       (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                             #":malli\.generator/unsatisfiable-schema"
+                             @(mg/generate [:future [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))))

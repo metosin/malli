@@ -3603,26 +3603,27 @@
     (is (m/explain [:delay {:force true} :boolean] (doto (delay 1) deref)))
     (is (m/explain [:delay :boolean] 1))))
 
-(deftest future-test
-  (testing "schema matches future"
-    (is (m/validate [:future :int] (future 1)))
-    (is (m/validate [:future :int] (doto (future 1) deref)))
-    (is (m/validate [:future {:force true} :int] (future 1)))
-    (is (m/validate [:future {:force true} :int] (doto (future 1) deref)))
-    (is (nil? (m/explain [:future :int] (future 1))))
-    (is (nil? (m/explain [:future :int] (doto (future 1) deref))))
-    (is (nil? (m/explain [:future {:force true} :int] (future 1)))))
-  (testing "schema does not match future"
-    (let [p (promise)
-          f (future @p 1)]
-      (is (m/validate [:future :boolean] f))
-      (is (nil? (m/explain [:future :boolean] f)))
-      (deliver p true))
-    (is (not (m/validate [:future :boolean] (doto (future 1) deref))))
-    (is (not (m/validate [:future {:force true} :boolean] (future 1))))
-    (is (not (m/validate [:future {:force true} :boolean] (doto (future 1) deref))))
-    (is (not (m/validate [:future :boolean] 1)))
-    (is (m/explain [:future :boolean] (doto (future 1) deref)))
-    (is (m/explain [:future {:force true} :boolean] (future 1)))
-    (is (m/explain [:future {:force true} :boolean] (doto (future 1) deref)))
-    (is (m/explain [:future :boolean] 1))))
+#?(:clj
+   (deftest future-test
+     (testing "schema matches future"
+       (is (m/validate [:future :int] (future 1)))
+       (is (m/validate [:future :int] (doto (future 1) deref)))
+       (is (m/validate [:future {:force true} :int] (future 1)))
+       (is (m/validate [:future {:force true} :int] (doto (future 1) deref)))
+       (is (nil? (m/explain [:future :int] (future 1))))
+       (is (nil? (m/explain [:future :int] (doto (future 1) deref))))
+       (is (nil? (m/explain [:future {:force true} :int] (future 1)))))
+     (testing "schema does not match future"
+       (let [p (promise)
+             f (future @p 1)]
+         (is (m/validate [:future :boolean] f))
+         (is (nil? (m/explain [:future :boolean] f)))
+         (deliver p true))
+       (is (not (m/validate [:future :boolean] (doto (future 1) deref))))
+       (is (not (m/validate [:future {:force true} :boolean] (future 1))))
+       (is (not (m/validate [:future {:force true} :boolean] (doto (future 1) deref))))
+       (is (not (m/validate [:future :boolean] 1)))
+       (is (m/explain [:future :boolean] (doto (future 1) deref)))
+       (is (m/explain [:future {:force true} :boolean] (future 1)))
+       (is (m/explain [:future {:force true} :boolean] (doto (future 1) deref)))
+       (is (m/explain [:future :boolean] 1)))))

@@ -2009,9 +2009,10 @@ This can be overridden to always validate with `:force true`.
 ;; ...unless `realized?` or `:force true`
 (m/validate [:delay :int] (doto (delay "42") deref))    ; => false
 (m/validate [:delay {:force true} :int] (delay "42"))   ; => false
+(m/validate [:future :int] (doto (future "42") deref))  ; => false
 (m/validate [:future {:force true} :int] (future "42")) ; => false
-(m/validate [:promise {:force true} :int] (doto (promise) (deliver "42")))
-; => false
+(m/validate [:future {:force true} :int] (future @(promise))) ; Blocks forever!
+(m/validate [:promise {:force true} :int] (doto (promise) (deliver "42"))) ; => false
 (m/validate [:promise {:force true} :int] (promise))    ; Blocks forever!
 ```
 

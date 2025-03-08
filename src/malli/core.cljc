@@ -2718,8 +2718,8 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
-(defn -delay-schema [_]
-  (let [type :delay]
+(defn -deref-schema [{:keys [type]}]
+  (let []
     ^{:type ::into-schema}
     (reify
       AST
@@ -2733,6 +2733,9 @@
         (-check-children! type properties children 1 1)
         (let [[schema :as children] (-vmap #(schema % options) children)
               form (delay (-simple-form parent properties children -form options))
+              pred (case type
+                     :delay delay?
+                     #?@(:clj [:future future?]))
               cache (-create-cache options)]
           ^{:type ::schema}
           (reify
@@ -2742,7 +2745,7 @@
             (-validator [_]
               (let [validator (-validator schema)]
                 (fn [d]
-                  (if (delay? d)
+                  (if (pred d)
                     (if (or (realized? d) force)
                       (validator @d)
                       true)
@@ -2751,7 +2754,7 @@
               (let [explainer (-explainer schema (conj path 0))]
                 (fn [x in acc]
                   (cond
-                    (not (delay? x)) (conj acc (miu/-error path in this x ::invalid-type))
+                    (not (pred x)) (conj acc (miu/-error path in this x ::invalid-type))
                     ;;TODO in?
                     (or (realized? x) force) (explainer @x (conj in ::deref) acc)))))
             (-parser [this]
@@ -2799,7 +2802,8 @@
    :-> (-->-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
-   :delay (-delay-schema nil)
+   :delay (-deref-schema {:type :delay})
+   #?(:clj :future) #?(:clj (-deref-schema {:type :future}))
    ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []

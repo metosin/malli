@@ -27,7 +27,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
    - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
-- [Delay Schemas](#delay-schemas)
+- [Delay, Future and Promise Schemas](#delay-schemas)
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
@@ -1986,22 +1986,33 @@ Any function can be used for `:dispatch`:
 ; :address {:country :finland}}
 ```
 
-## Delay schemas
+## Delay, Future and Promise Schemas
 
-Delayed values can be specified with `:delay`.
+`:delay`, `:future`, and `:promise` schemas validate their respective concurrency
+promitives. They all share common behavior for validation. Since `deref` is prone
+to block the current thread, malli is careful to only validate `realized?` values.
+This can be overridden to always validate with `:force true`.
 
 ```clojure
-;; Fails if not delay?.
-(m/validate [:delay :any] (delay 42))   ; => true
-(m/validate [:delay :any] 42)           ; => false
+;; Fails if not delay/future/promise.
+(m/validate [:delay :any] 42)   ; => false
+(m/validate [:future :any] 42)  ; => false
+(m/validate [:promise :any] 42) ; => false
 
 ;; Unrealized values are not forced...
-(m/validate [:delay :int] (delay 42))   ; => true
-(m/validate [:delay :int] (delay "42")) ; => true
+(m/validate [:delay :int] (delay 42))     ; => true
+(m/validate [:delay :int] (delay "42"))   ; => true
+(m/validate [:future :int] (future 42))   ; => true
+(m/validate [:future :int] (future "42")) ; => true / false
+(m/validate [:promise :int] (promise))    ; => true
 
-;; ...unless :force property provided or delay is realized.
-(m/validate [:delay {:force true} :int] (delay "42")) ; => false
-(m/validate [:delay :int] (doto (delay "42") deref))  ; => false
+;; ...unless `realized?` or `:force true`
+(m/validate [:delay :int] (doto (delay "42") deref))    ; => false
+(m/validate [:delay {:force true} :int] (delay "42"))   ; => false
+(m/validate [:future {:force true} :int] (future "42")) ; => false
+(m/validate [:promise {:force true} :int] (doto (promise) (deliver "42")))
+; => false
+(m/validate [:promise {:force true} :int] (promise))    ; Blocks forever!
 ```
 
 ## Recursive schemas

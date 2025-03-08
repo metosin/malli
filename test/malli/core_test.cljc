@@ -3627,3 +3627,27 @@
        (is (m/explain [:future {:force true} :boolean] (future 1)))
        (is (m/explain [:future {:force true} :boolean] (doto (future 1) deref)))
        (is (m/explain [:future :boolean] 1)))))
+
+#?(:clj
+   (deftest promise-test
+     (testing "schema matches promise"
+       (is (m/validate [:promise :int] (promise 1)))
+       (is (m/validate [:promise :int] (doto (promise 1) deref)))
+       (is (m/validate [:promise {:force true} :int] (promise 1)))
+       (is (m/validate [:promise {:force true} :int] (doto (promise 1) deref)))
+       (is (nil? (m/explain [:promise :int] (promise 1))))
+       (is (nil? (m/explain [:promise :int] (doto (promise 1) deref))))
+       (is (nil? (m/explain [:promise {:force true} :int] (promise 1)))))
+     (testing "schema does not match promise"
+       (is (m/validate [:promise :boolean] (promise)))
+       (is (not (m/validate [:promise :boolean] (doto (promise) (deliver 1)))))
+       (is (not (m/validate [:promise {:force true} :boolean] (doto (promise) (deliver 1)))))
+       (is (not (m/validate [:promise {:force true} :boolean] (doto (promise) (deliver 1)))))
+       (is (not (m/validate [:promise :boolean] 1)))
+       (is (not (m/validate [:promise :boolean] (future))))
+       (is (not (m/validate [:promise :boolean] (delay))))
+       (is (nil? (m/explain [:promise :boolean] (promise))))
+       (is (m/explain [:promise :boolean] (doto (promise) (deliver 1))))
+       (is (m/explain [:promise {:force true} :boolean] (doto (promise) (deliver 1))))
+       (is (m/explain [:promise {:force true} :boolean] (doto (promise) (deliver 1))))
+       (is (m/explain [:promise :boolean] 1)))))

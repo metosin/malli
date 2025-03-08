@@ -2735,7 +2735,16 @@
               form (delay (-simple-form parent properties children -form options))
               pred (case type
                      :delay delay?
-                     #?@(:clj [:future future?]))
+                     #?@(:clj [:future future?
+                               :promise (let [c (class (promise))]
+                                          (fn [p]
+                                            (or (identical? c (class p))
+                                                (instance? c p))
+                                            #_
+                                            (and (instance? clojure.lang.IDeref p)
+                                                 (instance? clojure.lang.IBlockingDeref p)
+                                                 (instance? clojure.lang.IPending p)
+                                                 (instance? clojure.lang.IFn p))))]))
               cache (-create-cache options)]
           ^{:type ::schema}
           (reify
@@ -2804,6 +2813,7 @@
    :schema (-schema-schema nil)
    :delay (-deref-schema {:type :delay})
    #?(:clj :future) #?(:clj (-deref-schema {:type :future}))
+   #?(:clj :promise) #?(:clj (-deref-schema {:type :promise}))
    ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []

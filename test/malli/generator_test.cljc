@@ -1159,14 +1159,14 @@
 #?(:clj
    (deftest promise-generator-test
      (testing "satisfiable child"
-       (is (class (mg/generate [:promise :int] {:seed 0})))
+       (is (instance? (class (promise)) (mg/generate [:promise :int] {:seed 0})))
        (is (= 1784201 @(mg/generate [:promise :int] {:seed 0})))
        ;; TODO https://github.com/metosin/malli/issues/1039
        (is (every? (m/validator :int) (mapv deref (mg/sample [:promise :int]))))
        ;; TODO https://github.com/metosin/malli/issues/1039
        (is (every? #{1784201} (mapv deref (mg/sample [:promise :int] {:seed 0})))))
      (testing "unsatisfiable child"
-       (is (promise? (mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
-       (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
-                             #":malli\.generator/unsatisfiable-schema"
-                             @(mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))))
+       (is (instance? (class (promise)) (mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+       (is (= ::timed-out
+              (deref (mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})
+                     100 ::timed-out))))))

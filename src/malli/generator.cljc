@@ -314,6 +314,19 @@
 (defn -function-gen [schema options]
   (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} nil options)))
 
+(defn -delay-gen [schema options]
+  (gen/return (delay (generate (-child-gen schema options) options))))
+
+#?(:clj
+   (defn -future-gen [schema options]
+     (gen/return (future (generate (-child-gen schema options) options)))))
+
+#?(:clj
+   (defn -promise-gen [schema options]
+     (let [p (promise)]
+       (future (deliver p (generate (-child-gen schema options) options)))
+       (gen/return p))))
+
 (defn -regex-generator [schema options]
   (cond-> (generator schema options) (not (m/-regex-op? schema)) (-> vector gen-tuple)))
 
@@ -415,6 +428,9 @@
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :-> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
+(defmethod -schema-generator :delay [schema options] (-delay-gen schema options))
+#?(:clj (defmethod -schema-generator :future [schema options] (-future-gen schema options)))
+#?(:clj (defmethod -schema-generator :promise [schema options] (-promise-gen schema options)))
 (defmethod -schema-generator 'ifn? [_ _] gen/keyword)
 (defmethod -schema-generator :ref [schema options] (-ref-gen schema options))
 (defmethod -schema-generator :schema [schema options] (generator (m/deref schema) options))

@@ -142,6 +142,9 @@
    :qualified-keyword {:error/message {:en "should be a qualified keyword"}}
    :qualified-symbol {:error/message {:en "should be a qualified symbol"}}
    :uuid {:error/message {:en "should be a uuid"}}
+   :delay {:error/message {:en "should be a delay"}}
+   #?(:clj :future) #?(:clj {:error/message {:en "should be a future"}})
+   #?(:clj :promise) #?(:clj {:error/message {:en "should be a promise"}})
    :> {:error/fn {:en (fn [{:keys [schema value negated] :as error} options]
                         (if negated
                           (-forward-negation [:<= (first (m/children schema))] error options)

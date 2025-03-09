@@ -2755,9 +2755,8 @@
             (let [explainer (-explainer schema (conj path 0))]
               (fn [x in acc]
                 (cond
-                  (not (pred x)) (conj acc (miu/-error path in this x ::invalid-type))
-                  ;;TODO in?
-                  (or (realized? x) force) (explainer @x (conj in ::deref) acc)))))
+                  (not (pred x)) (conj acc (miu/-error path in this x))
+                  (or (realized? x) force) (explainer @x (conj in :deref) acc)))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
@@ -2766,7 +2765,6 @@
             (-intercepting (-value-transformer transformer this method options)))
           (-walk [this walker path options]
             (when (-accept walker this path options)
-              ;; TODO
               (-outer walker this path [(-inner walker schema (conj path ::in) options)] options)))
           (-properties [_] properties)
           (-options [_] options)

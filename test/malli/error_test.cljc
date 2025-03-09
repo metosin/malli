@@ -943,3 +943,13 @@
                                                                   (negated "should not avoid being a multiple of 3")
                                                                   "should not be a multiple of 3"))}}
                                           #(not= 0 (mod % 3))]] 1))))))
+
+(deftest humanize-delay-future-promise-test
+  (is (= ["should be a delay"] (me/humanize (m/explain [:delay :int] 42))))
+  (is (= ["should not be a delay"] (me/humanize (m/explain [:not [:delay :int]] (delay 42)))))
+  (is (= ["should be a promise"] (me/humanize (m/explain [:promise :int] 42))))
+  (is (= ["should be a future"] (me/humanize (m/explain [:future :int] 42))))
+  (is (= {:deref ["should be an integer"]} (me/humanize (m/explain [:delay {:force true} :int] (delay "42")))))
+  (is (= {:deref ["should be an integer"]} (me/humanize (m/explain [:future {:force true} :int] (future "42")))))
+  (is (= {:deref ["should be an integer"]} (me/humanize (m/explain [:promise {:force true} :int] (doto (promise) (deliver "42"))))))
+  (is (= {:deref ["should not be an integer"]} (me/humanize (m/explain [:promise {:force true} [:not :int]] (doto (promise) (deliver 42)))))))

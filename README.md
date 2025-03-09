@@ -2021,6 +2021,16 @@ they may block indefinitely or throw exceptions when dereferenced
 depending on the child generator. `:promise` in particular will not receive
 a value if its child generator fails.
 
+Humanizers nested failures for the contained value under `:deref`.
+
+```clojure
+(me/humanize (m/explain [:delay :int] 42))
+; => ["should be a delay"]
+
+(me/humanize (m/explain [:delay {:force true} :int] (delay "42")))
+; => {:deref ["should be an integer"]}
+```
+
 ## Recursive schemas
 
 To create a recursive schema, introduce a [local registry](#local-registry) and wrap all recursive positions in the registry with `:ref`. Now you may reference the recursive schemas in the body of the schema.

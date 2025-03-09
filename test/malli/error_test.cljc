@@ -952,4 +952,7 @@
   (is (= {:deref ["should be an integer"]} (me/humanize (m/explain [:delay {:force true} :int] (delay "42")))))
   (is (= {:deref ["should be an integer"]} (me/humanize (m/explain [:future {:force true} :int] (future "42")))))
   (is (= {:deref ["should be an integer"]} (me/humanize (m/explain [:promise {:force true} :int] (doto (promise) (deliver "42"))))))
-  (is (= {:deref ["should not be an integer"]} (me/humanize (m/explain [:promise {:force true} [:not :int]] (doto (promise) (deliver 42)))))))
+  (is (= {:deref ["should not be an integer"]} (me/humanize (m/explain [:promise {:force true} [:not :int]] (doto (promise) (deliver 42))))))
+  (is (= [{:a {:deref ["should be an integer"]}}]
+         (me/humanize (m/explain [:vector [:map [:a [:delay {:force true} :int]]]]
+                                 [{:a (delay "42")}])))))

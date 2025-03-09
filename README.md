@@ -1989,7 +1989,7 @@ Any function can be used for `:dispatch`:
 ## Delay, Future and Promise Schemas
 
 `:delay`, `:future`, and `:promise` schemas validate their respective concurrency
-promitives. They all share common behavior for validation. Since `deref` is prone
+types. They all share common behavior for validation. Since `deref` is prone
 to block the current thread, malli is careful to only validate `realized?` values.
 This can be overridden to always validate with `:force true`.
 

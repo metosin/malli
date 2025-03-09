@@ -2021,7 +2021,7 @@ they may block indefinitely or throw exceptions when dereferenced
 depending on the child generator. `:promise` in particular will not receive
 a value if its child generator fails.
 
-Humanizers nested failures for the contained value under `:deref`.
+Humanizers nest failures for the contained value under `:deref`.
 
 ```clojure
 (me/humanize (m/explain [:delay :int] 42))

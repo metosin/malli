@@ -58,7 +58,7 @@
             NaN? (fn [x]
                    (#?(:clj  Double/isNaN
                        :cljs js/isNaN)
-                            x))
+                    x))
             special? #(or (NaN? %)
                           (infinity? %))
             valid? (m/validator s)
@@ -984,7 +984,7 @@
 (defn alphanumeric-char? [c]
   {:pre [(char? c)]}
   (let [int (fn [c]
-              #?(:clj (int c)
+              #?(:clj  (int c)
                  :cljs (.charCodeAt c 0)))
         i (int c)]
     (or (<= (int \a) i (int \z))

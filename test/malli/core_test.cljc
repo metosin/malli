@@ -3582,6 +3582,27 @@
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
 
+(deftest deref-test
+  (testing "schema matches delay"
+    (is (m/validate [:deref :int] (delay 1)))
+    (is (m/validate [:deref :int] (doto (delay 1) deref)))
+    (is (m/validate [:deref {:force true} :int] (delay 1)))
+    (is (m/validate [:deref {:force true} :int] (doto (delay 1) deref)))
+    (is (nil? (m/explain [:deref :int] (delay 1))))
+    (is (nil? (m/explain [:deref :int] (doto (delay 1) deref))))
+    (is (nil? (m/explain [:deref {:force true} :int] (delay 1)))))
+  (testing "schema does not match delay"
+    (is (m/validate [:deref :boolean] (delay 1)))
+    (is (not (m/validate [:deref :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:deref {:force true} :boolean] (delay 1))))
+    (is (not (m/validate [:deref {:force true} :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:deref :boolean] 1)))
+    (is (nil? (m/explain [:deref :boolean] (delay 1))))
+    (is (m/explain [:deref :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:deref {:force true} :boolean] (delay 1)))
+    (is (m/explain [:deref {:force true} :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:deref :boolean] 1))))
+
 (deftest delay-test
   (testing "schema matches delay"
     (is (m/validate [:delay :int] (delay 1)))

@@ -2728,15 +2728,41 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
-    (-into-schema [parent {:keys [force] :as properties} children options]
+    (-into-schema [parent {:keys [force timeout timeout-ms] :or {timeout-ms 100} :as properties} children options]
       (-check-children! type properties children 1 1)
       (let [[schema :as children] (-vmap #(schema % options) children)
             form (delay (-simple-form parent properties children -form options))
+            sentinel form
+            [deref? deref-with-timeout? pending?]
+            #?(:clj [#(instance? clojure.lang.IDeref %)
+                     #(instance? clojure.lang.IBlockingDeref %)
+                     #(instance? clojure.lang.IPending %)]
+               :cljs [#(satisfies? cljs.core.IDeref %)
+                      #(satisfies? cljs.core.IDerefWithTimeout %)
+                      #(satisfies? cljs.core.IPending %)]
+               :default (-fail! ::deref-not-supported))
             pred (case type
-                   :delay delay?
+                   :deref (miu/-every-pred
+                            (cond-> [deref?]
+                              timeout (conj deref-with-timeout?)))
+                   :delay (do (when timeout
+                                (-fail! ::delay-does-not-support-timeout))
+                              delay?)
                    #?@(:clj [:future future?
                              :promise (let [c (class (promise))]
                                         #(instance? c %))]))
+            force? (if force
+                     any?
+                     (case type
+                       :deref #(if (pending? %)
+                                 (realized? %)
+                                 true)
+                       realized?))
+            try-deref (if force
+                        #(c/deref %)
+                        #(if (deref-with-timeout? %)
+                           (c/deref % timeout-ms sentinel)
+                           (if (force? %) @% sentinel)))
             cache (-create-cache options)]
         ^{:type ::schema}
         (reify
@@ -2747,16 +2773,19 @@
             (let [validator (-validator schema)]
               (fn [d]
                 (if (pred d)
-                  (if (or (realized? d) force)
-                    (validator @d)
-                    true)
+                  (let [r (try-deref d)]
+                    (if (identical? r sentinel)
+                      true
+                      (validator r)))
                   false))))
           (-explainer [this path]
             (let [explainer (-explainer schema (conj path 0))]
               (fn [x in acc]
-                (cond
-                  (not (pred x)) (conj acc (miu/-error path in this x))
-                  (or (realized? x) force) (explainer @x (conj in :deref) acc)))))
+                (if-not (pred x)
+                  (conj acc (miu/-error path in this x))
+                  (let [r (try-deref x)]
+                    (cond->> acc
+                      (not (identical? r sentinel)) (explainer r (conj in :deref))))))))
           (-parser [this]
             (let [validator (-validator this)]
               (fn [x] (if (validator x) x ::invalid))))
@@ -2801,6 +2830,7 @@
    :-> (-->-schema nil)
    :function (-function-schema nil)
    :schema (-schema-schema nil)
+   :deref (-deref-schema {:type :deref})
    :delay (-deref-schema {:type :delay})
    #?(:clj :future) #?(:clj (-deref-schema {:type :future}))
    #?(:clj :promise) #?(:clj (-deref-schema {:type :promise}))

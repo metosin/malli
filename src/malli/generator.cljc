@@ -314,6 +314,29 @@
 (defn -function-gen [schema options]
   (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} nil options)))
 
+(defn -deref-gen [schema options]
+  (gen/return (let [d (delay (generate (-child-gen schema options) options))
+                    timeout (-> schema m/properties :timeout)]
+                #?(:clj (if timeout
+                          (reify
+                            clojure.lang.IDeref
+                            (deref [_] @d)
+                            clojure.lang.IBlockingDeref
+                            (deref [_ _ _] @d))
+                          (reify
+                            clojure.lang.IDeref
+                            (deref [_] @d)))
+                   :cljs (if timeout
+                           (reify
+                             cljs.core.IDeref
+                             (-deref [_] @d)
+                             clojure.lang.IDerefWithTimeout
+                             (-deref-with-timeout [_ _ _] @d))
+                           (reify
+                             cljs.core.IDeref
+                             (-deref [_] @d)))
+                   :default (m/-fail! ::deref-not-supported)))))
+
 (defn -delay-gen [schema options]
   (gen/return (delay (generate (-child-gen schema options) options))))
 
@@ -428,6 +451,7 @@
 (defmethod -schema-generator :=> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :-> [schema options] (-=>-gen schema options))
 (defmethod -schema-generator :function [schema options] (-function-gen schema options))
+(defmethod -schema-generator :deref [schema options] (-deref-gen schema options))
 (defmethod -schema-generator :delay [schema options] (-delay-gen schema options))
 #?(:clj (defmethod -schema-generator :future [schema options] (-future-gen schema options)))
 #?(:clj (defmethod -schema-generator :promise [schema options] (-promise-gen schema options)))

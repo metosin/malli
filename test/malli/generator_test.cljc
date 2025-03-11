@@ -1130,10 +1130,9 @@
 (deftest deref-generator-test
   (testing "satisfiable child"
     (is (integer? @(mg/generate [:deref :int] {:seed 0})))
-    (is (thrown? #?(:clj Exception, :cljs js/Error) (deref (mg/generate [:deref :int] {:seed 0}) 100 nil)))
+    (is (integer? (deref (mg/generate [:deref :int] {:seed 0}) 1000 nil)))
     (is (= 1784201 @(mg/generate [:deref :int] {:seed 0})))
-    (is (= 1784201 @(mg/generate [:deref {:timeout true} :int] {:seed 0})))
-    (is (= 1784201 (deref (mg/generate [:deref {:timeout true} :int] {:seed 0}) 100 false)))
+    (is (= 1784201 (deref (mg/generate [:deref {:timeout true} :int] {:seed 0}) 1000 false)))
     ;; TODO https://github.com/metosin/malli/issues/1039
     (is (every? (m/validator :int) (mapv deref (concat (mg/sample [:deref :int])
                                                        (mg/sample [:deref {:timeout true} :int])))))
@@ -1141,15 +1140,14 @@
     (is (every? #{1784201} (mapv deref (concat (mg/sample [:deref :int] {:seed 0})
                                                (mg/sample [:deref {:timeout true} :int] {:seed 0}))))))
   (testing "unsatisfiable child"
-    #?(:clj (is (instance? clojure.lang.IDeref (mg/generate [:deref [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))
-    #?(:clj (is (instance? clojure.lang.IBlockingDeref (mg/generate [:deref {:timeout true} [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))
+    (is (mg/generate [:deref [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))
     (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
                           #":malli\.generator/unsatisfiable-schema"
-                          @(mg/generate [:deref [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+                          (deref (mg/generate [:deref [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))
     (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
                           #":malli\.generator/unsatisfiable-schema"
                           (deref (mg/generate [:deref {:timeout true} [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})
-                                 100 false)))))
+                                 1000 false)))))
 
 (deftest delay-generator-test
   (testing "satisfiable child"

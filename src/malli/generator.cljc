@@ -315,26 +315,21 @@
   (gen/return (m/-instrument {:schema schema, :gen #(generate % options)} nil options)))
 
 (defn -deref-gen [schema options]
-  (gen/return (let [d (delay (generate (-child-gen schema options) options))
-                    timeout (-> schema m/properties :timeout)]
-                #?(:clj (if timeout
-                          (reify
-                            clojure.lang.IDeref
-                            (deref [_] @d)
-                            clojure.lang.IBlockingDeref
-                            (deref [_ _ _] @d))
-                          (reify
-                            clojure.lang.IDeref
-                            (deref [_] @d)))
-                   :cljs (if timeout
-                           (reify
-                             cljs.core.IDeref
-                             (-deref [_] @d)
-                             clojure.lang.IDerefWithTimeout
-                             (-deref-with-timeout [_ _ _] @d))
-                           (reify
-                             cljs.core.IDeref
-                             (-deref [_] @d)))
+  (gen/return (let [d (#?(:clj future :default delay) (generate (-child-gen schema options) options))]
+                #?(:clj (reify
+                          clojure.lang.IPending
+                          (isRealized [_] (realized? d))
+                          clojure.lang.IDeref
+                          (deref [_] (deref d))
+                          clojure.lang.IBlockingDeref
+                          (deref [_ timeout timeout-val] (deref d timeout timeout-val)))
+                   :cljs (reify
+                           cljs.core.IPending
+                           (-realized? [_] (realized? d))
+                           cljs.core.IDeref
+                           (-deref [_] (deref d))
+                           clojure.lang.IDerefWithTimeout
+                           (-deref-with-timeout [_ _ _] (deref d))) ;;TODO timeout
                    :default (m/-fail! ::deref-not-supported)))))
 
 (defn -delay-gen [schema options]

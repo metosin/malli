@@ -1133,10 +1133,8 @@
     (is (integer? (deref (mg/generate [:deref :int] {:seed 0}) 1000 nil)))
     (is (= 1784201 @(mg/generate [:deref :int] {:seed 0})))
     (is (= 1784201 (deref (mg/generate [:deref {:timeout true} :int] {:seed 0}) 1000 false)))
-    ;; TODO https://github.com/metosin/malli/issues/1039
     (is (every? (m/validator :int) (mapv deref (concat (mg/sample [:deref :int])
                                                        (mg/sample [:deref {:timeout true} :int])))))
-    ;; TODO https://github.com/metosin/malli/issues/1039
     (is (every? #{1784201} (mapv deref (concat (mg/sample [:deref :int] {:seed 0})
                                                (mg/sample [:deref {:timeout true} :int] {:seed 0}))))))
   (testing "unsatisfiable child"
@@ -1153,9 +1151,7 @@
   (testing "satisfiable child"
     (is (delay? (mg/generate [:delay :int] {:seed 0})))
     (is (= 1784201 @(mg/generate [:delay :int] {:seed 0})))
-    ;; TODO https://github.com/metosin/malli/issues/1039
     (is (every? (m/validator :int) (mapv deref (mg/sample [:delay :int]))))
-    ;; TODO https://github.com/metosin/malli/issues/1039
     (is (every? #{1784201} (mapv deref (mg/sample [:delay :int] {:seed 0})))))
   (testing "unsatisfiable child"
     (is (delay? (mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
@@ -1168,10 +1164,12 @@
      (testing "satisfiable child"
        (is (future? (mg/generate [:future :int] {:seed 0})))
        (is (= 1784201 @(mg/generate [:future :int] {:seed 0})))
-       ;; TODO https://github.com/metosin/malli/issues/1039
        (is (every? (m/validator :int) (mapv deref (mg/sample [:future :int]))))
-       ;; TODO https://github.com/metosin/malli/issues/1039
-       (is (every? #{1784201} (mapv deref (mg/sample [:future :int] {:seed 0})))))
+       (is (every? #{1784201} (mapv deref (mg/sample [:future :int] {:seed 0}))))
+       ;; uses deref with timeout if unrealized for 100ms and gives up
+       (is (m/validate [:future :int] (future (Thread/sleep 1000) true)))
+       ;; uses deref with timeout if unrealized and succeeds
+       (is (false? (m/validate [:future {:timeout 5000} :int] (future (Thread/sleep 25) true)))))
      (testing "unsatisfiable child"
        (is (future? (mg/generate [:future [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
        (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
@@ -1183,9 +1181,7 @@
      (testing "satisfiable child"
        (is (instance? (class (promise)) (mg/generate [:promise :int] {:seed 0})))
        (is (= 1784201 @(mg/generate [:promise :int] {:seed 0})))
-       ;; TODO https://github.com/metosin/malli/issues/1039
        (is (every? (m/validator :int) (mapv deref (mg/sample [:promise :int]))))
-       ;; TODO https://github.com/metosin/malli/issues/1039
        (is (every? #{1784201} (mapv deref (mg/sample [:promise :int] {:seed 0})))))
      (testing "unsatisfiable child"
        (is (instance? (class (promise)) (mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))

@@ -1,5 +1,6 @@
 (ns malli.instrument-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
             [malli.instrument :as mi]))
 
@@ -56,10 +57,12 @@
     (is (= "42" (primitive-DO "42"))))
   (deftest primitive-functions-cannot-be-instrumented
     (is (= 42.0 (primitive-DO 42)))
-    (is (thrown-with-msg? Exception
-                          #":malli\.instrument/cannot-instrument-primitive-fn"
-                          (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]})))
-    (is (= 42.0 (primitive-DO 42)))))
+    (is (thrown? ClassCastException (primitive-DO "42")))
+    (is (str/includes?
+          (with-out-str (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]}))
+          "WARNING: Not instrumenting primitive fn #'malli.instrument-test/primitive-DO"))
+    (is (= 42.0 (primitive-DO 42)))
+    (is (thrown? ClassCastException (primitive-DO "42")))))
 
 (defn minus
   "kukka"

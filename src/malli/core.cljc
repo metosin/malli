@@ -2731,7 +2731,7 @@
     (-into-schema [parent {:keys [force timeout] :as properties} children options]
       (-check-children! type properties children 1 1)
       (let [[schema :as children] (-vmap #(schema % options) children)
-            timeout-ms (if (number? timeout) timeout-ms 100)
+            timeout-ms (if (number? timeout) timeout 100)
             form (delay (-simple-form parent properties children -form options))
             sentinel form
             [deref? deref-with-timeout? pending?]

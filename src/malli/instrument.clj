@@ -13,7 +13,7 @@
 (defn -filter-schema [f] (fn [_ _ {:keys [schema]}] (f schema)))
 
 (defn- -primitive-fn? [f]
-  (boolean (some (fn [^Class c] (.startsWith (.getName c) "clojure.lang.IFn$")) (supers (class f)))))
+  (and (fn? f) (boolean (some (fn [^Class c] (.startsWith (.getName c) "clojure.lang.IFn$")) (supers (class f))))))
 
 (defn -strument!
   ([] (-strument! nil))

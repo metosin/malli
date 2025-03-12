@@ -43,7 +43,17 @@
     else))
 
 (if-bb
-  nil
+  (deftest primitive-functions-can-be-instrumented
+    (is (= 42 (primitive-DO 42)))
+    (is (= "42" (primitive-DO "42")))
+    (is (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]}))
+    (is (thrown-with-msg?
+          Exception
+          #":malli.core/invalid-input"
+          (primitive-DO "42")))
+    (is (mi/unstrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]}))
+    (is (= 42 (primitive-DO 42)))
+    (is (= "42" (primitive-DO "42"))))
   (deftest primitive-functions-cannot-be-instrumented
     (is (= 42.0 (primitive-DO 42)))
     (is (thrown-with-msg? Exception

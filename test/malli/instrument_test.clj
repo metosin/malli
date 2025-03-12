@@ -11,8 +11,9 @@
 (defn primitive-DO [^double val] val)
 (m/=> primitive-DO [:=> [:cat :double] :double])
 
-(defn opts [] {:filters [(mi/-filter-ns 'malli.instrument-test)
-                         (mi/-filter-var #(not= #'primitive-DO %))]})
+(defn opts [] {:filters [(fn [& args]
+                           (and (apply (mi/-filter-ns 'malli.instrument-test) args)
+                                (apply (mi/-filter-var #(not= #'primitive-DO %)) args)))]})
 (defn unstrument! [] (with-out-str (mi/unstrument! (opts))))
 (defn instrument! [] (with-out-str (mi/instrument! (opts))))
 
@@ -36,12 +37,19 @@
          #":malli.core/invalid-output"
          ((->plus) 6)))))
 
-(deftest primitive-functions-cannot-be-instrumented
-  (is (= 42.0 (primitive-DO 42)))
-  (is (thrown-with-msg? Exception
-                        #":malli\.instrument/cannot-instrument-primitive-fn"
-                        (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]})))
-  (is (= 42.0 (primitive-DO 42))))
+(defmacro if-bb [then & [else]]
+  (if (System/getProperty "babashka.version")
+    then
+    else))
+
+(if-bb
+  nil
+  (deftest primitive-functions-cannot-be-instrumented
+    (is (= 42.0 (primitive-DO 42)))
+    (is (thrown-with-msg? Exception
+                          #":malli\.instrument/cannot-instrument-primitive-fn"
+                          (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]})))
+    (is (= 42.0 (primitive-DO 42)))))
 
 (defn minus
   "kukka"

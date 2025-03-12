@@ -321,8 +321,9 @@
                           (isRealized [_] (realized? d))
                           clojure.lang.IDeref
                           (deref [_] (deref d))
-                          clojure.lang.IBlockingDeref
-                          (deref [_ timeout timeout-val] (deref d timeout timeout-val)))
+                          #?@(:bb []
+                              :default [clojure.lang.IBlockingDeref
+                                        (deref [_ timeout timeout-val] (deref d timeout timeout-val))]))
                    :cljs (reify
                            cljs.core.IPending
                            (-realized? [_] (realized? d))

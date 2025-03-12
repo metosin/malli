@@ -2751,10 +2751,12 @@
                                 (-fail! ::delay-does-not-support-timeout))
                               delay?)
                    #?@(:clj [:future future?
-                             :promise #(and (deref? %)
-                                            (deref-with-timeout? %)
-                                            (ifn? %)
-                                            (pending? %))]))
+                             :promise #?(:bb (let [c (class (promise))]
+                                               #(instance? c %))
+                                         :default #(and (deref? %)
+                                                        (deref-with-timeout? %)
+                                                        (ifn? %)
+                                                        (pending? %)))]))
             force? (if force
                      any?
                      (case type

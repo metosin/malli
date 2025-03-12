@@ -2736,7 +2736,9 @@
             sentinel form
             [deref? deref-with-timeout? pending?]
             #?(:clj [#(instance? clojure.lang.IDeref %)
-                     #?(:bb #(future? %) ;;TODO 
+                     #?(;; IBlockingDeref not supported by babashka
+                        :bb (let [c (class (promise))]
+                              #(or (future? %) (instance? c %)))
                         :default #(instance? clojure.lang.IBlockingDeref %))
                      #(instance? clojure.lang.IPending %)]
                :cljs [#(satisfies? cljs.core.IDeref %)
@@ -2751,12 +2753,10 @@
                                 (-fail! ::delay-does-not-support-timeout))
                               delay?)
                    #?@(:clj [:future future?
-                             :promise #?(:bb (let [c (class (promise))]
-                                               #(instance? c %))
-                                         :default #(and (deref? %)
-                                                        (deref-with-timeout? %)
-                                                        (ifn? %)
-                                                        (pending? %)))]))
+                             :promise #(and (deref? %)
+                                            (deref-with-timeout? %)
+                                            (ifn? %)
+                                            (pending? %))]))
             force? (if force
                      any?
                      (case type

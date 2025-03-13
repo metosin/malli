@@ -509,7 +509,7 @@ Turning instrumentation on:
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 11, :args [10], :schema [:=> [:cat :int] [:int {:max 6}]]}
 ```
 
-Note that functions with JVM primitive param or return type hints will not be instrumented.
+Note that vars already containing a primitive JVM function will not be instrumented.
 
 #### Function Schema Metadata
 

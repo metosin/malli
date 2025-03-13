@@ -15,11 +15,6 @@
 (defn- -primitive-fn? [f]
   (and (fn? f) (boolean (some (fn [^Class c] (.startsWith (.getName c) "clojure.lang.IFn$")) (supers (class f))))))
 
-(defmacro ^:private if-bb [then & [else]]
-  (if (System/getProperty "babashka.version")
-    then
-    else))
-
 (defn -strument!
   ([] (-strument! nil))
   ([{:keys [mode data filters gen report] :or {mode :instrument, data (m/function-schemas)} :as options}]

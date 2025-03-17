@@ -4,7 +4,7 @@
 [![cljdoc badge](https://cljdoc.org/badge/metosin/malli)](https://cljdoc.org/d/metosin/malli/)
 [![Clojars Project](https://img.shields.io/clojars/v/metosin/malli.svg)](https://clojars.org/metosin/malli)
 [![Slack](https://img.shields.io/badge/clojurians-malli-blue.svg?logo=slack)](https://clojurians.slack.com/messages/malli/)
-<a href="https://babashka.org" rel="nofollow"><img src="https://github.com/babashka/babashka/raw/master/logo/badge.svg" alt="bb compatible" style="max-width: 100%;"></a>
+[![bb compatible](https://raw.githubusercontent.com/babashka/babashka/master/logo/badge.svg)](https://book.babashka.org#badges)
 
 Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 

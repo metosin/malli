@@ -601,19 +601,37 @@
       (let [transformers (-vmap #(or (-transformer % transformer method options) identity) child-schemas)
             validators (-vmap -validator child-schemas)]
         (-intercepting this-transformer
-                       (if (= :decode method)
-                         (fn [x]
-                           (reduce-kv
-                            (fn [acc i transformer]
-                              (let [x* (transformer x)]
-                                (if ((nth validators i) x*)
-                                  (reduced x*)
-                                  (if (-equals acc ::nil) x* acc))))
-                            ::nil transformers))
-                         (fn [x]
-                           (reduce-kv
-                            (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
-                            x validators)))))
+                       (case (-type this)
+                         (:orn :or) (if (= :decode method)
+                                      (fn [x]
+                                        (reduce-kv
+                                          (fn [acc i transformer]
+                                            (let [x* (transformer x)]
+                                              (if ((nth validators i) x*)
+                                                (reduced x*)
+                                                ;;FIXME what's going on here? shouldn't we initialize acc to x?
+                                                (if (-equals acc ::nil) x* acc))))
+                                          ::nil transformers))
+                                      (fn [x]
+                                        (reduce-kv
+                                          (fn [x i validator] (if (validator x) (reduced ((nth transformers i) x)) x))
+                                          x validators)))
+                         :implies (let [[av cv] validators
+                                        [at ct] transformers]
+                                    (if (= :decode method)
+                                      (fn [x]
+                                        (let [x* (ct x)]
+                                          (if (cv x*)
+                                            (let [x** (at x*)]
+                                              (if (av x**) x** x))
+                                            x)))
+                                      (fn [x]
+                                        (if (av x)
+                                          (let [x* (at x)]
+                                            (if (cv x*)
+                                              (ct x*)
+                                              x))
+                                          x)))))))
       (-intercepting this-transformer))))
 
 ;;
@@ -932,9 +950,7 @@
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
-             ;;TODO
-             (case type
-               :or (-or-transformer this transformer children method options)))
+             (-or-transformer this transformer children method options))
            (-walk [this walker path options] (-walk-indexed this walker path options))
            (-properties [_] properties)
            (-options [_] options)

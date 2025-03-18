@@ -19,6 +19,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * Docs: elaborate optional-keys and required-keys [#1117](https://github.com/metosin/malli/pull/1117)
 * **BREAKING** Output of `parse` now uses new `malli.core.Tag` and `malli.core.Tags` records for `:orn`, `:multi`, `:altn`, `:catn` etc. [#1123](https://github.com/metosin/malli/issues/1123) [#1153](https://github.com/metosin/malli/issues/1153)
   * See [Parsing](#parsing-values) and [Unparsing](#unparsing-values) for docs.
+* Introduce new schemas for map key constraints: `:xor`, `:disjoint`, `:if`, `:iff`, `:implies`, and `:has`
 * FIX: `:path` when explaining `:ref` errors [#1106](https://github.com/metosin/malli/issues/1106)
 
 ## 0.17.0 (2024-12-08)

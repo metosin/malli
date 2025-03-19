@@ -3581,3 +3581,65 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(defn non-caching-proxy-schema [child]
+  (let [schema (m/schema child)]
+    (reify
+      m/Schema
+      (-validator [_] (m/-cached-validator schema))
+      (-explainer [_ path] (m/-explainer schema path))
+      (-parser [_] (m/-cached-parser schema))
+      (-unparser [_] (m/-cached-unparser schema)))))
+
+(deftest sharing-test
+  (testing "a child schema that is shared between two schemas is cached via -cached-* helpers"
+    (let [common (m/schema :map)]
+      (testing "protocol ops are uncached"
+        (is (not= (m/-validator common) (m/-validator common)))
+        (is (not= (m/-explainer common []) (m/-explainer common [])))
+        (is (not= (m/-parser common) (m/-parser common)))
+        (is (not= (m/-unparser common) (m/-unparser common))))
+      (testing "cache populated via public API"
+        (is (identical? (m/validator common) (m/validator common)))
+        (is (identical? (m/explainer common) (m/explainer common)))
+        (is (identical? (m/parser common) (m/parser common)))
+        (is (identical? (m/unparser common) (m/unparser common))))
+      (testing "protocol ops are still uncached"
+        (is (not= (m/-validator common) (m/-validator common)))
+        (is (not= (m/-explainer common []) (m/-explainer common [])))
+        (is (not= (m/-parser common) (m/-parser common)))
+        (is (not= (m/-unparser common) (m/-unparser common)))))
+    (let [common (m/schema :map)
+          s1 (non-caching-proxy-schema common)
+          s2 (non-caching-proxy-schema common)]
+      (is (not= s1 s2))
+      (is (identical? (m/-validator s1) (m/-validator s2)))
+      (is (identical? (m/validator s1) (m/validator s2)))
+      (is (not= (m/-explainer s1 []) (m/-explainer s1 [])))
+      (is (not= (m/-explainer s1 []) (m/-explainer s2 [])))
+      (is (not= (m/-explainer s2 []) (m/-explainer s2 [])))
+      (is (not= (m/explainer s1) (m/explainer s1)))
+      (is (not= (m/explainer s1) (m/explainer s2)))
+      (is (not= (m/explainer s2) (m/explainer s2)))
+      (is (identical? (m/-parser s1) (m/-parser s2)))
+      (is (identical? (m/parser s1) (m/parser s2)))
+      (is (identical? (m/-unparser s1) (m/-unparser s2)))
+      (is (identical? (m/unparser s1) (m/unparser s2))))
+    (let [times (atom {})
+          common (let [schema (m/schema :map)
+                       cache (m/-create-cache nil)]
+                   (reify
+                     m/Cached
+                     (-cache [_] cache)
+                     m/Schema
+                     (-validator [_] (swap! times update :-validator (fnil inc 0)) (m/-validator schema))
+                     (-explainer [_ path] (swap! times update :-explainer (fnil conj []) path) (m/-explainer schema path))
+                     (-parser [_] (swap! times update :-parser (fnil inc 0)) (m/-parser schema))
+                     (-unparser [_] (swap! times update :-unparser (fnil inc 0)) (m/-unparser schema))))
+          s1 (m/schema [:seqable common])
+          s2 (m/schema [:seqable common])]
+      (doseq [f [m/-validator m/-parser m/-unparser m/explainer]
+              s [s1 s2]
+              _ (range 5)]
+        (f s))
+      (is (= {:-validator 1 :-parser 1 :-unparser 1 :-explainer [[0] [0]]} @times)))))

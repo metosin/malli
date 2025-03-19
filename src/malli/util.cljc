@@ -386,9 +386,10 @@
 
 (defn -applying [f]
   (fn [_ children options]
-    [(clojure.core/update children 0 #(m/schema % options))
-     (clojure.core/update children 0 #(m/form % options))
-     (delay (apply f (conj children options)))]))
+    (let [children (clojure.core/update children 0 #(m/schema % options))]
+      [children
+       (clojure.core/update children 0 m/-form)
+       (delay (apply f (conj children options)))])))
 
 (defn -util-schema [m] (m/-proxy-schema m))
 

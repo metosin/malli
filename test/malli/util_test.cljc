@@ -1133,3 +1133,14 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.core/child-error"
         (m/schema :union {:registry (merge (mu/schemas) (m/default-schemas))}))))
+
+(deftest -applying-test
+  (let [times-initialized (atom 0)
+        map-proxy (m/-proxy-schema
+                    {:type ::map-proxy
+                     :max 0
+                     :fn (fn [_ _ _]
+                           (swap! times-initialized inc)
+                           [[] [] (m/schema :map)])})]
+    (m/deref-all (m/schema [:select-keys map-proxy []] {:registry (merge (mu/schemas) (m/default-schemas))}))
+    (is (= 1 @times-initialized))))

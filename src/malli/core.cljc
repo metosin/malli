@@ -1236,7 +1236,7 @@
            Cached
            (-cache [_] cache)
            LensSchema
-           (-keep [_])
+           (-keep [_] true)
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))))))))
 

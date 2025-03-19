@@ -389,7 +389,9 @@
     (let [children (clojure.core/update children 0 #(m/schema % options))]
       [children
        (clojure.core/update children 0 m/-form)
-       (delay (apply f (conj children options)))])))
+       (delay (if (= 2 (count children))
+                (f (nth children 0) (nth children 1) options)
+                (apply f (conj children options))))])))
 
 (defn -util-schema [m] (m/-proxy-schema m))
 

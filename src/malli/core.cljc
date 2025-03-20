@@ -327,8 +327,7 @@
   ([s k f c]
    (or (@c k)
        (let [r (f s)]
-         (swap! c assoc k r)
-         r))))
+         ((swap! c update k #(or % r)) k)))))
 
 (defn -cached-validator
   ([s] (-cached s :validator -validator))

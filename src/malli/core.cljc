@@ -2371,13 +2371,14 @@
 
 (defn explainer
   "Returns an pure explainer function of type `x -> explanation` for a given Schema.
-   Caches the result for [[Cached]] Schemas with key `:explainer`."
+   Caches the result for [[Cached]] Schemas with key `:explainer` for the result of
+   `(-explainer schema [])` and `:malli.core/explainer` for the output of the entire function."
   ([?schema]
    (explainer ?schema nil))
   ([?schema options]
-   (-cached (schema ?schema options) :explainer
+   (-cached (schema ?schema options) ::explainer
             (fn [schema']
-              (let [explainer' (-explainer schema' [])]
+              (let [explainer' (-cached schema' :explainer #(-explainer % []))]
                 (fn explainer
                   ([value]
                    (explainer value [] []))

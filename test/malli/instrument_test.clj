@@ -1,5 +1,6 @@
 (ns malli.instrument-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
             [malli.instrument :as mi]))
 
@@ -8,8 +9,14 @@
 
 (defn ->plus [] plus)
 
-(defn unstrument! [] (with-out-str (mi/unstrument! {:filters [(mi/-filter-ns 'malli.instrument-test)]})))
-(defn instrument! [] (with-out-str (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument-test)]})))
+(defn primitive-DO [^double val] val)
+(m/=> primitive-DO [:=> [:cat :double] :double])
+
+(defn opts [] {:filters [(fn [& args]
+                           (and (apply (mi/-filter-ns 'malli.instrument-test) args)
+                                (apply (mi/-filter-var #(not= #'primitive-DO %)) args)))]})
+(defn unstrument! [] (with-out-str (mi/unstrument! (opts))))
+(defn instrument! [] (with-out-str (mi/instrument! (opts))))
 
 (deftest instrument!-test
 
@@ -30,6 +37,32 @@
          Exception
          #":malli.core/invalid-output"
          ((->plus) 6)))))
+
+(defmacro if-bb [then & [else]]
+  (if (System/getProperty "babashka.version")
+    then
+    else))
+
+(if-bb
+  (deftest primitive-functions-can-be-instrumented
+    (is (= 42 (primitive-DO 42)))
+    (is (= "42" (primitive-DO "42")))
+    (is (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]}))
+    (is (thrown-with-msg?
+          Exception
+          #":malli.core/invalid-input"
+          (primitive-DO "42")))
+    (is (mi/unstrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]}))
+    (is (= 42 (primitive-DO 42)))
+    (is (= "42" (primitive-DO "42"))))
+  (deftest primitive-functions-cannot-be-instrumented
+    (is (= 42.0 (primitive-DO 42)))
+    (is (thrown? ClassCastException (primitive-DO "42")))
+    (is (str/includes?
+          (with-out-str (mi/instrument! {:filters [(mi/-filter-var #(= #'primitive-DO %))]}))
+          "WARNING: Not instrumenting primitive fn #'malli.instrument-test/primitive-DO"))
+    (is (= 42.0 (primitive-DO 42)))
+    (is (thrown? ClassCastException (primitive-DO "42")))))
 
 (defn minus
   "kukka"

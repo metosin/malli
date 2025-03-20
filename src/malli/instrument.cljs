@@ -97,8 +97,8 @@
   ([{:keys [mode data filters gen report skip-instrumented?] :or {skip-instrumented? false
                                                                   mode :instrument, data (m/function-schemas :cljs)} :as options}]
    (doseq [[n d] data, [s d] d]
-     (when (or (not filters) (some #(% n s d) filters))
-       (when-let [v (-find-var n s)]
+     (when-let [v (-find-var n s)]
+       (when (or (not filters) (some #(% n s d) filters))
          (case mode
            :instrument (let [original-fn (or (-original v) v)
                              dgen (as-> (select-keys options [:scope :report :gen]) $

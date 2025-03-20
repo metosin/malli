@@ -509,6 +509,8 @@ Turning instrumentation on:
 ; =throws=> :malli.core/invalid-output {:output [:int {:max 6}], :value 11, :args [10], :schema [:=> [:cat :int] [:int {:max 6}]]}
 ```
 
+Note that vars already containing a primitive JVM function will not be instrumented.
+
 #### Function Schema Metadata
 
 `defn` schemas can be defined with standard Var metadata. It allows `defn` schema documentation and instrumentation without dependencies to malli itself from the functions. It's just data.

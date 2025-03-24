@@ -13,7 +13,6 @@
 (defn -reduce-kv-valid [f init coll] (reduce-kv (comp #(-map-invalid reduced %) f) init coll))
 
 (defn -last [x] (if (vector? x) (peek x) (last x)))
-(defn -some [pred coll] (reduce (fn [ret x] (if (pred x) (reduced true) ret)) nil coll))
 (defn -merge [m1 m2] (if m1 (persistent! (reduce-kv assoc! (transient m1) m2)) m2))
 
 (defn -error
@@ -21,7 +20,7 @@
   ([path in schema value type] {:path path, :in in, :schema schema, :value value, :type type}))
 
 (defn -vmap
-  ([os] (-vmap identity os))
+  ([os] (if (vector? os) os (-vmap identity os)))
   ([f os] #?(:clj  (let [c (count os)]
                      (if-not (zero? c)
                        (let [oa (object-array c), iter (.iterator ^Iterable os)]
@@ -41,13 +40,23 @@
 #?(:clj
    (defmacro -combine-n
      [c n xs]
+     (assert (simple-symbol? xs))
      (let [syms (repeatedly n gensym)
-           g (gensym "preds__")
-           bs (interleave syms (map (fn [n] `(nth ~g ~n)) (range n)))
+           bs (interleave syms (map (fn [n] `(nth ~xs ~n)) (range n)))
            arg (gensym "arg__")
            body `(~c ~@(map (fn [sym] `(~sym ~arg)) syms))]
-       `(let [~g (-vmap ~xs) ~@bs]
+       `(let [~@bs]
           (fn [~arg] ~body)))))
+
+#?(:clj (defmacro OR
+          ([] false)
+          ([x] `(if ~x true false))
+          ([x & next] `(if ~x true (OR ~@next)))))
+
+#?(:clj (defmacro AND
+          ([] true)
+          ([x] `(if ~x true false))
+          ([x & next] `(if ~x (AND ~@next) false))))
 
 #?(:clj
    (defmacro -pred-composer
@@ -55,19 +64,19 @@
      (let [preds (gensym "preds__")
            f (gensym "f__")
            cases (mapcat (fn [i] [i `(-combine-n ~c ~i ~preds)]) (range 2 (inc n)))
-           else `(let [p# (~f (take ~n ~preds)) q# (~f (drop ~n ~preds))]
+           else `(let [p# (~f (subvec ~preds 0 ~n)) q# (~f (subvec ~preds ~n))]
                    (fn [x#] (~c (p# x#) (q# x#))))]
        `(fn ~f [~preds]
           (case (count ~preds)
-            0 (constantly (boolean (~c)))
-            1 (first ~preds)
+            0 (constantly (~c))
+            1 (nth ~preds 0)
             ~@cases
             ~else)))))
 
 (def ^{:arglists '([[& preds]])} -every-pred
-  #?(:clj  (-pred-composer and 16)
-     :cljs (fn [preds] (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true preds))))))
+  #?(:clj  (-pred-composer AND 16)
+     :cljs (fn [preds] (fn [m] (reduce #(if (%2 m) true (reduced false)) true preds)))))
 
 (def ^{:arglists '([[& preds]])} -some-pred
-  #?(:clj  (-pred-composer or 16)
-     :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+  #?(:clj  (-pred-composer OR 16)
+     :cljs (fn [preds] (fn [m] (reduce #(if (%2 m) (reduced true) false) false preds)))))

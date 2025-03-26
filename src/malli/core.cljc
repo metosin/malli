@@ -96,6 +96,9 @@
   (-distributive-schema? [this])
   (-distribute-to-children [this f options]))
 
+(defprotocol ParserInfo
+  (-parser-info [this]))
+
 (defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
 (defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
 (defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
@@ -114,6 +117,14 @@
   (-distributive-schema? [_] false)
   (-distribute-to-children [this _ _]
     (throw (ex-info "Not distributive" {:schema this})))
+
+  ParserInfo
+  (-parser-info [this]
+    (when (schema? this)
+      (if (-ref-schema? this)
+        (-parser-info (-deref this))
+        (when (-> this -parent -type-properties ::simple-parser)
+          {:simple-parser true}))))
 
   RegexSchema
   (-regex-op? [_] false)
@@ -704,6 +715,10 @@
 ;; Schemas
 ;;
 
+(defn -simple-parser [s]
+  (let [validator (-validator s)]
+    (fn [x] (if (validator x) x ::invalid))))
+
 (defn -simple-schema [props]
   (let [{:keys [type type-properties pred property-pred min max from-ast to-ast compile]
          :or {min 0, max 0, from-ast -from-value-ast, to-ast -to-type-ast}} props]
@@ -717,7 +732,7 @@
         (-from-ast [parent ast options] (from-ast parent ast options))
         IntoSchema
         (-type [_] type)
-        (-type-properties [_] type-properties)
+        (-type-properties [_] (assoc type-properties ::simple-parser true))
         (-properties-schema [_ _])
         (-children-schema [_ _])
         (-into-schema [parent properties children options]
@@ -738,9 +753,7 @@
                   (let [validator (-validator this)]
                     (fn explain [x in acc]
                       (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
-                (-parser [this]
-                  (let [validator (-validator this)]
-                    (fn [x] (if (validator x) x ::invalid))))
+                (-parser [this] (-simple-parser this))
                 (-unparser [this] (-parser this))
                 (-transformer [this transformer method options]
                   (-intercepting (-value-transformer transformer this method options)))
@@ -778,13 +791,28 @@
     (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
-    (-into-schema [parent properties children options]
+    (-into-schema [parent {:keys [tags] :as properties} children options]
       (-check-children! :and properties children 1 nil)
       (let [children (-vmap #(schema % options) children)
             form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
-            ->parser (fn [f m] (let [parsers (m (-vmap f children))]
-                                 #(reduce (fn [x parser] (miu/-map-invalid reduced (parser x))) % parsers)))]
+            transforming-parser (delay
+                                  (let [transforming-parsers (or (when-some [[_ i] (find properties :parse)]
+                                                                   (or (when (= :none i)
+                                                                         [])
+                                                                       (when-not (and (nat-int? i) (< i (count children)))
+                                                                         (-fail! ::and-schema-invalid-parse-property {:schema @form}))
+                                                                       [i]))
+                                                                 (into []
+                                                                       (keep-indexed
+                                                                         (fn [i c]
+                                                                           (when-not (-> c -parser-info :simple-parser)
+                                                                             i)))
+                                                                       children))]
+                                    (when (next transforming-parsers)
+                                      (-fail! ::and-schema-multiple-transforming-parsers {:schema @form}))
+                                    (peek transforming-parsers)))
+            ->parsers (fn [f] (into [] (map-indexed (fn [i c] (if (= @transforming-parser i) (f c) (-simple-parser c)))) children))]
         ^{:type ::schema}
         (reify
           Schema
@@ -793,8 +821,37 @@
           (-explainer [_ path]
             (let [explainers (-vmap (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
-          (-parser [_] (->parser -parser seq))
-          (-unparser [_] (->parser -unparser rseq))
+          (-parser [this]
+            ;; non-iteratively parse x left-to-right. return result of transforming parser, or x.
+            (let [pi @transforming-parser
+                  parsers (->parsers -parser)
+                  nchildren (count children)]
+              (fn [x]
+                (reduce (fn [acc i]
+                          (let [x' ((nth parsers i) x)]
+                            (if (miu/-invalid? x')
+                              (reduced ::invalid)
+                              (if (= pi i)
+                                x'
+                                acc))))
+                        x (range nchildren)))))
+          (-unparser [this]
+            ;; unparse x' with transforming parser (if any), then non-iteratively unparse x with remaining parsers, left-to-right
+            ;; return x if all results are equal.
+            (let [pi @transforming-parser
+                  unparsers (->parsers -unparser)
+                  unparser (get unparsers pi identity) 
+                  nchildren (count children)]
+              (fn [x']
+                (let [x (unparser x')]
+                  (reduce (fn [acc i]
+                            (if (= pi i)
+                              acc
+                              (let [x' ((nth unparsers i) x)]
+                                (if (miu/-invalid? x')
+                                  (reduced ::invalid)
+                                  x'))))
+                          x (range nchildren))))))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
           (-walk [this walker path options] (-walk-indexed this walker path options))
@@ -808,7 +865,83 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] (if-some [i @transforming-parser] (-parser-info (nth children i)) {})))))))
+
+(defn -andn-schema []
+  ^{:type ::into-schema}
+  (reify
+    AST
+    (-from-ast [parent ast options] (-from-entry-ast parent ast options))
+    IntoSchema
+    (-type [_] :andn)
+    (-type-properties [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent properties children options]
+      (-check-children! :andn properties children 1 nil)
+      (let [entry-parser (-create-entry-parser children {:naked-keys true} options)
+            form (delay (-create-entry-form parent properties entry-parser options))
+            cache (-create-cache options)]
+        ^{:type ::schema}
+        (reify
+          AST
+          (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
+          Schema
+          (-validator [this] (miu/-every-pred (-vmap (fn [[_ _ c]] (-validator c)) (-children this))))
+          (-explainer [this path]
+            (let [explainers (-vmap (fn [[k _ c]] (-explainer c (conj path k))) (-children this))]
+              (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
+          (-parser [this]
+            (let [k+parsers (-vmap (fn [[k _ c]] [k (-parser c)]) (-children this))]
+              (fn [x]
+                (let [tags (reduce (fn [acc [k parser]]
+                                     (let [x' (parser x)]
+                                       (if (miu/-invalid? x')
+                                         (reduced ::invalid)
+                                         (assoc acc k x'))))
+                                   {} k+parsers)]
+                  (if (miu/-invalid? tags)
+                    ::invalid
+                    (->Tags tags))))))
+          (-unparser [this]
+            ;; only the left-most child provided in tags is unparsed. the remaining values are ignored.
+            ;; the unparsed value is checked against the remaining children.
+            ;; if you want to modify a particular conjunct's unparsed value, you should remove all others.
+            (let [ks (-vmap #(nth % 0) (-children this))
+                  validators (into {} (map (fn [[k _ c]] [k (-validator c)])) (-children this))
+                  unparsers (into {} (map (fn [[k _ c]] [k (-unparser c)])) (-children this))
+                  nchildren (count children)]
+              (fn [tags]
+                (if-some [values (when (tags? tags) (not-empty (:values tags)))]
+                  (if (every? validators (keys values))
+                    (let [[k x'] (some #(find values %) ks)
+                          x ((unparsers k) x')]
+                      (if (and (not (miu/-invalid? x))
+                               (every? #(or (= k %) ((validators k) x)) ks))
+                        x
+                        ::invalid))
+                    ::invalid)
+                  ::invalid))))
+          (-transformer [this transformer method options]
+            ;FIXME !!!
+            (-or-transformer this transformer (-vmap #(nth % 2) (-children this)) method options))
+          (-walk [this walker path options] (-walk-entries this walker path options))
+          (-properties [_] properties)
+          (-options [_] options)
+          (-children [_] (-entry-children entry-parser))
+          (-parent [_] parent)
+          (-form [_] @form)
+          EntrySchema
+          (-entries [_] (-entry-entries entry-parser))
+          (-entry-parser [_] entry-parser)
+          Cached
+          (-cache [_] cache)
+          LensSchema
+          (-keep [_])
+          (-get [this key default] (-get-entries this key default))
+          (-set [this key value] (-set-entries this key value)))))))
 
 (defn -or-schema []
   ^{:type ::into-schema}
@@ -852,7 +985,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info) children)}))))))
 
 (defn -orn-schema []
   ^{:type ::into-schema}
@@ -922,7 +1057,7 @@
     (-from-ast [parent ast options] (-from-child-ast parent ast options))
     IntoSchema
     (-type [_] :not)
-    (-type-properties [_])
+    (-type-properties [_] {::simple-parser true})
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
@@ -940,9 +1075,7 @@
             (let [validator (-validator this)]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc))))
-          (-parser [this]
-            (let [validator (-validator this)]
-              (fn [x] (if (validator x) x ::invalid))))
+          (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
             (-parent-children-transformer this children transformer method options))
@@ -1047,12 +1180,13 @@
                                                         (if optional m (reduced ::invalid))))))
                                                 @explicit-children)
                                         default-parser
-                                        (cons (fn [m]
-                                                (let [m' (default-parser
-                                                          (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))]
-                                                  (if (miu/-invalid? m')
-                                                    (reduced m')
-                                                    (merge (select-keys m (keys keyset)) m')))))
+                                        (cons (let [simple (-> @default-schema -parser-info :simple-parser boolean)]
+                                                (fn [m]
+                                                  (let [m' (default-parser
+                                                             (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))]
+                                                    (if (miu/-invalid? m')
+                                                      (reduced m')
+                                                      (if simple m (merge (select-keys m (keys keyset)) m')))))))
                                         closed
                                         (cons (fn [m]
                                                 (reduce
@@ -1148,7 +1282,9 @@
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this key value))))))))
+           (-set [this key value] (-set-entries this key value))
+           ParserInfo
+           (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info) (-entry-children entry-parser))})))))))
 
 (defn -map-of-schema
   ([]
@@ -1170,18 +1306,20 @@
              form (delay (-simple-form parent properties children -form options))
              cache (-create-cache options)
              validate-limits (-validate-limits min max)
+             simple-parser (delay (every? (comp :simple-parser -parser-info) children))
              ->parser (fn [f] (let [key-parser (f key-schema)
-                                    value-parser (f value-schema)]
+                                    value-parser (f value-schema)
+                                    simple @simple-parser]
                                 (fn [x]
                                   (if (map? x)
                                     (reduce-kv (fn [acc k v]
                                                  (let [k* (key-parser k)
                                                        v* (value-parser v)]
-                                                   ;; OPTIMIZE: Restore `identical?` check + NOOP
                                                    (if (or (miu/-invalid? k*) (miu/-invalid? v*))
                                                      (reduced ::invalid)
-                                                     (assoc acc k* v*))))
-                                               (empty x) x)
+                                                     (cond-> acc
+                                                       (not simple) (assoc k* v*)))))
+                                               (cond-> x (not simple) empty) x)
                                     ::invalid))))]
          ^{:type ::schema}
          (reify
@@ -1238,7 +1376,9 @@
            LensSchema
            (-keep [_])
            (-get [_ key default] (get children key default))
-           (-set [this key value] (-set-assoc-children this key value))))))))
+           (-set [this key value] (-set-assoc-children this key value))
+           ParserInfo
+           (-parser-info [_] {:simple-parser @simple-parser})))))))
 
 ;; also doubles as a predicate for the :every schema to bound the number
 ;; of elements to check, so don't add potentially-infinite countable things like seq's.
@@ -1285,7 +1425,8 @@
                   validate-limits (if bounded
                                     (-validate-bounded-limits (c/min bounded (or max bounded)) min max)
                                     (-validate-limits min max))
-                  ->parser (fn [f g] (let [child-parser (f schema)]
+                  ->parser (fn [f g] (let [child-parser (f schema)
+                                           simple (-> schema -parser-info :simple-parser boolean)]
                                        (fn [x]
                                          (cond
                                            (not (fpred x)) ::invalid
@@ -1301,12 +1442,15 @@
                                                    (let [x' (reduce
                                                              (fn [acc v]
                                                                (let [v' (child-parser v)]
-                                                                 (if (miu/-invalid? v') (reduced ::invalid) (conj acc v'))))
-                                                             [] x)]
+                                                                 (if (miu/-invalid? v')
+                                                                   (reduced ::invalid)
+                                                                   (cond-> acc
+                                                                     (not simple) (conj v')))))
+                                                             (if simple x []) x)]
                                                      (cond
                                                        (miu/-invalid? x') x'
                                                        g (g x')
-                                                       fempty (into fempty x')
+                                                       (and fempty (or (not simple) (not (fpred x')))) (into fempty x')
                                                        :else x')))))))]
               ^{:type ::schema}
               (reify
@@ -1359,7 +1503,9 @@
                 LensSchema
                 (-keep [_] true)
                 (-get [_ _ _] schema)
-                (-set [this _ value] (-set-children this [value]))))))))))
+                (-set [this _ value] (-set-children this [value]))
+                ParserInfo
+                (-parser-info [_] (-parser-info schema))))))))))
 
 (defn -tuple-schema
   ([]
@@ -1431,7 +1577,9 @@
            LensSchema
            (-keep [_] true)
            (-get [_ key default] (get children key default))
-           (-set [this key value] (-set-assoc-children this key value))))))))
+           (-set [this key value] (-set-assoc-children this key value))
+           ParserInfo
+           (-parser-info [_] (every? (comp :simple-parser -parser-info) children))))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}
@@ -1440,7 +1588,7 @@
     (-from-ast [parent ast options] (-into-schema parent (:properties ast) (:values ast) options))
     IntoSchema
     (-type [_] :enum)
-    (-type-properties [_])
+    (-type-properties [_] {::simple-parser true})
     (-into-schema [parent properties children options]
       (-check-children! :enum properties children 1 nil)
       (let [children (vec children)
@@ -1458,7 +1606,7 @@
             (let [validator (-validator this)]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
-          (-parser [_] (fn [x] (if (contains? schema x) x ::invalid)))
+          (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           ;; TODO: should we try to derive the type from values? e.g. [:enum 1 2] ~> int?
           (-transformer [this transformer method options]
@@ -1483,7 +1631,7 @@
     (-from-ast [parent ast options] (-from-value-ast parent ast options))
     IntoSchema
     (-type [_] :re)
-    (-type-properties [_])
+    (-type-properties [_] {::simple-parser true})
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties [child :as children] options]
@@ -1511,9 +1659,7 @@
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
-          (-parser [this]
-            (let [valid? (-validator this)]
-              (fn [x] (if (valid? x) x ::invalid))))
+          (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-walk [this walker path options] (-walk-leaf this walker path options))
           (-properties [_] properties)
@@ -1535,7 +1681,7 @@
     (-from-ast [parent ast options] (-from-value-ast parent ast options))
     IntoSchema
     (-type [_] :fn)
-    (-type-properties [_])
+    (-type-properties [_] {::simple-parser true})
     (-into-schema [parent properties children options]
       (-check-children! :fn properties children 1 1)
       (let [children (vec children)
@@ -1556,9 +1702,7 @@
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
-          (-parser [this]
-            (let [validator (-validator this)]
-              (fn [x] (if (validator x) x ::invalid))))
+          (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
@@ -1620,7 +1764,9 @@
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [this key value] (if (= 0 key)
                                    (-set-children this [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
+                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+          ParserInfo
+          (-parser-info [_] (-parser-info schema)))))))
 
 (defn -multi-schema
   ([]
@@ -1867,7 +2013,7 @@
                                         guard (conj (from-ast guard))) options))
     IntoSchema
     (-type [_] :=>)
-    (-type-properties [_])
+    (-type-properties [_] {::simple-parser true})
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children 2 3)
       (let [[input output guard :as children] (-vmap #(schema % options) children)
@@ -1903,9 +2049,7 @@
               (let [validator (-validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
-          (-parser [this]
-            (let [validator (-validator this)]
-              (fn [x] (if (validator x) x ::invalid))))
+          (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
           (-walk [this walker path options] (-walk-indexed this walker path options))
@@ -1955,7 +2099,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-type [_] :function)
-    (-type-properties [_])
+    (-type-properties [_] {::simple-parser true})
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
@@ -1985,9 +2129,7 @@
               (let [validator (-validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
-          (-parser [this]
-            (let [validator (-validator this)]
-              (fn [x] (if (validator x) x ::invalid))))
+          (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])
           (-walk [this walker path options] (-walk-indexed this walker path options))
@@ -2720,6 +2862,7 @@
 
 (defn base-schemas []
   {:and (-and-schema)
+   :andn (-andn-schema)
    :or (-or-schema)
    :orn (-orn-schema)
    :not (-not-schema)

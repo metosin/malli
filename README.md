@@ -2493,7 +2493,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ;                                              :value "Hello, world of data"}}]}}}]}}}
 ```
 
-Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
+Parsing returns tagged values for `:orn`, `:catn`, `:altn`, `:andn` and `:multi`.
 
 ```clojure
 (def Multi
@@ -2507,6 +2507,29 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
 (m/parse Multi {:type "sized", :size 1})
 ; => #malli.core.Tag{:key :malli.core/default, :value {:type "sized", :size 1}}
 ```
+
+### Parsing `:and`
+
+The `:and` schema is unusual in that it parses multiple schemas and yet only returns the results of parsing one of them.
+
+This works seamlessly, unless more than one conjunct's parser transforms its input.
+Examples of schemas that can transform their input are `:orn` (returns `Tag`),
+`:catn` (returns `Tags`), and any composite schema such as `:map` (recursively transforms children).
+
+The error `:malli.core/and-schema-multiple-transforming-parsers` is thrown if the transforming
+parser cannot be picked automatically. There are several ways to resolve this.
+
+If you know a single conjunct should exclusively parse the input, use the `:parse` property
+to identify the conjunct by index.
+
+[:and [:and [:orn [:l :int] [:r :boolean]]]]
+[:and [:and [:orn [:l :int] [:r :boolean]]]]
+
+To opt-out of parsing any further levels of this schema, use the `:parse :none` property.
+
+To parse all conjuncts, you must migrate the schema to `:andn`. This involves tagging each conjunct
+with syntax like `:orn` and `:map`. The results of parsing will be wrapped in `Tags`.
+Only the left-most child will be unparsed, useful if you plan to modify the results of parsing.
 
 ## Unparsing values
 

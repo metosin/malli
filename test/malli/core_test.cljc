@@ -3587,8 +3587,8 @@
 
 (defn simple-parser? [s] (boolean (:simple-parser (m/-parser-info (m/schema s)))))
 
-(def simple-parser-templates
-  "Schemas which have simple parsers iff ::HOLE has a simple parser.
+(def inheriting-parser-templates
+  "Schemas templates which have simple parsers iff ::HOLE has a simple parser.
   Should also be generatable for any ::HOLE and be capable to (un)parsing
   to a different value than its input if transforming."
   [::HOLE
@@ -3600,6 +3600,8 @@
    [:tuple ::HOLE]
    [:tuple ::HOLE :any]
    [:vector ::HOLE]
+   [:set ::HOLE]
+   [:seqable ::HOLE]
    [:map [:foo ::HOLE]]
    [:map [:foo {:optional true} ::HOLE]]
    [:map [:foo ::HOLE] [:bar :int]]
@@ -3612,39 +3614,77 @@
    [:map-of :any ::HOLE]
    [:map-of ::HOLE ::HOLE]])
 
-(def simple-parser-schemas [:any [:and :any] :int #'map? :tuple [:seqable :any]
-                            [:every [:catn [:any :any]]] ;; bounded => simple
-                            [:fn {:gen/schema :any} #'any?]])
-(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
+(def simple-parser-templates
+  "Schema templates which have simple parsers for any value of ::HOLE."
+  [[:and {:parse 1} ::HOLE :any]
+   [:and {:parse :none} ::HOLE :any]
+   [:every ::HOLE]
+   ])
+
+(def transforming-parser-templates
+  "Schema templates which have transforming parsers for any value of ::HOLE."
+  [[:multi {:dispatch #'any?} [true ::HOLE]]
+   [:multi {:dispatch #'boolean} [true :any] [false ::HOLE]]
+   [:multi {:dispatch #'boolean} [true ::HOLE] [false :any]]
+   [:andn [0 ::HOLE]]
+   [:andn [0 ::HOLE] [1 :any]] ;; generator will fail if :any is first
+   ])
+
+(def simple-parser-schemas
+  "Schemas with simple parsers."
+  [:any
+   [:and :any]
+   :int
+   #'map?
+   :tuple
+   [:fn {:gen/schema :any} #'any?]
+   [:= 42] [:enum 42] [:not= 42]
+   [:not [:= (random-uuid)]]])
+
+(def transforming-parser-schemas
+  "Schemas with transforming parsers."
+  [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
+
+(defn ensure-parser-type [expected-simple s]
+  (let [s (m/schema s)
+        parse (m/parser s)
+        unparse (m/parser s)]
+    (if expected-simple
+      (doseq [g (is (doall (mg/sample s)))]
+        (testing (pr-str g)
+          (let [p (parse g)]
+            (is (identical? g p))
+            (is (identical? g (unparse p))))))
+      (is (some (fn [g]
+                  (let [p (parse g)]
+                    (and (not (identical? g p))
+                         (not (identical? g (unparse p))))))
+                (mg/sample s {:seed 0}))))))
 
 (deftest parser-info-test
-  ;; :not has an unreliable generator and is always has a simple parser
-  (is (every? #(simple-parser? [:not %]) (concat simple-parser-schemas transforming-parser-schemas)))
+  ;; should really be in simple-parser-templates but :not has an unreliable generator
+  (testing ":not is simple"
+    (is (every? #(simple-parser? [:not %]) (concat simple-parser-schemas transforming-parser-schemas)))
+    (ensure-parser-type true [:not [:= (random-uuid)]])
+    (ensure-parser-type true [:not [:andn [:tag [:= (random-uuid)]]]]))
+  (testing ":multi is transforming"
+    (is (every? #(simple-parser? [:not %]) (concat simple-parser-schemas transforming-parser-schemas)))
+    (ensure-parser-type true [:not [:andn [:any [:= (random-uuid)]]]]))
   (let [d (m/default-schemas)]
-    (doseq [[hole expected] (concat (map vector simple-parser-schemas (repeat true))
-                                    (map vector transforming-parser-schemas (repeat false)))
+    (doseq [[hole hold-simple] (concat (map vector simple-parser-schemas (repeat true))
+                                       (map vector transforming-parser-schemas (repeat false)))
             :let [_ (testing (pr-str hole)
-                      (is (= expected (simple-parser? hole))))]
-            template simple-parser-templates
+                      (is (= hold-simple (simple-parser? hole))))]
+            [template expected-simple] (concat (map vector simple-parser-templates (repeat true))
+                                               (map vector transforming-parser-templates (repeat false))
+                                               (map vector inheriting-parser-templates (repeat hold-simple)))
             :let [s (testing {:template template :hole hole}
                       (is (m/schema template {:registry (assoc d ::HOLE (m/schema hole))})))]]
       (testing (pr-str (list 'm/schema template
                              {:registry (list 'assoc (list 'm/default-schemas)
                                               (symbol "::HOLE") (list 'm/schema hole))}))
-        (is (= expected (simple-parser? s)))
-        (let [parse (m/parser s)
-              unparse (m/parser s)]
-          (if expected
-            (doseq [g (is (doall (mg/sample s)))]
-              (testing (pr-str g)
-                (let [p (parse g)]
-                  (is (identical? g p))
-                  (is (identical? g (unparse p))))))
-            (is (some (fn [g]
-                        (let [p (parse g)]
-                          (and (not (identical? g p))
-                               (not (identical? g (unparse p))))))
-                      (mg/sample s {:seed 0})))))))))
+        (is (= expected-simple (simple-parser? s)))
+        (ensure-parser-type expected-simple s)))))
 
 (deftest and-complex-parser-test
   (is (= {} (m/parse [:and :map [:fn map?]] {})))

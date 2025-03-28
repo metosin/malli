@@ -3634,7 +3634,10 @@
         (m/parser [:and [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])))
   (is (-> (m/schema [:vector :int]) m/-parser-info :simple-parser))
   (is (-> (m/schema [:vector [:orn [:one :int]]]) m/-parser-info :simple-parser not)))
-
+(comment
+  (m/unparse [:andn [:l [:map [:left [:orn [:one :int]]]]] [:r [:map [:right [:orn [:one :int]]]]]]
+             #malli.core.Tags{:values {;:l {:left #malli.core.Tag{:key :one, :value 1}, :right 1},
+                                       :r {:left 3, :right #malli.core.Tag{:key :one, :value 1}}}}))
 (deftest andn-test
   (is (= {:schema [:andn [:m :map] [:v [:vector :any]]],
           :value {},

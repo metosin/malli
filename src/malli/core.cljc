@@ -867,7 +867,9 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
           ParserInfo
-          (-parser-info [_] (if-some [i @transforming-parser] (-parser-info (nth children i)) {})))))))
+          (-parser-info [_] (if-some [i @transforming-parser]
+                              (-parser-info (nth children i))
+                              {:simple-parser true})))))))
 
 (defn -andn-schema []
   ^{:type ::into-schema}
@@ -1283,7 +1285,7 @@
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))
            ParserInfo
-           (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info) (-entry-children entry-parser))})))))))
+           (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info peek) (-entry-children entry-parser))})))))))
 
 (defn -map-of-schema
   ([]
@@ -1504,7 +1506,8 @@
                 (-get [_ _ _] schema)
                 (-set [this _ value] (-set-children this [value]))
                 ParserInfo
-                (-parser-info [_] (-parser-info schema))))))))))
+                (-parser-info [_] (cond-> (-parser-info schema)
+                                    bounded (assoc :simple-parser true)))))))))))
 
 (defn -tuple-schema
   ([]
@@ -1578,7 +1581,7 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))
            ParserInfo
-           (-parser-info [_] (every? (comp :simple-parser -parser-info) children))))))))
+           (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info) children)})))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}

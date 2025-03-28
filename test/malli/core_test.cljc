@@ -3585,6 +3585,61 @@
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
 
+(defn simple-parser? [s] (boolean (:simple-parser (m/-parser-info (m/schema s)))))
+
+(def simple-parser-templates
+  "Schemas which have simple parsers iff ::HOLE has a simple parser.
+  Should also be generatable for any ::HOLE."
+  [::HOLE
+   [:schema ::HOLE]
+   [:schema {:registry {::a ::HOLE}} ::a]
+   [:schema {:registry {::a ::HOLE}} [:ref ::a]]
+   [:tuple ::HOLE]
+   [:tuple ::HOLE :any]
+   [:vector ::HOLE]
+   [:map [:foo ::HOLE]]
+   [:map [:foo ::HOLE] [:bar :int]]
+   [:and ::HOLE] ;; generator will fail if :any is first
+   [:and ::HOLE :any]])
+
+(def simple-parser-schemas [:any [:and :any] :int map? :map :tuple [:seqable :any] [:every :catn]])
+(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch any?} [true :any]]])
+
+(deftest parser-info-test
+  (is (simple-parser? :any))
+  (is (not (simple-parser? :catn)))
+  (let [d (m/default-schemas)]
+    (doseq [[hole expected] (concat (map vector simple-parser-schemas (repeat true))
+                                    (map vector transforming-parser-schemas (repeat false)))
+            :let [_ (testing (pr-str hole)
+                      (is (= expected (simple-parser? hole))))]
+            template simple-parser-templates
+            :let [s (testing {:template template :hole hole}
+                      (is (m/schema template {:registry (assoc d ::HOLE (m/schema hole {:registry d}))})))]]
+      (testing (pr-str {:s (m/form s) :hole hole})
+        (is (= expected (simple-parser? s)))
+        (let [parse (m/parser s)
+              unparse (m/parser s)]
+          (if expected
+            (doseq [g (is (doall (mg/sample s)))]
+              (testing (pr-str g)
+                (let [p (parse g)]
+                  (is (identical? g p))
+                  (is (identical? g (unparse p))))))
+            (is (some (fn [g]
+                        (let [p (parse g)]
+                          (and (not (identical? g p))
+                               (not (identical? g (unparse p))))))
+                      (mapcat #(mg/sample s {:size %}) [10 100 1000]))))))))
+  (is (simple-parser? [:schema :any]))
+  (is (not (simple-parser? [:schema :catn])))
+  (is (simple-parser? [:schema {:registry {::a :any}} ::a]))
+  (is (simple-parser? [:schema {:registry {::a :any}} ::a]))
+  (is (simple-parser? [:schema {:registry {::a :any}} [:ref ::a]]))
+  (is (every? simple-parser? [[:tuple] [:tuple :any] [:tuple :any :any]]))
+  (is (not (simple-parser? [:tuple [:catn]])))
+)
+
 (deftest and-complex-parser-test
   (is (= {} (m/parse [:and :map [:fn map?]] {})))
   (is (= {} (m/parse [:and [:fn map?] :map] {})))
@@ -3633,7 +3688,39 @@
         #":malli\.core/and-schema-multiple-transforming-parsers"
         (m/parser [:and [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])))
   (is (-> (m/schema [:vector :int]) m/-parser-info :simple-parser))
-  (is (-> (m/schema [:vector [:orn [:one :int]]]) m/-parser-info :simple-parser not)))
+  (is (-> (m/schema [:vector [:orn [:one :int]]]) m/-parser-info :simple-parser not))
+  (is (= #malli.core.Tags{:values {"a" 3, "b" :x}}
+         (m/parse [:and [:catn ["a" :int] ["b" :keyword]]
+                   [:fn vector?]]
+                  [3 :x])))
+  (let [s [:and [:catn ["a" :int] ["b" :keyword]]
+           [:fn vector?]]
+        res (->> [3 :x]
+                 (m/parse s)
+                 (m/unparse s))]
+    (is (= [3 :x] res))
+    (is (m/validate s res)))
+  (let [s [:and [:catn ["a" :int] ["b" :keyword]]
+           [:vector :any]]
+        res (->> [3 :x]
+                 (m/parse s)
+                 (m/unparse s))]
+    (is (= [3 :x] res))
+    (is (m/validate s res)))
+  (let [s [:and [:catn ["a" :int] ["b" :keyword]]
+           [:sequential :any]]
+        res (->> [3 :x]
+                 (m/parse s)
+                 (m/unparse s))]
+    (is (= [3 :x] res))
+    (is (m/validate s res)))
+  (let [s [:and [:catn ["a" :int] ["b" :keyword]]
+           [:tuple :any :any]]
+        res (->> [3 :x]
+                 (m/parse s)
+                 (m/unparse s))]
+    (is (= [3 :x] res))
+    (is (m/validate s res))))
 
 (deftest andn-test
   (is (= {:schema [:andn [:m :map] [:v [:vector :any]]],

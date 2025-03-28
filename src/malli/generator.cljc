@@ -383,6 +383,7 @@
 (defmethod -schema-generator 'neg? [_ options] (gen/one-of [(gen-double {:max -0.00001}) (gen-fmap (comp dec -) gen/nat)]))
 (defmethod -schema-generator :not [schema options] (gen-such-that schema (m/validator schema options) (ga/gen-for-pred any?)))
 (defmethod -schema-generator :and [schema options] (-and-gen schema options))
+(defmethod -schema-generator :andn [schema options] (-and-gen (m/into-schema :and (m/properties schema) (map last (m/children schema)) (m/options schema)) options))
 (defmethod -schema-generator :or [schema options] (-or-gen schema options))
 (defmethod -schema-generator :orn [schema options] (-or-gen (m/into-schema :or (m/properties schema) (map last (m/children schema)) (m/options schema)) options))
 (defmethod -schema-generator ::m/val [schema options] (-child-gen schema options))

@@ -67,6 +67,7 @@
 (defmethod accept :not= [_ _ _ _] :any) ;;??
 
 (defmethod accept :and [_ _ _ _] :any) ;;??
+(defmethod accept :andn [_ _ _ _] :any) ;;??
 (defmethod accept :or [_ _ _ _] :any) ;;??
 (defmethod accept :orn [_ _ _ _] :any) ;;??
 (defmethod accept :not [_ _ _ _] :any) ;;??

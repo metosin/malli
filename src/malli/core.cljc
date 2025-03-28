@@ -896,15 +896,15 @@
           (-parser [this]
             (let [k+parsers (-vmap (fn [[k _ c]] [k (-parser c)]) (-children this))]
               (fn [x]
-                (let [tags (reduce (fn [acc [k parser]]
-                                     (let [x' (parser x)]
-                                       (if (miu/-invalid? x')
-                                         (reduced ::invalid)
-                                         (assoc acc k x'))))
-                                   {} k+parsers)]
-                  (if (miu/-invalid? tags)
+                (let [values (reduce (fn [acc [k parser]]
+                                       (let [x' (parser x)]
+                                         (if (miu/-invalid? x')
+                                           (reduced ::invalid)
+                                           (assoc acc k x'))))
+                                     {} k+parsers)]
+                  (if (miu/-invalid? values)
                     ::invalid
-                    (->Tags tags))))))
+                    (->Tags values))))))
           (-unparser [this]
             ;; only the left-most child provided in tags is unparsed. the remaining values are ignored.
             ;; the unparsed value is checked against the remaining children.
@@ -925,8 +925,7 @@
                     ::invalid)
                   ::invalid))))
           (-transformer [this transformer method options]
-            ;FIXME !!!
-            (-or-transformer this transformer (-vmap #(nth % 2) (-children this)) method options))
+            (-parent-children-transformer this (-vmap #(nth % 2) (-children this)) transformer method options))
           (-walk [this walker path options] (-walk-entries this walker path options))
           (-properties [_] properties)
           (-options [_] options)

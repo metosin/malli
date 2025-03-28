@@ -158,6 +158,7 @@
 (defmethod accept :select-keys [_ schema _ {::keys [describe] :as options}] (describe (m/deref schema) options))
 
 (defmethod accept :and [_ s children _] (str (str/join ", and " children) (-titled s)))
+(defmethod accept :andn [_ s children _] (str (str/join ", and " (-tagged children)) (-titled s)))
 (defmethod accept :enum [_ s children _options] (str "enum" (-titled s) " of " (str/join ", " children)))
 (defmethod accept :maybe [_ s children _] (str "nullable " (-titled s) (first children)))
 (defmethod accept :tuple [_ s children _] (str "vector " (-titled s) "with exactly " (count children) " items of type: " (str/join ", " children)))

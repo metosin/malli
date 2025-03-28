@@ -3592,6 +3592,7 @@
   Should also be generatable for any ::HOLE and be capable to (un)parsing
   to a different value than its input if transforming."
   [::HOLE
+   [:maybe ::HOLE]
    [:schema ::HOLE]
    [:schema {:registry {::a ::HOLE}} ::a]
    [:schema {:registry {::a ::HOLE}} [:ref ::a]]
@@ -3600,6 +3601,7 @@
    [:tuple ::HOLE :any]
    [:vector ::HOLE]
    [:map [:foo ::HOLE]]
+   [:map [:foo {:optional true} ::HOLE]]
    [:map [:foo ::HOLE] [:bar :int]]
    [:and ::HOLE] ;; generator will fail if :any is first
    [:and ::HOLE :any]
@@ -3608,16 +3610,16 @@
    [:or ::HOLE :any]
    [:map-of ::HOLE :any]
    [:map-of :any ::HOLE]
-   [:map-of ::HOLE ::HOLE]
-   ])
+   [:map-of ::HOLE ::HOLE]])
 
-(def simple-parser-schemas [:any [:and :any] :int #'map? :map :tuple [:seqable :any] [:every :catn]
-                            [:fn {:gen/schema :any} #'any?]
-                            [:map-of :any :any]])
-(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]
-                                  #_[:map [:any :any]]])
+(def simple-parser-schemas [:any [:and :any] :int #'map? :tuple [:seqable :any]
+                            [:every [:catn [:any :any]]] ;; bounded => simple
+                            [:fn {:gen/schema :any} #'any?]])
+(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
 
 (deftest parser-info-test
+  ;; :not has an unreliable generator and is always has a simple parser
+  (is (every? #(simple-parser? [:not %]) (concat simple-parser-schemas transforming-parser-schemas)))
   (let [d (m/default-schemas)]
     (doseq [[hole expected] (concat (map vector simple-parser-schemas (repeat true))
                                     (map vector transforming-parser-schemas (repeat false)))

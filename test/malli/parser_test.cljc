@@ -73,7 +73,7 @@
    :tuple
    [:fn {:gen/schema :any} #'any?]
    [:= 42] [:enum 42] [:not= 42] [:< 5] [:> 5] [:<= 5] [:>= 5]
-   [:re #""]
+   #?@(:cljs [] :default [[:re #""]]) ;; no generator in cljs
    :nil
    :qualified-symbol
    :uuid

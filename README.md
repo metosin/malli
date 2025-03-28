@@ -2510,7 +2510,7 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn`, `:andn` and `:multi`
 
 ### Parsing `:and`
 
-The `:and` schema is unusual in that it parses multiple schemas and yet only returns the results of parsing one of them.
+The `:and` schema combines multiple schemas for the same value and yet only returns the results of parsing one of them.
 Which schema is used for parsing is usually chosen automatically.
 
 ```clojure
@@ -2575,15 +2575,37 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 ; [:p "Hello, world of data"]]
 ```
 
+Tags are mapped back to the original schema to be unparsed.
+
 ```clojure
-(m/unparse [:orn [:name :string] [:id :int]]
-           (m/tag :name "x"))
+(m/unparse [:orn [:left :string] [:right :int]]
+           (m/tag :left "x"))
 ; => "x"
 
-(m/unparse [:* [:catn [:name :string] [:id :int]]]
+(m/unparse [:orn [:left :string] [:right :int]]
+           (m/tag :left 1))
+; => ::m/invalid
+```
+
+Unparsing can be used to update complex values via an associative interface.
+
+```clojure
+(def FlatPairs [:* [:catn [:name :string] [:id :int]]])
+
+(m/parse FlatPairs ["x" 1 "y" 2])
+; => [#malli.core.Tags{:values {:name "x", :id 1}}
+;     #malli.core.Tags{:values {:name "y", :id 2}}]
+
+(m/unparse FlatPairs
            [(m/tags {:name "x" :id 1})
             (m/tags {:name "y" :id 2})])
 ; => ["x" 1 "y" 2]
+
+(->> ["x" 1 "y" 2 "z" 3]
+     (m/parse FlatPairs)
+     (mapv (fn [tags] (-> tags (update :values #(-> % (update :name str "_") (update :id * 2))))))
+     (m/unparse FlatPairs))
+; => ["x_" 2 "y_" 4 "z_" 6]
 ```
 
 ## Serializable functions

@@ -3665,3 +3665,38 @@
                                 (update-in [:values :f] inc)
                                 (update :values dissoc :o)))))
       (is (= ::m/invalid (m/unparse s (update p :values dissoc :o :f)))))))
+
+(comment
+(def Hiccup
+  [:schema {:registry {"hiccup" [:orn
+                                 [:node [:catn
+                                         [:name keyword?]
+                                         [:props [:? [:map-of keyword? any?]]]
+                                         [:children [:* [:schema [:ref "hiccup"]]]]]]
+                                 [:primitive [:orn
+                                              [:nil nil?]
+                                              [:boolean boolean?]
+                                              [:number number?]
+                                              [:text string?]]]]}}
+   "hiccup"])
+
+(def parse-hiccup (m/parser Hiccup))
+
+(pr-str (parse-hiccup
+  [:div {:class [:foo :bar]}
+   [:p "Hello, world of data"]]))
+
+(def FlatPairs [:* [:catn [:name :string] [:id :int]]])
+(m/unparse [:orn [:name :string] [:id :int]]
+           (m/tag :name "x"))
+(->> ["x" 1 "y" 2 "z" 3]
+     (m/parse FlatPairs)
+     (mapv (fn [tags] (-> tags (update :values #(-> % (update :name str "_") (update :id * 2))))))
+     (m/unparse FlatPairs))
+(m/unparse [:orn [:left [:* :string]] [:right :string]]
+           (m/tag :left "x"))
+(m/unparse [:orn [:left :string] [:right :int]]
+           (m/tag :left 1))
+(pr-str (m/parse FlatPairs ["x" 1 "y" 2]))
+  )
+

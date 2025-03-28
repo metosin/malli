@@ -3698,5 +3698,37 @@
 (m/unparse [:orn [:left :string] [:right :int]]
            (m/tag :left 1))
 (pr-str (m/parse FlatPairs ["x" 1 "y" 2]))
+
+(def Paired+Flat
+  [:andn
+   [:paired [:* [:catn [:name :string] [:id :int]]]]
+   [:flat [:vector [:orn [:name :string] [:id :int]]]]])
+
+(m/parse Paired+Flat ["x" 1 "y" 2])
+; => #malli.core.Tags{:values
+;      {:paired [#malli.core.Tags{:values {:name "x", :id 1}}
+;                #malli.core.Tags{:values {:name "y", :id 2}}],
+;       :flat [#malli.core.Tag{:key :name, :value "x"}
+;              #malli.core.Tag{:key :id, :value 1}
+;              #malli.core.Tag{:key :name, :value "y"}
+;              #malli.core.Tag{:key :id, :value 2}]}}
+
+(as-> ["x" 1 "y" 2] $
+  (m/parse Paired+Flat $)
+  (update $ :values
+          (fn [{:keys [flat paired] :as res}]
+            ;; remove other :andn results like :flat when transforming
+            {:paired (rseq (mapv #(update-in % [:values :id] + (count flat)) paired))}))
+  (m/unparse Paired+Flat $))
+; => ["y" 6 "x" 5]
+(as-> ["x" 1 "y" 2] $
+  (m/parse Paired+Flat $)
+  (update $ :values
+          (fn [{:keys [flat paired] :as res}]
+            ;; remove other :andn results like :flat when transforming
+            {:paired (map-indexed (fn [i p] (update-in p [:values :id] * (+ 2 i) (count flat)))
+                                  (rseq paired))}))
+  (m/unparse Paired+Flat $))
+["y" 16 "x" 12]
   )
 

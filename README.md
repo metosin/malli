@@ -2549,17 +2549,35 @@ To opt-out of parsing any further levels of this schema, use the `:parse :none` 
 ```
 
 To parse all conjuncts, you must migrate the schema to `:andn`. This involves tagging each conjunct
-with syntax like `:orn` and `:map`. The results of parsing will be wrapped in `Tags`.
+with syntax like `:orn` and `:map`. The results of parsing `:andn` will be wrapped in `Tags` with
+an entry for parsing the original value with each conjunct.
+
 Only the left-most child will be unparsed, useful if you plan to modify the results of parsing.
 
 ```clojure
-(m/parse [:andn [:l [:map [:left [:orn [:one :int]]]]] [:r [:map [:right [:orn [:one :int]]]]]] {:left 1 :right 1})
-; => #malli.core.Tags{:values {:l {:left #malli.core.Tag{:key :one, :value 1}, :right 1},
-                               :r {:left 1, :right #malli.core.Tag{:key :one, :value 1}}}}
+(def Paired+Flat
+  [:andn
+   [:paired [:* [:catn [:name :string] [:id :int]]]]
+   [:flat [:vector [:orn [:name :string] [:id :int]]]]])
 
-(m/unparse [:andn [:l [:map [:left [:orn [:one :int]]]]] [:r [:map [:right [:orn [:one :int]]]]]]
-           (m/tags {:r {:left 3, :right (m/tag :one 1)}}))
-; => {:left 3, :right 1}
+(m/parse Paired+Flat ["x" 1 "y" 2])
+; => #malli.core.Tags{:values
+;      {:paired [#malli.core.Tags{:values {:name "x", :id 1}}
+;                #malli.core.Tags{:values {:name "y", :id 2}}],
+;       :flat [#malli.core.Tag{:key :name, :value "x"}
+;              #malli.core.Tag{:key :id, :value 1}
+;              #malli.core.Tag{:key :name, :value "y"}
+;              #malli.core.Tag{:key :id, :value 2}]}}
+
+(as-> ["x" 1 "y" 2] $
+  (m/parse Paired+Flat $)
+  (update $ :values
+          (fn [{:keys [flat paired] :as res}]
+            ;; remove other :andn results like :flat when transforming
+            {:paired (map-indexed (fn [i p] (update-in p [:values :id] * (+ 2 i) (count flat)))
+                                  (rseq paired))}))
+  (m/unparse Paired+Flat $))
+["y" 16 "x" 12]
 ```
 
 ## Unparsing values

@@ -2558,7 +2558,7 @@ Only the left-most child will be unparsed, useful if you plan to modify the resu
                                :r {:left 1, :right #malli.core.Tag{:key :one, :value 1}}}}
 
 (m/unparse [:andn [:l [:map [:left [:orn [:one :int]]]]] [:r [:map [:right [:orn [:one :int]]]]]]
-           #malli.core.Tags{:values {:r {:left 3, :right #malli.core.Tag{:key :one, :value 1}}}})
+           (m/tags {:r {:left 3, :right (m/tag :one 1)}}))
 ; => {:left 3, :right 1}
 ```
 
@@ -2577,7 +2577,7 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 
 ```clojure
 (m/unparse [:orn [:name :string] [:id :int]]
-           (m/tagged :name "x"))
+           (m/tag :name "x"))
 ; => "x"
 
 (m/unparse [:* [:catn [:name :string] [:id :int]]]

@@ -50,8 +50,7 @@
    [:and {:parse :none} ::HOLE :any]
    [:every ::HOLE]
    [:-> ::HOLE]
-   [:function [:-> ::HOLE]]
-   ])
+   [:function [:-> ::HOLE]]])
 
 (def transforming-parser-templates
   "Schema templates which have transforming parsers for any value of ::HOLE."
@@ -86,20 +85,21 @@
   [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
 
 (defn ensure-parser-type [expected-simple s]
-  (let [s (m/schema s)
-        parse (m/parser s)
-        unparse (m/parser s)]
-    (if expected-simple
-      (doseq [g (is (doall (mg/sample s)))]
-        (testing (pr-str g)
-          (let [p (parse g)]
-            (is (identical? g p))
-            (is (identical? g (unparse p))))))
-      (is (some (fn [g]
-                  (let [p (parse g)]
-                    (and (not (identical? g p))
-                         (not (identical? g (unparse p))))))
-                (mg/sample s {:seed 0}))))))
+  #?(:bb nil ;;FIXME test.chuck incompatibility
+     :default (let [s (m/schema s)
+                    parse (m/parser s)
+                    unparse (m/parser s)]
+                (if expected-simple
+                  (doseq [g (is (doall (mg/sample s)))]
+                    (testing (pr-str g)
+                      (let [p (parse g)]
+                        (is (identical? g p))
+                        (is (identical? g (unparse p))))))
+                  (is (some (fn [g]
+                              (let [p (parse g)]
+                                (and (not (identical? g p))
+                                     (not (identical? g (unparse p))))))
+                            (mg/sample s {:seed 0})))))))
 
 (deftest parser-info-test
   ;; should really be in simple-parser-templates but :not has an unreliable generator

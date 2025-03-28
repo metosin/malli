@@ -10,6 +10,7 @@
    [malli.generator-test]
    [malli.instrument-test]
    [malli.json-schema-test]
+   [malli.parser-test]
    [malli.plantuml-test]
    [malli.provider-test]
    [malli.registry-test]
@@ -29,6 +30,7 @@
          'malli.instrument-test
          'malli.json-schema-test
          ;; 'malli.generator-test ;; skipped for now due to test.chuck incompatibility
+         'malli.parser-test
          'malli.plantuml-test
          'malli.provider-test
          'malli.registry-test

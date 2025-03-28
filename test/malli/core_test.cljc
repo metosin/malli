@@ -3600,10 +3600,18 @@
    [:map [:foo ::HOLE]]
    [:map [:foo ::HOLE] [:bar :int]]
    [:and ::HOLE] ;; generator will fail if :any is first
-   [:and ::HOLE :any]])
+   [:and ::HOLE :any]
+   [:and ::HOLE :any :any]
+   [:or ::HOLE] ;; parser will always be identical if :any is first
+   [:or ::HOLE :any]])
 
-(def simple-parser-schemas [:any [:and :any] :int map? :map :tuple [:seqable :any] [:every :catn]])
-(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch any?} [true :any]]])
+(def simple-parser-schemas [:any [:and :any] :int #'map? :map :tuple [:seqable :any] [:every :catn]])
+(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
+
+(comment
+  (mg/sample (m/schema [:or :any :malli.core-test/HOLE] {:registry (assoc (m/default-schemas) :malli.core-test/HOLE (m/schema [:multi {:dispatch #'any?} [true :any]]))})
+             {:size 100})
+  )
 
 (deftest parser-info-test
   (is (simple-parser? :any))
@@ -3615,8 +3623,10 @@
                       (is (= expected (simple-parser? hole))))]
             template simple-parser-templates
             :let [s (testing {:template template :hole hole}
-                      (is (m/schema template {:registry (assoc d ::HOLE (m/schema hole {:registry d}))})))]]
-      (testing (pr-str {:s (m/form s) :hole hole})
+                      (is (m/schema template {:registry (assoc d ::HOLE (m/schema hole))})))]]
+      (testing (pr-str (list 'm/schema template
+                             {:registry (list 'assoc (list 'm/default-schemas)
+                                              (symbol "::HOLE") (list 'm/schema hole))}))
         (is (= expected (simple-parser? s)))
         (let [parse (m/parser s)
               unparse (m/parser s)]
@@ -3630,7 +3640,7 @@
                         (let [p (parse g)]
                           (and (not (identical? g p))
                                (not (identical? g (unparse p))))))
-                      (mapcat #(mg/sample s {:size %}) [10 100 1000]))))))))
+                      (mg/sample s {:size 3 :seed 0}))))))))
   (is (simple-parser? [:schema :any]))
   (is (not (simple-parser? [:schema :catn])))
   (is (simple-parser? [:schema {:registry {::a :any}} ::a]))

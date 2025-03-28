@@ -3589,12 +3589,13 @@
 
 (def simple-parser-templates
   "Schemas which have simple parsers iff ::HOLE has a simple parser.
-  Should also be generatable for any ::HOLE and be capable to parsing
-  to a non-identical value than its input."
+  Should also be generatable for any ::HOLE and be capable to (un)parsing
+  to a different value than its input if transforming."
   [::HOLE
    [:schema ::HOLE]
    [:schema {:registry {::a ::HOLE}} ::a]
    [:schema {:registry {::a ::HOLE}} [:ref ::a]]
+   [:schema {:registry {::a [:ref ::b] ::b ::HOLE}} [:ref ::a]]
    [:tuple ::HOLE]
    [:tuple ::HOLE :any]
    [:vector ::HOLE]
@@ -3604,10 +3605,17 @@
    [:and ::HOLE :any]
    [:and ::HOLE :any :any]
    [:or ::HOLE] ;; parser will always be identical if :any is first
-   [:or ::HOLE :any]])
+   [:or ::HOLE :any]
+   [:map-of ::HOLE :any]
+   [:map-of :any ::HOLE]
+   [:map-of ::HOLE ::HOLE]
+   ])
 
-(def simple-parser-schemas [:any [:and :any] :int #'map? :map :tuple [:seqable :any] [:every :catn]])
-(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
+(def simple-parser-schemas [:any [:and :any] :int #'map? :map :tuple [:seqable :any] [:every :catn]
+                            [:fn {:gen/schema :any} #'any?]
+                            [:map-of :any :any]])
+(def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]
+                                  #_[:map [:any :any]]])
 
 (deftest parser-info-test
   (let [d (m/default-schemas)]
@@ -3634,7 +3642,7 @@
                         (let [p (parse g)]
                           (and (not (identical? g p))
                                (not (identical? g (unparse p))))))
-                      (mg/sample s {:size 3 :seed 0})))))))))
+                      (mg/sample s {:seed 0})))))))))
 
 (deftest and-complex-parser-test
   (is (= {} (m/parse [:and :map [:fn map?]] {})))

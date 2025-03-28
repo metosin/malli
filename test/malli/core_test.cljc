@@ -3589,7 +3589,8 @@
 
 (def simple-parser-templates
   "Schemas which have simple parsers iff ::HOLE has a simple parser.
-  Should also be generatable for any ::HOLE."
+  Should also be generatable for any ::HOLE and be capable to parsing
+  to a non-identical value than its input."
   [::HOLE
    [:schema ::HOLE]
    [:schema {:registry {::a ::HOLE}} ::a]
@@ -3608,14 +3609,7 @@
 (def simple-parser-schemas [:any [:and :any] :int #'map? :map :tuple [:seqable :any] [:every :catn]])
 (def transforming-parser-schemas [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
 
-(comment
-  (mg/sample (m/schema [:or :any :malli.core-test/HOLE] {:registry (assoc (m/default-schemas) :malli.core-test/HOLE (m/schema [:multi {:dispatch #'any?} [true :any]]))})
-             {:size 100})
-  )
-
 (deftest parser-info-test
-  (is (simple-parser? :any))
-  (is (not (simple-parser? :catn)))
   (let [d (m/default-schemas)]
     (doseq [[hole expected] (concat (map vector simple-parser-schemas (repeat true))
                                     (map vector transforming-parser-schemas (repeat false)))
@@ -3640,15 +3634,7 @@
                         (let [p (parse g)]
                           (and (not (identical? g p))
                                (not (identical? g (unparse p))))))
-                      (mg/sample s {:size 3 :seed 0}))))))))
-  (is (simple-parser? [:schema :any]))
-  (is (not (simple-parser? [:schema :catn])))
-  (is (simple-parser? [:schema {:registry {::a :any}} ::a]))
-  (is (simple-parser? [:schema {:registry {::a :any}} ::a]))
-  (is (simple-parser? [:schema {:registry {::a :any}} [:ref ::a]]))
-  (is (every? simple-parser? [[:tuple] [:tuple :any] [:tuple :any :any]]))
-  (is (not (simple-parser? [:tuple [:catn]])))
-)
+                      (mg/sample s {:size 3 :seed 0})))))))))
 
 (deftest and-complex-parser-test
   (is (= {} (m/parse [:and :map [:fn map?]] {})))

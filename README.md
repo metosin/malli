@@ -2538,13 +2538,22 @@ to identify the conjunct by index.
 To opt-out of parsing any further levels of this schema, use the `:parse :none` property.
 
 ```clojure
-(m/parse [:and {:parse 0} [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])
+(m/parse [:and {:parse 0}
+          [:map [:left [:orn [:one :int]]]]
+          [:map [:right [:orn [:one :int]]]]]
+         {:left 1 :right 1})
 ; => {:left #malli.core.Tag{:key :one, :value 1}, :right 1}
 
-(m/parse [:and {:parse 1} [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])
+(m/parse [:and {:parse 1}
+          [:map [:left [:orn [:one :int]]]]
+          [:map [:right [:orn [:one :int]]]]]
+         {:left 1 :right 1})
 ; => {:left 1, :right #malli.core.Tag{:key :one, :value 1}}
 
-(m/parse [:and {:parse :none} [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])
+(m/parse [:and {:parse :none}
+          [:map [:left [:orn [:one :int]]]]
+          [:map [:right [:orn [:one :int]]]]]
+         {:left 1 :right 1})
 ; => {:left 1, :right 1}
 ```
 

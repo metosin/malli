@@ -85,7 +85,7 @@
   [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
 
 (defn ensure-parser-type [expected-simple s]
-  #?(:bb nil ;;FIXME test.chuck incompatibility
+  #?(:bb nil ;; test.chuck doesn't work in bb
      :default (let [s (m/schema s)
                     parse (m/parser s)
                     unparse (m/parser s)]

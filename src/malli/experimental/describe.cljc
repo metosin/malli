@@ -157,7 +157,10 @@
 (defmethod accept :union [_ schema _ {::keys [describe] :as options}] (describe (m/deref schema) options))
 (defmethod accept :select-keys [_ schema _ {::keys [describe] :as options}] (describe (m/deref schema) options))
 
+(defn -tagged [children] (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children))
+
 (defmethod accept :and [_ s children _] (str (str/join ", and " children) (-titled s)))
+(defmethod accept :andn [_ s children _] (str (str/join ", and " (-tagged children)) (-titled s)))
 (defmethod accept :enum [_ s children _options] (str "enum" (-titled s) " of " (str/join ", " children)))
 (defmethod accept :maybe [_ s children _] (str "nullable " (-titled s) (first children)))
 (defmethod accept :tuple [_ s children _] (str "vector " (-titled s) "with exactly " (count children) " items of type: " (str/join ", " children)))
@@ -199,8 +202,6 @@
 
 (defmethod accept :function [_ _ _children _] "function")
 (defmethod accept :fn [_ _ _ _] "function")
-
-(defn -tagged [children] (map (fn [[tag _ c]] (str c " (tag: " tag ")")) children))
 
 (defmethod accept :or [_ _ children _] (str/join ", or " children))
 (defmethod accept :orn [_ _ children _] (str/join ", or " (-tagged children)))
@@ -252,7 +253,7 @@
 ;;
 
 (defn describe
-  "Given a schema, returns a string explaiaing the required shape in English"
+  "Given a schema, returns a string explaining the required shape in English"
   ([?schema]
    (describe ?schema nil))
   ([?schema options]

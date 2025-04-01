@@ -13,14 +13,16 @@
                     :as options}]
   (let [ref (as-> (m/-ref schema) $
               (cond (var? $) (let [{:keys [ns name]} (meta $)]
-                               (str (symbol (str ns) (str name))))
-                    (qualified-ident? $) (str (namespace $) "/" (name $))
+                               (str ns "." name))
+                    (qualified-ident? $) (str (namespace $) "." (name $))
                     :else (str $)))]
     (when-not (contains? @definitions ref)
       (let [child (m/deref schema)]
         (swap! definitions assoc ref ::recursion-stopper)
         (swap! definitions assoc ref (transform child options))))
     ;; '/' must be encoded as '~1' in JSON Schema - https://www.rfc-editor.org/rfc/rfc6901
+    ;; However, tools like openapi-schema-validator disallow ~1, so we use "." as the separator above.
+    ;; This str/replace is left here in case a user has managed to smuggle a "/" in to the type name.
     {:$ref (apply str definitions-path (str/replace ref #"/" "~1"))}))
 
 (defn -schema [schema {::keys [transform] :as options}]

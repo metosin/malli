@@ -18,8 +18,8 @@
 (defn simple-parser? [s] (boolean (:simple-parser (m/-parser-info (m/schema s)))))
 
 (def inheriting-parser-templates
-  "Schemas templates which have simple parsers iff ::HOLE has a simple parser.
-  Should also be generatable for any ::HOLE and be capable to (un)parsing
+  "Schema templates which have simple parsers iff ::HOLE has a simple parser.
+  Should also be generatable for any ::HOLE and have high likelihood of (un)parsing
   to a different value than its input if transforming."
   [::HOLE
    [:maybe ::HOLE]

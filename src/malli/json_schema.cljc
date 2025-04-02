@@ -8,13 +8,19 @@
 (defprotocol JsonSchema
   (-accept [this children options] "transforms schema to JSON Schema"))
 
+(defn -join-ref [prefix suffix]
+  ;; kludge to make :foo.bar/quux and :foo/bar.quux not collide
+  (str prefix
+       (if (str/includes? (str suffix) ".") ".." ".")
+       suffix))
+
 (defn -ref [schema {::keys [transform definitions definitions-path]
                     :or {definitions-path "#/definitions/"}
                     :as options}]
   (let [ref (as-> (m/-ref schema) $
               (cond (var? $) (let [{:keys [ns name]} (meta $)]
-                               (str ns "." name))
-                    (qualified-ident? $) (str (namespace $) "." (name $))
+                               (-join-ref ns name))
+                    (qualified-ident? $) (-join-ref (namespace $) (name $))
                     :else (str $)))]
     (when-not (contains? @definitions ref)
       (let [child (m/deref schema)]

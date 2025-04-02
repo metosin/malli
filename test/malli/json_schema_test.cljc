@@ -339,7 +339,9 @@
 (def UserId :string)
 
 (def User
-  [:map {:registry {::location [:tuple :double :double]
+  [:map {:registry {:a.b/c :double
+                    :a/b.c :double
+                    ::location [:tuple :a.b/c :a/b.c]
                     `description :string}}
    [:id #'UserId]
    ::location
@@ -353,9 +355,12 @@
                        `description {:$ref "#/definitions/malli.json-schema-test.description"},
                        :friends {:type "array", :items {:$ref "#/definitions/malli.json-schema-test.User"}, :uniqueItems true}},
           :required [:id :malli.json-schema-test/location `description],
-          :definitions {"malli.json-schema-test.UserId" {:type "string"},
+          :definitions {"a..b.c" {:type "number"}
+                        "a.b.c" {:type "number"}
+                        "malli.json-schema-test.UserId" {:type "string"},
                         "malli.json-schema-test.location" {:type "array",
-                                                           :prefixItems [{:type "number"} {:type "number"}],
+                                                           :prefixItems [{:$ref "#/definitions/a.b.c"}
+                                                                         {:$ref "#/definitions/a..b.c"}],
                                                            :items false},
                         "malli.json-schema-test.description" {:type "string"},
                         "malli.json-schema-test.User" {:type "object",

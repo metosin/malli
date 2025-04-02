@@ -339,7 +339,9 @@
 (def UserId :string)
 
 (def User
-  [:map {:registry {::location [:tuple :double :double]
+  [:map {:registry {:a.b/c :double
+                    :a/b.c :double
+                    ::location [:tuple :a.b/c :a/b.c]
                     `description :string}}
    [:id #'UserId]
    ::location
@@ -348,22 +350,25 @@
 
 (deftest ref-test
   (is (= {:type "object"
-          :properties {:id {:$ref "#/definitions/malli.json-schema-test~1UserId"},
-                       ::location {:$ref "#/definitions/malli.json-schema-test~1location"},
-                       `description {:$ref "#/definitions/malli.json-schema-test~1description"},
-                       :friends {:type "array", :items {:$ref "#/definitions/malli.json-schema-test~1User"}, :uniqueItems true}},
+          :properties {:id {:$ref "#/definitions/malli.json-schema-test.UserId"},
+                       ::location {:$ref "#/definitions/malli.json-schema-test.location"},
+                       `description {:$ref "#/definitions/malli.json-schema-test.description"},
+                       :friends {:type "array", :items {:$ref "#/definitions/malli.json-schema-test.User"}, :uniqueItems true}},
           :required [:id :malli.json-schema-test/location `description],
-          :definitions {"malli.json-schema-test/UserId" {:type "string"},
-                        "malli.json-schema-test/location" {:type "array",
-                                                           :prefixItems [{:type "number"} {:type "number"}],
+          :definitions {"a..b.c" {:type "number"}
+                        "a.b.c" {:type "number"}
+                        "malli.json-schema-test.UserId" {:type "string"},
+                        "malli.json-schema-test.location" {:type "array",
+                                                           :prefixItems [{:$ref "#/definitions/a.b.c"}
+                                                                         {:$ref "#/definitions/a..b.c"}],
                                                            :items false},
-                        "malli.json-schema-test/description" {:type "string"},
-                        "malli.json-schema-test/User" {:type "object",
-                                                       :properties {:id {:$ref "#/definitions/malli.json-schema-test~1UserId"},
-                                                                    ::location {:$ref "#/definitions/malli.json-schema-test~1location"},
-                                                                    `description {:$ref "#/definitions/malli.json-schema-test~1description"},
+                        "malli.json-schema-test.description" {:type "string"},
+                        "malli.json-schema-test.User" {:type "object",
+                                                       :properties {:id {:$ref "#/definitions/malli.json-schema-test.UserId"},
+                                                                    ::location {:$ref "#/definitions/malli.json-schema-test.location"},
+                                                                    `description {:$ref "#/definitions/malli.json-schema-test.description"},
                                                                     :friends {:type "array",
-                                                                              :items {:$ref "#/definitions/malli.json-schema-test~1User"},
+                                                                              :items {:$ref "#/definitions/malli.json-schema-test.User"},
                                                                               :uniqueItems true}},
                                                        :required [:id ::location `description]}}}
 

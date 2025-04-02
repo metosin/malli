@@ -7,15 +7,15 @@
 (t/deftest time-formats
   (t/is
    (= {:type "object",
-       :properties {:date {:$ref "#/definitions/time~1local-date"},
-                    :time {:$ref "#/definitions/time~1offset-time"},
-                    :date-time {:$ref "#/definitions/time~1offset-date-time"},
-                    :duration {:$ref "#/definitions/time~1duration"}},
+       :properties {:date {:$ref "#/definitions/time.local-date"},
+                    :time {:$ref "#/definitions/time.offset-time"},
+                    :date-time {:$ref "#/definitions/time.offset-date-time"},
+                    :duration {:$ref "#/definitions/time.duration"}},
        :required [:date :time :date-time :duration],
-       :definitions {"time/local-date" {:type "string", :format "date"},
-                     "time/offset-time" {:type "string", :format "time"},
-                     "time/offset-date-time" {:type "string", :format "date-time"},
-                     "time/duration" {:type "string", :format "duration"}}}
+       :definitions {"time.local-date" {:type "string", :format "date"},
+                     "time.offset-time" {:type "string", :format "time"},
+                     "time.offset-date-time" {:type "string", :format "date-time"},
+                     "time.duration" {:type "string", :format "duration"}}}
       (json/transform
        [:map
         [:date :time/local-date]

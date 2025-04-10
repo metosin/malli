@@ -3581,3 +3581,17 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest from-ast-delayed-registry-test
+  (let [lazy? (volatile! true)
+        original-delayed-registry m/-delayed-registry
+        _side-effect (with-redefs [m/-delayed-registry
+                                   (fn [m f]
+                                     (-> (original-delayed-registry m f)
+                                         (update-vals (fn [v]
+                                                        (reify
+                                                          m/IntoSchema (m/-into-schema [_ properties children options]
+                                                                         (vreset! lazy? false)
+                                                                         (m/-into-schema v properties children options)))))))]
+                       (m/from-ast (m/ast [:int {:registry {::foo :int}}])))]
+    (is @lazy?)))

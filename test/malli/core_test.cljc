@@ -3583,15 +3583,19 @@
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
 
 (deftest from-ast-delayed-registry-test
-  (let [lazy? (volatile! true)
+  (let [form [:int {:registry {::foo :int}}]
+        forced? (volatile! false)
         original-delayed-registry m/-delayed-registry
-        _side-effect (with-redefs [m/-delayed-registry
-                                   (fn [m f]
-                                     (-> (original-delayed-registry m f)
-                                         (update-vals (fn [v]
-                                                        (reify
-                                                          m/IntoSchema (m/-into-schema [_ properties children options]
-                                                                         (vreset! lazy? false)
-                                                                         (m/-into-schema v properties children options)))))))]
-                       (m/from-ast (m/ast [:int {:registry {::foo :int}}])))]
-    (is @lazy?)))
+        s (with-redefs [m/-delayed-registry
+                        (fn [m f]
+                          (-> (original-delayed-registry m f)
+                              (update-vals (fn [v]
+                                             (reify
+                                               m/IntoSchema (m/-into-schema [_ properties children options]
+                                                              (vreset! forced? true)
+                                                              (m/-into-schema v properties children options)))))))]
+            (m/from-ast (m/ast form)))
+        _ (is (not @forced?))
+        form' (m/form s)
+        _ (is @forced?)]
+    (is (= form form'))))

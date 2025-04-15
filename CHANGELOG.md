@@ -20,6 +20,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * **BREAKING** Output of `parse` now uses new `malli.core.Tag` and `malli.core.Tags` records for `:orn`, `:multi`, `:altn`, `:catn` etc. [#1123](https://github.com/metosin/malli/issues/1123) [#1153](https://github.com/metosin/malli/issues/1153)
   * See [Parsing](#parsing-values) and [Unparsing](#unparsing-values) for docs.
 * FIX: `:path` when explaining `:ref` errors [#1106](https://github.com/metosin/malli/issues/1106)
+* FIX: don't instrument functions with primitive type hints (like `^double`), instead, emit a warning [#1176](https://github.com/metosin/malli/pull/1176)
 
 ## 0.17.0 (2024-12-08)
 

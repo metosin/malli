@@ -2568,10 +2568,12 @@
      (map? ?ast) (if-let [s (-lookup (:type ?ast) options)]
                    (let [r (when-let [r (:registry ?ast)] (-delayed-registry r from-ast))
                          options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-                         ast (cond-> ?ast r (-update :properties #(assoc % :registry (-property-registry r options identity))))]
-                     (cond (and (into-schema? s) (-ast? s)) (-from-ast s ast options)
-                           (into-schema? s) (-into-schema s (:properties ast) (-vmap #(from-ast % options) (:children ast)) options)
-                           :else s))
+                         ast (cond-> ?ast r (-update :properties #(assoc % :registry r)))]
+                     (if (into-schema? s)
+                       (if (-ast? s)
+                         (-from-ast s ast options)
+                         (-into-schema s (:properties ast) (-vmap #(from-ast % options) (:children ast)) options))
+                       s))
                    (-fail! ::invalid-ast {:ast ?ast}))
      :else (-fail! ::invalid-ast {:ast ?ast}))))
 

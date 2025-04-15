@@ -8,29 +8,37 @@
 (defn -f->original [f] (-> f meta ::original (or f)))
 (defn -original [v] (let [f (deref v)] (-f->original f)))
 
-(defn -filter-ns [& ns] (fn [n _ _] ((set ns) n)))
+(defn -filter-ns [& ns] (let [ns (set ns)] (fn [n _ _] (contains? ns n))))
 (defn -filter-var [f] (fn [n s _] (f (-find-var n s))))
 (defn -filter-schema [f] (fn [_ _ {:keys [schema]}] (f schema)))
+
+(defn- -primitive-fn? [f]
+  (and (fn? f) (boolean (some (fn [^Class c] (.startsWith (.getName c) "clojure.lang.IFn$")) (supers (class f))))))
 
 (defn -strument!
   ([] (-strument! nil))
   ([{:keys [mode data filters gen report] :or {mode :instrument, data (m/function-schemas)} :as options}]
    (doall
     (for [[n d] data, [s d] d]
-      (when (or (not filters) (some #(% n s d) filters))
-        (when-let [v (-find-var n s)]
-          (case mode
-            :instrument (let [dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
-                                     (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
-                                     (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
-                                           (true? (:gen d)) (dissoc $ :gen)
-                                           :else $))]
-                          (alter-var-root v (fn [f]
-                                              (let [f (-f->original f)]
-                                                (-> (m/-instrument dgen f) (with-meta {::original f}))))))
-            :unstrument (alter-var-root v -f->original)
-            (mode v d))
-          v))))))
+      (when-let [v (-find-var n s)]
+        (when (and (bound? v)
+                   (or (not (-primitive-fn? @v))
+                       (println (str "WARNING: Not instrumenting primitive fn " v))))
+          (when (or (not filters) (some #(% n s d) filters))
+            (case mode
+              :instrument (let [dgen (as-> (merge (select-keys options [:scope :report :gen]) d) $
+                                       (cond-> $ report (update :report (fn [r] (fn [t data] (r t (assoc data :fn-name (symbol (name n) (name s))))))))
+                                       (cond (and gen (true? (:gen d))) (assoc $ :gen gen)
+                                             (true? (:gen d)) (dissoc $ :gen)
+                                             :else $))]
+                            (alter-var-root v (fn [f]
+                                                (when (-primitive-fn? f)
+                                                  (m/-fail! ::cannot-instrument-primitive-fn {:v v}))
+                                                (let [f (-f->original f)]
+                                                  (-> (m/-instrument dgen f) (with-meta {::original f}))))))
+              :unstrument (alter-var-root v -f->original)
+              (mode v d))
+            v)))))))
 
 (defn -schema [v]
   (let [{:keys [malli/schema arglists]} (meta v)]

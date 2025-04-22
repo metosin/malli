@@ -3581,3 +3581,44 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(def fn-options (m/-proxy-schema
+                  {:type :fn-options
+                   :min 1 :max 1 :childs 1
+                   :fn (fn [p c o]
+                         (m/-check-children! :fn-options p c 1 1)
+                         (let [f (m/eval (first c) o)]
+                           [[f] c (m/schema [:fn (f o)] o)]))}))
+
+(deftest fn-options-test
+  (is (m/validate [:schema {:registry {::local :int}} [fn-options #(m/validator ::local %)]]
+                  1))
+  (is (not (m/validate [:schema {:registry {::local :int}} [fn-options #(m/validator ::local %)]]
+                       nil)))
+  (is (m/validate [:schema {:registry {::local :int
+                                       ::set-at-least-containing-int
+                                       [:and
+                                        [:set :any]
+                                        [fn-options (fn [options]
+                                                      (let [v (m/validator ::local options)]
+                                                        #(some v %)))]]}}
+                   ::set-at-least-containing-int]
+                  #{1}))
+  (is (m/validate [:schema {:registry {::local :int
+                                       ::set-at-least-containing-int
+                                       [:and
+                                        [:set :any]
+                                        [fn-options (fn [options]
+                                                      (let [v (m/validator ::local options)]
+                                                        #(some v %)))]]}}
+                   ::set-at-least-containing-int]
+                  #{1 nil}))
+  (is (not (m/validate [:schema {:registry {::local :int
+                                            ::set-at-least-containing-int
+                                            [:and
+                                             [:set :any]
+                                             [fn-options (fn [options]
+                                                           (let [v (m/validator ::local options)]
+                                                             #(some v %)))]]}}
+                        ::set-at-least-containing-int]
+                       #{nil}))))

@@ -283,7 +283,7 @@
             result-1-b (m/decode [:map-of :string :string] input-1 mt/json-transformer)
 
             result-2-a (m/decode [:map-of :keyword :string] input-1 mt/string-transformer)
-            result-2-b (m/decode [:map-of :keyword :string] input-1 mt/string-transformer)
+            result-2-b (m/decode [:map-of :keyword :string] input-1 mt/json-transformer)
 
             result-3-a (m/decode [:map-of :string :string] input-2 mt/string-transformer)
             result-3-b (m/decode [:map-of :string :string] input-2 mt/json-transformer)]
@@ -295,14 +295,12 @@
         (is (sorted? result-3-a))
         (is (sorted? result-3-b))
 
-        (is (= result-1-a input-1))
-        (is (= result-1-b input-1))
-
-        (is (= result-2-a input-2))
-        (is (= result-2-b input-2))
-
-        (is (= result-3-a input-1))
-        (is (= result-3-b input-1)))))
+        (is (= input-1 result-1-a))
+        (is (= input-1 result-1-b))
+        (is (= input-2 result-2-a))
+        (is (= input-2 result-2-b))
+        (is (= input-1 result-3-a))
+        (is (= input-1 result-3-b)))))
 
   (testing "maybe"
     (testing "decode"

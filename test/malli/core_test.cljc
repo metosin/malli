@@ -1029,6 +1029,15 @@
           (is (= expected-decoded-value decoded-value))
           (is (m/validate schema decoded-value))))
 
+      (testing "JSON transformer maintains type of map"
+        (let [schema [:map [:a :keyword] [:b :string]]
+              value (sorted-map "a" "x" "b" "y")
+              expected-decoded-value (sorted-map :a :x :b "y")
+              decoded-value (m/decode schema value (mt/json-transformer {::mt/keywordize-map-keys true}))]
+          (is (sorted? decoded-value))
+          (is (= expected-decoded-value decoded-value))
+          (is (m/validate schema decoded-value))))
+
       (is (= {:x 32}
              (m/decode
               [:map {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}

@@ -264,7 +264,17 @@
       (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
       (is (= nil (m/encode [:map] nil mt/string-transformer)))
-      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
+      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer))))
+    (testing "keep original type"
+      (let [decoded (m/decode [:map [:a :int]] (sorted-map :a "1") mt/string-transformer)]
+        (is (= {:a 1} decoded))
+        (is (sorted? decoded)))
+      (let [decoded (m/decode [:map [:a :keyword]] (sorted-map :a "x") mt/json-transformer)]
+        (is (= {:a :x} decoded))
+        (is (sorted? decoded)))
+      (let [decoded (m/decode [:map [:a :keyword]] (sorted-map "a" "x") (mt/json-transformer {::mt/keywordize-map-keys true}))]
+        (is (= {:a :x} decoded))
+        (is (sorted? decoded)))))
 
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))

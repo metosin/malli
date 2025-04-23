@@ -273,7 +273,36 @@
       (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer)))
       (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer))))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
-    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
+    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer)))
+
+    (testing "keep original type"
+      (let [input-1    (sorted-map "a" "b")
+            input-2    (sorted-map :a "b")
+
+            result-1-a (m/decode [:map-of :string :string] input-1 mt/string-transformer)
+            result-1-b (m/decode [:map-of :string :string] input-1 mt/json-transformer)
+
+            result-2-a (m/decode [:map-of :keyword :string] input-1 mt/string-transformer)
+            result-2-b (m/decode [:map-of :keyword :string] input-1 mt/string-transformer)
+
+            result-3-a (m/decode [:map-of :string :string] input-2 mt/string-transformer)
+            result-3-b (m/decode [:map-of :string :string] input-2 mt/json-transformer)]
+
+        (is (sorted? result-1-a))
+        (is (sorted? result-1-b))
+        (is (sorted? result-2-a))
+        (is (sorted? result-2-b))
+        (is (sorted? result-3-a))
+        (is (sorted? result-3-b))
+
+        (is (= result-1-a input-1))
+        (is (= result-1-b input-1))
+
+        (is (= result-2-a input-2))
+        (is (= result-2-b input-2))
+
+        (is (= result-3-a input-1))
+        (is (= result-3-b input-1)))))
 
   (testing "maybe"
     (testing "decode"

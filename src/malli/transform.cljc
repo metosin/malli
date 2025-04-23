@@ -194,9 +194,11 @@
 
 (defn -transform-map-keys
   ([f]
-   #(cond->> % (map? %) (into {} (map (fn [[k v]] [(f k) v])))))
+   (let [xform (map (fn [[k v]] [(f k) v]))]
+     #(cond->> % (map? %) (into (empty %) xform))))
   ([ks f]
-   #(cond->> % (map? %) (into {} (map (fn [[k v]] [(cond-> k (contains? ks k) f) v]))))))
+   (let [xform (map (fn [[k v]] [(cond-> k (contains? ks k) f) v]))]
+     #(cond->> % (map? %) (into (empty %) xform)))))
 
 (defn -transform-if-valid [f schema]
   (let [validator (m/-validator schema)]

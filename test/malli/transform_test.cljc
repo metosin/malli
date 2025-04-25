@@ -264,7 +264,17 @@
       (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
       (is (= nil (m/encode [:map] nil mt/string-transformer)))
-      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
+      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer))))
+    (testing "keep original type"
+      (let [decoded (m/decode [:map [:a :int]] (sorted-map :a "1") mt/string-transformer)]
+        (is (= {:a 1} decoded))
+        (is (sorted? decoded)))
+      (let [decoded (m/decode [:map [:a :keyword]] (sorted-map :a "x") mt/json-transformer)]
+        (is (= {:a :x} decoded))
+        (is (sorted? decoded)))
+      (let [decoded (m/decode [:map [:a :keyword]] (sorted-map "a" "x") (mt/json-transformer {::mt/keywordize-map-keys true}))]
+        (is (= {:a :x} decoded))
+        (is (sorted? decoded)))))
 
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
@@ -273,7 +283,34 @@
       (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer)))
       (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer))))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
-    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
+    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer)))
+
+    (testing "keep original type"
+      (let [input-1    (sorted-map "a" "b")
+            input-2    (sorted-map :a "b")
+
+            result-1-a (m/decode [:map-of :string :string] input-1 mt/string-transformer)
+            result-1-b (m/decode [:map-of :string :string] input-1 mt/json-transformer)
+
+            result-2-a (m/decode [:map-of :keyword :string] input-1 mt/string-transformer)
+            result-2-b (m/decode [:map-of :keyword :string] input-1 mt/json-transformer)
+
+            result-3-a (m/decode [:map-of :string :string] input-2 mt/string-transformer)
+            result-3-b (m/decode [:map-of :string :string] input-2 mt/json-transformer)]
+
+        (is (sorted? result-1-a))
+        (is (sorted? result-1-b))
+        (is (sorted? result-2-a))
+        (is (sorted? result-2-b))
+        (is (sorted? result-3-a))
+        (is (sorted? result-3-b))
+
+        (is (= input-1 result-1-a))
+        (is (= input-1 result-1-b))
+        (is (= input-2 result-2-a))
+        (is (= input-2 result-2-b))
+        (is (= input-1 result-3-a))
+        (is (= input-1 result-3-b)))))
 
   (testing "maybe"
     (testing "decode"

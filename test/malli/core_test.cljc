@@ -3590,3 +3590,11 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest pr-str-test
+  (testing "print IntoSchema"
+    (is (= "#IntoSchema {:type :and}"
+           (pr-str (m/-and-schema)))))
+  (testing "print Schema"
+    (is (= "[:map [:x :int]]"
+           (pr-str (m/schema [:map [:x :int]]))))))

@@ -24,6 +24,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * FIX: `:map-of` and `:map` decode now retain the input map type (eg. `sorted-map`) [#1189](https://github.com/metosin/malli/pull/1189)
 * **BREAKING** Swagger and JSON-Schema outputs now use `.` instead of `/` (encoded as `~1`) as the separator. [#1183](https://github.com/metosin/malli/pull/1183)
   * This will only affect you if you rely on the exact name of the schema
+* FIX: schemas and into-schemas are printed to the console and the REPL in CLJS the same way as they are in CLJ. [#1186](https://github.com/metosin/malli/issues/1186)
 
 ## 0.17.0 (2024-12-08)
 

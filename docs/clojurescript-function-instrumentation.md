@@ -9,7 +9,7 @@ Instrumentation happens at runtime in a JavaScript runtime. The functions to ins
 
 # Dev Setup
 
-For the best developer experience make sure you install the latest version of binaryage/devtools and use a chromium based browser:
+For the best developer experience make sure you install the latest version of binaryage/devtools and use a Chromium or Firefox based browser:
 
 https://clojars.org/binaryage/devtools
 

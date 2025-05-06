@@ -201,7 +201,7 @@
      #(cond->> % (map? %) (into (empty %) xform)))))
 
 (defn -transform-if-valid [f schema]
-  (let [validator (m/-validator schema)]
+  (let [validator (m/-cached-validator schema)]
     (fn [x] (let [out (f x)] (if (validator out) out x)))))
 
 ;;

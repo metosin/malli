@@ -3590,3 +3590,27 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest from-ast-delayed-registry-test
+  (let [form [:int {:registry {::foo :int}}]
+        forced? (volatile! false)
+        original-delayed-registry m/-delayed-registry
+        ;;TODO refactor by providing custom IntoSchema constructor
+        s (with-redefs [m/-delayed-registry
+                        (fn [m f]
+                          (-> (original-delayed-registry m f)
+                              (update-vals (fn [v]
+                                             (reify m/IntoSchema
+                                               (m/-into-schema [_ properties children options]
+                                                 (vreset! forced? true)
+                                                 (m/-into-schema v properties children options)))))))]
+            (m/from-ast (m/ast form)))
+        _ (is (not @forced?))
+        form' (m/form s)
+        _ (is @forced?)]
+    (is (= form form'))))
+
+(comment
+  (m/from-ast (m/ast [:int {:registry {::foo :int}}]))
+  (m/form (m/from-ast (m/ast [:int {:registry {::foo :int}}])))
+)

@@ -24,8 +24,18 @@
   (let [base (-base s children)]
     (assoc base :x-allOf children)))
 
+(defmethod accept :andn [_ s children _]
+  (let [children (map last children)
+        base (-base s children)]
+    (assoc base :x-allOf children)))
+
 (defmethod accept :or [_ s children _]
   (let [base (-base s children)]
+    (assoc base :x-anyOf children)))
+
+(defmethod accept :orn [_ s children _]
+  (let [children (map last children)
+        base (-base s children)]
     (assoc base :x-anyOf children)))
 
 (defmethod accept :multi [_ s children _]

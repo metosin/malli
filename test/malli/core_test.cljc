@@ -18,12 +18,12 @@
 (defn with-schema-forms [result]
   (some-> result
           (update :schema m/form)
-          (update :errors (partial map (fn [error]
-                                         (-> error
-                                             (update :schema m/form)
-                                             (update :type (fnil identity nil))
-                                             (update :message (fnil identity nil))
-                                             (dissoc :check)))))))
+          (update :errors (partial mapv (fn [error]
+                                          (-> error
+                                              (update :schema m/form)
+                                              (update :type (fnil identity nil))
+                                              (update :message (fnil identity nil))
+                                              (dissoc :check)))))))
 
 (defn as-data [x] (walk/prewalk (fn [x] (cond-> x (m/schema? x) (m/form))) x))
 
@@ -2378,7 +2378,8 @@
                 :json-schema/type "integer"
                 :json-schema/format "int64"
                 :json-schema/minimum 6
-                :gen/gen generate-over6}
+                :gen/gen generate-over6
+                ::m/simple-parser true}
                (m/type-properties over6)))
         (is (= {:json-schema/example 42}
                (m/properties over6))))))
@@ -2409,7 +2410,8 @@
                     :decode/string mt/-string->long
                     :json-schema/type "integer"
                     :json-schema/format "int64"
-                    :json-schema/minimum 6}
+                    :json-schema/minimum 6
+                    ::m/simple-parser true}
                    (m/type-properties schema)))
             (is (= {:value 6}
                    (m/properties schema))))))
@@ -2426,7 +2428,8 @@
                     :decode/string mt/-string->long
                     :json-schema/type "integer"
                     :json-schema/format "int64"
-                    :json-schema/minimum 42}
+                    :json-schema/minimum 42
+                    ::m/simple-parser true}
                    (m/type-properties schema)))
             (is (= {:value 42}
                    (m/properties schema)))))))))
@@ -3590,3 +3593,34 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest andn-test
+  (is (= {:schema [:andn [:m :map] [:v [:vector :any]]],
+          :value {},
+          :errors
+          [{:path [:v],
+            :in [],
+            :schema [:vector :any],
+            :value {},
+            :type :malli.core/invalid-type,
+            :message nil}]}
+         (with-schema-forms
+           (m/explain [:andn [:m :map] [:v [:vector :any]]] {}))))
+  (is (= #malli.core.Tags{:values {:m {} :f {}}}
+         (m/parse [:andn [:m :map] [:f [:fn map?]]] {})))
+  (let [s [:andn [:m :map] [:f [:fn map?]]]]
+    (is (= {} (->> {} (m/parse s) (m/unparse s)))))
+  (is (= #malli.core.Tags{:values {:o #malli.core.Tag{:key :left, :value 1}, :f 1}}
+         (m/parse [:andn [:o [:orn [:left :int] [:right :int]]] [:f [:fn number?]]] 1)))
+  (let [s [:andn [:o [:orn [:left :int] [:right :int]]] [:f [:fn number?]]]]
+    (is (= 1 (->> 1 (m/parse s) (m/unparse s)))))
+  (let [s [:andn [:o [:orn [:left :int] [:right :int]]] [:f [:fn number?]]]
+        p (m/parse s 1)
+        _ (is (= #malli.core.Tags{:values {:o #malli.core.Tag{:key :left, :value 1}, :f 1}} p))]
+    (testing "left-most parse is used"
+      (is (= 2 (m/unparse s (update-in p [:values :o :value] inc))))
+      (is (= 1 (m/unparse s (update-in p [:values :f] inc))))
+      (is (= 2 (m/unparse s (-> p
+                                (update-in [:values :f] inc)
+                                (update :values dissoc :o)))))
+      (is (= ::m/invalid (m/unparse s (update p :values dissoc :o :f)))))))

@@ -71,3 +71,46 @@
 (def ^{:arglists '([[& preds]])} -some-pred
   #?(:clj  (-pred-composer or 16)
      :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+
+(defn -one-pred
+  [preds]
+  (partial (reduce (fn [acc f]
+                     (fn [found v]
+                       (if (f v)
+                         (if found
+                           false
+                           (acc true v))
+                         (acc found v))))
+                   (fn [found _] found)
+                   preds)
+           false))
+
+(defn -zero-or-one-pred
+  [preds]
+  (partial (reduce (fn [acc f]
+                     (fn [found v]
+                       (if (f v)
+                         (if found
+                           false
+                           (acc true v))
+                         (acc found v))))
+                   (fn [_ _] true)
+                   preds)
+           false))
+
+(defn -if-pred
+  [[test then else]]
+  (fn [x]
+    (if (test x)
+      (then x)
+      (else x))))
+
+(defn -implies-pred
+  [[c a]]
+  (-if-pred [c a any?]))
+
+(defn -iff-pred
+  [[choose & preds]]
+  (let [all (-every-pred preds)
+        none (complement (-some-pred preds))]
+    (-if-pred [choose all none])))

@@ -27,6 +27,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
    - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
+- [Delay, Future and Promise Schemas](#delay-future-and-promise-schemas)
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
@@ -1983,6 +1984,51 @@ Any function can be used for `:dispatch`:
 ;{:type :human
 ; :name "Tiina"
 ; :address {:country :finland}}
+```
+
+## Delay, Future and Promise Schemas
+
+`:delay`, `:future`, and `:promise` schemas validate their respective concurrency
+types. They all share common behavior for validation. Since `deref` is prone
+to block the current thread, malli is careful to only validate `realized?` values.
+This can be overridden to always validate with `:force true`.
+
+```clojure
+;; Fails if not delay/future/promise.
+(m/validate [:delay :any] 42)   ; => false
+(m/validate [:future :any] 42)  ; => false
+(m/validate [:promise :any] 42) ; => false
+
+;; Unrealized values are not forced...
+(m/validate [:delay :int] (delay 42))     ; => true
+(m/validate [:delay :int] (delay "42"))   ; => true
+(m/validate [:future :int] (future 42))   ; => true
+(m/validate [:future :int] (future "42")) ; => true / false
+(m/validate [:promise :int] (promise))    ; => true
+
+;; ...unless `realized?` or `:force true`
+(m/validate [:delay :int] (doto (delay "42") deref))    ; => false
+(m/validate [:delay {:force true} :int] (delay "42"))   ; => false
+(m/validate [:future :int] (doto (future "42") deref))  ; => false
+(m/validate [:future {:force true} :int] (future "42")) ; => false
+(m/validate [:future {:force true} :int] (future @(promise))) ; Blocks forever!
+(m/validate [:promise {:force true} :int] (doto (promise) (deliver "42"))) ; => false
+(m/validate [:promise {:force true} :int] (promise))    ; Blocks forever!
+```
+
+Generators make a best-effort to return realizable values, however
+they may block indefinitely or throw exceptions when dereferenced
+depending on the child generator. `:promise` in particular will not receive
+a value if its child generator fails.
+
+Humanizers nest failures for the contained value under `:deref`.
+
+```clojure
+(me/humanize (m/explain [:delay :int] 42))
+; => ["should be a delay"]
+
+(me/humanize (m/explain [:delay {:force true} :int] (delay "42")))
+; => {:deref ["should be an integer"]}
 ```
 
 ## Recursive schemas

@@ -3590,3 +3590,93 @@
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))
   (is (nil? (m/explain [:sequential {:min 9} :int] (eduction identity (range 10))))))
+
+(deftest deref-test
+  (testing "schema matches delay"
+    (is (m/validate [:deref :int] (delay 1)))
+    (is (m/validate [:deref :int] (doto (delay 1) deref)))
+    (is (m/validate [:deref {:force true} :int] (delay 1)))
+    (is (m/validate [:deref {:force true} :int] (doto (delay 1) deref)))
+    (is (nil? (m/explain [:deref :int] (delay 1))))
+    (is (nil? (m/explain [:deref :int] (doto (delay 1) deref))))
+    (is (nil? (m/explain [:deref {:force true} :int] (delay 1)))))
+  (testing "schema does not match delay"
+    (is (m/validate [:deref :boolean] (delay 1)))
+    (is (not (m/validate [:deref :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:deref {:force true} :boolean] (delay 1))))
+    (is (not (m/validate [:deref {:force true} :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:deref :boolean] 1)))
+    (is (nil? (m/explain [:deref :boolean] (delay 1))))
+    (is (m/explain [:deref :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:deref {:force true} :boolean] (delay 1)))
+    (is (m/explain [:deref {:force true} :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:deref :boolean] 1))))
+
+(deftest delay-test
+  (testing "schema matches delay"
+    (is (m/validate [:delay :int] (delay 1)))
+    (is (m/validate [:delay :int] (doto (delay 1) deref)))
+    (is (m/validate [:delay {:force true} :int] (delay 1)))
+    (is (m/validate [:delay {:force true} :int] (doto (delay 1) deref)))
+    (is (nil? (m/explain [:delay :int] (delay 1))))
+    (is (nil? (m/explain [:delay :int] (doto (delay 1) deref))))
+    (is (nil? (m/explain [:delay {:force true} :int] (delay 1)))))
+  (testing "schema does not match delay"
+    (is (m/validate [:delay :boolean] (delay 1)))
+    (is (not (m/validate [:delay :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:delay {:force true} :boolean] (delay 1))))
+    (is (not (m/validate [:delay {:force true} :boolean] (doto (delay 1) deref))))
+    (is (not (m/validate [:delay :boolean] 1)))
+    (is (nil? (m/explain [:delay :boolean] (delay 1))))
+    (is (m/explain [:delay :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:delay {:force true} :boolean] (delay 1)))
+    (is (m/explain [:delay {:force true} :boolean] (doto (delay 1) deref)))
+    (is (m/explain [:delay :boolean] 1))))
+
+#?(:clj
+   (deftest future-test
+     (testing "schema matches future"
+       (is (m/validate [:future :int] (future 1)))
+       (is (m/validate [:future :int] (doto (future 1) deref)))
+       (is (m/validate [:future {:force true} :int] (future 1)))
+       (is (m/validate [:future {:force true} :int] (doto (future 1) deref)))
+       (is (nil? (m/explain [:future :int] (future 1))))
+       (is (nil? (m/explain [:future :int] (doto (future 1) deref))))
+       (is (nil? (m/explain [:future {:force true} :int] (future 1)))))
+     (testing "schema does not match future"
+       (let [p (promise)
+             f (future @p 1)]
+         (is (m/validate [:future :boolean] f))
+         (is (nil? (m/explain [:future :boolean] f)))
+         (deliver p true))
+       (is (not (m/validate [:future :boolean] (doto (future 1) deref))))
+       (is (not (m/validate [:future {:force true} :boolean] (future 1))))
+       (is (not (m/validate [:future {:force true} :boolean] (doto (future 1) deref))))
+       (is (not (m/validate [:future :boolean] 1)))
+       (is (m/explain [:future :boolean] (doto (future 1) deref)))
+       (is (m/explain [:future {:force true} :boolean] (future 1)))
+       (is (m/explain [:future {:force true} :boolean] (doto (future 1) deref)))
+       (is (m/explain [:future :boolean] 1)))))
+
+#?(:clj
+   (deftest promise-test
+     (testing "schema matches promise"
+       (is (m/validate [:promise :int] (doto (promise) (deliver 1))))
+       (is (m/validate [:promise {:force true} :int] (doto (promise) (deliver 1))))
+       (is (m/validate [:promise {:force true} :int] (doto (promise) (deliver 1))))
+       (is (nil? (m/explain [:promise :int] (doto (promise) (deliver 1)))))
+       (is (nil? (m/explain [:promise :int] (doto (promise) (deliver 1)))))
+       (is (nil? (m/explain [:promise {:force true} :int] (doto (promise) (deliver 1))))))
+     (testing "schema does not match promise"
+       (is (m/validate [:promise :boolean] (promise)))
+       (is (not (m/validate [:promise :boolean] (doto (promise) (deliver 1)))))
+       (is (not (m/validate [:promise {:force true} :boolean] (doto (promise) (deliver 1)))))
+       (is (not (m/validate [:promise {:force true} :boolean] (doto (promise) (deliver 1)))))
+       (is (not (m/validate [:promise :boolean] 1)))
+       (is (not (m/validate [:promise :boolean] (future))))
+       (is (not (m/validate [:promise :boolean] (delay))))
+       (is (nil? (m/explain [:promise :boolean] (promise))))
+       (is (m/explain [:promise :boolean] (doto (promise) (deliver 1))))
+       (is (m/explain [:promise {:force true} :boolean] (doto (promise) (deliver 1))))
+       (is (m/explain [:promise {:force true} :boolean] (doto (promise) (deliver 1))))
+       (is (m/explain [:promise :boolean] 1)))))

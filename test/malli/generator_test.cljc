@@ -698,13 +698,15 @@
 
 (deftest infinite-generator-test
   ;; equivalent to :never, which is infinite
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (mg/generate [:schema {:registry {::a [:ref ::a]}}
-                             [:ref ::a]])))
+  (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                        #":malli\.generator/unsatisfiable-schema"
+                        (mg/generate [:schema {:registry {::a [:ref ::a]}}
+                                      [:ref ::a]])))
   ;; equivalent to [:tuple :never], which is infinite
-  (is (thrown? #?(:clj Exception, :cljs js/Error)
-               (mg/generate [:schema {:registry {::a [:tuple [:ref ::a]]}}
-                             [:ref ::a]])))
+  (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                        #":malli\.generator/unsatisfiable-schema"
+                        (mg/generate [:schema {:registry {::a [:tuple [:ref ::a]]}}
+                                      [:ref ::a]])))
   ;; equivalent to [:maybe :never] == [:maybe [:maybe :never]] == ..., which is just :nil
   (is (every? nil? (mg/sample [:schema {:registry {::a [:maybe [:ref ::a]]}}
                                [:ref ::a]]))))
@@ -1124,3 +1126,65 @@
   (doseq [_ (range 100)
           v (mg/sample [:seqable {:min 1} :any])]
     (is (seq v))))
+
+(deftest deref-generator-test
+  (testing "satisfiable child"
+    (is (integer? @(mg/generate [:deref :int] {:seed 0})))
+    (is (integer? (deref (mg/generate [:deref :int] {:seed 0}) 1000 nil)))
+    (is (= 1784201 @(mg/generate [:deref :int] {:seed 0})))
+    (is (= 1784201 (deref (mg/generate [:deref {:timeout true} :int] {:seed 0}) 1000 false)))
+    (is (every? (m/validator :int) (mapv deref (concat (mg/sample [:deref :int])
+                                                       (mg/sample [:deref {:timeout true} :int])))))
+    (is (every? #{1784201} (mapv deref (concat (mg/sample [:deref :int] {:seed 0})
+                                               (mg/sample [:deref {:timeout true} :int] {:seed 0}))))))
+  (testing "unsatisfiable child"
+    (is (mg/generate [:deref [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))
+    (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                          #":malli\.generator/unsatisfiable-schema"
+                          (deref (mg/generate [:deref [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))
+    (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                          #":malli\.generator/unsatisfiable-schema"
+                          (deref (mg/generate [:deref {:timeout true} [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})
+                                 1000 false)))))
+
+(deftest delay-generator-test
+  (testing "satisfiable child"
+    (is (delay? (mg/generate [:delay :int] {:seed 0})))
+    (is (= 1784201 @(mg/generate [:delay :int] {:seed 0})))
+    (is (every? (m/validator :int) (mapv deref (mg/sample [:delay :int]))))
+    (is (every? #{1784201} (mapv deref (mg/sample [:delay :int] {:seed 0})))))
+  (testing "unsatisfiable child"
+    (is (delay? (mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+    (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                          #":malli\.generator/unsatisfiable-schema"
+                          @(mg/generate [:delay [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))))
+
+#?(:clj
+   (deftest future-generator-test
+     (testing "satisfiable child"
+       (is (future? (mg/generate [:future :int] {:seed 0})))
+       (is (= 1784201 @(mg/generate [:future :int] {:seed 0})))
+       (is (every? (m/validator :int) (mapv deref (mg/sample [:future :int]))))
+       (is (every? #{1784201} (mapv deref (mg/sample [:future :int] {:seed 0}))))
+       ;; uses deref with timeout if unrealized for 100ms and gives up
+       (is (m/validate [:future :int] (future (Thread/sleep 1000) true)))
+       ;; uses deref with timeout if unrealized and succeeds
+       (is (false? (m/validate [:future {:timeout 5000} :int] (future (Thread/sleep 25) true)))))
+     (testing "unsatisfiable child"
+       (is (future? (mg/generate [:future [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+       (is (thrown-with-msg? #?(:clj Exception, :cljs js/Error)
+                             #":malli\.generator/unsatisfiable-schema"
+                             @(mg/generate [:future [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0}))))))
+
+#?(:clj
+   (deftest promise-generator-test
+     (testing "satisfiable child"
+       (is (instance? (class (promise)) (mg/generate [:promise :int] {:seed 0})))
+       (is (= 1784201 @(mg/generate [:promise :int] {:seed 0})))
+       (is (every? (m/validator :int) (mapv deref (mg/sample [:promise :int]))))
+       (is (every? #{1784201} (mapv deref (mg/sample [:promise :int] {:seed 0})))))
+     (testing "unsatisfiable child"
+       (is (instance? (class (promise)) (mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})))
+       (is (= ::timed-out
+              (deref (mg/generate [:promise [:schema {:registry {::a [:tuple [:ref ::a]]}} [:ref ::a]]] {:seed 0})
+                     100 ::timed-out))))))

@@ -145,8 +145,13 @@
 
   (-regex-min-max [_ _] {:min 1, :max 1}))
 
-#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema{:type " (pr-str (-type ^IntoSchema v)) "}"))))
+#?(:clj (defmethod print-method ::into-schema [v ^java.io.Writer w] (.write w (str "#IntoSchema {:type " (pr-str (-type ^IntoSchema v)) "}"))))
 #?(:clj (defmethod print-method ::schema [v ^java.io.Writer w] (.write w (pr-str (-form ^Schema v)))))
+#?(:cljs (defn- pr-writer-into-schema [obj writer opts]
+           (-write writer "#IntoSchema ")
+           (-pr-writer {:type (-type ^IntoSchema obj)} writer opts)))
+#?(:cljs (defn- pr-writer-schema [obj writer opts]
+           (-pr-writer (-form ^Schema obj) writer opts)))
 
 (defrecord Tag [key value])
 
@@ -755,7 +760,9 @@
                 LensSchema
                 (-keep [_])
                 (-get [_ _ default] default)
-                (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))))))))))
+                (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))
+                #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))])))))
+        #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))))
 
 (defn -nil-schema [] (-simple-schema {:type :nil, :pred nil?}))
 (defn -any-schema [] (-simple-schema {:type :any, :pred any?}))
@@ -808,7 +815,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -or-schema []
   ^{:type ::into-schema}
@@ -852,7 +861,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -orn-schema []
   ^{:type ::into-schema}
@@ -913,7 +924,9 @@
           LensSchema
           (-keep [_])
           (-get [this key default] (-get-entries this key default))
-          (-set [this key value] (-set-entries this key value)))))))
+          (-set [this key value] (-set-entries this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -not-schema []
   ^{:type ::into-schema}
@@ -957,7 +970,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -val-schema
   ([schema properties]
@@ -1007,7 +1022,9 @@
            (-set [_ key value] (when (= 0 key) (-val-schema value properties)))
            RefSchema
            (-ref [_])
-           (-deref [_] schema)))))))
+           (-deref [_] schema)
+           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -map-schema
   ([]
@@ -1148,7 +1165,9 @@
            LensSchema
            (-keep [_] true)
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this key value))))))))
+           (-set [this key value] (-set-entries this key value))
+           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -map-of-schema
   ([]
@@ -1238,7 +1257,9 @@
            LensSchema
            (-keep [_])
            (-get [_ key default] (get children key default))
-           (-set [this key value] (-set-assoc-children this key value))))))))
+           (-set [this key value] (-set-assoc-children this key value))
+           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 ;; also doubles as a predicate for the :every schema to bound the number
 ;; of elements to check, so don't add potentially-infinite countable things like seq's.
@@ -1359,7 +1380,9 @@
                 LensSchema
                 (-keep [_] true)
                 (-get [_ _ _] schema)
-                (-set [this _ value] (-set-children this [value]))))))))))
+                (-set [this _ value] (-set-children this [value]))
+               #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))))
+      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -tuple-schema
   ([]
@@ -1431,7 +1454,9 @@
            LensSchema
            (-keep [_] true)
            (-get [_ key default] (get children key default))
-           (-set [this key value] (-set-assoc-children this key value))))))))
+           (-set [this key value] (-set-assoc-children this key value))
+           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}
@@ -1474,7 +1499,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -re-schema [class?]
   ^{:type ::into-schema}
@@ -1526,7 +1553,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -fn-schema []
   ^{:type ::into-schema}
@@ -1573,7 +1602,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -maybe-schema []
   ^{:type ::into-schema}
@@ -1620,7 +1651,9 @@
           (-get [_ key default] (if (= 0 key) schema default))
           (-set [this key value] (if (= 0 key)
                                    (-set-children this [value])
-                                   (-fail! ::index-out-of-bounds {:schema this, :key key}))))))))
+                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -multi-schema
   ([]
@@ -1697,7 +1730,9 @@
            LensSchema
            (-keep [_])
            (-get [this key default] (-get-entries this key default))
-           (-set [this key value] (-set-entries this key value))))))))
+           (-set [this key value] (-set-entries this key value))
+           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -ref-schema
   ([]
@@ -1770,7 +1805,9 @@
            (-regex-parser [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-unparser [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))
-           (-regex-min-max [this _] (-fail! ::potentially-recursive-seqex this))))))))
+           (-regex-min-max [this _] (-fail! ::potentially-recursive-seqex this))
+           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -schema-schema [{:keys [id raw]}]
   ^{:type ::into-schema}
@@ -1856,7 +1893,9 @@
             (-regex-min-max [_ nested?]
               (if (and nested? (not internal))
                 {:min 1 :max 1}
-                (-regex-min-max child nested?)))))))))
+                (-regex-min-max child nested?)))
+            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
 (defn -=>-schema []
   ^{:type ::into-schema}
@@ -1949,7 +1988,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -function-schema [_]
   ^{:type ::into-schema}
@@ -2021,7 +2062,9 @@
           LensSchema
           (-keep [_])
           (-get [_ key default] (get children key default))
-          (-set [this key value] (-set-assoc-children this key value)))))))
+          (-set [this key value] (-set-assoc-children this key value))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -proxy-schema [{:keys [type min max childs type-properties fn]}]
   ^{:type ::into-schema}
@@ -2078,7 +2121,9 @@
           (-regex-min-max [_ nested?] (-regex-min-max @schema nested?))
           RefSchema
           (-ref [_])
-          (-deref [_] @schema))))))
+          (-deref [_] @schema)
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -->-schema
   "Experimental simple schema for :=> schema. AST and explain results subject to change."
@@ -2144,7 +2189,9 @@
           (-regex-unparser [_] (re-unparser properties (-vmap -regex-unparser children)))
           (-regex-transformer [_ transformer method options]
             (re-transformer properties (-vmap #(-regex-transformer % transformer method options) children)))
-          (-regex-min-max [_ _] (re-min-max properties children)))))))
+          (-regex-min-max [_ _] (re-min-max properties children))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 (defn -sequence-entry-schema
   [{:keys [type re-validator re-explainer re-parser re-unparser re-transformer re-min-max] {:keys [min max keep]} :child-bounds :as opts}]
@@ -2196,7 +2243,9 @@
           (-regex-unparser [this] (re-unparser properties (-vmap (fn [[k _ s]] [k (-regex-unparser s)]) (-children this))))
           (-regex-transformer [this transformer method options]
             (re-transformer properties (-vmap (fn [[k _ s]] [k (-regex-transformer s transformer method options)]) (-children this))))
-          (-regex-min-max [this _] (re-min-max properties (-children this))))))))
+          (-regex-min-max [this _] (re-min-max properties (-children this)))
+          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
+    #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
 ;;
 ;; public api

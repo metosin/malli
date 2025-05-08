@@ -518,7 +518,7 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 (m/explain
   [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
-;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
+;; => {:schema [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
 ;;     :errors ({:path [0 :val :s], :in [3], :schema string?, :value 11}
 ;;              {:path [0 :val :b], :in [3], :schema boolean?, :value 11})}

@@ -3323,6 +3323,8 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 ;   [:min-max [:int {:min 0, :max 10}]]
 ;   [:tuples [:vector [:tuple int? string?]]]
 ;   [:optional {:optional true} [:maybe :boolean]]
+;   [:set-of-maps [:set [:map [:e int?] [:f string?]]]]
+;   [:map-of-int [:map-of int? [:map [:s string?]]]]]]]
 ```
 
 Options can be used by binding a dynamic `l/*options*` Var:

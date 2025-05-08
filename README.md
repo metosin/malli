@@ -2522,7 +2522,7 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 
 ```clojure
 (m/unparse [:orn [:name :string] [:id :int]]
-           (m/tagged :name "x"))
+           (m/tag :name "x"))
 ; => "x"
 
 (m/unparse [:* [:catn [:name :string] [:id :int]]]

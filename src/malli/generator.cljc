@@ -373,6 +373,7 @@
 
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
+(defmethod -schema-generator 'empty? [_ _] (ga/gen-for-pred empty?))
 (defmethod -schema-generator :> [schema options] (gen-double {:min (inc (-child schema options))}))
 (defmethod -schema-generator :>= [schema options] (gen-double {:min (-child schema options)}))
 (defmethod -schema-generator :< [schema options] (gen-double {:max (dec (-child schema options))}))

@@ -1124,3 +1124,6 @@
   (doseq [_ (range 100)
           v (mg/sample [:seqable {:min 1} :any])]
     (is (seq v))))
+
+(deftest empty?-generator-test
+  (is (every? empty? (mg/sample empty?))))

@@ -26,7 +26,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
-   - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
+   - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure)
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
@@ -518,7 +518,7 @@ and `:?`, `:*`, `:+` & `:repeat` for repetition:
 (m/explain
   [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
-;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
+;; => {:schema [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
 ;;     :errors ({:path [0 :val :s], :in [3], :schema string?, :value 11}
 ;;              {:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
@@ -840,7 +840,7 @@ The first argument to `:error/fn` is a map with keys:
 - `:negated` (optional), a function returning the explanation of `(m/explain [:not schema] value)`.
   If provided, then we are explaining the failure of negating this schema via `(m/explain [:not schema] value)`.
   Note in this scenario, `(m/validate schema value)` is true.
-  If returning a string, 
+  If returning a string,
   the resulting error message will be negated by the `:error/fn` caller in the same way as `:error/message`.
   Returning `(negated string)` disables this behavior and `string` is used as the negated error message.
 ```clojure
@@ -915,7 +915,7 @@ Top-level humanized map-errors are under `:malli/error`:
     (m/explain {:password "secret"
                 :password2 "faarao"})
     (me/humanize))
-; {:malli/error ["passwords don't match"]}
+; => ["passwords don't match"]
 ```
 
 Errors can be targeted using `:error/path` property:
@@ -966,8 +966,7 @@ For closed schemas, key spelling can be checked with:
        :address {:streetz "Hämeenkatu 14"}})
     (me/with-spell-checking)
     (me/humanize))
-;{:address {:street ["missing required key"]
-;           :streetz ["should be spelled :street"]}
+;{:address {:streetz ["should be spelled :street"]}
 ; :name ["disallowed key"]}
 ```
 
@@ -1054,7 +1053,7 @@ For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `Transformer` instance.
 
-Default Transformers include: 
+Default Transformers include:
 
 | name                              | description                                         |
 |:----------------------------------|-----------------------------------------------------|
@@ -1819,9 +1818,9 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
     {:registry registry}))
 
 (m/validate MergedCommon {:x "kikka"})
-; => true
-(m/validate MergedCommon {:x 1})
 ; => false
+(m/validate MergedCommon {:x 1})
+; => true
 (m/validate UnionCommon {:x "kikka"})
 ; => true
 (m/validate UnionCommon {:x 1})
@@ -2018,7 +2017,7 @@ to recursive variables for better-behaving generators:
  ::cons]
 ;; produces the same generator as the "unfolded"
 [:maybe [:tuple pos-int? [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}} ::cons]]]
-;; while 
+;; while
 [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
  [:ref ::cons]]
 ;; has a direct correspondance to the following generator:
@@ -2087,7 +2086,7 @@ Schemas can be used to generate values:
   {:seed 10})
 ; => "kikka"
 
-;; :gen/fmap 
+;; :gen/fmap
 (mg/generate
   [:and {:gen/fmap (partial str "kikka_")} string?]
   {:seed 10, :size 10})
@@ -2286,10 +2285,10 @@ Sample-data can be type-hinted with `::mp/hint`:
     :b {:b 2, :c 1}
     :c {:b 3}
     :d nil}])
-;[:map-of 
-; :keyword 
-; [:maybe [:map 
-;          [:b :int] 
+;[:map-of
+; :keyword
+; [:maybe [:map
+;          [:b :int]
 ;          [:c {:optional true} :int]]]]
 ```
 
@@ -2323,7 +2322,7 @@ Sample-data can be type-hinted with `::mp/hint`:
   [^{::mp/hint :tuple}
    [1 "kikka" true]
    ["2" "kukka" true]])
-; [:tuple :some string? boolean?]
+; [:tuple :some :string :boolean]
 ```
 
 ### value decoding in inferring
@@ -2334,7 +2333,7 @@ By default, no decoding is applied for (leaf) values:
 (mp/provide
  [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}])
-; => [:map [:id string?]]
+; => [:map [:id :string]]
 ```
 
 Adding custom decoding via `::mp/value-decoders` option:
@@ -2347,7 +2346,7 @@ Adding custom decoding via `::mp/value-decoders` option:
    :time "2022-01-01T00:00:00Z"}]
  {::mp/value-decoders {:string {:uuid mt/-string->uuid
                                 'inst? mt/-string->date}}})
-; => [:map [:id :uuid] [:time inst?]
+; => [:map [:id :uuid] [:time inst?]]
 ```
 
 ## Destructuring
@@ -2428,7 +2427,7 @@ A more complete example:
 ;     [:cat [:= :h] [:maybe [:cat
 ;                            [:? :any]
 ;                            [:* :any]]]]
-;     [:cat :any :any]]]]]]
+;     [:cat [:not [:enum :d :e :demo/f :demo/g :h]] :any]]]]]]
 ```
 
 ## Parsing values
@@ -2523,7 +2522,7 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 
 ```clojure
 (m/unparse [:orn [:name :string] [:id :int]]
-           (m/tagged :name "x"))
+           (m/tag :name "x"))
 ; => "x"
 
 (m/unparse [:* [:catn [:name :string] [:id :int]]]
@@ -3324,6 +3323,8 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 ;   [:min-max [:int {:min 0, :max 10}]]
 ;   [:tuples [:vector [:tuple int? string?]]]
 ;   [:optional {:optional true} [:maybe :boolean]]
+;   [:set-of-maps [:set [:map [:e int?] [:f string?]]]]
+;   [:map-of-int [:map-of int? [:map [:s string?]]]]]]]
 ```
 
 Options can be used by binding a dynamic `l/*options*` Var:

@@ -2322,7 +2322,7 @@ Sample-data can be type-hinted with `::mp/hint`:
   [^{::mp/hint :tuple}
    [1 "kikka" true]
    ["2" "kukka" true]])
-; [:tuple :some string? boolean?]
+; [:tuple :some :string :boolean]
 ```
 
 ### value decoding in inferring
@@ -2333,7 +2333,7 @@ By default, no decoding is applied for (leaf) values:
 (mp/provide
  [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}])
-; => [:map [:id string?]]
+; => [:map [:id :string]]
 ```
 
 Adding custom decoding via `::mp/value-decoders` option:

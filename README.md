@@ -915,7 +915,7 @@ Top-level humanized map-errors are under `:malli/error`:
     (m/explain {:password "secret"
                 :password2 "faarao"})
     (me/humanize))
-; {:malli/error ["passwords don't match"]}
+; => ["passwords don't match"]
 ```
 
 Errors can be targeted using `:error/path` property:

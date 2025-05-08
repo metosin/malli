@@ -2346,7 +2346,7 @@ Adding custom decoding via `::mp/value-decoders` option:
    :time "2022-01-01T00:00:00Z"}]
  {::mp/value-decoders {:string {:uuid mt/-string->uuid
                                 'inst? mt/-string->date}}})
-; => [:map [:id :uuid] [:time inst?]
+; => [:map [:id :uuid] [:time inst?]]
 ```
 
 ## Destructuring

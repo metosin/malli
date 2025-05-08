@@ -1818,9 +1818,9 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
     {:registry registry}))
 
 (m/validate MergedCommon {:x "kikka"})
-; => true
-(m/validate MergedCommon {:x 1})
 ; => false
+(m/validate MergedCommon {:x 1})
+; => true
 (m/validate UnionCommon {:x "kikka"})
 ; => true
 (m/validate UnionCommon {:x 1})

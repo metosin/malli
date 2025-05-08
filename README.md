@@ -26,7 +26,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
-   - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
+   - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure)
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
@@ -840,7 +840,7 @@ The first argument to `:error/fn` is a map with keys:
 - `:negated` (optional), a function returning the explanation of `(m/explain [:not schema] value)`.
   If provided, then we are explaining the failure of negating this schema via `(m/explain [:not schema] value)`.
   Note in this scenario, `(m/validate schema value)` is true.
-  If returning a string, 
+  If returning a string,
   the resulting error message will be negated by the `:error/fn` caller in the same way as `:error/message`.
   Returning `(negated string)` disables this behavior and `string` is used as the negated error message.
 ```clojure
@@ -1054,7 +1054,7 @@ For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `Transformer` instance.
 
-Default Transformers include: 
+Default Transformers include:
 
 | name                              | description                                         |
 |:----------------------------------|-----------------------------------------------------|
@@ -2018,7 +2018,7 @@ to recursive variables for better-behaving generators:
  ::cons]
 ;; produces the same generator as the "unfolded"
 [:maybe [:tuple pos-int? [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}} ::cons]]]
-;; while 
+;; while
 [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
  [:ref ::cons]]
 ;; has a direct correspondance to the following generator:
@@ -2087,7 +2087,7 @@ Schemas can be used to generate values:
   {:seed 10})
 ; => "kikka"
 
-;; :gen/fmap 
+;; :gen/fmap
 (mg/generate
   [:and {:gen/fmap (partial str "kikka_")} string?]
   {:seed 10, :size 10})
@@ -2286,10 +2286,10 @@ Sample-data can be type-hinted with `::mp/hint`:
     :b {:b 2, :c 1}
     :c {:b 3}
     :d nil}])
-;[:map-of 
-; :keyword 
-; [:maybe [:map 
-;          [:b :int] 
+;[:map-of
+; :keyword
+; [:maybe [:map
+;          [:b :int]
 ;          [:c {:optional true} :int]]]]
 ```
 

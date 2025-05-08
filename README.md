@@ -2427,7 +2427,7 @@ A more complete example:
 ;     [:cat [:= :h] [:maybe [:cat
 ;                            [:? :any]
 ;                            [:* :any]]]]
-;     [:cat :any :any]]]]]]
+;     [:cat [:not [:enum :d :e :demo/f :demo/g :h]] :any]]]]]]
 ```
 
 ## Parsing values

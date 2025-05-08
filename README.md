@@ -966,8 +966,7 @@ For closed schemas, key spelling can be checked with:
        :address {:streetz "Hämeenkatu 14"}})
     (me/with-spell-checking)
     (me/humanize))
-;{:address {:street ["missing required key"]
-;           :streetz ["should be spelled :street"]}
+;{:address {:streetz ["should be spelled :street"]}
 ; :name ["disallowed key"]}
 ```
 

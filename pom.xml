@@ -41,7 +41,7 @@
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>1.4.27</version>
+      <version>1.4.30</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>

@@ -16,6 +16,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+## 0.18.0 (2025-05-12)
+
 * **BREAKING** Output of `parse` now uses new `malli.core.Tag` and `malli.core.Tags` records for `:orn`, `:multi`, `:altn`, `:catn` etc. [#1123](https://github.com/metosin/malli/issues/1123) [#1153](https://github.com/metosin/malli/issues/1153)
   * See [Parsing](#parsing-values) and [Unparsing](#unparsing-values) for docs.
 * **BREAKING** Swagger and JSON-Schema outputs now use `.` instead of `/` (encoded as `~1`) as the separator. [#1183](https://github.com/metosin/malli/pull/1183)

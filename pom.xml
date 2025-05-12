@@ -5,6 +5,7 @@
   <artifactId>malli</artifactId>
   <version>0.18.0</version>
   <name>malli</name>
+  <description>High-performance data-driven data specification library for Clojure/Script.</description>
   <licenses>
     <license>
       <name>Eclipse Public License 2.0</name>

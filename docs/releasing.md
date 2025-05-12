@@ -10,4 +10,8 @@
 5. Push to `master`
 6. Create a release via the [GitHub UI](https://github.com/metosin/malli/releases/new)
    * Use the version number as the tag name, eg. `0.22.33`
+   * Copypaste the changelog from `CHANGELOG.md` to the text field
 7. Once the release is published, the `release` GitHub Action will build a release and deploy it to Clojars.
+   * See progress here: https://github.com/metosin/malli/actions/workflows/release.yml
+8. Check that the release is listed on clojars: https://clojars.org/metosin/malli
+9. Navigate to the cljdoc of the new release to trigger cljdoc build: https://cljdoc.org/versions/metosin/malli

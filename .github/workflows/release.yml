@@ -1,9 +1,6 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - release
   release:
     types:
       - published # reacts to releases and prereleases, but not their drafts
@@ -16,6 +13,7 @@ jobs:
     - name: "Setup Java"
       uses: actions/setup-java@v4
       with:
+        distribution: zulu
         java-version: 8
     - name: "Setup Clojure"
       uses: DeLaGuardo/setup-clojure@master

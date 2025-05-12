@@ -16,15 +16,19 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* Docs: elaborate optional-keys and required-keys [#1117](https://github.com/metosin/malli/pull/1117)
 * **BREAKING** Output of `parse` now uses new `malli.core.Tag` and `malli.core.Tags` records for `:orn`, `:multi`, `:altn`, `:catn` etc. [#1123](https://github.com/metosin/malli/issues/1123) [#1153](https://github.com/metosin/malli/issues/1153)
   * See [Parsing](#parsing-values) and [Unparsing](#unparsing-values) for docs.
+* **BREAKING** Swagger and JSON-Schema outputs now use `.` instead of `/` (encoded as `~1`) as the separator. [#1183](https://github.com/metosin/malli/pull/1183)
+  * This will only affect you if you rely on the exact name of the schema
+* Docs: elaborate optional-keys and required-keys [#1117](https://github.com/metosin/malli/pull/1117)
+* JSON Schema for `:tuple` now uses `"prefixItems"` [#1151](https://github.com/metosin/malli/pull/1151)
 * FIX: `:path` when explaining `:ref` errors [#1106](https://github.com/metosin/malli/issues/1106)
 * FIX: don't instrument functions with primitive type hints (like `^double`), instead, emit a warning [#1176](https://github.com/metosin/malli/pull/1176)
 * FIX: `:map-of` and `:map` decode now retain the input map type (eg. `sorted-map`) [#1189](https://github.com/metosin/malli/pull/1189)
-* **BREAKING** Swagger and JSON-Schema outputs now use `.` instead of `/` (encoded as `~1`) as the separator. [#1183](https://github.com/metosin/malli/pull/1183)
-  * This will only affect you if you rely on the exact name of the schema
 * FIX: schemas and into-schemas are printed to the console and the REPL in CLJS the same way as they are in CLJ. [#1186](https://github.com/metosin/malli/issues/1186)
+* FIX: `:merge` and `:union` now work with 1 child. With no children, throw a clearer error. [#1147](https://github.com/metosin/malli/pull/1147)
+* FIX: `default-value-transformer` for `:ref`s inside `:map`s [#1145](https://github.com/metosin/malli/issues/1145)
+* FIX: generator for `empty?` schema [#1196](https://github.com/metosin/malli/pull/1196)
 
 ## 0.17.0 (2024-12-08)
 

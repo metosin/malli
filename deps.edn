@@ -29,7 +29,7 @@
            :clojure-11 {:extra-deps {org.clojure/clojure {:mvn/version "1.11.3"}}}
            :clojure-12 {}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.9.45"}}}
-           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/tag "v0.4.26" :git/sha "8de9f27"}}}
+           :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/tag "v0.4.27" :git/sha "9c5e46b"}}}
            :test-sci {:extra-paths ["test-sci"]
                       :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
            :test-cherry {:extra-paths ["test-cherry"]

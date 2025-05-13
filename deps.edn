@@ -40,7 +40,7 @@
                              :exec-fn lread.test-doc-blocks/gen-tests
                              ;; for -M syntax support specify main-opts
                              :main-opts ["-m" "lread.test-doc-blocks" "gen-tests"]}
-           :test-doc-test {:replace-paths ["target/test-doc-blocks/test"]}
+           :test-doc-test {:replace-paths ["src" "resources" "target/test-doc-blocks/test"]}
            :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.1"}
                                         ; used only to pull in its externs file needed to compile js-joda types under advanced compilation
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}

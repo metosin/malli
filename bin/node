@@ -28,5 +28,5 @@ case $1 in
 	advanced) advanced ;;
 	cherry-none) cherry-none ;;
 	cherry-advanced) cherry-advanced ;;
-	*) none; advanced; cherry; cherry-advanced ;;
+	*) none; advanced; cherry-none; cherry-advanced ;;
 esac

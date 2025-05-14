@@ -3211,6 +3211,13 @@ Registries can be composed, a full example:
 ;; => true
 ```
 
+Revert the registry back to defaults:
+```clojure
+(mr/set-default-registry!
+  (m/default-schemas))
+```
+
+
 ## Function schemas
 
 See [Working with functions](docs/function-schemas.md).
@@ -3225,7 +3232,6 @@ See [Instrumentation](docs/function-schemas.md#instrumentation).
 
 Given functions and function Schemas:
 
-<!-- :test-doc-blocks/skip -->
 ```clojure
 (defn square [x] (* x x))
 (m/=> square [:=> [:cat int?] nat-int?])
@@ -3241,7 +3247,6 @@ Given functions and function Schemas:
 
 Generating `clj-kondo` configuration from current namespace:
 
-<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[malli.clj-kondo :as mc])
 
@@ -3358,20 +3363,19 @@ Simple syntax sugar, like [data-specs](https://cljdoc.org/d/metosin/spec-tools/C
 
 As the namespace suggests, it's experimental, built for [reitit](https://github.com/metosin/reitit).
 
-<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[malli.experimental.lite :as l])
 
 (l/schema
- {:map1 {:x int?
-         :y [:maybe string?]
-         :z (l/maybe keyword?)}
+ {:map1 {:x :int
+         :y [:maybe :string]
+         :z (l/maybe :keyword)}
   :map2 {:min-max [:int {:min 0 :max 10}]
-         :tuples (l/vector (l/tuple int? string?))
+         :tuples (l/vector (l/tuple :int :string))
          :optional (l/optional (l/maybe :boolean))
-         :set-of-maps (l/set {:e int?
-                              :f string?})
-         :map-of-int (l/map-of int? {:s string?})}})
+         :set-of-maps (l/set {:e :int
+                              :f :string})
+         :map-of-int (l/map-of :int {:s :string})}})
 ;[:map
 ; [:map1
 ;  [:map
@@ -3389,7 +3393,6 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 
 Options can be used by binding a dynamic `l/*options*` Var:
 
-<!-- :test-doc-blocks/skip -->
 ```clojure
 (binding [l/*options* {:registry (merge
                                   (m/default-schemas)

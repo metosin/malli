@@ -43,6 +43,7 @@
                              :exec-fn lread.test-doc-blocks/gen-tests
                              :exec-args {:docs ["README.md"
                                                 "docs/function-schemas.md"
+                                                "docs/reusable-schemas.md"
                                                 "docs/tips.md"]}
                              ;; for -M syntax support specify main-opts
                              :main-opts ["-m" "lread.test-doc-blocks" "gen-tests"]}

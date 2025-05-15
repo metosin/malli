@@ -235,7 +235,7 @@
 
 (defn -infer-child-compiler
   [x-coders]
-  (fn [schema _t]
+  (fn [schema _]
     (some-> schema
       (m/children)
       (m/-infer)

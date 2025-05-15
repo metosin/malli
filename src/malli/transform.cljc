@@ -308,8 +308,8 @@
      :qualified-keyword m/-keyword->string
      :qualified-symbol -any->string
      :uuid -any->string
-                                        ;#?@(:clj [:uri -any->string])
-                                        ;:bigdec any->string
+     ;#?@(:clj [:uri -any->string])
+     ;:bigdec any->string
 
      'inst? -date->string
      #?@(:clj ['ratio? -number->double])}))
@@ -352,27 +352,27 @@
 (defn -string-encoders []
   (-add-child-compilers
     (merge
-    (-json-encoders)
-    {'integer? -any->string
-     'int? -any->string
-     'pos-int? -any->string
-     'neg-int? -any->string
-     'nat-int? -any->string
-     'zero? -any->string
+      (-json-encoders)
+      {'integer? -any->string
+       'int? -any->string
+       'pos-int? -any->string
+       'neg-int? -any->string
+       'nat-int? -any->string
+       'zero? -any->string
 
-     :int -any->string
-     :float -any->string
-     :double -any->string
-     ;:boolean -any->string
+       :int -any->string
+       :float -any->string
+       :double -any->string
+       ;:boolean -any->string
 
-     :> -any->string
-     :>= -any->string
-     :< -any->string
-     :<= -any->string
-     :not= -any->string
+       :> -any->string
+       :>= -any->string
+       :< -any->string
+       :<= -any->string
+       :not= -any->string
 
-     'float -any->string
-     'double -any->string})))
+       'float -any->string
+       'double -any->string})))
 
 ;;
 ;; transformers

@@ -1167,6 +1167,7 @@
                  :equals2 "kikka"
                  :equals3 1
                  :equals4 1.1}
+
         decoded {:enum1 :kikka
                  :enum2 'kikka
                  :enum3 1
@@ -1174,11 +1175,32 @@
                  :equals1 :kikka
                  :equals2 'kikka
                  :equals3 1
-                 :equals4 1.1}]
+                 :equals4 1.1}
+
+        stringy-encoded {:enum1 "kikka"
+                         :enum2 "kikka"
+                         :enum3 "1"
+                         :enum4 "1.1"
+                         :equals1 "kikka"
+                         :equals2 "kikka"
+                         :equals3 "1"
+                         :equals4 "1.1"}
+        stringy-decoded {:enum1 :kikka
+                         :enum2 'kikka
+                         :enum3 "1"
+                         :enum4 "1.1"
+                         :equals1 :kikka
+                         :equals2 'kikka
+                         :equals3 "1"
+                         :equals4 "1.1"}]
     (testing "decoding children using the json transformer works"
-      (is (= decoded (m/decode child-inference-test-schema encoded (mt/json-transformer)))))
+      (is (= decoded (m/decode child-inference-test-schema encoded (mt/json-transformer))))
+      (is (= decoded (m/decode child-inference-test-schema decoded (mt/json-transformer)))))
+    (testing "invalid strings are not decoded by the json transformer"
+      (is (= stringy-decoded (m/decode child-inference-test-schema stringy-encoded (mt/json-transformer)))))
     (testing "encoding children using the json transformer works"
-      (is (= encoded (m/encode child-inference-test-schema decoded (mt/json-transformer)))))))
+      (is (= encoded (m/encode child-inference-test-schema decoded (mt/json-transformer))))
+      (is (= encoded (m/decode child-inference-test-schema encoded (mt/json-transformer)))))))
 
 (deftest child-inference-string-test
   (let [encoded {:enum1 "kikka"
@@ -1198,6 +1220,8 @@
                  :equals3 1
                  :equals4 1.1}]
     (testing "decoding children using the string transformer works"
-      (is (= decoded (m/decode child-inference-test-schema encoded (mt/string-transformer)))))
+      (is (= decoded (m/decode child-inference-test-schema encoded (mt/string-transformer))))
+      (is (= decoded (m/decode child-inference-test-schema decoded (mt/string-transformer)))))
     (testing "encoding children using the string transformer works"
-      (is (= encoded (m/encode child-inference-test-schema decoded (mt/string-transformer)))))))
+      (is (= encoded (m/encode child-inference-test-schema decoded (mt/string-transformer))))
+      (is (= encoded (m/encode child-inference-test-schema encoded (mt/string-transformer)))))))

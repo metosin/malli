@@ -251,44 +251,47 @@
 ;; decoders
 ;;
 
+(defn -base-json-decoders []
+  {'ident? -string->keyword
+   'simple-ident? -string->keyword
+   'qualified-ident? -string->keyword
+
+   'keyword? -string->keyword
+   'simple-keyword? -string->keyword
+   'qualified-keyword? -string->keyword
+
+   'symbol? -string->symbol
+   'simple-symbol? -string->symbol
+   'qualified-symbol? -string->symbol
+
+   'uuid? -string->uuid
+   'float? -number->float
+   'double? -number->double
+   'inst? -string->date
+   'integer? -number->long
+   'int? -number->long
+   'pos-int? -number->long
+   'neg-int? -number->long
+   'nat-int? -number->long
+   'zero? -number->long
+
+   #?@(:clj ['uri? -string->uri])
+
+   :float -number->float
+   :double -number->double
+   :int -number->long
+   :keyword -string->keyword
+   :symbol -string->symbol
+   :qualified-keyword -string->keyword
+   :qualified-symbol -string->symbol
+   :uuid -string->uuid
+   ;#?@(:clj [:uri -string->uri])
+
+   :set -sequential->set})
+
 (defn -json-decoders []
   (-add-child-compilers
-    {'ident? -string->keyword
-     'simple-ident? -string->keyword
-     'qualified-ident? -string->keyword
-
-     'keyword? -string->keyword
-     'simple-keyword? -string->keyword
-     'qualified-keyword? -string->keyword
-
-     'symbol? -string->symbol
-     'simple-symbol? -string->symbol
-     'qualified-symbol? -string->symbol
-
-     'uuid? -string->uuid
-     'float? -number->float
-     'double? -number->double
-     'inst? -string->date
-     'integer? -number->long
-     'int? -number->long
-     'pos-int? -number->long
-     'neg-int? -number->long
-     'nat-int? -number->long
-     'zero? -number->long
-
-     #?@(:clj ['uri? -string->uri])
-
-     :float -number->float
-     :double -number->double
-     :int -number->long
-     :keyword -string->keyword
-     :symbol -string->symbol
-     :qualified-keyword -string->keyword
-     :qualified-symbol -string->symbol
-     :uuid -string->uuid
-     ;#?@(:clj [:uri -string->uri])
-
-     :set -sequential->set}))
+    (-base-json-decoders)))
 
 (defn -json-encoders []
   (-add-child-compilers
@@ -317,7 +320,7 @@
 (defn -string-decoders []
   (-add-child-compilers
     (merge
-      (-json-decoders)
+      (-base-json-decoders)
       {'integer? -string->long
        'int? -string->long
        'pos-int? -string->long

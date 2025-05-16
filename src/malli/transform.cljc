@@ -293,29 +293,32 @@
   (-add-child-compilers
     (-base-json-decoders)))
 
+(defn -base-json-encoders []
+  {'keyword? m/-keyword->string
+   'simple-keyword? m/-keyword->string
+   'qualified-keyword? m/-keyword->string
+
+   'symbol? -any->string
+   'simple-symbol? -any->string
+   'qualified-symbol? -any->string
+
+   'uuid? -any->string
+   #?@(:clj ['uri? -any->string])
+
+   :keyword m/-keyword->string
+   :symbol -any->string
+   :qualified-keyword m/-keyword->string
+   :qualified-symbol -any->string
+   :uuid -any->string
+   ;#?@(:clj [:uri -any->string])
+   ;:bigdec any->string
+
+   'inst? -date->string
+   #?@(:clj ['ratio? -number->double])})
+
 (defn -json-encoders []
   (-add-child-compilers
-    {'keyword? m/-keyword->string
-     'simple-keyword? m/-keyword->string
-     'qualified-keyword? m/-keyword->string
-
-     'symbol? -any->string
-     'simple-symbol? -any->string
-     'qualified-symbol? -any->string
-
-     'uuid? -any->string
-     #?@(:clj ['uri? -any->string])
-
-     :keyword m/-keyword->string
-     :symbol -any->string
-     :qualified-keyword m/-keyword->string
-     :qualified-symbol -any->string
-     :uuid -any->string
-     ;#?@(:clj [:uri -any->string])
-     ;:bigdec any->string
-
-     'inst? -date->string
-     #?@(:clj ['ratio? -number->double])}))
+    (-base-json-encoders)))
 
 (defn -string-decoders []
   (-add-child-compilers
@@ -355,7 +358,7 @@
 (defn -string-encoders []
   (-add-child-compilers
     (merge
-      (-json-encoders)
+      (-base-json-encoders)
       {'integer? -any->string
        'int? -any->string
        'pos-int? -any->string

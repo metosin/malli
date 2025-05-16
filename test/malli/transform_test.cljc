@@ -1197,10 +1197,11 @@
       (is (= decoded (m/decode child-inference-test-schema encoded (mt/json-transformer))))
       (is (= decoded (m/decode child-inference-test-schema decoded (mt/json-transformer)))))
     (testing "invalid strings are not decoded by the json transformer"
-      (is (= stringy-decoded (m/decode child-inference-test-schema stringy-encoded (mt/json-transformer)))))
+      (is (= stringy-decoded (m/decode child-inference-test-schema stringy-encoded (mt/json-transformer))))
+      (is (= stringy-decoded (m/decode child-inference-test-schema stringy-decoded (mt/json-transformer)))))
     (testing "encoding children using the json transformer works"
       (is (= encoded (m/encode child-inference-test-schema decoded (mt/json-transformer))))
-      (is (= encoded (m/decode child-inference-test-schema encoded (mt/json-transformer)))))))
+      (is (= encoded (m/encode child-inference-test-schema encoded (mt/json-transformer)))))))
 
 (deftest child-inference-string-test
   (let [encoded {:enum1 "kikka"

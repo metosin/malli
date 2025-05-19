@@ -233,24 +233,25 @@
         (set? x) (seq x)
         :else x))
 
-(defn -infer-child-compiler [method]
+(defn -infer-child-compiler
+  [x-coders]
   (fn [schema _]
     (some-> schema
-            (m/children)
-            (m/-infer)
-            {:keyword {:decode -string->keyword
-                       :encode m/-keyword->string}
-             :symbol {:decode -string->symbol}
-             :int {:decode -string->long}
-             :float {:decode -string->float}
-             :double {:decode -string->double}}
-            (method -any->string))))
+      (m/children)
+      (m/-infer)
+      x-coders)))
+
+(defn -add-child-compilers
+  [x-coders]
+  (assoc x-coders
+    :enum {:compile (-infer-child-compiler x-coders)}
+    := {:compile (-infer-child-compiler x-coders)}))
 
 ;;
 ;; decoders
 ;;
 
-(defn -json-decoders []
+(defn -base-json-decoders []
   {'ident? -string->keyword
    'simple-ident? -string->keyword
    'qualified-ident? -string->keyword
@@ -276,9 +277,6 @@
 
    #?@(:clj ['uri? -string->uri])
 
-   :enum {:compile (-infer-child-compiler :decode)}
-   := {:compile (-infer-child-compiler :decode)}
-
    :float -number->float
    :double -number->double
    :int -number->long
@@ -291,7 +289,11 @@
 
    :set -sequential->set})
 
-(defn -json-encoders []
+(defn -json-decoders []
+  (-add-child-compilers
+    (-base-json-decoders)))
+
+(defn -base-json-encoders []
   {'keyword? m/-keyword->string
    'simple-keyword? m/-keyword->string
    'qualified-keyword? m/-keyword->string
@@ -302,9 +304,6 @@
 
    'uuid? -any->string
    #?@(:clj ['uri? -any->string])
-
-   :enum {:compile (-infer-child-compiler :encode)}
-   := {:compile (-infer-child-compiler :encode)}
 
    :keyword m/-keyword->string
    :symbol -any->string
@@ -317,63 +316,69 @@
    'inst? -date->string
    #?@(:clj ['ratio? -number->double])})
 
+(defn -json-encoders []
+  (-add-child-compilers
+    (-base-json-encoders)))
+
 (defn -string-decoders []
-  (merge
-   (-json-decoders)
-   {'integer? -string->long
-    'int? -string->long
-    'pos-int? -string->long
-    'neg-int? -string->long
-    'nat-int? -string->long
-    'zero? -string->long
+  (-add-child-compilers
+    (merge
+      (-base-json-decoders)
+      {'integer? -string->long
+       'int? -string->long
+       'pos-int? -string->long
+       'neg-int? -string->long
+       'nat-int? -string->long
+       'zero? -string->long
 
-    :int -string->long
-    :float -string->float
-    :double -string->double
-    :boolean -string->boolean
+       :int -string->long
+       :float -string->float
+       :double -string->double
+       :boolean -string->boolean
 
-    :> -string->long
-    :>= -string->long
-    :< -string->long
-    :<= -string->long
-    :not= -string->long
+       :> -string->long
+       :>= -string->long
+       :< -string->long
+       :<= -string->long
+       :not= -string->long
 
-    'number? -string->double
-    'float? -string->float
-    'double? -string->double
-    #?@(:clj ['rational? -string->double])
-    #?@(:clj ['decimal? -string->decimal])
+       'number? -string->double
+       'float? -string->float
+       'double? -string->double
+       #?@(:clj ['rational? -string->double])
+       #?@(:clj ['decimal? -string->decimal])
 
-    'boolean? -string->boolean
-    'false? -string->boolean
-    'true? -string->boolean
+       'boolean? -string->boolean
+       'false? -string->boolean
+       'true? -string->boolean
 
-    :map-of (-transform-map-keys m/-keyword->string)
-    :vector -sequential->vector}))
+       :map-of (-transform-map-keys m/-keyword->string)
+       :vector -sequential->vector})))
 
 (defn -string-encoders []
-  (merge
-   (-json-encoders)
-   {'integer? -any->string
-    'int? -any->string
-    'pos-int? -any->string
-    'neg-int? -any->string
-    'nat-int? -any->string
-    'zero? -any->string
+  (-add-child-compilers
+    (merge
+      (-base-json-encoders)
+      {'integer? -any->string
+       'int? -any->string
+       'pos-int? -any->string
+       'neg-int? -any->string
+       'nat-int? -any->string
+       'zero? -any->string
 
-    :int -any->string
-    :float -any->string
-    :double -any->string
-    ;:boolean -any->string
+       :int -any->string
+       :float -any->string
+       :double -any->string
+       ;:boolean -any->string
 
-    :> -any->string
-    :>= -any->string
-    :< -any->string
-    :<= -any->string
-    :not= -any->string
+       :> -any->string
+       :>= -any->string
+       :< -any->string
+       :<= -any->string
+       :not= -any->string
 
-    'float -any->string
-    'double -any->string}))
+       'float -any->string
+       'double -any->string})))
 
 ;;
 ;; transformers

@@ -335,7 +335,13 @@
 
 (defn -*-gen [schema options]
   (let [child (-child schema options)]
-    (cond->> (gen-vector (when (= :+ (::-*-gen-mode options)) {:min 1}) (generator child (dissoc options ::-*-gen-mode)))
+    (cond->> (gen-vector
+              (cond-> (-min-max schema options)
+                ;; When generating from :+ the base minimum value must be 1
+                ;; to ensure that :+ is always fulfilled
+                (= :+ (::-*-gen-mode options))
+                (update :min (fnil max 1)))
+              (generator child (dissoc options ::-*-gen-mode)))
       (m/-regex-op? child) gen-fcat)))
 
 (defn -+-gen [schema options]

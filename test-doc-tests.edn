@@ -4,4 +4,5 @@
 {:tests [{:id :generated
           :test-paths  ["target/test-doc-blocks/test"]
           :kaocha.hooks/post-load-test [lread.test-doc-blocks.kaocha.hooks/fail-on-no-tests-found]}]
+ :reporter kaocha.report/documentation
  :randomize? false}

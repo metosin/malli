@@ -35,10 +35,7 @@
            :test-cherry {:extra-paths ["test-cherry"]
                          :main-opts ["-m" "cljs-test-runner.main" "-d" "test-cherry" "-d" "test"]}
            :test-doc-blocks {:replace-deps {org.clojure/clojure {:mvn/version "1.12.0"}
-                                            mattiuusitalo/test-doc-blocks {:git/url "https://github.com/mattiuusitalo/test-doc-blocks"
-                                                                           :git/sha "2edd731c1dfeb83a8f72d3b0ebdb011f79593e6f"}
-
-                                            #_#_com.github.lread/test-doc-blocks {:mvn/version "1.1.20"}}
+                                            com.github.lread/test-doc-blocks {:mvn/version "1.2.21"}}
                              ;; for -X syntax support specify exec-fn
                              :exec-fn lread.test-doc-blocks/gen-tests
                              :exec-args {:docs ["README.md"

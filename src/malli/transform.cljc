@@ -479,24 +479,24 @@
 (defn default-value-transformer
   ([] (default-value-transformer nil))
   ([{:keys [key default-fn defaults ::add-optional-keys] :or {key :default, default-fn (fn [_ x] x)}}]
-   (let [get-default (fn [schema]
+   (let [get-default (fn [schema more-props]
                        (or (some-> schema m/properties :default/fn m/eval)
-                           (if-some [e (some-> schema m/properties (find key))]
+                           (some-> more-props :default/fn m/eval)
+                           (if-some [e (or (some-> schema m/properties (find key))
+                                           (some-> more-props (find key)))]
                              (constantly (val e))
                              (some->> schema m/type (get defaults) (#(constantly (% schema)))))))
          set-default {:compile (fn [schema _]
-                                 (when-some [f (get-default schema)]
+                                 (when-some [f (get-default schema nil)]
                                    (fn [x] (if (nil? x) (default-fn schema (f)) x))))}
          add-defaults {:compile (fn [schema _]
                                   (let [defaults (into {}
                                                        (keep (fn [[k {:keys [optional] :as p} v]]
                                                                (when (or (not optional) add-optional-keys)
-                                                                 (let [e (find p key)]
-                                                                   (when-some [f (if e (constantly (val e))
-                                                                                       (or (get-default v)
-                                                                                           (when (m/-ref-schema? v)
-                                                                                             (get-default (m/-deref v)))))]
-                                                                     [k (fn [] (default-fn schema (f)))])))))
+                                                                 (when-some [f (or (get-default v p)
+                                                                                   (when (m/-ref-schema? v)
+                                                                                     (get-default (m/-deref v) p)))]
+                                                                   [k (fn [] (default-fn schema (f)))]))))
                                                        (m/children schema))]
                                     (when (seq defaults)
                                       (fn [x]

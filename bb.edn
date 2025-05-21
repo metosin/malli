@@ -41,4 +41,4 @@
                      (println "Generating tests from README.md")
                      (clojure "-X:test-doc-blocks")
                      (println "Running tests")
-                     (clojure "-M:test:test-doc-test" "-m" "kaocha.runner" "--config-file" "gen-tests.edn" "generated"))}}}
+                     (clojure "-M:test:test-doc-test" "-m" "kaocha.runner" "--config-file" "test-doc-tests.edn" "generated"))}}}

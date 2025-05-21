@@ -34,4 +34,11 @@
            :extra-deps {org.babashka/spec.alpha {:git/url "https://github.com/babashka/spec.alpha"
                                                  :git/sha "b6eb0f2208ab036c0a5d0e7235cb0b09d2feabb7"}}
            :extra-paths ["src" "test"]
-           :task bb-test-runner/run-tests}}}
+           :task bb-test-runner/run-tests}
+
+  test-docs {:doc "Run README.md based tests"
+             :task (do
+                     (println "Generating tests from README.md")
+                     (clojure "-X:test-doc-blocks")
+                     (println "Running tests")
+                     (clojure "-M:test:test-doc-test" "-m" "kaocha.runner" "--config-file" "test-doc-tests.edn" "generated"))}}}

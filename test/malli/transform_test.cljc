@@ -1068,10 +1068,13 @@
         (is (= {:first 'one, :second 'two} (m/encode schema {} transformer)))
         (is (= ['one 'two] @seen)))))
 
-  (testing ":default/fn property on schema"
-    (let [schema [:string {:default/fn (fn [] "called")}]]
-      (is (= "called" (m/decode schema nil mt/default-value-transformer)))))
-
+  (testing ":default/fn property"
+    (testing "on schema"
+      (let [schema [:string {:default/fn (fn [] "called")}]]
+        (is (= "called" (m/decode schema nil mt/default-value-transformer)))))
+    (testing "on map entry"
+      (let [schema [:map [:s {:default/fn (fn [] "called")} :string]]]
+        (is (= {:s "called"} (m/decode schema {} mt/default-value-transformer))))))
   (testing ":refs"
     (let [opts {:registry (mr/composite-registry m/default-registry
                                                  {"bing" :int})}

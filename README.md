@@ -1442,6 +1442,19 @@ With custom function:
 ; => {:os "Mac OS X", :timezone "Europe/Helsinki"}
 ```
 
+With ad-hoc custom function:
+
+```clojure
+(def the-default-atom (atom 42))
+(m/decode
+ [:map
+  [:a [:int {:default/fn #(deref the-default-atom)}]]  ; property of schema
+  [:b {:default/fn #(deref the-default-atom)} :int]]   ; property of map entry
+ {}
+ (mt/default-value-transformer))
+;; => {:a 42 :b 42}
+```
+
 Optional Keys are not added by default:
 
 ```clojure

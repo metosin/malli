@@ -321,6 +321,9 @@
       [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
       [:string {:min 1, :gen/min 10, :max 100, :gen/max 20}]))
 
+  (testing ":+ enforces a minimum count of 1 generated elements"
+    (every? #(<= 1 %) (map count (mg/sample [:+ :int] {:size 1000}))))
+
   (testing "invalid properties"
     (are [schema]
       (thrown? #?(:clj Exception, :cljs js/Error) (mg/sample schema {:size 1000}))

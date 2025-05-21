@@ -1768,14 +1768,14 @@ Schema paths can be converted into value paths:
 ; [:tuple double? double?]
 
 (mu/path->in Schema [0 :address 0 :lonlat])
-; [:address :lonlat]
+;; => [:address :lonlat]
 ```
 
 and back, returning all paths:
 
 ```clojure
 (mu/in->paths Schema [:address :lonlat])
-; [[0 :address 0 :lonlat]]
+;; => [[0 :address 0 :lonlat]]
 ```
 
 ## Declarative schema transformation

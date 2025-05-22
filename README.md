@@ -2168,13 +2168,14 @@ Schemas can be used to generate values:
  {:seed 10})
 ; => [-109024846 -2 25432]
 
-;; When composing sequence schemas, the directives effect the definition they are associated with,
-;; such that:
-(mg/generate [:* {:gen/min 2 :gen/max 3} ; 2 - 3 repetitions of
-              [:cat
-               [:+ {:gen/min 2 :gen/max 3} :int] ; 2 - 3 repetitions of int
-               [:* {:gen/min 1 :gen/max 2} :string]]] ; followed by 1-2 repetitions of string
-             {:seed 10})
+;; When composing sequence schemas, the directives effect the definition they are
+;; associated with, such that:
+(mg/generate
+ [:* {:gen/min 2 :gen/max 3} ; 2 - 3 repetitions of
+  [:cat
+   [:+ {:gen/min 2 :gen/max 3} :int] ; 2 - 3 repetitions of int
+   [:* {:gen/min 1 :gen/max 2} :string]]] ; followed by 1-2 repetitions of string
+ {:seed 10})
 
 ; => (-812 1283 "Q9beps1Yn3c3VP9" "4XHdn1mgudSlNpVyxOrQIiR5pd5ocs" 114 -14284153 "8SSR9033czAO05")
 

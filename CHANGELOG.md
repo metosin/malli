@@ -19,6 +19,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * **BREAKING** FIX: `json-transformer` is now better at inferring en/decoders for `:enum` and `:=`. [#1205](https://github.com/metosin/malli/pull/1205)
   * For example `[:enum 1 2 3]` gets encoded as a JSON number, not a string.
   * If you need the old behaviour, you can override the en/decoders using properties. [See docs.](README.md#advanced-transformations)
+* Value generation: `:+` and `:*` now support generator directives `:gen/min`, `:gen/max` as well as `:min` and `:max` schema directives [#1208](https://github.com/metosin/malli/pull/1208)
 
 ## 0.18.0 (2025-05-12)
 

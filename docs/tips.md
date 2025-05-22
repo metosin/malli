@@ -55,11 +55,11 @@ Schemas can be walked over recursively using `m/walk`:
 
 (def Schema
   [:map
-   [:user map?]
-   [:profile map?]
-   [:tags [:vector [int? {:deleteMe true}]]]
-   [:nested [:map [:x [:tuple {:deleteMe true} string? string?]]]]
-   [:token [string? {:deleteMe true}]]])
+   [:user :map]
+   [:profile :map]
+   [:tags [:vector [:int {:deleteMe true}]]]
+   [:nested [:map [:x [:tuple {:deleteMe true} :string :string]]]]
+   [:token [:string {:deleteMe true}]]])
 
 (m/walk
   Schema
@@ -72,8 +72,8 @@ Schemas can be walked over recursively using `m/walk`:
         (try (m/into-schema (m/type schema) (m/properties schema) children options)
              (catch #?(:clj Exception, :cljs js/Error) _))))))
 ;[:map
-; [:user map?]
-; [:profile map?]
+; [:user :map]
+; [:profile :map]
 ; [:nested :map]]
 ```
 
@@ -176,12 +176,12 @@ Returning a Schema form with `nil` in place of empty properties:
 
 (normalize-properties
   [:map
-   [:x int?]
-   [:y [:tuple int? int?]]
+   [:x :int]
+   [:y [:tuple :int :int]]
    [:z [:set [:map [:x [:enum 1 2 3]]]]]])
 ;; => [:map nil
-;;     [:x nil int?]
-;;     [:y nil [:tuple nil int? int?]]
+;;     [:x nil :int]
+;;     [:y nil [:tuple nil :int :int]]
 ;;     [:z nil [:set nil
 ;;              [:map nil
 ;;               [:x nil [:enum nil 1 2 3]]]]]]
@@ -226,8 +226,8 @@ Example 1: if `:secondary` is missing, same its value to value of `:primary`
 ```clojure
 (m/decode
  [:map
-  [:primary string?]
-  [:secondary {:default-fn '#(:primary %)} string?]]
+  [:primary :string]
+  [:secondary {:default-fn '#(:primary %)} :string]]
  {:primary "blue"}
  (default-fn-value-transformer))
 ```
@@ -314,31 +314,31 @@ e.g. don't fail if the optional keys hava invalid values.
 
 (allow-invalid-optional-values
   [:map
-   [:a string?]
-   [:b {:optional true} int?]
+   [:a :string]
+   [:b {:optional true} :int]
    [:c [:maybe
         [:map
-         [:d string?]
-         [:e {:optional true} int?]]]]])
+         [:d :string]
+         [:e {:optional true} :int]]]]])
 ;[:map
-; [:a string?]
+; [:a :string]
 ; [:b {:optional true} :any]
 ; [:c [:maybe [:map
-;              [:d string?]
+;              [:d :string]
 ;              [:e {:optional true} :any]]]]]
 
 (m/validate
   [:map
-   [:a string?]
-   [:b {:optional true} int?]]
+   [:a :string]
+   [:b {:optional true} :int]]
   {:a "Hey" :b "Nope"})
 ;; => false
 
 (m/validate
   (allow-invalid-optional-values
     [:map
-     [:a string?]
-     [:b {:optional true} int?]])
+     [:a :string]
+     [:b {:optional true} :int]])
   {:a "Hey" :b "Nope"})
 ;; => true
 ```

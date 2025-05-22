@@ -20,6 +20,7 @@ Malli is in well matured [alpha](README.md#alpha).
   * For example `[:enum 1 2 3]` gets encoded as a JSON number, not a string.
   * If you need the old behaviour, you can override the en/decoders using properties. [See docs.](README.md#advanced-transformations)
 * Value generation: `:+` and `:*` now support generator directives `:gen/min`, `:gen/max` as well as `:min` and `:max` schema directives [#1208](https://github.com/metosin/malli/pull/1208)
+* FIX: `:default/fn` now works in map entry properties in addition to schema properties [#1209](https://github.com/metosin/malli/pull/1209)
 
 ## 0.18.0 (2025-05-12)
 

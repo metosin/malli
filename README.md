@@ -2149,6 +2149,12 @@ Schemas can be used to generate values:
   {:seed 1})
 ; => [-8522515 -1433 -1 1]
 
+;; :gen/min & gen/max works for :+ and :* as well
+(mg/generate
+ [:+ {:gen/min 2 :gen/max 10} :int]
+ {:seed 10})
+; => [-109024846 -2 25432]
+
 ;; :gen/infinite? & :gen/NaN? for :double
 (mg/generate
   [:double {:gen/infinite? true, :gen/NaN? true}]

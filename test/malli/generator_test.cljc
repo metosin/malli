@@ -315,7 +315,14 @@
       [:string {:gen/min 10, :max 20}]
 
       [:+ {:min 10 :max 20} :int]
+      [:+ {:gen/min 10 :max 20} :int]
+      [:+ {:min 10 :gen/max 20} :int]
+      [:+ {:gen/min 10 :gen/max 20} :int]
+
       [:* {:min 10 :max 20} :int]
+      [:* {:gen/min 10 :max 20} :int]
+      [:* {:min 10 :gen/max 20} :int]
+      [:* {:gen/min 10 :gen/max 20} :int]
 
       [:vector {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
       [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]

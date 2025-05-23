@@ -16,38 +16,39 @@
 (defn -interceptor
   "Utility function to convert input into an interceptor. Works with functions,
   map and sequence of those."
-  [?interceptor schema options]
+  [?interceptor schema name transformer options]
   (cond
 
+    (m/-interceptor? ?interceptor)
+    ?interceptor
+
     (fn? ?interceptor)
-    {:enter ?interceptor}
+    (recur {:enter ?interceptor} schema name transformer options)
 
     (and (map? ?interceptor) (contains? ?interceptor :compile))
     (let [compiled (::compiled options 0)
           options (assoc options ::compiled (inc ^long compiled))]
       (when (>= ^long compiled ^long *max-compile-depth*)
         (m/-fail! ::too-deep-compilation {:this ?interceptor, :schema schema, :options options}))
-      (when-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema options)]
-        (merge
-         (dissoc ?interceptor :compile)
-         interceptor)))
+      (when-let [interceptor (-interceptor ((:compile ?interceptor) schema options) schema name transformer options)]
+        (recur (merge (dissoc ?interceptor :compile) interceptor) schema name transformer options)))
 
     (and (map? ?interceptor)
          (or (contains? ?interceptor :enter)
-             (contains? ?interceptor :leave))) ?interceptor
+             (contains? ?interceptor :leave)))
+    (-> ?interceptor (assoc :schema schema) (assoc :transformer transformer) (assoc :name name) (m/-interceptor))
 
     (coll? ?interceptor)
     (reduce
      (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
        (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
              leave (if (and leave new-leave) #(leave (new-leave %)) (or leave new-leave))]
-         {:enter enter :leave leave}))
-     (keep #(-interceptor % schema options) ?interceptor))
+         (-interceptor {:enter enter :leave leave} schema name transformer options)))
+     (keep #(-interceptor % schema name transformer options) ?interceptor))
 
     (nil? ?interceptor) nil
 
-    (ifn? ?interceptor)
-    {:enter ?interceptor}
+    (ifn? ?interceptor) (recur {:enter ?interceptor} schema name transformer options)
 
     :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
 
@@ -387,6 +388,7 @@
 (defn transformer [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
+                                          :name name
                                           :keys (when name
                                                   (cond-> [[(keyword key) name]]
                                                     (not (qualified-keyword? name))
@@ -394,22 +396,23 @@
         ->eval (fn [x options] (if (map? x) (reduce-kv (fn [x k v] (assoc x k (m/eval v options))) x x) (m/eval x)))
         ->chain (m/-comp m/-transformer-chain m/-into-transformer)
         chain (->> ?transformers (keep identity) (mapcat #(if (map? %) [%] (->chain %))) (vec))
-        chain' (->> chain (mapv #(let [name (:name %)]
-                                   {:decode (->data (:decoders %) (:default-decoder %) name "decode")
-                                    :encode (->data (:encoders %) (:default-encoder %) name "encode")})))]
-    (when (seq chain)
+        chain' (->> chain (mapv (fn [{:keys [name decoders encoders default-decoder default-encoder]}]
+                                  {:name name
+                                   :decode (->data decoders default-decoder name "decode")
+                                   :encode (->data encoders default-encoder name "encode")})))]
+    (when (seq chain')
       (reify
         m/Transformer
         (-transformer-chain [_] chain)
-        (-value-transformer [_ schema method options]
+        (-value-transformer [this schema method options]
           (reduce
-           (fn [acc {{:keys [keys default transformers]} method}]
+           (fn [acc {{:keys [keys name default transformers]} method}]
              (let [options (or options (m/options schema))
                    from (fn [f] #(some-> (get-in (f schema) %) (->eval options)))
                    from-properties (some-fn (from m/properties) (from m/type-properties))]
                (if-let [?interceptor (or (some from-properties keys) (get transformers (m/type schema)) default)]
-                 (let [interceptor (-interceptor ?interceptor schema options)]
-                   (if (nil? acc) interceptor (-interceptor [acc interceptor] schema options)))
+                 (let [interceptor (-interceptor ?interceptor schema name this options)]
+                   (if (nil? acc) interceptor (-interceptor [acc interceptor] schema [(:name acc) name] this options)))
                  acc))) nil chain'))))))
 
 (defn json-transformer
@@ -417,26 +420,28 @@
   ([{::keys [json-vectors
              keywordize-map-keys
              map-of-key-decoders] :or {map-of-key-decoders (-string-decoders)}}]
-   (transformer
-    {:name :json
-     :decoders (-> (-json-decoders)
-                   (assoc :map-of {:compile (fn [schema _]
-                                              (let [key-schema (some-> schema (m/children) (first))]
-                                                (or (some-> key-schema (m/type) map-of-key-decoders
-                                                            (-interceptor schema {}) (m/-intercepting)
-                                                            (m/-comp m/-keyword->string)
-                                                            (-transform-if-valid key-schema)
-                                                            (-transform-map-keys))
-                                                    (-transform-map-keys m/-keyword->string))))})
-                   (cond-> keywordize-map-keys
-                     (assoc :map {:compile (fn [schema _]
-                                             (let [keyword-keys (->> (mu/keys schema)
-                                                                     (filter keyword?)
-                                                                     (map name)
-                                                                     set)]
-                                               (-transform-map-keys keyword-keys -string->keyword)))}))
-                   (cond-> json-vectors (assoc :vector -sequential->vector)))
-     :encoders (-json-encoders)})))
+   (let [!this (atom nil)
+         this (transformer
+               {:name :json
+                :decoders (-> (-json-decoders)
+                              (assoc :map-of {:compile (fn [schema _]
+                                                         (let [key-schema (some-> schema (m/children) (first))]
+                                                           (or (some-> key-schema (m/type) map-of-key-decoders
+                                                                       (-interceptor schema @!this :json nil) (m/-intercepting)
+                                                                       (m/-comp m/-keyword->string)
+                                                                       (-transform-if-valid key-schema)
+                                                                       (-transform-map-keys))
+                                                               (-transform-map-keys m/-keyword->string))))})
+                              (cond-> keywordize-map-keys
+                                (assoc :map {:compile (fn [schema _]
+                                                        (let [keyword-keys (->> (mu/keys schema)
+                                                                                (filter keyword?)
+                                                                                (map name)
+                                                                                set)]
+                                                          (-transform-map-keys keyword-keys -string->keyword)))}))
+                              (cond-> json-vectors (assoc :vector -sequential->vector)))
+                :encoders (-json-encoders)})]
+     (reset! !this this))))
 
 (defn string-transformer []
   (transformer

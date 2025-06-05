@@ -1,6 +1,6 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
-  #?(:cljs (:require-macros malli.core))
+  #?(:cljs (:require-macros malli.core malli.impl.util))
   (:require #?(:clj [clojure.walk :as walk])
             [clojure.core :as c]
             [malli.impl.regex :as re]
@@ -277,13 +277,14 @@
 ;; registry
 ;;
 
-(defn- -register-var [registry ?v]
-  (let [[v pred] (if (vector? ?v) ?v [?v @?v])
-        name (-> v meta :name)
-        schema (-simple-schema {:type name, :pred pred})]
-    (-> registry
-        (assoc name schema)
-        (assoc @v schema))))
+(defn- -register-var
+  ([registry vname vval]
+   (-register-var registry vname vval vval))
+  ([registry vname vval pred]
+   (let [schema (-simple-schema {:type vname, :pred pred})]
+     (-> registry
+         (assoc vname schema)
+         (assoc vval schema)))))
 
 (defn -registry {:arglists '([] [{:keys [registry]}])}
   ([] default-registry)
@@ -2669,19 +2670,21 @@
   (fn [schema _ children _]
     (f (-set-children schema children))))
 
-;;
+
 ;; registry
-;;
 
 (defn predicate-schemas []
   (let [-safe-empty? (fn [x] (and (seqable? x) (empty? x)))]
-    (->> [#'any? #'some? #'number? #'integer? #'int? #'pos-int? #'neg-int? #'nat-int? #'pos? #'neg? #'float? #'double?
-          #'boolean? #'string? #'ident? #'simple-ident? #'qualified-ident? #'keyword? #'simple-keyword?
-          #'qualified-keyword? #'symbol? #'simple-symbol? #'qualified-symbol? #'uuid? #'uri? #'inst? #'seqable?
-          #'indexed? #'map? #'vector? #'list? #'seq? #'char? #'set? #'nil? #'false? #'true?
-          #'zero? #'coll? [#'empty? -safe-empty?] #'associative? #'sequential? #'ifn? #'fn?
-          #?@(:clj [#'rational? #'ratio? #'bytes? #'decimal?])]
-         (reduce -register-var {}))))
+    ;; We go through all this trouble instead of simply using #' var quoting
+    ;; because CLJS compiler produces a lot of redundant noise for quoted vars.
+    (-> (malli.impl.util/predicate-schemas*
+         [any? some? number? integer? int? pos-int? neg-int? nat-int? pos? neg? float? double?
+          boolean? string? ident? simple-ident? qualified-ident? keyword? simple-keyword?
+          qualified-keyword? symbol? simple-symbol? qualified-symbol? uuid? uri? inst? seqable?
+          indexed? map? vector? list? seq? char? set? nil? false? true?
+          zero? coll? associative? sequential? ifn? fn?
+          #?@(:clj [rational? ratio? bytes? decimal?])])
+        (-register-var 'empty? empty? -safe-empty?))))
 
 (defn class-schemas []
   {#?(:clj  Pattern,

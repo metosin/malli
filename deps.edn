@@ -26,7 +26,7 @@
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "eb94e46853d90153ba6dc72a4093719f38a90a4a"}}}
-           :clojure-11 {:extra-deps {org.clojure/clojure {:mvn/version "1.12.1"}}}
+           :clojure-11 {:extra-deps {org.clojure/clojure {:mvn/version "1.11.3"}}}
            :clojure-12 {}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.9.45"}}}
            :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/tag "v0.4.28" :git/sha "81ad8d3"}}}

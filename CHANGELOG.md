@@ -16,7 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-## 0.19.0 (2025-06-08)
+## 0.19.0 (2025-06-09)
 
 * **BREAKING** FIX: `json-transformer` is now better at inferring en/decoders for `:enum` and `:=`. [#1205](https://github.com/metosin/malli/pull/1205)
   * For example `[:enum 1 2 3]` gets encoded as a JSON number, not a string.

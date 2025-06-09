@@ -2,6 +2,11 @@
 
 1. Make sure `CHANGELOG.md` mentions all relevant unreleased changes
 2. Recommended: update dependencies `clj -M:outdated --upgrade`
+   * Gotchas:
+    * The script tries to upgrade :clojure-11 alias as well. This
+      should not be done, as it is used to test the compatibility with
+      clojure 11
+    * If shadow-cljs is updgraded, remember to update package.json as well
    * Make a PR out of this to get the CI to run all the tests!
 3. Pick a new version number. Remember: we use [BreakVer](https://www.taoensso.com/break-versioning)
 4. Set the version number

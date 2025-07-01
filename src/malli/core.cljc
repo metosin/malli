@@ -1778,10 +1778,18 @@
             (fn explain [x in acc]
               (try
                 (if-not (f x)
-                  (conj acc (miu/-error path in this x))
+                  (let [error-path-prop (:error/path properties)
+                        error-path (if (fn? error-path-prop)
+                                     (error-path-prop {:data x :path path :in in :schema this})
+                                     error-path-prop)]
+                    (conj acc (miu/-error (or error-path path) in this x)))
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
-                  (conj acc (miu/-error path in this x (:type (ex-data e))))))))
+                  (let [error-path-prop (:error/path properties)
+                        error-path (if (fn? error-path-prop)
+                                     (error-path-prop {:data x :path path :in in :schema this})
+                                     error-path-prop)]
+                    (conj acc (miu/-error (or error-path path) in this x (:type (ex-data e)))))))))
           (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-transformer [this transformer method options]
@@ -2238,12 +2246,22 @@
               (fn explain [x in acc]
                 (if (not (fn? x))
                   (conj acc (miu/-error path in this x))
-                  (if-let [res (checker x)]
-                    (conj acc (assoc (miu/-error path in this x) :check res))
-                    acc)))
+                    (if-let [res (checker x)]
+                      (let [error-path-prop (:error/path properties)
+                            error-path (if (fn? error-path-prop)
+                                         (error-path-prop {:data x :path path :in in :schema this})
+                                         error-path-prop)]
+                        (conj acc (assoc (miu/-error (or error-path path) in this x) :check res)))
+                      acc)))
               (let [validator (-validator this)]
                 (fn explain [x in acc]
-                  (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
+                  (if-not (validator x)
+                    (let [error-path-prop (:error/path properties)
+                          error-path (if (fn? error-path-prop)
+                                       (error-path-prop {:data x :path path :in in :schema this})
+                                       error-path-prop)]
+                      (conj acc (miu/-error (or error-path path) in this x)))
+                    acc)))))
           (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
           (-transformer [_ _ _ _])

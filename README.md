@@ -957,6 +957,31 @@ Errors can be targeted using `:error/path` property:
 ;; => {:password2 ["passwords don't match"]}
 ```
 
+And `:error/path` can also be a function, allowing the error path to be determined dynamically based on the data and context:
+
+```clojure
+(-> [:and [:map
+           [:password :string]
+           [:password2 :string]]
+     [:fn {:error/message "passwords don't match"
+           :error/path (fn [{:keys [data path in schema]}]
+                          (if (contains? data :password2)
+                            [:password2]
+                            [:password]))}
+       (fn [{:keys [password password2]}]
+         (= password password2))]]
+    (m/explain {:password "secret"
+                :password2 "faarao"})
+    (me/humanize))
+;; => {:password2 ["passwords don't match"]}
+```
+
+The function receives a map with the following keys:
+- `:data`   – the value being validated
+- `:path`   – the current error path
+- `:in`     – the input path (for advanced use)
+- `:schema` – the current schema instance
+
 By default, only direct erroneous schema properties are used:
 
 ```clojure

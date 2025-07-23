@@ -171,7 +171,7 @@
         ;; delete the old files if they exist (does not throw)
         (.delete (apply io/file (conj
                                  (get options :clj-kondo-dir-path [])
-                                 ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn"))])
+                                 ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")))
         (.delete (apply io/file (conj
                                  (get options :clj-kondo-dir-path [])
                                  ".clj-kondo" "configs" "malli" "config.edn")))

@@ -145,9 +145,27 @@
 
 (defn -transform [?schema options] (m/walk ?schema -walk options))
 
+#?(:clj
+   (defn -file-in-kondo-dir [options & paths]
+     (apply io/file (into (get options :clj-kondo-dir-path []) paths))))
+
+(defn -types-dir-name
+  "Creates a directory name such as `malli-types-cljs` or `malli-types-clj`."
+  [key]
+  (str "malli-types-" (name key)))
+
 ;;
 ;; public api
 ;;
+
+(defn clean!
+  "Cleans existing configurations from .clj-kondo directory"
+  ([options]
+   (clean! :clj options))
+  ([key options]
+   ;; delete the old files if they exist (does not throw)
+   (.delete (-file-in-kondo-dir options ".clj-kondo" "metosin" (-types-dir-name key) "config.edn"))
+   (.delete (-file-in-kondo-dir options ".clj-kondo" "configs" "malli" "config.edn"))))
 
 (defn transform
   ([?schema]
@@ -164,17 +182,9 @@
      ([config key]
       (save! config key nil))
      ([config key options]
-      (let [cfg-file (apply io/file (conj
-                                     (get options :clj-kondo-dir-path [])
-                                     ;; Creates a file like malli-types-cljs or malli-types-clj.
-                                     ".clj-kondo" "imports" "metosin" (str "malli-types-" (name key)) "config.edn"))]
-        ;; delete the old files if they exist (does not throw)
-        (.delete (apply io/file (conj
-                                 (get options :clj-kondo-dir-path [])
-                                 ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")))
-        (.delete (apply io/file (conj
-                                 (get options :clj-kondo-dir-path [])
-                                 ".clj-kondo" "configs" "malli" "config.edn")))
+      (let [malli-types-dir (-types-dir-name key)
+            cfg-file (-file-in-kondo-dir options ".clj-kondo" "imports" "metosin" malli-types-dir "config.edn")]
+        (clean! key options)
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
         config))))

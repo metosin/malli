@@ -161,6 +161,6 @@
 #?(:clj
    (deftest fix-1083
      (clj-kondo/emit! {:key "value"})
-     (let [data (edn/read-string (slurp (io/file ".clj-kondo/metosin/malli-types-clj/config.edn")))]
+     (let [data (edn/read-string (slurp (io/file ".clj-kondo/imports/metosin/malli-types-clj/config.edn")))]
        (is (map? data))
        (is (= [:linters] (keys data))))))

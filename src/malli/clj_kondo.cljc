@@ -166,8 +166,12 @@
      ([config key options]
       (let [cfg-file (apply io/file (conj
                                      (get options :clj-kondo-dir-path [])
-                                     ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn"))]
-        ;; delete the old file if exists (does not throw)
+                                     ;; Creates a file like malli-types-cljs or malli-types-clj.
+                                     ".clj-kondo" "imports" "metosin" (str "malli-types-" (name key)) "config.edn"))]
+        ;; delete the old files if they exist (does not throw)
+        (.delete (apply io/file (conj
+                                 (get options :clj-kondo-dir-path [])
+                                 ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")))
         (.delete (apply io/file (conj
                                  (get options :clj-kondo-dir-path [])
                                  ".clj-kondo" "configs" "malli" "config.edn")))

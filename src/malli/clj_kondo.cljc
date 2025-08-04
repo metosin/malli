@@ -187,7 +187,6 @@
       (save! config key nil))
      ([config key options]
       (let [cfg-file (-config-file-path key options)]
-        (clean! key options)
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
         config))))

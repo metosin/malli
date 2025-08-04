@@ -3293,7 +3293,7 @@ Generating `clj-kondo` configuration from current namespace:
 ;                             :ret :int}}}}}}}}
 ```
 
-Emitting confing into `./.clj-kondo/configs/malli/config.edn`:
+Emitting config into `./.clj-kondo/imports/metosin/malli-types-clj/config.edn`:
 
 <!-- :test-doc-blocks/skip -->
 ```clojure

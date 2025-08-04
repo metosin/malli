@@ -154,6 +154,9 @@
   [key]
   (str "malli-types-" (name key)))
 
+(defn -config-file-path [key options]
+  (-file-in-kondo-dir options ".clj-kondo" "imports" "metosin" (-types-dir-name key) "config.edn"))
+
 ;;
 ;; public api
 ;;
@@ -163,7 +166,8 @@
   ([options]
    (clean! :clj options))
   ([key options]
-   ;; delete the old files if they exist (does not throw)
+   (.delete (-config-file-path key options))
+   ;; These are remnants from old locations where malli used to store the configuration files
    (.delete (-file-in-kondo-dir options ".clj-kondo" "metosin" (-types-dir-name key) "config.edn"))
    (.delete (-file-in-kondo-dir options ".clj-kondo" "configs" "malli" "config.edn"))))
 
@@ -182,8 +186,7 @@
      ([config key]
       (save! config key nil))
      ([config key options]
-      (let [malli-types-dir (-types-dir-name key)
-            cfg-file (-file-in-kondo-dir options ".clj-kondo" "imports" "metosin" malli-types-dir "config.edn")]
+      (let [cfg-file (-config-file-path key options)]
         (clean! key options)
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))

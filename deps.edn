@@ -4,7 +4,7 @@
         borkdude/edamame {:mvn/version "1.4.30"}
         org.clojure/test.check {:mvn/version "1.1.1"}
         ;; pretty errors, optional deps
-        fipp/fipp {:mvn/version "0.6.27"}
+        fipp/fipp {:mvn/version "0.6.29"}
         mvxcvi/arrangement {:mvn/version "2.1.0"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.15"}

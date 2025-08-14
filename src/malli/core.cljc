@@ -558,7 +558,12 @@
 
 (defn -intercepting
   ([interceptor] (-intercepting interceptor nil))
-  ([{:keys [enter leave]} f] (some->> [leave f enter] (keep identity) (seq) (apply -comp))))
+  ([{:keys [enter leave]} f]
+   (letfn [(comp2 [a b] (and a b (-comp a b)))]
+     (or (and leave f enter (-comp leave f enter))             ;; All 3 present
+         (comp2 leave f) (comp2 f enter) (comp2 leave enter)   ;; 2 present
+         leave f enter                                         ;; 1 present
+         nil))))
 
 (defn -into-transformer [x]
   (cond

@@ -153,7 +153,21 @@
 #?(:cljs (defn- pr-writer-schema [obj writer opts]
            (-pr-writer (-form ^Schema obj) writer opts)))
 
-(defrecord Tag [key value])
+(defrecord Tag [key value]
+  clojure.lang.Indexed
+  (nth [_ i]
+    (case (long i)
+      0 key
+      1 value
+      (let [message "wrong tag index"]
+        (throw
+         #?(:clj (new IndexOutOfBoundsException message)
+            :cljs (new js/Error message))))))
+  (nth [_ i not-found]
+    (case (long i)
+      0 key
+      1 value
+      not-found)))
 
 (defn tag
   "A tagged value, used eg. for results of `parse` for `:orn` schemas."

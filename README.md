@@ -2581,6 +2581,23 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
 ;; => #malli.core.Tag{:key :malli.core/default, :value {:type "sized", :size 1}}
 ```
 
+The function `old-parse-format` transforms the new parsing format to the old
+one prior to version 0.18.0:
+
+```clojure
+(-> [:* [:catn
+         [:prop :string]
+         [:val [:altn
+                [:s :string]
+                [:b :boolean]]]]]
+    (m/parse ["-server" "foo" "-verbose" true "-user" "joe"])
+    (m/old-parse-format))
+
+[{:prop "-server" :val [:s "foo"]}
+ {:prop "-verbose" :val [:b true]}
+ {:prop "-user" :val [:s "joe"]}]
+```
+
 ## Unparsing values
 
 The inverse of parsing, using `m/unparse` and `m/unparser`:

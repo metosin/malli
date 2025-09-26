@@ -1236,19 +1236,13 @@
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
-      (testing "tag nth support"
-        (let [tag (m/parse schema valid1)
-              [k v x] tag]
-          (is (= :sized k))
-          (is (= valid1 v))
-          (is (nil? x))
-          (try
-            (nth tag 99)
-            (is false "should throw")
-            (catch #?(:clj IndexOutOfBoundsException
-                      :cljs js/Error) e
-              (is (= "wrong tag index"
-                     (ex-message e)))))))
+      (testing "old parse format"
+        (let [tag (m/parse [:orn
+                            [:foo [:catn [:i :int] [:s :string]]]
+                            [:bar :uuid]]
+                           [1 "a"])
+              old (m/old-parse-format tag)]
+          (is (= [:foo {:i 1 :s "a"}] old))))
 
       (testing "ast"
         (is (= {:type :multi,

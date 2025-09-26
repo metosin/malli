@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
   #?(:cljs (:require-macros malli.core malli.impl.util))
-  (:require #?(:clj [clojure.walk :as walk])
+  (:require [clojure.walk :as walk]
             [clojure.core :as c]
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]
@@ -173,6 +173,18 @@
 (defn tags?
   "Is this a value constructed with `tags`?"
   [x] (instance? Tags x))
+
+(defn old-parse-format
+  "Transform the new parsing format to the old one by
+   replacing Tag and Tags objects with their content."
+  [parsed]
+  (walk/postwalk
+   (fn [x]
+     (cond
+       (tag? x) [(:key x) (:value x)]
+       (tags? x) (:values x)
+       :else x))
+   parsed))
 
 ;;
 ;; impl

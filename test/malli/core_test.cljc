@@ -1236,6 +1236,14 @@
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
 
+      (testing "old parse format"
+        (let [tag (m/parse [:orn
+                            [:foo [:catn [:i :int] [:s :string]]]
+                            [:bar :uuid]]
+                           [1 "a"])
+              old (m/old-parse-format tag)]
+          (is (= [:foo {:i 1 :s "a"}] old))))
+
       (testing "ast"
         (is (= {:type :multi,
                 :keys {:sized {:order 0,

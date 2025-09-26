@@ -1,7 +1,7 @@
 (ns malli.core
   (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
   #?(:cljs (:require-macros malli.core malli.impl.util))
-  (:require #?(:clj [clojure.walk :as walk])
+  (:require [clojure.walk :as walk]
             [clojure.core :as c]
             [malli.impl.regex :as re]
             [malli.impl.util :as miu]

@@ -2605,9 +2605,9 @@ Which schema is used for parsing is usually chosen automatically.
 
 ```clojure
 (m/parse [:and [:orn [:left :int] [:right :int]] [:fn number?]] 1)
-; => #malli.core.Tag{:key :left, :value 1}
+;; => #malli.core.Tag{:key :left, :value 1}
 (m/parse [:and [:fn number?] [:orn [:left :int] [:right :int]]] 1)
-; => #malli.core.Tag{:key :left, :value 1}
+;; => #malli.core.Tag{:key :left, :value 1}
 ```
 
 The error `:malli.core/and-schema-multiple-transforming-parsers` is thrown if the transforming
@@ -2615,10 +2615,11 @@ parser cannot be picked automatically. This usually means that multiple conjunct
 will transform their input or a false-positive has occurred because the underlying schema
 does not implement `malli.core/ParserInfo`.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/parser [:and [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])
-; Execution error (ExceptionInfo) at malli.core/-exception (core.cljc:189).
-; :malli.core/and-schema-multiple-transforming-parsers
+;; Execution error (ExceptionInfo) at malli.core/-exception (core.cljc:189).
+;; :malli.core/and-schema-multiple-transforming-parsers
 ```
 
 There are several ways to resolve this.
@@ -2632,19 +2633,19 @@ To opt-out of parsing any further levels of this schema, use the `:parse :none` 
           [:map [:left [:orn [:one :int]]]]
           [:map [:right [:orn [:one :int]]]]]
          {:left 1 :right 1})
-; => {:left #malli.core.Tag{:key :one, :value 1}, :right 1}
+;; => {:left #malli.core.Tag{:key :one, :value 1}, :right 1}
 
 (m/parse [:and {:parse 1}
           [:map [:left [:orn [:one :int]]]]
           [:map [:right [:orn [:one :int]]]]]
          {:left 1 :right 1})
-; => {:left 1, :right #malli.core.Tag{:key :one, :value 1}}
+;; => {:left 1, :right #malli.core.Tag{:key :one, :value 1}}
 
 (m/parse [:and {:parse :none}
           [:map [:left [:orn [:one :int]]]]
           [:map [:right [:orn [:one :int]]]]]
          {:left 1 :right 1})
-; => {:left 1, :right 1}
+;; => {:left 1, :right 1}
 ```
 
 To parse all conjuncts, you must migrate the schema to `:andn`. This involves tagging each conjunct
@@ -2660,13 +2661,13 @@ Only the left-most child will be unparsed, useful if you plan to modify the resu
    [:flat [:vector [:orn [:name :string] [:id :int]]]]])
 
 (m/parse Paired+Flat ["x" 1 "y" 2])
-; => #malli.core.Tags{:values
-;      {:paired [#malli.core.Tags{:values {:name "x", :id 1}}
-;                #malli.core.Tags{:values {:name "y", :id 2}}],
-;       :flat [#malli.core.Tag{:key :name, :value "x"}
-;              #malli.core.Tag{:key :id, :value 1}
-;              #malli.core.Tag{:key :name, :value "y"}
-;              #malli.core.Tag{:key :id, :value 2}]}}
+;; => #malli.core.Tags{:values
+;;      {:paired [#malli.core.Tags{:values {:name "x", :id 1}}
+;;                #malli.core.Tags{:values {:name "y", :id 2}}],
+;;       :flat [#malli.core.Tag{:key :name, :value "x"}
+;;              #malli.core.Tag{:key :id, :value 1}
+;;              #malli.core.Tag{:key :name, :value "y"}
+;;              #malli.core.Tag{:key :id, :value 2}]}}
 
 (as-> ["x" 1 "y" 2] $
   (m/parse Paired+Flat $)
@@ -2676,7 +2677,7 @@ Only the left-most child will be unparsed, useful if you plan to modify the resu
             {:paired (map-indexed (fn [i p] (update-in p [:values :id] * (+ 2 i) (count flat)))
                                   (rseq paired))}))
   (m/unparse Paired+Flat $))
-["y" 16 "x" 12]
+;; => ["y" 16 "x" 12]
 ```
 
 ## Unparsing values

@@ -120,11 +120,8 @@
 
   ParserInfo
   (-parser-info [this]
-    (when (schema? this)
-      (if (-ref-schema? this)
-        (-parser-info (-deref this))
-        (when (-> this -parent -type-properties ::simple-parser)
-          {:simple-parser true}))))
+    (when (-ref-schema? this)
+      (-parser-info (-deref this))))
 
   RegexSchema
   (-regex-op? [_] false)
@@ -752,7 +749,7 @@
         (-from-ast [parent ast options] (from-ast parent ast options))
         IntoSchema
         (-type [_] type)
-        (-type-properties [_] (assoc type-properties ::simple-parser true))
+        (-type-properties [_] type-properties)
         (-properties-schema [_ _])
         (-children-schema [_ _])
         (-into-schema [parent properties children options]
@@ -789,6 +786,8 @@
                 (-keep [_])
                 (-get [_ _ default] default)
                 (-set [this key _] (-fail! ::non-associative-schema {:schema this, :key key}))
+                ParserInfo
+                (-parser-info [_] {:simple-parser true})
                 #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))])))))
         #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))))
 
@@ -820,11 +819,10 @@
             cache (-create-cache options)
             transforming-parser (delay
                                   (let [transforming-parsers (or (when-some [[_ i] (find properties :parse/transforming-child)]
-                                                                   (or (when (= :none i)
-                                                                         [])
-                                                                       (when-not (and (nat-int? i) (< i (count children)))
-                                                                         (-fail! ::and-schema-invalid-parse-property {:schema @form}))
-                                                                       [i]))
+                                                                   (cond
+                                                                     (= :none i) []
+                                                                     (and (nat-int? i) (< i (count children))) [i]
+                                                                     :else (-fail! ::and-schema-invalid-parse-property {:schema @form})))
                                                                  (into []
                                                                        (keep-indexed
                                                                          (fn [i c]
@@ -1088,7 +1086,7 @@
     (-from-ast [parent ast options] (-from-child-ast parent ast options))
     IntoSchema
     (-type [_] :not)
-    (-type-properties [_] {::simple-parser true})
+    (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children options]
@@ -1122,6 +1120,8 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser true})
           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
@@ -1632,7 +1632,7 @@
     (-from-ast [parent ast options] (-into-schema parent (:properties ast) (:values ast) options))
     IntoSchema
     (-type [_] :enum)
-    (-type-properties [_] {::simple-parser true})
+    (-type-properties [_])
     (-into-schema [parent properties children options]
       (-check-children! :enum properties children 1 nil)
       (let [children (vec children)
@@ -1667,6 +1667,8 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser true})
           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
@@ -1677,7 +1679,7 @@
     (-from-ast [parent ast options] (-from-value-ast parent ast options))
     IntoSchema
     (-type [_] :re)
-    (-type-properties [_] {::simple-parser true})
+    (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties [child :as children] options]
@@ -1719,6 +1721,8 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser true})
           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
@@ -1729,7 +1733,7 @@
     (-from-ast [parent ast options] (-from-value-ast parent ast options))
     IntoSchema
     (-type [_] :fn)
-    (-type-properties [_] {::simple-parser true})
+    (-type-properties [_])
     (-into-schema [parent properties children options]
       (-check-children! :fn properties children 1 1)
       (let [children (vec children)
@@ -1766,6 +1770,8 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser true})
           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
@@ -2071,7 +2077,7 @@
                                         guard (conj (from-ast guard))) options))
     IntoSchema
     (-type [_] :=>)
-    (-type-properties [_] {::simple-parser true})
+    (-type-properties [_])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
       (-check-children! :=> properties children 2 3)
       (let [[input output guard :as children] (-vmap #(schema % options) children)
@@ -2152,6 +2158,8 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser true})
           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 
@@ -2159,7 +2167,7 @@
   ^{:type ::into-schema}
   (reify IntoSchema
     (-type [_] :function)
-    (-type-properties [_] {::simple-parser true})
+    (-type-properties [_])
     (-properties-schema [_ _])
     (-children-schema [_ _])
     (-into-schema [parent properties children {::keys [function-checker] :as options}]
@@ -2224,6 +2232,8 @@
           (-keep [_])
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
+          ParserInfo
+          (-parser-info [_] {:simple-parser true})
           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))])))
 

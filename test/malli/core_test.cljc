@@ -2386,8 +2386,7 @@
                 :json-schema/type "integer"
                 :json-schema/format "int64"
                 :json-schema/minimum 6
-                :gen/gen generate-over6
-                ::m/simple-parser true}
+                :gen/gen generate-over6}
                (m/type-properties over6)))
         (is (= {:json-schema/example 42}
                (m/properties over6))))))
@@ -2418,8 +2417,7 @@
                     :decode/string mt/-string->long
                     :json-schema/type "integer"
                     :json-schema/format "int64"
-                    :json-schema/minimum 6
-                    ::m/simple-parser true}
+                    :json-schema/minimum 6}
                    (m/type-properties schema)))
             (is (= {:value 6}
                    (m/properties schema))))))
@@ -2436,8 +2434,7 @@
                     :decode/string mt/-string->long
                     :json-schema/type "integer"
                     :json-schema/format "int64"
-                    :json-schema/minimum 42
-                    ::m/simple-parser true}
+                    :json-schema/minimum 42}
                    (m/type-properties schema)))
             (is (= {:value 42}
                    (m/properties schema)))))))))

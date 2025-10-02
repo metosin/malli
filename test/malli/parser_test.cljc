@@ -82,7 +82,10 @@
 
 (def transforming-parser-schemas
   "Schemas with transforming parsers."
-  [[:andn [:any :any]] [:catn [:any :any]] [:seqable [:catn [:any :any]]] [:multi {:dispatch #'any?} [true :any]]])
+  [[:andn [:any :any]]
+   [:catn [:any :any]]
+   [:seqable [:catn [:any :any]]]
+   [:multi {:dispatch #'any?} [true :any]]])
 
 (defn ensure-parser-type [expected-simple s]
   #?(:bb nil ;; test.chuck doesn't work in bb
@@ -90,7 +93,7 @@
                     parse (m/parser s)
                     unparse (m/parser s)]
                 (if expected-simple
-                  (doseq [g (is (doall (mg/sample s)))]
+                  (doseq [g (mg/sample s)]
                     (testing (pr-str g)
                       (let [p (parse g)]
                         (is (identical? g p))
@@ -125,6 +128,15 @@
                                               (symbol "::HOLE") (list 'm/schema hole))}))
         (is (= expected-simple (simple-parser? s)))
         (ensure-parser-type expected-simple s)))))
+
+;;seems to fail cljs
+(deftest map-special-case-test
+  (let [s [:map [:foo :any] [:bar :int]]
+        parse (m/parser s)
+        unparse (m/unparser s)
+        g {:foo ##NaN :bar -4}
+        p (parse g)]
+    (is (identical? g p))))
 
 (deftest and-complex-parser-test
   (is (= {} (m/parse [:and :map [:fn map?]] {})))

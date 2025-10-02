@@ -33,7 +33,7 @@ We can define Schemas using `def`:
              :lonlat [61.5014816, 23.7678986]}})
 
 (m/validate User user)
-; => true
+;; => true
 ```
 
 All subschemas as inlined as values:
@@ -81,7 +81,7 @@ Registering Schemas:
                    [:address ::address]])
 
 (m/validate ::user user)
-; => true
+;; => true
 ```
 
 By default, reference keys are used instead of values:
@@ -98,8 +98,8 @@ We can recursively deref the Schema to get the values:
 ;[:map
 ; [:id :uuid]
 ; [:name :string]
-; [:address [:map 
-;            [:street :string] 
+; [:address [:map
+;            [:street :string]
 ;            [:lonlat [:tuple :double :double]]]]]
 ```
 
@@ -123,8 +123,8 @@ Clojure Spec declared [map specs should be of keysets only](https://clojure.org/
 ;[:map
 ; [:user/id :uuid]
 ; [:user/name :string]
-; [:user/address [:map 
-;                 [:user/street :string] 
+; [:user/address [:map
+;                 [:user/street :string]
 ;                 [:user/latlon [:tuple :double :double]]]]]
 
 ;; data has a different shape now
@@ -132,7 +132,7 @@ Clojure Spec declared [map specs should be of keysets only](https://clojure.org/
                     ::name "Maija"
                     ::address {::street "Kuninkaankatu 13"
                                ::latlon [61.5014816, 23.7678986]}})
-; => true
+;; => true
 ```
 
 ## Schemas via Local Registries
@@ -165,13 +165,13 @@ Using registry via options:
 ```
 
 Works with both:
-
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/deref-recursive *1)
 ;[:map
 ; [:id :uuid]
 ; [:name :string]
-; [:address [:map 
+; [:address [:map
 ;            [:street :string]
 ;            [:lonlat [:tuple :double :double]]]]]
 ```
@@ -187,7 +187,7 @@ Here's a comparison matrix of the two different ways:
 | Support Recursive Schemas        |  ✅   |        ✅        |       ✅        |
 | Decomplect Maps, Keys and Values |  ❌   |        ✅        |       ✅        |
 
-You should pick the way what works best for your project. 
+You should pick the way what works best for your project.
 
 [My](https://gist.github.com/ikitommi) personal preference is the Var-style - it's simple and Plumatic proved it works well even with large codebases.
 
@@ -196,6 +196,7 @@ You should pick the way what works best for your project.
 1. Could we also decomplect the Maps, Keys and Values with the Var Style?
 2. Utilities for transforming between inlined and referenced models (why? why not!)
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (-flatten-refs
  [:schema {:registry {::user-id :uuid
@@ -225,4 +226,3 @@ You should pick the way what works best for your project.
 ;                             [:address ::address]]}}
 ; ::user]
 ```
-

@@ -1029,6 +1029,15 @@
           (is (= expected-decoded-value decoded-value))
           (is (m/validate schema decoded-value))))
 
+      (testing "JSON transformer maintains type of map"
+        (let [schema [:map [:a :keyword] [:b :string]]
+              value (sorted-map "a" "x" "b" "y")
+              expected-decoded-value (sorted-map :a :x :b "y")
+              decoded-value (m/decode schema value (mt/json-transformer {::mt/keywordize-map-keys true}))]
+          (is (sorted? decoded-value))
+          (is (= expected-decoded-value decoded-value))
+          (is (m/validate schema decoded-value))))
+
       (is (= {:x 32}
              (m/decode
               [:map {:decode/string '{:enter #(update % :x inc), :leave #(update % :x (partial * 2))}}
@@ -1226,6 +1235,14 @@
                 (mt/transformer {:name :string-upper})))))
 
       (is (true? (m/validate (over-the-wire schema) valid1)))
+
+      (testing "old parse format"
+        (let [tag (m/parse [:orn
+                            [:foo [:catn [:i :int] [:s :string]]]
+                            [:bar :uuid]]
+                           [1 "a"])
+              old (m/old-parse-format tag)]
+          (is (= [:foo {:i 1 :s "a"}] old))))
 
       (testing "ast"
         (is (= {:type :multi,
@@ -3615,3 +3632,11 @@
                                 (update-in [:values :f] inc)
                                 (update :values dissoc :o)))))
       (is (= ::m/invalid (m/unparse s (update p :values dissoc :o :f)))))))
+
+(deftest pr-str-test
+  (testing "print IntoSchema"
+    (is (= "#IntoSchema {:type :and}"
+           (pr-str (m/-and-schema)))))
+  (testing "print Schema"
+    (is (= "[:map [:x :int]]"
+           (pr-str (m/schema [:map [:x :int]]))))))

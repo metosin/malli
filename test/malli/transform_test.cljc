@@ -264,7 +264,17 @@
       (is (= {:c1 "1", ::c2 "kikka"} (m/encode [:map [:c1 int?] [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/string-transformer)))
       (is (= {:c1 1, ::c2 "kikka"} (m/encode [:map [::c2 keyword?]] {:c1 1, ::c2 :kikka} mt/json-transformer)))
       (is (= nil (m/encode [:map] nil mt/string-transformer)))
-      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer)))))
+      (is (= ::invalid (m/encode [:map] ::invalid mt/json-transformer))))
+    (testing "keep original type"
+      (let [decoded (m/decode [:map [:a :int]] (sorted-map :a "1") mt/string-transformer)]
+        (is (= {:a 1} decoded))
+        (is (sorted? decoded)))
+      (let [decoded (m/decode [:map [:a :keyword]] (sorted-map :a "x") mt/json-transformer)]
+        (is (= {:a :x} decoded))
+        (is (sorted? decoded)))
+      (let [decoded (m/decode [:map [:a :keyword]] (sorted-map "a" "x") (mt/json-transformer {::mt/keywordize-map-keys true}))]
+        (is (= {:a :x} decoded))
+        (is (sorted? decoded)))))
 
   (testing "map-of"
     (is (= {1 :abba, 2 :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", "2" "jabba"} mt/string-transformer)))
@@ -273,7 +283,34 @@
       (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer)))
       (is (= {1 :abba, :xyz :jabba} (m/decode [:map-of int? keyword?] {"1" "abba", :xyz "jabba"} mt/json-transformer))))
     (is (= nil (m/decode [:map-of int? keyword?] nil mt/string-transformer)))
-    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer))))
+    (is (= ::invalid (m/decode [:map-of int? keyword?] ::invalid mt/json-transformer)))
+
+    (testing "keep original type"
+      (let [input-1    (sorted-map "a" "b")
+            input-2    (sorted-map :a "b")
+
+            result-1-a (m/decode [:map-of :string :string] input-1 mt/string-transformer)
+            result-1-b (m/decode [:map-of :string :string] input-1 mt/json-transformer)
+
+            result-2-a (m/decode [:map-of :keyword :string] input-1 mt/string-transformer)
+            result-2-b (m/decode [:map-of :keyword :string] input-1 mt/json-transformer)
+
+            result-3-a (m/decode [:map-of :string :string] input-2 mt/string-transformer)
+            result-3-b (m/decode [:map-of :string :string] input-2 mt/json-transformer)]
+
+        (is (sorted? result-1-a))
+        (is (sorted? result-1-b))
+        (is (sorted? result-2-a))
+        (is (sorted? result-2-b))
+        (is (sorted? result-3-a))
+        (is (sorted? result-3-b))
+
+        (is (= input-1 result-1-a))
+        (is (= input-1 result-1-b))
+        (is (= input-2 result-2-a))
+        (is (= input-2 result-2-b))
+        (is (= input-1 result-3-a))
+        (is (= input-1 result-3-b)))))
 
   (testing "maybe"
     (testing "decode"
@@ -1031,10 +1068,13 @@
         (is (= {:first 'one, :second 'two} (m/encode schema {} transformer)))
         (is (= ['one 'two] @seen)))))
 
-  (testing ":default/fn property on schema"
-    (let [schema [:string {:default/fn (fn [] "called")}]]
-      (is (= "called" (m/decode schema nil mt/default-value-transformer)))))
-
+  (testing ":default/fn property"
+    (testing "on schema"
+      (let [schema [:string {:default/fn (fn [] "called")}]]
+        (is (= "called" (m/decode schema nil mt/default-value-transformer)))))
+    (testing "on map entry"
+      (let [schema [:map [:s {:default/fn (fn [] "called")} :string]]]
+        (is (= {:s "called"} (m/decode schema {} mt/default-value-transformer))))))
   (testing ":refs"
     (let [opts {:registry (mr/composite-registry m/default-registry
                                                  {"bing" :int})}
@@ -1088,41 +1128,104 @@
              (m/encode schema $ mt/string-transformer)
              (m/decode schema $ mt/string-transformer))))))
 
-(deftest inferring-child-decoders-test
-  (let [schema [:map
-                [:enum1 [:enum :kikka :kukka]]
-                [:enum2 [:enum 'kikka 'kukka]]
-                [:enum3 [:enum 1 2]]
-                [:enum4 [:enum 1.1 2.2]]
-                [:equals1 [:= :kikka]]
-                [:equals2 [:= 'kikka]]
-                [:equals3 [:= 1]]
-                [:equals4 [:= 1.1]]]
-        value {:enum1 "kikka"
-               :enum2 "kikka"
-               :enum3 "1"
-               :enum4 "1.1"
-               :equals1 "kikka"
-               :equals2 "kikka"
-               :equals3 "1"
-               :equals4 "1.1"}
-        expected {:enum1 :kikka
-                  :enum2 'kikka
-                  :enum3 1
-                  :enum4 1.1
-                  :equals1 :kikka
-                  :equals2 'kikka
-                  :equals3 1
-                  :equals4 1.1}]
-    (testing "decoding"
-      (testing "is not enabled by default"
-        (is (= value (m/decode schema value nil))))
-      (testing "works with json and string transformers"
-        (is (= expected (m/decode schema value (mt/json-transformer))))
-        (is (= expected (m/decode schema value (mt/string-transformer))))))
-    (testing "encoding"
-      (testing "is not enabled by default"
-        (is (= expected (m/encode schema expected nil))))
-      (testing "works with json and string transformers"
-        (is (= value (m/encode schema expected (mt/json-transformer))))
-        (is (= value (m/encode schema expected (mt/string-transformer))))))))
+(def child-inference-test-schema
+  [:map
+   [:enum1 [:enum :kikka :kukka]]
+   [:enum2 [:enum 'kikka 'kukka]]
+   [:enum3 [:enum 1 2]]
+   [:enum4 [:enum 1.1 2.2]]
+   [:equals1 [:= :kikka]]
+   [:equals2 [:= 'kikka]]
+   [:equals3 [:= 1]]
+   [:equals4 [:= 1.1]]])
+
+(deftest child-inference-default-test
+  (let [encoded {:enum1 "kikka"
+                 :enum2 "kikka"
+                 :enum3 "1"
+                 :enum4 "1.1"
+                 :equals1 "kikka"
+                 :equals2 "kikka"
+                 :equals3 "1"
+                 :equals4 "1.1"}
+        decoded {:enum1 :kikka
+                 :enum2 'kikka
+                 :enum3 1
+                 :enum4 1.1
+                 :equals1 :kikka
+                 :equals2 'kikka
+                 :equals3 1
+                 :equals4 1.1}]
+    (testing "decoding is not enabled by default"
+      (is (= encoded (m/decode child-inference-test-schema encoded nil))))
+    (testing "encoding is not enabled by default"
+      (is (= decoded (m/encode child-inference-test-schema decoded nil))))))
+
+(deftest child-inference-json-test
+  (let [encoded {:enum1 "kikka"
+                 :enum2 "kikka"
+                 :enum3 1
+                 :enum4 1.1
+                 :equals1 "kikka"
+                 :equals2 "kikka"
+                 :equals3 1
+                 :equals4 1.1}
+
+        decoded {:enum1 :kikka
+                 :enum2 'kikka
+                 :enum3 1
+                 :enum4 1.1
+                 :equals1 :kikka
+                 :equals2 'kikka
+                 :equals3 1
+                 :equals4 1.1}
+
+        stringy-encoded {:enum1 "kikka"
+                         :enum2 "kikka"
+                         :enum3 "1"
+                         :enum4 "1.1"
+                         :equals1 "kikka"
+                         :equals2 "kikka"
+                         :equals3 "1"
+                         :equals4 "1.1"}
+        stringy-decoded {:enum1 :kikka
+                         :enum2 'kikka
+                         :enum3 "1"
+                         :enum4 "1.1"
+                         :equals1 :kikka
+                         :equals2 'kikka
+                         :equals3 "1"
+                         :equals4 "1.1"}]
+    (testing "decoding children using the json transformer works"
+      (is (= decoded (m/decode child-inference-test-schema encoded (mt/json-transformer))))
+      (is (= decoded (m/decode child-inference-test-schema decoded (mt/json-transformer)))))
+    (testing "invalid strings are not decoded by the json transformer"
+      (is (= stringy-decoded (m/decode child-inference-test-schema stringy-encoded (mt/json-transformer))))
+      (is (= stringy-decoded (m/decode child-inference-test-schema stringy-decoded (mt/json-transformer)))))
+    (testing "encoding children using the json transformer works"
+      (is (= encoded (m/encode child-inference-test-schema decoded (mt/json-transformer))))
+      (is (= encoded (m/encode child-inference-test-schema encoded (mt/json-transformer)))))))
+
+(deftest child-inference-string-test
+  (let [encoded {:enum1 "kikka"
+                 :enum2 "kikka"
+                 :enum3 "1"
+                 :enum4 "1.1"
+                 :equals1 "kikka"
+                 :equals2 "kikka"
+                 :equals3 "1"
+                 :equals4 "1.1"}
+        decoded {:enum1 :kikka
+                 :enum2 'kikka
+                 :enum3 1
+                 :enum4 1.1
+                 :equals1 :kikka
+                 :equals2 'kikka
+                 :equals3 1
+                 :equals4 1.1}]
+    (testing "decoding children using the string transformer works"
+      (is (= decoded (m/decode child-inference-test-schema encoded (mt/string-transformer))))
+      (is (= decoded (m/decode child-inference-test-schema decoded (mt/string-transformer)))))
+    (testing "encoding children using the string transformer works"
+      (is (= encoded (m/encode child-inference-test-schema decoded (mt/string-transformer))))
+      (is (= encoded (m/encode child-inference-test-schema encoded (mt/string-transformer)))))))

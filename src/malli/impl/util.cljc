@@ -71,3 +71,9 @@
 (def ^{:arglists '([[& preds]])} -some-pred
   #?(:clj  (-pred-composer or 16)
      :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+
+#?(:clj
+   (defmacro predicate-schemas* [var-syms]
+     `(-> {}
+          ~@(for [vsym var-syms]
+              `(malli.core/-register-var '~vsym ~vsym)))))

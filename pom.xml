@@ -3,8 +3,9 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>malli</artifactId>
-  <version>0.17.0</version>
+  <version>0.19.1</version>
   <name>malli</name>
+  <description>High-performance data-driven data specification library for Clojure/Script.</description>
   <licenses>
     <license>
       <name>Eclipse Public License 2.0</name>
@@ -15,13 +16,13 @@
     <url>https://github.com/metosin/malli</url>
     <connection>scm:git:git://github.com/metosin/malli.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/metosin/malli.git</developerConnection>
-    <tag>0.17.0</tag>
+    <tag>0.19.1</tag>
   </scm>
   <dependencies>
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.12.0</version>
+      <version>1.12.1</version>
     </dependency>
     <dependency>
       <groupId>fipp</groupId>
@@ -41,7 +42,7 @@
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>1.4.27</version>
+      <version>1.4.30</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
@@ -61,10 +62,6 @@
     <repository>
       <id>clojars</id>
       <url>https://repo.clojars.org/</url>
-    </repository>
-    <repository>
-      <id>sonatype</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
     </repository>
   </repositories>
   <distributionManagement>

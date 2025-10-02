@@ -69,7 +69,7 @@ jobs:
         with:
           cli: latest
       - name: Setup Node.js
-        uses: actions/setup-node@v4.1.0
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: 16
       - name: Install dependencies
@@ -105,3 +105,33 @@ jobs:
           bb: latest
       - name: Run tests
         run: bb test-bb
+
+  doc-tests:
+    # Builds tests from Documentation with test-doc-blocks and tests that
+    # the examples are still valid.
+    name: Doc Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 11
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.deps.clj
+            ~/.gitlibs
+          key: ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-${{ hashFiles('**/bb.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-test-deps-${{ hashFiles('**/deps.edn') }}-
+            ${{ runner.os }}-test-deps-
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          cli: latest
+          bb: latest
+      - name: Run doc tests
+        run: bb test-docs

@@ -42,7 +42,7 @@
 ;;
 ;; Use `-unreachable-gen?` to test whether your child generator generates no values (we'll call this an "unreachable" schema/generator).
 ;; If your parent generator cannot generate values, use `-never-gen` to return an unreachable generator.
-;; 
+;;
 ;; Here are a few examples---compare them with the logic in their respective -schema-generator methods:
 ;;   [:maybe M] would generate like :nil if M were unreachable.
 ;;   [:map [:a M]] would itself be unreachable if M were unreachable.
@@ -211,8 +211,8 @@
 ;;
 ;; For infinitely expanding schemas, this will return an unreachable generator--when the base case generator is used,
 ;; the error message in `-never-gen` will advise users that their schema is infinite.
-;; 
-;; 
+;;
+;;
 ;; Examples of base cases of some recursive schemas:
 ;;
 ;; Schema:    [:schema {:registry {::cons [:maybe [:vector [:tuple pos-int? [:ref ::cons]]]]}} ::cons]
@@ -234,11 +234,11 @@
 ;; supplied by `gen/recursive-gen` to convert recursive references.
 
 ;; ## Identifying schema recursion
-;; 
+;;
 ;; Refs are uniquely identified by their paired name and scope. If we see a ref with the
 ;; same name and scope as another ref we've dereferenced previously, we know that this is a recursion
 ;; point back to the previously seen ref. The rest of this section explains why.
-;; 
+;;
 ;; Refs resolve via dynamic scope, which means its dereferenced value is the latest binding found
 ;; while expanding the schema until the point of finding the ref.
 ;; This makes the (runtime) scope at the ref's location part of a ref's identity---if the scope
@@ -246,7 +246,7 @@
 ;; transitively expand.
 ;;
 ;; To illustrate why a ref's name is an insufficient identifier, here is a schema that is equivalent to `[:= 42]`:
-;; 
+;;
 ;;   [:schema {:registry {::a [:schema {:registry {::a [:= 42]}}
 ;;                             ;; (2)
 ;;                             [:ref ::a]]}}
@@ -278,7 +278,7 @@
 ;; we choose that identifier. The more general insight is that any schema is identified by its form+scope
 ;; (note: but only after trimming the scope of irrelevant bindings, see next pararaph).
 ;; That insight may be useful for detecting recursion at places other than refs.
-;; 
+;;
 ;; Ref identifiers could be made smarter by trimming irrelevant entries in identifying scope.
 ;; Not all scope differences are relevant, so generators may expand more than strictly necessary
 ;; in the quest to find the "same" ref schema again. It could skip over refs that generate exactly the
@@ -336,11 +336,20 @@
 
 (defn -*-gen [schema options]
   (let [child (-child schema options)]
-    (cond->> (gen-vector (when (= :+ (::-*-gen-mode options)) {:min 1}) (generator child (dissoc options ::-*-gen-mode)))
+    (cond->> (gen-vector
+              (-min-max schema options)
+              (generator child options))
       (m/-regex-op? child) gen-fcat)))
 
 (defn -+-gen [schema options]
-  (-*-gen schema (assoc options ::-*-gen-mode :+)))
+  (let [child (-child schema options)]
+    (cond->> (gen-vector
+              (-> (-min-max schema options)
+                  ;; When generating from :+ the base minimum value must be 1
+                  ;; to ensure that :+ is always fulfilled
+                  (update :min (fnil max 1)))
+              (generator child options))
+      (m/-regex-op? child) gen-fcat)))
 
 (defn -repeat-gen [schema options]
   (or (some-> (-coll-gen schema options) -not-unreachable (cond-> (m/-regex-op? (-child schema options)) gen-fcat))
@@ -374,6 +383,7 @@
 
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
+(defmethod -schema-generator 'empty? [_ _] (ga/gen-for-pred empty?))
 (defmethod -schema-generator :> [schema options] (gen-double {:min (inc (-child schema options))}))
 (defmethod -schema-generator :>= [schema options] (gen-double {:min (-child schema options)}))
 (defmethod -schema-generator :< [schema options] (gen-double {:max (dec (-child schema options))}))

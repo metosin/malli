@@ -26,7 +26,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
 - [Function Schemas](docs/function-schemas.md) with dynamic and static schema checking
-   - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure) 
+   - Integrates with both [clj-kondo](#clj-kondo) and [Typed Clojure](#static-type-checking-via-typed-clojure)
 - Visualizing Schemas with [DOT](#dot) and [PlantUML](#plantuml)
 - Pretty [development time errors](#pretty-errors)
 - [Fast](#performance)
@@ -115,6 +115,7 @@ Malli supports [Vector](#vector-syntax), [Map](#map-syntax) and [Lite](#lite) sy
 
 The default syntax uses vectors, inspired by [hiccup](https://github.com/weavejester/hiccup):
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 type
 [type & children]
@@ -146,16 +147,16 @@ Usage:
   (m/schema [:string {:min 1}]))
 
 (m/schema? non-empty-string)
-; => true
+;; => true
 
 (m/validate non-empty-string "")
-; => false
+;; => false
 
 (m/validate non-empty-string "kikka")
-; => true
+;; => true
 
 (m/form non-empty-string)
-; => [:string {:min 1}]
+;; => [:string {:min 1}]
 ```
 
 ### Map syntax
@@ -170,7 +171,7 @@ Alternative map-syntax, similar to [cljfx](https://github.com/cljfx/cljfx):
 
 ;; type with properties
 {:type :string
- :properties {:min 1, :max 10}
+ :properties {:min 1, :max 10}}
 
 ;; type with properties and children
 {:type :tuple
@@ -194,17 +195,17 @@ Usage:
                :properties {:min 1}}))
 
 (m/schema? non-empty-string)
-; => true
+;; => true
 
 (m/validate non-empty-string "")
-; => false
+;; => false
 
 (m/validate non-empty-string "kikka")
-; => true
+;; => true
 
 (m/ast non-empty-string)
-; => {:type :string,
-;     :properties {:min 1}}
+;; => {:type :string
+;;     :properties {:min 1}}
 ```
 
 Map-syntax is also called the [Schema AST](#schema-ast).
@@ -224,14 +225,14 @@ Following example schema is assumed in many of the following examples.
 ```clojure
 (def Address
   [:map
-   [:id string?]
-   [:tags [:set keyword?]]
+   [:id :string]
+   [:tags [:set :keyword]]
    [:address
     [:map
-     [:street string?]
-     [:city string?]
-     [:zip int?]
-     [:lonlat [:tuple double? double?]]]]])
+     [:street :string]
+     [:city :string]
+     [:zip :int]
+     [:lonlat [:tuple :double :double]]]]])
 ```
 
 ## Validation
@@ -241,26 +242,26 @@ Validating values against a schema:
 ```clojure
 ;; with schema instances
 (m/validate (m/schema :int) 1)
-; => true
+;; => true
 
 ;; with vector syntax
 (m/validate :int 1)
-; => true
+;; => true
 
 (m/validate :int "1")
-; => false
+;; => false
 
 (m/validate [:= 1] 1)
-; => true
+;; => true
 
 (m/validate [:enum 1 2] 1)
-; => true
+;; => true
 
 (m/validate [:and :int [:> 6]] 7)
-; => true
+;; => true
 
 (m/validate [:qualified-keyword {:namespace :aaa}] :aaa/bbb)
-; => true
+;; => true
 
 ;; optimized (pure) validation function for best performance
 (def valid?
@@ -271,7 +272,7 @@ Validating values against a schema:
      [:z :string]]))
 
 (valid? {:x true, :z "kikka"})
-; => true
+;; => true
 ```
 
 Schemas can have properties:
@@ -285,9 +286,9 @@ Schemas can have properties:
    :int [:> 18]])
 
 (m/properties Age)
-; => {:title "Age"
-;     :description "It's an age"
-;     :json-schema/example 20}
+;; => {:title "Age"
+;;     :description "It's an age"
+;;     :json-schema/example 20}
 ```
 
 Maps are open by default:
@@ -296,7 +297,7 @@ Maps are open by default:
 (m/validate
   [:map [:x :int]]
   {:x 1, :extra "key"})
-; => true
+;; => true
 ```
 
 Maps can be closed with `:closed` property:
@@ -305,7 +306,7 @@ Maps can be closed with `:closed` property:
 (m/validate
   [:map {:closed true} [:x :int]]
   {:x 1, :extra "key"})
-; => false
+;; => false
 ```
 
 Maps keys are not limited to keywords:
@@ -321,14 +322,14 @@ Maps keys are not limited to keywords:
    1 'number
    nil :yay
    ::a "properly awesome"})
-; => true
+;; => true
 ```
 
 Most core-predicates are mapped to Schemas:
 
 ```clojure
 (m/validate string? "kikka")
-; => true
+;; => true
 ```
 
 *NOTE*: Predicate Schemas do not cover any schema properties, e.g. `string?` can't be modified with properties like `:min` and `:max`. If you want to use the schema properties, use real schema types instead, e.g. `:string` over `string?`.
@@ -367,14 +368,14 @@ You can also use [decomplected maps keys and values](https://clojure.org/about/s
 
 ```clojure
 (m/validate
-  [:map {:registry {::id int?
-                    ::country string?}}
+  [:map {:registry {::id :int
+                    ::country :string}}
    ::id
-   [:name string?]
+   [:name :string]
    [::country {:optional true}]]
   {::id 1
    :name "kikka"})
-; => true
+;; => true
 ```
 
 ## Homogeneous maps
@@ -400,7 +401,7 @@ Map schemas can define a special `:malli.core/default` key to handle extra keys:
   [:y :int]
   [::m/default [:map-of :int :int]]]
  {:x 1, :y 2, 1 1, 2 2})
-; => true
+;; => true
 ```
 default branching can be arbitrarily nested:
 
@@ -412,7 +413,7 @@ default branching can be arbitrarily nested:
                 [:y :int]
                 [::m/default [:map-of :int :int]]]]]
  {:x 1, :y 2, 1 1, 2 2})
-; => true
+;; => true
 ```
 
 ## Seqable schemas
@@ -431,32 +432,32 @@ the entire collection if the input is `counted?` or `indexed?`.
 ```clojure
 ;; :seqable and :every validate identically with small, counted, or indexed collections.
 (m/validate [:seqable :int] #{1 2 3})
-;=> true
+;; => true
 (m/validate [:seqable :int] [1 2 3])
-;=> true
+;; => true
 (m/validate [:seqable :int] (sorted-set 1 2 3))
-;=> true
+;; => true
 (m/validate [:seqable :int] (range 1000))
-;=> true
+;; => true
 (m/validate [:seqable :int] (conj (vec (range 1000)) nil))
-;=> false
+;; => false
 
 (m/validate [:every :int] #{1 2 3})
-;=> true
+;; => true
 (m/validate [:every :int] [1 2 3])
-;=> true
+;; => true
 (m/validate [:every :int] (sorted-set 1 2 3))
-;=> true
+;; => true
 (m/validate [:every :int] (vec (range 1000)))
-;=> true
+;; => true
 (m/validate [:every :int] (conj (vec (range 1000)) nil))
-;=> false
+;; => false
 
 ;; for large uncounted and unindexed collections, :every only checks a certain length
 (m/validate [:seqable :int] (concat (range 1000) [nil]))
-;=> false
+;; => false
 (m/validate [:every :int] (concat (range 1000) [nil]))
-;=> true
+;; => true
 ```
 
 
@@ -465,13 +466,13 @@ the entire collection if the input is `counted?` or `indexed?`.
 You can use `:sequential` to describe homogeneous sequential Clojure collections.
 
 ```clojure
-(m/validate [:sequential any?] (list "this" 'is :number 42))
+(m/validate [:sequential :any] (list "this" 'is :number 42))
 ;; => true
 
-(m/validate [:sequential int?] [42 105])
+(m/validate [:sequential :int] [42 105])
 ;; => true
 
-(m/validate [:sequential int?] #{42 105})
+(m/validate [:sequential :int] #{42 105})
 ;; => false
 ```
 
@@ -479,61 +480,79 @@ Malli also supports sequence regexes (also called sequence expressions) like [Se
 The supported operators are `:cat` & `:catn` for concatenation / sequencing
 
 ```clojure
-(m/validate [:cat string? int?] ["foo" 0]) ; => true
+(m/validate [:cat :string :int] ["foo" 0])
+;; => true
 
-(m/validate [:catn [:s string?] [:n int?]] ["foo" 0]) ; => true
+(m/validate [:catn [:s :string] [:n :int]] ["foo" 0])
+;; => true
 ```
 
 `:alt` & `:altn` for alternatives
 
 ```clojure
-(m/validate [:alt keyword? string?] ["foo"]) ; => true
+(m/validate [:alt :keyword :string] ["foo"])
+;; => true
 
-(m/validate [:altn [:kw keyword?] [:s string?]] ["foo"]) ; => true
+(m/validate [:altn [:kw :keyword] [:s :string]] ["foo"])
+;; => true
 ```
 
 and `:?`, `:*`, `:+` & `:repeat` for repetition:
 
 ```clojure
-(m/validate [:? int?] []) ; => true
-(m/validate [:? int?] [1]) ; => true
-(m/validate [:? int?] [1 2]) ; => false
+(m/validate [:? :int] [])
+;; => true
+(m/validate [:? :int] [1])
+;; => true
+(m/validate [:? :int] [1 2])
+;; => false
 
-(m/validate [:* int?] []) ; => true
-(m/validate [:* int?] [1 2 3]) ; => true
+(m/validate [:* :int] [])
+;; => true
+(m/validate [:* :int] [1 2 3])
+;; => true
 
-(m/validate [:+ int?] []) ; => false
-(m/validate [:+ int?] [1]) ; => true
-(m/validate [:+ int?] [1 2 3]) ; => true
+(m/validate [:+ :int] [])
+;; => false
+(m/validate [:+ :int] [1])
+;; => true
+(m/validate [:+ :int] [1 2 3])
+;; => true
 
-(m/validate [:repeat {:min 2, :max 4} int?] [1]) ; => false
-(m/validate [:repeat {:min 2, :max 4} int?] [1 2]) ; => true
-(m/validate [:repeat {:min 2, :max 4} int?] [1 2 3 4]) ; => true (:max is inclusive, as elsewhere in Malli)
-(m/validate [:repeat {:min 2, :max 4} int?] [1 2 3 4 5]) ; => false
+(m/validate [:repeat {:min 2, :max 4} :int] [1])
+;; => false
+(m/validate [:repeat {:min 2, :max 4} :int] [1 2])
+;; => true
+(m/validate [:repeat {:min 2, :max 4} :int] [1 2 3 4])
+;; => true ; (:max is inclusive, as elsewhere in Malli)
+(m/validate [:repeat {:min 2, :max 4} :int] [1 2 3 4 5])
+;; => false
 ```
 
 `:catn` and `:altn` allow naming the subsequences / alternatives
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/explain
-  [:* [:catn [:prop string?] [:val [:altn [:s string?] [:b boolean?]]]]]
+  [:* [:catn [:prop :string] [:val [:altn [:s :string] [:b :boolean]]]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
-;; => {:schema [:* [:map [:prop string?] [:val [:map [:s string?] [:b boolean?]]]]],
+;; => {:schema [:* [:catn [:prop :string] [:val [:altn [:s :string] [:b :boolean]]]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
-;;     :errors ({:path [0 :val :s], :in [3], :schema string?, :value 11}
-;;              {:path [0 :val :b], :in [3], :schema boolean?, :value 11})}
+;;     :errors ({:path [0 :val :s], :in [3], :schema :string, :value 11}
+;;              {:path [0 :val :b], :in [3], :schema :boolean, :value 11})}
 ```
 
 while `:cat` and `:alt` just use numeric indices for paths:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/explain
-  [:* [:cat string? [:alt string? boolean?]]]
+  [:* [:cat :string [:alt :string :boolean]]]
   ["-server" "foo" "-verbose" 11 "-user" "joe"])
-;; => {:schema [:* [:cat string? [:alt string? boolean?]]],
+;; => {:schema [:* [:cat :string [:alt :string :boolean]]],
 ;;     :value ["-server" "foo" "-verbose" 11 "-user" "joe"],
-;;     :errors ({:path [0 1 0], :in [3], :schema string?, :value 11}
-;;              {:path [0 1 1], :in [3], :schema boolean?, :value 11})}
+;;     :errors ({:path [0 1 0], :in [3], :schema :string, :value 11}
+;;              {:path [0 1 1], :in [3], :schema :boolean, :value 11})}
 ```
 
 As all these examples show, the sequence expression (seqex) operators take any non-seqex child schema to
@@ -542,19 +561,20 @@ a seqex child `:schema` can be used:
 
 ```clojure
 (m/validate
-  [:cat [:= :names] [:schema [:* string?]] [:= :nums] [:schema [:* number?]]]
+  [:cat [:= :names] [:schema [:* :string]] [:= :nums] [:schema [:* number?]]]
   [:names ["a" "b"] :nums [1 2 3]])
-; => true
+;; => true
 
 ;; whereas
 (m/validate
-  [:cat [:= :names] [:* string?] [:= :nums] [:* number?]]
+  [:cat [:= :names] [:* :string] [:= :nums] [:* number?]]
   [:names "a" "b" :nums 1 2 3])
-; => true
+;; => true
 ```
 
 Although a lot of effort has gone into making the seqex implementation fast
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[clojure.spec.alpha :as s])
 (require '[criterium.core :as cc])
@@ -568,6 +588,7 @@ Although a lot of effort has gone into making the seqex implementation fast
 
 it is always better to use less general tools whenever possible:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (let [valid? (partial s/valid? (s/coll-of int?))]
   (cc/quick-bench (valid? (range 10)))) ; Execution time mean : 1.8µs
@@ -581,17 +602,17 @@ it is always better to use less general tools whenever possible:
 You can use `:vector` to describe homogeneous Clojure vectors.
 
 ```clojure
-(m/validate [:vector int?] [1 2 3])
+(m/validate [:vector :int] [1 2 3])
 ;; => true
 
-(m/validate [:vector int?] (list 1 2 3))
+(m/validate [:vector :int] (list 1 2 3))
 ;; => false
 ```
 
 A `:tuple` schema describes a fixed length Clojure vector of heterogeneous elements:
 
 ```clojure
-(m/validate [:tuple keyword? string? number?] [:bing "bang" 42])
+(m/validate [:tuple :keyword :string number?] [:bing "bang" 42])
 ;; => true
 ```
 
@@ -602,12 +623,12 @@ To create a vector schema based on a seqex, use `:and`.
 (m/validate [:and [:cat :keyword [:* :any]]
                   vector?]
             [:a 1])
-; => true
+;; => true
 
 (m/validate [:and [:cat :keyword [:* :any]]
                   vector?]
             (:a 1))
-; => false
+;; => false
 ```
 
 Note: To generate values from a vector seqex, see [:and generation](#and-generation).
@@ -617,10 +638,10 @@ Note: To generate values from a vector seqex, see [:and generation](#and-generat
 You can use `:set` to describe homogeneous Clojure sets.
 
 ```clojure
-(m/validate [:set int?] #{42 105})
+(m/validate [:set :int] #{42 105})
 ;; => true
 
-(m/validate [:set int?] #{:a :b})
+(m/validate [:set :int] #{:a :b})
 ;; => false
 ```
 
@@ -645,7 +666,6 @@ Using `:string` Schema:
 Using regular expressions:
 
 ```clojure
-
 (m/validate #"a+b+c+" "abbccc")
 ;; => true
 
@@ -664,7 +684,6 @@ Using regular expressions:
 ;; anchor with ^...$ if you want to strictly match the whole string
 (m/validate [:re #"^\d{4}$"] "1234567")
 ;; => false
-
 ```
 
 ## Maybe schemas
@@ -672,13 +691,13 @@ Using regular expressions:
 Use `:maybe` to express that an element should match some schema OR be `nil`:
 
 ```clojure
-(m/validate [:maybe string?] "bingo")
+(m/validate [:maybe :string] "bingo")
 ;; => true
 
-(m/validate [:maybe string?] nil)
+(m/validate [:maybe :string] nil)
 ;; => true
 
-(m/validate [:maybe string?] :bingo)
+(m/validate [:maybe :string] :bingo)
 ;; => false
 ```
 
@@ -690,21 +709,22 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 (def my-schema
   [:and
    [:map
-    [:x int?]
-    [:y int?]]
+    [:x :int]
+    [:y :int]]
    [:fn (fn [{:keys [x y]}] (> x y))]])
 
 (m/validate my-schema {:x 1, :y 0})
-; => true
+;; => true
 
 (m/validate my-schema {:x 1, :y 2})
-; => false
+;; => false
 ```
 
 ## Error messages
 
 Detailed errors with `m/explain`:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/explain
   Address
@@ -714,7 +734,7 @@ Detailed errors with `m/explain`:
              :city "Tampere"
              :zip 33100
              :lonlat [61.4858322, 23.7854658]}})
-; => nil
+;; => nil
 
 (m/explain
   Address
@@ -723,35 +743,35 @@ Detailed errors with `m/explain`:
    :address {:street "Ahlmanintie 29"
              :zip 33100
              :lonlat [61.4858322, nil]}})
-;{:schema [:map
-;          [:id string?]
-;          [:tags [:set keyword?]]
-;          [:address [:map
-;                     [:street string?]
-;                     [:city string?]
-;                     [:zip int?]
-;                     [:lonlat [:tuple double? double?]]]]],
-; :value {:id "Lillan",
-;         :tags #{:artesan :garden "coffee"},
-;         :address {:street "Ahlmanintie 29"
-;                   :zip 33100
-;                   :lonlat [61.4858322 nil]}},
-; :errors ({:path [:tags 0]
-;           :in [:tags 0]
-;           :schema keyword?
-;           :value "coffee"}
-;          {:path [:address :city],
-;           :in [:address :city],
-;           :schema [:map
-;                    [:street string?]
-;                    [:city string?]
-;                    [:zip int?]
-;                    [:lonlat [:tuple double? double?]]],
-;           :type :malli.core/missing-key}
-;          {:path [:address :lonlat 1]
-;           :in [:address :lonlat 1]
-;           :schema double?
-;           :value nil})}
+;; => {:schema [:map
+;;              [:id :string]
+;;              [:tags [:set :keyword]]
+;;              [:address [:map
+;;                         [:street :string]
+;;                         [:city :string]
+;;                         [:zip :int]
+;;                         [:lonlat [:tuple :double :double]]]]],
+;;     :value {:id "Lillan",
+;;             :tags #{:artesan :garden "coffee"},
+;;             :address {:street "Ahlmanintie 29"
+;;                       :zip 33100
+;;                       :lonlat [61.4858322 nil]}},
+;;     :errors ({:path [:tags 0]
+;;               :in [:tags 0]
+;;               :schema :keyword
+;;               :value "coffee"}
+;;              {:path [:address :city],
+;;               :in [:address :city],
+;;               :schema [:map
+;;                        [:street :string]
+;;                        [:city :string]
+;;                        [:zip :int]
+;;                        [:lonlat [:tuple :double :double]]],
+;;               :type :malli.core/missing-key}
+;;              {:path [:address :lonlat 1]
+;;               :in [:address :lonlat 1]
+;;               :schema :double
+;;               :value nil})}
 ```
 
 Under `:errors`, you get a list of errors with the following keys:
@@ -761,6 +781,7 @@ Under `:errors`, you get a list of errors with the following keys:
 * `:schema`, schema in error
 * `:value`, value in error
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (def Schema [:map [:x [:maybe [:tuple :string]]]])
 
@@ -778,10 +799,10 @@ error
 ; :value 1}
 
 (get-in value (:in error))
-; => 1
+;; => 1
 
 (mu/get-in Schema (:path error))
-; => :string
+;; => :string
 ```
 
 Note! If you need error messages that serialize neatly to EDN/JSON, use `malli.util/explain-data` instead.
@@ -801,9 +822,9 @@ Explain results can be humanized with `malli.error/humanize`:
                  :zip 33100
                  :lonlat [61.4858322, nil]}})
     (me/humanize))
-;{:tags #{["should be a keyword"]}
-; :address {:city ["missing required key"]
-;           :lonlat [nil ["should be a double"]]}}
+;; => {:tags #{["should be a keyword"]}
+;;     :address {:city ["missing required key"]
+;;               :lonlat [nil ["should be a double"]]}}
 ```
 
 Or if you already have a malli validation exception (e.g. in a catch form):
@@ -823,6 +844,7 @@ Error messages can be customized with `:error/message` and `:error/fn` propertie
 
 If `:error/message` is of a predictable structure, it will automatically support custom `[:not schema]` failures for the following locales:
 - `:en` if message starts with `should` or `should not` then they will be swapped automatically. Otherwise, message is ignored.
+
 ```clojure
 ;; e.g.,
 (me/humanize
@@ -831,7 +853,7 @@ If `:error/message` is of a predictable structure, it will automatically support
      [:fn {:error/message {:en "should be a multiple of 3"}}
       #(= 0 (mod % 3))]]
     3))
-; => ["should not be a multiple of 3"]
+;; => ["should not be a multiple of 3"]
 ```
 
 The first argument to `:error/fn` is a map with keys:
@@ -840,9 +862,10 @@ The first argument to `:error/fn` is a map with keys:
 - `:negated` (optional), a function returning the explanation of `(m/explain [:not schema] value)`.
   If provided, then we are explaining the failure of negating this schema via `(m/explain [:not schema] value)`.
   Note in this scenario, `(m/validate schema value)` is true.
-  If returning a string, 
+  If returning a string,
   the resulting error message will be negated by the `:error/fn` caller in the same way as `:error/message`.
   Returning `(negated string)` disables this behavior and `string` is used as the negated error message.
+
 ```clojure
 ;; automatic negation
 (me/humanize
@@ -850,7 +873,7 @@ The first argument to `:error/fn` is a map with keys:
     [:not [:fn {:error/fn {:en (fn [_ _] "should not be a multiple of 3")}}
            #(not= 0 (mod % 3))]]
     1))
-; => ["should be a multiple of 3"]
+;; => ["should be a multiple of 3"]
 
 ;; manual negation
 (me/humanize
@@ -859,14 +882,14 @@ The first argument to `:error/fn` is a map with keys:
                                             (negated "should not avoid being a multiple of 3")
                                             "should not be a multiple of 3"))}}
                     #(not= 0 (mod % 3))]] 1))
-; => ["should not avoid being a multiple of 3"]
+;; => ["should not avoid being a multiple of 3"]
 ```
 
 Here are some basic examples of `:error/message` and `:error/fn`:
 
 ```clojure
 (-> [:map
-     [:id int?]
+     [:id :int]
      [:size [:enum {:error/message "should be: S|M|L"}
              "S" "M" "L"]]
      [:age [:fn {:error/fn (fn [{:keys [value]} _] (str value ", should be > 18"))}
@@ -875,16 +898,16 @@ Here are some basic examples of `:error/message` and `:error/fn`:
     (me/humanize
       {:errors (-> me/default-errors
                    (assoc ::m/missing-key {:error/fn (fn [{:keys [in]} _] (str "missing key " (last in)))}))}))
-;{:id ["missing key :id"]
-; :size ["should be: S|M|L"]
-; :age ["10, should be > 18"]}
+;; => {:id ["missing key :id"]
+;;     :size ["should be: S|M|L"]
+;;     :age ["10, should be > 18"]}
 ```
 
 Messages can be localized:
 
 ```clojure
 (-> [:map
-     [:id int?]
+     [:id :int]
      [:size [:enum {:error/message {:en "should be: S|M|L"
                                     :fi "pitäisi olla: S|M|L"}}
              "S" "M" "L"]]
@@ -898,32 +921,32 @@ Messages can be localized:
                    (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
                    (assoc ::m/missing-key {:error/fn {:en (fn [{:keys [in]} _] (str "missing key " (last in)))
                                                       :fi (fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
-;{:id ["puuttuu avain :id"]
-; :size ["pitäisi olla: S|M|L"]
-; :age ["10, pitäisi olla > 18"]}
+;; => {:id ["puuttuu avain :id"]
+;;     :size ["pitäisi olla: S|M|L"]
+;;     :age ["10, pitäisi olla > 18"]}
 ```
 
 Top-level humanized map-errors are under `:malli/error`:
 
 ```clojure
 (-> [:and [:map
-           [:password string?]
-           [:password2 string?]]
+           [:password :string]
+           [:password2 :string]]
      [:fn {:error/message "passwords don't match"}
        (fn [{:keys [password password2]}]
          (= password password2))]]
     (m/explain {:password "secret"
                 :password2 "faarao"})
     (me/humanize))
-; {:malli/error ["passwords don't match"]}
+;; => ["passwords don't match"]
 ```
 
 Errors can be targeted using `:error/path` property:
 
 ```clojure
 (-> [:and [:map
-           [:password string?]
-           [:password2 string?]]
+           [:password :string]
+           [:password2 :string]]
      [:fn {:error/message "passwords don't match"
            :error/path [:password2]}
        (fn [{:keys [password password2]}]
@@ -931,7 +954,7 @@ Errors can be targeted using `:error/path` property:
     (m/explain {:password "secret"
                 :password2 "faarao"})
     (me/humanize))
-; {:password2 ["passwords don't match"]}
+;; => {:password2 ["passwords don't match"]}
 ```
 
 By default, only direct erroneous schema properties are used:
@@ -941,7 +964,7 @@ By default, only direct erroneous schema properties are used:
      [:foo {:error/message "entry-failure"} :int]] ;; here, :int fails, no error props
     (m/explain {:foo "1"})
     (me/humanize))
-; => {:foo ["should be an integer"]}
+;; => {:foo ["should be an integer"]}
 ```
 
 Looking up humanized errors from parent schemas with custom `:resolve` (BETA, subject to change):
@@ -951,7 +974,7 @@ Looking up humanized errors from parent schemas with custom `:resolve` (BETA, su
      [:foo {:error/message "entry-failure"} :int]]
     (m/explain {:foo "1"})
     (me/humanize {:resolve me/-resolve-root-error}))
-; => {:foo ["entry-failure"]}
+;; => {:foo ["entry-failure"]}
 ```
 
 ## Spell checking
@@ -959,16 +982,16 @@ Looking up humanized errors from parent schemas with custom `:resolve` (BETA, su
 For closed schemas, key spelling can be checked with:
 
 ```clojure
-(-> [:map [:address [:map [:street string?]]]]
+(require '[malli.util :as mu])
+(-> [:map [:address [:map [:street :string]]]]
     (mu/closed-schema)
     (m/explain
       {:name "Lie-mi"
        :address {:streetz "Hämeenkatu 14"}})
     (me/with-spell-checking)
     (me/humanize))
-;{:address {:street ["missing required key"]
-;           :streetz ["should be spelled :street"]}
-; :name ["disallowed key"]}
+;; => {:address {:streetz ["should be spelled :street"]}
+;;     :name ["disallowed key"]}
 ```
 
 ## Values in error
@@ -984,8 +1007,8 @@ Just to get parts of the value that are in error:
                 :zip 33100
                 :lonlat [61.4858322, "23.7832851,17"]}})
     (me/error-value))
-;{:tags #{"coffee" "ground"}
-; :address {:lonlat [nil "23.7832851,17"]}}
+;; => {:tags #{"coffee" "ground"}
+;;     :address {:lonlat [nil "23.7832851,17"]}}
 ```
 
 Masking irrelevant parts:
@@ -999,11 +1022,11 @@ Masking irrelevant parts:
                 :zip 33100
                 :lonlat [61.4858322, "23.7832851,17"]}})
     (me/error-value {::me/mask-valid-values '...}))
-;{:id ...
-; :tags #{"coffee" "ground" ...}
-; :address {:street ...
-;           :zip ...
-;           :lonlat [... "23.7832851,17"]}}
+;; => {:id ...
+;;     :tags #{"coffee" "ground" ...}
+;;     :address {:street ...
+;;               :zip ...
+;;               :lonlat [... "23.7832851,17"]}}
 ```
 
 ## Pretty errors
@@ -1014,6 +1037,7 @@ There are two ways to get pretty errors:
 
 Start development mode:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ((requiring-resolve 'malli.dev/start!))
 ```
@@ -1030,6 +1054,7 @@ Custom exception (with default layout):
 
 Pretty printing in being backed by `malli.dev.virhe/-format` multimethod using `(-> exception (ex-data) :data)` as the default dispatch key. As fallback, exception class - or exception subclass can be used, e.g. the following will handle all `java.sql.SQLException` and it's parent exceptions:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[malli.dev.virhe :as v])
 
@@ -1054,7 +1079,7 @@ For pretty development-time error printing, try `malli.dev.pretty/explain`
 
 Two-way schema-driven value transformations with `m/decode` and `m/encode` using a `Transformer` instance.
 
-Default Transformers include: 
+Default Transformers include:
 
 | name                              | description                                         |
 |:----------------------------------|-----------------------------------------------------|
@@ -1070,37 +1095,38 @@ Default Transformers include:
 Simple usage:
 
 ```clojure
-(m/decode int? "42" mt/string-transformer)
-; 42
+(m/decode :int "42" mt/string-transformer)
+;; =>  42
 
-(m/encode int? 42 mt/string-transformer)
-; "42"
+(m/encode :int 42 mt/string-transformer)
+;; => "42"
 ```
 
 For performance, precompute the transformations with `m/decoder` and `m/encoder`:
 
 ```clojure
-(def decode (m/decoder int? mt/string-transformer))
+(def decode (m/decoder :int mt/string-transformer))
 
 (decode "42")
-; 42
+;; => 42
 
-(def encode (m/encoder int? mt/string-transformer))
+(def encode (m/encoder :int mt/string-transformer))
 
 (encode 42)
-; "42"
+;; => "42"
 ```
 
 ### Coercion
 
 For both decoding + validating the results (throwing exception on error), there is `m/coerce` and `m/coercer`:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/coerce :int "42" mt/string-transformer)
-; 42
+;; => 42
 
 ((m/coercer :int mt/string-transformer) "42")
-; 42
+;; => 42
 
 (m/coerce :int "invalid" mt/string-transformer)
 ; =throws=> :malli.core/invalid-input {:value "invalid", :schema :int, :explain {:schema :int, :value "invalid", :errors ({:path [], :in [], :schema :int, :value "invalid"})}}
@@ -1108,6 +1134,7 @@ For both decoding + validating the results (throwing exception on error), there 
 
 Coercion can be applied without transformer, doing just validation:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/coerce :int 42)
 ; 42
@@ -1118,9 +1145,10 @@ Coercion can be applied without transformer, doing just validation:
 
 Exception-free coercion with continuation-passing style:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/coerce :int "fail" nil (partial prn "success:") (partial prn "error:"))
-; =prints=> "error:" {:value "fail", :schema :int, :explain ...}
+;; =stdout=> "error:" {:value "fail", :schema :int, :explain ...}
 ```
 
 ### Advanced Transformations
@@ -1137,12 +1165,12 @@ Transformations are recursive:
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
   mt/json-transformer)
-;{:id "Lillan",
-; :tags #{:coffee :artesan :garden},
-; :address {:street "Ahlmanintie 29"
-;           :city "Tampere"
-;           :zip 33100
-;           :lonlat [61.4858322 23.7854658]}}
+;; => {:id "Lillan",
+;;     :tags #{:coffee :artesan :garden},
+;;     :address {:street "Ahlmanintie 29"
+;;               :city "Tampere"
+;;               :zip 33100
+;;               :lonlat [61.4858322 23.7854658]}}
 ```
 
 Transform map keys:
@@ -1157,19 +1185,19 @@ Transform map keys:
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
   (mt/key-transformer {:encode name}))
-;{"id" "Lillan",
-; "tags" ["coffee" "artesan" "garden"],
-; "address" {"street" "Ahlmanintie 29"
-;            "city" "Tampere"
-;            "zip" 33100
-;            "lonlat" [61.4858322 23.7854658]}}
+;; => {"id" "Lillan",
+;;     "tags" ["coffee" "artesan" "garden"],
+;;     "address" {"street" "Ahlmanintie 29"
+;;                "city" "Tampere"
+;;                "zip" 33100
+;;                "lonlat" [61.4858322 23.7854658]}}
 ```
 
 Transforming homogenous `:enum` or `:=`s (supports automatic type detection of `:keyword`, `:symbol`, `:int` and `:double`):
 
 ```clojure
 (m/decode [:enum :kikka :kukka] "kukka" mt/string-transformer)
-; => :kukka
+;; => :kukka
 ```
 
 Transformers can be composed with `mt/transformer`:
@@ -1191,60 +1219,60 @@ Transformers can be composed with `mt/transformer`:
              :zip 33100
              :lonlat [61.4858322 23.7854658]}}
   strict-json-transformer)
-;{:id "Lillan",
-; :tags #{:coffee :artesan :garden},
-; :address {:street "Ahlmanintie 29"
-;           :city "Tampere"
-;           :zip 33100
-;           :lonlat [61.4858322 23.7854658]}}
+;; => {:id "Lillan",
+;;     :tags #{:coffee :artesan :garden},
+;;     :address {:street "Ahlmanintie 29"
+;;               :city "Tampere"
+;;               :zip 33100
+;;               :lonlat [61.4858322 23.7854658]}}
 ```
 
 Schema properties can be used to override default transformations:
 
 ```clojure
 (m/decode
-  [string? {:decode/string clojure.string/upper-case}]
+  [:string {:decode/string clojure.string/upper-case}]
   "kerran" mt/string-transformer)
-; => "KERRAN"
+;; => "KERRAN"
 ```
 
 This works too:
 
 ```clojure
 (m/decode
-  [string? {:decode {:string clojure.string/upper-case}}]
+  [:string {:decode {:string clojure.string/upper-case}}]
   "kerran" mt/string-transformer)
-; => "KERRAN"
+;; => "KERRAN"
 ```
 
 Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 
 ```clojure
 (m/decode
-  [string? {:decode/string {:enter clojure.string/upper-case}}]
+  [:string {:decode/string {:enter clojure.string/upper-case}}]
   "kerran" mt/string-transformer)
-; => "KERRAN"
+;; => "KERRAN"
 ```
 
 ```clojure
 (m/decode
-  [string? {:decode/string {:enter #(str "olipa_" %)
+  [:string {:decode/string {:enter #(str "olipa_" %)
                             :leave #(str % "_avaruus")}}]
   "kerran" mt/string-transformer)
-; => "olipa_kerran_avaruus"
+;; => "olipa_kerran_avaruus"
 ```
 
 To access Schema (and options) use `:compile`:
 
 ```clojure
 (m/decode
-  [int? {:math/multiplier 10
+  [:int {:math/multiplier 10
          :decode/math {:compile (fn [schema _]
                                   (let [multiplier (:math/multiplier (m/properties schema))]
                                     (fn [x] (* x multiplier))))}}]
   12
   (mt/transformer {:name :math}))
-; => 120
+;; => 120
 ```
 
 Going crazy:
@@ -1254,11 +1282,11 @@ Going crazy:
   [:map
    {:decode/math {:enter #(update % :x inc)
                   :leave #(update % :x (partial * 2))}}
-   [:x [int? {:decode/math {:enter (partial + 2)
+   [:x [:int {:decode/math {:enter (partial + 2)
                             :leave (partial * 3)}}]]]
   {:x 1}
   (mt/transformer {:name :math}))
-; => {:x 24}
+;; => {:x 24}
 ```
 
 `:and` accumulates the transformed value left-to-right.
@@ -1301,7 +1329,7 @@ Proxy schemas like `:merge` and `:union` transform as if `m/deref`ed.
   {:registry (merge (mu/schemas) (m/default-schemas))}
   (mt/default-value-transformer {::mt/add-optional-keys true}))
 ;; => {:name "kikka"
-;;     :description "kikka"}
+;      :description "kikka"}
 ```
 
 ## To and from JSON
@@ -1316,6 +1344,8 @@ schema.
 To JSON:
 
 ```clojure
+(require 'jsonista.core)
+
 (def Tags
   (m/schema [:map
              {:closed true}
@@ -1324,7 +1354,7 @@ To JSON:
  (m/encode Tags
            {:tags #{:bar :quux}}
            mt/json-transformer))
-; => "{\"tags\":[\"bar\",\"quux\"]}"
+;; => "{\"tags\":[\"bar\",\"quux\"]}"
 ```
 
 From JSON without validation:
@@ -1334,20 +1364,21 @@ From JSON without validation:
           (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
                                     jsonista.core/keyword-keys-object-mapper)
           mt/json-transformer)
-; => {:tags #{:bar ["quux"]}}
+;; => {:tags #{:bar ["quux"]}}
 ```
 
 From JSON with validation:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/explain Tags
            (m/decode Tags
                      (jsonista.core/read-value "{\"tags\":[\"bar\",[\"quux\"]]}"
                                                jsonista.core/keyword-keys-object-mapper)
                      mt/json-transformer))
-; => {:schema [:map {:closed true} [:tags [:set :keyword]]],
-;     :value {:tags #{:bar ["quux"]}},
-;     :errors ({:path [:tags 0], :in [:tags ["quux"]], :schema :keyword, :value ["quux"]})}
+;; => {:schema [:map {:closed true} [:tags [:set :keyword]]],
+;;     :value {:tags #{:bar ["quux"]}},
+;;     :errors ({:path [:tags 0], :in [:tags ["quux"]], :schema :keyword, :value ["quux"]})}
 ```
 
 ```clojure
@@ -1368,7 +1399,7 @@ For performance, it's best to prebuild the validator, decoder and explainer:
                               jsonista.core/keyword-keys-object-mapper)
     decode-Tags
     validate-Tags)
-; => true
+;; => true
 ```
 
 ## Default values
@@ -1376,8 +1407,8 @@ For performance, it's best to prebuild the validator, decoder and explainer:
 Applying default values:
 
 ```clojure
-(m/decode [:and {:default 42} int?] nil mt/default-value-transformer)
-; => 42
+(m/decode [:and {:default 42} :int] nil mt/default-value-transformer)
+;; => 42
 ```
 
 With custom key and type defaults:
@@ -1393,11 +1424,12 @@ With custom key and type defaults:
     {:key :ui/default
      :defaults {:map (constantly {})
                 :string (constantly "")}}))
-; => {:user {:name "", :description "-"}}
+;; => {:user {:name "", :description "-"}}
 ```
 
 With custom function:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/decode
  [:map
@@ -1410,6 +1442,19 @@ With custom function:
 ; => {:os "Mac OS X", :timezone "Europe/Helsinki"}
 ```
 
+With ad-hoc custom function:
+
+```clojure
+(def the-default-atom (atom 42))
+(m/decode
+ [:map
+  [:a [:int {:default/fn #(deref the-default-atom)}]]  ; property of schema
+  [:b {:default/fn #(deref the-default-atom)} :int]]   ; property of map entry
+ {}
+ (mt/default-value-transformer))
+;; => {:a 42 :b 42}
+```
+
 Optional Keys are not added by default:
 
 ```clojure
@@ -1419,7 +1464,7 @@ Optional Keys are not added by default:
   [:description {:optional true} [:string {:default "kikka"}]]]
  {}
  (mt/default-value-transformer))
-; => {:name "kikka"}
+;; => {:name "kikka"}
 ```
 
 Adding optional keys too via `::mt/add-optional-keys` option:
@@ -1431,7 +1476,7 @@ Adding optional keys too via `::mt/add-optional-keys` option:
   [:description {:optional true} [:string {:default "kikka"}]]]
  {}
  (mt/default-value-transformer {::mt/add-optional-keys true}))
-; => {:name "kikka", :description "kikka"}
+;; => {:name "kikka", :description "kikka"}
 ```
 
 Single sweep of defaults & string encoding:
@@ -1439,22 +1484,22 @@ Single sweep of defaults & string encoding:
 ```clojure
 (m/encode
   [:map {:default {}}
-   [:a [int? {:default 1}]]
-   [:b [:vector {:default [1 2 3]} int?]]
+   [:a [:int {:default 1}]]
+   [:b [:vector {:default [1 2 3]} :int]]
    [:c [:map {:default {}}
-        [:x [int? {:default 42}]]
-        [:y int?]]]
+        [:x [:int {:default 42}]]
+        [:y :int]]]
    [:d [:map
-        [:x [int? {:default 42}]]
-        [:y int?]]]
-   [:e int?]]
+        [:x [:int {:default 42}]]
+        [:y :int]]]
+   [:e :int]]
   nil
   (mt/transformer
     mt/default-value-transformer
     mt/string-transformer))
-;{:a "1"
-; :b ["1" "2" "3"]
-; :c {:x "42"}}
+;; => {:a "1"
+;;     :b ["1" "2" "3"]
+;;     :c {:x "42"}}
 ```
 
 ## Programming with schemas
@@ -1465,60 +1510,61 @@ Single sweep of defaults & string encoding:
 
 Updating Schema properties:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
-(mu/update-properties [:vector int?] assoc :min 1)
-; => [:vector {:min 1} int?]
+(mu/update-properties [:vector :int] assoc :min 1)
+;; => [:vector {:min 1} :int]
 ```
 
 Lifted `clojure.core` function to work with schemas: `select-keys`, `dissoc`, `get`, `assoc`, `update`, `get-in`, `assoc-in`, `update-in`
 
 ```clojure
 (mu/get-in Address [:address :lonlat])
-; => [:tuple double? double?]
+; => [:tuple :double :double]
 
 (mu/update-in Address [:address] mu/assoc :country [:enum "fi" "po"])
 ;[:map
-; [:id string?]
-; [:tags [:set keyword?]]
+; [:id :string]
+; [:tags [:set :keyword]]
 ; [:address
-;  [:map [:street string?]
-;   [:city string?]
-;   [:zip int?]
-;   [:lonlat [:tuple double? double?]]
+;  [:map [:street :string]
+;   [:city :string]
+;   [:zip :int]
+;   [:lonlat [:tuple :double :double]]
 ;   [:country [:enum "fi" "po"]]]]]
 
 (-> Address
     (mu/dissoc :address)
     (mu/update-properties assoc :title "Address"))
 ;[:map {:title "Address"}
-; [:id string?]
-; [:tags [:set keyword?]]]
+; [:id :string]
+; [:tags [:set :keyword]]]
 ```
 
 Making keys optional or required:
 
 ```clojure
-(mu/optional-keys [:map [:x int?] [:y int?]])
+(mu/optional-keys [:map [:x :int] [:y :int]])
 ;[:map
-; [:x {:optional true} int?]
-; [:y {:optional true} int?]]
+; [:x {:optional true} :int]
+; [:y {:optional true} :int]]
 
-(mu/optional-keys [:map [:x int?] [:y int?]]
+(mu/optional-keys [:map [:x :int] [:y :int]]
                   [:x])
 ;[:map
-; [:x {:optional true} int?]
-; [:y int?]]
+; [:x {:optional true} :int]
+; [:y :int]]
 
-(mu/required-keys [:map [:x {:optional true} int?] [:y {:optional true} int?]])
+(mu/required-keys [:map [:x {:optional true} :int] [:y {:optional true} :int]])
 ;[:map
-; [:x int?]
-; [:y int?]]
+; [:x :int]
+; [:y :int]]
 
-(mu/required-keys [:map [:x {:optional true} int?] [:y {:optional true} int?]]
+(mu/required-keys [:map [:x {:optional true} :int] [:y {:optional true} :int]]
                   [:x])
 ;[:map
-; [:x int?]
-; [:y {:optional true} int?]]
+; [:x :int]
+; [:y {:optional true} :int]]
 ```
 
 Closing and opening all `:map` schemas recursively:
@@ -1526,26 +1572,26 @@ Closing and opening all `:map` schemas recursively:
 ```clojure
 (def abcd
   [:map {:title "abcd"}
-   [:a int?]
-   [:b {:optional true} int?]
+   [:a :int]
+   [:b {:optional true} :int]
    [:c [:map
-        [:d int?]]]])
+        [:d :int]]]])
 
 (mu/closed-schema abcd)
 ;[:map {:title "abcd", :closed true}
-; [:a int?]
-; [:b {:optional true} int?]
+; [:a :int]
+; [:b {:optional true} :int]
 ; [:c [:map {:closed true}
-;      [:d int?]]]]
+;      [:d :int]]]]
 
 (-> abcd
     mu/closed-schema
     mu/open-schema)
 ;[:map {:title "abcd"}
-; [:a int?]
-; [:b {:optional true} int?]
+; [:a :int]
+; [:b {:optional true} :int]
 ; [:c [:map
-;      [:d int?]]]]
+;      [:d :int]]]]
 ```
 
 Merging Schemas (last value wins):
@@ -1553,23 +1599,23 @@ Merging Schemas (last value wins):
 ```clojure
 (mu/merge
   [:map
-   [:name string?]
-   [:description string?]
+   [:name :string]
+   [:description :string]
    [:address
     [:map
-     [:street string?]
+     [:street :string]
      [:country [:enum "finland" "poland"]]]]]
   [:map
-   [:description {:optional true} string?]
+   [:description {:optional true} :string]
    [:address
     [:map
-     [:country string?]]]])
+     [:country :string]]]])
 ;[:map
-; [:name string?]
-; [:description {:optional true} string?]
+; [:name :string]
+; [:description {:optional true} :string]
 ; [:address [:map
-;            [:street string?]
-;            [:country string?]]]]
+;            [:street :string]
+;            [:country :string]]]]
 ```
 
 With `:and`, first child is used in merge:
@@ -1593,23 +1639,23 @@ Schema unions (merged values of both schemas are valid for union schema):
 ```clojure
 (mu/union
   [:map
-   [:name string?]
-   [:description string?]
+   [:name :string]
+   [:description :string]
    [:address
     [:map
-     [:street string?]
+     [:street :string]
      [:country [:enum "finland" "poland"]]]]]
   [:map
-   [:description {:optional true} string?]
+   [:description {:optional true} :string]
    [:address
     [:map
-     [:country string?]]]])
+     [:country :string]]]])
 ;[:map
-; [:name string?]
-; [:description {:optional true} string?]
+; [:name :string]
+; [:description {:optional true} :string]
 ; [:address [:map
-;            [:street string?]
-;            [:country [:or [:enum "finland" "poland"] string?]]]]]
+;            [:street :string]
+;            [:country [:or [:enum "finland" "poland"] :string]]]]]
 ```
 
 Adding generated example values to Schemas:
@@ -1617,11 +1663,11 @@ Adding generated example values to Schemas:
 ```clojure
 (m/walk
   [:map
-   [:name string?]
-   [:description string?]
+   [:name :string]
+   [:description :string]
    [:address
     [:map
-     [:street string?]
+     [:street :string]
      [:country [:enum "finland" "poland"]]]]]
   (m/schema-walker
     (fn [schema]
@@ -1629,12 +1675,12 @@ Adding generated example values to Schemas:
 ;[:map
 ; {:examples ({:name "", :description "", :address {:street "", :country "poland"}}
 ;             {:name "W", :description "x", :address {:street "8", :country "finland"}})}
-; [:name [string? {:examples ("" "")}]]
-; [:description [string? {:examples ("" "")}]]
+; [:name [:string {:examples ("" "")}]]
+; [:description [:string {:examples ("" "")}]]
 ; [:address
 ;  [:map
 ;   {:examples ({:street "", :country "finland"} {:street "W", :country "poland"})}
-;   [:street [string? {:examples ("" "")}]]
+;   [:street [:string {:examples ("" "")}]]
 ;   [:country [:enum {:examples ("finland" "poland")} "finland" "poland"]]]]]
 ```
 
@@ -1643,14 +1689,14 @@ Finding first value (prewalk):
 ```clojure
 (mu/find-first
   [:map
-   [:x int?]
+   [:x :int]
    [:y [:vector [:tuple
-                 [:or [:and {:salaisuus "turvassa"} boolean?] int?]
+                 [:or [:and {:salaisuus "turvassa"} :boolean] :int]
                  [:schema {:salaisuus "vaarassa"} false?]]]]
    [:z [:string {:salaisuus "piilossa"}]]]
   (fn [schema _ _]
     (-> schema m/properties :salaisuus)))
-; => "turvassa"
+;; => "turvassa"
 ```
 
 Finding all subschemas with paths, retaining order:
@@ -1660,50 +1706,50 @@ Finding all subschemas with paths, retaining order:
   (m/schema
     [:maybe
      [:map
-      [:id string?]
-      [:tags [:set keyword?]]
+      [:id :string]
+      [:tags [:set :keyword]]
       [:address
        [:and
         [:map
-         [:street {:optional true} string?]
-         [:lonlat {:optional true} [:tuple double? double?]]]
+         [:street {:optional true} :string]
+         [:lonlat {:optional true} [:tuple :double :double]]]
         [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]))
 
 (mu/subschemas Schema)
 ;[{:path [], :in [], :schema [:maybe
 ;                             [:map
-;                              [:id string?]
-;                              [:tags [:set keyword?]]
+;                              [:id :string]
+;                              [:tags [:set :keyword]]
 ;                              [:address
 ;                               [:and
 ;                                [:map
-;                                 [:street {:optional true} string?]
-;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                 [:street {:optional true} :string]
+;                                 [:lonlat {:optional true} [:tuple :double :double]]]
 ;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]]}
 ; {:path [0], :in [], :schema [:map
-;                              [:id string?]
-;                              [:tags [:set keyword?]]
+;                              [:id :string]
+;                              [:tags [:set :keyword]]
 ;                              [:address
 ;                               [:and
 ;                                [:map
-;                                 [:street {:optional true} string?]
-;                                 [:lonlat {:optional true} [:tuple double? double?]]]
+;                                 [:street {:optional true} :string]
+;                                 [:lonlat {:optional true} [:tuple :double :double]]]
 ;                                [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]]]}
-; {:path [0 :id], :in [:id], :schema string?}
-; {:path [0 :tags], :in [:tags], :schema [:set keyword?]}
-; {:path [0 :tags :malli.core/in], :in [:tags :malli.core/in], :schema keyword?}
+; {:path [0 :id], :in [:id], :schema :string}
+; {:path [0 :tags], :in [:tags], :schema [:set :keyword]}
+; {:path [0 :tags :malli.core/in], :in [:tags :malli.core/in], :schema :keyword}
 ; {:path [0 :address], :in [:address], :schema [:and
 ;                                               [:map
-;                                                [:street {:optional true} string?]
-;                                                [:lonlat {:optional true} [:tuple double? double?]]]
+;                                                [:street {:optional true} :string]
+;                                                [:lonlat {:optional true} [:tuple :double :double]]]
 ;                                               [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]]}
 ; {:path [0 :address 0], :in [:address], :schema [:map
-;                                                 [:street {:optional true} string?]
-;                                                 [:lonlat {:optional true} [:tuple double? double?]]]}
-; {:path [0 :address 0 :street], :in [:address :street], :schema string?}
-; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple double? double?]}
-; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema double?}
-; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema double?}
+;                                                 [:street {:optional true} :string]
+;                                                 [:lonlat {:optional true} [:tuple :double :double]]]}
+; {:path [0 :address 0 :street], :in [:address :street], :schema :string}
+; {:path [0 :address 0 :lonlat], :in [:address :lonlat], :schema [:tuple :double :double]}
+; {:path [0 :address 0 :lonlat 0], :in [:address :lonlat 0], :schema :double}
+; {:path [0 :address 0 :lonlat 1], :in [:address :lonlat 1], :schema :double}
 ; {:path [0 :address 1], :in [:address], :schema [:fn (fn [{:keys [street lonlat]}] (or street lonlat))]}]
 ```
 
@@ -1732,17 +1778,17 @@ Schema paths can be converted into value paths:
 
 ```clojure
 (mu/get-in Schema [0 :address 0 :lonlat])
-; => [:tuple double? double?]
+; [:tuple :double :double]
 
 (mu/path->in Schema [0 :address 0 :lonlat])
-; => [:address :lonlat]
+;; => [:address :lonlat]
 ```
 
 and back, returning all paths:
 
 ```clojure
 (mu/in->paths Schema [:address :lonlat])
-; => [[0 :address 0 :lonlat]]
+;; => [[0 :address 0 :lonlat]]
 ```
 
 ## Declarative schema transformation
@@ -1770,7 +1816,7 @@ Merged
 ; [:y :int]]
 
 (m/validate Merged {:x "kikka", :y 6})
-; => true
+;; => true
 ```
 
 `:union` is similar to `:or`, except `:union` combines map schemas in different disjuncts with `:or`.
@@ -1792,10 +1838,10 @@ For example, `UnionMaps` is equivalent to `[:map [:x [:or :int :string]] [:y [:o
     {:registry registry}))
 
 (m/validate OrMaps {:x "kikka" :y "kikka"})
-; => false
+;; => false
 
 (m/validate UnionMaps {:x "kikka" :y "kikka"})
-; => true
+;; => true
 ```
 
 `:merge` and `:union` differ on schemas with common keys. `:merge` chooses the right-most
@@ -1819,13 +1865,13 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
     {:registry registry}))
 
 (m/validate MergedCommon {:x "kikka"})
-; => true
+;; => false
 (m/validate MergedCommon {:x 1})
-; => false
+;; => true
 (m/validate UnionCommon {:x "kikka"})
-; => true
+;; => true
 (m/validate UnionCommon {:x 1})
-; => true
+;; => true
 ```
 
 ### Distributive schemas
@@ -1833,6 +1879,7 @@ is equivalent to `[:map [:x [:or :string :int]]]`.
 `:merge` also distributes over `:multi` in a [similar way](https://en.wikipedia.org/wiki/Distributive_property) to how multiplication
 distributes over addition in arithmetic. There are two transformation rules, applied in the following order:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; right-distributive
 [:merge [:multi M1 M2 ...] M3]
@@ -1848,6 +1895,7 @@ distributes over addition in arithmetic. There are two transformation rules, app
 For `:merge` with more than two arguments, the rules are applied iteratively left-to-right
 as if the following transformation was applied:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 [:merge M1 M2 M3 M4 ...]
 =>
@@ -1873,7 +1921,7 @@ Here are concrete examples of applying the rules:
    [1 [:map [:y [:= 1]]]]
    [2 [:map [:y [:= 2]]]]]]
  {:registry registry})
-; => [:multi {:dispatch :y}
+;    [:multi {:dispatch :y}
 ;     [1 [:map [:x :int] [:y [:= 1]]]]
 ;     [2 [:map [:x :int] [:y [:= 2]]]]]
 
@@ -1885,7 +1933,7 @@ Here are concrete examples of applying the rules:
    [2 [:map [:y [:= 2]]]]]
   [:map [:x :int]]]
  {:registry registry})
-; => [:multi {:dispatch :y}
+;    [:multi {:dispatch :y}
 ;     [1 [:map [:y [:= 1]] [:x :int]]]
 ;     [2 [:map [:y [:= 2]] [:x :int]]]]
 ```
@@ -1908,18 +1956,18 @@ functions](#serializable-functions).
 
 (-> [:and
      [:map
-      [:x int?]
-      [:y int?]]
+      [:x :int]
+      [:y :int]]
      [:fn '(fn [{:keys [x y]}] (> x y))]]
     (edn/write-string)
-    (doto prn) ; => "[:and [:map [:x int?] [:y int?]] [:fn (fn [{:keys [x y]}] (> x y))]]"
+    (doto prn) ; => "[:and [:map [:x :int] [:y :int]] [:fn (fn [{:keys [x y]}] (> x y))]]"
     (edn/read-string)
     (doto (-> (m/validate {:x 0, :y 1}) prn)) ; => false
     (doto (-> (m/validate {:x 2, :y 1}) prn))) ; => true
 ;[:and
 ; [:map
-;  [:x int?]
-;  [:y int?]]
+;  [:x :int]
+;  [:y :int]]
 ; [:fn (fn [{:keys [x y]}] (> x y))]]
 ```
 
@@ -1930,10 +1978,10 @@ Closed dispatch with `:multi` schema and `:dispatch` property:
 ```clojure
 (m/validate
   [:multi {:dispatch :type}
-   [:sized [:map [:type keyword?] [:size int?]]]
-   [:human [:map [:type keyword?] [:name string?] [:address [:map [:country keyword?]]]]]]
+   [:sized [:map [:type :keyword] [:size :int]]]
+   [:human [:map [:type :keyword] [:name :string] [:address [:map [:country :keyword]]]]]]
   {:type :sized, :size 10})
-; true
+;; => true
 ```
 
 Default branch with `::m/default`:
@@ -1946,13 +1994,13 @@ Default branch with `::m/default`:
      [::m/default :string]]))
 
 (valid? {:type "object", :key "1", :value "100"})
-; => true
+;; => true
 
 (valid? "SUCCESS!")
-; => true
+;; => true
 
 (valid? :failure)
-; => false
+;; => false
 ```
 
 Any function can be used for `:dispatch`:
@@ -1960,10 +2008,10 @@ Any function can be used for `:dispatch`:
 ```clojure
 (m/validate
   [:multi {:dispatch first}
-   [:sized [:tuple keyword? [:map [:size int?]]]]
-   [:human [:tuple keyword? [:map [:name string?] [:address [:map [:country keyword?]]]]]]]
+   [:sized [:tuple :keyword [:map [:size :int]]]]
+   [:human [:tuple :keyword [:map [:name :string] [:address [:map [:country :keyword]]]]]]]
   [:human {:name "seppo", :address {:country :sweden}}])
-; true
+;; => true
 ```
 
 `:dispatch` values should be decoded before actual values:
@@ -1972,17 +2020,17 @@ Any function can be used for `:dispatch`:
 (m/decode
   [:multi {:dispatch :type
            :decode/string #(update % :type keyword)}
-   [:sized [:map [:type [:= :sized]] [:size int?]]]
-   [:human [:map [:type [:= :human]] [:name string?] [:address [:map [:country keyword?]]]]]]
+   [:sized [:map [:type [:= :sized]] [:size :int]]]
+   [:human [:map [:type [:= :human]] [:name :string] [:address [:map [:country :keyword]]]]]]
   {:type "human"
    :name "Tiina"
    :age "98"
    :address {:country "finland"
              :street "this is an extra key"}}
   (mt/transformer mt/strip-extra-keys-transformer mt/string-transformer))
-;{:type :human
-; :name "Tiina"
-; :address {:country :finland}}
+;; => {:type :human
+;;     :name "Tiina"
+;;     :address {:country :finland}}
 ```
 
 ## Recursive schemas
@@ -1996,11 +2044,12 @@ For example, here is a recursive schema using `:schema` for singly-linked lists 
   [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
    [:ref ::cons]]
   [16 [64 [26 [1 [13 nil]]]]])
-; => true
+;; => true
 ```
 
 Without the `:ref` keyword, malli eagerly expands the schema until a stack overflow error is thrown:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/validate
   [:schema {:registry {::cons [:maybe [:tuple pos-int? ::cons]]}}
@@ -2012,13 +2061,14 @@ Without the `:ref` keyword, malli eagerly expands the schema until a stack overf
 Technically, you only need the `:ref` in recursive positions. However, it is best practice to `:ref` all references
 to recursive variables for better-behaving generators:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; Note:
 [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
  ::cons]
 ;; produces the same generator as the "unfolded"
 [:maybe [:tuple pos-int? [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}} ::cons]]]
-;; while 
+;; while
 [:schema {:registry {::cons [:maybe [:tuple pos-int? [:ref ::cons]]]}}
  [:ref ::cons]]
 ;; has a direct correspondance to the following generator:
@@ -2036,7 +2086,7 @@ Mutual recursion works too. Thanks to the `:schema` construct, many schemas coul
                        ::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
    ::ping]
   ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
-; => true
+;; => true
 ```
 
 Nested registries, the last definition wins:
@@ -2048,18 +2098,19 @@ Nested registries, the last definition wins:
    [:schema {:registry {::pong [:maybe [:tuple [:= "pong"] [:ref ::ping]]]}}
     ::ping]]
   ["ping" ["pong" ["ping" ["pong" ["ping" nil]]]]])
-; => true
+;; => true
 ```
 
 ## Value generation
 
 Schemas can be used to generate values:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[malli.generator :as mg])
 
 ;; random
-(mg/generate keyword?)
+(mg/generate :keyword)
 ; => :?
 
 ;; using seed
@@ -2083,19 +2134,19 @@ Schemas can be used to generate values:
 
 ;; :gen/elements (note, are not validated)
 (mg/generate
-  [:and {:gen/elements ["kikka" "kukka" "kakka"]} string?]
+  [:and {:gen/elements ["kikka" "kukka" "kakka"]} :string]
   {:seed 10})
 ; => "kikka"
 
-;; :gen/fmap 
+;; :gen/fmap
 (mg/generate
-  [:and {:gen/fmap (partial str "kikka_")} string?]
+  [:and {:gen/fmap (partial str "kikka_")} :string]
   {:seed 10, :size 10})
 ;; => "kikka_WT3K0yax2"
 
 ;; portable :gen/fmap (requires `org.babashka/sci` dependency to work)
 (mg/generate
-  [:and {:gen/fmap '(partial str "kikka_")} string?]
+  [:and {:gen/fmap '(partial str "kikka_")} :string]
   {:seed 10, :size 10})
 ;; => "kikka_nWT3K0ya7"
 
@@ -2111,6 +2162,23 @@ Schemas can be used to generate values:
   {:seed 1})
 ; => [-8522515 -1433 -1 1]
 
+;; :gen/min & gen/max works for :+ and :* as well
+(mg/generate
+ [:+ {:gen/min 2 :gen/max 10} :int]
+ {:seed 10})
+; => [-109024846 -2 25432]
+
+;; When composing sequence schemas, the directives effect the definition they are
+;; associated with, such that:
+(mg/generate
+ [:* {:gen/min 2 :gen/max 3} ; 2 - 3 repetitions of
+  [:cat
+   [:+ {:gen/min 2 :gen/max 3} :int] ; 2 - 3 repetitions of int
+   [:* {:gen/min 1 :gen/max 2} :string]]] ; followed by 1-2 repetitions of string
+ {:seed 10})
+
+; => (-812 1283 "Q9beps1Yn3c3VP9" "4XHdn1mgudSlNpVyxOrQIiR5pd5ocs" 114 -14284153 "8SSR9033czAO05")
+
 ;; :gen/infinite? & :gen/NaN? for :double
 (mg/generate
   [:double {:gen/infinite? true, :gen/NaN? true}]
@@ -2121,7 +2189,7 @@ Schemas can be used to generate values:
 
 ;; gen/gen (note, not serializable)
 (mg/generate
-  [:sequential {:gen/gen (gen/list gen/neg-int)} int?]
+  [:sequential {:gen/gen (gen/list gen/neg-int)} :int]
   {:size 42, :seed 42})
 ; => (-37 -13 -13 -24 -20 -11 -34 -40 -22 0 -10)
 ```
@@ -2141,19 +2209,21 @@ Generated values are valid:
 ;           :lonlat [-2.75 -0.625]}}
 
 (m/validate Address (mg/generate Address))
-; => true
+;; => true
 ```
 
 Sampling values:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; sampling
-(mg/sample [:and int? [:> 10] [:< 100]] {:seed 123})
+(mg/sample [:and :int [:> 10] [:< 100]] {:seed 123})
 ; => (25 39 51 13 53 43 57 15 26 27)
 ```
 
 Integration with test.check:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[clojure.test.check.generators :as gen])
 (gen/sample (mg/generator pos-int?))
@@ -2168,6 +2238,7 @@ out any values that do not pass the overall `:and` schema.
 For the most reliable results, place the schema that is most likely to generate valid
 values for the entire schema as the first child of an `:and` schema.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; BAD: :string is unlikely to generate values satisfying the schema
 (mg/generate [:and :string [:enum "a" "b" "c"]] {:seed 42})
@@ -2186,6 +2257,7 @@ For example, a schema for non-empty heterogeneous vectors can validate values
 by combining `:cat` and `vector?`, but since `:cat` generates sequences
 we need to use `:gen/fmap` to make it generate vectors:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; generate a non-empty vector starting with a keyword
 (mg/generate [:and [:cat {:gen/fmap vec}
@@ -2235,11 +2307,12 @@ All samples are valid against the inferred schema:
 
 ```clojure
 (every? (partial m/validate (mp/provide samples)) samples)
-; => true
+;; => true
 ```
 
 For better performance, use `mp/provider`:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[criterium.core :as p])
 
@@ -2260,10 +2333,10 @@ By default, `:map-of` is not inferred:
  [{"1" [1]}
   {"2" [1 2]}
   {"3" [1 2 3]}])
-;[:map
-; ["1" {:optional true} [:vector :int]]
-; ["2" {:optional true} [:vector :int]]
-; ["3" {:optional true} [:vector :int]]]
+;; => [:map
+;;     ["1" {:optional true} [:vector :int]]
+;;     ["2" {:optional true} [:vector :int]]
+;;     ["3" {:optional true} [:vector :int]]]
 ```
 
 With `::mp/map-of-threshold` option:
@@ -2274,7 +2347,7 @@ With `::mp/map-of-threshold` option:
   {"2" [1 2]}
   {"3" [1 2 3]}]
  {::mp/map-of-threshold 3})
-; [:map-of :string [:vector :int]]
+;; => [:map-of :string [:vector :int]]
 ```
 
 Sample-data can be type-hinted with `::mp/hint`:
@@ -2286,11 +2359,11 @@ Sample-data can be type-hinted with `::mp/hint`:
     :b {:b 2, :c 1}
     :c {:b 3}
     :d nil}])
-;[:map-of 
-; :keyword 
-; [:maybe [:map 
-;          [:b :int] 
-;          [:c {:optional true} :int]]]]
+;; => [:map-of
+;;     :keyword
+;;     [:maybe [:map
+;;              [:b :int]
+;;              [:c {:optional true} :int]]]]
 ```
 
 ### :tuple inferring
@@ -2302,7 +2375,7 @@ By default, tuples are not inferred:
   [[1 "kikka" true]
    [2 "kukka" true]
    [3 "kakka" true]])
-; [:vector :some]
+;; => [:vector :some]
 ```
 
 With `::mp/tuple-threshold` option:
@@ -2313,7 +2386,7 @@ With `::mp/tuple-threshold` option:
    [2 "kukka" true]
    [3 "kakka" false]]
   {::mp/tuple-threshold 3})
-; [:tuple :int :string :boolean]
+;; => [:tuple :int :string :boolean]
 ```
 
 Sample-data can be type-hinted with `::mp/hint`:
@@ -2323,7 +2396,7 @@ Sample-data can be type-hinted with `::mp/hint`:
   [^{::mp/hint :tuple}
    [1 "kikka" true]
    ["2" "kukka" true]])
-; [:tuple :some string? boolean?]
+;; => [:tuple :some :string :boolean]
 ```
 
 ### value decoding in inferring
@@ -2334,7 +2407,7 @@ By default, no decoding is applied for (leaf) values:
 (mp/provide
  [{:id "caa71a26-5fe1-11ec-bf63-0242ac130002"}
   {:id "8aadbf5e-5fe3-11ec-bf63-0242ac130002"}])
-; => [:map [:id string?]]
+;; => [:map [:id :string]]
 ```
 
 Adding custom decoding via `::mp/value-decoders` option:
@@ -2347,7 +2420,7 @@ Adding custom decoding via `::mp/value-decoders` option:
    :time "2022-01-01T00:00:00Z"}]
  {::mp/value-decoders {:string {:uuid mt/-string->uuid
                                 'inst? mt/-string->date}}})
-; => [:map [:id :uuid] [:time inst?]
+;; => [:map [:id :uuid] [:time inst?]]
 ```
 
 ## Destructuring
@@ -2360,13 +2433,13 @@ Schemas can also be inferred from [Clojure Destructuring Syntax](https://clojure
 (def infer (comp :schema md/parse))
 
 (infer '[a b & cs])
-; => [:cat :any :any [:* :any]]
+;; => [:cat :any :any [:* :any]]
 ```
 Malli also supports adding type hints as an extension to the normal Clojure syntax (enabled by default), inspired by [Plumatic Schema](https://github.com/plumatic/schema#beyond-type-hints).
 
 ```clojure
 (infer '[a :- :int, b :- :string & cs :- [:* :boolean]])
-; => [:cat :int :string [:* :boolean]]
+;; => [:cat :int :string [:* :boolean]]
 ```
 
 Pulling out function argument schemas from Vars:
@@ -2377,9 +2450,9 @@ Pulling out function argument schemas from Vars:
   ([a b & cs] [a b cs]))
 
 (md/infer #'kikka)
-;[:function
-; [:=> [:cat :any] :any]
-; [:=> [:cat :any :any [:* :any]] :any]]
+;; => [:function
+;;     [:=> [:cat :any] :any]
+;;     [:=> [:cat :any :any [:* :any]] :any]]
 ```
 
 `md/parse` uses the following options:
@@ -2402,33 +2475,33 @@ A more complete example:
             [h] :h
             :or {d 0}
             :as opts}])
-;[:cat
-; :any
-; [:maybe [:cat
-;          [:? :any]
-;          [:? :any]
-;          [:* :any]]]
-; [:altn
-;  [:map
-;   [:map
-;    [:d {:optional true} :any]
-;    [:e {:optional true} :any]
-;    [:demo/f {:optional true}]
-;    [:demo/g {:optional true}]
-;    [:h {:optional true} [:maybe [:cat
-;                                  [:? :any]
-;                                  [:* :any]]]]]]
-;  [:args
-;   [:*
-;    [:alt
-;     [:cat [:= :d] :any]
-;     [:cat [:= :e] :any]
-;     [:cat [:= :demo/f] :demo/f]
-;     [:cat [:= :demo/g] :demo/g]
-;     [:cat [:= :h] [:maybe [:cat
-;                            [:? :any]
-;                            [:* :any]]]]
-;     [:cat :any :any]]]]]]
+;; => [:cat
+;;     :any
+;;     [:maybe [:cat
+;;              [:? :any]
+;;              [:? :any]
+;;              [:* :any]]]
+;;     [:orn
+;;      [:map
+;;       [:map
+;;        [:d {:optional true} :any]
+;;        [:e {:optional true} :any]
+;;        [:demo/f {:optional true}]
+;;        [:demo/g {:optional true}]
+;;        [:h {:optional true} [:maybe [:cat
+;;                                      [:? :any]
+;;                                      [:* :any]]]]]]
+;;      [:args
+;;       [:*
+;;        [:alt
+;;         [:cat [:= :d] :any]
+;;         [:cat [:= :e] :any]
+;;         [:cat [:= :demo/f] :demo/f]
+;;         [:cat [:= :demo/g] :demo/g]
+;;         [:cat [:= :h] [:maybe [:cat
+;;                                [:? :any]
+;;                                [:* :any]]]]
+;;         [:cat [:not [:enum :d :e :demo/f :demo/g :h]] :any]]]]]]
 ```
 
 ## Parsing values
@@ -2440,14 +2513,14 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ```clojure
 (m/parse
   [:* [:catn
-       [:prop string?]
+       [:prop :string]
        [:val [:altn
-              [:s string?]
-              [:b boolean?]]]]]
+              [:s :string]
+              [:b :boolean]]]]]
   ["-server" "foo" "-verbose" true "-user" "joe"])
-;[#malli.core.Tags{:values {:prop "-server", :val #malli.core.Tag{:key :s, :value "foo"}}}
-; #malli.core.Tags{:values {:prop "-verbose", :val #malli.core.Tag{:key :b, :value true}}}
-; #malli.core.Tags{:values {:prop "-user", :val #malli.core.Tag{:key :s, :value "joe"}}}]
+;; => [#malli.core.Tags{:values {:prop "-server", :val #malli.core.Tag{:key :s, :value "foo"}}}
+;;     #malli.core.Tags{:values {:prop "-verbose", :val #malli.core.Tag{:key :b, :value true}}}
+;;     #malli.core.Tags{:values {:prop "-user", :val #malli.core.Tag{:key :s, :value "joe"}}}]
 
 ```
 
@@ -2473,24 +2546,24 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
   [:div {:class [:foo :bar]}
    [:p "Hello, world of data"]])
 
-;#malli.core.Tag
-;{:key :node,
-; :value
-; #malli.core.Tags
-; {:values {:name :div,
-;           :props {:class [:foo :bar]},
-;           :children [#malli.core.Tag
-;                      {:key :node,
-;                       :value
-;                       #malli.core.Tags
-;                       {:values {:name :p,
-;                                 :props nil,
-;                                 :children [#malli.core.Tag
-;                                            {:key :primitive,
-;                                             :value
-;                                             #malli.core.Tag
-;                                             {:key :text,
-;                                              :value "Hello, world of data"}}]}}}]}}}
+;; => #malli.core.Tag
+;;    {:key :node,
+;;     :value
+;;     #malli.core.Tags
+;;     {:values {:name :div,
+;;               :props {:class [:foo :bar]},
+;;               :children [#malli.core.Tag
+;;                          {:key :node,
+;;                           :value
+;;                           #malli.core.Tags
+;;                           {:values {:name :p,
+;;                                     :props nil,
+;;                                     :children [#malli.core.Tag
+;;                                                {:key :primitive,
+;;                                                 :value
+;;                                                 #malli.core.Tag
+;;                                                 {:key :text,
+;;                                                  :value "Hello, world of data"}}]}}}]}}}
 ```
 
 Parsing returns tagged values for `:orn`, `:catn`, `:altn`, `:andn` and `:multi`.
@@ -2502,10 +2575,27 @@ Parsing returns tagged values for `:orn`, `:catn`, `:altn`, `:andn` and `:multi`
    [::m/default :any]])
 
 (m/parse Multi {:type :user, :size 1})
-; => #malli.core.Tag{:key :user, :value {:type :user, :size 1}}
+;; => #malli.core.Tag{:key :user, :value {:type :user, :size 1}}
 
 (m/parse Multi {:type "sized", :size 1})
-; => #malli.core.Tag{:key :malli.core/default, :value {:type "sized", :size 1}}
+;; => #malli.core.Tag{:key :malli.core/default, :value {:type "sized", :size 1}}
+```
+
+The function `old-parse-format` transforms the new parsing format to the old
+one prior to version 0.18.0:
+
+```clojure
+(-> [:* [:catn
+         [:prop :string]
+         [:val [:altn
+                [:s :string]
+                [:b :boolean]]]]]
+    (m/parse ["-server" "foo" "-verbose" true "-user" "joe"])
+    (m/old-parse-format))
+
+[{:prop "-server" :val [:s "foo"]}
+ {:prop "-verbose" :val [:b true]}
+ {:prop "-user" :val [:s "joe"]}]
 ```
 
 ### Parsing `:and`
@@ -2598,19 +2688,19 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
       [:p "Hello, world of data"]]
      (m/parse Hiccup)
      (m/unparse Hiccup))
-;[:div {:class [:foo :bar]}
-; [:p "Hello, world of data"]]
+;; => [:div {:class [:foo :bar]}
+;;     [:p "Hello, world of data"]]
 ```
 
 Tags are mapped back to the original schema to be unparsed.
 
 ```clojure
-(m/unparse [:orn [:left :string] [:right :int]]
-           (m/tag :left "x"))
-; => "x"
+(m/unparse [:orn [:name :string] [:id :int]]
+           (m/tag :name "x"))
+;; => "x"
 
-(m/unparse [:orn [:left :string] [:right :int]]
-           (m/tag :left 1))
+(m/unparse [:orn [:name :string] [:int :int]]
+           (m/tag :name 1))
 ; => ::m/invalid
 ```
 
@@ -2620,19 +2710,19 @@ Unparsing can be used to update complex values via an associative interface.
 (def FlatPairs [:* [:catn [:name :string] [:id :int]]])
 
 (m/parse FlatPairs ["x" 1 "y" 2])
-; => [#malli.core.Tags{:values {:name "x", :id 1}}
-;     #malli.core.Tags{:values {:name "y", :id 2}}]
+;; => [#malli.core.Tags{:values {:name "x", :id 1}}
+;;     #malli.core.Tags{:values {:name "y", :id 2}}]
 
 (m/unparse FlatPairs
            [(m/tags {:name "x" :id 1})
             (m/tags {:name "y" :id 2})])
-; => ["x" 1 "y" 2]
+;; => ["x" 1 "y" 2]
 
 (->> ["x" 1 "y" 2 "z" 3]
      (m/parse FlatPairs)
      (mapv (fn [tags] (-> tags (update :values #(-> % (update :name str "_") (update :id * 2))))))
      (m/unparse FlatPairs))
-; => ["x_" 2 "y_" 4 "z_" 6]
+;; => ["x_" 2 "y_" 4 "z_" 6]
 ```
 
 ## Serializable functions
@@ -2644,12 +2734,13 @@ For ClojureScript, you need to require `sci.core` or `malli.cherry` manually.
 
 For GraalVM, you need to require `sci.core` manually, before requiring any malli namespaces.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (def my-schema
   [:and
    [:map
-    [:x int?]
-    [:y int?]]
+    [:x :int]
+    [:y :int]]
    [:fn '(fn [{:keys [x y]}] (> x y))]])
 
 (m/validate my-schema {:x 1, :y 0})
@@ -2661,6 +2752,7 @@ For GraalVM, you need to require `sci.core` manually, before requiring any malli
 
 **NOTE**: [sci is not termination safe](https://github.com/borkdude/sci/issues/348) so be wary of `sci` functions from untrusted sources. You can explicitly disable sci with option `::m/disable-sci` and set the default options with `::m/sci-options`.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/validate [:fn 'int?] 1 {::m/disable-sci true})
 ; Execution error
@@ -2676,33 +2768,33 @@ Implemented with protocol `malli.core/AST`. Allows lossless round-robin with fas
 ```clojure
 (def ?schema
   [:map
-   [:x boolean?]
-   [:y {:optional true} int?]
+   [:x :boolean]
+   [:y {:optional true} :int]
    [:z [:map
-        [:x boolean?]
-        [:y {:optional true} int?]]]])
+        [:x :boolean]
+        [:y {:optional true} :int]]]])
 
 (m/form ?schema)
-;[:map
-; [:x boolean?]
-; [:y {:optional true} int?]
-; [:z [:map
-;      [:x boolean?]
-;      [:y {:optional true} int?]]]]
+;; => [:map
+;;     [:x :boolean]
+;;     [:y {:optional true} :int]
+;;     [:z [:map
+;;          [:x :boolean]
+;;          [:y {:optional true} :int]]]]
 
 (m/ast ?schema)
-;{:type :map,
-; :keys {:x {:order 0
-;            :value {:type boolean?}},
-;        :y {:order 1, :value {:type int?}
-;            :properties {:optional true}},
-;        :z {:order 2,
-;            :value {:type :map,
-;                    :keys {:x {:order 0
-;                               :value {:type boolean?}},
-;                           :y {:order 1
-;                               :value {:type int?}
-;                               :properties {:optional true}}}}}}}
+;; => {:type :map,
+;;     :keys {:x {:order 0
+;;                :value {:type :boolean}},
+;;            :y {:order 1, :value {:type :int}
+;;                :properties {:optional true}},
+;;            :z {:order 2,
+;;                :value {:type :map,
+;;                        :keys {:x {:order 0
+;;                                   :value {:type :boolean}},
+;;                               :y {:order 1
+;;                                   :value {:type :int}
+;;                                   :properties {:optional true}}}}}}}
 
 (-> ?schema
     (m/schema) ;; 3.4µs
@@ -2710,7 +2802,7 @@ Implemented with protocol `malli.core/AST`. Allows lossless round-robin with fas
     (m/from-ast) ;; 180ns (18x, lazy)
     (m/form)
     (= (m/form ?schema)))
-; => true
+;; => true
 ```
 
 ## Schema transformation
@@ -2724,14 +2816,14 @@ The identity walker:
   Address
   (m/schema-walker identity))
 ;[:map
-; [:id string?]
-; [:tags [:set keyword?]]
+; [:id :string]
+; [:tags [:set :keyword]]
 ; [:address
 ;  [:map
-;   [:street string?]
-;   [:city string?]
-;   [:zip int?]
-;   [:lonlat [:tuple double? double?]]]]]
+;   [:street :string]
+;   [:city :string]
+;   [:zip :int]
+;   [:lonlat [:tuple :double :double]]]]]
 ```
 
 Adding `:title` property to schemas:
@@ -2741,14 +2833,14 @@ Adding `:title` property to schemas:
   Address
   (m/schema-walker #(mu/update-properties % assoc :title (name (m/type %)))))
 ;[:map {:title "map"}
-; [:id [string? {:title "string?"}]]
-; [:tags [:set {:title "set"} [keyword? {:title "keyword?"}]]]
+; [:id [:string {:title "string"}]]
+; [:tags [:set {:title "set"} [:keyword {:title "keyword"}]]]
 ; [:address
 ;  [:map {:title "map"}
-;   [:street [string? {:title "string?"}]]
-;   [:city [string? {:title "string?"}]]
-;   [:zip [int? {:title "int?"}]]
-;   [:lonlat [:tuple {:title "tuple"} [double? {:title "double?"}] [double? {:title "double?"}]]]]]]
+;   [:street [:string {:title "string"}]]
+;   [:city [:string {:title "string"}]]
+;   [:zip [:int {:title "int"}]]
+;   [:lonlat [:tuple {:title "tuple"} [:double {:title "double"}] [:double {:title "double"}]]]]]]
 ```
 
 Transforming schemas into maps:
@@ -2760,17 +2852,17 @@ Transforming schemas into maps:
     (-> (m/properties schema)
         (assoc :malli/type (m/type schema))
         (cond-> (seq children) (assoc :malli/children children)))))
-;{:malli/type :map,
-; :malli/children [[:id nil {:malli/type string?}]
-;                  [:tags nil {:malli/type :set
-;                              :malli/children [{:malli/type keyword?}]}]
-;                  [:address nil {:malli/type :map,
-;                                 :malli/children [[:street nil {:malli/type string?}]
-;                                                  [:city nil {:malli/type string?}]
-;                                                  [:zip nil {:malli/type int?}]
-;                                                  [:lonlat nil {:malli/type :tuple
-;                                                                :malli/children [{:malli/type double?}
-;                                                                                 {:malli/type double?}]}]]}]]}
+;; => {:malli/type :map,
+;;     :malli/children [[:id nil {:malli/type :string}]
+;;                      [:tags nil {:malli/type :set
+;;                                  :malli/children [{:malli/type :keyword}]}]
+;;                      [:address nil {:malli/type :map,
+;;                                     :malli/children [[:street nil {:malli/type :string}]
+;;                                                      [:city nil {:malli/type :string}]
+;;                                                      [:zip nil {:malli/type :int}]
+;;                                                      [:lonlat nil {:malli/type :tuple
+;;                                                                    :malli/children [{:malli/type :double}
+;;                                                                                     {:malli/type :double}]}]]}]]}
 ```
 
 ### JSON Schema
@@ -2781,20 +2873,20 @@ Transforming Schemas into [JSON Schema](https://json-schema.org/):
 (require '[malli.json-schema :as json-schema])
 
 (json-schema/transform Address)
-;{:type "object",
-; :properties {:id {:type "string"},
-;              :tags {:type "array"
-;                     :items {:type "string"}
-;                     :uniqueItems true},
-;              :address {:type "object",
-;                        :properties {:street {:type "string"},
-;                                     :city {:type "string"},
-;                                     :zip {:type "integer", :format "int64"},
-;                                     :lonlat {:type "array",
-;                                              :items [{:type "number"} {:type "number"}],
-;                                              :additionalItems false}},
-;                        :required [:street :city :zip :lonlat]}},
-; :required [:id :tags :address]}
+;; => {:type "object",
+;;     :properties {:id {:type "string"},
+;;                  :tags {:type "array"
+;;                         :items {:type "string"}
+;;                         :uniqueItems true},
+;;                  :address {:type "object",
+;;                            :properties {:street {:type "string"},
+;;                                         :city {:type "string"},
+;;                                         :zip {:type "integer"},
+;;                                         :lonlat {:type "array",
+;;                                                  :prefixItems [{:type "number"} {:type "number"}],
+;;                                                  :items false}},
+;;                            :required [:street :city :zip :lonlat]}},
+;;     :required [:id :tags :address]}
 ```
 
 Custom transformation via `:json-schema` namespaced properties:
@@ -2807,11 +2899,11 @@ Custom transformation via `:json-schema` namespaced properties:
     :json-schema/type "string"
     :json-schema/default "perch"}
    "perch" "pike"])
-;{:title "Fish"
-; :description "It's a fish"
-; :type "string"
-; :default "perch"
-; :enum ["perch" "pike"]}
+;; => {:title "Fish"
+;;     :description "It's a fish"
+;;     :type "string"
+;;     :default "perch"
+;;     :enum ["perch" "pike"]}
 ```
 
 Full override with `:json-schema` property:
@@ -2820,7 +2912,7 @@ Full override with `:json-schema` property:
 (json-schema/transform
   [:map {:json-schema {:type "file"}}
    [:file any?]])
-; {:type "file"}
+;; =>  {:type "file"}
 ```
 
 ### Swagger2
@@ -2831,21 +2923,21 @@ Transforming Schemas into [Swagger2 Schema](https://github.com/OAI/OpenAPI-Speci
 (require '[malli.swagger :as swagger])
 
 (swagger/transform Address)
-;{:type "object",
-; :properties {:id {:type "string"},
-;              :tags {:type "array"
-;                     :items {:type "string"}
-;                     :uniqueItems true},
-;              :address {:type "object",
-;                        :properties {:street {:type "string"},
-;                                     :city {:type "string"},
-;                                     :zip {:type "integer", :format "int64"},
-;                                     :lonlat {:type "array",
-;                                              :items {},
-;                                              :x-items [{:type "number", :format "double"}
-;                                                        {:type "number", :format "double"}]}},
-;                        :required [:street :city :zip :lonlat]}},
-; :required [:id :tags :address]}
+;; => {:type "object",
+;;     :properties {:id {:type "string"},
+;;                  :tags {:type "array"
+;;                         :items {:type "string"}
+;;                         :uniqueItems true},
+;;                  :address {:type "object",
+;;                            :properties {:street {:type "string"},
+;;                                         :city {:type "string"},
+;;                                         :zip {:type "integer", :format "int64"},
+;;                                         :lonlat {:type "array",
+;;                                                  :items {},
+;;                                                  :x-items [{:type "number", :format "double"}
+;;                                                            {:type "number", :format "double"}]}},
+;;                            :required [:street :city :zip :lonlat]}},
+;;     :required [:id :tags :address]}
 ```
 
 Custom transformation via `:swagger` and `:json-schema` namespaced properties:
@@ -2858,11 +2950,11 @@ Custom transformation via `:swagger` and `:json-schema` namespaced properties:
     :swagger/type "string"
     :json-schema/default "perch"}
    "perch" "pike"])
-;{:title "Fish"
-; :description "It's a fish"
-; :type "string"
-; :default "perch"
-; :enum ["perch" "pike"]}
+;; => {:title "Fish"
+;;     :description "It's a fish"
+;;     :type "string"
+;;     :default "perch"
+;;     :enum ["perch" "pike"]}
 ```
 
 Full override with `:swagger` property:
@@ -2871,7 +2963,7 @@ Full override with `:swagger` property:
 (swagger/transform
   [:map {:swagger {:type "file"}}
    [:file any?]])
-; {:type "file"}
+;; => {:type "file"}
 ```
 
 ## Custom schema types
@@ -2899,7 +2991,7 @@ For simple cases, there is `m/-simple-schema`:
                        :gen/gen (gen/large-integer* {:min 7})}}))
 
 (m/into-schema? Over6)
-; => true
+;; => true
 ```
 
 `m/IntoSchema` can be both used as Schema (creating a Schema instance with `nil` properties
@@ -2908,20 +3000,20 @@ register the types:
 
 ```clojure
 (m/schema? (m/schema Over6))
-; => true
+;; => true
 
 (m/schema? (m/schema [Over6 {:title "over 6"}]))
-; => true
+;; => true
 ```
 
 `:pred` is used for validation:
 
 ```clojure
 (m/validate Over6 2)
-; => false
+;; => false
 
 (m/validate Over6 7)
-; => true
+;; => true
 ```
 
 `:type-properties` are shared for all schema instances and are used just like Schema
@@ -2930,10 +3022,10 @@ register the types:
 
 ```clojure
 (json-schema/transform Over6)
-; => {:type "integer", :format "int64", :minimum 6}
+;; => {:type "integer", :format "int64", :minimum 6}
 
 (json-schema/transform [Over6 {:json-schema/example 42}])
-; => {:type "integer", :format "int64", :minimum 6, :example 42}
+;; => {:type "integer", :format "int64", :minimum 6, :example 42}
 ```
 
 ### Content dependent simple schema
@@ -2959,15 +3051,15 @@ You can also build content-dependent schemas by using a callback function `:comp
                                   :gen/gen (gen/large-integer* {:min (inc min), :max max})}})}))
 
 (m/form [Between 10 20])
-; => [user/Between 10 20]
+; [user/Between 10 20]
 
 (-> [Between 10 20]
     (m/explain 8)
     (me/humanize))
-; => ["should be between 10 and 20, was 8"]
+;; => ["should be between 10 and 20, was 8"]
 
 (mg/sample [Between -10 10])
-; => (-1 0 -2 -4 -4 0 -2 7 1 0)
+; (-1 0 -2 -4 -4 0 -2 7 1 0)
 ```
 
 ## Schema registry
@@ -2978,12 +3070,12 @@ Custom `Registry` can be passed into all/most malli public APIs via the optional
 
 ```clojure
 ;; the default registry
-(m/validate [:maybe string?] "kikka")
-; => true
+(m/validate [:maybe :string] "kikka")
+;; => true
 
 ;; registry as explicit options
-(m/validate [:maybe string?] "kikka" {:registry m/default-registry})
-; => true
+(m/validate [:maybe :string] "kikka" {:registry m/default-registry})
+;; => true
 ```
 
 The default immutable registry is merged from multiple parts, enabling easy re-composition of custom schema sets. See [built-in schemas](#built-in-schemas) for list of all Schemas.
@@ -3002,14 +3094,15 @@ Here's an example to create a custom registry without the default core predicate
      :pos-int (m/-simple-schema {:type :pos-int, :pred pos-int?})}))
 
 (m/validate [:or :pos-int :neg-int] 'kikka {:registry registry})
-; => false
+;; => false
 
 (m/validate [:or :pos-int :neg-int] 123 {:registry registry})
-; => true
+;; => true
 ```
 
 We did not register normal predicate schemas:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (m/validate pos-int? 123 {:registry registry})
 ; Syntax error (ExceptionInfo) compiling
@@ -3022,11 +3115,11 @@ Any schema can define a local registry using `:registry` schema property:
 
 ```clojure
 (def Adult
-  [:map {:registry {::age [:and int? [:> 18]]}}
+  [:map {:registry {::age [:and :int [:> 18]]}}
    [:age ::age]])
 
 (mg/generate Adult {:size 10, :seed 1})
-; => {:age 92}
+; {:age 92}
 ```
 
 Local registries can be persisted:
@@ -3036,7 +3129,7 @@ Local registries can be persisted:
     (malli.edn/write-string)
     (malli.edn/read-string)
     (m/validate {:age 46}))
-; => true
+;; => true
 ```
 
 See also [Recursive Schemas](#recursive-schemas).
@@ -3050,7 +3143,7 @@ Passing in custom options to all public methods is a lot of boilerplate. For the
 
 ;; the default registry
 (-> m/default-registry (mr/schemas) (count))
-;=> 140
+; 147
 
 ;; global side-effects! free since 0.7.0!
 (mr/set-default-registry!
@@ -3059,13 +3152,17 @@ Passing in custom options to all public methods is a lot of boilerplate. For the
    :map (m/-map-schema)})
 
 (-> m/default-registry (mr/schemas) (count))
-; => 3
+;; => 3
 
 (m/validate
   [:map [:maybe [:maybe :string]]]
   {:maybe "sheep"})
-; => true
+;; => true
+```
+Invalid values throw:
 
+<!-- :test-doc-blocks/skip -->
+```clojure
 (m/validate :int 42)
 ; =throws=> :malli.core/invalid-schema {:schema :int}
 ```
@@ -3082,6 +3179,7 @@ Malli allows the default registry to initialized with empty schemas, using the f
    * cljs: `:closure-defines {malli.registry/type "custom"}`
    * clj: `:jvm-opts ["-Dmalli.registry/type=custom"]`
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; with the flag set on
 (-> m/default-registry (mr/schemas) (count))
@@ -3109,12 +3207,13 @@ Just a `Map`.
 (m/validate
   [:map [:maybe [:maybe :string]]]
   {:maybe "sheep"})
-; => true
+;; => true
 ```
 ### Var registry
 
 Var is a valid reference type in Malli. To support auto-resolving Var references to Vars, `mr/var-registry` is needed. It is enabled by default.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (def UserId :string)
 
@@ -3157,7 +3256,7 @@ Using a custom registry atom:
 (register! :non-empty-string [:string {:min 1}])
 
 (m/validate :non-empty-string "malli")
-; => true
+;; => true
 ```
 
 The mutable registry can also be passed in as an explicit option:
@@ -3166,7 +3265,7 @@ The mutable registry can also be passed in as an explicit option:
 (def registry (mr/mutable-registry registry*))
 
 (m/validate :non-empty-string "malli" {:registry registry})
-; => true
+;; => true
 ```
 
 ### Dynamic registry
@@ -3182,7 +3281,7 @@ If you know what you are doing, you can also use [dynamic scope](https://stuarts
                          :map (m/-map-schema)
                          :non-empty-string [:string {:min 1}]}]
   (m/validate :non-empty-string "malli"))
-; => true
+;; => true
 ```
 
 ### Lazy registries
@@ -3219,13 +3318,13 @@ You can provide schemas at runtime using `mr/lazy-registry` - it takes a local r
   {:Type "AWS::ApiGateway::UsagePlan"
    :Description "laiskanlinna"})
 ; ... loaded AWS::ApiGateway::UsagePlan
-; => true
+;; => true
 
 (m/validate
   CloudFormation
   {:Type "AWS::ApiGateway::UsagePlan"
    :Description "laiskanlinna"})
-; => true
+;; => true
 ```
 
 ### Composite registry
@@ -3259,8 +3358,15 @@ Registries can be composed, a full example:
   (m/validate
     [:map [:maybe [:maybe :string]]]
     {:maybe "sheep"}))
-; => true
+;; => true
 ```
+
+Revert the registry back to defaults:
+```clojure
+(mr/set-default-registry!
+  (m/default-schemas))
+```
+
 
 ## Function schemas
 
@@ -3309,6 +3415,7 @@ Generating `clj-kondo` configuration from current namespace:
 
 Emitting confing into `./.clj-kondo/configs/malli/config.edn`:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (mc/emit!)
 ```
@@ -3327,6 +3434,7 @@ schema syntax to statically type check and infer Clojure code.
 See this in action in the [malli-type-providers](https://github.com/typedclojure/typedclojure/tree/main/example-projects/malli-type-providers)
 example project.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (ns typed-example.malli-type-providers
   (:require [typed.clojure :as t]
@@ -3348,6 +3456,7 @@ example project.
 
 Transforming Schemas into [DOT Language](https://en.wikipedia.org/wiki/DOT_(graph_description_language) ):
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[malli.dot :as md])
 
@@ -3386,6 +3495,7 @@ Visualized with [Graphviz](https://graphviz.org/):
 
 Transforming Schemas into [PlantUML](https://plantuml.com/):
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[malli.plantuml :as plantuml])
 
@@ -3407,26 +3517,28 @@ As the namespace suggests, it's experimental, built for [reitit](https://github.
 (require '[malli.experimental.lite :as l])
 
 (l/schema
- {:map1 {:x int?
-         :y [:maybe string?]
-         :z (l/maybe keyword?)}
+ {:map1 {:x :int
+         :y [:maybe :string]
+         :z (l/maybe :keyword)}
   :map2 {:min-max [:int {:min 0 :max 10}]
-         :tuples (l/vector (l/tuple int? string?))
+         :tuples (l/vector (l/tuple :int :string))
          :optional (l/optional (l/maybe :boolean))
-         :set-of-maps (l/set {:e int?
-                              :f string?})
-         :map-of-int (l/map-of int? {:s string?})}})
+         :set-of-maps (l/set {:e :int
+                              :f :string})
+         :map-of-int (l/map-of :int {:s :string})}})
 ;[:map
 ; [:map1
 ;  [:map
-;   [:x int?]
-;   [:y [:maybe string?]]
-;   [:z [:maybe keyword?]]]]
+;   [:x :int]
+;   [:y [:maybe :string]]
+;   [:z [:maybe :keyword]]]]
 ; [:map2
 ;  [:map
 ;   [:min-max [:int {:min 0, :max 10}]]
-;   [:tuples [:vector [:tuple int? string?]]]
+;   [:tuples [:vector [:tuple :int :string]]]
 ;   [:optional {:optional true} [:maybe :boolean]]
+;   [:set-of-maps [:set [:map [:e :int] [:f :string]]]]
+;   [:map-of-int [:map-of :int [:map [:s :string]]]]]]]
 ```
 
 Options can be used by binding a dynamic `l/*options*` Var:
@@ -3450,6 +3562,7 @@ Malli tries to be really, really fast.
 
 Usually as fast (or faster) as idiomatic Clojure.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[criterium.core :as cc])
 
@@ -3477,6 +3590,7 @@ Usually as fast (or faster) as idiomatic Clojure.
 
 Same with Clojure Spec and Plumatic Schema:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[clojure.spec.alpha :as spec])
 (require '[schema.core :as schema])
@@ -3503,6 +3617,7 @@ Same with Clojure Spec and Plumatic Schema:
 
 Usually faster than idiomatic Clojure.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (def data {:x "true", :y "1", :z "kikka"})
 (def expected {:x true, :y 1, :z "kikka"})
@@ -3527,6 +3642,7 @@ Usually faster than idiomatic Clojure.
 
 Same with Clojure Spec and Plumatic Schema:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (require '[spec-tools.core :as st])
 (require '[schema.coerce :as sc])
@@ -3552,6 +3668,7 @@ Same with Clojure Spec and Plumatic Schema:
 
 The transformation engine is smart enough to just transform parts of the schema that need to be transformed. If there is nothing to transform, `identity` function is returned.
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (def json->user
   (m/decoder
@@ -3579,6 +3696,7 @@ The transformation engine is smart enough to just transform parts of the schema 
 
 ### Parsing performance
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 ;; 37µs
 (let [spec (s/* (s/cat :prop string?,
@@ -3659,7 +3777,6 @@ The following schemas and their respective types are provided:
 To use these schemas, add the schemas provided by `(malli.experimental.time/schemas)` to your registry.
 
 Using time-schemas to default registry:
-
 ```clj
 (require '[malli.experimental.time :as met])
 
@@ -3681,6 +3798,7 @@ to make use of zone related time objects.
 
 For example, to include only timezone data for +/- 5 years from the time the library was released, use:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (ns com.my-co.my-app
   (:require ["@js-joda/timezone/dist/js-joda-timezone-10-year-range"]))
@@ -3694,6 +3812,7 @@ https://github.com/js-joda/js-joda/tree/main/packages/timezone
 
 Time schemas respect min/max predicates for their respective types:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (import (java.time LocalTime))
 
@@ -3725,7 +3844,7 @@ Formats can be configured by providing a `formatter` or a `pattern` property
   (m/decode [:time/local-date {:pattern "yyyyMMdd"}] $ (mett/time-transformer))
   (m/encode [:time/local-date {:pattern "yyyy_MM_dd"}] $ (mett/time-transformer))
   (= "2020_01_01" $))
-; => true
+;; => true
 ```
 
 #### Generators - `malli.experimental.time.generator`
@@ -3737,6 +3856,7 @@ Generated data also respects min/max properties.
 When generating `Period`s there is no way distinguish between `nil` values and zero for each unit, so zero units will
 not constrain the generator, if you need some of the units to be zero in generated `Period`s you can always `gen/fmap` the data:
 
+<!-- :test-doc-blocks/skip -->
 ```clojure
 [:time/period {:gen/fmap #(. % withMonths 0) :min (. Period of -10 0 1)}]
 ```
@@ -3894,12 +4014,14 @@ a native, fast starting Clojure interpreter for scripting.
 
 You can add malli to `bb.edn`:
 
+<!-- :test-doc-blocks/skip -->
 ``` clojure
 {:deps {metosin/malli {:mvn/version "0.9.0"}}}
 ```
 
 or directly in a babashka script:
 
+<!-- :test-doc-blocks/skip -->
 ``` clojure
 (ns bb-malli
   (:require [babashka.deps :as deps]))

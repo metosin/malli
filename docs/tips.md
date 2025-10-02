@@ -43,7 +43,7 @@
 ;["Ahlmanintie 29" :string]
 ;["Tampere" [:malli.core/val :string]]
 ;["Tampere" :string]
-; => {:id "Lillan", :tags #{:coffee :artesan :hotel}, :address {:street "Ahlmanintie 29", :city "Tampere"}}
+;; => {:id "Lillan", :tags #{:coffee :artesan :hotel}, :address {:street "Ahlmanintie 29", :city "Tampere"}}
 ```
 
 ## Removing Schemas based on a property
@@ -55,16 +55,16 @@ Schemas can be walked over recursively using `m/walk`:
 
 (def Schema
   [:map
-   [:user map?]
-   [:profile map?]
-   [:tags [:vector [int? {:deleteMe true}]]]
-   [:nested [:map [:x [:tuple {:deleteMe true} string? string?]]]]
-   [:token [string? {:deleteMe true}]]])
+   [:user :map]
+   [:profile :map]
+   [:tags [:vector [:int {:deleteMe true}]]]
+   [:nested [:map [:x [:tuple {:deleteMe true} :string :string]]]]
+   [:token [:string {:deleteMe true}]]])
 
 (m/walk
   Schema
   (fn [schema _ children options]
-    ;; return nil if Schema has the property 
+    ;; return nil if Schema has the property
     (when-not (:deleteMe (m/properties schema))
       ;; there are two syntaxes: normal and the entry, handle separately
       (let [children (if (m/entries schema) (filterv last children) children)]
@@ -72,8 +72,8 @@ Schemas can be walked over recursively using `m/walk`:
         (try (m/into-schema (m/type schema) (m/properties schema) children options)
              (catch #?(:clj Exception, :cljs js/Error) _))))))
 ;[:map
-; [:user map?] 
-; [:profile map?] 
+; [:user :map]
+; [:profile :map]
 ; [:nested :map]]
 ```
 
@@ -99,11 +99,11 @@ Example how to trim all `:string` values using a custom transformer:
 
 ;; trim me please
 (m/decode [:string {:string/trim true, :min 1}] " kikka  " string-trimmer)
-; => "kikka"
+;; => "kikka"
 
 ;; no trimming
 (m/decode [:string {:min 1}] "    " string-trimmer)
-; => "    "
+;; => "    "
 
 ;; without :string/trim, decoding is a no-op
 (m/decoder :string string-trimmer)
@@ -119,11 +119,11 @@ Transforming a comma-separated string into a vector of ints:
 (require '[malli.transform :as mt])
 (require '[clojure.string :as str])
 
-(m/decode 
-  [:vector {:decode/string #(str/split % #",")} int?] 
-  "1,2,3,4" 
+(m/decode
+  [:vector {:decode/string #(str/split % #",")} int?]
+  "1,2,3,4"
   (mt/string-transformer))
-; => [1 2 3 4]
+;; => [1 2 3 4]
 ```
 
 Using a custom transformer:
@@ -153,10 +153,10 @@ Using a custom transformer:
      [:b [:vector :int]]]))
 
 (decode {:a "1", :b "1"})
-; => {:a [1], :b [1]}
+;; => {:a [1], :b [1]}
 
 (decode {:a "1;2", :b "1,2"})
-; => {:a [1 2], :b [1 2]}
+;; => {:a [1 2], :b [1 2]}
 ```
 
 ## Normalizing properties
@@ -176,15 +176,15 @@ Returning a Schema form with `nil` in place of empty properties:
 
 (normalize-properties
   [:map
-   [:x int?]
-   [:y [:tuple int? int?]]
+   [:x :int]
+   [:y [:tuple :int :int]]
    [:z [:set [:map [:x [:enum 1 2 3]]]]]])
-;[:map nil
-; [:x nil int?]
-; [:y nil [:tuple nil int? int?]]
-; [:z nil [:set nil
-;          [:map nil
-;           [:x nil [:enum nil 1 2 3]]]]]]
+;; => [:map nil
+;;     [:x nil :int]
+;;     [:y nil [:tuple nil :int :int]]
+;;     [:z nil [:set nil
+;;              [:map nil
+;;               [:x nil [:enum nil 1 2 3]]]]]]
 ```
 
 ## Default value from a function
@@ -226,8 +226,8 @@ Example 1: if `:secondary` is missing, same its value to value of `:primary`
 ```clojure
 (m/decode
  [:map
-  [:primary string?]
-  [:secondary {:default-fn '#(:primary %)} string?]]
+  [:primary :string]
+  [:secondary {:default-fn '#(:primary %)} :string]]
  {:primary "blue"}
  (default-fn-value-transformer))
 ```
@@ -245,9 +245,12 @@ Example 2: if `:cost` is missing, try to calculate it from `:price` and `:qty`:
 (def decode-interconnected-vals
   (m/decoder Purchase (default-fn-value-transformer)))
 
-(-> {:qty "100" :price "1.2"} decode-autonomous-vals decode-interconnected-vals) ;; => {:price 1.2, :qty 1, :cost 1.2}
-(-> {:price "1.2"} decode-autonomous-vals decode-interconnected-vals)            ;; => {:qty 100.0, :price 1.2, :cost 120.0}
-(-> {:prie "1.2"} decode-autonomous-vals decode-interconnected-vals)             ;; => {:prie "1.2", :qty 1}
+(-> {:qty "100" :price "1.2"} decode-autonomous-vals decode-interconnected-vals)
+;; => {:price 1.2, :qty 100.0, :cost 120.0}
+(-> {:price "1.2"} decode-autonomous-vals decode-interconnected-vals)
+;; => {:qty 1, :price 1.2, :cost 1.2}
+(-> {:prie "1.2"} decode-autonomous-vals decode-interconnected-vals)
+;; => {:prie "1.2", :qty 1}
 ```
 
 ## Walking Schema and Entry Properties
@@ -297,6 +300,8 @@ e.g. don't fail if the optional keys hava invalid values.
 2. done.
 
 ```clojure
+(require '[malli.util :as mu])
+
 (defn allow-invalid-optional-values [schema]
   (m/walk
     schema
@@ -309,33 +314,33 @@ e.g. don't fail if the optional keys hava invalid values.
 
 (allow-invalid-optional-values
   [:map
-   [:a string?]
-   [:b {:optional true} int?]
+   [:a :string]
+   [:b {:optional true} :int]
    [:c [:maybe
         [:map
-         [:d string?]
-         [:e {:optional true} int?]]]]])
+         [:d :string]
+         [:e {:optional true} :int]]]]])
 ;[:map
-; [:a string?]
+; [:a :string]
 ; [:b {:optional true} :any]
 ; [:c [:maybe [:map
-;              [:d string?]
+;              [:d :string]
 ;              [:e {:optional true} :any]]]]]
 
 (m/validate
   [:map
-   [:a string?]
-   [:b {:optional true} int?]]
+   [:a :string]
+   [:b {:optional true} :int]]
   {:a "Hey" :b "Nope"})
-; => false
+;; => false
 
 (m/validate
   (allow-invalid-optional-values
     [:map
-     [:a string?]
-     [:b {:optional true} int?]])
+     [:a :string]
+     [:b {:optional true} :int]])
   {:a "Hey" :b "Nope"})
-; => true
+;; => true
 ```
 ## Collecting inlined reference definitions from schemas
 
@@ -366,6 +371,8 @@ Use cases:
 Naive implementation (doesn't look up the local registries):
 
 ```clojure
+(require '[malli.registry :as mr])
+
 (defn collect-references [schema]
   (let [acc* (atom {})
         ->registry (fn [registry]
@@ -409,7 +416,7 @@ In action:
 ;          [:name :string]
 ;          [:user/country {:optional true}]]}
 ```
-
+<!-- :test-doc-blocks/skip -->
 ```clojure
 (collect-references
   [:map
@@ -422,6 +429,7 @@ In action:
 ## Getting error-values into humanized result
 
 ```clojure
+(require '[malli.error :as me])
 (-> [:map
      [:x :int]
      [:y [:set :keyword]]
@@ -431,7 +439,7 @@ In action:
                 :y #{:a "b" :c}
                 :z {:a [1 "2"]}})
     (me/humanize {:wrap #(select-keys % [:value :message])}))
-;{:x [{:value "1"
+;; => {:x [{:value "1"
 ;      :message "should be an integer"}],
 ; :y #{[{:value "b"
 ;        :message "should be a keyword"}]},
@@ -441,7 +449,7 @@ In action:
 
 ## Dependent String Schemas
 
-A schema for a string made of two components `a` and `b` separated by a `/` where the schema of `b` 
+A schema for a string made of two components `a` and `b` separated by a `/` where the schema of `b`
 depends on the value of `a`. The valid values of a are known in advance.
 
 For instance:
@@ -474,10 +482,10 @@ Here are a few examples of valid and invalid data:
 (def encode (m/encoder schema mt/string-transformer))
 
 (decode "ip/127.0.0.1")
-; => ["ip" "127.0.0.1"]
+;; => ["ip" "127.0.0.1"]
 
 (-> "ip/127.0.0.1" (decode) (encode))
-; => "ip/127.0.0.1"
+;; => "ip/127.0.0.1"
 
 (map (comp validate decode)
      ["ip/127.0.0.1"
@@ -485,7 +493,7 @@ Here are a few examples of valid and invalid data:
       "domain/cnn.com"
       "domain/aa"
       "kika/aaa"])
-; => (true false true false false)
+;; => (true false true false false)
 ```
 
 It is also possible to use a custom transformer instead of `string-transformer` (for example, in order to avoid `string-transformer` to perform additional encoding and decoding):
@@ -497,13 +505,13 @@ It is also possible to use a custom transformer instead of `string-transformer` 
              ["domain" [:tuple [:= "domain"] domain]]
              ["ip" [:tuple [:= "ip"] ipv4]]])
 
-(def decode (m/decoder schema (mt/transformer {:name :my-custom}))
+(def decode (m/decoder schema (mt/transformer {:name :my-custom})))
 
 (decode "ip/127.0.0.1")
-; => ["ip" "127.0.0.1"]
+;; => ["ip" "127.0.0.1"]
 ```
 
-## Converting Schemas 
+## Converting Schemas
 
 Example utility to convert schemas recursively:
 
@@ -534,7 +542,7 @@ Example utility to convert schemas recursively:
 ; [:tags [:set {::type :set} :string]]
 ; [:sub [:map {::type :map}
 ;        [:kw :string]
-;        [:data [:tuple {::type :tuple} 
+;        [:data [:tuple {::type :tuple}
 ;                :string
 ;                [:int {:gen/elements [1 2 3]}]
 ;                :string]]]]]

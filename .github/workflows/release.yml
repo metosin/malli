@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published # reacts to releases and prereleases, but not their drafts
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: "Setup Java"
+      uses: actions/setup-java@v4
+      with:
+        distribution: zulu
+        java-version: 8
+    - name: "Setup Clojure"
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        cli: latest
+    - name: Build jar
+      run: clojure -M:jar
+    - name: Deploy to Clojars
+      run: clojure -X:deploy
+      env:
+        CLOJARS_USERNAME: metosinci
+        CLOJARS_PASSWORD: "${{ secrets.CLOJARS_DEPLOY_TOKEN }}"

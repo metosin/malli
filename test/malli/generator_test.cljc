@@ -314,9 +314,22 @@
       [:set {:min 10, :gen/max 20} int?]
       [:string {:gen/min 10, :max 20}]
 
+      [:+ {:min 10 :max 20} :int]
+      [:+ {:gen/min 10 :max 20} :int]
+      [:+ {:min 10 :gen/max 20} :int]
+      [:+ {:gen/min 10 :gen/max 20} :int]
+
+      [:* {:min 10 :max 20} :int]
+      [:* {:gen/min 10 :max 20} :int]
+      [:* {:min 10 :gen/max 20} :int]
+      [:* {:gen/min 10 :gen/max 20} :int]
+
       [:vector {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
       [:set {:min 1, :gen/min 10, :max 100, :gen/max 20} int?]
       [:string {:min 1, :gen/min 10, :max 100, :gen/max 20}]))
+
+  (testing ":+ enforces a minimum count of 1 generated elements"
+    (every? #(<= 1 %) (map count (mg/sample [:+ :int] {:size 1000}))))
 
   (testing "invalid properties"
     (are [schema]
@@ -1124,3 +1137,6 @@
   (doseq [_ (range 100)
           v (mg/sample [:seqable {:min 1} :any])]
     (is (seq v))))
+
+(deftest empty?-generator-test
+  (is (every? empty? (mg/sample empty?))))

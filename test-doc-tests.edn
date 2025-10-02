@@ -1,0 +1,8 @@
+;; Needed to run tests generated with test-doc-blocks. For them to work we need :randomize? false, which
+;; is not what we want for the majority of the test cases.
+#kaocha/v1
+{:tests [{:id :generated
+          :test-paths  ["target/test-doc-blocks/test"]
+          :kaocha.hooks/post-load-test [lread.test-doc-blocks.kaocha.hooks/fail-on-no-tests-found]}]
+ :reporter kaocha.report/documentation
+ :randomize? false}

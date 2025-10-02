@@ -46,8 +46,8 @@
 
 (def simple-parser-templates
   "Schema templates which have simple parsers for any value of ::HOLE."
-  [[:and {:parse 1} ::HOLE :any]
-   [:and {:parse :none} ::HOLE :any]
+  [[:and {:parse/transforming-child 1} ::HOLE :any]
+   [:and {:parse/transforming-child :none} ::HOLE :any]
    [:every ::HOLE]
    [:-> ::HOLE]
    [:function [:-> ::HOLE]]])
@@ -134,7 +134,7 @@
   (is (= {} (m/parse [:and [:fn map?] :map] {})))
   (is (= #malli.core.Tag{:key :left, :value 1} (m/parse [:and [:orn [:left :int] [:right :int]] [:fn number?]] 1)))
   (is (= #malli.core.Tag{:key :left, :value 1} (m/parse [:and [:fn number?] [:orn [:left :int] [:right :int]]] 1)))
-  (is (= 1 (m/parse [:and {:parse :none} [:fn number?] [:orn [:left :int] [:right :int]]] 1)))
+  (is (= 1 (m/parse [:and {:parse/transforming-child :none} [:fn number?] [:orn [:left :int] [:right :int]]] 1)))
   (is (= 1 (m/parse [:and :int [:or :int :boolean]] 1)))
   (is (= 1 (m/parse [:and [:or :int :boolean] :int] 1)))
   (is (= #malli.core.Tag{:key :int, :value 1} (m/parse [:and :int [:orn [:int :int] [:boolean :boolean]]] 1)))
@@ -146,26 +146,26 @@
                    :int] 1)))
   (is (= 1
          (m/parse [:and
-                   {:parse :none}
+                   {:parse/transforming-child :none}
                    [:orn [:l [:and [:orn [:int :int] [:boolean :boolean]] :int]]]
                    [:orn [:r [:and [:orn [:int :int] [:boolean :boolean]] :int]]]]
                   1)))
   (is (= #malli.core.Tag{:key :l, :value #malli.core.Tag{:key :int, :value 1}}
          (m/parse [:and
-                   {:parse 0}
+                   {:parse/transforming-child 0}
                    [:orn [:l [:and [:orn [:int :int] [:boolean :boolean]] :int]]]
                    [:orn [:r [:and [:orn [:int :int] [:boolean :boolean]] :int]]]]
                   1)))
   (is (= #malli.core.Tag{:key :r, :value #malli.core.Tag{:key :int, :value 1}}
          (m/parse [:and
-                   {:parse 1}
+                   {:parse/transforming-child 1}
                    [:orn [:l [:and [:orn [:int :int] [:boolean :boolean]] :int]]]
                    [:orn [:r [:and [:orn [:int :int] [:boolean :boolean]] :int]]]]
                   1)))
   (let [s [:and [:orn [:l [:and [:orn [:int :int] [:boolean :boolean]] :int]]] :int]]
     (is (= 1 (->> 1 (m/parse s) (m/unparse s)))))
   (let [s [:and
-           {:parse 1}
+           {:parse/transforming-child 1}
            [:orn [:l [:and [:orn [:int :int] [:boolean :boolean]] :int]]]
            [:orn [:r [:and [:orn [:int :int] [:boolean :boolean]] :int]]]]]
     (is (= 1 (->> 1 (m/parse s) (m/unparse s)))))

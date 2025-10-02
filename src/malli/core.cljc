@@ -819,7 +819,7 @@
             form (delay (-simple-form parent properties children -form options))
             cache (-create-cache options)
             transforming-parser (delay
-                                  (let [transforming-parsers (or (when-some [[_ i] (find properties :parse)]
+                                  (let [transforming-parsers (or (when-some [[_ i] (find properties :parse/transforming-child)]
                                                                    (or (when (= :none i)
                                                                          [])
                                                                        (when-not (and (nat-int? i) (< i (count children)))

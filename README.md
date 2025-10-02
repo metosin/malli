@@ -2626,22 +2626,22 @@ There are several ways to resolve this.
 
 If you know a single conjunct should exclusively parse the input, use the `:parse` property
 to identify the conjunct by index.
-To opt-out of parsing any further levels of this schema, use the `:parse :none` property.
+To opt-out of parsing any further levels of this schema, use the `:parse/transforming-child :none` property.
 
 ```clojure
-(m/parse [:and {:parse 0}
+(m/parse [:and {:parse/transforming-child 0}
           [:map [:left [:orn [:one :int]]]]
           [:map [:right [:orn [:one :int]]]]]
          {:left 1 :right 1})
 ;; => {:left #malli.core.Tag{:key :one, :value 1}, :right 1}
 
-(m/parse [:and {:parse 1}
+(m/parse [:and {:parse/transforming-child 1}
           [:map [:left [:orn [:one :int]]]]
           [:map [:right [:orn [:one :int]]]]]
          {:left 1 :right 1})
 ;; => {:left 1, :right #malli.core.Tag{:key :one, :value 1}}
 
-(m/parse [:and {:parse :none}
+(m/parse [:and {:parse/transforming-child :none}
           [:map [:left [:orn [:one :int]]]]
           [:map [:right [:orn [:one :int]]]]]
          {:left 1 :right 1})

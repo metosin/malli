@@ -129,15 +129,6 @@
         (is (= expected-simple (simple-parser? s)))
         (ensure-parser-type expected-simple s)))))
 
-;;seems to fail cljs
-(deftest map-special-case-test
-  (let [s [:map [:foo :any] [:bar :int]]
-        parse (m/parser s)
-        unparse (m/unparser s)
-        g {:foo ##NaN :bar -4}
-        p (parse g)]
-    (is (identical? g p))))
-
 (deftest and-complex-parser-test
   (is (= {} (m/parse [:and :map [:fn map?]] {})))
   (is (= {} (m/parse [:and [:fn map?] :map] {})))

@@ -988,7 +988,7 @@
           (-get [_ key default] (get children key default))
           (-set [this key value] (-set-assoc-children this key value))
           ParserInfo
-          (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info) children)}))))))
+          (-parser-info [_] {:simple-parser (every? (-comp :simple-parser -parser-info) children)}))))))
 
 (defn -orn-schema []
   ^{:type ::into-schema}
@@ -1285,7 +1285,7 @@
            (-get [this key default] (-get-entries this key default))
            (-set [this key value] (-set-entries this key value))
            ParserInfo
-           (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info peek) (-entry-children entry-parser))})))))))
+           (-parser-info [_] {:simple-parser (every? (-comp :simple-parser -parser-info peek) (-entry-children entry-parser))})))))))
 
 (defn -map-of-schema
   ([]
@@ -1307,7 +1307,7 @@
              form (delay (-simple-form parent properties children -form options))
              cache (-create-cache options)
              validate-limits (-validate-limits min max)
-             simple-parser (delay (every? (comp :simple-parser -parser-info) children))
+             simple-parser (delay (every? (-comp :simple-parser -parser-info) children))
              ->parser (fn [f] (let [key-parser (f key-schema)
                                     value-parser (f value-schema)
                                     simple @simple-parser]
@@ -1581,7 +1581,7 @@
            (-get [_ key default] (get children key default))
            (-set [this key value] (-set-assoc-children this key value))
            ParserInfo
-           (-parser-info [_] {:simple-parser (every? (comp :simple-parser -parser-info) children)})))))))
+           (-parser-info [_] {:simple-parser (every? (-comp :simple-parser -parser-info) children)})))))))
 
 (defn -enum-schema []
   ^{:type ::into-schema}

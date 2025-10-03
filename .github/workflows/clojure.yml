@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Java ${{ matrix.jdk }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: ${{ matrix.jdk }}
@@ -50,9 +50,9 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Java 11
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: 11
@@ -82,9 +82,9 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Java 11
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: 11
@@ -112,9 +112,9 @@ jobs:
     name: Doc Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Java 11
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: 11

@@ -2566,7 +2566,7 @@ Schemas can be used to parse values using `m/parse` and `m/parser`:
 ;;                                                  :value "Hello, world of data"}}]}}}]}}}
 ```
 
-Parsing returns tagged values for `:orn`, `:catn`, `:altn` and `:multi`.
+Parsing returns tagged values for `:orn`, `:catn`, `:altn`, `:andn` and `:multi`.
 
 ```clojure
 (def Multi
@@ -2598,6 +2598,88 @@ one prior to version 0.18.0:
  {:prop "-user" :val [:s "joe"]}]
 ```
 
+### Parsing `:and`
+
+The `:and` schema combines multiple schemas for the same value and yet only returns the results of parsing one of them.
+Which schema is used for parsing is usually chosen automatically.
+
+```clojure
+(m/parse [:and [:orn [:left :int] [:right :int]] [:fn number?]] 1)
+;; => #malli.core.Tag{:key :left, :value 1}
+(m/parse [:and [:fn number?] [:orn [:left :int] [:right :int]]] 1)
+;; => #malli.core.Tag{:key :left, :value 1}
+```
+
+The error `:malli.core/and-schema-multiple-transforming-parsers` is thrown if the transforming
+parser cannot be picked automatically. This usually means that multiple conjuncts
+will transform their input or a false-positive has occurred because the underlying schema
+does not implement `malli.core/ParserInfo`.
+
+<!-- :test-doc-blocks/skip -->
+```clojure
+(m/parser [:and [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])
+;; Execution error (ExceptionInfo) at malli.core/-exception (core.cljc:189).
+;; :malli.core/and-schema-multiple-transforming-parsers
+```
+
+There are several ways to resolve this.
+
+If you know a single conjunct should exclusively parse the input, use the `:parse` property
+to identify the conjunct by index.
+To opt-out of parsing any further levels of this schema, use the `:parse/transforming-child :none` property.
+
+```clojure
+(m/parse [:and {:parse/transforming-child 0}
+          [:map [:left [:orn [:one :int]]]]
+          [:map [:right [:orn [:one :int]]]]]
+         {:left 1 :right 1})
+;; => {:left #malli.core.Tag{:key :one, :value 1}, :right 1}
+
+(m/parse [:and {:parse/transforming-child 1}
+          [:map [:left [:orn [:one :int]]]]
+          [:map [:right [:orn [:one :int]]]]]
+         {:left 1 :right 1})
+;; => {:left 1, :right #malli.core.Tag{:key :one, :value 1}}
+
+(m/parse [:and {:parse/transforming-child :none}
+          [:map [:left [:orn [:one :int]]]]
+          [:map [:right [:orn [:one :int]]]]]
+         {:left 1 :right 1})
+;; => {:left 1, :right 1}
+```
+
+To parse all conjuncts, you must migrate the schema to `:andn`. This involves tagging each conjunct
+with syntax like `:orn` and `:map`. The results of parsing `:andn` will be wrapped in `Tags` with
+an entry for parsing the original value with each conjunct.
+
+Only the left-most child will be unparsed, useful if you plan to modify the results of parsing.
+
+```clojure
+(def Paired+Flat
+  [:andn
+   [:paired [:* [:catn [:name :string] [:id :int]]]]
+   [:flat [:vector [:orn [:name :string] [:id :int]]]]])
+
+(m/parse Paired+Flat ["x" 1 "y" 2])
+;; => #malli.core.Tags{:values
+;;      {:paired [#malli.core.Tags{:values {:name "x", :id 1}}
+;;                #malli.core.Tags{:values {:name "y", :id 2}}],
+;;       :flat [#malli.core.Tag{:key :name, :value "x"}
+;;              #malli.core.Tag{:key :id, :value 1}
+;;              #malli.core.Tag{:key :name, :value "y"}
+;;              #malli.core.Tag{:key :id, :value 2}]}}
+
+(as-> ["x" 1 "y" 2] $
+  (m/parse Paired+Flat $)
+  (update $ :values
+          (fn [{:keys [flat paired] :as res}]
+            ;; remove other :andn results like :flat when transforming
+            {:paired (map-indexed (fn [i p] (update-in p [:values :id] * (+ 2 i) (count flat)))
+                                  (rseq paired))}))
+  (m/unparse Paired+Flat $))
+;; => ["y" 16 "x" 12]
+```
+
 ## Unparsing values
 
 The inverse of parsing, using `m/unparse` and `m/unparser`:
@@ -2611,15 +2693,37 @@ The inverse of parsing, using `m/unparse` and `m/unparser`:
 ;;     [:p "Hello, world of data"]]
 ```
 
+Tags are mapped back to the original schema to be unparsed.
+
 ```clojure
 (m/unparse [:orn [:name :string] [:id :int]]
            (m/tag :name "x"))
 ;; => "x"
 
-(m/unparse [:* [:catn [:name :string] [:id :int]]]
+(m/unparse [:orn [:name :string] [:int :int]]
+           (m/tag :name 1))
+; => ::m/invalid
+```
+
+Unparsing can be used to update complex values via an associative interface.
+
+```clojure
+(def FlatPairs [:* [:catn [:name :string] [:id :int]]])
+
+(m/parse FlatPairs ["x" 1 "y" 2])
+;; => [#malli.core.Tags{:values {:name "x", :id 1}}
+;;     #malli.core.Tags{:values {:name "y", :id 2}}]
+
+(m/unparse FlatPairs
            [(m/tags {:name "x" :id 1})
             (m/tags {:name "y" :id 2})])
 ;; => ["x" 1 "y" 2]
+
+(->> ["x" 1 "y" 2 "z" 3]
+     (m/parse FlatPairs)
+     (mapv (fn [tags] (-> tags (update :values #(-> % (update :name str "_") (update :id * 2))))))
+     (m/unparse FlatPairs))
+;; => ["x_" 2 "y_" 4 "z_" 6]
 ```
 
 ## Serializable functions

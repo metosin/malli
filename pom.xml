@@ -22,12 +22,12 @@
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.12.1</version>
+      <version>1.12.3</version>
     </dependency>
     <dependency>
       <groupId>fipp</groupId>
       <artifactId>fipp</artifactId>
-      <version>0.6.27</version>
+      <version>0.6.29</version>
     </dependency>
     <dependency>
       <groupId>mvxcvi</groupId>
@@ -42,7 +42,7 @@
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>1.4.30</version>
+      <version>1.4.32</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>

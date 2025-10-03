@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.12.1"}
+ :deps {org.clojure/clojure {:mvn/version "1.12.3"}
         borkdude/dynaload {:mvn/version "0.3.5"}
-        borkdude/edamame {:mvn/version "1.4.30"}
+        borkdude/edamame {:mvn/version "1.4.32"}
         org.clojure/test.check {:mvn/version "1.1.1"}
         ;; pretty errors, optional deps
         fipp/fipp {:mvn/version "0.6.29"}
@@ -19,7 +19,7 @@
                                prismatic/schema {:mvn/version "1.4.1"}
                                minimallist/minimallist {:mvn/version "0.0.10"}
                                net.cgrand/seqexp {:mvn/version "0.6.2"}
-                               djblue/portal {:mvn/version "0.59.1"}
+                               djblue/portal {:mvn/version "0.61.0"}
                                meta-merge/meta-merge {:mvn/version "1.0.0"}
                                expound/expound {:mvn/version "0.9.0"}
                                lambdaisland/deep-diff {:mvn/version "0.0-47"}
@@ -34,7 +34,7 @@
                       :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
            :test-cherry {:extra-paths ["test-cherry"]
                          :main-opts ["-m" "cljs-test-runner.main" "-d" "test-cherry" "-d" "test"]}
-           :test-doc-blocks {:replace-deps {org.clojure/clojure {:mvn/version "1.12.1"}
+           :test-doc-blocks {:replace-deps {org.clojure/clojure {:mvn/version "1.12.3"}
                                             com.github.lread/test-doc-blocks {:mvn/version "1.2.21"}}
                              ;; for -X syntax support specify exec-fn
                              :exec-fn lread.test-doc-blocks/gen-tests
@@ -50,7 +50,7 @@
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]
                               :main-opts ["-m" "cljs-test-runner.main" "-d" "test"]}
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.9" :git/sha "e405aac"}}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.10" :git/sha "deedd62"}}
                    :ns-default build}
            :jmh {:paths ["target/uber.jar" "classes"]
                  :deps {jmh-clojure/jmh-clojure {:mvn/version "0.4.1"}
@@ -83,11 +83,11 @@
                      :main-opts ["-m" "deps-deploy.deps-deploy" "install"
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
-                     :extra-deps {org.clojure/clojure {:mvn/version "1.12.1"}
+                     :extra-deps {org.clojure/clojure {:mvn/version "1.12.3"}
                                   org.babashka/sci {:mvn/version "0.9.45"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                               org.clojure/clojure {:mvn/version "1.12.1"}
+                               org.clojure/clojure {:mvn/version "1.12.3"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

@@ -3310,11 +3310,20 @@ Generating `clj-kondo` configuration from current namespace:
 ;                             :ret :int}}}}}}}}
 ```
 
-Emitting confing into `./.clj-kondo/configs/malli/config.edn`:
+Emitting config into `./.clj-kondo/imports/metosin/malli-types-clj/config.edn`:
 
 <!-- :test-doc-blocks/skip -->
 ```clojure
 (mc/emit!)
+```
+
+Removing the generated configurations. Note that this removes also
+from locations where old versions of malli used to store the
+configuration file:
+
+<!-- :test-doc-blocks/skip -->
+```clojure
+(mc/clean!)
 ```
 
 In action:

@@ -18,6 +18,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 * Performance improvements in `malli.transform/transformer` [#1220](https://github.com/metosin/malli/pull/1220)
 * `malli.clj-kondo/emit!` saves to `.clj-kondo/imports` now as recommended by clj-kondo. [#1216](https://github.com/metosin/malli/pull/1216)
+* `malli.clj-kondo/emit!` no longer deletes anything automatically. Use `malli.clj-kondo/clean!` to clean up.
 
 ## 0.19.1 (2025-06-09)
 * Technical release

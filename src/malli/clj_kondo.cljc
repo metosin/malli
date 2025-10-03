@@ -145,9 +145,31 @@
 
 (defn -transform [?schema options] (m/walk ?schema -walk options))
 
+#?(:clj
+   (defn -file-in-kondo-dir [options & paths]
+     (apply io/file (into (get options :clj-kondo-dir-path []) paths))))
+
+(defn -types-dir-name
+  "Creates a directory name such as `malli-types-cljs` or `malli-types-clj`."
+  [key]
+  (str "malli-types-" (name key)))
+
+(defn -config-file-path [key options]
+  (-file-in-kondo-dir options ".clj-kondo" "imports" "metosin" (-types-dir-name key) "config.edn"))
+
 ;;
 ;; public api
 ;;
+
+(defn clean!
+  "Cleans existing configurations from .clj-kondo directory"
+  ([options]
+   (clean! :clj options))
+  ([key options]
+   (.delete (-config-file-path key options))
+   ;; These are remnants from old locations where malli used to store the configuration files
+   (.delete (-file-in-kondo-dir options ".clj-kondo" "metosin" (-types-dir-name key) "config.edn"))
+   (.delete (-file-in-kondo-dir options ".clj-kondo" "configs" "malli" "config.edn"))))
 
 (defn transform
   ([?schema]
@@ -164,17 +186,7 @@
      ([config key]
       (save! config key nil))
      ([config key options]
-      (let [cfg-file (apply io/file (conj
-                                     (get options :clj-kondo-dir-path [])
-                                     ;; Creates a file like malli-types-cljs or malli-types-clj.
-                                     ".clj-kondo" "imports" "metosin" (str "malli-types-" (name key)) "config.edn"))]
-        ;; delete the old files if they exist (does not throw)
-        (.delete (apply io/file (conj
-                                 (get options :clj-kondo-dir-path [])
-                                 ".clj-kondo" "metosin" (str "malli-types-" (name key)) "config.edn")))
-        (.delete (apply io/file (conj
-                                 (get options :clj-kondo-dir-path [])
-                                 ".clj-kondo" "configs" "malli" "config.edn")))
+      (let [cfg-file (-config-file-path key options)]
         (io/make-parents cfg-file)
         (spit cfg-file (with-out-str (fipp/pprint config {:width 120})))
         config))))

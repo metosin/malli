@@ -10,7 +10,7 @@
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.15"}
                                lambdaisland/kaocha {:mvn/version "1.91.1392"}
                                lambdaisland/kaocha-cljs {:mvn/version "1.5.154"}
-                               org.babashka/sci {:mvn/version "0.9.45"}
+                               org.babashka/sci {:mvn/version "0.10.49"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "1.17.101"}
                                metosin/spec-tools {:mvn/version "0.10.7"}
                                spec-provider/spec-provider {:mvn/version "0.4.14"}
@@ -28,7 +28,7 @@
                                                         :sha "eb94e46853d90153ba6dc72a4093719f38a90a4a"}}}
            :clojure-11 {:extra-deps {org.clojure/clojure {:mvn/version "1.11.3"}}}
            :clojure-12 {}
-           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.9.45"}}}
+           :sci {:extra-deps {org.babashka/sci {:mvn/version "0.10.49"}}}
            :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/tag "v0.4.30" :git/sha "9d253be"}}}
            :test-sci {:extra-paths ["test-sci"]
                       :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
@@ -84,7 +84,7 @@
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
                      :extra-deps {org.clojure/clojure {:mvn/version "1.12.3"}
-                                  org.babashka/sci {:mvn/version "0.9.45"}}}
+                                  org.babashka/sci {:mvn/version "0.10.49"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                                org.clojure/clojure {:mvn/version "1.12.3"}

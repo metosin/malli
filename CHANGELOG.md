@@ -16,6 +16,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Robust `:and` parser, add `:andn` [#1182](https://github.com/metosin/malli/pull/1182)
+
 ## 0.19.2 (2025-10-06)
 
 * Performance improvements in `malli.transform/transformer` [#1220](https://github.com/metosin/malli/pull/1220) and `malli.core/-intercepting` [#1219](https://github.com/metosin/malli/pull/1219)

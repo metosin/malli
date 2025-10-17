@@ -3,7 +3,7 @@
             [malli.experimental.time-test :refer [r]]
             [malli.experimental.time.transform :as time.transform]
             [clojure.test :as t])
-  (:import [java.time Duration Period ZoneId]))
+  #?(:clj (:import [java.time Duration Period ZoneId])))
 
 (defn validate
   ([schema v]
@@ -59,14 +59,17 @@
   (m/encode schema v {:registry r} time.transform/time-transformer))
 
 (t/deftest encode
-  (t/testing "Encoding durations"
-    (t/is (= "PT24H" (-encode :time/duration (Duration/ofDays 1)))))
+  #?(:clj
+     (t/testing "Encoding durations"
+       (t/is (= "PT24H" (-encode :time/duration (Duration/ofDays 1))))))
 
-  (t/testing "Encoding a period"
-    (t/is (= "P2M" (-encode :time/period (Period/ofMonths 2)))))
+  #?(:clj
+     (t/testing "Encoding a period"
+       (t/is (= "P2M" (-encode :time/period (Period/ofMonths 2))))))
 
-  (t/testing "Encoding a zone id"
-    (t/is (= "EET" (-encode :time/zone-id (ZoneId/of "EET")))))
+  #?(:clj
+     (t/testing "Encoding a zone id"
+       (t/is (= "EET" (-encode :time/zone-id (ZoneId/of "EET"))))))
 
   (t/testing "nil is nil"
     (t/is (nil? (-encode [:maybe :time/duration] nil)))

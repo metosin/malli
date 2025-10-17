@@ -79,9 +79,12 @@
 
 (defn time-encoders [formats]
   (into
-   {:time/duration str
-    :time/period str
-    :time/zone-id str}
+   {:time/duration (-safe (fn [^Duration d]
+                            (if (instance? Duration d) (str d) d)))
+    :time/period (-safe (fn [^Period p]
+                          (if (instance? Period p) (str p) p)))
+    :time/zone-id (-safe (fn [^ZoneId z]
+                           (if (instance? ZoneId z) (str z) z)))}
    (for [k (keys formats)]
      [k {:compile
          (fn [schema opts]

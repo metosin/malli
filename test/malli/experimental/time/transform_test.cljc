@@ -2,6 +2,9 @@
   (:require [malli.core :as m]
             [malli.experimental.time-test :refer [r]]
             [malli.experimental.time.transform :as time.transform]
+            #?(:cljs [malli.experimental.time
+                      :refer [Duration Period LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset
+                              TemporalAccessor TemporalQuery DateTimeFormatter createTemporalQuery]])
             [clojure.test :as t])
   #?(:clj (:import [java.time Duration Period ZoneId])))
 
@@ -59,17 +62,14 @@
   (m/encode schema v {:registry r} time.transform/time-transformer))
 
 (t/deftest encode
-  #?(:clj
-     (t/testing "Encoding durations"
-       (t/is (= "PT24H" (-encode :time/duration (Duration/ofDays 1))))))
+  (t/testing "Encoding durations"
+    (t/is (= "PT24H" (-encode :time/duration (. Duration ofDays 1)))))
 
-  #?(:clj
-     (t/testing "Encoding a period"
-       (t/is (= "P2M" (-encode :time/period (Period/ofMonths 2))))))
+  (t/testing "Encoding a period"
+    (t/is (= "P2M" (-encode :time/period (. Period ofMonths 2)))))
 
-  #?(:clj
-     (t/testing "Encoding a zone id"
-       (t/is (= "EET" (-encode :time/zone-id (ZoneId/of "EET"))))))
+  (t/testing "Encoding a zone id"
+    (t/is (= "EET" (-encode :time/zone-id (. ZoneId of "EET")))))
 
   (t/testing "nil is nil"
     (t/is (nil? (-encode [:maybe :time/duration] nil)))

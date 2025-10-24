@@ -2,7 +2,11 @@
   (:require [malli.core :as m]
             [malli.experimental.time-test :refer [r]]
             [malli.experimental.time.transform :as time.transform]
-            [clojure.test :as t]))
+            #?(:cljs [malli.experimental.time
+                      :refer [Duration Period LocalDate LocalDateTime LocalTime Instant OffsetTime ZonedDateTime OffsetDateTime ZoneId ZoneOffset
+                              TemporalAccessor TemporalQuery DateTimeFormatter createTemporalQuery]])
+            [clojure.test :as t])
+  #?(:clj (:import [java.time Duration Period ZoneId])))
 
 (defn validate
   ([schema v]
@@ -58,6 +62,20 @@
   (m/encode schema v {:registry r} time.transform/time-transformer))
 
 (t/deftest encode
+  (t/testing "Encoding durations"
+    (t/is (= "PT24H" (-encode :time/duration (. Duration ofDays 1)))))
+
+  (t/testing "Encoding a period"
+    (t/is (= "P2M" (-encode :time/period (. Period ofMonths 2)))))
+
+  (t/testing "Encoding a zone id"
+    (t/is (= "EET" (-encode :time/zone-id (. ZoneId of "EET")))))
+
+  (t/testing "nil is nil"
+    (t/is (nil? (-encode [:maybe :time/duration] nil)))
+    (t/is (nil? (-encode [:maybe :time/period] nil)))
+    (t/is (nil? (-encode [:maybe :time/zone-id] nil))))
+
   (t/testing "Round trip with patterns"
     (t/is (= "20200101" (->> "20200101"
                              (-decode [:time/local-date {:pattern "yyyyMMdd"}])
@@ -65,5 +83,3 @@
     (t/is (= "2020_01_01" (->> "20200101"
                                (-decode [:time/local-date {:pattern "yyyyMMdd"}])
                                (-encode [:time/local-date {:pattern "yyyy_MM_dd"}]))))))
-
-

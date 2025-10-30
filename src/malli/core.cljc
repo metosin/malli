@@ -352,7 +352,12 @@
 
 (defn -cached [s k f]
   (if (-cached? s)
-    (-lookup-or-update-cache (-cache s) k #(f s))
+    ;; inlined (-lookup-or-update-cache (-cache s) k #(f s)) to avoid extra thunk
+    (let [c (-cache s)]
+      (or (@c k)
+          (let [r (f s)]
+            (swap! c assoc k r)
+            r)))
     (f s)))
 
 ;;

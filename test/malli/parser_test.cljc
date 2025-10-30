@@ -303,10 +303,9 @@
      ;; (1)
      [:or [:ref ::a] [:ref ::b]]]]])
 
-#?(:bb nil :cljs nil :default
-   (deftest infinite-parser-test
-     (doseq [s (map m/schema infinite-parsers)]
-       (is (m/parser s))
-       (is (m/unparser s))
-       (is (try (:simple-parser (m/-parser-info s nil))
-                (catch StackOverflowError _ true))))))
+(deftest infinite-parser-test
+  (doseq [s (map m/schema infinite-parsers)]
+    (is (m/parser s))
+    (is (m/unparser s))
+    (is (try (:simple-parser (m/-parser-info s nil))
+             (catch #?(:bb Throwable :clj StackOverflowError :cljs js/Error) _ true)))))

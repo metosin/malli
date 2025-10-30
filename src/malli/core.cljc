@@ -1944,7 +1944,8 @@
              (let [ref-validators *ref-validators*
                    id (-identify-ref-schema this)]
                (if lazy
-                 (let [vol (volatile! nil)]
+                 (let [vol (or (ref-validators id)
+                               (volatile! nil))]
                    (fn [x]
                      (if-let [f @vol]
                        (f x)

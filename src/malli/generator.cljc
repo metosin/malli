@@ -296,7 +296,7 @@
 ;;     [:or [:ref ::a] [:ref ::b]]]]
 
 (defn- -identify-ref-schema [schema]
-  {:scope (-> schema m/-options m/-registry mr/-schemas)
+  {:scope (-> schema m/-options m/-registry)
    :name (m/-ref schema)})
 
 (defn -ref-gen [schema options]

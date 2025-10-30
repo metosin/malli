@@ -15,7 +15,7 @@
   #?(:clj  (:import (clojure.lang IFn PersistentArrayMap PersistentHashMap))
      :cljs (:require-macros [malli.test-macros :refer [when-env]])))
 
-(defn simple-parser? [s] (boolean (:simple-parser (m/-parser-info (m/schema s)))))
+(defn simple-parser? [s] (boolean (:simple-parser (m/-parser-info (m/schema s) nil))))
 
 (def inheriting-parser-templates
   "Schema templates which have simple parsers iff ::HOLE has a simple parser.
@@ -176,8 +176,8 @@
         #?(:clj Exception, :cljs js/Error)
         #":malli\.core/and-schema-multiple-transforming-parsers"
         (m/parser [:and [:map [:left [:orn [:one :int]]]] [:map [:right [:orn [:one :int]]]]])))
-  (is (-> (m/schema [:vector :int]) m/-parser-info :simple-parser))
-  (is (-> (m/schema [:vector [:orn [:one :int]]]) m/-parser-info :simple-parser not))
+  (is (-> (m/schema [:vector :int]) (m/-parser-info nil) :simple-parser))
+  (is (-> (m/schema [:vector [:orn [:one :int]]]) (m/-parser-info nil) :simple-parser not))
   (is (= #malli.core.Tags{:values {"a" 3, "b" :x}}
          (m/parse [:and [:catn ["a" :int] ["b" :keyword]]
                    [:fn vector?]]
@@ -210,3 +210,103 @@
                  (m/unparse s))]
     (is (= [3 :x] res))
     (is (m/validate s res))))
+
+(def cyclic-simple-parsers
+  [[:schema {:registry
+             {::Name [:or :keyword :string]
+              ::Value [:or
+                       number?
+                       :string
+                       :boolean
+                       :nil
+                       :keyword
+                       [:sequential [:ref ::Value]]
+                       [:map-of [:ref ::Name] [:ref ::Value]]]
+              ::Arguments [:map-of [:ref ::Name] [:ref ::Value]]}}
+         ::Arguments]
+   [:schema {:registry
+             {::Value [:sequential [:ref ::Value]]}}
+    ::Value]
+   ;; equivalent to :nil
+   [:schema {:registry {::a [:maybe [:ref ::a]]}}
+    [:ref ::a]]
+   ;; inner ::a shadows outer ::a
+   [:schema {:registry {::a [:schema {:registry {::a [:= 42]}} [:ref ::a]]}}
+    [:ref ::a]]
+   [:schema {:registry {::a [:ref ::b] ;; (1)
+                        ::b [:schema {:registry {::b [:= 42]}}
+                             ;; (2)
+                             [:ref ::b]]}}
+    [:ref ::a]]
+   ;; it's insufficient to identify refs just by their expansion. here, ::a
+   ;; expands to [:ref ::b] twice at (1) and (2), so it looks like a recursion point, except
+   ;; they are different ::b's!
+   [:schema {:registry {::a [:ref ::b] ;; (1)
+                        ::b [:schema {:registry {::a [:ref ::b] ;; (2)
+                                                 ::b [:= 42]}}
+                             [:ref ::a]]}}
+    [:ref ::a]]
+   ;; if the outer ::a shadowed the inner one, it would be equivalent to
+   ;; [:maybe :never] == [:maybe [:maybe :never]] == ..., which is just :nil
+   [:schema {:registry {::a [:schema {:registry {::a :int}} [:maybe [:ref ::a]]]}}
+    [:ref ::a]]
+   [:schema
+    {:registry {::outer [:schema {:registry {::outer :int
+                                             ::inner [:ref ::outer]}}
+                         [:ref ::inner]]}}
+    [:ref ::outer]]
+   [:schema {:registry {::cons [:or :nil [:tuple pos-int? [:ref ::cons]]]}}
+    [:ref ::cons]]])
+
+(def cyclic-transforming-parsers
+  [[:schema {:registry
+             {::Name [:orn [:k :keyword] [:s :string]]
+              ::Value [:or
+                       number?
+                       :string
+                       :boolean
+                       :nil
+                       :keyword
+                       [:sequential [:ref ::Value]]
+                       [:map-of [:ref ::Name] [:ref ::Value]]]
+              ::Arguments [:map-of [:ref ::Name] [:ref ::Value]]}}
+         ::Arguments]
+   [:schema {:registry
+             {::Value [:sequential [:orn [:a [:ref ::Value]]]]}}
+    ::Value]])
+
+(deftest cycle-detection-test
+  (doseq [s (map m/schema cyclic-simple-parsers)]
+    (testing (pr-str (m/form s))
+      (is (m/parser s))
+      (is (m/unparser s))
+      (is (true? (:simple-parser (m/-parser-info s nil))))))
+  (doseq [s (map m/schema cyclic-transforming-parsers)]
+    (testing (pr-str (m/form s))
+      (is (m/parser s))
+      (is (m/unparser s))
+      (is (not (:simple-parser (m/-parser-info s nil)))))))
+
+
+(def infinite-parsers
+  "Schemas whose parsers diverge or are unsatisfiable.
+  -parser-info may infer these as simple, or diverge also."
+  [[:schema {:registry {::a [:ref ::a]}} [:ref ::a]]
+   [:schema {:registry {::a [:tuple [:ref ::a]]}}
+    [:ref ::a]]
+   ;; the scopes at (1) and (2) are different, so no recursion is detected between them.
+   ;; instead, the [:ref ::a] at (2) is the recursion point with itself.
+   [:schema {:registry {::a [:schema {:registry {::b [:= true]}}
+                             ;; (2)
+                             [:or [:ref ::a] [:ref ::b]]]}}
+    [:schema {:registry {::b [:= false]}}
+     ;; (1)
+     [:or [:ref ::a] [:ref ::b]]]]])
+
+#?(:cljs nil :default
+   (deftest infinite-parser-test
+     (doseq [s (map m/schema infinite-parsers)]
+       (is (m/parser s))
+       (is (m/unparser s))
+       (is (try (:simple-parser (m/-parser-info s nil))
+                (catch StackOverflowError _ true))))))

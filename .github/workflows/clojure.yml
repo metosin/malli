@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         # Supported Java versions: LTS releases and latest
-        jdk: [8, 11, 17, 21]
+        jdk: [8, 11, 17, 21, 25]
         clojure: [11, 12]
 
     name: Clojure ${{ matrix.clojure }} (Java ${{ matrix.jdk }})

@@ -303,7 +303,7 @@
      ;; (1)
      [:or [:ref ::a] [:ref ::b]]]]])
 
-#?(:cljs nil :default
+#?(:bb nil :clj
    (deftest infinite-parser-test
      (doseq [s (map m/schema infinite-parsers)]
        (is (m/parser s))

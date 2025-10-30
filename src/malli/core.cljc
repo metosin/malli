@@ -1944,24 +1944,24 @@
              (let [ref-validators *ref-validators*
                    id (-identify-ref-schema this)]
                (if lazy
-                 (let [vol (volatile! nil)
-                       validator (-memoize (fn [] (-validator (rf))))]
+                 (let [vol (volatile! nil)]
                    (fn [x]
                      (if-let [f @vol]
                        (f x)
-                       (binding [*ref-validators* (assoc ref-validators id vol)]
-                         (let [f (-validator (schema (mr/-schema (-registry options) ref) options))]
-                           (vreset! vol f)
-                           (f x))))))
+                       (let [s (schema (mr/-schema (-registry options) ref) options)
+                             f (binding [*ref-validators* (assoc ref-validators id vol)]
+                                 (-validator s))]
+                         (vreset! vol f)
+                         (f x)))))
                  (if-some [vol (ref-validators id)]
                    #(@vol %)
                    (let [vol (volatile! nil)
+                         s (or (when-let [s (mr/-schema (-registry options) ref)]
+                                 (schema s options))
+                               (when-not allow-invalid-refs
+                                 (-fail! ::invalid-ref {:type :ref, :ref ref})))
                          f (binding [*ref-validators* (assoc ref-validators id vol)]
-                             (-validator
-                               (or (when-let [s (mr/-schema (-registry options) ref)]
-                                     (schema s options))
-                                   (when-not allow-invalid-refs
-                                     (-fail! ::invalid-ref {:type :ref, :ref ref})))))]
+                             (-validator s))]
                      (vreset! vol f)
                      f)))))
            (-explainer [_ path]

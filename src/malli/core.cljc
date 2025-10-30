@@ -1905,6 +1905,12 @@
            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
+(defn -identify-ref-schema [schema]
+  {:scope (-> schema -options -registry mr/-schemas)
+   :name (-ref schema)})
+
+(def ^:dynamic *ref-validators* {})
+
 (defn -ref-schema
   ([]
    (-ref-schema nil))
@@ -1934,9 +1940,23 @@
            AST
            (-to-ast [this _] (-to-value-ast this))
            Schema
-           (-validator [_]
-             (let [validator (-memoize (fn [] (-validator (rf))))]
-               (fn [x] ((validator) x))))
+           (-validator [this]
+             (if lazy
+               (let [validator (-memoize (fn [] (-validator (rf))))]
+                 (fn [x] ((validator) x)))
+               (let [id (-identify-ref-schema this)
+                     ref-validators *ref-validators*]
+                 (if-some [vol (ref-validators id)]
+                   #(@vol %)
+                   (let [vol (volatile! nil)
+                         f (binding [*ref-validators* (assoc ref-validators id vol)]
+                             (-validator
+                               (or (when-let [s (mr/-schema (-registry options) ref)]
+                                     (schema s options))
+                                   (when-not allow-invalid-refs
+                                     (-fail! ::invalid-ref {:type :ref, :ref ref})))))]
+                     (vreset! vol f)
+                     f)))))
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (rf) (into path [0 0]))))]
                (fn [x in acc] ((explainer) x in acc))))

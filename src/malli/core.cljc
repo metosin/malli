@@ -1941,11 +1941,18 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [this]
-             (if lazy
-               (let [validator (-memoize (fn [] (-validator (rf))))]
-                 (fn [x] ((validator) x)))
-               (let [id (-identify-ref-schema this)
-                     ref-validators *ref-validators*]
+             (let [ref-validators *ref-validators*
+                   id (-identify-ref-schema this)]
+               (if lazy
+                 (let [vol (volatile! nil)
+                       validator (-memoize (fn [] (-validator (rf))))]
+                   (fn [x]
+                     (if-let [f @vol]
+                       (f x)
+                       (binding [*ref-validators* (assoc ref-validators id vol)]
+                         (let [f (-validator (schema (mr/-schema (-registry options) ref) options))]
+                           (vreset! vol f)
+                           (f x))))))
                  (if-some [vol (ref-validators id)]
                    #(@vol %)
                    (let [vol (volatile! nil)

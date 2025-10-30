@@ -1944,12 +1944,13 @@
              (let [ref-validators *ref-validators*
                    id (-identify-ref-schema this)]
                (if lazy
-                 (let [vol (or (ref-validators id)
-                               (volatile! nil))]
+                 (let [rv (ref-validators id)
+                       vol (or rv (volatile! nil))
+                       reg (when-not rv (-registry options))]
                    (fn [x]
                      (if-let [f @vol]
                        (f x)
-                       (let [s (schema (mr/-schema (-registry options) ref) options)
+                       (let [s (schema (mr/-schema reg ref) options)
                              f (binding [*ref-validators* (assoc ref-validators id vol)]
                                  (-validator s))]
                          (vreset! vol f)

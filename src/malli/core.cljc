@@ -121,14 +121,7 @@
   ParserInfo
   (-parser-info [this opts]
     (when (-ref-schema? this)
-      (let [cycles (::parser-info-cycles opts #{})
-            ref-id {:scope (-> this -options -registry)
-                    :name (-ref this)}]
-        ;; If we have seen this ref already, it's a cycle: assume simple
-        (if (cycles ref-id)
-          {:simple-parser true}
-          ;; Otherwise, add ref-id to cycles and recurse
-          (-parser-info (-deref this) (assoc opts ::parser-info-cycles (conj cycles ref-id)))))))
+      (-parser-info (-deref this) opts)))
 
   RegexSchema
   (-regex-op? [_] false)
@@ -1928,6 +1921,12 @@
            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
+;; returns an identifier for the :ref schema in the context of its dynamic scope.
+;; useful for detecting cycles.
+(defn -identify-ref-schema [schema]
+  {:scope (-> schema -options -registry)
+   :name (-ref schema)})
+
 (defn -ref-schema
   ([]
    (-ref-schema nil))
@@ -2000,6 +1999,13 @@
            (-regex-unparser [this] (-fail! ::potentially-recursive-seqex this))
            (-regex-transformer [this _ _ _] (-fail! ::potentially-recursive-seqex this))
            (-regex-min-max [this _] (-fail! ::potentially-recursive-seqex this))
+           ParserInfo
+           (-parser-info [this opts]
+             (let [cycles (::parser-info-cycles opts #{})
+                   ref-id (-identify-ref-schema this)]
+               (if (cycles ref-id)
+                 {:simple-parser true}
+                 (-parser-info (-deref this) (assoc opts ::parser-info-cycles (conj cycles ref-id))))))
            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 

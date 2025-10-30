@@ -1929,7 +1929,7 @@
 ;; returns an identifier for the :ref schema in the context of its dynamic scope.
 ;; useful for detecting cycles.
 (defn -identify-ref-schema [schema]
-  {:scope (-> schema -options -registry)
+  {:scope (-> schema -options -registry mr/-schemas)
    :name (-ref schema)})
 
 (defn -ref-schema

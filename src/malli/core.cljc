@@ -266,8 +266,8 @@
 (defn -vmap ([os] (miu/-vmap identity os)) ([f os] (miu/-vmap f os)))
 
 (defn -memoize [f]
-  (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
-    (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
+  (let [vol (volatile! nil)]
+    (fn [] (or @vol (vreset! vol (f))))))
 
 (defn -group-by-arity! [infos]
   (let [aritys (atom #{})]
@@ -2086,11 +2086,12 @@
        (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
-       (let [?schema (delay (or (mr/-schema (-registry options) ref)
-                                (when-not allow-invalid-refs
-                                  (-fail! ::invalid-ref {:type :ref, :ref ref}))))
-             _ (when-not lazy @?schema)
-             rf (-memoize (fn [] (schema @?schema options)))
+       (let [?schema (-memoize
+                       #(or (mr/-schema (-registry options) ref)
+                            (when-not allow-invalid-refs
+                              (-fail! ::invalid-ref {:type :ref, :ref ref}))))
+             _ (when-not lazy (?schema))
+             rf (-memoize #(schema (?schema) options))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
@@ -2107,18 +2108,24 @@
                (if lazy
                  (let [rv (ref-validators id)
                        vol (or rv (volatile! nil))]
-                   (fn [x]
-                     (if-let [f @vol]
-                       (f x)
-                       (let [f (binding [*ref-validators* (assoc ref-validators id vol)]
-                                 (-validator (schema @?schema options)))]
-                         (vreset! vol f)
-                         (f x)))))
+                   (c/assert (not @vol) "invariant: we tie the knot on the way back up")
+                   (if-some [f @vol]
+                     @f
+                     (fn [x]
+                       (if-let [f @vol]
+                         (do (println "LAZY: TIED THE KNOT")
+                             (f x))
+                         (let [f (binding [*ref-validators* (assoc ref-validators id vol)]
+                                   (-validator (rf)))]
+                           (vreset! vol f)
+                           (f x))))))
                  (if-some [vol (ref-validators id)]
-                   #(@vol %)
+                   (do (c/assert (not @vol) "invariant: we tie the knot on the way back up")
+                       #(do (println "EAGER: TIED THE KNOT")
+                            (@vol %)))
                    (let [vol (volatile! nil)
                          f (binding [*ref-validators* (assoc ref-validators id vol)]
-                             (-validator (schema @?schema options)))]
+                             (-validator (rf)))]
                      (vreset! vol f)
                      f)))))
            (-explainer [_ path]

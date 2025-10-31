@@ -2114,6 +2114,8 @@
                      (fn [x]
                        (if-let [f @vol]
                          (do (println "LAZY: TIED THE KNOT")
+                             ;;TODO exercise code path
+                             (throw (ex-info "LAZY: TIED THE KNOT" {}))
                              (f x))
                          (let [f (binding [*ref-validators* (assoc ref-validators id vol)]
                                    (-validator (rf)))]

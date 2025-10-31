@@ -2086,11 +2086,11 @@
        (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
-       (let [child (delay (or (mr/-schema (-registry options) ref)
-                              (when-not allow-invalid-refs
-                                (-fail! ::invalid-ref {:type :ref, :ref ref}))))
-             _ (when-not lazy @child)
-             rf (-memoize (fn [] (schema @child options)))
+       (let [?schema (delay (or (mr/-schema (-registry options) ref)
+                                (when-not allow-invalid-refs
+                                  (-fail! ::invalid-ref {:type :ref, :ref ref}))))
+             _ (when-not lazy @?schema)
+             rf (-memoize (fn [] (schema @?schema options)))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
@@ -2106,24 +2106,19 @@
                    id (-identify-ref-schema this)]
                (if lazy
                  (let [rv (ref-validators id)
-                       vol (or rv (volatile! nil))
-                       reg (when-not rv (-registry options))]
+                       vol (or rv (volatile! nil))]
                    (fn [x]
                      (if-let [f @vol]
                        (f x)
-                       (let [s @child
-                             f (binding [*ref-validators* (assoc ref-validators id vol)]
-                                 (-validator s))]
+                       (let [f (binding [*ref-validators* (assoc ref-validators id vol)]
+                                 (-validator (schema @?schema options)))]
                          (vreset! vol f)
                          (f x)))))
                  (if-some [vol (ref-validators id)]
                    #(@vol %)
                    (let [vol (volatile! nil)
-                         s (if-let [s @child]
-                             (schema s options)
-                             (-fail! ::invalid-ref {:type :ref, :ref ref}))
                          f (binding [*ref-validators* (assoc ref-validators id vol)]
-                             (-validator s))]
+                             (-validator (schema @?schema options)))]
                      (vreset! vol f)
                      f)))))
            (-explainer [_ path]

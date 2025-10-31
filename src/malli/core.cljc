@@ -1926,6 +1926,143 @@
            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
+(comment
+;; # Problem
+;;
+;; :ref validators don't "tie the knot" by compiling a truly recursive fn.
+;;
+;; Instead, they lazily compile each level of recursion as needed and cache the validator for each level
+;; using a strong reference.
+;;
+;; There are two problems with this approach:
+;; 1. memory consumption is unbounded and dynamically determined based on the depth of the input,
+;;    since we permanently extend the memoization cache to compile each level of ref-recursion.
+;; 2. runtime performance of the validators themselves are hampered since you can never "fully"
+;;    compile a recursive validator. Concretely, calls to `-validator` will be triggered _during_ validation.
+;;
+;; For example, here's a recursive schema.
+;; 
+
+(def ConsCell [:schema {:registry {::cons [:maybe [:tuple int?
+                                                          [:ref ::cons]]]}}
+               ::cons])
+
+;; Calling `m/validator` on this does no compilation.
+;; 
+
+(m/validator ConsCell)
+
+;;
+;; Instead it calls (-memoize (fn [] (-validator (rf)))), which simply waits for the validator to be called
+;; before compiling the validator:
+;;
+;;   ((m/validator ConsCell) [1 nil]) ;; compiles and caches 1 validator
+;;
+;; psuedo-code of compiled validator at this point
+
+(fn [x] (or (nil? x)
+            (and (vector? x)
+                 (= 2 (count x))
+                 (int? (nth x 0))
+                 (let [x (nth x 1)]
+                   (or (nil? x)
+                       (vector? x)
+                       (= 2 (count x))
+                       (int? (nth x 0))
+                       ;; lazy compilation
+                       ((m/validator ConsCell) (nth x 1)))))))
+
+;; This happens for each new depth of validation
+;;
+((m/validator ConsCell) [1 [2 [3 nil]]]) ;; compiles and caches 3 validators
+
+;; psuedo-code of compiled validator at this point
+
+(fn [x] (or (nil? x) ;; first recursion
+            (and (vector? x)
+                 (= 2 (count x))
+                 (int? (nth x 0))
+                 (let [x (nth x 1)]
+                   (or (nil? x) ;; second recursion
+                       (vector? x)
+                       (= 2 (count x))
+                       (int? (nth x 0))
+                       (let [x (nth x 1)]
+                         (or (nil? x) ;; third recursion
+                             (vector? x)
+                             (= 2 (count x))
+                             (int? (nth x 0))
+                             ;; lazy compilation
+                             ((m/validator ConsCell) (nth x 1)))))))))
+
+;; # Goals
+;;
+;; This PR changes how validators are compiled by detecting recursion using
+;; -identify-ref-schema. This function helps us reliably detect ref cycles even in
+;; the presence of dynamic scope (malli's scoping approach for refs) by only
+;; recognizing a ref cycle if the same name _and scope_ are seen.
+;;
+;; This puts us on equal footing with Plumatic Schema's validator compilation.
+;; It is trivial for Schema to detect cycles since they use _global_ scope for
+;; schemas. If they see the same schema again, they can simply reuse the same
+;; validator they were already compiling to "tie the knot" into a recursive validation.
+;;
+;; The goal and purpose of this PR is for ConsCell to compile its validator up-front and once-and-for-all:
+
+(let [rec (volatile! nil)
+      f (fn [x] (or (nil? x)
+                    (and (vector? x)
+                         (= 2 (count x))
+                         (int? (nth x 0))
+                         (@rec (nth x 1)))))]
+  (vreset! rec f)
+  f)
+
+;; This validator does no compilation at runtime and has constant memory usage.
+;; 
+;; # Implementation
+;; 
+;; There are two kinds of refs in malli: lazy and "eager" (or just normal). Lazy ref schemas 
+;; realize their child schema lazily, and eager refs know them upfront. The essential difference
+;; is apparent in their initial validators (see `rf` in the :ref impl):
+
+;; lazy refs only realize their child when the validator is called
+(-memoize (fn [] (schema (mr/-schema (-registry options) ref) options)))
+;;                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+;; eager refs realize their child when compiling their validators
+(when-let [s (mr/-schema (-registry options) ref)] (-memoize (fn [] (schema s options))))
+;;           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+;;
+;; Because of this essential difference, validators for eager refs can be fully compiled, but
+;; lazy refs must  <START FROM HERE, WE CAN FIX THIS>
+;;
+;; ## -validator doesn't take opts
+;; 
+;; A key 
+;;
+;; ## Eager refs
+;; 
+;; Implementation:
+
+(-validator [this]
+  (let [ref-validators *ref-validators*
+        id (-identify-ref-schema this)]
+    (if-some [vol (ref-validators id)]
+      #(@vol %)
+      (let [vol (volatile! nil)
+            s (or (when-let [s (mr/-schema (-registry options) ref)]
+                    (schema s options))
+                  (when-not allow-invalid-refs
+                    (-fail! ::invalid-ref {:type :ref, :ref ref})))
+            f (binding [*ref-validators* (assoc ref-validators id vol)]
+                (-validator s))]
+        (vreset! vol f)
+        f))))
+
+
+) ;; DOC END
+
 ;; returns an identifier for the :ref schema in the context of its dynamic scope.
 ;; useful for detecting cycles.
 (defn -identify-ref-schema [schema]

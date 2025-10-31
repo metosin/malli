@@ -17,6 +17,7 @@ Malli is in well matured [alpha](README.md#alpha).
 ## UNRELEASED
 
 * Robust `:and` parser, add `:andn` [#1182](https://github.com/metosin/malli/pull/1182)
+  * Correctly handle recursive schemas [#1234](https://github.com/metosin/malli/pull/1234)
 
 ## 0.19.2 (2025-10-06)
 

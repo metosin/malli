@@ -295,12 +295,8 @@
 ;;     ;; (1)
 ;;     [:or [:ref ::a] [:ref ::b]]]]
 
-(defn- -identify-ref-schema [schema]
-  {:scope (-> schema m/-options m/-registry mr/-schemas)
-   :name (m/-ref schema)})
-
 (defn -ref-gen [schema options]
-  (let [ref-id (-identify-ref-schema schema)]
+  (let [ref-id (m/-identify-ref-schema schema)]
     (or (force (get-in options [::rec-gen ref-id]))
         (let [scalar-ref-gen (delay (-never-gen options))
               dschema (m/deref schema)]

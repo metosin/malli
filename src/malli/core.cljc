@@ -2089,10 +2089,8 @@
        (let [child (delay (or (mr/-schema (-registry options) ref)
                               (when-not allow-invalid-refs
                                 (-fail! ::invalid-ref {:type :ref, :ref ref}))))
-             rf (if lazy
-                  (-memoize (fn [] (schema @child options)))
-                  (let [s @child]
-                    (-memoize (fn [] (schema s options)))))
+             _ (when-not lazy @child)
+             rf (-memoize (fn [] (schema @child options)))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)

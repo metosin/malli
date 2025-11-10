@@ -601,8 +601,14 @@
 
 (defn -parent-children-transformer [parent children transformer method options]
   (let [parent-transformer (-value-transformer transformer parent method options)
-        child-transformers (into [] (keep #(-transformer % transformer method options)) children)
-        child-transformer (when (seq child-transformers) (apply -comp (rseq child-transformers)))]
+        child-transformer
+        (reduce (fn [acc child]
+                  (if-some [transformer (-transformer child transformer method options)]
+                    (if acc
+                      (-comp transformer acc)
+                      transformer)
+                    acc))
+                nil children)]
     (-intercepting parent-transformer child-transformer)))
 
 (defn -map-transformer [ts]

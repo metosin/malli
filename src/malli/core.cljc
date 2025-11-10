@@ -603,11 +603,10 @@
   (let [parent-transformer (-value-transformer transformer parent method options)
         child-transformer
         (reduce (fn [acc child]
-                  (if-some [transformer (-transformer child transformer method options)]
-                    (if acc
+                  (let [transformer (-transformer child transformer method options)]
+                    (if (and acc transformer)
                       (-comp transformer acc)
-                      transformer)
-                    acc))
+                      (or acc transformer))))
                 nil children)]
     (-intercepting parent-transformer child-transformer)))
 

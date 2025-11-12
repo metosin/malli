@@ -93,7 +93,7 @@
                     parse (m/parser s)
                     unparse (m/parser s)]
                 (if expected-simple
-                  (doseq [g (mg/sample s)]
+                  (doseq [g (mg/sample s {:seed 0})]
                     (testing (pr-str g)
                       (let [p (parse g)]
                         (is (identical? g p))

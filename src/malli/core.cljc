@@ -1928,7 +1928,13 @@
 
 ;; returns an identifier for the :ref schema in the context of its dynamic scope.
 ;; useful for detecting cycles.
-(defn -identify-ref-schema [schema]
+;; copied to malli.generator
+(defn- -identify-ref-schema [schema]
+  ;; TODO mr/-schemas doesn't seem right, making defn private for now.
+  ;; e.g., we only care about property registry entries, not schema constructors.
+  ;; a better approach might be to accumulate a 'seen' map from name => ?schema
+  ;; that we add to every time we deref a ref, and if we expand the same name again
+  ;; with the same seen map, it's a cycle.
   {:scope (-> schema -options -registry mr/-schemas)
    :name (-ref schema)})
 

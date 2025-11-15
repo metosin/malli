@@ -1202,6 +1202,11 @@
            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-schema this writer opts))]))))
      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (pr-writer-into-schema this writer opts))]))))
 
+(defn- -dissoc-map-keys
+  "Dissoc all keys in `keyset-map` from `from-map`."
+  [from-map keyset-map]
+  (reduce-kv (fn [acc k _] (dissoc acc k)) from-map keyset-map))
+
 (defn -map-schema
   ([]
    (-map-schema {:naked-keys true}))
@@ -1243,8 +1248,7 @@
                                         default-parser
                                         (cons (let [simple (-lookup-or-update-cache cache ::simple-default-parser? #(simple-default-parser? nil))]
                                                 (fn [m]
-                                                  (let [m' (default-parser
-                                                             (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))]
+                                                  (let [m' (default-parser (-dissoc-map-keys m keyset))]
                                                     (if (miu/-invalid? m')
                                                       (reduced m')
                                                       (if simple m (merge (select-keys m (keys keyset)) m')))))))
@@ -1276,7 +1280,7 @@
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        @explicit-children)
                                 default-validator
-                                (conj (fn [m] (default-validator (reduce (fn [acc k] (dissoc acc k)) m (keys keyset)))))
+                                (conj (fn [m] (default-validator (-dissoc-map-keys m keyset))))
                                 (and closed (not default-validator))
                                 (conj (fn [m] (reduce (fn [acc k] (if (contains? keyset k) acc (reduced false))) true (keys m)))))
                    validate (miu/-every-pred validators)]
@@ -1297,7 +1301,7 @@
                                 default-explainer
                                 (conj (fn [x in acc]
                                         (default-explainer
-                                         (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))
+                                         (-dissoc-map-keys x keyset)
                                          in acc)))
                                 (and closed (not default-explainer))
                                 (conj (fn [x in acc]
@@ -1325,7 +1329,7 @@
                                       [] (cond->> (-entries this) @default-schema (remove -default-entry)))
                    apply->children (when (seq ->children) (-map-transformer ->children))
                    apply->default (when-let [dt (some-> @default-schema (-transformer transformer method options))]
-                                    (fn [x] (merge (dt (reduce (fn [acc k] (dissoc acc k)) x (keys keyset))) (select-keys x (keys keyset)))))
+                                    (fn [x] (merge (dt (-dissoc-map-keys x keyset)) (select-keys x (keys keyset)))))
                    apply->children (some->> [apply->default apply->children] (keep identity) (seq) (apply -comp))
                    apply->children (-guard pred? apply->children)]
                (-intercepting this-transformer apply->children)))

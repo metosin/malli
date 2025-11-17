@@ -16,6 +16,9 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+## 0.20.0 (2025-11-17)
+
+* Optimize -parent-child-transformer [#1239](https://github.com/metosin/malli/pull/1239)
 * Robust `:and` parser, add `:andn` [#1182](https://github.com/metosin/malli/pull/1182)
   * Correctly handle recursive schemas [#1234](https://github.com/metosin/malli/pull/1234)
 * Add JDK 25 to CI [#1233](https://github.com/metosin/malli/pull/1233)

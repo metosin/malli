@@ -633,6 +633,81 @@
                            :password2 "faarao"})
                (me/humanize {:resolve me/-resolve-root-error})))))
 
+  (testing ":fn with dynamic :error/path"
+    (let [schema [:and
+                  [:map
+                   [:last-password string?]
+                   [:new-passwords
+                    [:map-of :uuid
+                     [:map
+                      [:password string?]]]]]
+                  [:fn {:error/message "last password is forbidden"
+                        :error/path (fn [{:keys [data]}]
+                                      (some->> (:new-passwords data)
+                                               (filter (fn [[_k v]] (= (:password v) (:last-password data))))
+                                               (first)
+                                               (first)
+                                               (#(conj [:new-passwords] % :password))))}
+                   (fn [{:keys [last-password new-passwords]}]
+                     (not (some (fn [[_k v]] (= (:password v) last-password))
+                                new-passwords)))]]
+          uuid1 #uuid "123e4567-e89b-12d3-a456-426614174000"
+          uuid2 #uuid "223e4567-e89b-12d3-a456-426614174000"]
+      (is (= {:new-passwords {uuid1 {:password ["last password is forbidden"]}}}
+             (-> schema
+                 (m/explain {:last-password "secret"
+                             :new-passwords {uuid1 {:password "secret"}
+                                             uuid2 {:password "different"}}})
+                 (me/humanize))))
+      (is (= {:last-password ["missing required key"]
+              :new-passwords ["missing required key"]}
+             (-> schema
+                 (m/explain {})
+                 (me/humanize))))))
+
+  (testing "dynamic :error/path with all parameters available"
+    (let [schema [:and
+                  [:map
+                   [:user [:map
+                           [:email string?]
+                           [:age int?]]]]
+                  [:fn {:error/message "user must be adult"
+                        :error/path (fn [{:keys [data path in schema]}]
+                                      (when (and (map? data)
+                                                 (contains? data :user)
+                                                 (map? (:user data))
+                                                 (contains? (:user data) :age)
+                                                 (< (:age (:user data)) 18))
+                                        [:user :age]))}
+                   (fn [{:keys [user]}]
+                     (or (not (map? user))
+                         (not (contains? user :age))
+                         (>= (:age user) 18)))]]]
+      (is (= {:user {:age ["user must be adult"]}}
+             (-> schema
+                 (m/explain {:user {:email "test@example.com"
+                                    :age 17}})
+                 (me/humanize))))
+      (is (= nil
+             (-> schema
+                 (m/explain {:user {:email "test@example.com"
+                                    :age 18}})
+                 (me/humanize))))))
+
+  (testing "dynamic :error/path returns nil (fallback to original path)"
+    (let [schema [:and
+                  [:map
+                   [:value int?]]
+                  [:fn {:error/message "value must be positive"
+                        :error/path (fn [{:keys [data]}]
+                                      ;; Return nil to test fallback to original path
+                                      nil)}
+                   pos?]]]
+      (is (= {1 ["value must be positive"]}
+             (-> schema
+                 (m/explain {:value -1})
+                 (me/humanize))))))
+
   (testing "refs #1106"
     (is (= {:foo ["should be an integer"]}
            (me/humanize

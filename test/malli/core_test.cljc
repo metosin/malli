@@ -3637,3 +3637,57 @@
   (testing "print Schema"
     (is (= "[:map [:x :int]]"
            (pr-str (m/schema [:map [:x :int]]))))))
+
+(deftest caching-of-mutable-registries-test
+  (testing "pointers cache their children"
+    (let [registry-atom (atom {::node :int})
+          mut-reg (mr/composite-registry
+                    (m/default-schemas)
+                    (mr/mutable-registry registry-atom))
+          schema (m/schema ::node {:registry mut-reg})]
+      (is (= :int (-> schema m/deref-all m/form)))
+      (reset! registry-atom {::node :boolean})
+      (is (= :int (-> schema m/deref-all m/form)))))
+  (testing "readme example"
+    (let [registry* (atom {:int (m/-int-schema)
+                           :string (m/-string-schema)
+                           ::node :int})
+          eagerly-cached
+          (m/schema ::node {:registry (mr/mutable-registry registry*)})] 
+      (swap! registry* assoc ::node :string)
+      (is (= :int (-> eagerly-cached m/deref m/form)))))
+  (testing "refs cache their children"
+    (let [registry-atom (atom {::node :int})
+          mut-reg (mr/composite-registry
+                    (m/default-schemas)
+                    (mr/mutable-registry registry-atom))
+          schema (m/schema [:ref ::node] {:registry mut-reg})]
+      (reset! registry-atom {::node :boolean})
+      (testing "registry mutation ignored due to cached schema"
+        (is (= :int (-> schema m/deref-all m/form))))))
+  (testing "transactions can still lead to inconsistent schemas"
+    (let [loading-order (atom [])
+          registry-atom (atom (assoc (m/default-schemas)
+                                     "hello" [:enum "hello"]
+                                     "world" [:enum "world"]))
+          reg (mr/lazy-registry
+                (m/default-schemas)
+                (fn [type registry]
+                  (when-some [?schema (@registry-atom type)]
+                    (swap! loading-order conj [type :=> ?schema])
+                    (m/schema ?schema {:registry registry}))))
+          schema (m/schema [:tuple
+                            "hello"
+                            [:multi {:lazy-refs true, :dispatch identity}
+                             "world"]]
+                           {:registry reg})]
+      (swap! registry-atom assoc
+             "hello" [:enum "hei"]
+             "world" [:enum "maailma"])
+      (testing "permanently inconsistent schema, despite CAS transaction"
+        (is (= ["hello" "maailma"]
+               [(-> schema m/children first m/form)
+                (-> schema m/children second m/children first last m/deref m/form last)]))
+        (is (= [["hello" :=> [:enum "hello"]]
+                ["world" :=> [:enum "maailma"]]]
+               @loading-order))))))

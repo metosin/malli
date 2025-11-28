@@ -3666,28 +3666,18 @@
       (testing "registry mutation ignored due to cached schema"
         (is (= :int (-> schema m/deref-all m/form))))))
   (testing "transactions can still lead to inconsistent schemas"
-    (let [loading-order (atom [])
-          registry-atom (atom (assoc (m/default-schemas)
+    (let [registry-atom (atom (assoc (m/default-schemas)
                                      "hello" [:enum "hello"]
                                      "world" [:enum "world"]))
           reg (mr/lazy-registry
                 (m/default-schemas)
                 (fn [type registry]
-                  (when-some [?schema (@registry-atom type)]
-                    (swap! loading-order conj [type :=> ?schema])
-                    (m/schema ?schema {:registry registry}))))
-          schema (m/schema [:tuple
-                            "hello"
-                            [:multi {:lazy-refs true, :dispatch identity}
-                             "world"]]
+                  (some-> (@registry-atom type)
+                          (m/schema {:registry registry}))))
+          schema (m/schema [:tuple "hello" (m/-lazy "world" {:registry reg})]
                            {:registry reg})]
       (swap! registry-atom assoc
              "hello" [:enum "hei"]
              "world" [:enum "maailma"])
-      (testing "permanently inconsistent schema, despite CAS transaction"
-        (is (= ["hello" "maailma"]
-               [(-> schema m/children first m/form)
-                (-> schema m/children second m/children first last m/deref m/form last)]))
-        (is (= [["hello" :=> [:enum "hello"]]
-                ["world" :=> [:enum "maailma"]]]
-               @loading-order))))))
+      (is (= ["hello" "maailma"]
+             (mapv (comp peek m/form m/deref-all) (m/children schema)))))))

@@ -3368,6 +3368,39 @@ Revert the registry back to defaults:
   (m/default-schemas))
 ```
 
+### Mutable registries are a dev-time abstraction
+
+For performance reasons, Malli heavily caches registry
+lookups once a schema has been created via `m/schema`.
+
+Don't rely on registry mutations to be recognized consistently
+unless all schemas are reparsed. Here's a simple example:
+
+```clojure
+(def registry*
+  (atom {:int (m/-int-schema)
+         :string (m/-string-schema)
+         ::node :int}))
+
+(def eagerly-cached
+  (m/schema ::node {:registry (mr/mutable-registry registry*)}))
+
+(swap! registry* assoc ::node :string)
+
+(-> eagerly-cached m/deref m/form)
+;; => :int
+```
+
+Even atomic transactions mutating multiple schemas simultaneously in a mutable registry
+is not reliable, as a parsed schema may have cached one eagerly,
+and another lazily, leading to inconsistent results.
+See `malli.core-test/caching-of-mutable-registries-test` for demonstration of this phenomenon.
+
+In practice, this is analogous to Clojure's treatment of vars. If a var
+is mutated, the most reliable general strategy to recognize the update
+is to refresh all namespaces that use that var. Similarly, if a registry is
+mutated, the best strategy for recognizing the update in all schemas is to
+recreate all schemas.
 
 ## Function schemas
 

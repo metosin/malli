@@ -3637,3 +3637,47 @@
   (testing "print Schema"
     (is (= "[:map [:x :int]]"
            (pr-str (m/schema [:map [:x :int]]))))))
+
+(deftest caching-of-mutable-registries-test
+  (testing "pointers cache their children"
+    (let [registry-atom (atom {::node :int})
+          mut-reg (mr/composite-registry
+                    (m/default-schemas)
+                    (mr/mutable-registry registry-atom))
+          schema (m/schema ::node {:registry mut-reg})]
+      (is (= :int (-> schema m/deref-all m/form)))
+      (reset! registry-atom {::node :boolean})
+      (is (= :int (-> schema m/deref-all m/form)))))
+  (testing "readme example"
+    (let [registry* (atom {:int (m/-int-schema)
+                           :string (m/-string-schema)
+                           ::node :int})
+          eagerly-cached
+          (m/schema ::node {:registry (mr/mutable-registry registry*)})] 
+      (swap! registry* assoc ::node :string)
+      (is (= :int (-> eagerly-cached m/deref m/form)))))
+  (testing "refs cache their children"
+    (let [registry-atom (atom {::node :int})
+          mut-reg (mr/composite-registry
+                    (m/default-schemas)
+                    (mr/mutable-registry registry-atom))
+          schema (m/schema [:ref ::node] {:registry mut-reg})]
+      (reset! registry-atom {::node :boolean})
+      (testing "registry mutation ignored due to cached schema"
+        (is (= :int (-> schema m/deref-all m/form))))))
+  (testing "transactions can still lead to inconsistent schemas"
+    (let [registry-atom (atom (assoc (m/default-schemas)
+                                     "hello" [:enum "hello"]
+                                     "world" [:enum "world"]))
+          reg (mr/lazy-registry
+                (m/default-schemas)
+                (fn [type registry]
+                  (some-> (@registry-atom type)
+                          (m/schema {:registry registry}))))
+          schema (m/schema [:tuple "hello" (m/-lazy "world" {:registry reg})]
+                           {:registry reg})]
+      (swap! registry-atom assoc
+             "hello" [:enum "hei"]
+             "world" [:enum "maailma"])
+      (is (= ["hello" "maailma"]
+             (mapv (comp peek m/form m/deref-all) (m/children schema)))))))

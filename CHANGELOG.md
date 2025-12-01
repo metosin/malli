@@ -16,6 +16,8 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Compile recursive functions for recursive validators [#1245](https://github.com/metosin/malli/pull/1245)
+
 ## 0.20.0 (2025-11-17)
 
 * Optimize -parent-child-transformer [#1239](https://github.com/metosin/malli/pull/1239)

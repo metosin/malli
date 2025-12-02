@@ -40,19 +40,19 @@
 (deftest lazy-registry-test
   (let [loads (atom [])
         registry (mr/lazy-registry
-                   (m/default-schemas)
-                   (fn [type registry]
-                     (let [lookup {"AWS::ApiGateway::UsagePlan" [:map {:closed true}
-                                                                 [:Type [:= "AWS::ApiGateway::UsagePlan"]]
-                                                                 [:Description {:optional true} string?]
-                                                                 [:UsagePlanName {:optional true} string?]]
-                                   "AWS::AppSync::ApiKey" [:map {:closed true}
-                                                           [:Type [:= "AWS::AppSync::ApiKey"]]
-                                                           [:ApiId string?]
-                                                           [:Description {:optional true} string?]]}
-                           schema (some-> type lookup (m/schema {:registry registry}))]
-                       (swap! loads conj type)
-                       schema)))
+                  (m/default-schemas)
+                  (fn [type registry]
+                    (let [lookup {"AWS::ApiGateway::UsagePlan" [:map {:closed true}
+                                                                [:Type [:= "AWS::ApiGateway::UsagePlan"]]
+                                                                [:Description {:optional true} string?]
+                                                                [:UsagePlanName {:optional true} string?]]
+                                  "AWS::AppSync::ApiKey" [:map {:closed true}
+                                                          [:Type [:= "AWS::AppSync::ApiKey"]]
+                                                          [:ApiId string?]
+                                                          [:Description {:optional true} string?]]}
+                          schema (some-> type lookup (m/schema {:registry registry}))]
+                      (swap! loads conj type)
+                      schema)))
         new-loads! #(first (reset-vals! loads []))
         CloudFormation (m/schema [:multi {:lazy-refs true, :dispatch :Type}
                                   "AWS::ApiGateway::Stage"

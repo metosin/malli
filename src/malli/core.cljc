@@ -1984,17 +1984,19 @@
            Schema
            (-validator [this]
              (let [id (-identify-ref-schema this)
-                   {rv id :as rvs} *ref-validators*]
-               (if rv
-                 (or @rv #(@rv %))
-                 (let [rv (atom nil)
-                       ->validator (fn []
-                                     (let [f (binding [*ref-validators* (assoc rvs id rv)]
-                                               (-validator (rf)))]
-                                       (swap! rv #(or % f))))]
-                   (if lazy
-                     #((or @rv (->validator)) %)
-                     (->validator))))))
+                   id->validator *ref-validators*]
+               (or (id->validator id)
+                   (let [knot (atom nil)
+                         rec #(@knot %)
+                         ->validator (fn []
+                                       (or @knot
+                                           (let [f (binding [*ref-validators* (assoc id->validator id rec)]
+                                                     (-validator (rf)))]
+                                             (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
+                                             @knot)))]
+                     (if lazy
+                       #((->validator) %)
+                       (->validator))))))
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (rf) (into path [0 0]))))]
                (fn [x in acc] ((explainer) x in acc))))

@@ -38,21 +38,22 @@
       (is (= #{:string :map :maybe} (-> registry (mr/-schemas) (keys) (set)))))))
 
 (deftest lazy-registry-test
-  (let [loads (atom #{})
+  (let [loads (atom [])
         registry (mr/lazy-registry
-                  (m/default-schemas)
-                  (fn [type registry]
-                    (let [lookup {"AWS::ApiGateway::UsagePlan" [:map {:closed true}
-                                                                [:Type [:= "AWS::ApiGateway::UsagePlan"]]
-                                                                [:Description {:optional true} string?]
-                                                                [:UsagePlanName {:optional true} string?]]
-                                  "AWS::AppSync::ApiKey" [:map {:closed true}
-                                                          [:Type [:= "AWS::AppSync::ApiKey"]]
-                                                          [:ApiId string?]
-                                                          [:Description {:optional true} string?]]}
-                          schema (some-> type lookup (m/schema {:registry registry}))]
-                      (swap! loads conj type)
-                      schema)))
+                   (m/default-schemas)
+                   (fn [type registry]
+                     (let [lookup {"AWS::ApiGateway::UsagePlan" [:map {:closed true}
+                                                                 [:Type [:= "AWS::ApiGateway::UsagePlan"]]
+                                                                 [:Description {:optional true} string?]
+                                                                 [:UsagePlanName {:optional true} string?]]
+                                   "AWS::AppSync::ApiKey" [:map {:closed true}
+                                                           [:Type [:= "AWS::AppSync::ApiKey"]]
+                                                           [:ApiId string?]
+                                                           [:Description {:optional true} string?]]}
+                           schema (some-> type lookup (m/schema {:registry registry}))]
+                       (swap! loads conj type)
+                       schema)))
+        new-loads! #(first (reset-vals! loads []))
         CloudFormation (m/schema [:multi {:lazy-refs true, :dispatch :Type}
                                   "AWS::ApiGateway::Stage"
                                   "AWS::ApiGateway::UsagePlan"
@@ -60,20 +61,73 @@
                                  {:registry registry})]
 
     (testing "nothing is loaded"
-      (is (= 0 (count @loads))))
+      (is (= [] (new-loads!))))
 
     (testing "validating a schema pulls schema"
-      (is (true? (m/validate
-                  CloudFormation
-                  {:Type "AWS::AppSync::ApiKey"
-                   :ApiId "123"
-                   :Description "apkey"})))
-
-      (is (= 1 (count @loads))))
+      (let [f (m/validator CloudFormation)]
+        (is (= [] (new-loads!)))
+        (is (f {:Type "AWS::AppSync::ApiKey"
+                :ApiId "123"
+                :Description "apkey"}))
+        (is (= ["AWS::AppSync::ApiKey"] (new-loads!)))))
 
     (testing "pulling more"
-      (is (true? (m/validate
-                  CloudFormation
-                  {:Type "AWS::ApiGateway::UsagePlan"})))
+      (let [f (m/validator CloudFormation)]
+        (is (= [] (new-loads!)))
+        (is (f {:Type "AWS::ApiGateway::UsagePlan"}))
+        (is (= ["AWS::ApiGateway::UsagePlan"] (new-loads!)))))))
 
-      (is (= 2 (count @loads))))))
+(deftest recursive-lazy-registry-test
+  (let [loads (atom [])
+        registry (mr/lazy-registry
+                  (m/default-schemas)
+                  (fn [type registry]
+                    (let [lookup {::List [:multi {:lazy-refs true :dispatch :op}
+                                          ::Nil
+                                          ::Cons]
+                                  ::Nil [:map [:op [:enum ::Nil]]]
+                                  ::Cons [:map [:op [:enum ::Cons]] [:car :any] [:cdr ::List]]}
+                          schema (some-> type lookup (m/schema {:registry registry}))]
+                      (swap! loads conj type)
+                      schema)))
+        new-loads! #(first (reset-vals! loads []))
+        List (m/schema ::List {:registry registry})]
+    (testing "::Cons and ::Nil are lazily loaded"
+      (is (= [::List] (new-loads!))))
+    (testing "the first two levels are lazily pulled, then cached"
+      (let [f (m/validator List)]
+        (testing "nothing is pulled to create validator"
+          (is (= [] (new-loads!))))
+        (testing "validating the first ::Nil the first time pulls"
+          (is (f {:op ::Nil}))
+          (is (= [::Nil] (new-loads!))))
+        (testing "validating the first ::Nil the second time is cached"
+          (is (f {:op ::Nil}))
+          (is (= [] (new-loads!))))
+        (testing "validating the first ::Cons the first time pulls"
+          (is (f {:op ::Cons
+                  :car "first"
+                  :cdr {:op ::Nil}}))
+          (is (= [::Cons] (new-loads!))))
+        (testing "validating the first ::Cons the second time is cached"
+          (is (f {:op ::Cons
+                  :car "first"
+                  :cdr {:op ::Nil}}))
+          (is (= [] (new-loads!))))
+        (testing "not further pulls are needed"
+          (testing "for nested good values"
+            (is (f (nth (iterate
+                          (fn [x]
+                            {:op ::Cons
+                             :car "elem"
+                             :cdr x})
+                          {:op ::Nil})
+                        10)))
+            (is (= [] (new-loads!))))
+          (testing "for nested bad values"
+            (is (not (f {:op ::Cons
+                         :car "first"
+                         :cdr {:op ::Cons
+                               :car "second"
+                               :cdr "junk"}})))
+            (is (= [] (new-loads!)))))))))

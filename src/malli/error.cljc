@@ -212,9 +212,11 @@
 (defn- -path [{:keys [schema]}
               {:keys [locale default-locale]
                :or {default-locale :en}}]
-  (let [properties (m/properties schema)]
-    (or (-maybe-localized (:error/path properties) locale)
-        (-maybe-localized (:error/path properties) default-locale))))
+  (let [properties (m/properties schema)
+        error-path-prop (or (-maybe-localized (:error/path properties) locale)
+                            (-maybe-localized (:error/path properties) default-locale))]
+    (when-not (fn? error-path-prop)
+      error-path-prop)))
 
 ;;
 ;; error values
@@ -283,7 +285,16 @@
   ([error]
    (error-path error nil))
   ([error options]
-   (into (:in error) (-path error options))))
+   (let [properties (m/properties (:schema error))
+         error-path-prop (or (get-in properties [:error/path (:locale options :en)])
+                            (get-in properties [:error/path (:default-locale options :en)])
+                            (:error/path properties))
+         path-from-props (-path error options)]
+     (if (fn? error-path-prop)
+       ;; If :error/path is a function, use the path from the error object (already computed in explainer)
+       (into (:in error) (:path error))
+       ;; Otherwise, use the path from properties (or nil if not set)
+       (into (:in error) path-from-props)))))
 
 (defn error-message
   ([error]
@@ -311,7 +322,9 @@
   (let [options (assoc options :unknown false)]
     (loop [path path, l nil, mp path, p (m/properties (:schema error)), m (error-message error options)]
       (let [[path' m' p'] (or (let [schema (mu/get-in schema path)]
-                                (when-let [m' (error-message {:schema schema} options)] [path m' (m/properties schema)]))
+                                (when schema
+                                  (when-let [m' (error-message {:schema schema} options)]
+                                    [path m' (m/properties schema)])))
                               (let [res (and l (mu/find (mu/get-in schema path) l))]
                                 (when (vector? res)
                                   (let [[_ props schema] res

@@ -373,3 +373,17 @@
                                                        :required [:id ::location `description]}}}
 
          (json-schema/transform User))))
+
+(deftest registry-test
+  (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
+          :definitions {"malli.json-schema-test.foo" {:type "string"}}}
+         (json-schema/transform [:map {:registry {::foo :string}} [:s ::foo]])))
+  (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
+          :definitions {"malli.json-schema-test.foo" {:type "string"}}}
+         (json-schema/transform [:map [:s ::foo]] {:registry (merge (m/default-schemas) {::foo :string})})))
+  (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
+          :definitions {"malli.json-schema-test.foo" {:type "string"}}}
+         (json-schema/transform [:map [:s [:schema ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})})))
+  (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
+          :definitions {"malli.json-schema-test.foo" {:type "string"}} }
+         (json-schema/transform [:map [:s [:ref ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})}))))

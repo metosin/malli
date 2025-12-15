@@ -150,27 +150,30 @@
    (defn -file-in-kondo-dir [options & paths]
      (apply io/file (into (get options :clj-kondo-dir-path []) paths))))
 
-(defn -types-dir-name
-  "Creates a directory name such as `malli-types-cljs` or `malli-types-clj`."
-  [key]
-  (str "malli-types-" (name key)))
+#?(:clj
+   (defn -types-dir-name
+     "Creates a directory name such as `malli-types-cljs` or `malli-types-clj`."
+     [key]
+     (str "malli-types-" (name key))))
 
-(defn -config-file-path [key options]
-  (-file-in-kondo-dir options ".clj-kondo" "imports" "metosin" (-types-dir-name key) "config.edn"))
+#?(:clj
+   (defn -config-file-path [key options]
+     (-file-in-kondo-dir options ".clj-kondo" "imports" "metosin" (-types-dir-name key) "config.edn")))
 
 ;;
 ;; public api
 ;;
 
-(defn clean!
-  "Cleans existing configurations from .clj-kondo directory"
-  ([options]
-   (clean! :clj options))
-  ([key options]
-   (.delete (-config-file-path key options))
-   ;; These are remnants from old locations where malli used to store the configuration files
-   (.delete (-file-in-kondo-dir options ".clj-kondo" "metosin" (-types-dir-name key) "config.edn"))
-   (.delete (-file-in-kondo-dir options ".clj-kondo" "configs" "malli" "config.edn"))))
+#?(:clj
+   (defn clean!
+     "Cleans existing configurations from .clj-kondo directory"
+     ([options]
+      (clean! :clj options))
+     ([key options]
+      (.delete (-config-file-path key options))
+      ;; These are remnants from old locations where malli used to store the configuration files
+      (.delete (-file-in-kondo-dir options ".clj-kondo" "metosin" (-types-dir-name key) "config.edn"))
+      (.delete (-file-in-kondo-dir options ".clj-kondo" "configs" "malli" "config.edn")))))
 
 (defn transform
   ([?schema]

@@ -2003,9 +2003,16 @@
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
-             (let [this-transformer (-value-transformer transformer this method options)
-                   deref-transformer (-memoize (fn [] (-transformer (rf) transformer method options)))]
-               (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))))
+             (let [key [(-identify-ref-schema this) method]]
+               (or (some-> (get-in options [::ref-transformer-cache key]) clojure.core/deref)
+                   (let [knot (atom nil)
+                         this-transformer (-value-transformer transformer this method options)
+                         deref-transformer (-memoize
+                                            (fn [] (-transformer (rf) transformer method
+                                                                 (assoc-in options [::ref-transformer-cache key] knot))))
+                         f (-intercepting this-transformer (fn [x] (if-some [t (deref-transformer)] (t x) x)))]
+                     (compare-and-set! knot nil f)
+                     f))))
            (-walk [this walker path options]
              (let [accept (fn [] (-inner walker (rf) (into path [0 0])
                                          (-update options ::walked-refs #(conj (or % #{}) ref))))]

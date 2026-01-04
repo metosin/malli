@@ -265,9 +265,25 @@
 
 (defn -vmap ([os] (miu/-vmap identity os)) ([f os] (miu/-vmap f os)))
 
+;; Very primitive memoization/deferred value implementation that doesn't use
+;; locks (thus, allows multiple callers to race) but clears the thunk after
+;; it was computed once (to allow GC to clean it).
+#?(:clj
+   (deftype SimpleMemoize [^:volatile-mutable f ^:volatile-mutable value]
+     clojure.lang.IFn
+     (invoke [_]
+       (let [f' f] ; capture volatile `f` to avoid racy overwrites
+         (if (nil? f') ; `f=nil` means somebody has already computed value
+           value
+           (let [value' (f')]
+             (do (set! value value') ; set `value` first, then clean up `f`
+                 (set! f nil) ; JMM guarantees order here since fields are volatile
+                 value')))))))
+
 (defn -memoize [f]
-  (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
-    (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
+  #?(:clj (->SimpleMemoize f nil)
+     :cljs (let [value (atom nil)]
+             (fn [] (or @value (reset! value (f)))))))
 
 (defn -group-by-arity! [infos]
   (let [aritys (atom #{})]

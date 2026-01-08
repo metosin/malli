@@ -266,8 +266,15 @@
 (defn -vmap ([os] (miu/-vmap identity os)) ([f os] (miu/-vmap f os)))
 
 (defn -memoize [f]
-  (let [value #?(:clj (AtomicReference. nil), :cljs (atom nil))]
-    (fn [] #?(:clj (or (.get value) (do (.set value (f)) (.get value))), :cljs (or @value (reset! value (f)))))))
+  (let [f (volatile! f)
+        value (volatile! nil)]
+    (fn [] (or @value
+               (if-some [f @f]
+                 (let [v (f)]
+                   (vreset! value v)
+                   (vreset! f nil) ;; must set after value
+                   v)
+                 @value)))))
 
 (defn -group-by-arity! [infos]
   (let [aritys (atom #{})]

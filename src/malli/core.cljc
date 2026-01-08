@@ -1993,8 +1993,8 @@
                                        (or @knot
                                            (let [f (binding [*ref-validators* (assoc id->validator id rec)
                                                              *nested-ref-path* (conj *nested-ref-path* (:name id))]
+                                                     (prn '*nested-ref-path* *nested-ref-path*)
                                                      (-validator (rf)))]
-                                             (prn '*nested-ref-path* *nested-ref-path*)
                                              (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
                                              @knot)))]
                      (if lazy

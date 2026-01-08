@@ -269,8 +269,8 @@
   (let [f (volatile! f)
         value (volatile! nil)]
     (fn [] (or @value
-               (if-some [f @f]
-                 (let [v (f)]
+               (if-some [f' @f]
+                 (let [v (f')]
                    (vreset! value v)
                    (vreset! f nil) ;; must set after value
                    v)

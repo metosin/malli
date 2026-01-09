@@ -2000,9 +2000,9 @@
                        (->validator))))))
            (-explainer [this path]
              (let [id (-identify-ref-schema this)
+                   id->this-child *ref-explainers*
                    ->explainer (-memoize (fn []
-                                           (let [id->this-child *ref-explainers*
-                                                 this-child (or (id->this-child id) (rf))]
+                                           (let [this-child (or (id->this-child id) (rf))]
                                              (binding [*ref-explainers* (assoc id->this-child id this-child)]
                                                (-explainer this-child (conj path 0 0))))))]
                (fn [x in acc] ((->explainer) x in acc))))

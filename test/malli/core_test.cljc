@@ -3694,8 +3694,6 @@
                            {:registry reg})]
     (is (= @count-into-schemas 2))
     (is (nil? (m/explain ConsCell [1 [2 [3 [4 nil]]]])))
-    (is (= @count-into-schemas 6))
+    (is (= @count-into-schemas 3)) ;; was 6
     (is (nil? (m/explain ConsCell [1 [2 [3 [4 [1 [2 [3 [4 nil]]]]]]]])))
-    (is (= @count-into-schemas 10))
-    )
-  )
+    (is (= @count-into-schemas 3)))) ;; was 10

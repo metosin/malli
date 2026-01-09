@@ -3681,3 +3681,21 @@
              "world" [:enum "maailma"])
       (is (= ["hello" "maailma"]
              (mapv (comp peek m/form m/deref-all) (m/children schema)))))))
+
+(deftest recursive-explainer-test
+  (let [count-into-schemas (atom 0)
+        reg (mr/simple-registry (assoc (m/default-schemas)
+                                       ::counting (m/-proxy-schema {:type ::counting
+                                                                    :fn (fn [p c o]
+                                                                          (assert (empty? c))
+                                                                          (swap! count-into-schemas inc)
+                                                                          [[] [] (m/schema :int o)])})))
+        ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple ::counting [:ref ::cons]]]}} ::cons]
+                           {:registry reg})]
+    (is (= @count-into-schemas 2))
+    (is (nil? (m/explain ConsCell [1 [2 [3 [4 nil]]]])))
+    (is (= @count-into-schemas 6))
+    (is (nil? (m/explain ConsCell [1 [2 [3 [4 [1 [2 [3 [4 nil]]]]]]]])))
+    (is (= @count-into-schemas 10))
+    )
+  )

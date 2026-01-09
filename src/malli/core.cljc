@@ -1950,6 +1950,7 @@
    :name (-ref schema)})
 
 (def ^:dynamic ^:private *ref-validators* {})
+(def ^:dynamic ^:private *ref-explainers* {})
 
 (defn -ref-schema
   ([]
@@ -1997,9 +1998,14 @@
                      (if lazy
                        #((->validator) %)
                        (->validator))))))
-           (-explainer [_ path]
-             (let [explainer (-memoize (fn [] (-explainer (rf) (into path [0 0]))))]
-               (fn [x in acc] ((explainer) x in acc))))
+           (-explainer [this path]
+             (let [id (-identify-ref-schema this)
+                   ->explainer (-memoize (fn []
+                                           (let [id->this-child *ref-explainers*
+                                                 this-child (or (id->this-child id) (rf))]
+                                             (binding [*ref-explainers* (assoc id->this-child id this-child)]
+                                               (-explainer this-child (conj path 0 0))))))]
+               (fn [x in acc] ((->explainer) x in acc))))
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]

@@ -268,11 +268,13 @@
 (defn -memoize [f]
   (let [f (volatile! f)
         value (volatile! nil)]
+    ;; Ordering constraint for volatile updates to prevent race conditions:
+    ;;   If any thread observes (@f = nil), then all threads must observe (@value != nil)
     (fn [] (or @value
                (if-some [f' @f]
                  (let [v (f')]
                    (vreset! value v)
-                   (vreset! f nil) ;; must set after value
+                   (vreset! f nil)
                    v)
                  @value)))))
 

@@ -994,6 +994,64 @@ For closed schemas, key spelling can be checked with:
 ;;     :name ["disallowed key"]}
 ```
 
+## Custom errors
+
+If you want even more control over error generation, you can use the
+experimental `:validate` schema, which takes a validation function,
+that should return a sequence of errors, or nil if the value was
+valid.
+
+```clojure
+(require '[malli.experimental.validate :as mev])
+(def UniqueNames
+  (m/schema [:and
+             ; use normal schemas for basic structure validation
+             [:vector
+              [:map
+               [:name :string]
+               [:value :int]]]
+             ; and a :validate for more fine-grainer errors
+             [:validate
+              (fn [entries]
+                (let [freqs (frequencies (map :name entries))]
+                  (keep-indexed (fn [i entry]
+                                  (when (> (get freqs (:name entry)) 1)
+                                    {:in [i :name]  ; data path, relative to schema
+                                     :type :duplicate-name
+                                     :value (:name entry)}))
+                                entries)))]]
+            {:registry (merge (m/default-schemas) (mev/schemas))}))
+(-> UniqueNames
+    (m/explain [{:name "foo" :value 1}
+                {:name "bar" :value 2}
+                {:name "foo" :value 3}])
+    :errors)
+; => [{:in [0 :name]
+;      :path [1]
+;      :schema ...
+;      :type :duplicate-name
+;      :value :foo}
+;     {:in [2 :name]
+;      :path [1]
+;      :schema ...
+;      :type :duplicate-name
+;      :value :foo}]
+```
+
+Custom errors can be humanized as well:
+
+```clojure
+(-> UniqueNames
+    (m/explain [{:name "foo" :value 1}
+                {:name "bar" :value 2}
+                {:name "foo" :value 3}])
+    (me/humanize {:errors
+                  {:duplicate-name
+                   {:error/fn {:en (fn [{:keys [value]} _]
+                                     (str "duplicate name: " value))}}}}))
+;; => [{:name ["duplicate name: foo"]} nil {:name ["duplicate name: foo"]}]
+```
+
 ## Values in error
 
 Just to get parts of the value that are in error:

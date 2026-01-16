@@ -918,7 +918,7 @@ Messages can be localized:
     (me/humanize
       {:locale :fi
        :errors (-> me/default-errors
-                   (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
+                   (assoc-in ['int? :error/message :fi] "pitäisi olla numero")
                    (assoc ::m/missing-key {:error/fn {:en (fn [{:keys [in]} _] (str "missing key " (last in)))
                                                       :fi (fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
 ;; => {:id ["puuttuu avain :id"]

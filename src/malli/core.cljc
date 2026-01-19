@@ -1949,14 +1949,16 @@
 ;; returns an identifier for the :ref schema in the context of its dynamic scope.
 ;; useful for detecting cycles.
 ;; copied to malli.generator
-(defn- -identify-ref-schema [schema]
-  ;; TODO mr/-schemas doesn't seem right, making defn private for now.
-  ;; e.g., we only care about property registry entries, not schema constructors.
-  ;; a better approach might be to accumulate a 'seen' map from name => ?schema
-  ;; that we add to every time we deref a ref, and if we expand the same name again
-  ;; with the same seen map, it's a cycle.
-  {:scope (-> schema -options -registry mr/-schemas)
-   :name (-ref schema)})
+(defn- -identify-ref-schema
+  ([schema] (-identify-ref-schema (-ref schema) (-options schema)))
+  ([ref options]
+   ;; TODO mr/-schemas doesn't seem right, making defn private for now.
+   ;; e.g., we only care about property registry entries, not schema constructors.
+   ;; a better approach might be to accumulate a 'seen' map from name => ?schema
+   ;; that we add to every time we deref a ref, and if we expand the same name again
+   ;; with the same seen map, it's a cycle.
+   {:scope (-> options -registry mr/-schemas)
+    :name ref}))
 
 (def ^:dynamic ^:private *ref-validators* {})
 
@@ -1971,16 +1973,20 @@
      IntoSchema
      (-type [_] :ref)
      (-type-properties [_] type-properties)
-     (-into-schema [parent properties [ref :as children] {::keys [allow-invalid-refs] :as options}]
+     (-into-schema [parent properties [ref :as children] {::keys [allow-invalid-refs ref-id->nested-info] :as options}]
        (-check-children! :ref properties children 1 1)
        (when-not (-reference? ref)
          (-fail! ::invalid-ref {:ref ref}))
-       (let [?schema (-memoize
-                       #(or (mr/-schema (-registry options) ref)
-                            (when-not allow-invalid-refs
-                              (-fail! ::invalid-ref {:type :ref, :ref ref}))))
-             _ (when-not lazy (?schema))
-             rf (-memoize #(schema (?schema) options))
+       (let [id (-identify-ref-schema ref options)
+             nested-info (get ref-id->nested-info id)
+             rf (or (:rf nested-info)
+                    (let [?schema (-memoize
+                                    #(or (mr/-schema (-registry options) ref)
+                                         (when-not allow-invalid-refs
+                                           (-fail! ::invalid-ref {:type :ref, :ref ref}))))
+                          _ (when-not lazy (?schema))
+                          vrf (volatile! nil)]
+                      (vreset! vrf (-memoize #(schema (?schema) (assoc-in options [::ref-id->nested-info id :rf] @vrf))))))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
@@ -1992,8 +1998,7 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [this]
-             (let [id (-identify-ref-schema this)
-                   id->validator *ref-validators*]
+             (let [id->validator *ref-validators*]
                (or (id->validator id)
                    (let [knot (atom nil)
                          rec #(@knot %)

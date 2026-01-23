@@ -1021,21 +1021,19 @@ valid.
                                      :value (:name entry)}))
                                 entries)))]]
             {:registry (merge (m/default-schemas) (mev/schemas))}))
-(-> UniqueNames
-    (m/explain [{:name "foo" :value 1}
-                {:name "bar" :value 2}
-                {:name "foo" :value 3}])
-    :errors)
-; => [{:in [0 :name]
-;      :path [1]
-;      :schema ...
-;      :type :duplicate-name
-;      :value :foo}
-;     {:in [2 :name]
-;      :path [1]
-;      :schema ...
-;      :type :duplicate-name
-;      :value :foo}]
+(->> (m/explain UniqueNames [{:name "foo" :value 1}
+                             {:name "bar" :value 2}
+                             {:name "foo" :value 3}])
+     :errors
+     (map #(dissoc % :schema)))
+;; => [{:in [0 :name]
+;;      :path [1]
+;;      :type :duplicate-name
+;;      :value "foo"}
+;;     {:in [2 :name]
+;;      :path [1]
+;;      :type :duplicate-name
+;;      :value "foo"}]
 ```
 
 Custom errors can be humanized as well:

@@ -918,7 +918,7 @@ Messages can be localized:
     (me/humanize
       {:locale :fi
        :errors (-> me/default-errors
-                   (assoc-in ['int? :error-message :fi] "pitäisi olla numero")
+                   (assoc-in ['int? :error/message :fi] "pitäisi olla numero")
                    (assoc ::m/missing-key {:error/fn {:en (fn [{:keys [in]} _] (str "missing key " (last in)))
                                                       :fi (fn [{:keys [in]} _] (str "puuttuu avain " (last in)))}}))}))
 ;; => {:id ["puuttuu avain :id"]
@@ -992,6 +992,62 @@ For closed schemas, key spelling can be checked with:
     (me/humanize))
 ;; => {:address {:streetz ["should be spelled :street"]}
 ;;     :name ["disallowed key"]}
+```
+
+## Custom errors
+
+If you want even more control over error generation, you can use the
+experimental `:validate` schema, which takes a validation function,
+that should return a sequence of errors, or nil if the value was
+valid.
+
+```clojure
+(require '[malli.experimental.validate :as mev])
+(def UniqueNames
+  (m/schema [:and
+             ; use normal schemas for basic structure validation
+             [:vector
+              [:map
+               [:name :string]
+               [:value :int]]]
+             ; and a :validate for more fine-grainer errors
+             [:validate
+              (fn [entries]
+                (let [freqs (frequencies (map :name entries))]
+                  (keep-indexed (fn [i entry]
+                                  (when (> (get freqs (:name entry)) 1)
+                                    {:in [i :name]  ; data path, relative to schema
+                                     :type :duplicate-name
+                                     :value (:name entry)}))
+                                entries)))]]
+            {:registry (merge (m/default-schemas) (mev/schemas))}))
+(->> (m/explain UniqueNames [{:name "foo" :value 1}
+                             {:name "bar" :value 2}
+                             {:name "foo" :value 3}])
+     :errors
+     (map #(dissoc % :schema)))
+;; => [{:in [0 :name]
+;;      :path [1]
+;;      :type :duplicate-name
+;;      :value "foo"}
+;;     {:in [2 :name]
+;;      :path [1]
+;;      :type :duplicate-name
+;;      :value "foo"}]
+```
+
+Custom errors can be humanized as well:
+
+```clojure
+(-> UniqueNames
+    (m/explain [{:name "foo" :value 1}
+                {:name "bar" :value 2}
+                {:name "foo" :value 3}])
+    (me/humanize {:errors
+                  {:duplicate-name
+                   {:error/fn {:en (fn [{:keys [value]} _]
+                                     (str "duplicate name: " value))}}}}))
+;; => [{:name ["duplicate name: foo"]} nil {:name ["duplicate name: foo"]}]
 ```
 
 ## Values in error

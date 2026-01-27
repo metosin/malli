@@ -1959,6 +1959,7 @@
    :name (-ref schema)})
 
 (def ^:dynamic ^:private *ref-validators* {})
+(def ^:dynamic *nested-ref-path* [])
 
 (defn -ref-schema
   ([]
@@ -1999,7 +2000,9 @@
                          rec #(@knot %)
                          ->validator (fn []
                                        (or @knot
-                                           (let [f (binding [*ref-validators* (assoc id->validator id rec)]
+                                           (let [f (binding [*ref-validators* (assoc id->validator id rec)
+                                                             *nested-ref-path* (conj *nested-ref-path* (:name id))]
+                                                     (prn '*nested-ref-path* *nested-ref-path*)
                                                      (-validator (rf)))]
                                              (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
                                              @knot)))]

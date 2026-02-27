@@ -16,7 +16,10 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* Compile recursive functions for recursive validators [#1245](https://github.com/metosin/malli/pull/1245)
+* Performance improvements for recursive schemas:
+  * Compile recursive functions for recursive validators [#1245](https://github.com/metosin/malli/pull/1245)
+  * Reuse recursive ref-transformers [#1250](https://github.com/metosin/malli/pull/1250)
+* Experimental :validate schema for outputting custom errors [#975](https://github.com/metosin/malli/issues/975)
 
 ## 0.20.0 (2025-11-17)
 

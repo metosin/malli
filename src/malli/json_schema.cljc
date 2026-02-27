@@ -214,6 +214,9 @@
 ;;
 
 (defn transform
+  "Convert a malli schema to equivalent JSON-Schema Draft 2020-12.
+
+  Returns a clojure map that needs to be serialised to JSON separately."
   ([?schema]
    (transform ?schema nil))
   ([?schema options]

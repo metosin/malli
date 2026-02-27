@@ -1,10 +1,23 @@
 (ns malli.json-schema-test
-  (:require [clojure.test.check.generators :as gen]
+  (:require #?(:cljs ["ajv/dist/2020" :as ajv2020])
+            [clojure.test.check.generators :as gen]
             [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
             [malli.core-test]
             [malli.json-schema :as json-schema]
             [malli.util :as mu]))
+
+(defn transform-and-check [& args]
+  #?(:clj
+     (apply json-schema/transform args)
+     :cljs
+     (let [out (apply json-schema/transform args)
+           ^js ajv (ajv2020.)]
+       (when-not (.validateSchema ajv (clj->js out))
+         (throw (ex-info "JSON Schema failed validation!" {:schema (first args)
+                                                           :json-schema out
+                                                           :errors (.-errors ajv)})))
+       out)))
 
 (def expectations
   [;; predicates
@@ -126,59 +139,53 @@
       (-validator [_] int?)
       (-walk [t w p o] (m/-outer w t p nil o))
       json-schema/JsonSchema
-      (-accept [_ _ _] {:type "custom"})) {:type "custom"}]
+      (-accept [_ _ _] {:type "array"})) {:type "array"}]
    ;; type-properties
    [malli.core-test/Over6 {:type "integer", :format "int64", :minimum 6}]
    [[malli.core-test/Over6 {:json-schema/example 42}] {:type "integer", :format "int64", :minimum 6, :example 42}]])
 
 (deftest json-schema-test
   (doseq [[schema json-schema] expectations]
-    (is (= json-schema (json-schema/transform schema))))
+    (is (= json-schema (transform-and-check schema))))
 
   (testing "full override"
-    (is (= {:type "file"}
-           (json-schema/transform
-            [:map {:json-schema {:type "file"}} [:file any?]]))))
+    (is (= {:type "string" :format "custom-file-format"}
+           (transform-and-check
+            [:map {:json-schema {:type "string" :format "custom-file-format"}} [:file any?]]))))
 
   (testing "Having all attributes optional in input should not output a required at all even empty. JSON-Schema validation will failed on this
             (see http://json-schema.org/understanding-json-schema/reference/object.html#required-properties and
              the rule: \"In Draft 4, required must contain at least one string.\")"
     (is (= {:type "object",
-            :properties {:x1 {:title "x", :type "string"},
-                         :x2 {:title "x"},
-                         :x3 {:title "x", :type "string", :default "x"},
-                         :x4 {:title "x-string", :default "x2"},
-                         :x5 {:type "x-string"}}}
-           (json-schema/transform
+            :properties {:s {:type "string"}
+                         :i {:type "integer"}}}
+           (transform-and-check
             [:map
-             [:x1 {:json-schema/title "x" :optional true} :string]
-             [:x2 {:json-schema {:title "x"} :optional true} [:string {:json-schema/default "x"}]]
-             [:x3 {:json-schema/title "x" :optional true} [:string {:json-schema/default "x"}]]
-             [:x4 {:json-schema/title "x-string" :optional true} [:string {:json-schema {:default "x2"}}]]
-             [:x5 {:json-schema {:type "x-string"} :optional true} [:string {:json-schema {:default "x"}}]]]))))
+             [:s {:optional true} :string]
+             [:i {:optional true} :int]]))))
 
   (testing "map-entry overrides"
     (is (= {:type "object",
             :properties {:x1 {:title "x", :type "string"},
                          :x2 {:title "x"},
                          :x3 {:title "x", :type "string", :default "x"},
-                         :x4 {:title "x-string", :default "x2"},
-                         :x5 {:type "x-string"}},
+                         :x4 {:title "x-string", :default "x2" :type "string" :format "uri"},
+                         :x5 {:type "number"}}, ;; NB! :default 3 gets overridden on the map-entry level!
             :required [:x1 :x2 :x3 :x4 :x5]}
-           (json-schema/transform
+           (transform-and-check
             [:map
              [:x1 {:json-schema/title "x"} :string]
              [:x2 {:json-schema {:title "x"}} [:string {:json-schema/default "x"}]]
              [:x3 {:json-schema/title "x"} [:string {:json-schema/default "x"}]]
-             [:x4 {:json-schema/title "x-string"} [:string {:json-schema {:default "x2"}}]]
-             [:x5 {:json-schema {:type "x-string"}} [:string {:json-schema {:default "x"}}]]]))))
+             [:x4 {:json-schema/title "x-string"} [:string {:json-schema {:default "x2" :type "string" :format "uri"}}]]
+             [:x5 {:json-schema {:type "number"}} [:string {:json-schema {:default 3}}]]]))))
 
   (testing "with properties"
     (is (= {:allOf [{:type "integer"}]
             :title "age"
             :description "blabla"
             :default 42}
-           (json-schema/transform
+           (transform-and-check
             [:and {:title "age"
                    :description "blabla"
                    :default 42} int?])))
@@ -187,7 +194,7 @@
             :description "blabla2"
             :default 422
             :example 422}
-           (json-schema/transform
+           (transform-and-check
             [:and {:title "age"
                    :json-schema/title "age2"
                    :description "blabla"
@@ -206,7 +213,7 @@
                            :y {:type "integer"},
                            :z {:type "integer"}},
               :required [:x :y :z]}
-             (json-schema/transform
+             (transform-and-check
               [:merge {:title "merge"}
                [:map [:x {:json-schema/example 42} int?] [:y int?]]
                [:map [:z int?]]]
@@ -218,7 +225,7 @@
               :properties {:x {:anyOf [{:type "integer"} {:type "string"}]}
                            :y {:type "integer"}},
               :required [:x :y]}
-             (json-schema/transform
+             (transform-and-check
               [:union {:title "union"}
                [:map [:x int?] [:y int?]]
                [:map [:x string?]]]
@@ -229,7 +236,7 @@
               :type "object"
               :properties {:x {:type "integer"}}
               :required [:x]}
-             (json-schema/transform
+             (transform-and-check
               [:select-keys {:title "select-keys"}
                [:map [:x int?] [:y int?]]
                [:x]]
@@ -267,7 +274,7 @@
                                                                                   :required [:street :zip :country]}},
                                                            :required [:delivered :address]}},
                                    :required [:lines :delivery]}}}
-           (json-schema/transform
+           (transform-and-check
             [:schema
              {:registry {"Country" [:map
                                     [:name [:enum :FI :PO]]
@@ -291,18 +298,18 @@
              "Order"]))))
   (testing "circular definitions are not created"
     (is (= {:$ref "#/definitions/Foo", :definitions {"Foo" {:type "integer"}}}
-           (json-schema/transform
+           (transform-and-check
             [:schema {:registry {"Foo" :int}} "Foo"]))))
   (testing "circular definitions are not created for closed schemas"
     (is (= {:$ref "#/definitions/Foo", :definitions {"Foo" {:type "integer"}}}
-           (json-schema/transform
+           (transform-and-check
             (mu/closed-schema [:schema {:registry {"Foo" :int}} "Foo"])))))
   (testing "definition path can be changed"
     (is (= {:type "object"
             :properties {:foo {:$ref "#/foo/bar/Foo"}}
             :required [:foo]
             :definitions {"Foo" {:type "integer"}}}
-           (json-schema/transform
+           (transform-and-check
             [:schema {:registry {"Foo" :int}} [:map [:foo "Foo"]]]
             {:malli.json-schema/definitions-path "#/foo/bar/"})))))
 
@@ -310,31 +317,31 @@
   (is (= {:$ref "#/definitions/Foo"
           :definitions {"Bar" {:$ref "#/definitions/Foo"}
                         "Foo" {:items {:$ref "#/definitions/Bar"} :type "array"}}}
-         (json-schema/transform [:schema {:registry {"Foo" [:vector [:schema "Bar"]] ;; NB! :schema instead of :ref
+         (transform-and-check [:schema {:registry {"Foo" [:vector [:schema "Bar"]] ;; NB! :schema instead of :ref
                                                      "Bar" [:ref "Foo"]}}
                                  "Foo"])))
   (is (= {:$ref "#/definitions/Foo"
           :definitions {"Bar" {:$ref "#/definitions/Foo"}
                         "Foo" {:items {:$ref "#/definitions/Bar"} :type "array"}}}
-         (json-schema/transform [:schema {:registry {"Foo" [:vector [:ref "Bar"]]
+         (transform-and-check [:schema {:registry {"Foo" [:vector [:ref "Bar"]]
                                                      "Bar" [:ref "Foo"]}}
                                  "Foo"])))
   (is (= {:$ref "#/definitions/Bar",
           :definitions {"Bar" {:$ref "#/definitions/Foo"},
                         "Foo" {:items {:$ref "#/definitions/Bar"}, :type "array"}}}
-         (json-schema/transform [:schema {:registry {"Foo" [:vector [:ref "Bar"]]
+         (transform-and-check [:schema {:registry {"Foo" [:vector [:ref "Bar"]]
                                                      "Bar" [:ref "Foo"]}}
                                  "Bar"]))))
 
 (deftest function-schema-test
-  (is (= {} (json-schema/transform [:=> [:cat int? int?] int?]))))
+  (is (= {} (transform-and-check [:=> [:cat int? int?] int?]))))
 
 (deftest additional-properties-test
   (is (= {:type "object"
           :properties {:name {:type "string"}}
           :required [:name]
           :additionalProperties false}
-         (json-schema/transform [:map {:closed true} [:name :string]]))))
+         (transform-and-check [:map {:closed true} [:name :string]]))))
 
 (def UserId :string)
 
@@ -372,18 +379,18 @@
                                                                               :uniqueItems true}},
                                                        :required [:id ::location `description]}}}
 
-         (json-schema/transform User))))
+         (transform-and-check User))))
 
 (deftest registry-test
   (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
           :definitions {"malli.json-schema-test.foo" {:type "string"}}}
-         (json-schema/transform [:map {:registry {::foo :string}} [:s ::foo]])))
+         (transform-and-check [:map {:registry {::foo :string}} [:s ::foo]])))
   (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
           :definitions {"malli.json-schema-test.foo" {:type "string"}}}
-         (json-schema/transform [:map [:s ::foo]] {:registry (merge (m/default-schemas) {::foo :string})})))
+         (transform-and-check [:map [:s ::foo]] {:registry (merge (m/default-schemas) {::foo :string})})))
   (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
           :definitions {"malli.json-schema-test.foo" {:type "string"}}}
-         (json-schema/transform [:map [:s [:schema ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})})))
+         (transform-and-check [:map [:s [:schema ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})})))
   (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
           :definitions {"malli.json-schema-test.foo" {:type "string"}} }
-         (json-schema/transform [:map [:s [:ref ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})}))))
+         (transform-and-check [:map [:s [:ref ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})}))))

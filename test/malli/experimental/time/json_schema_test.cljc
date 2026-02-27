@@ -2,6 +2,7 @@
   (:require [malli.experimental.time-test :refer [r]]
             [malli.experimental.time.json-schema]
             [malli.json-schema :as json]
+            [malli.json-schema-test :refer [transform-and-check]]
             [clojure.test :as t]))
 
 (t/deftest time-formats
@@ -16,7 +17,7 @@
                      "time.offset-time" {:type "string", :format "time"},
                      "time.offset-date-time" {:type "string", :format "date-time"},
                      "time.duration" {:type "string", :format "duration"}}}
-      (json/transform
+      (transform-and-check
        [:map
         [:date :time/local-date]
         [:time :time/offset-time]

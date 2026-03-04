@@ -9,7 +9,7 @@ none() {
 
 advanced() {
 	echo 'Running CLJS test in Node with optimizations :advanced'
-	TEST_SCI=true clojure -M:test:cljs-test-runner:sci:test-sci -c '{:optimizations :advanced}' -e :simple "$@"
+	TEST_SCI=true clojure -M:test:cljs-test-runner:sci:test-sci -c '{:optimizations :advanced :infer-externs true}' -e :simple "$@"
 }
 
 cherry-none() {
@@ -20,7 +20,7 @@ cherry-none() {
 cherry-advanced() {
 	echo 'Running CLJS test in Node with cherry + optimizations :advanced'
 	# :optimize-constants is set to false until https://clojure.atlassian.net/browse/CLJS-3401 is fixed
- 	clojure -M:test:cljs-test-runner:cherry:test-cherry -c '{:optimizations :advanced :optimize-constants false}' -e :simple "$@"
+        clojure -M:test:cljs-test-runner:cherry:test-cherry -c '{:optimizations :advanced :optimize-constants false :infer-externs true}' -e :simple "$@"
 }
 
 case $1 in

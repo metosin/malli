@@ -19,8 +19,8 @@ cherry-none() {
 
 cherry-advanced() {
 	echo 'Running CLJS test in Node with cherry + optimizations :advanced'
-	# :optimize-constants is set to false until https://clojure.atlassian.net/browse/CLJS-3401 is fixed
-        clojure -M:test:cljs-test-runner:cherry:test-cherry -c '{:optimizations :advanced :optimize-constants false :infer-externs true}' -e :simple "$@"
+        # For some reason :infer-externs true breaks everything in the cherry case, but this minimal externs file works.
+        clojure -M:test:cljs-test-runner:cherry:test-cherry -c '{:optimizations :advanced :externs ["cherry-externs.js"]}' -e :simple "$@"
 }
 
 case $1 in
@@ -28,5 +28,5 @@ case $1 in
 	advanced) advanced ;;
 	cherry-none) cherry-none ;;
 	cherry-advanced) cherry-advanced ;;
-	*) none; advanced; cherry; cherry-advanced ;;
+	*) none; advanced; cherry-none; cherry-advanced ;;
 esac

@@ -20,7 +20,7 @@ jobs:
       with:
         cli: latest
     - name: Build jar
-      run: clojure -M:jar
+      run: clojure -T:jar
     - name: Deploy to Clojars
       run: clojure -X:deploy
       env:

@@ -24,6 +24,11 @@ Malli is in well matured [alpha](README.md#alpha).
   * Optimize -map-schema [#1242](https://github.com/metosin/malli/pull/1242)
   * Compile recursive functions for recursive validators [#1245](https://github.com/metosin/malli/pull/1245)
   * Reuse recursive ref-transformers [#1250](https://github.com/metosin/malli/pull/1250)
+* Updated dependencies:
+```
+Upgraded borkdude/edamame '1.4.32' to '1.5.37' in deps.edn.
+Upgraded org.clojure/test.check '1.1.1' to '1.1.3' in deps.edn.
+```
 
 ## 0.20.0 (2025-11-17)
 

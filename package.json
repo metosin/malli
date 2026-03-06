@@ -4,6 +4,7 @@
     "@js-joda/timezone": "^2.22.0",
     "isomorphic-ws": "^5.0.0",
     "shadow-cljs": "^3.2.1",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "ajv": "^8.18.0"
   }
 }

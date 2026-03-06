@@ -1,0 +1,2 @@
+Object.validateSchema;
+Object.error;

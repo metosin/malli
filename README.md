@@ -2924,7 +2924,7 @@ Transforming schemas into maps:
 
 ### JSON Schema
 
-Transforming Schemas into [JSON Schema](https://json-schema.org/):
+Transforming Schemas into [JSON Schema](https://json-schema.org/) (JSON Schema Draft 2020-12 to be precise):
 
 ```clojure
 (require '[malli.json-schema :as json-schema])

@@ -9,7 +9,6 @@
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {com.gfredericks/test.chuck {:mvn/version "0.2.15"}
                                lambdaisland/kaocha {:mvn/version "1.91.1392"}
-                               lambdaisland/kaocha-cljs {:mvn/version "1.5.154"}
                                org.babashka/sci {:mvn/version "0.12.51"}
                                lambdaisland/kaocha-junit-xml {:mvn/version "1.17.101"}
                                metosin/spec-tools {:mvn/version "0.10.8"}
@@ -45,7 +44,8 @@
                              ;; for -M syntax support specify main-opts
                              :main-opts ["-m" "lread.test-doc-blocks" "gen-tests"]}
            :test-doc-test {:replace-paths ["src" "resources" "target/test-doc-blocks/test"]}
-           :cljs-test-runner {:extra-deps {olical/cljs-test-runner {:mvn/version "3.8.1"}
+           :cljs-test-runner {:extra-deps {org.clojure/clojurescript {:mvn/version "1.11.132"}
+                                           olical/cljs-test-runner {:mvn/version "3.8.1"}
                                         ; used only to pull in its externs file needed to compile js-joda types under advanced compilation
                                            com.widdindustries/cljs.java-time {:mvn/version "0.1.20"}}
                               :extra-paths ["test" "cljs-test-runner-out/gen"]

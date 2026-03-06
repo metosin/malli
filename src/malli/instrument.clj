@@ -111,9 +111,9 @@
                                           (list? n) (second n)
                                           :else (symbol (str n)))]
                          (ns-publics' ns-sym)))
-                     ;; support quoted vectors of ns symbols in cljs
+                     ;; support quoted symbols & quoted vectors of symbols in cljs
                      (let [nses (:ns opts)
-                           nses (if (and (= 'quote (first nses)) (coll? (second nses)))
+                           nses (if (= 'quote (first nses))
                                   (second nses)
                                   nses)]
                        (-sequential nses)))))))

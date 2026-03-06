@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* FIX: don't throw in cljs-collect! on clojurescript 1.12 [#1263](https://github.com/metosin/malli/pull/1263)
 * Experimental :validate schema for outputting custom errors [#975](https://github.com/metosin/malli/issues/975)
 * Documentation improvements:
   * Document mutable registry caveats [#1244](https://github.com/metosin/malli/pull/1244)

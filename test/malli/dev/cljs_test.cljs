@@ -18,7 +18,7 @@
       (is (= 7 ((->plus) 6))))
 
     (testing "instrumentation after starting"
-      (md/start! {:ns 'malli.dev.cljs-test :filters [(mi/-filter-ns 'malli.dev.cljs-test)]})
+      (md/start! {:ns '[malli.dev.cljs-test non.existent.ns] :filters [(mi/-filter-ns 'malli.dev.cljs-test)]})
       (is (thrown-with-msg? js/Error #":malli.core/invalid-input" ((->plus) "2")))
       (is (thrown-with-msg? js/Error #":malli.core/invalid-output" ((->plus) 6)))
       (m/-deregister-metadata-function-schemas! :cljs)

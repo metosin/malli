@@ -144,7 +144,7 @@
 
 (deftest ^:simple collect!-test
 
-  (mi/collect! {:ns ['malli.instrument-test 'malli.instrument.fn-schemas]})
+  (mi/collect! {:ns ['malli.instrument-test 'malli.instrument.fn-schemas 'non.existent.ns]})
 
   (testing "with instrumentation"
     (mi/instrument! {:filters [(mi/-filter-ns 'malli.instrument-test 'malli.instrument.fn-schemas)]})

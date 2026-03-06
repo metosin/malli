@@ -110,10 +110,15 @@
                                           ;; handles (quote ns-name) - quoted symbols passed to cljs macros show up this way.
                                           (list? n) (second n)
                                           :else (symbol (str n)))]
-                         (ns-publics' ns-sym)))
-                     ;; support quoted vectors of ns symbols in cljs
+                         (try
+                           (ns-publics' ns-sym)
+                           ;; Since Clojurescript 1.12.42, ns-publics throws on nonexistant namespaces.
+                           ;; Keep backwards compatibility by ignoring them.
+                           (catch clojure.lang.ExceptionInfo _
+                             nil))))
+                     ;; support quoted symbols & quoted vectors of symbols in cljs
                      (let [nses (:ns opts)
-                           nses (if (and (= 'quote (first nses)) (coll? (second nses)))
+                           nses (if (= 'quote (first nses))
                                   (second nses)
                                   nses)]
                        (-sequential nses)))))))

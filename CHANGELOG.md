@@ -16,10 +16,14 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* Performance improvements for recursive schemas:
+* Experimental :validate schema for outputting custom errors [#975](https://github.com/metosin/malli/issues/975)
+* Documentation improvements:
+  * Document mutable registry caveats [#1244](https://github.com/metosin/malli/pull/1244)
+  * Document that `malli.json-schema` complies with _JSON Schema draft 2020-12_ [#1248](https://github.com/metosin/malli/pull/1258)
+* Performance improvements:
+  * Optimize -map-schema [#1242](https://github.com/metosin/malli/pull/1242)
   * Compile recursive functions for recursive validators [#1245](https://github.com/metosin/malli/pull/1245)
   * Reuse recursive ref-transformers [#1250](https://github.com/metosin/malli/pull/1250)
-* Experimental :validate schema for outputting custom errors [#975](https://github.com/metosin/malli/issues/975)
 
 ## 0.20.0 (2025-11-17)
 

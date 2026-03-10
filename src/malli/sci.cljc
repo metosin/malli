@@ -1,10 +1,16 @@
 (ns malli.sci
-  (:require [borkdude.dynaload :as dynaload]))
+  (:require #?@(:org.babashka/nbb []
+                :default [[borkdude.dynaload :as dynaload]])))
 
 (defn evaluator [options fail!]
-  #?(:bb      (fn []
-                (fn [form]
-                  (load-string (str "(ns user (:require [malli.core :as m]))\n" form))))
+  #?(:org.babashka/nbb
+     (fn []
+       (fn [form]
+         (load-string (str "(ns user (:require [malli.core :as m]))\n" form))))
+     :bb
+     (fn []
+       (fn [form]
+         (load-string (str "(ns user (:require [malli.core :as m]))\n" form))))
      :default (let [eval-string* (dynaload/dynaload 'sci.core/eval-string* {:default nil})
                     init (dynaload/dynaload 'sci.core/init {:default nil})
                     fork (dynaload/dynaload 'sci.core/fork {:default nil})]

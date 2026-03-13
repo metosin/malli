@@ -1283,7 +1283,8 @@ Transformers can be composed with `mt/transformer`:
 ;;               :lonlat [61.4858322 23.7854658]}}
 ```
 
-Schema properties can be used to override default transformations:
+Schema properties can be used to override default transformations.
+This uses the transformer `:name` to match overrides to transformers.
 
 ```clojure
 (m/decode
@@ -1318,7 +1319,7 @@ Decoders and encoders as interceptors (with `:enter` and `:leave` stages):
 ;; => "olipa_kerran_avaruus"
 ```
 
-To access Schema (and options) use `:compile`:
+To access Schema (and options) use `:compile`. Note the use of a custom transformer `:name` and property overrides for its implementation.
 
 ```clojure
 (m/decode

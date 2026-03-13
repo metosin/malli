@@ -1172,6 +1172,8 @@ For performance, precompute the transformations with `m/decoder` and `m/encoder`
 ;; => "42"
 ```
 
+See also [Value Transformation](docs/value-transformation.md)
+
 ### Coercion
 
 For both decoding + validating the results (throwing exception on error), there is `m/coerce` and `m/coercer`:
@@ -1284,7 +1286,7 @@ Transformers can be composed with `mt/transformer`:
 ```
 
 Schema properties can be used to override default transformations.
-This uses the transformer `:name` to match overrides to transformers.
+This uses the transformer `:name` (which is `:string` for `mt/string-transformer`) to match overrides to transformers.
 
 ```clojure
 (m/decode

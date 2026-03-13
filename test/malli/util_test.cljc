@@ -479,6 +479,7 @@
   (is (mu/equals (mu/update (m/schema [:and int? int?]) 2 (constantly string?)) [:and int? int? string?]))
   (is (mu/equals (mu/update (m/schema [:maybe int?]) 0 (constantly string?)) [:maybe string?]))
   (is (mu/equals (mu/update (m/schema [:map [:x int?] [:y int?]]) :x (constantly nil)) [:map [:y int?]]))
+  (is (mu/equals (mu/update (m/schema [:map [:x int?] [:y int?]]) [:x {:optional true}] (constantly string?)) [:map [:x {:optional true} string?] [:y int?]]))
   (is (mu/equals (mu/update (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) 0 (constantly ::b)) [:ref {:registry {::a int?, ::b string?}} ::b]))
   (is (mu/equals (mu/update (m/schema [:schema int?]) 0 (constantly string?)) [:schema string?]))
 
@@ -548,6 +549,8 @@
   (is (mu/equals (mu/assoc-in (m/schema [:maybe int?]) [0] string?) [:maybe string?]))
   (is (mu/equals (mu/assoc-in (m/schema [:map]) [:a :b :c :d] int?)
                  [:map [:a [:map [:b [:map [:c [:map [:d int?]]]]]]]]))
+  (is (mu/equals (mu/assoc-in (m/schema [:map]) [:a [:b {:prop 3}] :c [:d {:optional true}]] int?)
+                 [:map [:a [:map [:b {:prop 3} [:map [:c [:map [:d {:optional true} int?]]]]]]]]))
   (is (mu/equals (mu/assoc-in (m/schema [:ref {:registry {::a int?, ::b string?}} ::a]) [0] ::b) [:ref {:registry {::a int?, ::b string?}} ::b]))
   (is (mu/equals (mu/assoc-in (m/schema [:schema int?]) [0] string?) [:schema string?]))
 

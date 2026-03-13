@@ -384,7 +384,15 @@
 ;; transformers
 ;;
 
-(defn transformer [& ?transformers]
+(defn transformer
+  "Compose a number of transformers. Takes a sequence of Transformer objects or transformer maps.
+   Returns a Transformer object.
+
+   A transformer map has the shape
+   {:name <keyword>
+    :decoders <map from schema to function>
+    :encoders <map from schema to function>}"
+  [& ?transformers]
   (let [->data (fn [ts default name key] {:transformers ts
                                           :default default
                                           :name name

@@ -328,14 +328,22 @@
      (when schema (m/-get schema k default)))))
 
 (defn assoc
-  "Like [[clojure.core/assoc]], but for LensSchemas. Only supports one key-value pair at a time."
+  "Like [[clojure.core/assoc]], but for LensSchemas. Only supports one key-value pair at a time.
+
+  Key can also be a vector of [key props override?] if you want to set properties for the key-value pair.
+  The boolean override? decides if existing props for the key are to be overwritten. Defaults to true.
+
+  If key is a vector, use [key] to avoid a conflict with the aforementioned feature."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
    (m/-set (m/schema ?schema options) key value)))
 
 (defn update
-  "Like [[clojure.core/update]], but for LensSchema instances."
+  "Like [[clojure.core/update]], but for LensSchema instances.
+
+  See [[malli.util/assoc]] for a description of [key props override?] feature.
+  If key is a vector, use [key] instead."
   [schema key f & args]
   (m/-set (m/schema schema) key (apply f (get schema key) args)))
 
@@ -358,7 +366,10 @@
            :else schema))))))
 
 (defn assoc-in
-  "Like [[clojure.core/assoc-in]], but for LensSchemas."
+  "Like [[clojure.core/assoc-in]], but for LensSchemas.
+
+  See [[malli.util/assoc]] for a description of [key props override?] feature.
+  If key is a vector, use [key] instead."
   ([?schema ks value]
    (assoc-in ?schema ks value nil))
   ([?schema [k & ks] value options]
@@ -366,7 +377,10 @@
      (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value) value)))))
 
 (defn update-in
-  "Like [[clojure.core/update-in]], but for LensSchemas."
+  "Like [[clojure.core/update-in]], but for LensSchemas.
+
+  See [[malli.util/assoc]] for a description of [key props override?] feature.
+  If key is a vector, use [key] instead."
   [schema ks f & args]
   (letfn [(up [s [k & ks] f args]
             (assoc s k (if ks (up (get s k (m/schema :map (m/options schema))) ks f args)

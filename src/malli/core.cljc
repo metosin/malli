@@ -2003,7 +2003,7 @@
                                                      (-validator (rf)))]
                                              (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
                                              @knot)))]
-                     (if lazy
+                     (if true #_lazy ;; lazily compute until -validator is cheaper
                        #((->validator) %)
                        (->validator))))))
            (-explainer [_ path]

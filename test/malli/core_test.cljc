@@ -3593,7 +3593,7 @@
 
 (deftest eduction-test
   (is (m/validate [:sequential {:min 0} :int] (eduction identity (range 10))))
-  (is (m/validate [:sequential {:max 0} :int] (eduction)))
+  (is (m/validate [:sequential {:max 0} :int] (eduction [])))
   (is (not (m/validate [:sequential {:max 0} :int] (eduction [1]))))
   (is (not (m/validate [:sequential {:min 11} :int] (eduction identity (range 10)))))
   (is (not (m/validate [:seqable {:min 11} :int] (eduction identity (range 10)))))

@@ -187,10 +187,15 @@
 (defn -fill [x i fill] (-concat x (repeat (- i (count x)) fill)))
 
 (defn -push [x k v fill]
-  (let [x' (cond-> x (and (int? k) (sequential? x) (> k (count x))) (-fill k fill))]
-    (cond (or (nil? x') (associative? x')) (assoc x' k v)
+  (let [x' (cond-> x (and (nat-int? k) (sequential? x) (> k (count x))) (-fill k fill))]
+    (cond (vector? x') (if (nat-int? k)
+                         (assoc x' k v)
+                         ["invalid type"])
+          (or (nil? x') (associative? x')) (assoc x' k v)
           (set? x') (conj x' v)
-          :else (apply list (assoc (vec x') k v)))))
+          :else (if (and (nat-int? k) (sequential? x'))
+                  (apply list (assoc (vec x') k v))
+                  ["invalid type"]))))
 
 (defn -push-in [a v [p & ps] e]
   (let [v' (-get v p)

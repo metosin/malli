@@ -943,3 +943,15 @@
                                                                   (negated "should not avoid being a multiple of 3")
                                                                   "should not be a multiple of 3"))}}
                                           #(not= 0 (mod % 3))]] 1))))))
+
+(deftest humanize-throws-test-1271
+  (is (= {:foo ["unknown error"]} (me/humanize (m/explain [:fn {:error/path [:foo]} (comp int? :foo)] {:foo nil}))))
+  (is (= {:foo ["unknown error"]} (me/humanize (m/explain [:fn {:error/path [:foo]} (comp int? :foo)] {}))))
+  (is (= {5 ["unknown error"]} (me/humanize (m/explain [:fn {:error/path [5]} (comp int? :foo)] {}))))
+  (is (= [nil nil nil nil nil ["unknown error"]] (me/humanize (m/explain [:fn {:error/path [5]} (comp int? :foo)] []))))
+  (is (= {-1 ["unknown error"]} (me/humanize (m/explain [:fn {:error/path [-1]} (comp int? :foo)] {}))))
+  (is (= ["invalid type"] (me/humanize (m/explain [:fn {:error/path [-1]} (comp int? :foo)] []))))
+  (is (= ["unknown error"] (me/humanize (m/explain [:fn (comp int? :foo)] []))))
+  (is (= ["invalid type"] (me/humanize (m/explain [:map] []))))
+  (is (= [["invalid type"]] (me/humanize (m/explain [:vector [:map]] [[]]))))
+  (is (= [["invalid type"]] (me/humanize (m/explain [:vector [:fn {:error/path [-1]} (comp int? :foo)]] [[]])))))

@@ -3814,4 +3814,34 @@
    ::creates-4194304-validators [:tuple ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators]})
 
 (deftest exponential-registry-test
-  (is-counting-times [:schema {:registry exponential-registry} ::creates-4194304-validators] 1))
+  (is-counting-times [:schema {:registry exponential-registry} ::creates-4194304-validators] 1)
+  (let [count-ops (atom {})
+        reg (mr/simple-registry (assoc (m/default-schemas)
+                                       ::counting 
+                                       (reify m/IntoSchema
+                                         (-type [_] ::counting)
+                                         (-type-properties [_])
+                                         (-properties-schema [_ _])
+                                         (-children-schema [_ _])
+                                         (-into-schema [parent properties children options]
+                                           (swap! count-ops update :-into-schema (fnil inc 0))
+                                           ^{:type ::m/schema}
+                                           (reify m/Schema
+                                             (-validator [_]
+                                               (swap! count-ops update :-validator (fnil inc 0))
+                                               any?)
+                                             (-explainer [_ path])
+                                             (-parser [_])
+                                             (-unparser [_])
+                                             (-transformer [this transformer method options])
+                                             (-walk [this walker path options])
+                                             (-properties [_] properties)
+                                             (-options [_] options)
+                                             (-children [_] children)
+                                             (-parent [_] parent)
+                                             (-form [_] ::counting))))))
+        s (m/schema [:schema {:registry exponential-registry} ::creates-4194304-validators] {:registry reg})]
+    (is (= @count-ops {:-into-schema 1}))
+    (is (m/validator s))
+    ;;FIXME
+    (is (= @count-ops {:-into-schema 1, :-validator 4194304}))))

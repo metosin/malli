@@ -320,8 +320,7 @@
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
 (defn -property-registry [m options f]
-  (let [options (assoc options ::allow-invalid-refs true)
-        options (c/update options ::schema-cache #(or % (atom {})))]
+  (let [options (c/update options ::schema-cache #(or % (atom {})))]
     (reduce-kv (fn [acc k v] (assoc acc k (f (-> (-pointer k v options) -children first)))) {} m)))
 
 (defn -delayed-registry [m f]

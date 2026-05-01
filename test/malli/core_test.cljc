@@ -3718,15 +3718,18 @@
   (is-counting-times [:schema {:registry {::BAR ::counting}} :int] 1)
   ;; expanded via -property-registry
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:ref ::BAR]] 1)
-  ;; expanded via -property-registry and -pointer
-  (is-counting-times [:schema {:registry {::BAR ::counting}} ::BAR] 2)
-  ;; expanded via -property-registry 1x and -pointer 2x
-  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR]] 3)
-  ;; expanded via -property-registry 1x and -pointer 3x
-  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 4)
+  ;; before: expanded via -property-registry and -pointer
+  ;; after: expanded via -property-registry
+  (is-counting-times [:schema {:registry {::BAR ::counting}} ::BAR] 1)
+  ;; before: expanded via -property-registry 1x and -pointer 2x
+  ;; after: expanded via -property-registry 1x
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR]] 1)
+  ;; before: expanded via -property-registry 1x and -pointer 3x
+  ;; after: expanded via -property-registry 1x
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 1)
   ;; before: expanded via -property-registry 2x and -pointer 1x
   ;; after: expanded via -property-registry 1x and -pointer 1x
-  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} ::FOO] 2)
+  (is-counting-times [:schema {:registry (array-map ::FOO ::BAR ::BAR ::counting)} ::FOO] 2)
   ;; before: expanded via -property-registry 2x and -pointer 2x
   ;; after: expanded via -property-registry 1x and -pointer 2x
   (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 3)

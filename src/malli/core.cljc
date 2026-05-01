@@ -321,6 +321,7 @@
 
 (defn -property-registry [m options f]
   (let [options (c/update options ::schema-cache #(or % (atom {})))]
+    ;;TODO implement letrec by turning vals into cached proxies, then resolving them all in the result
     (reduce-kv (fn [acc k v] (assoc acc k (f (-> (-pointer k v options) -children first)))) {} m)))
 
 (defn -delayed-registry [m f]
@@ -2083,84 +2084,86 @@
                        {:scope (-> options -registry mr/-schemas)
                         :name id})]
           (or (when ref-id
-                (-> schema-cache c/deref (c/get ref-id)))
+                (when-some [f (-> schema-cache c/deref (c/get ref-id))]
+                  (f)))
               (let [res
-                    (let [children (-vmap #(schema % options) children)
-                          child (nth children 0)
-                          form (delay (or (and (empty? properties) (or id (and raw (-form child))))
-                                          (-simple-form parent properties children -form options)))
-                          cache (-create-cache options)]
-                      ^{:type ::schema}
-                      (reify
-                        AST
-                        (-to-ast [this _]
-                          (cond
-                            id (-ast {:type type, :value id} (-properties this) (-options this))
-                            raw (-to-value-ast this)
-                            :else (-to-child-ast this)))
-                        Schema
-                        (-validator [_] (-validator child))
-                        (-explainer [_ path] (-explainer child (conj path 0)))
-                        (-parser [_] (-parser child))
-                        (-unparser [_] (-unparser child))
-                        (-transformer [this transformer method options]
-                          (-parent-children-transformer this children transformer method options))
-                        (-walk [this walker path options]
-                          (when (-accept walker this path options)
-                            (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
-                              (-outer walker this path (-inner-indexed walker path children options) options)
-                              (-outer walker this path children options))))
-                        (-properties [_] properties)
-                        (-options [_] options)
-                        (-children [_] children)
-                        (-parent [_] parent)
-                        (-form [_] @form)
-                        Cached
-                        (-cache [_] cache)
-                        LensSchema
-                        (-keep [_])
-                        (-get [_ key default] (if (= key 0) child default))
-                        (-set [this key value] (if (= key 0) (-set-children this [value])
-                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
-                        RefSchema
-                        (-ref [_] id)
-                        (-deref [_] child)
-                        RegexSchema
-                        (-regex-op? [_]
-                          (if internal
-                            (-regex-op? child)
-                            false))
-                        (-regex-validator [_]
-                          (if internal
-                            (-regex-validator child)
-                            (re/item-validator (-validator child))))
-                        (-regex-explainer [_ path]
-                          (if internal
-                            (-regex-explainer child path)
-                            (re/item-explainer path child (-explainer child path))))
-                        (-regex-parser [_]
-                          (if internal
-                            (-regex-parser child)
-                            (re/item-parser (parser child))))
-                        (-regex-unparser [_]
-                          (if internal
-                            (-regex-unparser child)
-                            (re/item-unparser (unparser child))))
-                        (-regex-transformer [_ transformer method options]
-                          (if internal
-                            (-regex-transformer child transformer method options)
-                            (re/item-transformer method (-validator child)
-                                                 (or (-transformer child transformer method options) identity))))
-                        (-regex-min-max [_ nested?]
-                          (if (and nested? (not internal))
-                            {:min 1 :max 1}
-                            (-regex-min-max child nested?)))
-                        #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (-pr-writer-schema this writer opts))])))]
+                    (fn []
+                      (let [children (-vmap #(schema % options) children)
+                            child (nth children 0)
+                            form (delay (or (and (empty? properties) (or id (and raw (-form child))))
+                                            (-simple-form parent properties children -form options)))
+                            cache (-create-cache options)]
+                        ^{:type ::schema}
+                        (reify
+                          AST
+                          (-to-ast [this _]
+                            (cond
+                              id (-ast {:type type, :value id} (-properties this) (-options this))
+                              raw (-to-value-ast this)
+                              :else (-to-child-ast this)))
+                          Schema
+                          (-validator [_] (-validator child))
+                          (-explainer [_ path] (-explainer child (conj path 0)))
+                          (-parser [_] (-parser child))
+                          (-unparser [_] (-unparser child))
+                          (-transformer [this transformer method options]
+                            (-parent-children-transformer this children transformer method options))
+                          (-walk [this walker path options]
+                            (when (-accept walker this path options)
+                              (if (or (not id) ((-boolean-fn (::walk-schema-refs options false)) id))
+                                (-outer walker this path (-inner-indexed walker path children options) options)
+                                (-outer walker this path children options))))
+                          (-properties [_] properties)
+                          (-options [_] options)
+                          (-children [_] children)
+                          (-parent [_] parent)
+                          (-form [_] @form)
+                          Cached
+                          (-cache [_] cache)
+                          LensSchema
+                          (-keep [_])
+                          (-get [_ key default] (if (= key 0) child default))
+                          (-set [this key value] (if (= key 0) (-set-children this [value])
+                                                   (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                          RefSchema
+                          (-ref [_] id)
+                          (-deref [_] child)
+                          RegexSchema
+                          (-regex-op? [_]
+                            (if internal
+                              (-regex-op? child)
+                              false))
+                          (-regex-validator [_]
+                            (if internal
+                              (-regex-validator child)
+                              (re/item-validator (-validator child))))
+                          (-regex-explainer [_ path]
+                            (if internal
+                              (-regex-explainer child path)
+                              (re/item-explainer path child (-explainer child path))))
+                          (-regex-parser [_]
+                            (if internal
+                              (-regex-parser child)
+                              (re/item-parser (parser child))))
+                          (-regex-unparser [_]
+                            (if internal
+                              (-regex-unparser child)
+                              (re/item-unparser (unparser child))))
+                          (-regex-transformer [_ transformer method options]
+                            (if internal
+                              (-regex-transformer child transformer method options)
+                              (re/item-transformer method (-validator child)
+                                                   (or (-transformer child transformer method options) identity))))
+                          (-regex-min-max [_ nested?]
+                            (if (and nested? (not internal))
+                              {:min 1 :max 1}
+                              (-regex-min-max child nested?)))
+                          #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (-pr-writer-schema this writer opts))]))))]
                 ;(prn res ref-id)
-                (if ref-id
+                (if nil #_ref-id
                   (do ;(prn (count @schema-cache))
-                      (get (swap! schema-cache c/update ref-id #(or % res)) ref-id))
-                  res)))))
+                      ((get (swap! schema-cache c/update ref-id #(or % res)) ref-id)))
+                  (res))))))
       #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (-pr-writer-into-schema this writer opts))]))))
 
 (defn -=>-schema []
@@ -2532,8 +2535,9 @@
   ([type properties children options]
    (let [properties' (when properties (when (pos? (count properties)) properties))
          r (when properties' (properties' :registry))
+         r (when r (-property-registry r options identity))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
+         properties (if r (assoc properties' :registry r) properties')]
      (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))
 
 (defn type

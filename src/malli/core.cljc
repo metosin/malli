@@ -2869,12 +2869,19 @@
    (let [schema (schema ?schema options)
          maybe-set-ref (fn [s r] (if (and ref-key r) (-update-properties s assoc ref-key r) s))]
      (-> (walk schema (fn [schema _ children _]
-                        (cond (= :ref (type schema)) schema
-                              (-ref-schema? schema) (do (prn "ref-schema" schema (-ref schema))
-                                                        (let [res (maybe-set-ref (deref (-set-children schema children)) (-ref schema))]
-                                                          (prn "after set:" res)
+                        (prn "top" schema children)
+                        (cond (= :ref (type schema)) (do (prn "walk ref")
+                                                         schema)
+                              (-ref-schema? schema) (do (prn "ref-schema" schema (-ref schema) (type schema))
+                                                        (let [cschema (-set-children schema children)
+                                                              _ (prn "cschema" cschema)
+                                                              dschema (deref schema)
+                                                              _ (prn "dschema" dschema)
+                                                              res (maybe-set-ref dschema (-ref schema))]
+                                                          (prn "after set:" res (type res))
                                                           res))
-                              :else (-set-children schema children)))
+                              :else (do (prn "set children" schema children)
+                                        (-set-children schema children))))
                {::walk-schema-refs true})
          (deref-all)))))
 

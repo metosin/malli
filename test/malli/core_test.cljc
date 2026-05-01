@@ -3477,6 +3477,12 @@
                                                                                                             ::user [:map [:id ::user-id]]}}
                                                                                         ::user]
                                                                                        {::m/ref-key :id}))))
+    (is (= ::m/schema (-> (m/deref-all [:schema {:registry {::user-id :int
+                                                            ::user [:map [:id ::user-id]]}}
+                                        ::user]
+                                       {::m/ref-key :id})
+                          (m/-get :id nil)
+                          m/type)))
     ;;FIXME root cause, wrapped in extra ::schema
     (is (= :int (-> (m/deref-recursive [:schema {:registry {::user-id :int
                                                             ::user [:map [:id ::user-id]]}}
@@ -3484,6 +3490,15 @@
                                        {::m/ref-key :id})
                     (m/-get :id nil)
                     m/type)))
+    ;;FIXME root cause, -set-children doesn't take
+    (is (= [:int {:id :malli.core-test/user-id}]
+           (-> (m/schema [:schema {:registry {::user-id :int}}
+                          ::user-id]
+                         {::m/ref-key :id})
+               m/deref
+               (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
+               m/deref
+               m/form)))
     (is (= [:map
             [:id :uuid]
             [:name :string]

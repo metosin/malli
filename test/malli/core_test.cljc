@@ -3769,4 +3769,15 @@
                       [:schema {:registry {::FOO ::BAR ::BAR [:tuple ::counting]}}
                        ::BAZ]]
                      2)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:schema {:registry {::BAR [:tuple ::counting]}}
+                       ::BAZ]]
+                     2)
+  ;; different dynamic scope (extra ref ::UNRELATED is in scope in the inner schema)
+  ;; expanded via -property-registry on the outer schema, reexpanded in inner -pointer ::BAZ reference
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:tuple ::BAZ
+                       [:schema {:registry {::UNRELATED :int}}
+                        ::BAZ]]]
+                     2) ;; improvement: could be 1 in practice, because ::UNRELATED doesn't change ::BAZ
 )

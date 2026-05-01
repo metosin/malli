@@ -319,7 +319,7 @@
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
-(defn- -pointer-child [id child options]
+(defn- -pointed [id child options]
   (let [schema-cache (::schema-cache options)
         ref-id (when (and id schema-cache)
                  {:scope (-> options -registry mr/-schemas)
@@ -333,7 +333,7 @@
   (let [schema-cache (or (::schema-cache options) (atom {}))
         options (c/update options ::schema-cache #(or % schema-cache))
         options (c/update options :registry #(mr/composite-registry m (or % (-registry options))))]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (-pointer-child k v options)))) {} m)))
+    (reduce-kv (fn [acc k v] (assoc acc k (f (-pointed k v options)))) {} m)))
 
 (defn -delayed-registry [m f]
   (reduce-kv (fn [acc k v] (assoc acc k (reify IntoSchema (-into-schema [_ _ _ options] (f v options))))) {} m))
@@ -342,14 +342,8 @@
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
         (when-some [p (some-> registry (mr/-schema (c/type ?schema)))]
-          (prn "found" ?schema)
           (when (schema? ?schema)
             (when (= p (-parent ?schema))
-              (prn "parent:" p)
-              (prn "type:" (-type p))
-              (prn "schema meta type:" (c/type ?schema))
-              (prn "schema type:" (-> ?schema -parent -type))
-              (prn "schema:" ?schema)
               (-fail! ::infinitely-expanding-schema {:schema ?schema})))
           (-into-schema p nil [?schema] options)))))
 
@@ -2096,7 +2090,7 @@
       (-children-schema [_ _])
       (-into-schema [parent properties children options]
         (-check-children! type properties children 1 1)
-        (let [child (-pointer-child id (nth children 0) options)
+        (let [child (-pointed id (nth children 0) options)
               children [child]
               form (delay (or (and (empty? properties) (or id (and raw (-form child))))
                               (-simple-form parent properties children -form options)))
@@ -2537,9 +2531,10 @@
    (into-schema type properties children nil))
   ([type properties children options]
    (let [properties' (when properties (when (pos? (count properties)) properties))
-         r (when properties' (some-> (properties' :registry) (-property-registry options identity)))
-         options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
-         properties (if r (assoc properties' :registry r) properties')]
+         r (when properties' (properties' :registry))
+         options (cond-> options (and r (not (::schema-cache options))) (assoc ::schema-cache (atom {})))
+         options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
+         properties (cond-> properties' r (assoc :registry (-property-registry r options identity)))]
      (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))
 
 (defn type

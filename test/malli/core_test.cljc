@@ -3468,9 +3468,11 @@
     (is (= [:map {:id ::user} [:id :int]] (m/form (m/deref-recursive [:schema {:registry {::user [:map [:id :int]]}}
                                                                       ::user]
                                                                      {::m/ref-key :id}))))
+    ;;FIXME
     (is (= [:map [:id :int]] (m/form (m/deref-recursive [:schema {:registry {::user-id :int
                                                                              ::user [:map [:id ::user-id]]}}
                                                          ::user]))))
+    ;;FIXME
     (is (= [:map {:id ::user} [:id [:int {:id ::user-id}]]] (m/form (m/deref-recursive [:schema {:registry {::user-id :int
                                                                                                             ::user [:map [:id ::user-id]]}}
                                                                                         ::user]

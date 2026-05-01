@@ -3710,6 +3710,7 @@
         s (m/schema ?schema {:registry reg})]
     (is (= @count-into-schemas i))))
 
+
 (deftest eager-registry-parse-test
   ;; not mentioned
   (is-counting-times :int 0)
@@ -3797,3 +3798,20 @@
              first
              m/form)))
 )
+
+(def exponential-registry
+  {::creates-1-validator ::counting
+   ::creates-2-validators [:tuple ::creates-1-validator ::creates-1-validator ::creates-1-validator ::creates-1-validator]
+   ::creates-16-validators [:tuple ::creates-2-validators ::creates-2-validators ::creates-2-validators ::creates-2-validators]
+   ::creates-64-validators [:tuple ::creates-16-validators ::creates-16-validators ::creates-16-validators ::creates-16-validators]
+   ::creates-256-validators [:tuple ::creates-64-validators ::creates-64-validators ::creates-64-validators ::creates-64-validators]
+   ::creates-1024-validators [:tuple ::creates-256-validators ::creates-256-validators ::creates-256-validators ::creates-256-validators]
+   ::creates-4096-validators [:tuple ::creates-1024-validators ::creates-1024-validators ::creates-1024-validators ::creates-1024-validators]
+   ::creates-16384-validators [:tuple ::creates-4096-validators ::creates-4096-validators ::creates-4096-validators ::creates-4096-validators]
+   ::creates-65536-validators [:tuple ::creates-16384-validators ::creates-16384-validators ::creates-16384-validators ::creates-16384-validators]
+   ::creates-262144-validators [:tuple ::creates-65536-validators ::creates-65536-validators ::creates-65536-validators ::creates-65536-validators]
+   ::creates-1048576-validators [:tuple ::creates-262144-validators ::creates-262144-validators ::creates-262144-validators ::creates-262144-validators]
+   ::creates-4194304-validators [:tuple ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators]})
+
+(deftest exponential-registry-test
+  (is-counting-times [:schema {:registry exponential-registry} ::creates-4194304-validators] 1))

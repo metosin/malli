@@ -323,11 +323,15 @@
   (let [schema-cache (::schema-cache options)
         ref-id (when (and id schema-cache)
                  {:scope (-> options -registry mr/-schemas)
+                  :child child
                   :name id})
-        ->child (-memoize #(schema child options))]
-    ((if ref-id
-       ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
-       ->child))))
+        ->child (-memoize #(schema child options))
+        res ((if ref-id
+       ((swap! schema-cache c/update ref-id #(if % (do (prn "HIT" child) %) (do (prn "MISS" child) ->child))) ref-id)
+       ->child))]
+    (prn "RESULT" res)
+    res
+    ))
 
 (defn -property-registry [m options f]
   (let [schema-cache (or (::schema-cache options) (atom {}))
@@ -2091,6 +2095,7 @@
       (-into-schema [parent properties children options]
         (-check-children! type properties children 1 1)
         (let [child (-pointed id (nth children 0) options)
+              _ (prn "child" child properties)
               children [child]
               form (delay (or (and (empty? properties) (or id (and raw (-form child))))
                               (-simple-form parent properties children -form options)))

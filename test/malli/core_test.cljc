@@ -3498,6 +3498,14 @@
                m/deref
                (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
                m/deref
+               m/form)
+           (-> (m/schema [:schema {:registry {::user-id :int}}
+                          ::user-id]
+                         {::m/ref-key :id})
+               m/deref
+               (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
+               m/children
+               first
                m/form)))
     (is (= [:map
             [:id :uuid]

@@ -3490,23 +3490,6 @@
                                        {::m/ref-key :id})
                     (m/-get :id nil)
                     m/type)))
-    ;;FIXME root cause, -set-children doesn't take
-    (is (= [:int {:id :malli.core-test/user-id}]
-           (-> (m/schema [:schema {:registry {::user-id :int}}
-                          ::user-id]
-                         {::m/ref-key :id})
-               m/deref
-               (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
-               m/deref
-               m/form)
-           (-> (m/schema [:schema {:registry {::user-id :int}}
-                          ::user-id]
-                         {::m/ref-key :id})
-               m/deref
-               (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
-               m/children
-               first
-               m/form)))
     (is (= [:map
             [:id :uuid]
             [:name :string]
@@ -3867,4 +3850,22 @@
                        [:schema {:registry {::UNRELATED :int}}
                         ::BAZ]]]
                      2) ;; improvement: could be 1 in practice, because ::UNRELATED doesn't change ::BAZ
+
+  ;; :child entry in -pointed cache allows us to update pointers.
+  (is (= [:int {:id :malli.core-test/user-id}]
+         (-> (m/schema [:schema {:registry {::user-id :int}}
+                        ::user-id]
+                       {::m/ref-key :id})
+             m/deref
+             (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
+             m/deref
+             m/form)
+         (-> (m/schema [:schema {:registry {::user-id :int}}
+                        ::user-id]
+                       {::m/ref-key :id})
+             m/deref
+             (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
+             m/children
+             first
+             m/form)))
 )

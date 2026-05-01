@@ -325,13 +325,10 @@
                  {:scope (-> options -registry mr/-schemas)
                   :child child
                   :name id})
-        ->child (-memoize #(schema child options))
-        res ((if ref-id
-       ((swap! schema-cache c/update ref-id #(if % (do (prn "HIT" child) %) (do (prn "MISS" child) ->child))) ref-id)
-       ->child))]
-    (prn "RESULT" res)
-    res
-    ))
+        ->child (-memoize #(schema child options))]
+    ((if ref-id
+       ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
+       ->child))))
 
 (defn -property-registry [m options f]
   (let [schema-cache (or (::schema-cache options) (atom {}))
@@ -2095,7 +2092,6 @@
       (-into-schema [parent properties children options]
         (-check-children! type properties children 1 1)
         (let [child (-pointed id (nth children 0) options)
-              _ (prn "child" child properties)
               children [child]
               form (delay (or (and (empty? properties) (or id (and raw (-form child))))
                               (-simple-form parent properties children -form options)))
@@ -2874,19 +2870,9 @@
    (let [schema (schema ?schema options)
          maybe-set-ref (fn [s r] (if (and ref-key r) (-update-properties s assoc ref-key r) s))]
      (-> (walk schema (fn [schema _ children _]
-                        (prn "top" schema children)
-                        (cond (= :ref (type schema)) (do (prn "walk ref")
-                                                         schema)
-                              (-ref-schema? schema) (do (prn "ref-schema" schema (-ref schema) (type schema))
-                                                        (let [cschema (-set-children schema children)
-                                                              _ (prn "cschema" cschema)
-                                                              dschema (deref schema)
-                                                              _ (prn "dschema" dschema)
-                                                              res (maybe-set-ref dschema (-ref schema))]
-                                                          (prn "after set:" res (type res))
-                                                          res))
-                              :else (do (prn "set children" schema children)
-                                        (-set-children schema children))))
+                        (cond (= :ref (type schema)) schema
+                              (-ref-schema? schema) (maybe-set-ref (deref (-set-children schema children)) (-ref schema))
+                              :else (-set-children schema children)))
                {::walk-schema-refs true})
          (deref-all)))))
 

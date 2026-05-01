@@ -3757,4 +3757,16 @@
   ;; before: expanded via -property-registry 3x and -pointer 3x
   ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 1)
+  ;; same dynamic scope (::FOO and ::BAR are the same in the inner schema)
+  ;; expanded via -property-registry on the outer schema, reused in inner -property-registry
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:schema {:registry {::FOO ::BAR ::BAR ::counting}}
+                       ::BAZ]]
+                     1)
+  ;; different dynamic scope (::BAR is different in the inner schema)
+  ;; expanded via -property-registry on the outer schema, reexpanded in inner -property-registry
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:schema {:registry {::FOO ::BAR ::BAR [:tuple ::counting]}}
+                       ::BAZ]]
+                     2)
 )

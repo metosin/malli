@@ -3710,16 +3710,30 @@
     (is (= @count-into-schemas i))))
 
 (deftest eager-registry-parse-test
+  ;; not mentioned
   (is-counting-times :int 0)
+  ;; directly expanded
   (is-counting-times ::counting 1)
+  ;; expanded via -property-registry
+  (is-counting-times [:schema {:registry {::BAR ::counting}} :int] 1)
+  ;; expanded via -property-registry
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:ref ::BAR]] 1)
+  ;; expanded via -property-registry and -pointer
   (is-counting-times [:schema {:registry {::BAR ::counting}} ::BAR] 2)
+  ;; expanded via -property-registry 1x and -pointer 2x
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR]] 3)
+  ;; expanded via -property-registry 1x and -pointer 3x
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 4)
+  ;; expanded via -property-registry 2x and -pointer 1x
   (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} ::FOO] 3)
+  ;; expanded via -property-registry 2x and -pointer 2x
   (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 4)
+  ;; expanded via -property-registry 2x and -pointer 3x
   (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO ::FOO]] 5)
+  ;; expanded via -property-registry 3x and -pointer 1x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 4)
+  ;; expanded via -property-registry 3x and -pointer 2x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ]] 5)
+  ;; expanded via -property-registry 3x and -pointer 3x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 6)
 )

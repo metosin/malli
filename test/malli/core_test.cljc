@@ -3090,7 +3090,9 @@
     (let [one-level-schema [:map {:registry {:my/string-like :string}}
                             [:entry [:my/string-like {:some "prop"}]]]]
 
-      (is (true? (m/validate one-level-schema {:entry "a"})))))
+      (is (true? (m/validate one-level-schema {:entry "a"})))
+      #_
+      (is (false? (m/validate one-level-schema {:entry :a})))))
 
   (testing "testcase from #451"
     (let [opts {:registry {:string (m/-string-schema)

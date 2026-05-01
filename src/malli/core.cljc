@@ -319,11 +319,21 @@
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
+(defn- -pointer-child [id child options]
+  (let [schema-cache (::schema-cache options)
+        ref-id (when (and id schema-cache)
+                 {:scope (-> options -registry mr/-schemas)
+                  :name id})
+        ->child (delay (schema child options))]
+    @(if ref-id
+       ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
+       ->child)))
+
 (defn -property-registry [m options f]
   (let [schema-cache (or (::schema-cache options) (atom {}))
         options (c/update options ::schema-cache #(or % schema-cache))
         options (c/update options :registry #(mr/composite-registry m (or % (-registry options))))]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (-> (-pointer k v options) -children first)))) {} m)))
+    (reduce-kv (fn [acc k v] (assoc acc k (f (-pointer-child k v options)))) {} m)))
 
 (defn -delayed-registry [m f]
   (reduce-kv (fn [acc k v] (assoc acc k (reify IntoSchema (-into-schema [_ _ _ options] (f v options))))) {} m))
@@ -332,8 +342,14 @@
   (let [registry (-registry options)]
     (or (mr/-schema registry ?schema)
         (when-some [p (some-> registry (mr/-schema (c/type ?schema)))]
+          (prn "found" ?schema)
           (when (schema? ?schema)
             (when (= p (-parent ?schema))
+              (prn "parent:" p)
+              (prn "type:" (-type p))
+              (prn "schema meta type:" (c/type ?schema))
+              (prn "schema type:" (-> ?schema -parent -type))
+              (prn "schema:" ?schema)
               (-fail! ::infinitely-expanding-schema {:schema ?schema})))
           (-into-schema p nil [?schema] options)))))
 
@@ -2080,14 +2096,7 @@
       (-children-schema [_ _])
       (-into-schema [parent properties children options]
         (-check-children! type properties children 1 1)
-        (let [schema-cache (::schema-cache options)
-              ref-id (when (and id schema-cache)
-                       {:scope (-> options -registry mr/-schemas)
-                        :name id})
-              ->child (delay (schema (nth children 0) options))
-              child @(if ref-id
-                       ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
-                       ->child)
+        (let [child (-pointer-child id (nth children 0) options)
               children [child]
               form (delay (or (and (empty? properties) (or id (and raw (-form child))))
                               (-simple-form parent properties children -form options)))

@@ -324,7 +324,7 @@
         ref-id (when (and id schema-cache)
                  {:scope (-> options -registry mr/-schemas)
                   :name id})
-        ->child (-memoize (fn [] (schema child options)))]
+        ->child (-memoize #(schema child options))]
     ((if ref-id
        ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
        ->child))))
@@ -2537,8 +2537,7 @@
    (into-schema type properties children nil))
   ([type properties children options]
    (let [properties' (when properties (when (pos? (count properties)) properties))
-         r (when properties' (properties' :registry))
-         r (when r (-property-registry r options identity))
+         r (when properties' (some-> (properties' :registry) (-property-registry options identity)))
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
          properties (if r (assoc properties' :registry r) properties')]
      (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))

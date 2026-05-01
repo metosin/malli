@@ -2870,7 +2870,10 @@
          maybe-set-ref (fn [s r] (if (and ref-key r) (-update-properties s assoc ref-key r) s))]
      (-> (walk schema (fn [schema _ children _]
                         (cond (= :ref (type schema)) schema
-                              (-ref-schema? schema) (maybe-set-ref (deref (-set-children schema children)) (-ref schema))
+                              (-ref-schema? schema) (do (prn "ref-schema" schema (-ref schema))
+                                                        (let [res (maybe-set-ref (deref (-set-children schema children)) (-ref schema))]
+                                                          (prn "after set:" res)
+                                                          res))
                               :else (-set-children schema children)))
                {::walk-schema-refs true})
          (deref-all)))))

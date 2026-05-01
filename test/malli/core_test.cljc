@@ -3433,6 +3433,17 @@
                                                           :var resolve}})
                (every? (m/validator $) (mg/sample schema))))))))
 
+(def dr-schema [:schema {:registry {::user-id :uuid
+                                    ::address [:map
+                                               [:street :string]
+                                               [:lonlat {:optional true} [:tuple :double :double]]]
+                                    ::user [:map
+                                            [:id ::user-id]
+                                            [:name :string]
+                                            [:friends {:optional true} [:set [:ref ::user]]]
+                                            [:address ::address]]}}
+                ::user])
+
 (deftest deref-recursive-test
   (let [schema [:schema {:registry {::user-id :uuid
                                     ::address [:map
@@ -3444,6 +3455,26 @@
                                             [:friends {:optional true} [:set [:ref ::user]]]
                                             [:address ::address]]}}
                 ::user]]
+    (is (= :uuid (m/form (m/deref-recursive [:schema {:registry {::user-id :uuid}} ::user-id]))))
+    (is (= [:uuid {:id ::user-id}] (m/form (m/deref-recursive [:schema {:registry {::user-id :uuid}} ::user-id]
+                                                              {::m/ref-key :id}))))
+    (is (= :map (m/form (m/deref-recursive [:schema {:registry {::user [:map]}}
+                                            ::user]))))
+    (is (= [:map {:id ::user}] (m/form (m/deref-recursive [:schema {:registry {::user [:map]}}
+                                                           ::user]
+                                                          {::m/ref-key :id}))))
+    (is (= :map (m/form (m/deref-recursive [:schema {:registry {::user [:map]}}
+                                            ::user]))))
+    (is (= [:map {:id ::user} [:id :int]] (m/form (m/deref-recursive [:schema {:registry {::user [:map [:id :int]]}}
+                                                                      ::user]
+                                                                     {::m/ref-key :id}))))
+    (is (= [:map [:id :int]] (m/form (m/deref-recursive [:schema {:registry {::user-id :int
+                                                                             ::user [:map [:id ::user-id]]}}
+                                                         ::user]))))
+    (is (= [:map {:id ::user} [:id [:int {:id ::user-id}]]] (m/form (m/deref-recursive [:schema {:registry {::user-id :int
+                                                                                                            ::user [:map [:id ::user-id]]}}
+                                                                                        ::user]
+                                                                                       {::m/ref-key :id}))))
     (is (= [:map
             [:id :uuid]
             [:name :string]
@@ -3451,8 +3482,8 @@
             [:address [:map
                        [:street :string]
                        [:lonlat {:optional true} [:tuple :double :double]]]]]
-           (m/form (m/deref-recursive schema))
-           (m/form (m/deref-recursive schema {::m/ref-key nil}))))
+           (m/form (m/deref-recursive dr-schema))
+           (m/form (m/deref-recursive dr-schema {::m/ref-key nil}))))
     (is (= [:map {:id ::user}
             [:id [:uuid {:id ::user-id}]]
             [:name :string]
@@ -3460,7 +3491,7 @@
             [:address [:map {:id ::address}
                        [:street :string]
                        [:lonlat {:optional true} [:tuple :double :double]]]]]
-           (m/form (m/deref-recursive schema {::m/ref-key :id}))))
+           (m/form (m/deref-recursive dr-schema {::m/ref-key :id}))))
     (testing "util schemas"
       (let [registry (merge (m/default-schemas) (mu/schemas))]
         (is (= [:map [:x :int] [:y :int]]
@@ -3469,10 +3500,34 @@
                          [:map [:x :int]]
                          [:map [:y :int]]]
                         {:registry registry}))))
+        (is (= ::xymap
+               (m/-ref (m/deref
+                         [:schema {:registry {::x :int
+                                              ::y :int
+                                              ::xmap [:map ::x]
+                                              ::ymap [:map ::y]
+                                              ::xymap [:merge ::xmap ::ymap]}}
+                          ::xymap]
+                         {:registry registry, ::m/ref-key :id}))))
+        (is (= ::x
+               (m/-ref (m/-get (m/deref-all
+                                 [:schema {:registry {::x :int
+                                                      ::y :int
+                                                      ::xmap [:map ::x]
+                                                      ::ymap [:map ::y]
+                                                      ::xymap [:merge ::xmap ::ymap]}}
+                                  ::xymap]
+                                 {:registry registry, ::m/ref-key :id})
+                               ::x
+                               nil))))
+        (is (= [:int {:id ::x}]
+               (m/form (m/deref-recursive
+                         [:schema {:registry {::x :int}}
+                          ::x]
+                         {::m/ref-key :id}))))
         (is (= [:map {:id ::xymap}
-                ;;FIXME
-                [::x ::x #_[:int {:id ::x}]]
-                [::y ::y #_[:int {:id ::y}]]]
+                [::x [:int {:id ::x}]]
+                [::y [:int {:id ::y}]]]
                (m/form (m/deref-recursive
                         [:schema {:registry {::x :int
                                              ::y :int
@@ -3480,7 +3535,7 @@
                                              ::ymap [:map ::y]
                                              ::xymap [:merge ::xmap ::ymap]}}
                          ::xymap]
-                        {:registry registry, ::m/ref-key :id}))))))))
+                        {:registry (merge (m/default-schemas) (mu/schemas)), ::m/ref-key :id}))))))))
 
 (deftest seqable-schema-test
   (is (m/validate [:seqable :int] nil))

@@ -90,8 +90,7 @@
         (-schema [_ name]
           (or (@cache* name)
               (when-let [schema (provider name @registry*)]
-                (swap! cache* assoc name schema)
-                schema)))
+                (get (swap! cache* assoc name #(or % schema)) name))))
         (-schemas [_] @cache*))))))
 
 (defn schema

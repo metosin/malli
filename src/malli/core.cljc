@@ -320,8 +320,16 @@
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
 (defn -property-registry [m options f]
-  (let [options (c/update options ::schema-cache #(or % (atom {})))]
-    ;;TODO implement letrec by turning vals into cached proxies, then resolving them all in the result
+  (let [schema-cache (or (::schema-cache options) (atom {}))
+        options (c/update options ::schema-cache #(or % schema-cache))
+        options (c/update options :registry #(mr/lazy-registry
+                                               (or % (-registry options))
+                                               (fn [name default]
+                                                 (if-some [default (get m name)]
+                                                   (if-some [f (get @schema-cache name)]
+                                                     (f)
+                                                     default)
+                                                   default))))]
     (reduce-kv (fn [acc k v] (assoc acc k (f (-> (-pointer k v options) -children first)))) {} m)))
 
 (defn -delayed-registry [m f]
@@ -2160,7 +2168,7 @@
                               (-regex-min-max child nested?)))
                           #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (-pr-writer-schema this writer opts))]))))]
                 ;(prn res ref-id)
-                (if nil #_ref-id
+                (if nil #_ref-id ;;TODO tie the knot
                   (do ;(prn (count @schema-cache))
                       ((get (swap! schema-cache c/update ref-id #(or % res)) ref-id)))
                   (res))))))

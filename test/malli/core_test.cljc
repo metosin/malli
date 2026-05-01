@@ -3728,21 +3728,21 @@
   ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 1)
   ;; before: expanded via -property-registry 2x and -pointer 1x
-  ;; after: expanded via -property-registry 1x and -pointer 1x
+  ;; after: expanded via -property-registry 2x
   (is-counting-times [:schema {:registry (array-map ::FOO ::BAR ::BAR ::counting)} ::FOO] 2)
   ;; before: expanded via -property-registry 2x and -pointer 2x
-  ;; after: expanded via -property-registry 1x and -pointer 2x
-  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 3)
+  ;; after: expanded via -property-registry 2x
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 2)
   ;; before: expanded via -property-registry 2x and -pointer 3x
-  ;; after: expanded via -property-registry 1x and -pointer 3x
-  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO ::FOO]] 4)
+  ;; after: expanded via -property-registry 2x
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO ::FOO]] 2)
   ;; before: expanded via -property-registry 3x and -pointer 1x
-  ;; after: expanded via -property-registry 1x and -pointer 1x
-  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 2)
+  ;; after: expanded via -property-registry 3x
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 3)
   ;; before: expanded via -property-registry 3x and -pointer 2x
-  ;; after: expanded via -property-registry 1x and -pointer 2x
+  ;; after: expanded via -property-registry 3x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ]] 3)
   ;; before: expanded via -property-registry 3x and -pointer 3x
-  ;; after: expanded via -property-registry 1x and -pointer 3x
-  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 4)
+  ;; after: expanded via -property-registry 3x
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 3)
 )

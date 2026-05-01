@@ -2132,7 +2132,7 @@
             (-keep [_])
             (-get [_ key default] (if (= key 0) child default))
             (-set [this key value] (if (= key 0) (-set-children this [value])
-                                     (-fail! ::index-out-of-bounds {:schema this, :key key})))
+                                                 (-fail! ::index-out-of-bounds {:schema this, :key key})))
             RefSchema
             (-ref [_] id)
             (-deref [_] child)

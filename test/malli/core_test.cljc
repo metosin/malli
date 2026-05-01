@@ -3477,6 +3477,13 @@
                                                                                                             ::user [:map [:id ::user-id]]}}
                                                                                         ::user]
                                                                                        {::m/ref-key :id}))))
+    ;;FIXME root cause, wrapped in extra ::schema
+    (is (= :int (-> (m/deref-recursive [:schema {:registry {::user-id :int
+                                                            ::user [:map [:id ::user-id]]}}
+                                        ::user]
+                                       {::m/ref-key :id})
+                    (m/-get :id nil)
+                    m/type)))
     (is (= [:map
             [:id :uuid]
             [:name :string]

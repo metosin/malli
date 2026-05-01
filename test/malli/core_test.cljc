@@ -3716,54 +3716,25 @@
   (is-counting-times :int 0)
   ;; directly expanded
   (is-counting-times ::counting 1)
-  ;; expanded via -property-registry
+  ;; expanded via -property-registry, then with pointer due to unchanged dynamic scope
   (is-counting-times [:schema {:registry {::BAR ::counting}} :int] 1)
-  ;; expanded via -property-registry
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:ref ::BAR]] 1)
-  ;; before: expanded via -property-registry and -pointer
-  ;; after: expanded via -property-registry
   (is-counting-times [:schema {:registry {::BAR ::counting}} ::BAR] 1)
-  ;; before: expanded via -property-registry 1x and -pointer 2x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR]] 1)
-  ;; before: expanded via -property-registry 1x and -pointer 3x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 1)
-  ;; before: expanded via -property-registry 2x and -pointer 1x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry (array-map ::FOO ::BAR ::BAR ::counting)} ::FOO] 1)
-  (let [count-into-schemas (atom 0)
-        reg (mr/simple-registry (assoc (m/default-schemas)
-                                       ::counting (m/-proxy-schema {:type ::counting
-                                                                    :fn (fn [p c o]
-                                                                          (assert (empty? c))
-                                                                          (swap! count-into-schemas inc)
-                                                                          [[] [] (m/schema :int o)])})))
-        s (m/-property-registry (array-map ::FOO ::BAR ::BAR ::counting) {:registry reg} identity)]
-    (is (= @count-into-schemas 1)))
-  ;; before: expanded via -property-registry 2x and -pointer 2x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 1)
-  ;; before: expanded via -property-registry 2x and -pointer 3x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO ::FOO]] 1)
-  ;; before: expanded via -property-registry 3x and -pointer 1x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 1)
-  ;; before: expanded via -property-registry 3x and -pointer 2x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ]] 1)
-  ;; before: expanded via -property-registry 3x and -pointer 3x
-  ;; after: expanded via -property-registry 1x
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 1)
-  ;; same dynamic scope (::FOO and ::BAR are the same in the inner schema)
-  ;; expanded via -property-registry on the outer schema, reused in inner -property-registry
+  ;; since ::FOO and ::BAR are identical, ::counting is shared between the two registries and pointer
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
                       [:schema {:registry {::FOO ::BAR ::BAR ::counting}}
                        ::BAZ]]
                      1)
-  ;; different dynamic scope (::BAR is different in the inner schema)
-  ;; expanded via -property-registry on the outer schema, reexpanded in inner -property-registry
+  ;; since ::BAR is different in the inner schema, ::counting in each registry is not shared.
+  ;; pointer shares inner registry version (the tuple)
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
                       [:schema {:registry {::FOO ::BAR ::BAR [:tuple ::counting]}}
                        ::BAZ]]
@@ -3772,14 +3743,15 @@
                       [:schema {:registry {::BAR [:tuple ::counting]}}
                        ::BAZ]]
                      2)
-  ;; different dynamic scope (extra ref ::UNRELATED is in scope in the inner schema)
-  ;; expanded via -property-registry on the outer schema, reexpanded in inner -pointer ::BAZ reference
+  ;; even though ::UNRELATED doesn't change ::counting in practice, it prevents ::counting from being shared
+  ;; between the pointer and registry.
+  ;; future improvement: could be 1 in practice, because ::UNRELATED doesn't change ::BAZ so could share
+  ;; ::counting with outer registry
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
                       [:tuple ::BAZ
                        [:schema {:registry {::UNRELATED :int}}
                         ::BAZ]]]
-                     2) ;; improvement: could be 1 in practice, because ::UNRELATED doesn't change ::BAZ
-
+                     2)
   ;; :child entry in -pointed cache allows us to update pointers.
   (is (= [:int {:id :malli.core-test/user-id}]
          (-> (m/schema [:schema {:registry {::user-id :int}}
@@ -3796,8 +3768,7 @@
              (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
              m/children
              first
-             m/form)))
-)
+             m/form))))
 
 (def exponential-registry
   {::creates-1-validator ::counting
@@ -3843,5 +3814,7 @@
         s (m/schema [:schema {:registry exponential-registry} ::creates-4194304-validators] {:registry reg})]
     (is (= @count-ops {:-into-schema 1}))
     (is (m/validator s))
-    ;;FIXME cache each level of validators
-    (is (= @count-ops {:-into-schema 1, :-validator 4194304}))))
+    (is (= @count-ops
+           {:-into-schema 1,
+            ;;TODO cache each level of validators, should be 1-4
+            :-validator 4194304}))))

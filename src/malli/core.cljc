@@ -324,10 +324,10 @@
         ref-id (when (and id schema-cache)
                  {:scope (-> options -registry mr/-schemas)
                   :name id})
-        ->child (delay (schema child options))]
-    @(if ref-id
+        ->child (-memoize (fn [] (schema child options)))]
+    ((if ref-id
        ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
-       ->child)))
+       ->child))))
 
 (defn -property-registry [m options f]
   (let [schema-cache (or (::schema-cache options) (atom {}))

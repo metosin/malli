@@ -3697,3 +3697,29 @@
     (is (= @count-into-schemas 3)) ;; was 6
     (is (m/coerce ConsCell [1 [2 [3 [4 [1 [2 [3 [4 nil]]]]]]]]))
     (is (= @count-into-schemas 3)))) ;; was 10
+
+(defn is-counting-times [?schema i]
+  (let [count-into-schemas (atom 0)
+        reg (mr/simple-registry (assoc (m/default-schemas)
+                                       ::counting (m/-proxy-schema {:type ::counting
+                                                                    :fn (fn [p c o]
+                                                                          (assert (empty? c))
+                                                                          (swap! count-into-schemas inc)
+                                                                          [[] [] (m/schema :int o)])})))
+        s (m/schema ?schema {:registry reg})]
+    (is (= @count-into-schemas i))))
+
+(deftest eager-registry-parse-test
+  (is-counting-times :int 0)
+  (is-counting-times ::counting 1)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:ref ::BAR]] 1)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} ::BAR] 2)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR]] 3)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 4)
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} ::FOO] 3)
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 4)
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO ::FOO]] 5)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 4)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ]] 5)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 6)
+)

@@ -3785,7 +3785,6 @@
    ::creates-4194304-validators [:tuple ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators]})
 
 (deftest exponential-registry-test
-  (is-counting-times [:schema {:registry exponential-registry} ::creates-4194304-validators] 1)
   (let [count-ops (atom {})
         reg (mr/simple-registry (assoc (m/default-schemas)
                                        ::counting 

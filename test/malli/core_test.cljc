@@ -3843,5 +3843,5 @@
         s (m/schema [:schema {:registry exponential-registry} ::creates-4194304-validators] {:registry reg})]
     (is (= @count-ops {:-into-schema 1}))
     (is (m/validator s))
-    ;;FIXME
+    ;;FIXME cache each level of validators
     (is (= @count-ops {:-into-schema 1, :-validator 4194304}))))

@@ -3090,7 +3090,8 @@
     (let [one-level-schema [:map {:registry {:my/string-like :string}}
                             [:entry [:my/string-like {:some "prop"}]]]]
 
-      (is (true? (m/validate one-level-schema {:entry "a"})))))
+      (is (true? (m/validate one-level-schema {:entry "a"})))
+      (is (false? (m/validate one-level-schema {:entry :a})))))
 
   (testing "testcase from #451"
     (let [opts {:registry {:string (m/-string-schema)
@@ -3692,8 +3693,127 @@
                                                                           [[] [] (m/schema :int o)])})))
         ConsCell (m/schema [:schema {:registry {::cons [:maybe [:tuple ::counting [:ref ::cons]]]}} ::cons]
                            {:registry reg})]
-    (is (= @count-into-schemas 2))
+    (is (= @count-into-schemas 1))
     (is (m/coerce ConsCell [1 [2 [3 [4 nil]]]]))
-    (is (= @count-into-schemas 3)) ;; was 6
+    (is (= @count-into-schemas 1))
     (is (m/coerce ConsCell [1 [2 [3 [4 [1 [2 [3 [4 nil]]]]]]]]))
-    (is (= @count-into-schemas 3)))) ;; was 10
+    (is (= @count-into-schemas 1))))
+
+(defn is-counting-times [?schema i]
+  (let [count-into-schemas (atom 0)
+        reg (mr/simple-registry (assoc (m/default-schemas)
+                                       ::counting (m/-proxy-schema {:type ::counting
+                                                                    :fn (fn [p c o]
+                                                                          (assert (empty? c))
+                                                                          (swap! count-into-schemas inc)
+                                                                          [[] [] (m/schema :int o)])})))
+        s (m/schema ?schema {:registry reg})]
+    (is (= @count-into-schemas i))))
+
+
+(deftest eager-registry-parse-test
+  ;; not mentioned
+  (is-counting-times :int 0)
+  ;; directly expanded
+  (is-counting-times ::counting 1)
+  ;; expanded via -property-registry, then with pointer due to unchanged dynamic scope
+  (is-counting-times [:schema {:registry {::BAR ::counting}} :int] 1)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:ref ::BAR]] 1)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} ::BAR] 1)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR]] 1)
+  (is-counting-times [:schema {:registry {::BAR ::counting}} [:tuple ::BAR ::BAR ::BAR]] 1)
+  (is-counting-times [:schema {:registry (array-map ::FOO ::BAR ::BAR ::counting)} ::FOO] 1)
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO]] 1)
+  (is-counting-times [:schema {:registry {::FOO ::BAR ::BAR ::counting}} [:tuple ::FOO ::FOO ::FOO]] 1)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 1)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ]] 1)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 1)
+  ;; since ::FOO and ::BAR are identical, ::counting is shared between the two registries and pointer
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:schema {:registry {::FOO ::BAR ::BAR ::counting}}
+                       ::BAZ]]
+                     1)
+  ;; since ::BAR is different in the inner schema, ::counting in each registry is not shared.
+  ;; pointer shares inner registry version (the tuple)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:schema {:registry {::FOO ::BAR ::BAR [:tuple ::counting]}}
+                       ::BAZ]]
+                     2)
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:schema {:registry {::BAR [:tuple ::counting]}}
+                       ::BAZ]]
+                     2)
+  ;; even though ::UNRELATED doesn't change ::counting in practice, it prevents ::counting from being shared
+  ;; between the pointer and registry.
+  ;; future improvement: could be 1 in practice, because ::UNRELATED doesn't change ::BAZ so could share
+  ;; ::counting with outer registry
+  (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
+                      [:tuple ::BAZ
+                       [:schema {:registry {::UNRELATED :int}}
+                        ::BAZ]]]
+                     2)
+  ;; :child entry in -pointed cache allows us to update pointers.
+  (is (= [:int {:id :malli.core-test/user-id}]
+         (-> (m/schema [:schema {:registry {::user-id :int}}
+                        ::user-id]
+                       {::m/ref-key :id})
+             m/deref
+             (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
+             m/deref
+             m/form)
+         (-> (m/schema [:schema {:registry {::user-id :int}}
+                        ::user-id]
+                       {::m/ref-key :id})
+             m/deref
+             (m/-set-children [(m/schema [:int {:id :malli.core-test/user-id}])])
+             m/children
+             first
+             m/form))))
+
+(def exponential-registry
+  {::creates-1-validator ::counting
+   ::creates-2-validators [:tuple ::creates-1-validator ::creates-1-validator ::creates-1-validator ::creates-1-validator]
+   ::creates-16-validators [:tuple ::creates-2-validators ::creates-2-validators ::creates-2-validators ::creates-2-validators]
+   ::creates-64-validators [:tuple ::creates-16-validators ::creates-16-validators ::creates-16-validators ::creates-16-validators]
+   ::creates-256-validators [:tuple ::creates-64-validators ::creates-64-validators ::creates-64-validators ::creates-64-validators]
+   ::creates-1024-validators [:tuple ::creates-256-validators ::creates-256-validators ::creates-256-validators ::creates-256-validators]
+   ::creates-4096-validators [:tuple ::creates-1024-validators ::creates-1024-validators ::creates-1024-validators ::creates-1024-validators]
+   ::creates-16384-validators [:tuple ::creates-4096-validators ::creates-4096-validators ::creates-4096-validators ::creates-4096-validators]
+   ::creates-65536-validators [:tuple ::creates-16384-validators ::creates-16384-validators ::creates-16384-validators ::creates-16384-validators]
+   ::creates-262144-validators [:tuple ::creates-65536-validators ::creates-65536-validators ::creates-65536-validators ::creates-65536-validators]
+   ::creates-1048576-validators [:tuple ::creates-262144-validators ::creates-262144-validators ::creates-262144-validators ::creates-262144-validators]
+   ::creates-4194304-validators [:tuple ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators]})
+
+(deftest exponential-registry-test
+  (let [count-ops (atom {})
+        reg (mr/simple-registry (assoc (m/default-schemas)
+                                       ::counting 
+                                       (reify m/IntoSchema
+                                         (-type [_] ::counting)
+                                         (-type-properties [_])
+                                         (-properties-schema [_ _])
+                                         (-children-schema [_ _])
+                                         (-into-schema [parent properties children options]
+                                           (swap! count-ops update :-into-schema (fnil inc 0))
+                                           ^{:type ::m/schema}
+                                           (reify m/Schema
+                                             (-validator [_]
+                                               (swap! count-ops update :-validator (fnil inc 0))
+                                               any?)
+                                             (-explainer [_ path])
+                                             (-parser [_])
+                                             (-unparser [_])
+                                             (-transformer [this transformer method options])
+                                             (-walk [this walker path options])
+                                             (-properties [_] properties)
+                                             (-options [_] options)
+                                             (-children [_] children)
+                                             (-parent [_] parent)
+                                             (-form [_] ::counting))))))
+        s (m/schema [:schema {:registry exponential-registry} ::creates-4194304-validators] {:registry reg})]
+    (is (= @count-ops {:-into-schema 1}))
+    (is (m/validator s))
+    (is (= @count-ops
+           {:-into-schema 1,
+            ;;TODO cache each level of validators, should be 1-4
+            :-validator 4194304}))))

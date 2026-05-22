@@ -2023,6 +2023,8 @@
                    (let [knot (atom nil)
                          rec #(@knot %)
                          ->validator (fn []
+                                       (when-not (shared-cache)
+                                         (-fail! ::ref-no-shared-cache))
                                        (or @knot
                                            (let [f (binding [*ref-validators* (assoc id->validator id rec)]
                                                      (-validator (rf)))]
@@ -2606,7 +2608,9 @@
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
-                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
+                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))
+                             options (if (not (::id->shared-cache options)) (assoc options ::id->shared-cache (atom {})) options)
+                             ]
                          (if (or (nil? ?p) (map? ?p))
                            (into-schema t ?p (when (< 2 n) (subvec ?schema 2 n)) options)
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))

@@ -2004,6 +2004,7 @@
                             (when-not allow-invalid-refs
                               (-fail! ::invalid-ref {:type :ref, :ref ref}))))
              _ (when-not lazy (?schema))
+             ;;TODO use -pointed
              rf (-memoize #(schema (?schema) options))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))

@@ -2008,7 +2008,7 @@
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
-             shared-cache (-> options ::schema-cache :cache)
+             shared-cache (-memoize #(-shared-cache ref (?schema) options))
              ->parser (fn [f] (let [parser (-memoize (fn [] (f (rf))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
@@ -2017,27 +2017,18 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [this]
-             (if #_false true ;;TODO
-               (let [id (-identify-ref-schema this)
-                     id->validator *ref-validators*]
-                 (or (id->validator id)
-                     (let [knot (atom nil)
-                           rec #(@knot %)
-                           ->validator (fn []
-                                         (or @knot
-                                             (let [f (binding [*ref-validators* (assoc id->validator id rec)]
-                                                       (-validator (rf)))]
-                                               (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
-                                               @knot)))]
-                       (if true #_lazy ;; lazily compute until -validator is cheaper
-                         #((->validator) %)
-                         (->validator)))))
-               (or (:validator @cache)
-                   (let [knot (::validator-knot (swap! cache update ::validator-knot #(or % (atom nil))))
+             (let [id (-identify-ref-schema this)
+                   id->validator *ref-validators*]
+               (or (id->validator id)
+                   (let [knot (atom nil)
+                         rec #(@knot %)
                          ->validator (fn []
-                                       (compare-and-set! knot nil (-validator (rf))) ;; tie the knot (once), rec now callable
-                                       (:validator (swap! cache update :validator (fn [f] (or f #(@knot %))))))]
-                     (if lazy
+                                       (or @knot
+                                           (let [f (binding [*ref-validators* (assoc id->validator id rec)]
+                                                     (-validator (rf)))]
+                                             (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
+                                             @knot)))]
+                     (if true #_lazy ;; lazily compute until -validator is cheaper
                        #((->validator) %)
                        (->validator))))))
            (-explainer [_ path]

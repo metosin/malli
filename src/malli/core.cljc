@@ -2545,9 +2545,9 @@
   ([type properties children options]
    (let [properties' (when properties (when (pos? (count properties)) properties))
          r (when properties' (properties' :registry))
-         options (cond-> options (and r (not (::schema-cache options))) (assoc ::schema-cache (atom {})))
-         options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
-         properties (cond-> properties' r (assoc :registry (-property-registry r options identity)))]
+         options (if (and r (not (::schema-cache options))) (assoc options ::schema-cache (atom {})) options)
+         options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
+         properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
      (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))
 
 (defn type

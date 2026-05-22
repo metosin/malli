@@ -342,10 +342,7 @@
        ->child))))
 
 (defn -property-registry [m options f]
-  (let [schema-cache (or (::schema-cache options) (atom {}))
-        options (c/update options ::schema-cache #(or % schema-cache))
-        options (c/update options :registry #(mr/composite-registry m (or % (-registry options))))]
-    (reduce-kv (fn [acc k v] (assoc acc k (f (-pointed k v options)))) {} m)))
+  (reduce-kv (fn [acc k v] (assoc acc k (f (-pointed k v options)))) {} m))
 
 (defn -delayed-registry [m f]
   (reduce-kv (fn [acc k v] (assoc acc k (reify IntoSchema (-into-schema [_ _ _ options] (f v options))))) {} m))

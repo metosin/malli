@@ -319,6 +319,14 @@
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
+(defn- -shared-cache [id child options]
+  (when id
+    (when-some [id->shared-cache (::id->shared-cache options)]
+      (let [ref-id {:scope (-> options -registry mr/-schemas)
+                    :child child
+                    :name id}]
+        (get (swap! id->shared-cache c/update ref-id #(or % (atom {}))) ref-id)))))
+
 ;; In [:schema {:registry {::foo :tuple} [:or ::foo ::foo]] there are
 ;; two pointers ::foo (in the :or) and one pointed-to schema :tuple (in the registry).
 ;; Since the pointers share identical scopes, they should share an identical child.
@@ -331,15 +339,8 @@
 ;; pointers themselves parsing their children. This is automatically handled via
 ;; the :scope entry in the cache key. See corner cases in `eager-registry-parse-test`.
 (defn- -pointed [id child options]
-  (let [id->shared-cache (::id->shared-cache options)
-        ref-id (when (and id id->shared-cache)
-                 {:scope (-> options -registry mr/-schemas)
-                  :child child
-                  :name id})
-        shared-cache (when ref-id
-                       (get (swap! id->shared-cache c/update ref-id #(or % (atom {}))) ref-id))
-        ->child (-memoize #(schema child options))]
-    ((if shared-cache
+  (let [->child (-memoize #(schema child options))]
+    ((if-some [shared-cache (-shared-cache id child options)]
        (::->child (swap! shared-cache c/update ::->child #(or % ->child)))
        ->child))))
 

@@ -319,6 +319,17 @@
   ([] default-registry)
   ([opts] (or (when opts (mr/registry (opts :registry))) default-registry)))
 
+;; In [:schema {:registry {::foo :tuple} [:or ::foo ::foo]] there are
+;; two pointers ::foo (in the :or) and one pointed-to schema :tuple (in the registry).
+;; Since the pointers share identical scopes, they should share an identical child.
+;;
+;; The `-pointer` helper ensures this sharing in (typically) two phases:
+;; 1. the pointed schema cache is seeded via `-property-registry`
+;; 2. the cache is used to resolve each pointer's child in the implementation
+;;
+;; In situations involving nested registries, the cache can also be populated by the
+;; pointers themselves parsing their children. This is automatically handled via
+;; the :scope entry in the cache key. See corner cases in `eager-registry-parse-test`.
 (defn- -pointed [id child options]
   (let [schema-cache (::schema-cache options)
         ref-id (when (and id schema-cache)

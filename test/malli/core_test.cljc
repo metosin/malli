@@ -3710,7 +3710,6 @@
         s (m/schema ?schema {:registry reg})]
     (is (= @count-into-schemas i))))
 
-
 (deftest eager-registry-parse-test
   ;; not mentioned
   (is-counting-times :int 0)

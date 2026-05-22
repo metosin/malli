@@ -3699,16 +3699,20 @@
     (is (m/coerce ConsCell [1 [2 [3 [4 [1 [2 [3 [4 nil]]]]]]]]))
     (is (= @count-into-schemas 1))))
 
-(defn is-counting-times [?schema i]
+(defn counting-registry []
   (let [count-into-schemas (atom 0)
         reg (mr/simple-registry (assoc (m/default-schemas)
                                        ::counting (m/-proxy-schema {:type ::counting
                                                                     :fn (fn [p c o]
                                                                           (assert (empty? c))
                                                                           (swap! count-into-schemas inc)
-                                                                          [[] [] (m/schema :int o)])})))
+                                                                          [[] [] (m/schema :int o)])})))]
+    {:reg reg :counter count-into-schemas}))
+
+(defn is-counting-times [?schema i]
+  (let [{:keys [reg counter]} (counting-registry)
         s (m/schema ?schema {:registry reg})]
-    (is (= @count-into-schemas i))))
+    (is (= @counter i))))
 
 (deftest eager-registry-parse-test
   ;; not mentioned
@@ -3727,6 +3731,12 @@
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} ::BAZ] 1)
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ]] 1)
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}} [:tuple ::BAZ ::BAZ ::BAZ]] 1)
+  ;; :ref shares pointed child with property registry
+  (let [{:keys [reg counter]} (counting-registry)
+        s (-> [:schema {:registry {::BAR ::counting}} [:ref ::BAR]]
+              (m/deref-all {:registry reg}))]
+    (is (= :int (m/form s)))
+    (is (= @counter 1)))
   ;; since ::FOO and ::BAR are identical, ::counting is shared between the two registries and pointer
   (is-counting-times [:schema {:registry {::BAZ ::FOO ::FOO ::BAR ::BAR ::counting}}
                       [:schema {:registry {::FOO ::BAR ::BAR ::counting}}
@@ -3771,17 +3781,28 @@
 
 (def exponential-registry
   {::creates-1-validator ::counting
-   ::creates-2-validators [:tuple ::creates-1-validator ::creates-1-validator ::creates-1-validator ::creates-1-validator]
-   ::creates-16-validators [:tuple ::creates-2-validators ::creates-2-validators ::creates-2-validators ::creates-2-validators]
-   ::creates-64-validators [:tuple ::creates-16-validators ::creates-16-validators ::creates-16-validators ::creates-16-validators]
-   ::creates-256-validators [:tuple ::creates-64-validators ::creates-64-validators ::creates-64-validators ::creates-64-validators]
-   ::creates-1024-validators [:tuple ::creates-256-validators ::creates-256-validators ::creates-256-validators ::creates-256-validators]
-   ::creates-4096-validators [:tuple ::creates-1024-validators ::creates-1024-validators ::creates-1024-validators ::creates-1024-validators]
-   ::creates-16384-validators [:tuple ::creates-4096-validators ::creates-4096-validators ::creates-4096-validators ::creates-4096-validators]
-   ::creates-65536-validators [:tuple ::creates-16384-validators ::creates-16384-validators ::creates-16384-validators ::creates-16384-validators]
-   ::creates-262144-validators [:tuple ::creates-65536-validators ::creates-65536-validators ::creates-65536-validators ::creates-65536-validators]
-   ::creates-1048576-validators [:tuple ::creates-262144-validators ::creates-262144-validators ::creates-262144-validators ::creates-262144-validators]
-   ::creates-4194304-validators [:tuple ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators ::creates-1048576-validators]})
+   ::creates-2-validators [:tuple ::creates-1-validator ::creates-1-validator
+                           ::creates-1-validator ::creates-1-validator]
+   ::creates-16-validators [:tuple ::creates-2-validators ::creates-2-validators
+                            ::creates-2-validators ::creates-2-validators]
+   ::creates-64-validators [:tuple ::creates-16-validators ::creates-16-validators
+                            ::creates-16-validators ::creates-16-validators]
+   ::creates-256-validators [:tuple ::creates-64-validators ::creates-64-validators
+                             ::creates-64-validators ::creates-64-validators]
+   ::creates-1024-validators [:tuple ::creates-256-validators ::creates-256-validators
+                              ::creates-256-validators ::creates-256-validators]
+   ::creates-4096-validators [:tuple ::creates-1024-validators ::creates-1024-validators
+                              ::creates-1024-validators ::creates-1024-validators]
+   ::creates-16384-validators [:tuple ::creates-4096-validators ::creates-4096-validators
+                               ::creates-4096-validators ::creates-4096-validators]
+   ::creates-65536-validators [:tuple ::creates-16384-validators ::creates-16384-validators
+                               ::creates-16384-validators ::creates-16384-validators]
+   ::creates-262144-validators [:tuple ::creates-65536-validators ::creates-65536-validators
+                                ::creates-65536-validators ::creates-65536-validators]
+   ::creates-1048576-validators [:tuple ::creates-262144-validators ::creates-262144-validators
+                                 ::creates-262144-validators ::creates-262144-validators]
+   ::creates-4194304-validators [:tuple ::creates-1048576-validators ::creates-1048576-validators
+                                 ::creates-1048576-validators ::creates-1048576-validators]})
 
 (deftest exponential-registry-test
   (let [count-ops (atom {})

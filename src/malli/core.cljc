@@ -331,14 +331,16 @@
 ;; pointers themselves parsing their children. This is automatically handled via
 ;; the :scope entry in the cache key. See corner cases in `eager-registry-parse-test`.
 (defn- -pointed [id child options]
-  (let [schema-cache (::schema-cache options)
-        ref-id (when (and id schema-cache)
+  (let [id->shared-cache (::id->shared-cache options)
+        ref-id (when (and id id->shared-cache)
                  {:scope (-> options -registry mr/-schemas)
                   :child child
                   :name id})
+        shared-cache (when ref-id
+                       (get (swap! id->shared-cache c/update ref-id #(or % (atom {}))) ref-id))
         ->child (-memoize #(schema child options))]
-    ((if ref-id
-       ((swap! schema-cache c/update ref-id #(or % ->child)) ref-id)
+    ((if shared-cache
+       (::->child (swap! shared-cache c/update ::->child #(or % ->child)))
        ->child))))
 
 (defn -property-registry [m options f]
@@ -2001,11 +2003,11 @@
                             (when-not allow-invalid-refs
                               (-fail! ::invalid-ref {:type :ref, :ref ref}))))
              _ (when-not lazy (?schema))
-             ;;TODO use -pointed
-             rf (-memoize #(schema (?schema) options))
+             rf (-memoize #(-pointed ref (?schema) options))
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
+             shared-cache (-> options ::schema-cache :cache)
              ->parser (fn [f] (let [parser (-memoize (fn [] (f (rf))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
@@ -2014,18 +2016,27 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [this]
-             (let [id (-identify-ref-schema this)
-                   id->validator *ref-validators*]
-               (or (id->validator id)
-                   (let [knot (atom nil)
-                         rec #(@knot %)
+             (if #_false true ;;TODO
+               (let [id (-identify-ref-schema this)
+                     id->validator *ref-validators*]
+                 (or (id->validator id)
+                     (let [knot (atom nil)
+                           rec #(@knot %)
+                           ->validator (fn []
+                                         (or @knot
+                                             (let [f (binding [*ref-validators* (assoc id->validator id rec)]
+                                                       (-validator (rf)))]
+                                               (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
+                                               @knot)))]
+                       (if true #_lazy ;; lazily compute until -validator is cheaper
+                         #((->validator) %)
+                         (->validator)))))
+               (or (:validator @cache)
+                   (let [knot (::validator-knot (swap! cache update ::validator-knot #(or % (atom nil))))
                          ->validator (fn []
-                                       (or @knot
-                                           (let [f (binding [*ref-validators* (assoc id->validator id rec)]
-                                                     (-validator (rf)))]
-                                             (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
-                                             @knot)))]
-                     (if true #_lazy ;; lazily compute until -validator is cheaper
+                                       (compare-and-set! knot nil (-validator (rf))) ;; tie the knot (once), rec now callable
+                                       (:validator (swap! cache update :validator (fn [f] (or f #(@knot %))))))]
+                     (if lazy
                        #((->validator) %)
                        (->validator))))))
            (-explainer [_ path]
@@ -2542,7 +2553,7 @@
   ([type properties children options]
    (let [properties' (when properties (when (pos? (count properties)) properties))
          r (when properties' (properties' :registry))
-         options (if (and r (not (::schema-cache options))) (assoc options ::schema-cache (atom {})) options)
+         options (if (and r (not (::id->shared-cache options))) (assoc options ::id->shared-cache (atom {})) options)
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
          properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
      (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))

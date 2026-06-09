@@ -164,3 +164,8 @@
      (let [data (edn/read-string (slurp (io/file ".clj-kondo/imports/metosin/malli-types-clj/config.edn")))]
        (is (map? data))
        (is (= [:linters] (keys data))))))
+
+#?(:clj
+   (deftest fix-1276
+     (testing "bytes? should be mapped to :array"
+       (is (= :array (clj-kondo/transform bytes?))))))

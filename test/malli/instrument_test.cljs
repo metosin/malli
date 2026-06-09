@@ -30,8 +30,9 @@
 (defn multi-arity-variadic-fn
   {:malli/schema
    [:function
+    {:registry {::int :int}} ; #1278
     [:=> [:cat] [:int]]
-    [:=> [:cat :int] [schemas-2/int-arg]]
+    [:=> [:cat ::int] [schemas-2/int-arg]]
     [:=> [:cat :string :string] [:string]]
     [:=> [:cat :string :string [:* :string]] [:string]]]}
   ([] 500)

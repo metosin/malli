@@ -26,11 +26,6 @@
 (defn -filter-var [f] (fn [n s d] (f (Var. (constantly (-find-var n s)) (symbol n s) d))))
 (defn -filter-schema [f] (fn [_ _ {:keys [schema]}] (f schema)))
 
-(defn -arity->schema
-  [fn-schema]
-  (into {} (map (fn [schema] [(:arity (m/-function-info (m/schema schema))) schema])
-                (rest fn-schema))))
-
 (defn -variadic? [f] (g/get f "cljs$core$IFn$_invoke$arity$variadic"))
 (defn -max-fixed-arity [f] (g/get f "cljs$lang$maxFixedArity"))
 (defn -pure-variadic? [f]
@@ -60,10 +55,11 @@
         (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))))))
 
 (defn -replace-multi-arity [original-fn n s opts]
-  (let [schema (:schema opts)]
+  (let [schema (m/schema (:schema opts))]
     (g/set original-fn "malli$instrument$instrumented?" true)
     (g/set (-get-ns n) s (meta-fn original-fn {:instrumented-symbol (symbol n s)}))
-    (doseq [[arity f-schema] (-arity->schema schema)]
+    (doseq [f-schema (m/-function-schema-arities schema)
+            :let [{:keys [arity]} (m/-function-info f-schema)]]
       (if (= arity :varargs)
         (-replace-variadic-fn original-fn n s opts)
         (let [accessor (str "cljs$core$IFn$_invoke$arity$" arity)

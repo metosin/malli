@@ -52,7 +52,18 @@
 (defn clj-collect!
   ([] (clj-collect! {:ns *ns*}))
   ([{:keys [ns]}]
-   (not-empty (reduce (fn [acc v] (let [v (-collect! v)] (cond-> acc v (conj v)))) #{} (vals (mapcat ns-publics (-sequential ns)))))))
+   (not-empty
+    (reduce (fn [acc nspace] ns-publics
+              (let [nspace (the-ns nspace)]
+                (reduce-kv (fn [acc _ ^clojure.lang.Var v]
+                             (if-let [v (and (instance? clojure.lang.Var v)
+                                             (= nspace (.ns v))
+                                             (not (:private (meta v)))
+                                             (-collect! v))]
+                               (conj acc v)
+                               acc))
+                           acc (ns-map nspace))))
+            #{} (-sequential ns)))))
 
 ;;
 ;; CLJS macro for collecting function schemas

@@ -53,7 +53,7 @@
   ([] (clj-collect! {:ns *ns*}))
   ([{:keys [ns]}]
    (not-empty
-    (reduce (fn [acc nspace] ns-publics
+    (reduce (fn [acc nspace]
               (let [nspace (the-ns nspace)]
                 (reduce-kv (fn [acc _ ^clojure.lang.Var v]
                              (if-let [v (and (instance? clojure.lang.Var v)

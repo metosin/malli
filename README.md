@@ -3192,13 +3192,13 @@ Local registries can be persisted:
 ;; => true
 ```
 
-Due to local registries using dynamic scope,
-a naive implementation would parse registry entries lazily at use-sites.
-Since this would lead performance issues from redundant parsing of Schemas,
+Malli optimizes parsing local registries to maximally share their results.
+Since local registries use dynamic scope,
+a naive implementation of Malli references would parse registry entries lazily at use-sites,
+causing performance issues from redundant parsing of Schemas.
 Malli instead detects when the dynamic scope is identical and
 reuses already-parsed Schemas.
-Note that this optimization currently only shares results amongst the transitive children
-of a schema, not between different top-level schemas.
+
 For example, the three `::list-of` references share an identical Schema
 since their dynamic scopes are identical,
 parsing `::list-of` and `::element` only once.
@@ -3244,6 +3244,11 @@ Note that a similar result happens when a local registry overlaps with a custom/
           ::list-of]]
  {:registry registry})
 ```
+
+This optimization currently only shares results amongst the transitive children
+of a schema, not between different top-level schemas. For the previous schema,
+that means a new shared schemas is created for `::list-of` when `m/schema` is
+called again, even though everything including `registry` is the same as the previous call.
 
 See also [Recursive Schemas](#recursive-schemas).
 

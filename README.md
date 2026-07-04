@@ -3237,7 +3237,7 @@ Note that a similar result happens when a local registry overlaps with a custom/
   (mr/composite-registry
     {::list-of [:seqable ::element],
      ::element :string}
-    m/default-registry}))
+    m/default-registry))
 
 (m/schema
  [:tuple ::list-of ;; shared

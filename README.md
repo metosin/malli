@@ -3250,8 +3250,10 @@ Note that a similar result happens when a local registry overlaps with a custom/
 
 This optimization currently only shares results amongst the transitive children
 of a schema, not between different top-level schemas. For the previous schema,
-that means a new shared schemas is created for `::list-of` when `m/schema` is
-called again, even though everything including `registry` is the same as the previous call.
+that means a new shared schema is created for `::list-of` when the `m/schema` is
+called again, even though everything is the same as the previous call.
+A future change may introduce an API to improve sharing across unrelated `m/schema`
+calls.
 
 See also [Recursive Schemas](#recursive-schemas).
 

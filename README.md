@@ -3233,8 +3233,11 @@ different, both `::list-of` and `::element` will be entirely reparsed.
 Note that a similar result happens when a local registry overlaps with a custom/global registry:
 
 ```clojure
-(def registry {::list-of [:seqable ::element],
-               ::element :string}})
+(def registry
+  (mr/composite-registry
+    {::list-of [:seqable ::element],
+     ::element :string}
+    m/default-registry}))
 
 (m/schema
  [:tuple ::list-of ;; shared

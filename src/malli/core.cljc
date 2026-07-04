@@ -327,6 +327,10 @@
                     :name id}]
         (get (swap! id->shared-cache c/update ref-id #(or % (atom {}))) ref-id)))))
 
+(defn- -ensure-shared-cache [options]
+  (cond-> options
+    (not (::id->shared-cache options)) (assoc ::id->shared-cache (atom {}))))
+
 ;; In [:schema {:registry {::foo :tuple} [:or ::foo ::foo]] there are
 ;; two pointers ::foo (in the :or) and one pointed-to schema :tuple (in the registry).
 ;; Since the pointers share identical scopes, they should share an identical child.
@@ -2604,18 +2608,17 @@
   ([?schema options]
    (cond
      (schema? ?schema) ?schema
-     (into-schema? ?schema) (-into-schema ?schema nil nil options)
+     (into-schema? ?schema) (-into-schema ?schema nil nil (-ensure-shared-cache options))
      (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
                              t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
                              n #?(:bb (count v) :clj (.count v), :cljs (count v))
                              ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))
-                             options (if (not (::id->shared-cache options)) (assoc options ::id->shared-cache (atom {})) options)
-                             ]
+                             options (-ensure-shared-cache options)]
                          (if (or (nil? ?p) (map? ?p))
                            (into-schema t ?p (when (< 2 n) (subvec ?schema 2 n)) options)
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
      :else (if-let [?schema' (and (-reference? ?schema) (-lookup ?schema options))]
-             (-pointer ?schema ?schema' options)
+             (-pointer ?schema ?schema' (-ensure-shared-cache options))
              (-> ?schema (-lookup! ?schema nil false options) (recur options))))))
 
 (defn form
@@ -2903,7 +2906,7 @@
                          options (cond-> options r (-update :registry #(mr/composite-registry r (or % (-registry options)))))
                          ast (cond-> ?ast r (-update :properties #(assoc % :registry (-property-registry r options identity))))]
                      (cond (and (into-schema? s) (-ast? s)) (-from-ast s ast options)
-                           (into-schema? s) (-into-schema s (:properties ast) (-vmap #(from-ast % options) (:children ast)) options)
+                           (into-schema? s) (-into-schema s (:properties ast) (-vmap #(from-ast % options) (:children ast)) (-ensure-shared-cache options))
                            :else s))
                    (-fail! ::invalid-ast {:ast ?ast}))
      :else (-fail! ::invalid-ast {:ast ?ast}))))

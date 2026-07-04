@@ -2551,7 +2551,7 @@
   ([type properties children options]
    (let [properties' (when properties (when (pos? (count properties)) properties))
          r (when properties' (properties' :registry))
-         options (if (and r (not (::id->shared-cache options))) (assoc options ::id->shared-cache (atom {})) options)
+         options (-ensure-shared-cache options)
          options (if r (-update options :registry #(mr/composite-registry r (or % (-registry options)))) options)
          properties (if r (assoc properties' :registry (-property-registry r options identity)) properties')]
      (-into-schema (-lookup! type [type properties children] into-schema? false options) properties children options))))

@@ -3248,14 +3248,15 @@ Note that a similar result happens when a local registry overlaps with a custom/
  {:registry registry})
 ```
 
-This optimization currently only shares results amongst the transitive children
+This optimization currently only shares results among the transitive children
 of a schema, not between different top-level schemas. For the previous schema,
 that means a new shared schema is created for `::list-of` when the `m/schema` is
 called again, even though everything is the same as the previous call.
 A future change may introduce an API to improve sharing across unrelated `m/schema`
 calls.
 
-See also [Recursive Schemas](#recursive-schemas).
+See also [Recursive Schemas](#recursive-schemas),
+[Mutable registries are a dev-time abstraction](#mutable-registries-are-a-dev-time-abstraction).
 
 ### Changing the default registry
 

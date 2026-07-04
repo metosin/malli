@@ -3192,6 +3192,41 @@ Local registries can be persisted:
 ;; => true
 ```
 
+Due to local registries using dynamic scope,
+a naive implementation would parse registry entries lazily at use-sites.
+Since this would lead performance issues from redundant parsing of Schemas,
+Malli instead detects when the dynamic scope is identical and
+reuses already-parsed Schemas.
+For example, the three `::list-of` references share an identical Schema
+since their dynamic scopes are identical,
+parsing `::list-of` and `::element` only once.
+
+<!-- :test-doc-blocks/skip -->
+```clojure
+[:schema {:registry {::list-of [:seqable ::element],
+                     ::element :string}}
+ [:tuple ::list-of
+         ::list-of
+         ::list-of]]
+```
+
+On the other hand, reusing names in overlapping registries to mean different things
+will disable this optimization.
+For example, in the following schema `::list-of` is used three times.
+The first two will share the same Schema instance, `[:seqable :string]`.
+The third is `[:seqable :int]`, and because the dynamic scope is
+different, both `::list-of` and `::element` will be entirely reparsed.
+
+<!-- :test-doc-blocks/skip -->
+```clojure
+[:schema {:registry {::list-of [:seqable ::element],
+                     ::element :string}}
+ [:tuple ::list-of
+         ::list-of
+         [:schema {:registry {::element :int}}
+          ::list-of]]]
+```
+
 See also [Recursive Schemas](#recursive-schemas).
 
 ### Changing the default registry

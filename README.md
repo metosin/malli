@@ -3497,7 +3497,9 @@ For performance reasons, Malli heavily caches registry
 lookups once a schema has been created via `m/schema`.
 
 Don't rely on registry mutations to be recognized consistently
-unless all schemas are reparsed. Here's a simple example:
+unless all schemas are reparsed. Here's an illustrative example
+where the redefinition of `::node` from `:int` to `:string`
+is done _after_ the former has been cached, and hence is ineffective:
 
 ```clojure
 (def registry*

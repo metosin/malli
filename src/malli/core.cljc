@@ -1975,18 +1975,6 @@
            #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (-pr-writer-schema this writer opts))]))))
      #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (-pr-writer-into-schema this writer opts))]))))
 
-;; returns an identifier for the :ref schema in the context of its dynamic scope.
-;; useful for detecting cycles.
-;; copied to malli.generator
-(defn- -identify-ref-schema [schema]
-  ;; TODO mr/-schemas doesn't seem right, making defn private for now.
-  ;; e.g., we only care about property registry entries, not schema constructors.
-  ;; a better approach might be to accumulate a 'seen' map from name => ?schema
-  ;; that we add to every time we deref a ref, and if we expand the same name again
-  ;; with the same seen map, it's a cycle.
-  {:scope (-> schema -options -registry mr/-schemas)
-   :name (-ref schema)})
-
 (defn -ref-schema
   ([]
    (-ref-schema nil))
@@ -2035,7 +2023,7 @@
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
-             (let [key [(-identify-ref-schema this) method]]
+             (let [key [this method]]
                (or (some-> (get-in options [::ref-transformer-cache key]) clojure.core/deref)
                    (let [knot (atom nil)
                          this-transformer (-value-transformer transformer this method options)
@@ -2079,7 +2067,7 @@
            ParserInfo
            (-parser-info [this opts]
              (let [cycles (::parser-info-cycles opts #{})
-                   ref-id (-identify-ref-schema this)]
+                   ref-id this]
                (if (cycles ref-id)
                  {:simple-parser true}
                  (-parser-info (-deref this) (assoc opts ::parser-info-cycles (conj cycles ref-id))))))

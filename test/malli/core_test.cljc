@@ -3835,5 +3835,4 @@
     (is (m/validator s))
     (is (= @count-ops
            {:-into-schema 1,
-            ;;TODO cache each level of validators, should be 1-4
-            :-validator 4194304}))))
+            :-validator 1}))))

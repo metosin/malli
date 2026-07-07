@@ -14,7 +14,8 @@
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
-         parser unparser ast from-ast -instrument ^:private -safely-countable?)
+         parser unparser ast from-ast -instrument ^:private -safely-countable?
+         validator)
 
 ;;
 ;; protocols and records
@@ -129,7 +130,7 @@
   (-regex-validator [this]
     (if (-ref-schema? this)
       (-regex-validator (-deref this))
-      (re/item-validator (-validator this))))
+      (re/item-validator (validator this))))
 
   (-regex-explainer [this path]
     (if (-ref-schema? this)
@@ -149,7 +150,7 @@
   (-regex-transformer [this transformer method options]
     (if (-ref-schema? this)
       (-regex-transformer (-deref this) transformer method options)
-      (re/item-transformer method (-validator this) (or (-transformer this transformer method options) identity))))
+      (re/item-transformer method (validator this) (or (-transformer this transformer method options) identity))))
 
   (-regex-min-max [_ _] {:min 1, :max 1}))
 
@@ -680,7 +681,7 @@
   (let [this-transformer (-value-transformer transformer this method options)]
     (if (seq child-schemas)
       (let [transformers (-vmap #(or (-transformer % transformer method options) identity) child-schemas)
-            validators (-vmap -validator child-schemas)]
+            validators (-vmap validator child-schemas)]
         (-intercepting this-transformer
                        (if (= :decode method)
                          (fn [x]
@@ -787,7 +788,7 @@
 ;;
 
 (defn -simple-parser [s]
-  (let [validator (-validator s)]
+  (let [validator (validator s)]
     (fn [x] (if (validator x) x ::invalid))))
 
 (defn -simple-schema [props]
@@ -821,7 +822,7 @@
                   (if-let [pvalidator (when property-pred (property-pred properties))]
                     (fn [x] (and (pred x) (pvalidator x))) pred))
                 (-explainer [this path]
-                  (let [validator (-validator this)]
+                  (let [validator (validator this)]
                     (fn explain [x in acc]
                       (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
                 (-parser [this] (-simple-parser this))
@@ -899,7 +900,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (-vmap -validator children)] (miu/-every-pred validators)))
+            (let [validators (-vmap validator children)] (miu/-every-pred validators)))
           (-explainer [_ path]
             (let [explainers (-vmap (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -975,7 +976,7 @@
           AST
           (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
           Schema
-          (-validator [this] (miu/-every-pred (-vmap (fn [[_ _ c]] (-validator c)) (-children this))))
+          (-validator [this] (miu/-every-pred (-vmap (fn [[_ _ c]] (validator c)) (-children this))))
           (-explainer [this path]
             (let [explainers (-vmap (fn [[k _ c]] (-explainer c (conj path k))) (-children this))]
               (fn explain [x in acc] (reduce (fn [acc' explainer] (explainer x in acc')) acc explainers))))
@@ -996,7 +997,7 @@
             ;; the unparsed value is checked against the remaining children.
             ;; if you want to modify a particular conjunct's unparsed value, you should remove all others.
             (let [ks (-vmap #(nth % 0) (-children this))
-                  validators (into {} (map (fn [[k _ c]] [k (-validator c)])) (-children this))
+                  validators (into {} (map (fn [[k _ c]] [k (validator c)])) (-children this))
                   unparsers (into {} (map (fn [[k _ c]] [k (-unparser c)])) (-children this))
                   nchildren (count children)]
               (fn [tags]
@@ -1048,7 +1049,7 @@
         (reify
           Schema
           (-validator [_]
-            (let [validators (-vmap -validator children)] (miu/-some-pred validators)))
+            (let [validators (-vmap validator children)] (miu/-some-pred validators)))
           (-explainer [_ path]
             (let [explainers (-vmap (fn [[i c]] (-explainer c (conj path i))) (map-indexed vector children))]
               (fn explain [x in acc]
@@ -1098,7 +1099,7 @@
           AST
           (-to-ast [this _] (-entry-ast this (-entry-keyset entry-parser)))
           Schema
-          (-validator [this] (miu/-some-pred (-vmap (fn [[_ _ c]] (-validator c)) (-children this))))
+          (-validator [this] (miu/-some-pred (-vmap (fn [[_ _ c]] (validator c)) (-children this))))
           (-explainer [this path]
             (let [explainers (-vmap (fn [[k _ c]] (-explainer c (conj path k))) (-children this))]
               (fn explain [x in acc]
@@ -1161,9 +1162,9 @@
           AST
           (-to-ast [this _] (-to-child-ast this))
           Schema
-          (-validator [_] (complement (-validator schema)))
+          (-validator [_] (complement (validator schema)))
           (-explainer [this path]
-            (let [validator (-validator this)]
+            (let [validator (validator this)]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (miu/-error (conj path 0) in this x)) acc))))
           (-parser [this] (-simple-parser this))
@@ -1211,7 +1212,7 @@
            AST
            (-to-ast [this _] (-to-child-ast this))
            Schema
-           (-validator [_] (-validator schema))
+           (-validator [_] (validator schema))
            (-explainer [_ path] (-explainer schema path))
            (-parser [_] (-parser schema))
            (-unparser [_] (-unparser schema))
@@ -1302,10 +1303,10 @@
            Schema
            (-validator [this]
              (let [keyset (-entry-keyset (-entry-parser this))
-                   default-validator (some-> @default-schema (-validator))
+                   default-validator (some-> @default-schema (validator))
                    validators (cond-> (-vmap
                                        (fn [[key {:keys [optional]} value]]
-                                         (let [valid? (-validator value)
+                                         (let [valid? (validator value)
                                                default (boolean optional)]
                                            #?(:bb   (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
                                               :clj  (let [not-found (Object.)]
@@ -1432,8 +1433,8 @@
              (-ast {:type :map-of, :key (ast key-schema), :value (ast value-schema)} properties options))
            Schema
            (-validator [_]
-             (let [key-valid? (-validator key-schema)
-                   value-valid? (-validator value-schema)]
+             (let [key-valid? (validator key-schema)
+                   value-valid? (validator value-schema)]
                (fn [m]
                  (and (map? m)
                       (validate-limits m)
@@ -1567,7 +1568,7 @@
                 (-to-ast [this _] (-to-child-ast this))
                 Schema
                 (-validator [_]
-                  (let [validator (-validator schema)]
+                  (let [validator (validator schema)]
                     (fn [x] (and (fpred x)
                                  (validate-limits x)
                                  (reduce (fn [acc v] (if (validator v) acc (reduced false))) true
@@ -1587,8 +1588,8 @@
                                                                      :default size))))
                                     (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
                                     acc)))))))
-                (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))
-                (-unparser [_] (->parser (if bounded -validator -unparser) (if bounded identity unparse)))
+                (-parser [_] (->parser (if bounded validator -parser) (if bounded identity parse)))
+                (-unparser [_] (->parser (if bounded validator -unparser) (if bounded identity unparse)))
                 (-transformer [this transformer method options]
                   (let [collection? #(or (sequential? %) (set? %))
                         this-transformer (-value-transformer transformer this method options)
@@ -1650,7 +1651,7 @@
          (reify
            Schema
            (-validator [_]
-             (let [validators (into (array-map) (map-indexed vector (mapv -validator children)))]
+             (let [validators (into (array-map) (map-indexed vector (mapv validator children)))]
                (fn [x] (and (vector? x)
                             (= (count x) size)
                             (reduce-kv
@@ -1716,7 +1717,7 @@
           (-validator [_]
             (fn [x] (contains? schema x)))
           (-explainer [this path]
-            (let [validator (-validator this)]
+            (let [validator (validator this)]
               (fn explain [x in acc]
                 (if-not (validator x) (conj acc (miu/-error path in this x)) acc))))
           (-parser [this] (-simple-parser this))
@@ -1866,7 +1867,7 @@
           (-to-ast [this _] (-to-child-ast this))
           Schema
           (-validator [_]
-            (let [validator (-validator schema)]
+            (let [validator (validator schema)]
               (fn [x] (or (nil? x) (validator x)))))
           (-explainer [_ path]
             (let [explainer (-explainer schema (conj path 0))]
@@ -1931,7 +1932,7 @@
                            options))
            Schema
            (-validator [_]
-             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (-validator s))) {} @dispatch-map))]
+             (let [find (finder (reduce-kv (fn [acc k s] (assoc acc k (validator s))) {} @dispatch-map))]
                (fn [x] (if-let [validator (find (dispatch x))] (validator x) false))))
            (-explainer [this path]
              (let [find (finder (reduce (fn [acc [k s]] (assoc acc k (-explainer s (conj path k)))) {} (-entries this)))]
@@ -2031,7 +2032,7 @@
                                          (-fail! ::ref-no-shared-cache))
                                        (or @knot
                                            (let [f (binding [*ref-validators* (assoc id->validator id rec)]
-                                                     (-validator (rf)))]
+                                                     (validator (rf)))]
                                              (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
                                              @knot)))]
                      (if true #_lazy ;; lazily compute until -validator is cheaper
@@ -2123,7 +2124,7 @@
                 raw (-to-value-ast this)
                 :else (-to-child-ast this)))
             Schema
-            (-validator [_] (-validator child))
+            (-validator [_] (validator child))
             (-explainer [_ path] (-explainer child (conj path 0)))
             (-parser [_] (-parser child))
             (-unparser [_] (-unparser child))
@@ -2157,7 +2158,7 @@
             (-regex-validator [_]
               (if internal
                 (-regex-validator child)
-                (re/item-validator (-validator child))))
+                (re/item-validator (validator child))))
             (-regex-explainer [_ path]
               (if internal
                 (-regex-explainer child path)
@@ -2173,7 +2174,7 @@
             (-regex-transformer [_ transformer method options]
               (if internal
                 (-regex-transformer child transformer method options)
-                (re/item-transformer method (-validator child)
+                (re/item-transformer method (validator child)
                                      (or (-transformer child transformer method options) identity))))
             (-regex-min-max [_ nested?]
               (if (and nested? (not internal))
@@ -2224,7 +2225,7 @@
                                   (cond-> acc e (into (map #(assoc % :path (conj path i), :in in) (:errors e)))))]
                       (-> (conj acc error) (-push 0 explain-input) (-push 1 explain-output) (-push 2 explain-guard)))
                     acc)))
-              (let [validator (-validator this)]
+              (let [validator (validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
           (-parser [this] (-simple-parser this))
@@ -2249,8 +2250,8 @@
                 max (assoc :max max))))
           (-instrument-f [schema {:keys [scope report gen] :as props} f _options]
             (let [{:keys [min max input output guard]} (-function-info schema)
-                  [validate-input validate-output] (-vmap -validator [input output])
-                  validate-guard (or (some-> guard -validator) any?)
+                  [validate-input validate-output] (-vmap validator [input output])
+                  validate-guard (or (some-> guard validator) any?)
                   [wrap-input wrap-output wrap-guard] (-vmap #(contains? scope %) [:input :output :guard])
                   f (or (if gen (gen schema) f) (-fail! ::missing-function {:props props}))]
               (fn [& args]
@@ -2308,7 +2309,7 @@
                   (if-let [res (checker x)]
                     (conj acc (assoc (miu/-error path in this x) :check res))
                     acc)))
-              (let [validator (-validator this)]
+              (let [validator (validator this)]
                 (fn explain [x in acc]
                   (if-not (validator x) (conj acc (miu/-error path in this x)) acc)))))
           (-parser [this] (-simple-parser this))
@@ -2367,7 +2368,7 @@
         ^{:type ::schema}
         (reify
           Schema
-          (-validator [_] (-validator @schema))
+          (-validator [_] (validator @schema))
           (-explainer [_ path] (-explainer @schema (conj path ::in)))
           (-parser [_] (-parser @schema))
           (-unparser [_] (-unparser @schema))

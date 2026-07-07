@@ -2068,17 +2068,11 @@
            AST
            (-to-ast [this _] (-to-value-ast this))
            Schema
-           (-validator [this]
-             (let [knot (atom nil)
-                   rec #(@knot %)
-                   ->validator (fn []
-                                 (or @knot
-                                     (let [f (validator (rf))]
-                                       (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
-                                       @knot)))]
-               (if true #_lazy
-                 #((->validator) %)
-                 (->validator))))
+           (-validator [_]
+             (let [knot (atom nil)]
+               (fn [x]
+                 ((or @knot (swap! knot #(or % (validator (rf)))))
+                  x))))
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (rf) (into path [0 0]))))]
                (fn [x in acc] ((explainer) x in acc))))

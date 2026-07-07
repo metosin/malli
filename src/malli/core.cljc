@@ -2069,10 +2069,8 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [_]
-             (let [knot (atom nil)]
-               (fn [x]
-                 ((or @knot (swap! knot #(or % (validator (rf)))))
-                  x))))
+             (let [validator (-memoize #(validator (rf)))]
+               (fn [x] ((validator) x))))
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (rf) (into path [0 0]))))]
                (fn [x in acc] ((explainer) x in acc))))

@@ -1987,8 +1987,6 @@
   {:scope (-> schema -options -registry mr/-schemas)
    :name (-ref schema)})
 
-(def ^:dynamic ^:private *ref-validators* {})
-
 (defn -ref-schema
   ([]
    (-ref-schema nil))
@@ -2013,7 +2011,6 @@
              children (vec children)
              form (delay (-simple-form parent properties children identity options))
              cache (-create-cache options)
-             shared-cache (-memoize #(-shared-cache ref (?schema) options))
              ->parser (fn [f] (let [parser (-memoize (fn [] (f (rf))))]
                                 (fn [x] ((parser) x))))]
          ^{:type ::schema}
@@ -2022,22 +2019,16 @@
            (-to-ast [this _] (-to-value-ast this))
            Schema
            (-validator [this]
-             (let [id (-identify-ref-schema this)
-                   id->validator *ref-validators*]
-               (or (id->validator id)
-                   (let [knot (atom nil)
-                         rec #(@knot %)
-                         ->validator (fn []
-                                       (when-not (shared-cache)
-                                         (-fail! ::ref-no-shared-cache))
-                                       (or @knot
-                                           (let [f (binding [*ref-validators* (assoc id->validator id rec)]
-                                                     (validator (rf)))]
-                                             (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
-                                             @knot)))]
-                     (if true #_lazy ;; lazily compute until -validator is cheaper
-                       #((->validator) %)
-                       (->validator))))))
+             (let [knot (atom nil)
+                   rec #(@knot %)
+                   ->validator (fn []
+                                 (or @knot
+                                     (let [f (validator (rf))]
+                                       (compare-and-set! knot nil f) ;; tie the knot (once), rec now callable
+                                       @knot)))]
+               (if true #_lazy
+                 #((->validator) %)
+                 (->validator))))
            (-explainer [_ path]
              (let [explainer (-memoize (fn [] (-explainer (rf) (into path [0 0]))))]
                (fn [x in acc] ((explainer) x in acc))))

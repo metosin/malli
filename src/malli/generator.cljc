@@ -430,10 +430,7 @@
   ([?schema]
    (generator ?schema nil))
   ([?schema options]
-   (if (::rec-gen options)
-     ;; disable cache while calculating recursive schemas. caches don't distinguish options.
-     (-create (m/schema ?schema options) options)
-     (m/-cached (m/schema ?schema options) :generator #(-create % options)))))
+   (m/-cached (m/schema ?schema options) :generator #(-create % options))))
 
 (defn generate
   ([?gen-or-schema]

@@ -1,5 +1,5 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.13.0-alpha3"}
+ :deps {org.clojure/clojure {:mvn/version "1.12.4"}
         borkdude/dynaload {:mvn/version "0.3.5"}
         borkdude/edamame {:mvn/version "1.5.37"}
         org.clojure/test.check {:mvn/version "1.1.3"}

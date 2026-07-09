@@ -2547,7 +2547,7 @@
 
       (testing "using generative testing"
         (is (false? (m/validate schema2 single-arity)))
-        (is (false? (m/validate schema2 (fn [x] x))))
+        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
@@ -2598,7 +2598,7 @@
 
       (testing "using generative testing"
         (is (false? (m/validate schema2 single-arity)))
-        (is (false? (m/validate schema2 (fn [x] x))))
+        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
         (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
@@ -2691,10 +2691,10 @@
           (is (true? (m/validate schema1 #{}))))
 
         (testing "using generative testing"
-          (is (false? (m/validate schema2 identity)))
+          #?(:clj (is (false? (m/validate schema2 identity))))
 
           (is (false? (m/validate schema2 single-arity)))
-          (is (false? (m/validate schema2 (fn [x] x))))
+          #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
           (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
           (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 

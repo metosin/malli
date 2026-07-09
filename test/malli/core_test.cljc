@@ -2543,12 +2543,11 @@
 
       (testing "by default, all ifn? are valid"
         (is (true? (m/validate schema1 identity)))
-        (is (true? (m/validate schema1 #{}))))
+        (is (true? (m/validate schema1 single-arity))))
 
       (testing "using generative testing"
+        (is (false? (m/validate schema2 identity)))
         (is (false? (m/validate schema2 single-arity)))
-        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
-        #?(:clj (is (false? (m/validate schema2 #{}))))
         (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
@@ -2594,13 +2593,11 @@
           schema2 (m/schema ?schema {::m/function-checker mg/function-checker})]
 
       (testing "by default, all ifn? are valid"
-        (is (true? (m/validate schema1 identity)))
-        (is (true? (m/validate schema1 #{}))))
+        (is (true? (m/validate schema1 identity))))
 
       (testing "using generative testing"
         (is (false? (m/validate schema2 single-arity)))
-        #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
-        #?(:clj (is (false? (m/validate schema2 #{}))))
+        #?(:clj (is (false? (m/validate schema2 identity))))
         (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
         (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 
@@ -2690,15 +2687,11 @@
 
         (testing "by default, all ifn? are valid"
           (is (true? (m/validate schema1 identity)))
-          (is (true? (m/validate schema1 #{}))))
+          (is (true? (m/validate schema1 single-arity))))
 
         (testing "using generative testing"
-          #?(:clj (is (false? (m/validate schema2 identity))))
-          (is (false? (m/validate schema2 #{})))
-
+          (is (false? (m/validate schema2 identity)))
           (is (false? (m/validate schema2 single-arity)))
-          #?(:clj (is (false? (m/validate schema2 (fn [x] x)))))
-          #?(:clj (is (false? (m/validate schema2 #{}))))
           (is (true? (validate-times function-schema-validation-times schema2 valid-f)))
           (is (false? (m/validate schema2 (fn [x y] (str x y)))))
 

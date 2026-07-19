@@ -73,6 +73,27 @@
                                      :gen/NaN? true}))
         (is (not (test-presence special? nil))))))
 
+  (testing "double bounds at the representable extreme (#1128)"
+    (let [max-value #?(:clj Double/MAX_VALUE :cljs (.-MAX_VALUE js/Number))]
+      (testing "the boundary value is attainable, so every generated value passes the validator"
+        ;; the validator accepts (- Double/MAX_VALUE), so the generator must be
+        ;; able to produce a value it accepts at the same boundary
+        (doseq [schema [[:<= (- max-value)]
+                        [:double {:max (- max-value)}]
+                        [:float {:max (- max-value)}]
+                        [:>= max-value]
+                        [:double {:min max-value}]]]
+          (testing (m/form schema)
+            (is (m/validate schema (mg/generate schema {:seed 123})))
+            (is (every? (m/validator schema) (mg/sample schema {:seed 123, :size 100}))))))
+      (testing "an unsatisfiable range still errors instead of yielding a validator-rejected value"
+        ;; there is no finite double in these ranges, so generation must not
+        ;; short-circuit to the boundary (which the validator would reject)
+        (doseq [schema [[:double {:min 0 :max (- max-value)}] ;; empty: min > max
+                        [:< (- max-value)]]]                  ;; empty: nothing is strictly less
+          (testing (m/form schema)
+            (is (thrown? #?(:clj Throwable :cljs js/Error) (mg/generate schema {:seed 123}))))))))
+
   (testing "qualified-keyword properties"
     (testing "no namespace => random"
       (is (< 1 (->> (mg/sample [:qualified-keyword {:namespace nil}]

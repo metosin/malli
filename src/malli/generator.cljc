@@ -92,7 +92,21 @@
 (defn- gen-tuple [gens] (or (some -unreachable gens) (apply gen/tuple gens)))
 (defn- gen-maybe [g] (if (-unreachable-gen? g) nil-gen (gen/one-of [nil-gen g])))
 (def ^:private double-default {:infinite? false, :NaN? false})
-(defn- gen-double [opts] (gen/double* (-> (into double-default opts) (update :min #(some-> % double)) (update :max #(some-> % double)))))
+(def ^:private double-max-value #?(:clj Double/MAX_VALUE, :cljs (.-MAX_VALUE js/Number)))
+(defn- -double*
+  "Like `gen/double*`, but works around a test.check edge case: for the inclusive
+   range whose only in-range finite value is `(- Double/MAX_VALUE)` -- e.g.
+   `[:<= (- Double/MAX_VALUE)]` or `[:double {:max (- Double/MAX_VALUE)}]` --
+   test.check throws a such-that error even though the validator accepts that
+   value (see #1128). Since `gen/double*` treats `:max` as inclusive, returning
+   the boundary honors the same contract. Only short-circuit when that boundary
+   is actually attainable given `:min`; otherwise fall through so `gen/double*`
+   still signals the empty/unsatisfiable range."
+  [{:keys [min max] :as opts}]
+  (if (and (= max (- double-max-value)) (or (nil? min) (<= min max)))
+    (gen/return max)
+    (gen/double* opts)))
+(defn- gen-double [opts] (-double* (-> (into double-default opts) (update :min #(some-> % double)) (update :max #(some-> % double)))))
 
 (defn- gen-vector [{:keys [min max]} g]
   (cond
@@ -373,12 +387,12 @@
     (gen/elements es)))
 
 (defn- double-gen [schema options]
-  (gen/double* (merge (let [props (m/properties schema options)]
-                        {:infinite? (get props :gen/infinite? false)
-                         :NaN? (get props :gen/NaN? false)})
-                      (-> (-min-max schema options)
-                          (update :min #(some-> % double))
-                          (update :max #(some-> % double))))))
+  (-double* (merge (let [props (m/properties schema options)]
+                     {:infinite? (get props :gen/infinite? false)
+                      :NaN? (get props :gen/NaN? false)})
+                   (-> (-min-max schema options)
+                       (update :min #(some-> % double))
+                       (update :max #(some-> % double))))))
 
 (defmulti -schema-generator (fn [schema options] (m/type schema options)) :default ::default)
 
@@ -387,7 +401,14 @@
 (defmethod -schema-generator 'empty? [_ _] (ga/gen-for-pred empty?))
 (defmethod -schema-generator :> [schema options] (gen-double {:min (inc (-child schema options))}))
 (defmethod -schema-generator :>= [schema options] (gen-double {:min (-child schema options)}))
-(defmethod -schema-generator :< [schema options] (gen-double {:max (dec (-child schema options))}))
+(defmethod -schema-generator :< [schema options]
+  (let [max (dec (-child schema options))]
+    (if (= max (- double-max-value))
+      ;; the exclusive bound collapses onto `(- Double/MAX_VALUE)`: no finite
+      ;; double is strictly less, so the range is empty. Preserve the generation
+      ;; error rather than short-circuiting to a value the validator rejects.
+      (gen/double* (into double-default {:max max}))
+      (gen-double {:max max}))))
 (defmethod -schema-generator :<= [schema options] (gen-double {:max (-child schema options)}))
 (defmethod -schema-generator := [schema options] (gen/return (-child schema options)))
 (defmethod -schema-generator :not= [schema options] (gen-such-that schema #(not= % (-child schema options)) gen/any-printable))

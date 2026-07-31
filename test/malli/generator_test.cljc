@@ -1138,5 +1138,15 @@
           v (mg/sample [:seqable {:min 1} :any])]
     (is (seq v))))
 
+(deftest comparator-generator-test
+  (doseq [x [0 5 1e16 1e300 #?(:clj Double/MAX_VALUE :cljs js/Number.MAX_VALUE) ##-Inf]
+          [op x] [[:> x] [:< (- x)]]
+          :let [schema [op x]]]
+    (testing schema
+      (is (every? (m/validator schema) (mg/sample schema {:seed 0 :size 100})))
+      (is (m/validate schema (shrink schema)))))
+  (testing "unsatisfiable"
+    (is (thrown? #?(:clj Exception, :cljs js/Error) (mg/generate [:> ##Inf])))))
+
 (deftest empty?-generator-test
   (is (every? empty? (mg/sample empty?))))

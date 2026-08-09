@@ -334,6 +334,7 @@
        :int -string->long
        :float -string->float
        :double -string->double
+       #?@(:clj [:decimal -string->decimal])
        :boolean -string->boolean
 
        :> -string->long
@@ -369,6 +370,7 @@
        :int -any->string
        :float -any->string
        :double -any->string
+       #?@(:clj [:decimal -any->string])
        ;:boolean -any->string
 
        :> -any->string

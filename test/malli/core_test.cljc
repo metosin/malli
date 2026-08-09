@@ -2212,6 +2212,24 @@
                                [1.1 3.1 mt/string-transformer [:double {:encode/string {:enter inc, :leave inc}}]]]
                       :ast {:type :double, :properties {:min 1.0, :max 4.0}}
                       :form [:double {:min 1.0, :max 4.0}]}
+             #?@(:clj [:decimal {:schema [:decimal {:min 1.0M, :max 4.0M}]
+                                 :validate {:success [1.0M 2.2M 4.0M]
+                                            :failure [nil "invalid" 0.5M 1.0]}
+                                 :explain [[1.0M]
+                                           [false {:schema [:decimal {:min 1.0M, :max 4.0M}]
+                                                   :value false
+                                                   :errors [{:path []
+                                                             :in []
+                                                             :schema [:decimal {:min 1.0M, :max 4.0M}]
+                                                             :value false}]}]]
+                                 :decode [["1.1" 1.1M mt/string-transformer]
+                                          ["1.1" "1.1" mt/json-transformer]
+                                          [1.1M 3.1M mt/string-transformer [:decimal {:decode/string {:enter inc, :leave inc}}]]]
+                                 :encode [[1.1M "1.1" mt/string-transformer]
+                                          [1.1M 1.1M mt/json-transformer]
+                                          [1.1M 3.1M mt/string-transformer [:decimal {:encode/string {:enter inc, :leave inc}}]]]
+                                 :ast {:type :decimal, :properties {:min 1.0M, :max 4.0M}}
+                                 :form [:decimal {:min 1.0M, :max 4.0M}]}])
              :keyword {:schema :keyword
                        :validate {:success [:abba :user/abba]
                                   :failure [nil "invalid"]}

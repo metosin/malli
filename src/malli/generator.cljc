@@ -418,6 +418,24 @@
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
 (defmethod -schema-generator :double [schema options] (double-gen schema options))
 (defmethod -schema-generator :float [schema options] (double-gen schema options))
+#?(:clj (defmethod -schema-generator :decimal [schema options]
+          (let [{:keys [min max] :as bounds} (-min-max schema options)
+                opts (merge bounds {:NaN? false, :infinite? false})
+                safe-double? #(if % (not (Double/isInfinite (double %))) true)
+                use-double? (and (safe-double? min) (safe-double? max))]
+            (if use-double?
+              (gen-fmap bigdec (gen-double opts))
+              (let [min-int (if min (bigint min) (if max (- (bigint max) 1000000000000000000000000N) -1000000000000000000000000N))
+                    max-int (if max (bigint max) (if min (+ (bigint min) 1000000000000000000000000N)  1000000000000000000000000N))
+                    int-gen (gen/large-integer* {:min min-int, :max max-int})
+                    frac-gen (gen-double {:min 0.0, :max 0.999999999, :NaN? false, :infinite? false})]
+                (gen-fmap (fn [[i f]]
+                            (let [res (+ (bigdec i) (bigdec f))]
+                              (cond
+                                (and min (< res min)) (bigdec min)
+                                (and max (> res max)) (bigdec max)
+                                :else res)))
+                          (gen-tuple [int-gen frac-gen])))))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

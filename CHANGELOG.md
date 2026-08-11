@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* FIX: generating a double/number schema bounded at `(- Double/MAX_VALUE)` (e.g. `[:<= (- Double/MAX_VALUE)]` or `[:double {:max (- Double/MAX_VALUE)}]`) no longer throws `Couldn't satisfy such-that predicate`, and now produces validator-accepted values [#1128](https://github.com/metosin/malli/issues/1128)
+
 ## 0.20.1 (2026-03-06)
 
 * FIX: don't throw in cljs-collect! on clojurescript 1.12 [#1263](https://github.com/metosin/malli/pull/1263)

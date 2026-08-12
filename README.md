@@ -926,7 +926,7 @@ Messages can be localized:
 ;;     :age ["10, pitäisi olla > 18"]}
 ```
 
-Top-level humanized map-errors are under `:malli/error`:
+Top-level humanized map-errors are returned directly, without a wrapping map:
 
 ```clojure
 (-> [:and [:map

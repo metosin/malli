@@ -21,7 +21,7 @@ Data-driven Schemas for Clojure/Script and [babashka](#babashka).
 - Tools for [Programming with Schemas](#programming-with-schemas)
 - [Parsing](#parsing-values) and [Unparsing](#unparsing-values) values
 - [Enumeration](#enumeration-schemas), [Sequence](#sequence-schemas), [Vector](#vector-schemas), and [Set](#set-schemas) Schemas
-- [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions)
+- [Persisting schemas](#persisting-schemas), even [function schemas](#serializable-functions) and [conditionals](#conditional-schemas)
 - Immutable, Mutable, Dynamic, Lazy and Local [Schema Registries](#schema-registry)
 - [Schema Transformations](#schema-Transformation) to [JSON Schema](#json-schema), [Swagger2](#swagger2), and [descriptions in english](#description)
 - [Multi-schemas](#multi-schemas), [Recursive Schemas](#recursive-schemas) and [Default values](#default-values)
@@ -720,6 +720,37 @@ Use `:maybe` to express that an element should match some schema OR be `nil`:
 ;; => false
 ```
 
+## Conditional schemas
+
+`:if` can be used to express a simple if/when like conditional:
+
+```clojure
+(def habitable-planets [:if [:map [:planet [:= "Earth"]]]
+                        [:map [:habitable [:= true]]]
+                        [:map [:habitable [:= false]]]])
+
+(m/validate habitable-planets {:planet "Earth" :habitable true})
+;; => true
+(m/validate habitable-planets {:planet "Earth" :habitable false})
+;; => false
+(m/validate habitable-planets {:planet "Jupiter" :habitable true})
+;; => false
+(m/validate habitable-planets {:planet "Neptune" :habitable false})
+;; => true
+```
+Nesting and more complex schemas can be used as well:
+```clojure
+(def gas-giants [:if [:map [:planet [:enum "Jupiter" "Saturn"]]]
+                 [:map [:size [:= :massive]]]
+                 habitable-planets])
+
+(m/validate gas-giants {:planet "Jupiter"})
+;; => false
+(m/validate gas-giants {:planet "Jupiter" :size :massive})
+;; => true
+(m/validate gas-giants {:planet "Earth" :habitable true})
+;; => true
+```
 ## Error messages
 
 Detailed errors with `m/explain`:
@@ -3006,6 +3037,31 @@ Full override with `:json-schema` property:
   [:map {:json-schema {:type "file"}}
    [:file any?]])
 ;; =>  {:type "file"}
+```
+
+#### Conditional support
+
+[If-Then-Else conditional](https://json-schema.org/understanding-json-schema/reference/conditionals#ifthenelse) is 
+supported via `:if`
+```clojure
+(json-schema/transform
+  [:if
+   [:map [:kikka [:= 6]]]
+   [:map [:temppu [:= :kukka]]]
+   [:map [:lahjus [:= :suklaa]]]])
+;; =>  {:if {:properties {:kikka {:const 6}}, :required [:kikka]},
+;;      :then {:properties {:temppu {:const :kukka}}, :required [:temppu]}
+;;      :else {:properties {:lahjus {:const :suklaa}}, :required [:lahjus]}}
+```
+For conformance you may also produce `:type "object"` into maps if required with `{:omit-condition-type false}`. 
+`Else` branch is also optional.
+```clojure
+(json-schema/transform
+  [:if {:omit-condition-type false}
+   [:map [:juupas [:= true]]]
+   [:map [:eipas [:= false]]]])
+;; =>  {:if {:type "object", :properties {:juupas {:const true}}, :required [:juupas]}
+;;      :then {:type "object", :properties {:eipas {:const false}}, :required [:eipas]}}
 ```
 
 ### Swagger2

@@ -1140,3 +1140,17 @@
 
 (deftest empty?-generator-test
   (is (every? empty? (mg/sample empty?))))
+
+(deftest if-conditional-generator-test
+  (let [if-then-else [:if
+                      [:map [:x [:= true]]]
+                      [:map [:y int?]]
+                      [:map [:y string?]]]
+        generated (mg/sample if-then-else {:size 20})]
+    (is (every? #(m/validate if-then-else %) generated) "Expected all generated values to validate against the schema")
+    (is (some #(true? (:x %)) generated) "Expected some generated values with x=true (then-branch)")
+    (is (some #(not (true? (:x %))) generated) "Expected some generated values without x (else-branch)"))
+  (let [if-then [:if
+                 [:map [:active [:= true]]]
+                 [:map [:name string?]]]]
+    (is (every? #(m/validate if-then %) (mg/sample if-then)))))

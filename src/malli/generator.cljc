@@ -367,6 +367,18 @@
 (defn -qualified-symbol-gen [schema]
   (-qualified-ident-gen schema symbol gen/symbol qualified-symbol? gen/symbol-ns))
 
+(defn -if-conditional-gen [schema options]
+  (let [[condition then else] (m/children schema)
+        condition-s (m/schema condition options)
+        then-s      (m/schema then options)
+        merged-then (mu/merge condition-s then-s options)
+        then-gen    (generator merged-then options)
+        else-gen    (when else
+                      (gen-such-that schema (m/validator schema) (generator (m/schema else options) options)))]
+    (if else-gen
+      (gen/one-of [then-gen else-gen])
+      then-gen)))
+
 (defn- gen-elements [es]
   (if (= 1 (count es))
     (gen/return (first es))
@@ -446,6 +458,8 @@
 (defmethod -schema-generator :* [schema options] (-*-gen schema options))
 (defmethod -schema-generator :+ [schema options] (-+-gen schema options))
 (defmethod -schema-generator :repeat [schema options] (-repeat-gen schema options))
+
+(defmethod -schema-generator :if [schema options] (-if-conditional-gen schema options))
 
 ;;
 ;; Creating a generator by different means, centralized under [[-create]]

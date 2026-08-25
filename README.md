@@ -926,7 +926,7 @@ Messages can be localized:
 ;;     :age ["10, pitäisi olla > 18"]}
 ```
 
-Top-level humanized map-errors are under `:malli/error`:
+Top-level humanized map-errors are returned directly, without a wrapping map:
 
 ```clojure
 (-> [:and [:map
@@ -1538,23 +1538,56 @@ Adding optional keys too via `::mt/add-optional-keys` option:
 ;; => {:name "kikka", :description "kikka"}
 ```
 
+For nested maps, the intermediate levels need a `:default {}` or they
+will not get populated:
+
+```clojure
+(m/decode
+ [:map
+  [:ports [:map
+           [:http {:default 80} :int]
+           [:ftp :int]]]]
+ {}
+ mt/default-value-transformer)
+;; => {}
+
+(m/decode
+ [:map
+  [:ports [:map {:default {}}
+           [:http {:default 80} :int]
+           [:ftp :int]]]]
+ {}
+ mt/default-value-transformer)
+;; => {:ports {:http 80}}
+```
+
+A workaround for this is to use `:defaults {:map (constantly {})}`:
+
+```clojure
+(m/decode
+ [:map
+  [:ports [:map
+           [:http {:default 80} :int]
+           [:ftp :int]]]]
+ {}
+ (mt/default-value-transformer {:defaults {:map (constantly {})}}))
+;; => {:ports {:http 80}}
+```
+
 Single sweep of defaults & string encoding:
 
 ```clojure
 (m/encode
-  [:map {:default {}}
+  [:map
    [:a [:int {:default 1}]]
    [:b [:vector {:default [1 2 3]} :int]]
-   [:c [:map {:default {}}
-        [:x [:int {:default 42}]]
-        [:y :int]]]
-   [:d [:map
+   [:c [:map
         [:x [:int {:default 42}]]
         [:y :int]]]
    [:e :int]]
   nil
   (mt/transformer
-    mt/default-value-transformer
+    (mt/default-value-transformer {:defaults {:map (constantly {})}})
     mt/string-transformer))
 ;; => {:a "1"
 ;;     :b ["1" "2" "3"]

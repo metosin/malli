@@ -25,7 +25,7 @@
           m/AST
           (-to-ast [this _] (m/-to-value-ast this))
           m/Schema
-          (-validator [_] (m/-safe-pred (fn [val] (nil? (f val)))))
+          (-validator [_] (m/-safe-pred (fn [val] (empty? (f val)))))
           (-explainer [this path]
             (fn explain [x in0 acc]
               (try

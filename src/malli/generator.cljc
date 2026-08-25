@@ -94,6 +94,23 @@
 (def ^:private double-default {:infinite? false, :NaN? false})
 (defn- gen-double [opts] (gen/double* (-> (into double-default opts) (update :min #(some-> % double)) (update :max #(some-> % double)))))
 
+(defn- -next-up
+  "Smallest double greater than the finite double x, or ##Inf if there is none."
+  [x]
+  #?(:clj  (Math/nextUp (double x))
+     ;; no Math/nextUp in js: step one ulp up (overshooting a value or two is harmless here)
+     :cljs (+ x (max js/Number.MIN_VALUE (* (js/Math.abs x) 2.220446049250313e-16)))))
+
+(defn- gen-double-above
+  "Generator of doubles strictly greater than x."
+  [x options]
+  (let [x (double x)]
+    (cond
+      (or (not= x x) (= x ##Inf)) (-never-gen options) ;; nothing is greater than ##NaN or ##Inf
+      (= x ##-Inf) (gen-double {})
+      :else (let [min (-next-up x)]
+              (if (= min ##Inf) (gen/return ##Inf) (gen-double {:min min}))))))
+
 (defn- gen-vector [{:keys [min max]} g]
   (cond
     (-unreachable-gen? g) (if (zero? (or min 0)) (gen/return []) g)
@@ -385,9 +402,9 @@
 (defmethod -schema-generator ::default [schema options] (ga/gen-for-pred (m/validator schema options)))
 
 (defmethod -schema-generator 'empty? [_ _] (ga/gen-for-pred empty?))
-(defmethod -schema-generator :> [schema options] (gen-double {:min (inc (-child schema options))}))
+(defmethod -schema-generator :> [schema options] (gen-double-above (-child schema options) options))
 (defmethod -schema-generator :>= [schema options] (gen-double {:min (-child schema options)}))
-(defmethod -schema-generator :< [schema options] (gen-double {:max (dec (-child schema options))}))
+(defmethod -schema-generator :< [schema options] (gen-fmap - (gen-double-above (- (double (-child schema options))) options)))
 (defmethod -schema-generator :<= [schema options] (gen-double {:max (-child schema options)}))
 (defmethod -schema-generator := [schema options] (gen/return (-child schema options)))
 (defmethod -schema-generator :not= [schema options] (gen-such-that schema #(not= % (-child schema options)) gen/any-printable))

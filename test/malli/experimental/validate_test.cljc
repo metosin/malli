@@ -75,6 +75,22 @@
                  :value 3
                  :type :not-even}]
                (:errors (m/explain schema {:value {:a 3 :b 3}})))))))
+  (testing "seq treatment"
+    (let [returned-seq (m/schema [:validate (fn [x]
+                                              (for [[idx num] (map-indexed vector x)
+                                                    :when (even? num)]
+                                                {:in [idx]
+                                                 :value num}))]
+                                 {:registry (mev/schemas)})]
+      (is (true? (m/validate returned-seq [1 3 5])))
+      (is (nil? (m/explain returned-seq [1 3 5])))
+      (is (false? (m/validate returned-seq [1 3 4])))
+      (is (= [{:path [],
+               :in [2],
+               :schema returned-seq,
+               :value 4,
+               :type nil}]
+             (:errors (m/explain returned-seq [1 3 4]))))))
   (testing "humanize"
     (let [two-sub-errors (m/schema [:validate (fn [x]
                                                 [{:in [:a]

@@ -397,6 +397,31 @@
                   :f 5.0})
                (me/humanize))))))
 
+#?(:clj
+   (deftest decimal-test
+     (is (= {:a ["should be a decimal"]
+             :b ["should be at least 1"]
+             :c ["should be at most 4"]
+             :d [["should be at least 1"]
+                 ["should be at most 4"]]
+             :e ["should be a decimal"]
+             :f ["should be 4"]}
+            (-> [:map
+                 [:a :decimal]
+                 [:b [:decimal {:min 1}]]
+                 [:c [:decimal {:max 4}]]
+                 [:d [:vector [:decimal {:min 1, :max 4}]]]
+                 [:e [:decimal {:min 1, :max 4}]]
+                 [:f [:decimal {:min 4, :max 4}]]]
+                (m/explain
+                  {:a "123"
+                   :b 0.0M
+                   :c 5.0M
+                   :d [0.0M 5.0M]
+                   :e "123"
+                   :f 5.0M})
+                (me/humanize))))))
+
 (deftest any-test
   (testing "success"
     (is (= nil

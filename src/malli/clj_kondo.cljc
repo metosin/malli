@@ -116,6 +116,7 @@
 (defmethod accept :string [_ _ _ _] :string)
 (defmethod accept :int [_ _ _ _] :int)
 (defmethod accept :double [_ _ _ _] :double)
+#?(:clj (defmethod accept :decimal [_ _ _ _] :double))
 (defmethod accept :boolean [_ _ _ _] :boolean)
 (defmethod accept :keyword [_ _ _ _] :keyword)
 (defmethod accept :qualified-keyword [_ _ _ _] :keyword)

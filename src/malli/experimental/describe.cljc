@@ -139,6 +139,7 @@
 
 (defmethod accept 'float? [_ schema _ _] (str "float" (-titled schema) (-min-max-suffix schema)))
 (defmethod accept :float [_ schema _ _] (str "float" (-titled schema) (-min-max-suffix schema)))
+#?(:clj (defmethod accept :decimal [_ schema _ _] (str "decimal" (-titled schema) (-min-max-suffix schema))))
 
 (defmethod accept 'pos? [_ schema _ _] (str "number greater than 0" (-titled schema) (-min-max-suffix schema)))
 (defmethod accept :pos [_ schema _ _] (str "number greater than 0" (-titled schema) (-min-max-suffix schema)))

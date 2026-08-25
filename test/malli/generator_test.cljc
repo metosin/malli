@@ -356,10 +356,24 @@
        (is (every? #(<= 10.0M % 20.0M) (mg/sample [:decimal {:min 0.0M, :max 100.0M, :gen/min 10.0M, :gen/max 20.0M}] {:size 100}))))
      (testing "mixed type bounds"
        (is (every? #(<= 0.0M % 1.0M) (mg/sample [:decimal {:min 0, :max 1.0}] {:size 100}))))
-     (testing "huge bounds beyond double range"
-       (is (every? #(<= 1e400M % 2e400M) (mg/sample [:decimal {:min 1e400M, :max 2e400M}] {:size 100})))
-       (is (every? #(<= 1e400M %) (mg/sample [:decimal {:min 1e400M}] {:size 100})))
-       (is (every? #(>= -1e400M %) (mg/sample [:decimal {:max -1e400M}] {:size 100}))))))
+     (testing ":gen/infinite? and :gen/NaN? are ignored, as in spec's generator"
+       (is (every? decimal? (mg/sample [:decimal {:gen/infinite? true}] {:size 100})))
+       (is (every? decimal? (mg/sample [:decimal {:gen/NaN? true}] {:size 100}))))
+     (testing "shrinks to the lower bound"
+       (is (= 3M (shrink [:decimal {:min 3}]))))
+     (testing "throws on bounds outside double range"
+       (let [huge (inc (bigdec Double/MAX_VALUE))]
+         (is (thrown-with-msg? Exception #":malli.generator/decimal-bound-not-representable"
+                               (mg/sample [:decimal {:min huge}])))
+         (is (thrown-with-msg? Exception #":malli.generator/decimal-bound-not-representable"
+                               (mg/sample [:decimal {:max (- huge)}]))))
+       (is (thrown-with-msg? Exception #":malli.generator/decimal-bound-not-representable"
+                             (mg/sample [:decimal {:min 1e400M, :max 2e400M}]))))
+     (testing "throws on bounds with more precision than double"
+       (is (thrown-with-msg? Exception #":malli.generator/decimal-bound-not-representable"
+                             (mg/sample [:decimal {:min 1.00000000000000000001M, :max 2M}])))
+       (is (thrown-with-msg? Exception #":malli.generator/decimal-bound-not-representable"
+                             (mg/sample [:decimal {:min 1.0000000000000001M, :max 1.0000000000000002M}]))))))
 
 (deftest protocol-test
   (let [values #{1 2 3 5 8 13}

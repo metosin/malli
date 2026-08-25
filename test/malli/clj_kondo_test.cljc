@@ -169,3 +169,8 @@
    (deftest fix-1276
      (testing "bytes? should be mapped to :array"
        (is (= :array (clj-kondo/transform bytes?))))))
+
+#?(:clj
+   (deftest decimal-test
+     (testing ":decimal should be mapped like decimal?"
+       (is (= (clj-kondo/transform decimal?) (clj-kondo/transform :decimal))))))

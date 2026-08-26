@@ -9,6 +9,7 @@ on:
 
 jobs:
   build-clj:
+    timeout-minutes: 5
     strategy:
       matrix:
         # Supported Java versions: LTS releases and latest
@@ -44,6 +45,7 @@ jobs:
 
   build-cljs:
     name: ClojureScript
+    timeout-minutes: 5
     strategy:
       matrix:
         mode: [none, advanced, cherry-none, cherry-advanced]
@@ -80,6 +82,7 @@ jobs:
   build-bb:
     name: Babashka
 
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -111,6 +114,7 @@ jobs:
     # the examples are still valid.
     name: Doc Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Setup Java 25

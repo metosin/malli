@@ -955,3 +955,29 @@
   (is (= ["invalid type"] (me/humanize (m/explain [:map] []))))
   (is (= [["invalid type"]] (me/humanize (m/explain [:vector [:map]] [[]]))))
   (is (= [["invalid type"]] (me/humanize (m/explain [:vector [:fn {:error/path [-1]} (comp int? :foo)]] [[]])))))
+
+(deftest if-conditional-test
+  (let [humanizer (fn [v]
+                    (-> [:map
+                         [:if-then-else {:optional true}
+                          [:if
+                           [:map [:condition [:= true]]]
+                           [:map [:result int?]]
+                           [:map [:result string?]]]]
+                         [:if-then {:optional true}
+                          [:if
+                           [:map [:condition [:= true]]]
+                           [:map [:result keyword?]]]]]
+                        (m/explain v)
+                        (me/humanize)))]
+    ; successes
+    (is (nil? (humanizer {:if-then-else {:condition true :result 123}})))
+    (is (nil? (humanizer {:if-then-else {:condition false :result "hello"}})))
+    (is (nil? (humanizer {:if-then {:condition true :result :hello}})))
+    (is (nil? (humanizer {:if-then {:condition false}})))
+    ; failures
+    (is (= {:if-then-else {:result ["should be an int"]}} (humanizer {:if-then-else {:condition true :result true}})))
+    (is (= {:if-then-else {:result ["should be a string"]}} (humanizer {:if-then-else {:condition false :result true}})))
+    (is (= {:if-then {:result ["should be a keyword"]}} (humanizer {:if-then {:condition true :result true}})))
+    ; Listed for brevity. This is not actually a failure, as missing else branch evaluates as valid/true.
+    (is (= nil (humanizer {:if-then {:condition false}})))))

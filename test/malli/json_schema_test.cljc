@@ -394,3 +394,97 @@
   (is (= {:properties {:s {:$ref "#/definitions/malli.json-schema-test.foo"}} :required [:s] :type "object"
           :definitions {"malli.json-schema-test.foo" {:type "string"}} }
          (transform-and-check [:map [:s [:ref ::foo]]] {:registry (merge (m/default-schemas) {::foo :string})}))))
+
+(deftest if-conditional-test
+  (testing ":if schema with then and else branches produces if/then/else keys"
+    (let [if-then-else-schema [:if
+                               [:map ["type" [:= "credit"]]]
+                               [:map ["card-number" :string]]
+                               [:map ["iban" :string]]]]
+      (is (= {:if   {:properties {"type" {:const "credit"}}
+                     :required   ["type"]}
+              :then {:properties {"card-number" {:type "string"}}
+                     :required
+                     ["card-number"]}
+              :else {:properties {"iban" {:type "string"}}
+                     :required   ["iban"]}}
+             (json-schema/transform if-then-else-schema)))))
+  (testing ":if schema without else branch produces if/then without else key"
+    (let [if-then-schema [:if
+                          [:map ["region" [:= "EU"]]]
+                          [:map ["iban" :string]]]]
+      (is (= {:if   {:properties {"region" {:const "EU"}}
+                     :required   ["region"]}
+              :then {:properties {"iban" {:type "string"}}
+                     :required   ["iban"]}}
+             (json-schema/transform if-then-schema)))))
+  (testing "multiple conditions are wrapped in allOf"
+    (let [multiple-conditions-schema [:and
+                                      [:if
+                                       [:map ["type" [:= "credit"]]]
+                                       [:map ["card-number" :string]]
+                                       [:map ["cash" :boolean]]]
+                                      [:if
+                                       [:map ["region" [:= "EU"]]]
+                                       [:map ["iban" :string]]
+                                       [:map ["swift" :string]]]]]
+      (is (= {:allOf
+              [{:if   {:properties {"type" {:const "credit"}}
+                       :required   ["type"]}
+                :then {:properties {"card-number" {:type "string"}} :required
+                       ["card-number"]}
+                :else {:properties {"cash" {:type "boolean"}}
+                       :required   ["cash"]}}
+               {:if   {:properties {"region" {:const "EU"}}
+                       :required   ["region"]}
+                :then {:properties {"iban" {:type "string"}}
+                       :required   ["iban"]}
+                :else {:properties {"swift" {:type "string"}}
+                       :required   ["swift"]}}]}
+             (json-schema/transform multiple-conditions-schema)))))
+  (testing "nested :if in then branch is recursively transformed"
+    (let [nested-schema [:if
+                         [:map ["type" [:= "credit"]]]
+                         [:if
+                          [:map ["region" [:= "EU"]]]
+                          [:map ["iban" :string]]
+                          [:map ["swift" :string]]]
+                         [:map ["cash" :boolean]]]]
+      (is (= {:if   {:properties {"type" {:const "credit"}}
+                     :required   ["type"]}
+              :then {:if   {:properties {"region" {:const "EU"}}
+                            :required   ["region"]}
+                     :then {:properties {"iban" {:type "string"}}
+                            :required   ["iban"]}
+                     :else {:properties {"swift" {:type "string"}}
+                            :required   ["swift"]}}
+              :else {:properties {"cash" {:type "boolean"}}
+                     :required   ["cash"]}}
+             (json-schema/transform nested-schema)))))
+  (testing "allOf produced by :and recurses correctly into the if-then-else schema and does not overlap or conflict"
+    (let [other-allof-definitions-schema [:and
+                                          [:map ["shape" string?]]
+                                          [:if
+                                           [:map ["shape" [:= "ball"]]]
+                                           [:map ["radius" int?]]
+                                           [:map ["side" double?]]]]]
+      (is (= {:allOf [{:properties {"shape" {:type "string"}}
+                       :required   ["shape"]
+                       :type       "object"}
+                      {:if   {:properties {"shape" {:const "ball"}}
+                              :required   ["shape"]}
+                       :else {:properties {"side" {:type "number"}}
+                              :required   ["side"]}
+                       :then {:properties {"radius" {:type "integer"}}
+                              :required   ["radius"]}}]}
+             (json-schema/transform other-allof-definitions-schema)))))
+  (testing "can override type omission"
+    (let [type-emitting-schema [:if {:omit-condition-type false}
+                                [:map ["planet" [:= "Earth"]]]
+                                [:map ["habitable" [:= true]]
+                                 ["population" integer?]]
+                                [:map ["habitable" [:= false]]]]
+          result (json-schema/transform type-emitting-schema)]
+      (is (= "object" (get-in result [:if :type])))
+      (is (= "object" (get-in result [:then :type])))
+      (is (= "object" (get-in result [:else :type]))))))

@@ -1,6 +1,10 @@
-{:deps {:aliases [:shadow :sci :cherry]}
+{:deps {:aliases [:shadow :sci :cherry :test]}
  :dev-http {8000 "public"}
- :builds {:app {:target :browser
+ :builds {:test-node {:target :node-test
+                      :output-to "target/test-node.js"
+                      :ns-regexp "-test$"
+                      :autorun true}
+          :app {:target :browser
                 :closure-defines {malli.registry/type "default"}
                 :modules {:cljs {:entries [cljs.core]}
                           :malli {:entries [malli.core]

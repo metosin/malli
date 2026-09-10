@@ -26,8 +26,9 @@
               [:map [:price ::price]]]]
     [:string-type-enum [:maybe [:enum "b" "c"]]]
     [:keyword-type-enum [:enum :a :b]]
-    [:any-type-enum [:enum :a "b" "c"]]
-    [:z [:vector [:map-of int? int?]]]]
+    [:heterogeneous-type-enum [:enum :a "b" "c"]]
+    [:z [:vector [:map-of int? int?]]]
+    [:string-or-keyword [:or :string :keyword]]]
    {:registry (merge (m/default-schemas) (mu/schemas))}))
 
 (defn kikka
@@ -96,9 +97,10 @@
                 :nested {:op :keys, :req {:id :string, :price :double}},
                 :string-type-enum :nilable/string
                 :keyword-type-enum :keyword
-                :any-type-enum :any
+                :heterogeneous-type-enum #{:string :keyword}
+                :string-or-keyword #{:string :keyword}
                 :z :vector
-                :tuple-of-ints :nilable/seqable}}
+                :tuple-of-ints :nilable/vector}}
          (clj-kondo/transform Schema)))
 
   (let [expected-out

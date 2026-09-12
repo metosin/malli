@@ -643,6 +643,16 @@
             (m/explain [:ref #'VarSchema] {:foo "2"})
             {:resolve me/-resolve-root-error})))))
 
+  (testing "refs #1308"
+    (let [schema [:or
+                  [:map {:closed true} [:a :string]]
+                  [:map {:closed true} [:b :string]]]]
+      (is (= {:a ["should be a string" "disallowed key"]
+              :b ["should be a string"]}
+             (-> schema
+                 (m/explain {:a 123})
+                 (me/humanize {:resolve me/-resolve-root-error}))))))
+
 (deftest limits
   (is (= {:a [["should be an int"]]
           :b ["should have at least 2 elements"]

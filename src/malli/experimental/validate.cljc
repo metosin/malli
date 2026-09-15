@@ -30,7 +30,7 @@
             (fn explain [x in0 acc]
               (try
                 (if-let [errors (seq (f x))]
-                  (into acc (map (fn [{:keys [in type value]}] (miu/-error path (into in0 in) this value type))) errors)
+                  (into acc (map (fn [{:keys [in schema value type]}] (miu/-error path (into in0 in) (or schema this) value type))) errors)
                   acc)
                 (catch #?(:clj Exception, :cljs js/Error) e
                   (conj acc (miu/-error path in0 this x (:type (ex-data e))))))))

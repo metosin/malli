@@ -120,4 +120,21 @@
       (is (= {:value {:a ["a can not be!"] :b ["b can not be \"x\""]}}
              (me/humanize (m/explain schema value)
                           {:errors {:error-for-a {:error/message {:en "a can not be!"}}
-                                    :error-for-b {:error/fn {:en (fn [{:keys [value]} _] (str "b can not be " (pr-str value)))}}}}))))))
+                                    :error-for-b {:error/fn {:en (fn [{:keys [value]} _] (str "b can not be " (pr-str value)))}}}})))))
+  (testing "m/explain output"
+    (let [int-schema (m/schema :int)
+          reuse-int-schema (m/schema [:validate (fn [x]
+                                                  (:errors (m/explain int-schema x)))]
+                                     {:registry (merge (m/default-schemas)
+                                                       (mev/schemas))})
+          schema (m/schema [:map [:value reuse-int-schema]])
+          value {:value :abc}]
+      (is (not (m/validate schema value)))
+      (is (= [{:path [:value]
+               :in [:value]
+               :schema int-schema
+               :value :abc
+               :type nil}]
+             (:errors (m/explain schema value))))
+      (is (= {:value ["should be an integer"]}
+             (me/humanize (m/explain schema value)))))))

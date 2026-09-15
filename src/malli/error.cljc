@@ -315,8 +315,9 @@
 (defn ^:no-doc -resolve-root-error [{:keys [schema]} {:keys [path in] :as error} options]
   (let [options (assoc options :unknown false)]
     (loop [path path, l nil, mp path, p (m/properties (:schema error)), m (error-message error options)]
-      (let [[path' m' p'] (or (let [schema (mu/get-in schema path)]
-                                (when-let [m' (error-message {:schema schema} options)] [path m' (m/properties schema)]))
+      (let [[path' m' p'] (or (when-let [schema (mu/get-in schema path)]
+                                (when-let [m' (error-message {:schema schema} options)]
+                                  [path m' (m/properties schema)]))
                               (let [res (and l (mu/find (mu/get-in schema path) l))]
                                 (when (vector? res)
                                   (let [[_ props schema] res

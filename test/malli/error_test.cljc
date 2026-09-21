@@ -643,11 +643,11 @@
             (m/explain [:ref #'VarSchema] {:foo "2"})
             {:resolve me/-resolve-root-error})))))
 
-  (testing "refs #1308"
+  (testing ":or #1308"
     (let [schema [:or
-                  [:map {:closed true} [:a :string]]
+                  [:map {:closed true} [:a {:error/message "entry-failure"} :string]]
                   [:map {:closed true} [:b :string]]]]
-      (is (= {:a ["should be a string" "disallowed key"]
+      (is (= {:a ["entry-failure" "disallowed key"]
               :b ["should be a string"]}
              (-> schema
                  (m/explain {:a 123})

@@ -27,6 +27,11 @@ Malli is in well matured [alpha](README.md#alpha).
   * Documentation improvements [#1266](https://github.com/metosin/malli/pull/1266) [#1267](https://github.com/metosin/malli/pull/1267) [#1305](https://github.com/metosin/malli/pull/1305) [#1306](https://github.com/metosin/malli/pull/1306)
   * Improve clj-kondo types for `bytes?` [#1277](https://github.com/metosin/malli/pull/1277) and `:or`, `:orn`, `:enum`, `:=` [#1315](https://github.com/metosin/malli/pull/1315)
   * Allowing `:validation` errors to contain `:schema` [#1311](https://github.com/metosin/malli/issues/1311)
+* Updated dependencies:
+```
+Upgraded borkdude/edamame '1.5.37' to '1.6.44' in deps.edn.
+```
+
 
 ## 0.20.1 (2026-03-06)
 

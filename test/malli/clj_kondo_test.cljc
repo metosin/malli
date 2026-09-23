@@ -28,7 +28,12 @@
     [:keyword-type-enum [:enum :a :b]]
     [:heterogeneous-type-enum [:enum :a "b" "c"]]
     [:z [:vector [:map-of int? int?]]]
-    [:string-or-keyword [:or :string :keyword]]]
+    [:string-or-keyword [:or :string :keyword]]
+    [:multi-map [:multi {:dispatch :y}
+                 [1 [:map [:y [:= 1]]]]
+                 [2 [:map [:y [:= 2]]]]]]
+    [:specific-map [:and :map [:fn #(= 1 (count %))]]]
+    [:specific-map2 [:and [:fn #(= 1 (count %))] :map]]]
    {:registry (merge (m/default-schemas) (mu/schemas))}))
 
 (defn kikka
@@ -99,6 +104,9 @@
                 :keyword-type-enum :keyword
                 :heterogeneous-type-enum #{:string :keyword}
                 :string-or-keyword #{:string :keyword}
+                :specific-map {:op :keys}
+                :specific-map2 {:op :keys}
+                :multi-map {:op :keys :req {:y :int}}
                 :z :vector
                 :tuple-of-ints :nilable/vector}}
          (clj-kondo/transform Schema)))

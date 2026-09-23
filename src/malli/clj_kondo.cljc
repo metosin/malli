@@ -91,8 +91,13 @@
 (defmethod accept := [_ _ children _] (value->type (first children)))
 (defmethod accept :not= [_ _ _ _] :any) ;;??
 
-(defmethod accept :and [_ _ children _] :any) ;;??
-(defmethod accept :andn [_ _ children _] :any) ;;??
+(defn intersection-type
+  [type-coll]
+  ;; with some type hierarchy, we could use the most specific type instead
+  (or (some #(when (not= :any %) %) type-coll) :any))
+
+(defmethod accept :and [_ _ children _] (intersection-type children))
+(defmethod accept :andn [_ _ children _] (intersection-type (map last children)))
 (defmethod accept :or [_ _ children _] (type-set children))
 (defmethod accept :orn [_ _ children _] (type-set (map last children))) ;;??
 (defmethod accept :not [_ _ _ _] :any) ;;??
@@ -116,7 +121,7 @@
     (and (keyword? child) (not= :any child)) (keyword "nilable" (name child))
     :else child))
 (defmethod accept :tuple [_ _ _ _] :vector)
-(defmethod accept :multi [_ _ children _] :any) ;;??
+(defmethod accept :multi [_ _ children _] (type-set (map last children)))
 (defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??

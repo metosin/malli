@@ -6,6 +6,31 @@
 
 (declare transform)
 
+(defn value->type
+  [lit]
+  (cond
+    (string? lit) :string
+    (keyword? lit) :keyword
+    (integer? lit) :int
+    (char? lit) :char
+    (number? lit) :number
+    (symbol? lit) :symbol
+    :else :any))
+
+(defn type-set
+  [values]
+  ;; clj-kondo only support sets of simple types (no "special operator")
+  (if (= 1 (count (set values)))
+    (first values)
+    (let [res (set (mapcat (fn [v] (cond (keyword? v) [v]
+                                         (= :keys (:op v)) [:map]
+                                         (set? v) v
+                                         :else [:any]))
+                           values))]
+      (if (contains? res :any)
+        :any
+        res))))
+
 (defmulti accept (fn [name _schema _children _options] name) :default ::default)
 
 (defmethod accept ::default [_ schema _ _] (if (m/-function-schema? schema) :fn :any))
@@ -63,13 +88,13 @@
 (defmethod accept :>= [_ _ _ _] :number) ;;??
 (defmethod accept :< [_ _ _ _] :number) ;;??
 (defmethod accept :<= [_ _ _ _] :number) ;;??
-(defmethod accept := [_ _ _ _] :any) ;;??
+(defmethod accept := [_ _ children _] (value->type (first children)))
 (defmethod accept :not= [_ _ _ _] :any) ;;??
 
-(defmethod accept :and [_ _ _ _] :any) ;;??
-(defmethod accept :andn [_ _ _ _] :any) ;;??
-(defmethod accept :or [_ _ _ _] :any) ;;??
-(defmethod accept :orn [_ _ _ _] :any) ;;??
+(defmethod accept :and [_ _ children _] :any) ;;??
+(defmethod accept :andn [_ _ children _] :any) ;;??
+(defmethod accept :or [_ _ children _] (type-set children))
+(defmethod accept :orn [_ _ children _] (type-set (map last children))) ;;??
 (defmethod accept :not [_ _ _ _] :any) ;;??
 
 (defmethod accept :map [_ _ children _]
@@ -83,26 +108,15 @@
 (defmethod accept :sequential [_ _ _ _] :sequential)
 (defmethod accept :set [_ _ _ _] :set)
 (defmethod accept :enum [_ _ children _]
-  (let [types (->> children (map type) (set))]
-    (if (< 1 (count types))
-      :any
-      (let [child (first children)]
-        (cond
-          (string? child) :string
-          (keyword? child) :keyword
-          (integer? child) :int
-          (char? child) :char
-          (number? child) :number
-          (symbol? child) :symbol
-          :else :any)))))
+  (->> children (map value->type) (type-set)))
 
 (defmethod accept :maybe [_ _ [child] _]
   (cond
     (= :keys (:op child)) (assoc child :nilable true)
     (and (keyword? child) (not= :any child)) (keyword "nilable" (name child))
     :else child))
-(defmethod accept :tuple [_ _ _ _] :seqable)
-(defmethod accept :multi [_ _ _ _] :any) ;;??
+(defmethod accept :tuple [_ _ _ _] :vector)
+(defmethod accept :multi [_ _ children _] :any) ;;??
 (defmethod accept :re [_ _ _ _] :string)
 (defmethod accept :fn [_ _ _ _] :any)
 (defmethod accept :ref [_ _ _ _] :any) ;;??

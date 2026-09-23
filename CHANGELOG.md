@@ -14,6 +14,20 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Fixes:
+  * Fix for nbb compatibility [#1259](https://github.com/metosin/malli/pull/1259)
+  * Attempt to address startup time regression [#1269](https://github.com/metosin/malli/issues/1269)
+  * Fixes for `malli.error/humanize` erroring on some schemas [#1271](https://github.com/metosin/malli/issues/1271) [#1308](https://github.com/metosin/malli/issues/1308)
+  * Fixes for instrumentation [#1280](https://github.com/metosin/malli/pull/1280) [#1281](https://github.com/metosin/malli/pull/1281)
+  * Fix handling of empty sequence of errors in `:validate` [#1289](https://github.com/metosin/malli/pull/1289)
+  * Fix `:>` / `:<` generators producing values that violate the schema [#1301](https://github.com/metosin/malli/pull/1301)
+* Improvements
+  * Documentation improvements [#1266](https://github.com/metosin/malli/pull/1266) [#1267](https://github.com/metosin/malli/pull/1267) [#1305](https://github.com/metosin/malli/pull/1305) [#1306](https://github.com/metosin/malli/pull/1306)
+  * Improve clj-kondo types for `bytes?` [#1277](https://github.com/metosin/malli/pull/1277) and `:or`, `:orn`, `:enum`, `:=` [#1315](https://github.com/metosin/malli/pull/1315)
+  * Allowing `:validation` errors to contain `:schema` [#1311](https://github.com/metosin/malli/issues/1311)
+
 ## 0.20.1 (2026-03-06)
 
 * FIX: don't throw in cljs-collect! on clojurescript 1.12 [#1263](https://github.com/metosin/malli/pull/1263)

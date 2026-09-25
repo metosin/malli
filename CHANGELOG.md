@@ -14,7 +14,7 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.20.2 (2026-09-25)
 
 * Fixes:
   * Fix for nbb compatibility [#1259](https://github.com/metosin/malli/pull/1259)
@@ -31,7 +31,6 @@ Malli is in well matured [alpha](README.md#alpha).
 ```
 Upgraded borkdude/edamame '1.5.37' to '1.6.44' in deps.edn.
 ```
-
 
 ## 0.20.1 (2026-03-06)
 

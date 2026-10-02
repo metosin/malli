@@ -23,7 +23,7 @@
   (if (= 1 (count (set values)))
     (first values)
     (let [res (set (mapcat (fn [v] (cond (keyword? v) [v]
-                                         (= :keys (:op v)) [:map]
+                                         (= :keys (:op v)) (if (:nilable v) [:map :nil] [:map])
                                          (set? v) v
                                          :else [:any]))
                            values))]

@@ -31,7 +31,8 @@
     [:z [:vector [:map-of int? int?]]]
     [:string-or-keyword [:or :string :keyword]]
     [:maybe-string-or-keyword [:maybe [:or :string :keyword]]]
-    [:maybe-map-or-string [:or [:maybe [:map [:x :int]]] :string]]]
+    [:maybe-map-or-string [:or [:maybe [:map [:x :int]]] :string]]
+    [:maybe-map-orn-string [:orn [:m [:maybe [:map [:x :int]]]] [:s :string]]]]
    {:registry (merge (m/default-schemas) (mu/schemas))}))
 
 (defn kikka
@@ -105,6 +106,7 @@
                 :string-or-keyword #{:string :keyword}
                 :maybe-string-or-keyword #{:nil :string :keyword}
                 :maybe-map-or-string #{:nil :map :string}
+                :maybe-map-orn-string #{:nil :map :string}
                 :z :vector
                 :tuple-of-ints :nilable/vector}}
          (clj-kondo/transform Schema)))

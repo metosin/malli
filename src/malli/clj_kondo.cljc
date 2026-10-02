@@ -114,6 +114,7 @@
   (cond
     (= :keys (:op child)) (assoc child :nilable true)
     (and (keyword? child) (not= :any child)) (keyword "nilable" (name child))
+    (set? child) (conj child :nil)
     :else child))
 (defmethod accept :tuple [_ _ _ _] :vector)
 (defmethod accept :multi [_ _ children _] :any) ;;??

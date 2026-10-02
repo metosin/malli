@@ -27,8 +27,10 @@
     [:string-type-enum [:maybe [:enum "b" "c"]]]
     [:keyword-type-enum [:enum :a :b]]
     [:heterogeneous-type-enum [:enum :a "b" "c"]]
+    [:maybe-heterogeneous-type-enum [:maybe [:enum :a "b" "c"]]]
     [:z [:vector [:map-of int? int?]]]
-    [:string-or-keyword [:or :string :keyword]]]
+    [:string-or-keyword [:or :string :keyword]]
+    [:maybe-string-or-keyword [:maybe [:or :string :keyword]]]]
    {:registry (merge (m/default-schemas) (mu/schemas))}))
 
 (defn kikka
@@ -98,7 +100,9 @@
                 :string-type-enum :nilable/string
                 :keyword-type-enum :keyword
                 :heterogeneous-type-enum #{:string :keyword}
+                :maybe-heterogeneous-type-enum #{:nil :string :keyword}
                 :string-or-keyword #{:string :keyword}
+                :maybe-string-or-keyword #{:nil :string :keyword}
                 :z :vector
                 :tuple-of-ints :nilable/vector}}
          (clj-kondo/transform Schema)))

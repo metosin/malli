@@ -1,4 +1,7 @@
 (ns malli.registry
+  "Conventions:
+   - ?registry: may be nil, Registry, or a map.
+   - ?registries: a collection of ?registry"
   (:refer-clojure :exclude [type])
   #?(:clj (:import (java.util HashMap Map))))
 
@@ -14,20 +17,26 @@
 
 (defn registry? [x] (#?(:clj instance?, :cljs implements?) malli.registry.Registry x))
 
-(defn fast-registry [m]
+(defn fast-registry
+  "Create a Registry from a map."
+  [m]
   (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
     (reify
       Registry
       (-schema [_ type] (.get fm type))
       (-schemas [_] m))))
 
-(defn simple-registry [m]
+(defn simple-registry
+  "Create a Registry from a map."
+  [m]
   (reify
     Registry
     (-schema [_ type] (m type))
     (-schemas [_] m)))
 
-(defn registry [?registry]
+(defn registry
+  "Converts input to a Registry or nil"
+  [?registry]
   (cond (nil? ?registry) nil
         (registry? ?registry) ?registry
         (map? ?registry) (simple-registry ?registry)
@@ -39,7 +48,9 @@
 
 (def ^:private registry* (atom (simple-registry {})))
 
-(defn set-default-registry! [?registry]
+(defn set-default-registry!
+  "Set the default registry"
+  [?registry]
   (if-not #?(:cljs (identical? mode "strict")
              :default (= mode "strict"))
     (reset! registry* (registry ?registry))
@@ -51,20 +62,27 @@
     (-schema [_ type] (-schema @registry* type))
     (-schemas [_] (-schemas @registry*))))
 
-(defn composite-registry [& ?registries]
+(defn composite-registry
+  "Return a Registry backed by the ?registries. Registries further left take precedence."
+  [& ?registries]
   (let [registries (mapv registry ?registries)]
     (reify
       Registry
       (-schema [_ type] (some #(-schema % type) registries))
       (-schemas [_] (reduce merge (map -schemas (reverse registries)))))))
 
-(defn mutable-registry [db]
+(defn mutable-registry
+  "Takes a deref'able db containing a ?registry, returning
+  a Registry that forwards to db's ?registry."
+  [db]
   (reify
     Registry
     (-schema [_ type] (-schema (registry @db) type))
     (-schemas [_] (-schemas (registry @db)))))
 
-(defn var-registry []
+(defn var-registry
+  "Adds support for Clojure vars."
+  []
   (reify
     Registry
     (-schema [_ type] (if (var? type) @type))

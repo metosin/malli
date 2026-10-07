@@ -16,7 +16,11 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
-* Clojure 1.13 compatibility
+* Fixes:
+  * Clojure 1.13 compatibility
+* Improvements:
+  * clj-kondo types for `:and` and `:multi` [#1317](https://github.com/metosin/malli/pull/1317)
+    and `:maybe` [#1321](https://github.com/metosin/malli/pull/1321)
 
 ## 0.20.2 (2026-09-25)
 

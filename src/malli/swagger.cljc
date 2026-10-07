@@ -199,7 +199,7 @@
                                         (->> responses vals (map (comp :definitions :schema)))
                                         (->> parameters (map (comp :definitions :schema)))))]
                 (-> acc (dissoc k) (merge expanded)
-                    (merge (when-not (empty? definitions) [:definitions definitions]))
+                    (merge (when-not (empty? definitions) {:definitions definitions}))
                     dissoc-non-root-definitions))
               acc))
           x x)

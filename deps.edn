@@ -27,7 +27,7 @@
                                                         :sha "efbeb200b9594e265907c1d66ad4ffd9cd8c91cf"}}}
            :clojure-11 {:extra-deps {org.clojure/clojure ^:antq/exclude {:mvn/version "1.11.3"}}}
            :clojure-12 {}
-           :clojure-13 {:extra-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha7"}}}
+           :clojure-13 {:extra-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha8"}}}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.15.58"}}}
            :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/tag "v0.6.38" :git/sha "4b4e421"}}}
            :test-sci {:extra-paths ["test-sci"]

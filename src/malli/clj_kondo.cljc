@@ -23,7 +23,7 @@
   (if (= 1 (count (set values)))
     (first values)
     (let [res (set (mapcat (fn [v] (cond (keyword? v) [v]
-                                         (= :keys (:op v)) [:map]
+                                         (= :keys (:op v)) (if (:nilable v) [:map :nil] [:map])
                                          (set? v) v
                                          :else [:any]))
                            values))]
@@ -119,6 +119,7 @@
   (cond
     (= :keys (:op child)) (assoc child :nilable true)
     (and (keyword? child) (not= :any child)) (keyword "nilable" (name child))
+    (set? child) (conj child :nil)
     :else child))
 (defmethod accept :tuple [_ _ _ _] :vector)
 (defmethod accept :multi [_ _ children _] (type-set (map last children)))

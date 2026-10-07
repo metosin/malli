@@ -27,8 +27,12 @@
     [:string-type-enum [:maybe [:enum "b" "c"]]]
     [:keyword-type-enum [:enum :a :b]]
     [:heterogeneous-type-enum [:enum :a "b" "c"]]
+    [:maybe-heterogeneous-type-enum [:maybe [:enum :a "b" "c"]]]
     [:z [:vector [:map-of int? int?]]]
     [:string-or-keyword [:or :string :keyword]]
+    [:maybe-string-or-keyword [:maybe [:or :string :keyword]]]
+    [:maybe-map-or-string [:or [:maybe [:map [:x :int]]] :string]]
+    [:maybe-map-orn-string [:orn [:m [:maybe [:map [:x :int]]]] [:s :string]]]
     [:multi-map [:multi {:dispatch :y}
                  [1 [:map [:y [:= 1]]]]
                  [2 [:map [:y [:= 2]]]]]]
@@ -103,7 +107,11 @@
                 :string-type-enum :nilable/string
                 :keyword-type-enum :keyword
                 :heterogeneous-type-enum #{:string :keyword}
+                :maybe-heterogeneous-type-enum #{:nil :string :keyword}
                 :string-or-keyword #{:string :keyword}
+                :maybe-string-or-keyword #{:nil :string :keyword}
+                :maybe-map-or-string #{:nil :map :string}
+                :maybe-map-orn-string #{:nil :map :string}
                 :specific-map {:op :keys}
                 :specific-map2 {:op :keys}
                 :multi-map {:op :keys :req {:y :int}}

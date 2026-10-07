@@ -25,17 +25,16 @@
                                com.bhauman/spell-spec {:mvn/version "0.1.2"}
                                org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
                                                         :sha "efbeb200b9594e265907c1d66ad4ffd9cd8c91cf"}}}
-           :clojure-11 {:extra-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha7"}}}
+           :clojure-11 {:extra-deps {org.clojure/clojure ^:antq/exclude {:mvn/version "1.11.3"}}}
            :clojure-12 {}
-           :clojure-13 {:extra-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha7"}}}
+           :clojure-13 {:extra-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha8"}}}
            :sci {:extra-deps {org.babashka/sci {:mvn/version "0.15.58"}}}
            :cherry {:extra-deps {io.github.squint-cljs/cherry {:git/tag "v0.6.38" :git/sha "4b4e421"}}}
            :test-sci {:extra-paths ["test-sci"]
                       :main-opts ["-m" "cljs-test-runner.main" "-d" "test-sci" "-d" "test"]}
            :test-cherry {:extra-paths ["test-cherry"]
                          :main-opts ["-m" "cljs-test-runner.main" "-d" "test-cherry" "-d" "test"]}
-           :test-doc-blocks {:replace-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha7"}
-                                            com.github.lread/test-doc-blocks {:mvn/version "1.2.21"}}
+           :test-doc-blocks {:replace-deps {com.github.lread/test-doc-blocks {:mvn/version "1.2.21"}}
                              ;; for -X syntax support specify exec-fn
                              :exec-fn lread.test-doc-blocks/gen-tests
                              :exec-args {:docs ["README.md"
@@ -84,11 +83,9 @@
                      :main-opts ["-m" "deps-deploy.deps-deploy" "install"
                                  "malli.jar"]}
            :graalvm {:extra-paths ["graal-test/src"]
-                     :extra-deps {org.clojure/clojure {:mvn/version "1.13.0-alpha7"}
-                                  org.babashka/sci {:mvn/version "0.15.58"}}}
+                     :extra-deps {org.babashka/sci {:mvn/version "0.15.58"}}}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                               org.clojure/clojure {:mvn/version "1.13.0-alpha7"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.8.0"}}
                   :jvm-opts ["-server"
                              "-Xmx4096m"

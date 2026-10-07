@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Clojure 1.13 compatibility
+
 ## 0.20.2 (2026-09-25)
 
 * Fixes:

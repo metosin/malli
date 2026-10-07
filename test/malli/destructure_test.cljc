@@ -1,7 +1,17 @@
 (ns malli.destructure-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.walk :as walk]
             [malli.core :as m]
             [malli.destructure :as md]))
+
+;; Stable ordering for :map, :alt, :enum children
+(def fix-child-order
+  (partial walk/postwalk
+           (fn [val]
+             (if (and (vector? val)
+                      (#{:map :alt :enum} (first val)))
+               (apply vector (first val) (sort-by str (rest val)))
+               val))))
 
 (def expectations
   [{:name "empty"
@@ -46,48 +56,25 @@
     :schema [:cat
              :any
              [:orn
-              ;; Unfortunately, the output order is different between clj and cljs, and we use strict equality in the test
-              [:map #?(:clj
-                       [:map
-                        [:b {:optional true} :any]
-                        ["c" {:optional true} :any]
-                        ['d {:optional true} :any]
-                        ['demo/e {:optional true} :any]
-                        [:demo/f {:optional true}]
-                        [123 {:optional true} :any]
-                        [:demo/g {:optional true}]]
-                       :cljs
-                       [:map
-                        [:b {:optional true} :any]
-                        ["c" {:optional true} :any]
-                        ['d {:optional true} :any]
-                        ['demo/e {:optional true} :any]
-                        [:demo/f {:optional true}]
-                        [:demo/g {:optional true}]
-                        [123 {:optional true} :any]])]
+              [:map [:map
+                     [:b {:optional true} :any]
+                     ["c" {:optional true} :any]
+                     ['d {:optional true} :any]
+                     ['demo/e {:optional true} :any]
+                     [:demo/f {:optional true}]
+                     [:demo/g {:optional true}]
+                     [123 {:optional true} :any]]]
               [:args [:schema
-                      #?(:clj
-                         [:*
-                          [:alt
-                           [:cat [:= :b] :any]
-                           [:cat [:= "c"] :any]
-                           [:cat [:= 'd] :any]
-                           [:cat [:= 'demo/e] :any]
-                           [:cat [:= :demo/f] :demo/f]
-                           [:cat [:= 123] :any]
-                           [:cat [:= :demo/g] :demo/g]
-                           [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f 123 :demo/g]] :any]]]
-                         :cljs
-                         [:*
-                          [:alt
-                           [:cat [:= :b] :any]
-                           [:cat [:= "c"] :any]
-                           [:cat [:= 'd] :any]
-                           [:cat [:= 'demo/e] :any]
-                           [:cat [:= :demo/f] :demo/f]
-                           [:cat [:= :demo/g] :demo/g]
-                           [:cat [:= 123] :any]
-                           [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f :demo/g 123]] :any]]])]]]]
+                      [:*
+                       [:alt
+                        [:cat [:= :b] :any]
+                        [:cat [:= "c"] :any]
+                        [:cat [:= 'd] :any]
+                        [:cat [:= 'demo/e] :any]
+                        [:cat [:= :demo/f] :demo/f]
+                        [:cat [:= :demo/g] :demo/g]
+                        [:cat [:= 123] :any]
+                        [:cat [:not [:enum :b "c" 'd 'demo/e :demo/f :demo/g 123]] :any]]]]]]]
     :errors '[[{::keysz [z]}]
               [{:kikka/keyz [z]}]]}
    {:name "map destructuring with required-keys"
@@ -339,9 +326,10 @@
                      (testing (str "- " name " -")
                        (let [{:keys [arglist schema]} (md/parse bind options)]
                          (testing "has expected schema"
-                           (when-not (is (= expected schema))
-                             (prn "?" expected)
-                             (prn ">" schema)))
+                           (when-not (is (= (fix-child-order expected) (fix-child-order schema)))
+                             (prn "name:" name)
+                             (prn "expected:" expected)
+                             (prn "actual:" schema)))
                          (testing "has valid arglist"
                            (is (not= ::m/invalid arglist)))
                          (testing "errors"

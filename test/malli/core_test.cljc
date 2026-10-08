@@ -3693,3 +3693,32 @@
     (is (= @count-into-schemas 3)) ;; was 6
     (is (m/coerce ConsCell [1 [2 [3 [4 [1 [2 [3 [4 nil]]]]]]]]))
     (is (= @count-into-schemas 3)))) ;; was 10
+
+(deftest if-conditional-schema-test
+  (testing "validation equivalence"
+    (let [condition [:map [:x [:= true]]]
+          then [:map [:y int?]]
+          else [:map [:y string?]]
+          jse-schema [:if condition
+                      then
+                      else]
+          equivalent-schema [:or [:and condition then]
+                                 [:and [:not condition] else]]
+          valid-when-true    {:x true  :y 42}
+          valid-when-false   {:x false :y "hello"}
+          invalid-when-true  {:x true  :y "oops"}
+          invalid-when-false {:x false :y 99}]
+      (testing ":if validates with matching JSON Schema If-Then-Else semantics"
+        (is (true?  (m/validate jse-schema valid-when-true)))
+        (is (true?  (m/validate jse-schema valid-when-false)))
+        (is (false? (m/validate jse-schema invalid-when-true)))
+        (is (false? (m/validate jse-schema invalid-when-false))))
+      (testing "matches the equivalent :or/:and malli schema"
+        (is (= (m/validate equivalent-schema valid-when-true)
+               (m/validate jse-schema valid-when-true)))
+        (is (= (m/validate equivalent-schema valid-when-false)
+               (m/validate jse-schema valid-when-false)))
+        (is (= (m/validate equivalent-schema invalid-when-true)
+               (m/validate jse-schema invalid-when-true)))
+        (is (= (m/validate equivalent-schema invalid-when-false)
+               (m/validate jse-schema invalid-when-false)))))))

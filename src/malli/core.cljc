@@ -3023,6 +3023,102 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
+(defn -if-conditional-schema
+  "Malli schema for JSON Schema's If-Then-Else conditional support.
+
+   Usage:
+   ```
+   [::jse/if [:map [:x [:= true]]]  ; IF
+             [:map [:y int?]]       ; THEN
+             [:map [:y string?]]]   ; ELSE
+  ```
+  Validates the same as:
+  ```
+  [:or [:and [:map [:x [:= true]]]         ; IF
+             [:map [:y int?]]]             ; THEN
+       [:and [:not [:map [:x [:= true]]]]  ; NOT IF
+             [:map [:y string?]]]]         ; ELSE
+  ```
+
+  The `ELSE` branch can be omitted for `when`-like behavior."
+  []
+  ^{:type ::into-schema}
+  (reify IntoSchema
+    (-type [_] :if)
+    (-type-properties [_])
+    (-properties-schema [_ _])
+    (-children-schema [_ _])
+    (-into-schema [parent {:keys [tags] :as properties} children options]
+      (-check-children! ::if properties children 2 3)
+      (let [condition' (schema (nth children 0) options)
+            then' (schema (nth children 1) options)
+            else' (when (= 3 (count children))
+                    (schema (nth children 2) options))
+            condition-v (validator condition')
+            equivalent-schema' (schema (if else'
+                                         [:or
+                                          [:and condition' then']
+                                          [:and [:not condition'] else']]
+                                         [:and condition' then'])
+                                       options)]
+        ^{:type ::schema}
+        (reify
+          Schema
+          (-validator [this]
+            (let [then-v (validator then')
+                  else-v (when else' (validator else'))]
+              (fn [value]
+                (if (condition-v value)
+                  (then-v value)
+                  (if else-v (else-v value) true)))))
+          (-explainer [this path]
+            (let [then-explainer (-explainer then' (conj path 'then))
+                  else-explainer (when else' (-explainer else' (conj path 'else)))]
+              (fn explain [x in acc]
+                (if (condition-v x)
+                  (let [before (count acc)
+                        acc' (then-explainer x in acc)]
+                    (if (> (count acc') before)
+                      (into (subvec (vec acc') 0 before)
+                            (map #(assoc % :branch 'then))
+                            (subvec (vec acc') before))
+                      acc'))
+                  (if else-explainer
+                    (let [before (count acc)
+                          acc' (else-explainer x in acc)]
+                      (if (> (count acc') before)
+                        (into (subvec (vec acc') 0 before)
+                              (map #(assoc % :branch 'else))
+                              (subvec (vec acc') before))
+                        acc'))
+                    acc)))))
+          (-parser [_]
+            (let [then-p (-parser then')
+                  else-p (when else' (-parser else'))]
+              (fn [x]
+                (if (condition-v x)
+                  (then-p x)
+                  (if else-p (else-p x) x)))))
+          (-unparser [_]
+            (let [then-u (-unparser then')
+                  else-u (when else' (-unparser else'))]
+              (fn [x]
+                (if (condition-v x)
+                  (then-u x)
+                  (if else-u (else-u x) x)))))
+          (-transformer [this transformer method options]
+            (-transformer equivalent-schema' transformer method options))
+          (-walk [this walker path options]
+            (-walk-leaf this walker path options))
+          (-properties [this] properties)
+          (-options [this] options)
+          (-children [this] children)
+          (-parent [this] parent)
+          (-form [this] form))))))
+
+(defn conditional-schemas []
+  {:if (-if-conditional-schema)})
+
 (defn base-schemas []
   {:and (-and-schema)
    :andn (-andn-schema)
@@ -3050,7 +3146,7 @@
    ::schema (-schema-schema {:raw true})})
 
 (defn default-schemas []
-  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
+  (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (conditional-schemas) (base-schemas)))
 
 (def default-registry
   (let [strict #?(:cljs (identical? mr/mode "strict")

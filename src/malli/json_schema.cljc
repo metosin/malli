@@ -198,6 +198,13 @@
 (defmethod accept :union [_ schema _ {::keys [transform] :as options}] (transform (m/deref schema) options))
 (defmethod accept :select-keys [_ schema _ {::keys [transform] :as options}] (transform (m/deref schema) options))
 
+(defmethod accept :if [_ schema _ {::keys [transform] :as options}]
+  (let [omit-type?            (get (m/properties schema) :omit-condition-type true)
+        omitter               (fn [m] (if omit-type? (dissoc m :type) m))
+        [condition then else] (mapv #(transform % options) (m/children schema))]
+    (cond-> {:if (omitter condition) :then (omitter then)}
+      else (assoc :else (omitter else)))))
+
 (defn- -json-schema-walker [schema _ children options]
   (let [p (merge (m/type-properties schema) (m/properties schema))]
     (or (get p :json-schema)

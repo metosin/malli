@@ -1229,3 +1229,15 @@
     (testing "encoding children using the string transformer works"
       (is (= encoded (m/encode child-inference-test-schema decoded (mt/string-transformer))))
       (is (= encoded (m/encode child-inference-test-schema encoded (mt/string-transformer)))))))
+
+(deftest if-conditional-transformations-test
+  (let [schema [:if
+                [:map [:animal [:= :cat]]]
+                [:map [:says [:= :meow]]]
+                [:map [:says [:= :bark]]]]
+        encoded {:animal "cat"
+                 :says   "meow"}
+        decoded {:animal :cat
+                 :says   :meow}]
+    (testing "roundtip works"
+      (is (= encoded (m/encode schema decoded (mt/string-transformer)))))))

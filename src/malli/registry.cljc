@@ -3,22 +3,24 @@
   #?(:clj (:import (java.util HashMap Map))))
 
 #?(:cljs (goog-define mode "default")
-   :clj  (def mode (or (System/getProperty "malli.registry/mode") "default")))
+   :clj  (def mode (or (System/getProperty "malli.registry/mode") "default"))
+   :cljrs (def mode "default"))
 
 #?(:cljs (goog-define type "default")
-   :clj  (def type (or (System/getProperty "malli.registry/type") "default")))
+   :clj  (def type (or (System/getProperty "malli.registry/type") "default"))
+   :cljrs (def type "default"))
 
 (defprotocol Registry
   (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
-(defn registry? [x] (#?(:clj instance?, :cljs implements?) malli.registry.Registry x))
+(defn registry? [x] (#?(:clj instance?, :cljrs satisfies?, :cljs implements?) malli.registry.Registry x))
 
 (defn fast-registry [m]
-  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
+  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljrs m, :cljs m)]
     (reify
       Registry
-      (-schema [_ type] (.get fm type))
+      (-schema [_ type] #?(:clj (.get fm type), :cljrs (get fm type), :cljs (.get fm type)))
       (-schemas [_] m))))
 
 (defn simple-registry [m]

@@ -51,7 +51,7 @@
 
     :else (m/-fail! ::invalid-transformer {:value ?interceptor})))
 
-(defn -safe [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error) _ %)))
+(defn -safe [f] #(try (f %) (catch #?(:clj Exception, :cljs js/Error, :lpy python/Exception) _ %)))
 
 ;;
 ;; from strings

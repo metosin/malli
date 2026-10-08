@@ -33,13 +33,18 @@
   For a more detailed explanation of this namespace see also
   https://www.metosin.fi/blog/malli-regex-schemas/."
 
-  (:refer-clojure :exclude [+ * repeat cat])
+  (:refer-clojure :exclude #?(:lpy [+ * repeat cat inc], :default [+ * repeat cat]))
   (:require [malli.impl.util :as miu])
   #?(:bb  (:import [java.util ArrayDeque])
      :clj (:import [java.util ArrayDeque]
                    [clojure.lang Util Murmur3]
                    [java.lang.reflect Array])
      :cljr (:import [System.Collections ArrayList])))
+
+;; Basilisp inlines `inc` as `(+ x 1)`, which does not resolve once `+` is excluded.
+#?(:lpy (defn- inc [x] (basilisp.core/+ x 1)))
+;; Basilisp resolves type hints: `objects` names the type `object-array` returns.
+#?(:lpy (def ^:private objects python/list))
 
 ;;;; # Driver Protocols
 
@@ -193,17 +198,21 @@
                               [] unparsers)
         :malli.core/invalid))))
 
+#?(:lpy (defn- -reduce-pairs-valid [f init pairs]
+          (reduce (fn [acc [k v]] (miu/-map-invalid reduced (f acc k v))) init pairs)))
+
 ;; cyclic ref avoidance here as well for malli.core/tags?
 (defn catn-unparser [tags? & unparsers]
-  (let [unparsers (apply array-map (mapcat identity unparsers))]
+  (let [unparsers #?(:lpy (vec unparsers), :default (apply array-map (mapcat identity unparsers)))]
     (fn [m]
       (if (and (tags? m) (= (count (:values m)) (count unparsers)))
-        (miu/-reduce-kv-valid (fn [coll tag unparser]
-                                (if-some [kv (find (:values m) tag)]
-                                  (miu/-map-valid #(into coll %) (unparser (val kv)))
-                                  :malli.core/invalid))
-                              ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
-                              [] unparsers)
+        (#?(:lpy -reduce-pairs-valid, :default miu/-reduce-kv-valid)
+         (fn [coll tag unparser]
+           (if-some [kv (find (:values m) tag)]
+             (miu/-map-valid #(into coll %) (unparser (val kv)))
+             :malli.core/invalid))
+         ;; `m` is in hash order, so have to iterate over `unparsers` to restore seq order:
+         [] unparsers)
         :malli.core/invalid))))
 
 (defn cat-transformer
@@ -460,9 +469,10 @@
 
 ;;;; # Shared Drivers
 
-(defn- make-stack [] #?(:clj (ArrayDeque.), :cljs #js [], :cljr (ArrayList.), :cljrs (atom [])))
+(defn- make-stack [] #?(:clj (ArrayDeque.), :cljs #js [], :cljr (ArrayList.), :cljrs (atom []), :lpy (python/list)))
 
 #?(:cljr (defn- empty-stack? [^ArrayList stack] (zero? (.Count stack)))
+   :lpy (defn- empty-stack? [stack] (zero? (python/len stack)))
    :default (defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljs (zero? (alength stack)), :cljrs (empty? @stack))))
 
 #?(:cljr (defn- push-stack! [^ArrayList stack thunk] (.Add stack thunk))
@@ -488,10 +498,11 @@
 ;; Custom hash set so that Cljs Malli users can have decent perf without having to to set up Closure ES6 Set polyfill.
 ;; Uses quadratic probing with power-of-two sizes and triangular numbers, what a nice trick!
 (deftype Cache
-  #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
+  #?(:clj  [^:unsynchronized-mutable ^{:tag "[Ljava.lang.Object;"} values, ^:unsynchronized-mutable ^long size]
      :cljs [^:mutable values, ^:mutable size]
      :cljr [^:unsynchronized-mutable values, ^:unsynchronized-mutable size]
-     :cljrs [^:unsynchronized-mutable values, ^:unsynchronized-mutable size])
+     :cljrs [^:unsynchronized-mutable values, ^:unsynchronized-mutable size]
+     :lpy [^:mutable values, ^:mutable size])
   ICache
   (ensure-cached! [_ f pos regs]
     (when (> (unchecked-inc size) (bit-shift-right (alength values) 1)) ; potential new load factor > 0.5
@@ -499,16 +510,14 @@
       (let [capacity* (bit-shift-left (alength values) 1)
             ^objects values* #?(:bb   (object-array capacity*)
                                 :clj (Array/newInstance Object capacity*)
-                                :cljs (object-array capacity*)
-                                :cljr (object-array capacity*)
-                                :cljrs (object-array capacity*))
+                                :default (object-array capacity*))
             max-index (unchecked-dec capacity*)]
 
         (let [len (alength values)]
           (loop [i 0]
             (when (< i len)
               (when-some [^CacheEntry v (aget values i)]
-                (loop [i* (bit-and (.-hash v) max-index)
+                (loop [i* (bit-and #?(:lpy (.-hash_ v), :default (.-hash v)) max-index)
                        collisions 0]
                   (if (aget values* i*)
                     (let [collisions (unchecked-inc collisions)]
@@ -528,10 +537,11 @@
                :clj (-> (.hashCode ^Object f) (Util/hashCombine (Murmur3/hashLong pos)) (Util/hashCombine (Util/hash regs)))
                :cljs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs)))
                :cljr (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs)))
-               :cljrs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs))))]
+               :cljrs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs)))
+               :lpy (hash [f pos regs]))]
       (loop [i (bit-and h max-index), collisions 0]
         (if-some [^CacheEntry entry (aget values i)]
-          (or (and (= (.-hash entry) h)
+          (or (and (= #?(:lpy (.-hash_ entry), :default (.-hash entry)) h)
                    (= (.-f entry) f)
                    (= (.-pos entry) pos)
                    (= (.-regs entry) regs))
@@ -551,7 +561,8 @@
   #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
      :cljs [^:mutable success, stack, cache]
      :cljr [^:unsynchronized-mutable success, stack, cache]
-     :cljrs [^:unsynchronized-mutable success, stack, cache])
+     :cljrs [^:unsynchronized-mutable success, stack, cache]
+     :lpy [^:mutable success, stack, cache])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -559,7 +570,7 @@
   (pop-thunk! [_] (when-not (empty-stack? stack) (#?(:cljr pop-stack!, :cljrs pop-stack!, :default .pop) stack)))
 
   IValidationDriver
-  (noncaching-park-validator! [self validator regs pos coll k] (#?(:cljr push-stack!, :cljrs push-stack!, :default .push) stack #(validator self regs pos coll k)))
+  (noncaching-park-validator! [self validator regs pos coll k] (#?(:cljr push-stack!, :cljrs push-stack!, :lpy .append, :default .push) stack #(validator self regs pos coll k)))
   (park-validator! [self validator regs pos coll k]
     (when-not (ensure-cached! cache validator pos regs)
       (noncaching-park-validator! self validator regs pos coll k))))
@@ -569,7 +580,8 @@
             ^:unsynchronized-mutable result]
      :cljs [^:mutable success, stack, cache, ^:mutable result]
      :cljr [^:unsynchronized-mutable success, stack, cache, ^:unsynchronized-mutable result]
-     :cljrs [^:unsynchronized-mutable success, stack, cache, ^:unsynchronized-mutable result])
+     :cljrs [^:unsynchronized-mutable success, stack, cache, ^:unsynchronized-mutable result]
+     :lpy [^:mutable success, stack, cache, ^:mutable result])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -577,14 +589,14 @@
   (pop-thunk! [_] (when-not (empty-stack? stack) (#?(:cljr pop-stack!, :cljrs pop-stack!, :default .pop) stack)))
 
   IValidationDriver
-  (noncaching-park-validator! [self validator regs pos coll k] (#?(:cljr push-stack!, :cljrs push-stack!, :default .push) stack #(validator self regs pos coll k)))
+  (noncaching-park-validator! [self validator regs pos coll k] (#?(:cljr push-stack!, :cljrs push-stack!, :lpy .append, :default .push) stack #(validator self regs pos coll k)))
   (park-validator! [self validator regs pos coll k]
     (when-not (ensure-cached! cache validator pos regs)
       (noncaching-park-validator! self validator regs pos coll k)))
 
   IParseDriver
   (noncaching-park-transformer! [driver transformer regs coll* pos coll k]
-    (#?(:cljr push-stack!, :cljrs push-stack!, :default .push) stack #(transformer driver regs coll* pos coll k)))
+    (#?(:cljr push-stack!, :cljrs push-stack!, :lpy .append, :default .push) stack #(transformer driver regs coll* pos coll k)))
   (park-transformer! [driver transformer regs coll* pos coll k]
     (when-not (ensure-cached! cache transformer pos regs)
       (noncaching-park-transformer! driver transformer regs coll* pos coll k)))
@@ -616,7 +628,8 @@
      :cljr [^:unsynchronized-mutable success, stack, cache
             in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
      :cljrs [^:unsynchronized-mutable success, stack, cache
-             in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors])
+             in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+     :lpy [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
@@ -624,7 +637,7 @@
   (pop-thunk! [_] (when-not (empty-stack? stack) (#?(:cljr pop-stack!, :cljrs pop-stack!, :default .pop) stack)))
 
   IExplanationDriver
-  (noncaching-park-explainer! [self validator regs pos coll k] (#?(:cljr push-stack!, :cljrs push-stack!, :default .push) stack #(validator self regs pos coll k)))
+  (noncaching-park-explainer! [self validator regs pos coll k] (#?(:cljr push-stack!, :cljrs push-stack!, :lpy .append, :default .push) stack #(validator self regs pos coll k)))
   (park-explainer! [self validator regs pos coll k]
     (when-not (ensure-cached! cache validator pos regs)
       (noncaching-park-explainer! self validator regs pos coll k)))

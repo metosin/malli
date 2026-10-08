@@ -96,6 +96,12 @@
     (is (= "integer between 0 and 1 inclusive"
            (med/describe [:int {:min 0 :max 1}]))))
 
+  #?(:clj
+     (testing "decimal"
+       (is (= "decimal" (med/describe :decimal)))
+       (is (= "decimal between 0 and 1 inclusive"
+              (med/describe [:decimal {:min 0 :max 1}])))))
+
   (testing "repeat"
     (is (= "repeat <integer> at least 1 time"
            (med/describe [:repeat {:min 1} int?])))

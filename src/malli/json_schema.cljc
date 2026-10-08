@@ -181,6 +181,11 @@
   (merge {:type "number"}
          (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum}))))
 
+#?(:clj
+   (defmethod accept :decimal [_ schema _ _]
+     (merge {:type "number"}
+            (-> schema m/properties (select-keys [:min :max]) (set/rename-keys {:min :minimum, :max :maximum})))))
+
 (defmethod accept :boolean [_ _ _ _] {:type "boolean"})
 (defmethod accept :keyword [_ _ _ _] {:type "string"})
 (defmethod accept :qualified-keyword [_ _ _ _] {:type "string"})

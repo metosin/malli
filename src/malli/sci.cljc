@@ -1,11 +1,11 @@
 (ns malli.sci
-  (:require #?@(:cljrs []
-                :org.babashka/nbb []
-                :default [[borkdude.dynaload :as dynaload]])))
+  #?@(:cljr []
+      :cljrs []
+      :default [(:require #?@(:org.babashka/nbb []
+                              :default [[borkdude.dynaload :as dynaload]]))]))
 
 (defn evaluator [options fail!]
-  #?(:cljrs (fn [] fail!)
-     :org.babashka/nbb
+  #?(:org.babashka/nbb
      (fn []
        (fn [form]
          (load-string (str "(ns user (:require [malli.core :as m]))\n" form))))
@@ -13,6 +13,8 @@
      (fn []
        (fn [form]
          (load-string (str "(ns user (:require [malli.core :as m]))\n" form))))
+     :cljr (fn [] fail!) ; SCI is not available on ClojureCLR
+     :cljrs (fn [] fail!) ; SCI is not available on clojurust
      :default (let [eval-string* (dynaload/dynaload 'sci.core/eval-string* {:default nil})
                     init (dynaload/dynaload 'sci.core/init {:default nil})
                     fork (dynaload/dynaload 'sci.core/fork {:default nil})]

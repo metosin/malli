@@ -462,8 +462,8 @@
 
 (defn- make-stack [] #?(:clj (ArrayDeque.), :cljs #js [], :cljr (ArrayList.), :cljrs (atom [])))
 
-(defn- empty-stack? [#?(:cljr ^ArrayList stack, :cljrs stack, :default ^ArrayDeque stack)]
-  #?(:clj (.isEmpty stack), :cljs (zero? (alength stack)), :cljr (zero? (.Count stack)), :cljrs (empty? @stack)))
+#?(:cljr (defn- empty-stack? [^ArrayList stack] (zero? (.Count stack)))
+   :default (defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljs (zero? (alength stack)), :cljrs (empty? @stack))))
 
 #?(:cljr (defn- push-stack! [^ArrayList stack thunk] (.Add stack thunk))
    :cljrs (defn- push-stack! [stack thunk] (swap! stack conj thunk)))

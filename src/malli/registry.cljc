@@ -4,10 +4,12 @@
 
 #?(:cljs (goog-define mode "default")
    :clj  (def mode (or (System/getProperty "malli.registry/mode") "default"))
+   :cljr (def mode (or (Environment/GetEnvironmentVariable "MALLI_REGISTRY_MODE") "default"))
    :cljrs (def mode "default"))
 
 #?(:cljs (goog-define type "default")
    :clj  (def type (or (System/getProperty "malli.registry/type") "default"))
+   :cljr (def type (or (Environment/GetEnvironmentVariable "MALLI_REGISTRY_TYPE") "default"))
    :cljrs (def type "default"))
 
 (defprotocol Registry
@@ -15,13 +17,13 @@
   (-schemas [this] "returns all schemas from a registry"))
 
 (defn registry? [x] #?(:cljrs (satisfies? Registry x)
-                       :default (#?(:clj instance?, :cljs implements?) malli.registry.Registry x)))
+                       :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.registry.Registry x)))
 
 (defn fast-registry [m]
-  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljrs m, :cljs m)]
+  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m, :cljr m, :cljrs m)]
     (reify
       Registry
-      (-schema [_ type] #?(:clj (.get fm type), :cljrs (get fm type), :cljs (.get fm type)))
+      (-schema [_ type] #?(:cljr (get fm type), :cljrs (get fm type), :default (.get fm type)))
       (-schemas [_] m))))
 
 (defn simple-registry [m]

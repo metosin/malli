@@ -14,7 +14,8 @@
   (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
-(defn registry? [x] (#?(:clj instance?, :cljrs satisfies?, :cljs implements?) malli.registry.Registry x))
+(defn registry? [x] #?(:cljrs (satisfies? Registry x)
+                       :default (#?(:clj instance?, :cljs implements?) malli.registry.Registry x)))
 
 (defn fast-registry [m]
   (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljrs m, :cljs m)]

@@ -99,12 +99,12 @@
 (defprotocol ParserInfo
   (-parser-info [this opts]))
 
-(defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
-(defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
-(defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
-(defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
-(defn -ast? [x] (#?(:clj instance?, :cljs implements?) malli.core.AST x))
-(defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
+(defn -ref-schema? [x] #?(:cljrs (satisfies? RefSchema x) :default (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x)))
+(defn -entry-parser? [x] #?(:cljrs (satisfies? EntryParser x) :default (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x)))
+(defn -entry-schema? [x] #?(:cljrs (satisfies? EntrySchema x) :default (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x)))
+(defn -cached? [x] #?(:cljrs (satisfies? Cached x) :default (#?(:clj instance?, :cljs implements?) malli.core.Cached x)))
+(defn -ast? [x] #?(:cljrs (satisfies? AST x) :default (#?(:clj instance?, :cljs implements?) malli.core.AST x)))
+(defn -transformer? [x] #?(:cljrs (satisfies? Transformer x) :default (#?(:clj instance?, :cljs implements?) malli.core.Transformer x)))
 
 (extend-type #?(:clj Object, :cljs default)
   FunctionSchema
@@ -545,17 +545,23 @@
         (-fail! ::invalid-entry {:entry e})))))
 
 (defn -eager-entry-parser [children props options]
-  (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
+  (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljrs (vec arr), :cljs (vec arr)))
           (-map [^objects arr] #?(:bb   (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
                                             (-fail! ::duplicate-keys {:arr arr})) m)
                                   :clj (try (PersistentArrayMap/createWithCheck arr)
                                             (catch Exception _ (-fail! ::duplicate-keys {:arr arr})))
+                                  :cljrs (let [m (apply array-map arr)]
+                                           (when-not (= (* 2 (count m)) (count arr))
+                                             (-fail! ::duplicate-keys {:arr arr})) m)
                                   :cljs (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
                                             (-fail! ::duplicate-keys {:arr arr})) m)))
           (-arange [^objects arr to]
            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
+              :cljrs (let [-arr (object-array to)]
+                       (dotimes [j to] (aset -arr j (aget arr j)))
+                       -arr)
               :cljs (.slice arr 0 to)))]
     (let [{:keys [naked-keys lazy-refs]} props
           ca (object-array children)
@@ -632,6 +638,10 @@
                                    (let [val (.valAt x k not-found)]
                                      (if (identical? val not-found)
                                        x (.assoc x k (t val)))))) (rseq ts))))
+     :cljrs (fn [x] (reduce (fn child-transformer [m [k t]]
+                              (if-let [entry (find m k)]
+                                (assoc m k (t (val entry)))
+                                m)) x ts))
      :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
                              (if-let [entry (find m k)]
                                (assoc m k (t (val entry)))
@@ -646,6 +656,7 @@
                        (if (.hasNext i)
                          (recur (.cons x (t (.next i))))
                          x))))
+     :cljrs (fn [x] (into (when x empty) (map t) x))
      :cljs (fn [x] (into (when x empty) (map t) x))))
 
 (defn -or-transformer [this transformer child-schemas method options]
@@ -2511,7 +2522,7 @@
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x))
+  [x] #?(:cljrs (satisfies? IntoSchema x) :default (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x)))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
@@ -2562,7 +2573,7 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
+  [x] #?(:cljrs (satisfies? Schema x) :default (#?(:clj instance?, :cljs implements?) malli.core.Schema x)))
 
 (defn schema
   "Creates a Schema object from any of the following:
@@ -2577,10 +2588,10 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
-                             n #?(:bb (count v) :clj (.count v), :cljs (count v))
-                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
+     (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljrs ?schema, :cljs ?schema)
+                             t (-lookup! #?(:clj (.nth v 0), :cljrs (nth v 0), :cljs (nth v 0)) v into-schema? true options)
+                             n #?(:bb (count v) :clj (.count v), :cljrs (count v), :cljs (count v))
+                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljrs (nth v 1), :cljs (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
                            (into-schema t ?p (when (< 2 n) (subvec ?schema 2 n)) options)
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
@@ -2940,9 +2951,11 @@
         (-register-var 'empty? empty? -safe-empty?))))
 
 (defn class-schemas []
-  {#?(:clj  Pattern,
-      ;; closure will complain if you reference the global RegExp object.
-      :cljs (c/type #"")) (-re-schema true)})
+  #?(:cljrs {} ;; cljrs has no distinct regex type to key a registry entry on.
+     :default
+     {#?(:clj  Pattern,
+         ;; closure will complain if you reference the global RegExp object.
+         :cljs (c/type #"")) (-re-schema true)}))
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}

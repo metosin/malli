@@ -10,7 +10,10 @@
   #?(:clj (:import #?(:bb  (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector PersistentArrayMap)
                       :clj (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap))
                    (java.util.concurrent.atomic AtomicReference)
-                   (java.util.regex Pattern))))
+                   (java.util.regex Pattern))
+     :cljr (:import (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
+                    (System.Text.RegularExpressions Regex))))
+
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
@@ -99,14 +102,14 @@
 (defprotocol ParserInfo
   (-parser-info [this opts]))
 
-(defn -ref-schema? [x] #?(:cljrs (satisfies? RefSchema x) :default (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x)))
-(defn -entry-parser? [x] #?(:cljrs (satisfies? EntryParser x) :default (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x)))
-(defn -entry-schema? [x] #?(:cljrs (satisfies? EntrySchema x) :default (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x)))
-(defn -cached? [x] #?(:cljrs (satisfies? Cached x) :default (#?(:clj instance?, :cljs implements?) malli.core.Cached x)))
-(defn -ast? [x] #?(:cljrs (satisfies? AST x) :default (#?(:clj instance?, :cljs implements?) malli.core.AST x)))
-(defn -transformer? [x] #?(:cljrs (satisfies? Transformer x) :default (#?(:clj instance?, :cljs implements?) malli.core.Transformer x)))
+(defn -ref-schema? [x] #?(:cljrs (satisfies? RefSchema x) :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.RefSchema x)))
+(defn -entry-parser? [x] #?(:cljrs (satisfies? EntryParser x) :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.EntryParser x)))
+(defn -entry-schema? [x] #?(:cljrs (satisfies? EntrySchema x) :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.EntrySchema x)))
+(defn -cached? [x] #?(:cljrs (satisfies? Cached x) :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.Cached x)))
+(defn -ast? [x] #?(:cljrs (satisfies? AST x) :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.AST x)))
+(defn -transformer? [x] #?(:cljrs (satisfies? Transformer x) :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.Transformer x)))
 
-(extend-type #?(:clj Object, :cljrs Object, :cljs default)
+(extend-type #?(:clj Object, :cljr Object, :cljrs Object, :cljs default)
   FunctionSchema
   (-function-schema? [_] false)
   (-function-info [_])
@@ -206,7 +209,7 @@
   ([type] (-fail! type nil))
   ([type data] (throw (-exception type data))))
 
-(defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
+(defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljr Exception, :cljs js/Error) _ false)))
 
 (defn -keyword->string [x]
   (if (keyword? x)

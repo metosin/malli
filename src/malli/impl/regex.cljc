@@ -459,9 +459,9 @@
 
 ;;;; # Shared Drivers
 
-(defn- make-stack [] #?(:clj (ArrayDeque.), :cljs #js []))
+(defn- make-stack [] #?(:clj (ArrayDeque.), :cljrs (atom []), :cljs #js []))
 
-(defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljs (zero? (alength stack))))
+(defn- empty-stack? [^ArrayDeque stack] #?(:clj (.isEmpty stack), :cljrs (empty? @stack), :cljs (zero? (alength stack))))
 
 (defprotocol ^:private ICache
   (ensure-cached! [cache f pos regs]))
@@ -474,6 +474,7 @@
 ;; Uses quadratic probing with power-of-two sizes and triangular numbers, what a nice trick!
 (deftype Cache
   #?(:clj  [^:unsynchronized-mutable ^"[Ljava.lang.Object;" values, ^:unsynchronized-mutable ^long size]
+     :cljrs [^:unsynchronized-mutable values, ^:unsynchronized-mutable size]
      :cljs [^:mutable values, ^:mutable size])
   ICache
   (ensure-cached! [_ f pos regs]
@@ -482,6 +483,7 @@
       (let [capacity* (bit-shift-left (alength values) 1)
             ^objects values* #?(:bb   (object-array capacity*)
                                 :clj (Array/newInstance Object capacity*)
+                                :cljrs (object-array capacity*)
                                 :cljs (object-array capacity*))
             max-index (unchecked-dec capacity*)]
 
@@ -507,6 +509,7 @@
           ;; Unfortunately `hash-combine` hashes its second argument on clj and neither argument on cljs:
           h #?(:bb   (-> (hash f) (hash-combine pos) (hash-combine regs))
                :clj (-> (.hashCode ^Object f) (Util/hashCombine (Murmur3/hashLong pos)) (Util/hashCombine (Util/hash regs)))
+               :cljrs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs)))
                :cljs (-> (hash f) (hash-combine (hash pos)) (hash-combine (hash regs))))]
       (loop [i (bit-and h max-index), collisions 0]
         (if-some [^CacheEntry entry (aget values i)]
@@ -528,15 +531,16 @@
 
 (deftype ^:private CheckDriver
   #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache]
+     :cljrs [^:unsynchronized-mutable success, stack, cache]
      :cljs [^:mutable success, stack, cache])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (empty-stack? stack) (.pop stack)))
+  (pop-thunk! [_] (when-not (empty-stack? stack) #?(:clj (.pop stack), :cljrs (let [v (peek @stack)] (swap! stack pop) v))))
 
   IValidationDriver
-  (noncaching-park-validator! [self validator regs pos coll k] (.push stack #(validator self regs pos coll k)))
+  (noncaching-park-validator! [self validator regs pos coll k] #?(:clj (.push stack #(validator self regs pos coll k)), :cljrs (swap! stack conj #(validator self regs pos coll k))))
   (park-validator! [self validator regs pos coll k]
     (when-not (ensure-cached! cache validator pos regs)
       (noncaching-park-validator! self validator regs pos coll k))))
@@ -544,22 +548,23 @@
 (deftype ^:private ParseDriver
   #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
             ^:unsynchronized-mutable result]
+     :cljrs [^:unsynchronized-mutable success, stack, cache, ^:unsynchronized-mutable result]
      :cljs [^:mutable success, stack, cache, ^:mutable result])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (empty-stack? stack) (.pop stack)))
+  (pop-thunk! [_] (when-not (empty-stack? stack) #?(:clj (.pop stack), :cljrs (let [v (peek @stack)] (swap! stack pop) v))))
 
   IValidationDriver
-  (noncaching-park-validator! [self validator regs pos coll k] (.push stack #(validator self regs pos coll k)))
+  (noncaching-park-validator! [self validator regs pos coll k] #?(:clj (.push stack #(validator self regs pos coll k)), :cljrs (swap! stack conj #(validator self regs pos coll k))))
   (park-validator! [self validator regs pos coll k]
     (when-not (ensure-cached! cache validator pos regs)
       (noncaching-park-validator! self validator regs pos coll k)))
 
   IParseDriver
   (noncaching-park-transformer! [driver transformer regs coll* pos coll k]
-    (.push stack #(transformer driver regs coll* pos coll k)))
+    #?(:clj (.push stack #(transformer driver regs coll* pos coll k)), :cljrs (swap! stack conj #(transformer driver regs coll* pos coll k))))
   (park-transformer! [driver transformer regs coll* pos coll k]
     (when-not (ensure-cached! cache transformer pos regs)
       (noncaching-park-transformer! driver transformer regs coll* pos coll k)))
@@ -587,15 +592,16 @@
 (deftype ^:private ExplanationDriver
   #?(:clj  [^:unsynchronized-mutable ^boolean success, ^ArrayDeque stack, cache
             in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
+     :cljrs [^:unsynchronized-mutable success, stack, cache, in, ^:unsynchronized-mutable errors-max-pos, ^:unsynchronized-mutable errors]
      :cljs [^:mutable success, stack, cache, in, ^:mutable errors-max-pos, ^:mutable errors])
 
   Driver
   (succeed! [_] (set! success (boolean true)))
   (succeeded? [_] success)
-  (pop-thunk! [_] (when-not (empty-stack? stack) (.pop stack)))
+  (pop-thunk! [_] (when-not (empty-stack? stack) #?(:clj (.pop stack), :cljrs (let [v (peek @stack)] (swap! stack pop) v))))
 
   IExplanationDriver
-  (noncaching-park-explainer! [self validator regs pos coll k] (.push stack #(validator self regs pos coll k)))
+  (noncaching-park-explainer! [self validator regs pos coll k] #?(:clj (.push stack #(validator self regs pos coll k)), :cljrs (swap! stack conj #(validator self regs pos coll k))))
   (park-explainer! [self validator regs pos coll k]
     (when-not (ensure-cached! cache validator pos regs)
       (noncaching-park-explainer! self validator regs pos coll k)))

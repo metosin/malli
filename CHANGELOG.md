@@ -14,10 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
-## UNRELEASED
+## 0.20.3 (2026-09-25)
 
 * Fixes:
-  * Clojure 1.13 compatibility
+  * Clojure 1.13 compatibility [#1322](https://github.com/metosin/malli/pull/1322)
 * Improvements:
   * clj-kondo types for `:and` and `:multi` [#1317](https://github.com/metosin/malli/pull/1317)
     and `:maybe` [#1321](https://github.com/metosin/malli/pull/1321)

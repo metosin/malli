@@ -1,9 +1,11 @@
 (ns malli.sci
-  (:require #?@(:org.babashka/nbb []
+  (:require #?@(:cljrs []
+                :org.babashka/nbb []
                 :default [[borkdude.dynaload :as dynaload]])))
 
 (defn evaluator [options fail!]
-  #?(:org.babashka/nbb
+  #?(:cljrs (fn [] fail!)
+     :org.babashka/nbb
      (fn []
        (fn [form]
          (load-string (str "(ns user (:require [malli.core :as m]))\n" form))))

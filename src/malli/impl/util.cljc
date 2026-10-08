@@ -1,14 +1,14 @@
 (ns malli.impl.util
   #?(:clj (:import #?(:bb  (clojure.lang MapEntry)
                       :clj (clojure.lang MapEntry LazilyPersistentVector))
-                   (java.util.concurrent TimeoutException TimeUnit FutureTask))))
-;; cljrs uses portable implementations rather than JVM classes.
+                   (java.util.concurrent TimeoutException TimeUnit FutureTask))
+     :cljr (:import (clojure.lang MapEntry LazilyPersistentVector))))
 
-(def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljrs 9223372036854775807, :cljs (.-MAX_VALUE js/Number)))
+(def ^:const +max-size+ #?(:clj Long/MAX_VALUE, :cljs (.-MAX_VALUE js/Number), :cljr Int64/MaxValue, :cljrs 9223372036854775807))
 
-(defn -entry [k v] #?(:clj (MapEntry. k v), :cljrs [k v], :cljs (MapEntry. k v nil)))
+(defn -entry [k v] #?(:clj (MapEntry. k v), :cljs (MapEntry. k v nil), :cljr (MapEntry. k v), :cljrs [k v]))
 
-(defn -invalid? [x] #?(:clj (identical? x :malli.core/invalid), :cljrs (identical? x :malli.core/invalid), :cljs (keyword-identical? x :malli.core/invalid)))
+(defn -invalid? [x] #?(:clj (identical? x :malli.core/invalid), :cljs (keyword-identical? x :malli.core/invalid), :cljr (identical? x :malli.core/invalid), :cljrs (identical? x :malli.core/invalid)))
 (defn -map-valid [f v] (if (-invalid? v) v (f v)))
 (defn -map-invalid [f v] (if (-invalid? v) (f v) v))
 (defn -reduce-kv-valid [f init coll] (reduce-kv (comp #(-map-invalid reduced %) f) init coll))
@@ -29,8 +29,9 @@
                          (loop [n 0] (when (.hasNext iter) (aset oa n (f (.next iter))) (recur (unchecked-inc n))))
                          #?(:bb  (vec oa)
                             :clj (LazilyPersistentVector/createOwning oa))) []))
-             :cljrs (into [] (map f) os)
-             :cljs (into [] (map f) os))))
+             :cljs (into [] (map f) os)
+             :cljr (into [] (map f) os)
+             :cljrs (into [] (map f) os))))
 
 #?(:clj
    (defn ^:no-doc -run [^Runnable f ms]
@@ -40,7 +41,8 @@
          (catch TimeoutException _ (.cancel task true) ::timeout)
          (catch Exception e (.cancel task true) (throw e))))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmacro -combine-n
      [c n xs]
      (let [syms (repeatedly n gensym)
@@ -51,7 +53,8 @@
        `(let [~g (-vmap ~xs) ~@bs]
           (fn [~arg] ~body)))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmacro -pred-composer
      [c n]
      (let [preds (gensym "preds__")
@@ -68,13 +71,15 @@
 
 (def ^{:arglists '([[& preds]])} -every-pred
   #?(:clj  (-pred-composer and 16)
-     :cljrs (fn [preds] (fn [m] (every? #(% m) preds)))
-     :cljs (fn [preds] (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true preds))))))
+     :cljs (fn [preds] (fn [m] (boolean (reduce #(or (%2 m) (reduced false)) true preds))))
+     :cljr (-pred-composer and 16)
+     :cljrs (fn [preds] (fn [m] (every? #(% m) preds)))))
 
 (def ^{:arglists '([[& preds]])} -some-pred
   #?(:clj  (-pred-composer or 16)
-     :cljrs (fn [preds] (fn [x] (boolean (some #(% x) preds))))
-     :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
+     :cljs (fn [preds] (fn [x] (boolean (some #(% x) preds))))
+     :cljr (-pred-composer or 16)
+     :cljrs (fn [preds] (fn [x] (boolean (some #(% x) preds))))))
 
 (defmacro predicate-schemas* [var-syms]
   `(-> {}

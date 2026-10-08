@@ -106,7 +106,7 @@
 (defn -ast? [x] #?(:cljrs (satisfies? AST x) :default (#?(:clj instance?, :cljs implements?) malli.core.AST x)))
 (defn -transformer? [x] #?(:cljrs (satisfies? Transformer x) :default (#?(:clj instance?, :cljs implements?) malli.core.Transformer x)))
 
-(extend-type #?(:clj Object, :cljs default)
+(extend-type #?(:clj Object, :cljrs Object, :cljs default)
   FunctionSchema
   (-function-schema? [_] false)
   (-function-info [_])
@@ -1297,6 +1297,7 @@
                                                           (if (identical? val not-found)
                                                             default
                                                             (valid? val)))))
+                                              :cljrs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default))
                                               :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        @explicit-children)
                                 default-validator

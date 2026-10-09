@@ -573,7 +573,7 @@
                          (dotimes [j to] (aset -arr j (aget arr j)))
                          -arr)))]
     (let [{:keys [naked-keys lazy-refs]} props
-          ca (object-array children)
+          ca (object-array (or children []))
           n (alength ca)
           -children (object-array n)
           -forms (object-array n)

@@ -38,10 +38,12 @@
 
     (coll? ?interceptor)
     (reduce
-     (fn [{:keys [enter leave]} {new-enter :enter new-leave :leave}]
-       (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
-             leave (if (and leave new-leave) #(leave (new-leave %)) (or leave new-leave))]
-         {:enter enter :leave leave}))
+     (fn
+       ([] nil)
+       ([{:keys [enter leave]} {new-enter :enter new-leave :leave}]
+        (let [enter (if (and enter new-enter) #(new-enter (enter %)) (or enter new-enter))
+              leave (if (and leave new-leave) #(leave (new-leave %)) (or leave new-leave))]
+          {:enter enter :leave leave})))
      (keep #(-interceptor % schema options) ?interceptor))
 
     (nil? ?interceptor) nil

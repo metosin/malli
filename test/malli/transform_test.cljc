@@ -26,6 +26,10 @@
       (binding [mt/*max-compile-depth* 1]
         (is (thrown? #?(:clj Exception, :cljs js/Error) (#'mt/-interceptor ?interceptor {} {})))))))
 
+(deftest empty-interceptor-sequence-test
+  (is (= 42 (m/decode :int 42
+                      (mt/transformer {:decoders {:int [{:compile (constantly nil)}]}})))))
+
 (deftest string->long
   (is (= 1 (mt/-string->long "1")))
   (is (= 1 (mt/-string->long 1)))

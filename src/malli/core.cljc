@@ -1,16 +1,23 @@
 (ns malli.core
-  (:refer-clojure :exclude [eval type -deref deref -lookup -key assert])
+  (:refer-clojure :exclude #?(:lpy [eval type -deref deref -lookup -key assert reify], :default [eval type -deref deref -lookup -key assert]))
   #?(:cljs (:require-macros malli.core malli.impl.util))
   (:require [clojure.walk :as walk]
             [clojure.core :as c]
             [malli.impl.regex :as re]
-            [malli.impl.util :as miu]
+            [malli.impl.util :as miu #?@(:lpy [:refer [reify]])]
             [malli.registry :as mr]
             [malli.sci :as ms])
   #?(:clj (:import #?(:bb  (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector PersistentArrayMap)
                       :clj (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap))
                    (java.util.concurrent.atomic AtomicReference)
-                   (java.util.regex Pattern))))
+                   (java.util.regex Pattern))
+     :cljr (:import (clojure.lang Associative IPersistentCollection MapEntry IPersistentVector LazilyPersistentVector PersistentArrayMap)
+                    (System.Text.RegularExpressions Regex))))
+
+;; Basilisp resolves type hints: `objects` names the type `object-array` returns.
+#?(:lpy (def ^:private objects python/list))
+;; Basilisp has no `array-map`; this namespace only uses it where key order does not matter.
+#?(:lpy (def ^:private array-map hash-map))
 
 (declare schema schema? into-schema into-schema? type eval default-registry
          -simple-schema -val-schema -ref-schema -schema-schema -registry
@@ -99,14 +106,14 @@
 (defprotocol ParserInfo
   (-parser-info [this opts]))
 
-(defn -ref-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.RefSchema x))
-(defn -entry-parser? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntryParser x))
-(defn -entry-schema? [x] (#?(:clj instance?, :cljs implements?) malli.core.EntrySchema x))
-(defn -cached? [x] (#?(:clj instance?, :cljs implements?) malli.core.Cached x))
-(defn -ast? [x] (#?(:clj instance?, :cljs implements?) malli.core.AST x))
-(defn -transformer? [x] (#?(:clj instance?, :cljs implements?) malli.core.Transformer x))
+(defn -ref-schema? [x] #?(:cljrs (satisfies? RefSchema x), :lpy (satisfies? RefSchema x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.RefSchema x)))
+(defn -entry-parser? [x] #?(:cljrs (satisfies? EntryParser x), :lpy (satisfies? EntryParser x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.EntryParser x)))
+(defn -entry-schema? [x] #?(:cljrs (satisfies? EntrySchema x), :lpy (satisfies? EntrySchema x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.EntrySchema x)))
+(defn -cached? [x] #?(:cljrs (satisfies? Cached x), :lpy (satisfies? Cached x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.Cached x)))
+(defn -ast? [x] #?(:cljrs (satisfies? AST x), :lpy (satisfies? AST x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.AST x)))
+(defn -transformer? [x] #?(:cljrs (satisfies? Transformer x), :lpy (satisfies? Transformer x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.Transformer x)))
 
-(extend-type #?(:clj Object, :cljs default)
+(extend-type #?(:clj Object, :cljr Object, :cljrs Object, :cljs default, :lpy python/object)
   FunctionSchema
   (-function-schema? [_] false)
   (-function-info [_])
@@ -171,7 +178,11 @@
   "Is this a value constructed with `tag`?"
   [x] (instance? Tag x))
 
-(defrecord Tags [values])
+#?(:lpy (do (import basilisp.lang.interfaces) ; Basilisp defrecord rejects a field named `values`
+            (deftype Tags [values]
+              basilisp.lang.interfaces/ILookup
+              (val-at [_ k not-found] (if (= k :values) values not-found))))
+   :default (defrecord Tags [values]))
 
 (defn tags
   "A collection of tagged values. `values` should be a map from tag to value.
@@ -206,7 +217,7 @@
   ([type] (-fail! type nil))
   ([type data] (throw (-exception type data))))
 
-(defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljs js/Error) _ false)))
+(defn -safe-pred [f] #(try (boolean (f %)) (catch #?(:clj Exception, :cljr Exception, :cljs js/Error, :lpy python/Exception) _ false)))
 
 (defn -keyword->string [x]
   (if (keyword? x)
@@ -338,7 +349,8 @@
 (defn- -lookup! [?schema ?form f rec options]
   (or (and f (f ?schema) ?schema)
       (if-let [?schema (-lookup ?schema options)]
-        (cond-> ?schema rec (recur ?form f rec options))
+        #?(:lpy (if rec (recur ?schema ?form f rec options) ?schema) ; Basilisp: recur is not in tail position inside cond->
+           :default (cond-> ?schema rec (recur ?form f rec options)))
         (-fail! ::invalid-schema {:schema ?schema, :form ?form}))))
 
 (defn -properties-and-options [properties options f]
@@ -545,20 +557,23 @@
         (-fail! ::invalid-entry {:entry e})))))
 
 (defn -eager-entry-parser [children props options]
-  (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :cljs (vec arr)))
+  (letfn [(-vec [^objects arr] #?(:bb (vec arr) :clj (LazilyPersistentVector/createOwning arr), :default (vec arr)))
           (-map [^objects arr] #?(:bb   (let [m (apply array-map arr)]
                                           (when-not (= (* 2 (count m)) (count arr))
                                             (-fail! ::duplicate-keys {:arr arr})) m)
                                   :clj (try (PersistentArrayMap/createWithCheck arr)
                                             (catch Exception _ (-fail! ::duplicate-keys {:arr arr})))
-                                  :cljs (let [m (apply array-map arr)]
-                                          (when-not (= (* 2 (count m)) (count arr))
-                                            (-fail! ::duplicate-keys {:arr arr})) m)))
+                                  :default (let [m (apply array-map arr)]
+                                             (when-not (= (* 2 (count m)) (count arr))
+                                               (-fail! ::duplicate-keys {:arr arr})) m)))
           (-arange [^objects arr to]
            #?(:clj (let [-arr (object-array to)] (System/arraycopy arr 0 -arr 0 to) -arr)
-              :cljs (.slice arr 0 to)))]
+              :cljs (.slice arr 0 to)
+              :default (let [-arr (object-array to)]
+                         (dotimes [j to] (aset -arr j (aget arr j)))
+                         -arr)))]
     (let [{:keys [naked-keys lazy-refs]} props
-          ca (object-array children)
+          ca (object-array (or children []))
           n (alength ca)
           -children (object-array n)
           -forms (object-array n)
@@ -632,10 +647,10 @@
                                    (let [val (.valAt x k not-found)]
                                      (if (identical? val not-found)
                                        x (.assoc x k (t val)))))) (rseq ts))))
-     :cljs (fn [x] (reduce (fn child-transformer [m [k t]]
-                             (if-let [entry (find m k)]
-                               (assoc m k (t (val entry)))
-                               m)) x ts))))
+     :default (fn [x] (reduce (fn child-transformer [m [k t]]
+                                (if-let [entry (find m k)]
+                                  (assoc m k (t (val entry)))
+                                  m)) x ts))))
 
 (defn -tuple-transformer [ts] (fn [x] (reduce-kv -update x ts)))
 
@@ -646,7 +661,7 @@
                        (if (.hasNext i)
                          (recur (.cons x (t (.next i))))
                          x))))
-     :cljs (fn [x] (into (when x empty) (map t) x))))
+     :default (fn [x] (into (when x empty) (map t) x))))
 
 (defn -or-transformer [this transformer child-schemas method options]
   (let [this-transformer (-value-transformer transformer this method options)]
@@ -1286,7 +1301,7 @@
                                                           (if (identical? val not-found)
                                                             default
                                                             (valid? val)))))
-                                              :cljs (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
+                                              :default (fn [m] (if-let [map-entry (find m key)] (valid? (val map-entry)) default)))))
                                        @explicit-children)
                                 default-validator
                                 (conj (fn [m] (default-validator (-dissoc-map-keys m keyset))))
@@ -1557,7 +1572,8 @@
                                 (loop [acc acc, i 0, [x & xs :as ne] (seq x)]
                                   (if (and ne (or (not size) (< i #?(:cljs    ^number size
                                                                      :default size))))
-                                    (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs))
+                                    #?(:lpy (let [acc (or (explainer x (conj in (fin i x)) acc) acc)] (if xs (recur acc (inc i) xs) acc))
+                                       :default (cond-> (or (explainer x (conj in (fin i x)) acc) acc) xs (recur (inc i) xs)))
                                     acc)))))))
                 (-parser [_] (->parser (if bounded -validator -parser) (if bounded identity parse)))
                 (-unparser [_] (->parser (if bounded -validator -unparser) (if bounded identity unparse)))
@@ -1637,7 +1653,8 @@
                    :else (if (zero? size)
                            acc
                            (loop [acc acc, i 0, [x & xs] x, [e & es] explainers]
-                             (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es))))))))
+                             #?(:lpy (let [acc (e x (conj in i) acc)] (if xs (recur acc (inc i) xs es) acc))
+                                :default (cond-> (e x (conj in i) acc) xs (recur (inc i) xs es)))))))))
            (-parser [_] (->parser -parser))
            (-unparser [_] (->parser -unparser))
            (-transformer [this transformer method options]
@@ -1744,7 +1761,7 @@
                 (if-not (matches? x)
                   (conj acc (miu/-error path in this x))
                   acc)
-                (catch #?(:clj Exception, :cljs js/Error) e
+                (catch #?(:clj Exception, :cljs js/Error, :cljr Exception, :lpy python/Exception) e
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
           (-transformer [this transformer method options]
             (-intercepting (-value-transformer transformer this method options)))
@@ -1793,7 +1810,7 @@
                 (if-not (f x)
                   (conj acc (miu/-error path in this x))
                   acc)
-                (catch #?(:clj Exception, :cljs js/Error) e
+                (catch #?(:clj Exception, :cljs js/Error, :cljr Exception, :lpy python/Exception) e
                   (conj acc (miu/-error path in this x (:type (ex-data e))))))))
           (-parser [this] (-simple-parser this))
           (-unparser [this] (-parser this))
@@ -2511,7 +2528,7 @@
 
 (defn into-schema?
   "Checks if x is a IntoSchema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.IntoSchema x))
+  [x] #?(:cljrs (satisfies? IntoSchema x), :lpy (satisfies? IntoSchema x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.IntoSchema x)))
 
 (defn into-schema
   "Creates a Schema instance out of type, optional properties map and children"
@@ -2562,7 +2579,7 @@
 
 (defn schema?
   "Checks if x is a Schema instance"
-  [x] (#?(:clj instance?, :cljs implements?) malli.core.Schema x))
+  [x] #?(:cljrs (satisfies? Schema x), :lpy (satisfies? Schema x), :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.core.Schema x)))
 
 (defn schema
   "Creates a Schema object from any of the following:
@@ -2577,10 +2594,10 @@
    (cond
      (schema? ?schema) ?schema
      (into-schema? ?schema) (-into-schema ?schema nil nil options)
-     (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljs ?schema)
-                             t (-lookup! #?(:clj (.nth v 0), :cljs (nth v 0)) v into-schema? true options)
-                             n #?(:bb (count v) :clj (.count v), :cljs (count v))
-                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljs (nth v 1)))]
+     (vector? ?schema) (let [v #?(:clj ^IPersistentVector ?schema, :cljr ^IPersistentVector ?schema, :default ?schema)
+                             t (-lookup! #?(:clj (.nth v 0), :cljr (.nth v 0), :default (nth v 0)) v into-schema? true options)
+                             n #?(:bb (count v) :clj (.count v), :cljr (.count v), :default (count v))
+                             ?p (when (> n 1) #?(:clj (.nth v 1), :cljr (.nth v 1), :default (nth v 1)))]
                          (if (or (nil? ?p) (map? ?p))
                            (into-schema t ?p (when (< 2 n) (subvec ?schema 2 n)) options)
                            (into-schema t nil (when (< 1 n) (subvec ?schema 1 n)) options)))
@@ -2846,7 +2863,8 @@
    (deref-all ?schema nil))
   ([?schema options]
    (let [schema (deref ?schema options)]
-     (cond-> schema (-ref-schema? schema) (recur options)))))
+     #?(:lpy (if (-ref-schema? schema) (recur schema options) schema) ; Basilisp: recur is not in tail position inside cond->
+        :default (cond-> schema (-ref-schema? schema) (recur options))))))
 
 (defn deref-recursive
   "Derefs all schemas at all levels. Does not walk over `:ref`s."
@@ -2933,16 +2951,20 @@
     (-> (malli.impl.util/predicate-schemas*
          [any? some? number? integer? int? pos-int? neg-int? nat-int? pos? neg? float? double?
           boolean? string? ident? simple-ident? qualified-ident? keyword? simple-keyword?
-          qualified-keyword? symbol? simple-symbol? qualified-symbol? uuid? uri? inst? seqable?
+          qualified-keyword? symbol? simple-symbol? qualified-symbol? uuid? #?@(:lpy [] :default [uri?]) inst? seqable?
           indexed? map? vector? list? seq? char? set? nil? false? true?
           zero? coll? associative? sequential? ifn? fn?
           #?@(:clj [rational? ratio? bytes? decimal?])])
         (-register-var 'empty? empty? -safe-empty?))))
 
 (defn class-schemas []
-  {#?(:clj  Pattern,
-      ;; closure will complain if you reference the global RegExp object.
-      :cljs (c/type #"")) (-re-schema true)})
+  #?(:cljrs {} ;; cljrs has no distinct regex type to key a registry entry on.
+     :default
+     {#?(:clj  Pattern,
+         :cljr Regex,
+         ;; closure will complain if you reference the global RegExp object.
+         :cljs (c/type #"")
+         :lpy (c/type #"")) (-re-schema true)}))
 
 (defn comparator-schemas []
   (->> {:> >, :>= >=, :< <, :<= <=, := =, :not= not=}
@@ -3100,7 +3122,7 @@
   ([ns name ?schema data key f]
    (try
      (swap! -function-schemas* assoc-in [key ns name] (merge data {:schema (f ?schema), :ns ns, :name name}))
-     (catch #?(:clj Throwable :cljs :default) ex
+     (catch #?(:clj Throwable :cljs :default :cljr Exception :lpy python/Exception) ex
        (-fail! ::register-function-schema {:ns ns, :name name, :schema ?schema, :data data, :key key, :exception ex})))))
 
 #?(:clj

@@ -3146,6 +3146,23 @@
         (is (= type-properties (m/type-properties data-schema)))
         (is (= [error-message] (me/humanize (m/explain data-schema []))))))))
 
+(deftest empty-map-schema-test
+  (testing "a :map with no entries compiles (nil children)"
+    (doseq [[?schema form] [[:map :map] [[:map] :map] [[:maybe :map] [:maybe :map]]]]
+      (let [schema (m/schema ?schema)]
+        (is (= form (m/form schema)) (pr-str ?schema))
+        (is (m/validate schema {}))
+        (is (m/validate schema {:a 1}))
+        (is (not (m/validate schema "kikka"))))))
+  (testing "[:maybe :map] accepts nil"
+    (is (m/validate [:maybe :map] nil)))
+  (testing "an empty :map nested as an optional entry"
+    (let [schema (m/schema [:map [:x {:optional true} [:maybe :map]]])]
+      (is (m/validate schema {}))
+      (is (m/validate schema {:x nil}))
+      (is (m/validate schema {:x {}}))
+      (is (not (m/validate schema {:x 1}))))))
+
 (deftest -map-of-schema-test
   (testing "returns map-of schema with type-properties as provided in opts"
     (let [error-message "custom-error-message"

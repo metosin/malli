@@ -2950,7 +2950,9 @@
                                               :compile (fn [_ [child] _] {:pred (-safe-pred #(v % child))})})]))
        (into {}) (reduce-kv assoc nil)))
 
-(defn type-schemas []
+(defn type-schemas
+  "A map from type to Schema."
+  []
   {:any (-any-schema)
    :some (-some-schema)
    :nil (-nil-schema)
@@ -2965,7 +2967,9 @@
    :qualified-symbol (-qualified-symbol-schema)
    :uuid (-uuid-schema)})
 
-(defn sequence-schemas []
+(defn sequence-schemas
+  "A map from type to Schema."
+  []
   {:+ (-sequence-schema {:type :+, :child-bounds {:min 1, :max 1}, :keep true
                          :re-validator (fn [_ [child]] (re/+-validator child))
                          :re-explainer (fn [_ [child]] (re/+-explainer child))
@@ -3023,7 +3027,9 @@
                                   :re-transformer (fn [_ children] (apply re/alt-transformer children))
                                   :re-min-max (fn [_ children] (reduce -re-alt-min-max {:max 0} (-vmap last children)))})})
 
-(defn base-schemas []
+(defn base-schemas
+  "A map from type to Schema."
+  []
   {:and (-and-schema)
    :andn (-andn-schema)
    :or (-or-schema)
@@ -3049,10 +3055,13 @@
    :schema (-schema-schema nil)
    ::schema (-schema-schema {:raw true})})
 
-(defn default-schemas []
+(defn default-schemas
+  "A map from type to Schema."
+  []
   (merge (predicate-schemas) (class-schemas) (comparator-schemas) (type-schemas) (sequence-schemas) (base-schemas)))
 
 (def default-registry
+  "A malli.registry/Registry."
   (let [strict #?(:cljs (identical? mr/mode "strict")
                   :default (= mr/mode "strict"))
         custom #?(:cljs (identical? mr/type "custom")

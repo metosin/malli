@@ -3877,7 +3877,7 @@ Comparator functions as keywords: `:>`, `:>=`, `:<`, `:<=`, `:=` and `:not=`.
 
 ### `malli.core/type-schemas`
 
-Type-like schemas: `:any`, `:some`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:qualified-keyword`, `:symbol`, `:qualified-symbol`, and `:uuid`.
+Type-like schemas: `:any`, `:some`, `:nil`, `:string`, `:int`, `:double`, `:boolean`, `:keyword`, `:qualified-keyword`, `:symbol`, `:qualified-symbol`, and `:uuid`. On Clojure, also `:decimal`.
 
 ### `malli.core/sequence-schemas`
 

@@ -93,6 +93,14 @@
 (defn- gen-maybe [g] (if (-unreachable-gen? g) nil-gen (gen/one-of [nil-gen g])))
 (def ^:private double-default {:infinite? false, :NaN? false})
 (defn- gen-double [opts] (gen/double* (-> (into double-default opts) (update :min #(some-> % double)) (update :max #(some-> % double)))))
+#?(:clj
+   (defn- -decimal-bound
+     "Decimals generate via doubles, so a bound must round-trip through Double."
+     [k v]
+     (let [b (bigdec v), d (double b)]
+       (when-not (and (not (Double/isInfinite d)) (== (bigdec d) b))
+         (m/-fail! ::decimal-bound-not-representable {:key k, :value v}))
+       d)))
 
 (defn- -next-up
   "Smallest double greater than the finite double x, or ##Inf if there is none."
@@ -435,6 +443,12 @@
 (defmethod -schema-generator :int [schema options] (gen/large-integer* (-min-max schema options)))
 (defmethod -schema-generator :double [schema options] (double-gen schema options))
 (defmethod -schema-generator :float [schema options] (double-gen schema options))
+#?(:clj (defmethod -schema-generator :decimal [schema options]
+          ;; :gen/infinite? and :gen/NaN? ignored, as in spec: neither is a BigDecimal
+          (let [{:keys [min max]} (-min-max schema options)]
+            (gen-fmap bigdec (gen-double (cond-> {:NaN? false, :infinite? false}
+                                           min (assoc :min (-decimal-bound :min min))
+                                           max (assoc :max (-decimal-bound :max max))))))))
 (defmethod -schema-generator :boolean [_ _] gen/boolean)
 (defmethod -schema-generator :keyword [_ _] gen/keyword)
 (defmethod -schema-generator :symbol [_ _] gen/symbol)

@@ -2001,7 +2001,7 @@
 (deftest multi-dispatch-without-sci-test
   ;; malli.cherry replaces m/eval and ignores ::m/disable-sci, nothing to test there
   (when (try (m/eval 'inc {::m/disable-sci true}) false (catch #?(:clj Exception, :cljs js/Error) _ true))
-    (testing "dispatch that needs sci fails with ::m/invalid-dispatch when sci is not available #918"
+    (testing "dispatch that needs sci fails with ::m/invalid-dispatch-property when sci is not available #918"
       (doseq [dispatch ["type" 'type '(fn [x] (get x "type"))]]
         (let [e (try (m/schema [:multi {:dispatch dispatch}
                                 ["object" [:map-of :keyword :string]]
@@ -2009,7 +2009,7 @@
                                {::m/disable-sci true})
                      nil
                      (catch #?(:clj Exception, :cljs js/Error) e e))]
-          (is (= ::m/invalid-dispatch (-> e ex-data :type)))
+          (is (= ::m/invalid-dispatch-property (-> e ex-data :type)))
           (is (= {:dispatch dispatch, :reason ::m/sci-not-available} (-> e ex-data :data))))))))
 
 (deftest path-with-properties-test

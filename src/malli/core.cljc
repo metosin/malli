@@ -1888,7 +1888,7 @@
              dispatch (try (eval (:dispatch properties) options)
                            (catch #?(:clj Exception, :cljs js/Error) e
                              (if (= ::sci-not-available (:type (ex-data e)))
-                               (-fail! ::invalid-dispatch {:dispatch (:dispatch properties), :reason ::sci-not-available})
+                               (-fail! ::invalid-dispatch-property {:dispatch (:dispatch properties), :reason ::sci-not-available})
                                (throw e))))
              dispatch-map (delay (into {} (-entry-entries entry-parser)))
              finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]

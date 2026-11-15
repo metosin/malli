@@ -98,7 +98,7 @@
           (v/-block "Reason" (-ref-text printer) printer) :break :break
           (v/-block "More information" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
-(defmethod v/-format ::m/invalid-dispatch [_ {:keys [dispatch]} printer]
+(defmethod v/-format ::m/invalid-dispatch-property [_ {:keys [dispatch]} printer]
   {:title "Schema Creation Error"
    :body [:group
           (v/-block "Invalid :multi dispatch" (v/-visit dispatch printer) printer) :break :break

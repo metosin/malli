@@ -14,6 +14,11 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Improvements:
+  * `malli.error/humanize` gives meaningful messages for `malli.experimental.time` schemas, including `:min` and `:max` [#1114](https://github.com/metosin/malli/issues/1114)
+
 ## 0.20.3 (2026-09-25)
 
 * Fixes:

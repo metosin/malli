@@ -1885,7 +1885,11 @@
              entry-parser (-create-entry-parser children opts' options)
              form (delay (-create-entry-form parent properties entry-parser options))
              cache (-create-cache options)
-             dispatch (eval (:dispatch properties) options)
+             dispatch (try (eval (:dispatch properties) options)
+                           (catch #?(:clj Exception, :cljs js/Error) e
+                             (if (= ::sci-not-available (:type (ex-data e)))
+                               (-fail! ::invalid-dispatch {:dispatch (:dispatch properties), :reason ::sci-not-available})
+                               (throw e))))
              dispatch-map (delay (into {} (-entry-entries entry-parser)))
              finder (fn [{:keys [::default] :as m}] (fn [x] (m x default)))]
          (when-not dispatch

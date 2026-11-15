@@ -14,6 +14,10 @@ We use [Break Versioning][breakver]. The version numbers follow a `<major>.<mino
 
 Malli is in well matured [alpha](README.md#alpha).
 
+## UNRELEASED
+
+* Clear `::m/invalid-dispatch` error (with `malli.dev.pretty` hints) when a `:multi` `:dispatch` needs sci but sci is not available, e.g. `{:dispatch "type"}` [#918](https://github.com/metosin/malli/issues/918)
+
 ## 0.20.3 (2026-09-25)
 
 * Fixes:

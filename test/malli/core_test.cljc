@@ -1304,7 +1304,16 @@
         (is (= (m/tag :human [:human]) (m/parse schema [:human])))
         (is (= (m/tag :bear [:bear [1 2 3]]) (m/parse schema [:bear 1 2 3])))
         (is (= (m/tag ::m/default ["defaultit" "toimii"]) (m/parse schema ["defaultit" "toimii"])))
-        (is (= ::m/invalid (m/parse schema [:so :invalid]))))))
+        (is (= ::m/invalid (m/parse schema [:so :invalid])))))
+
+    (testing "dispatch that is a function works without sci"
+      (let [schema (m/schema [:multi {:dispatch #(get % "type")}
+                              ["object" [:map-of :string :string]]
+                              [::m/default :string]]
+                             {::m/disable-sci true})]
+        (is (m/validate schema {"type" "object"}))
+        (is (m/validate schema "kikka"))
+        (is (not (m/validate schema {"type" 1}))))))
 
   (testing "map-of schema"
 
@@ -1988,6 +1997,20 @@
                             (m/validator
                              [:schema {:registry {::boll [:cat boolean?]}}
                               [:* [:ref ::boll]]]))))))
+
+(deftest multi-dispatch-without-sci-test
+  ;; malli.cherry replaces m/eval and ignores ::m/disable-sci, nothing to test there
+  (when (try (m/eval 'inc {::m/disable-sci true}) false (catch #?(:clj Exception, :cljs js/Error) _ true))
+    (testing "dispatch that needs sci fails with ::m/invalid-dispatch when sci is not available #918"
+      (doseq [dispatch ["type" 'type '(fn [x] (get x "type"))]]
+        (let [e (try (m/schema [:multi {:dispatch dispatch}
+                                ["object" [:map-of :keyword :string]]
+                                [::m/default :string]]
+                               {::m/disable-sci true})
+                     nil
+                     (catch #?(:clj Exception, :cljs js/Error) e e))]
+          (is (= ::m/invalid-dispatch (-> e ex-data :type)))
+          (is (= {:dispatch dispatch, :reason ::m/sci-not-available} (-> e ex-data :data))))))))
 
 (deftest path-with-properties-test
   (let [?path #(-> % :errors first :path)]

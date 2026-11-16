@@ -16,6 +16,7 @@ Malli is in well matured [alpha](README.md#alpha).
 
 ## UNRELEASED
 
+* Clear `::m/invalid-dispatch-property` error (with `malli.dev.pretty` hints) when a `:multi` `:dispatch` needs sci but sci is not available, e.g. `{:dispatch "type"}` [#918](https://github.com/metosin/malli/issues/918)
 * Improvements:
   * `malli.error/humanize` gives meaningful messages for `malli.experimental.time` schemas, including `:min` and `:max` [#1114](https://github.com/metosin/malli/issues/1114)
 

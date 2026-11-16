@@ -2113,6 +2113,19 @@ Any function can be used for `:dispatch`:
 ;; => true
 ```
 
+Strings, symbols and lists given as `:dispatch` are evaluated as code, like [serializable functions](#serializable-functions), so `{:dispatch "type"}` does not dispatch on the `"type"` key. To dispatch on a string key, use a function:
+
+```clojure
+(m/validate
+  [:multi {:dispatch #(get % "type")}
+   ["object" [:map-of :string :string]]
+   [::m/default :string]]
+  {"type" "object", "key" "value"})
+;; => true
+```
+
+Without sci (or with `::m/disable-sci`), such a `:dispatch` fails with `::m/invalid-dispatch-property`.
+
 `:dispatch` values should be decoded before actual values:
 
 ```clojure
@@ -2829,6 +2842,8 @@ Unparsing can be used to update complex values via an associative interface.
 
 Enabling serializable function schemas requires [SCI](https://github.com/borkdude/sci) or [cherry](https://github.com/squint-cljs/cherry) (for client side) as external dependency. If
 it is not present, the malli function evaluator throws `:sci-not-available` exception.
+
+Symbols, lists and strings in function positions (e.g. `[:fn 'int?]`, `:decode/string '(fn [x] ...)` or `[:multi {:dispatch "type"} ...]`) are evaluated as code. Use a keyword or a function value when you don't want that.
 
 For ClojureScript, you need to require `sci.core` or `malli.cherry` manually.
 

@@ -98,6 +98,16 @@
           (v/-block "Reason" (-ref-text printer) printer) :break :break
           (v/-block "More information" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
 
+(defmethod v/-format ::m/invalid-dispatch-property [_ {:keys [dispatch]} printer]
+  {:title "Schema Creation Error"
+   :body [:group
+          (v/-block "Invalid :multi dispatch" (v/-visit dispatch printer) printer) :break :break
+          (v/-block "Reason" [:group "Strings, symbols and lists are evaluated as code, which needs sci. "
+                              "Sci is not available (or disabled with :malli.core/disable-sci)."] printer) :break :break
+          (v/-block "Did you mean" [:group "a keyword, e.g. " (v/-visit :type printer)
+                                    ", or a function, e.g. #(get % \"type\")"] printer) :break :break
+          (v/-block "More information" (v/-link "https://cljdoc.org/d/metosin/malli/CURRENT" printer) printer)]})
+
 (defmethod v/-format ::m/invalid-schema [_ {:keys [schema form]} printer]
   (let [proposals (seq (me/-most-similar-to #{schema} schema (set (keys (mr/schemas m/default-registry)))))]
     {:title "Schema Creation Error"

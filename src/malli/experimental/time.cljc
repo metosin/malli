@@ -64,16 +64,30 @@
               (not (pos? (compare-periods x max)))
               (<= x max))))))
 
-(defn -temporal-schema [{:keys [type class type-properties]}]
-  (m/-simple-schema
-   (cond->
+(defn -less-than? [x y]
+  (if (instance? Period x)
+    (neg? (compare-periods x y))
+    (not (<= y x))))
+
+(defn -min-max-error-fn [pred message]
+  (fn [{:keys [schema value negated]} _]
+    (let [{:keys [min max]} (m/properties schema)]
+      (cond
+        (not (pred value)) message
+        (and min max (#?(:clj = :cljs .equals) min max)) (str "should be " min)
+        (and min (if negated (not (-less-than? value min)) (-less-than? value min))) (str "should be at least " min)
+        max (str "should be at most " max)
+        negated message))))
+
+(defn -temporal-schema [{:keys [type class type-properties message]}]
+  (let [pred (fn pred [x]
+               #?(:clj  (.isInstance ^Class class x)
+                  :cljs (instance? class x)))]
+    (m/-simple-schema
      {:type type
-      :pred (fn pred [x]
-              #?(:clj  (.isInstance ^Class class x)
-                 :cljs (instance? class x)))
-      :property-pred (-min-max-pred nil)}
-     type-properties
-     (assoc :type-properties type-properties))))
+      :pred pred
+      :property-pred (-min-max-pred nil)
+      :type-properties (assoc type-properties :error/fn {:en (-min-max-error-fn pred message)})})))
 
 #?(:cljs
    (defn createTemporalQuery [f]
@@ -82,17 +96,17 @@
        (set! (.-queryFrom query) (fn [t] (f t)))
        query)))
 
-(defn -duration-schema [] (-temporal-schema {:type :time/duration :class Duration}))
-(defn -period-schema [] (-temporal-schema {:type :time/period :class Period}))
-(defn -instant-schema [] (-temporal-schema {:type :time/instant :class Instant}))
-(defn -local-date-schema [] (-temporal-schema {:type :time/local-date :class LocalDate :type-properties {:min (. LocalDate -MIN) :max (. LocalDate -MAX)}}))
-(defn -local-time-schema [] (-temporal-schema {:type :time/local-time :class LocalTime :type-properties {:min (. LocalTime -MIN) :max (. LocalTime -MAX)}}))
-(defn -local-date-time-schema [] (-temporal-schema {:type :time/local-date-time :class LocalDateTime :type-properties {:min (. LocalDateTime -MIN) :max (. LocalDateTime -MAX)}}))
-(defn -offset-date-time-schema [] (-temporal-schema {:type :time/offset-date-time :class OffsetDateTime}))
-(defn -offset-time-schema [] (-temporal-schema {:type :time/offset-time :class OffsetTime :type-properties {:min (. OffsetTime -MIN) :max (. OffsetTime -MAX)}}))
-(defn -zoned-date-time-schema [] (-temporal-schema {:type :time/zoned-date-time :class ZonedDateTime}))
-(defn -zone-id-schema [] (m/-simple-schema {:type :time/zone-id :pred #(instance? ZoneId %)}))
-(defn -zone-offset-schema [] (m/-simple-schema {:type :time/zone-offset :pred #(instance? ZoneOffset %) :type-properties {:min (. ZoneOffset -MIN) :max (. ZoneOffset -MAX)}}))
+(defn -duration-schema [] (-temporal-schema {:type :time/duration :class Duration :message "should be a duration"}))
+(defn -period-schema [] (-temporal-schema {:type :time/period :class Period :message "should be a period"}))
+(defn -instant-schema [] (-temporal-schema {:type :time/instant :class Instant :message "should be an instant"}))
+(defn -local-date-schema [] (-temporal-schema {:type :time/local-date :class LocalDate :message "should be a local date" :type-properties {:min (. LocalDate -MIN) :max (. LocalDate -MAX)}}))
+(defn -local-time-schema [] (-temporal-schema {:type :time/local-time :class LocalTime :message "should be a local time" :type-properties {:min (. LocalTime -MIN) :max (. LocalTime -MAX)}}))
+(defn -local-date-time-schema [] (-temporal-schema {:type :time/local-date-time :class LocalDateTime :message "should be a local date time" :type-properties {:min (. LocalDateTime -MIN) :max (. LocalDateTime -MAX)}}))
+(defn -offset-date-time-schema [] (-temporal-schema {:type :time/offset-date-time :class OffsetDateTime :message "should be an offset date time"}))
+(defn -offset-time-schema [] (-temporal-schema {:type :time/offset-time :class OffsetTime :message "should be an offset time" :type-properties {:min (. OffsetTime -MIN) :max (. OffsetTime -MAX)}}))
+(defn -zoned-date-time-schema [] (-temporal-schema {:type :time/zoned-date-time :class ZonedDateTime :message "should be a zoned date time"}))
+(defn -zone-id-schema [] (m/-simple-schema {:type :time/zone-id :pred #(instance? ZoneId %) :type-properties {:error/message {:en "should be a zone id"}}}))
+(defn -zone-offset-schema [] (m/-simple-schema {:type :time/zone-offset :pred #(instance? ZoneOffset %) :type-properties {:min (. ZoneOffset -MIN) :max (. ZoneOffset -MAX), :error/message {:en "should be a zone offset"}}}))
 
 (defn schemas []
   {:time/zone-id (-zone-id-schema)

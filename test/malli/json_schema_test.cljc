@@ -115,6 +115,7 @@
    [[:int {:min 1, :max 4}] {:type "integer", :minimum 1, :maximum 4}]
    [[:float {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
    [[:double {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]
+   #?@(:clj [[[:decimal {:min 1, :max 4}] {:type "number", :minimum 1, :maximum 4}]])
    [:keyword {:type "string"}]
    [:qualified-keyword {:type "string"}]
    [:symbol {:type "string"}]

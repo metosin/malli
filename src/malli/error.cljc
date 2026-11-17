@@ -136,6 +136,7 @@
    :int {:error/fn {:en (-pred-min-max-error-fn {:pred int?, :message "should be an integer"})}}
    :double {:error/fn {:en (-pred-min-max-error-fn {:pred double?, :message "should be a double"})}}
    :float {:error/fn {:en (-pred-min-max-error-fn {:pred float?, :message "should be a float"})}}
+   #?@(:clj [:decimal {:error/fn {:en (-pred-min-max-error-fn {:pred decimal?, :message "should be a decimal"})}}])
    :boolean {:error/message {:en "should be a boolean"}}
    :keyword {:error/message {:en "should be a keyword"}}
    :symbol {:error/message {:en "should be a symbol"}}

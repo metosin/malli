@@ -1,7 +1,8 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.registry :as mr]))
 
 (declare path->in find)
 
@@ -337,7 +338,14 @@
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
-   (m/-set (m/schema ?schema options) key value)))
+   (let [schema (m/schema ?schema options)
+         value (if (and options (some? value) (not (m/schema? value)))
+                 ;; schema's own options first, the given ones as a fallback (e.g. for a schema from mu/get), #928
+                 (let [schema-options (m/options schema)
+                       registry (mr/composite-registry (m/-registry schema-options) (m/-registry options))]
+                   (m/schema value (c/assoc (c/merge options schema-options) :registry registry)))
+                 value)]
+     (m/-set schema key value))))
 
 (defn update
   "Like [[clojure.core/update]], but for LensSchema instances.

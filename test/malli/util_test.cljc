@@ -1078,6 +1078,21 @@
                  (mu/assoc-in [:foo :baz] :int)
                  (mu/closed-schema)))))
 
+(deftest test-928
+  (testing "mu/assoc uses options for the value, also when the schema is already a Schema"
+    (let [options {:registry (merge {:address :string} (m/default-schemas))}
+          schema (-> [:map [:job [:map [:title :string]]]]
+                     (mu/get :job))]
+      (is (form= [:map [:title :string] [:location :string]]
+                 (mu/assoc schema :location :address options)))
+      (is (form= [:map [:title :string] [:location {:optional true} :string]]
+                 (mu/assoc schema [:location {:optional true}] :address options)))
+      (is (form= :map
+                 (mu/assoc schema :title nil options)))
+      (testing "the schema's own registry is used first"
+        (is (form= [:map {:registry {::a :int}} [:x ::a] [:y ::a]]
+                   (mu/assoc [:map {:registry {::a :int}} [:x ::a]] :y ::a options)))))))
+
 (deftest update-entry-properties-test
   (is (= [:map [:me {:a 1, :b 1} :int]]
          (m/form

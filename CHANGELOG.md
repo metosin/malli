@@ -20,7 +20,7 @@ Malli is in well matured [alpha](README.md#alpha).
 * Improvements:
   * `malli.error/humanize` gives meaningful messages for `malli.experimental.time` schemas, including `:min` and `:max` [#1114](https://github.com/metosin/malli/issues/1114)
 * Fixes:
-  * `mu/assoc` (and `mu/assoc-in`) use the given options when parsing the value, also for an already created schema, e.g. one from `mu/get` [#928](https://github.com/metosin/malli/issues/928)
+  * `mu/assoc` and `mu/assoc-in` use the registry from the given options when parsing the value, also for an already created schema, e.g. one from `mu/get`. The schema's own registry is still used first, the given one as a fallback [#928](https://github.com/metosin/malli/issues/928)
 
 ## 0.20.3 (2026-09-25)
 

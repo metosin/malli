@@ -1096,9 +1096,16 @@
                    (mu/assoc-in schema [:location] :address options)))
         (is (form= [:map [:title :string] [:a [:map [:location :string]]]]
                    (mu/assoc-in schema [:a :location] :address options))))
-      (testing "the schema's own registry is used first"
-        (is (form= [:map {:registry {::a :int}} [:x ::a] [:y ::a]]
-                   (mu/assoc [:map {:registry {::a :int}} [:x ::a]] :y ::a options)))))))
+      (testing "the schema's own registry is used first, the given one as a fallback"
+        (let [options {:registry (merge {::a :string, ::b :string} (m/default-schemas))}]
+          (doseq [?schema [[:map {:registry {::a :int}} [:x ::a]]
+                           (m/schema [:map {:registry {::a :int}} [:x ::a]])]]
+            (let [schema (-> ?schema
+                             (mu/assoc :y ::a options)
+                             (mu/assoc :z ::b options))]
+              (is (form= [:map {:registry {::a :int}} [:x ::a] [:y ::a] [:z ::b]] schema))
+              (is (m/validate schema {:x 1, :y 1, :z "z"}))
+              (is (not (m/validate schema {:x 1, :y "y", :z "z"}))))))))))
 
 (deftest update-entry-properties-test
   (is (= [:map [:me {:a 1, :b 1} :int]]

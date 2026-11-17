@@ -334,7 +334,11 @@
   Key can also be a vector of [key props override?] if you want to set properties for the key-value pair.
   The boolean override? decides if existing props for the key are to be overwritten. Defaults to true.
 
-  If key is a vector, use [key] to avoid a conflict with the aforementioned feature."
+  If key is a vector, use [key] to avoid a conflict with the aforementioned feature.
+
+  The value is parsed with the schema's own options. If `options` are given, their
+  registry is used as a fallback for references the schema's own registry doesn't
+  resolve, also when ?schema is already a Schema (e.g. one from [[get]])."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]

@@ -1,24 +1,33 @@
 (ns malli.registry
-  (:refer-clojure :exclude [type])
+  (:refer-clojure :exclude #?(:lpy [type reify], :default [type]))
+  #?(:lpy (:require [malli.impl.util :refer [reify]]))
   #?(:clj (:import (java.util HashMap Map))))
 
 #?(:cljs (goog-define mode "default")
-   :clj  (def mode (or (System/getProperty "malli.registry/mode") "default")))
+   :clj  (def mode (or (System/getProperty "malli.registry/mode") "default"))
+   :cljr (def mode (or (Environment/GetEnvironmentVariable "MALLI_REGISTRY_MODE") "default"))
+   :cljrs (def mode "default")
+   :lpy (def mode "default"))
 
 #?(:cljs (goog-define type "default")
-   :clj  (def type (or (System/getProperty "malli.registry/type") "default")))
+   :clj  (def type (or (System/getProperty "malli.registry/type") "default"))
+   :cljr (def type (or (Environment/GetEnvironmentVariable "MALLI_REGISTRY_TYPE") "default"))
+   :cljrs (def type "default")
+   :lpy (def type "default"))
 
 (defprotocol Registry
   (-schema [this type] "returns the schema from a registry")
   (-schemas [this] "returns all schemas from a registry"))
 
-(defn registry? [x] (#?(:clj instance?, :cljs implements?) malli.registry.Registry x))
+(defn registry? [x] #?(:cljrs (satisfies? Registry x)
+                       :lpy (satisfies? Registry x)
+                       :default (#?(:clj instance?, :cljr instance?, :cljs implements?) malli.registry.Registry x)))
 
 (defn fast-registry [m]
-  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m)]
+  (let [fm #?(:clj (doto (HashMap. 1024 0.25) (.putAll ^Map m)), :cljs m, :cljr m, :cljrs m, :lpy m)]
     (reify
       Registry
-      (-schema [_ type] (.get fm type))
+      (-schema [_ type] #?(:cljr (get fm type), :cljrs (get fm type), :lpy (get fm type), :default (.get fm type)))
       (-schemas [_] m))))
 
 (defn simple-registry [m]

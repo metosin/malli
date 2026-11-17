@@ -1089,6 +1089,13 @@
                  (mu/assoc schema [:location {:optional true}] :address options)))
       (is (form= :map
                  (mu/assoc schema :title nil options)))
+      (is (form= :map
+                 (mu/assoc schema :title false options)))
+      (testing "mu/assoc-in"
+        (is (form= [:map [:title :string] [:location :string]]
+                   (mu/assoc-in schema [:location] :address options)))
+        (is (form= [:map [:title :string] [:a [:map [:location :string]]]]
+                   (mu/assoc-in schema [:a :location] :address options))))
       (testing "the schema's own registry is used first"
         (is (form= [:map {:registry {::a :int}} [:x ::a] [:y ::a]]
                    (mu/assoc [:map {:registry {::a :int}} [:x ::a]] :y ::a options)))))))

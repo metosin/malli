@@ -339,7 +339,7 @@
    (assoc ?schema key value nil))
   ([?schema key value options]
    (let [schema (m/schema ?schema options)
-         value (if (and options (some? value) (not (m/schema? value)))
+         value (if (and options value (not (m/schema? value)))
                  ;; schema's own options first, the given ones as a fallback (e.g. for a schema from mu/get), #928
                  (let [schema-options (m/options schema)
                        registry (mr/composite-registry (m/-registry schema-options) (m/-registry options))]
@@ -382,7 +382,7 @@
    (assoc-in ?schema ks value nil))
   ([?schema [k & ks] value options]
    (let [schema (m/schema ?schema options)]
-     (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value) value)))))
+     (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value options) value) options))))
 
 (defn update-in
   "Like [[clojure.core/update-in]], but for LensSchemas.

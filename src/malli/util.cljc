@@ -336,9 +336,11 @@
 
   If key is a vector, use [key] to avoid a conflict with the aforementioned feature.
 
-  The value is parsed with the schema's own options. If `options` are given, their
-  registry is used as a fallback for references the schema's own registry doesn't
-  resolve, also when ?schema is already a Schema (e.g. one from [[get]])."
+  If `options` are given, the value is parsed with them merged with the schema's own
+  options, the schema's own taking precedence. If both have a `:registry`, references
+  are looked up from the schema's registry first and then from the given one. This
+  works the same for a schema given as data and for an existing Schema, e.g. one
+  returned by [[get]]."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
@@ -346,8 +348,11 @@
          value (if (and options value (not (m/schema? value)))
                  ;; schema's own options first, the given ones as a fallback (e.g. for a schema from mu/get), #928
                  (let [schema-options (m/options schema)
-                       registry (mr/composite-registry (m/-registry schema-options) (m/-registry options))]
-                   (m/schema value (c/assoc (c/merge options schema-options) :registry registry)))
+                       registry (:registry options)
+                       options (c/merge options schema-options)]
+                   (m/schema value (if (and registry (not (identical? registry (:registry schema-options))))
+                                     (c/assoc options :registry (mr/composite-registry (m/-registry schema-options) registry))
+                                     options)))
                  value)]
      (m/-set schema key value))))
 

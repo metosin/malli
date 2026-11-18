@@ -375,6 +375,8 @@
         [:map [:x {:optional true} string?]] :y string? [:map [:x {:optional true} 'string?] [:y 'string?]]
         [:map [:x string?]] [:y {:optional true}] string? [:map [:x 'string?] [:y {:optional true} 'string?]]
         [:map [:x string?]] [] int? ::throws
+        [:map [:x string?] [:y string?]] :x nil [:map [:y 'string?]]
+        [:map [:x string?] [:y string?]] :x false [:map [:y 'string?]]
 
         [:vector string?] 0 int? [:vector 'int?]
         [:vector string?] 1 int? [:vector 'int?]
@@ -412,7 +414,12 @@
 
         [:schema string?] 0 int? [:schema 'int?]
         [:schema string?] 0 "invalid" ::throws
-        [:schema string?] 1 int? ::throws))))
+        [:schema string?] 1 int? ::throws)
+
+      (testing "nil or false value removes the entry, also with options"
+        (let [options {:registry (m/default-schemas)}]
+          (is (form= [:map [:y 'string?]] (mu/assoc [:map [:x string?] [:y string?]] :x nil options)))
+          (is (form= [:map [:y 'string?]] (mu/assoc [:map [:x string?] [:y string?]] :x false options))))))))
 
 (deftest get-in-test
   (is (mu/equals boolean?
@@ -1087,10 +1094,6 @@
                  (mu/assoc schema :location :address options)))
       (is (form= [:map [:title :string] [:location {:optional true} :string]]
                  (mu/assoc schema [:location {:optional true}] :address options)))
-      (is (form= :map
-                 (mu/assoc schema :title nil options)))
-      (is (form= :map
-                 (mu/assoc schema :title false options)))
       (testing "mu/assoc-in"
         (is (form= [:map [:title :string] [:location :string]]
                    (mu/assoc-in schema [:location] :address options)))
@@ -1105,7 +1108,14 @@
                              (mu/assoc :z ::b options))]
               (is (form= [:map {:registry {::a :int}} [:x ::a] [:y ::a] [:z ::b]] schema))
               (is (m/validate schema {:x 1, :y 1, :z "z"}))
-              (is (not (m/validate schema {:x 1, :y "y", :z "z"}))))))))))
+              (is (not (m/validate schema {:x 1, :y "y", :z "z"})))))))
+      (testing "other options are passed on too, the schema's own options first"
+        (let [schema (m/schema [:map [:x :int]] {::own 1, ::shared :schema})
+              options (merge options {::given 2, ::shared :given})
+              value-options (-> schema (mu/assoc :location :address options) (mu/get :location) (m/options))]
+          (is (= 1 (::own value-options)))
+          (is (= 2 (::given value-options)))
+          (is (= :schema (::shared value-options))))))))
 
 (deftest update-entry-properties-test
   (is (= [:map [:me {:a 1, :b 1} :int]]

@@ -1,7 +1,8 @@
 (ns malli.util
   (:refer-clojure :exclude [merge select-keys find get get-in dissoc assoc update assoc-in update-in keys])
   (:require [clojure.core :as c]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.registry :as mr]))
 
 (declare path->in find)
 
@@ -333,11 +334,27 @@
   Key can also be a vector of [key props override?] if you want to set properties for the key-value pair.
   The boolean override? decides if existing props for the key are to be overwritten. Defaults to true.
 
-  If key is a vector, use [key] to avoid a conflict with the aforementioned feature."
+  If key is a vector, use [key] to avoid a conflict with the aforementioned feature.
+
+  If `options` are given, the value is parsed with them merged with the schema's own
+  options, the schema's own taking precedence. If both have a `:registry`, references
+  are looked up from the schema's registry first and then from the given one. This
+  works the same for a schema given as data and for an existing Schema, e.g. one
+  returned by [[get]]."
   ([?schema key value]
    (assoc ?schema key value nil))
   ([?schema key value options]
-   (m/-set (m/schema ?schema options) key value)))
+   (let [schema (m/schema ?schema options)
+         value (if (and options value (not (m/schema? value)))
+                 ;; schema's own options first, the given ones as a fallback (e.g. for a schema from mu/get), #928
+                 (let [schema-options (m/options schema)
+                       registry (:registry options)
+                       options (c/merge options schema-options)]
+                   (m/schema value (if (and registry (not (identical? registry (:registry schema-options))))
+                                     (c/assoc options :registry (mr/composite-registry (m/-registry schema-options) registry))
+                                     options)))
+                 value)]
+     (m/-set schema key value))))
 
 (defn update
   "Like [[clojure.core/update]], but for LensSchema instances.
@@ -374,7 +391,7 @@
    (assoc-in ?schema ks value nil))
   ([?schema [k & ks] value options]
    (let [schema (m/schema ?schema options)]
-     (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value) value)))))
+     (assoc schema k (if ks (assoc-in (get schema k (m/schema :map (m/options schema))) ks value options) value) options))))
 
 (defn update-in
   "Like [[clojure.core/update-in]], but for LensSchemas.

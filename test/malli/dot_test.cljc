@@ -120,4 +120,12 @@
               \"Key\" -> \"Curve\" [arrowtail=\"odiamond\"]
               \"Key\" -> \"Key$Value\" [arrowtail=\"diamond\"]
             }"
-           (md/transform [:map [:key "Key"]] {:registry registry}))))))
+           (md/transform [:map [:key "Key"]] {:registry registry}))))
+
+    (testing "recursive external schemas terminate"
+      (let [registry (mr/composite-registry
+                      m/default-registry
+                      (mr/registry {"Node" [:map [:next [:maybe [:ref "Node"]]]]}))
+            dot (md/transform [:map [:node "Node"]] {:registry registry})]
+        (is (str/includes? dot "\"Node\" [label=\"{Node|:next [:maybe [:ref"))
+        (is (str/includes? dot "\"Node\" -> \"Node\""))))))

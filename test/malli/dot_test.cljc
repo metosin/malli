@@ -1,7 +1,9 @@
 (ns malli.dot-test
   (:require [clojure.string :as str]
-            [clojure.test :refer [deftest is]]
-            [malli.dot :as md]))
+            [clojure.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [malli.dot :as md]
+            [malli.registry :as mr]))
 
 (def Order
   [:schema
@@ -83,3 +85,39 @@
           \":malli.dot/schema\" [label=\"{:malli.dot/schema|[:and int? [:\\< 100]]\\l}\", fillcolor=\"#fff0cd\"]
         }"
        (md/transform [:and int? [:< 100]]))))
+
+(deftest options-registry-test
+  (let [registry (mr/composite-registry
+                  m/default-registry
+                  (mr/registry {"Curve" [:enum :curve25519 :p256]
+                                "Key" [:map [:curve "Curve"] [:value [:map [:x int?]]]]}))]
+
+    (testing "external schemas referenced from the options registry are shown as entities"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \":malli.dot/schema\" [label=\"{:malli.dot/schema|Curve\\l}\", fillcolor=\"#fff0cd\"]
+              \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
+
+              \":malli.dot/schema\" -> \"Curve\" [arrowtail=\"odiamond\"]
+            }"
+           (md/transform "Curve" {:registry registry}))))
+
+    (testing "external schemas are normalized and their references followed"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \":malli.dot/schema\" [label=\"{:malli.dot/schema|:key Key\\l}\", fillcolor=\"#fff0cd\"]
+              \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
+              \"Key\" [label=\"{Key|:curve Curve\\l:value Key$Value\\l}\", fillcolor=\"#fff0cd\"]
+              \"Key$Value\" [label=\"{Key$Value|:x int?\\l}\", fillcolor=\"#e6caab\"]
+
+              \":malli.dot/schema\" -> \"Key\" [arrowtail=\"odiamond\"]
+              \"Key\" -> \"Curve\" [arrowtail=\"odiamond\"]
+              \"Key\" -> \"Key$Value\" [arrowtail=\"diamond\"]
+            }"
+           (md/transform [:map [:key "Key"]] {:registry registry}))))))

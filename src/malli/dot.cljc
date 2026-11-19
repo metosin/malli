@@ -25,16 +25,25 @@
 
 (defn -normalize [{:keys [registry] :as ctx}]
   (let [registry* (atom registry)]
-    (doseq [[k v] registry]
-      (swap! registry* assoc k
-             (m/walk v (fn [schema path children _]
-                         (let [options (update (m/options schema) :registry #(mr/composite-registry @registry* %))
-                               schema (m/into-schema (m/parent schema) (m/properties schema) children options)]
-                           (if (and (seq path) (= :map (m/type schema)))
-                             (let [ref (-schema-name k path)]
-                               (swap! registry* assoc ref (mu/update-properties schema assoc ::entity k))
-                               ref)
-                             schema))))))
+    (loop [todo registry]
+      (when (seq todo)
+        ;; references resolved via the options registry, not embedded in the schema
+        (let [external (atom {})]
+          (doseq [[k v] todo]
+            (swap! registry* assoc k
+                   (m/walk v (fn [schema path children _]
+                               (when-let [ref (and (m/-ref-schema? schema) (m/-ref schema))]
+                                 (when-not (contains? @registry* ref)
+                                   (swap! external assoc ref (m/deref schema))))
+                               (let [options (update (m/options schema) :registry #(mr/composite-registry @registry* %))
+                                     schema (m/into-schema (m/parent schema) (m/properties schema) children options)]
+                                 (if (and (seq path) (= :map (m/type schema)))
+                                   (let [ref (-schema-name k path)]
+                                     (swap! registry* assoc ref (mu/update-properties schema assoc ::entity k))
+                                     ref)
+                                   schema))))))
+          (swap! registry* merge @external)
+          (recur @external))))
     (assoc ctx :registry @registry*)))
 
 (defn -get-links [registry]

@@ -1,7 +1,9 @@
 (ns malli.plantuml-test
   (:require [clojure.string :as str]
-            [clojure.test :refer [deftest is]]
-            [malli.plantuml :as plantuml]))
+            [clojure.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [malli.plantuml :as plantuml]
+            [malli.registry :as mr]))
 
 (defn trimmed= [s1 s2]
   (letfn [(trim [x] (str/trim (str/replace x #"\s+" " ")))]
@@ -35,3 +37,100 @@
        }
        @enduml"
        (plantuml/transform [:and int? [:< 100]]))))
+
+(deftest options-registry-test
+  (let [registry (mr/composite-registry
+                  m/default-registry
+                  (mr/registry {"Curve" [:enum :curve25519 :p256]
+                                "Key" [:map [:curve "Curve"] [:value [:map [:x int?]]]]}))]
+
+    (testing "external schemas referenced from the options registry are shown as entities"
+      (is (trimmed=
+           "@startuml
+            entity Curve {
+             [:enum :curve25519 :p256]
+            }
+            @enduml"
+           (plantuml/transform "Curve" {:registry registry}))))
+
+    (testing "external schemas are normalized and their references followed"
+      (is (trimmed=
+           "@startuml
+            entity :malli.dot/schema {
+             :key \"Key\"
+            }
+            entity Curve {
+             [:enum :curve25519 :p256]
+            }
+            entity Key {
+             :curve \"Curve\"
+             :value \"Key$Value\"
+            }
+            abstract Key$Value {
+             :x int?
+            }
+            :malli.dot/schema o-- Key
+            Key o-- Curve
+            Key *-- Key$Value
+            @enduml"
+           (plantuml/transform [:map [:key "Key"]] {:registry registry}))))
+
+    (testing "same name in different scopes are different entities"
+      (is (trimmed=
+           "@startuml
+            entity :malli.dot/schema {
+             :s \"Scoped\"
+            }
+            entity Scoped {
+             :x \"Scoped$X\"
+            }
+            entity Scoped$X {
+             [:enum :a :b]
+            }
+            entity X {
+             [:enum 1 2]
+            }
+            :malli.dot/schema o-- Scoped
+            Scoped o-- Scoped$X
+            @enduml"
+           (plantuml/transform [:map {:registry {"X" [:enum 1 2]}} [:s "Scoped"]]
+                               {:registry (mr/composite-registry
+                                           m/default-registry
+                                           (mr/registry {"Scoped" [:map {:registry {"X" [:enum :a :b]}} [:x "X"]]}))}))))
+
+    (testing "recursive external schemas terminate"
+      (is (trimmed=
+           "@startuml
+            entity :malli.dot/schema {
+             :node \"Node\"
+            }
+            entity Node {
+             :next [:maybe [:ref \"Node\"]]
+            }
+            :malli.dot/schema o-- Node
+            Node o-- Node
+            @enduml"
+           (plantuml/transform [:map [:node "Node"]]
+                               {:registry (mr/composite-registry
+                                           m/default-registry
+                                           (mr/registry {"Node" [:map [:next [:maybe [:ref "Node"]]]]}))}))))))
+
+#?(:clj
+   (def Foo [:map [:a int?] [:b [:maybe [:ref #'Foo]]]]))
+
+#?(:clj
+   (deftest var-ref-test
+     (is (trimmed=
+          "@startuml
+           entity :malli.dot/schema {
+            :foo [:ref \"malli.plantuml-test/Foo\"]
+           }
+           entity malli.plantuml-test/Foo {
+            :a int?
+            :b [:maybe [:ref \"malli.plantuml-test/Foo\"]]
+           }
+           :malli.dot/schema o-- malli.plantuml-test/Foo
+           malli.plantuml-test/Foo o-- malli.plantuml-test/Foo
+           @enduml"
+          (plantuml/transform [:map [:foo [:ref #'Foo]]]
+                              {:registry (mr/composite-registry m/default-registry (mr/var-registry))})))))

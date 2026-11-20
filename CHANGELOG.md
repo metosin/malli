@@ -19,6 +19,10 @@ Malli is in well matured [alpha](README.md#alpha).
 * Clear `::m/invalid-dispatch-property` error (with `malli.dev.pretty` hints) when a `:multi` `:dispatch` needs sci but sci is not available, e.g. `{:dispatch "type"}` [#918](https://github.com/metosin/malli/issues/918)
 * Improvements:
   * `malli.error/humanize` gives meaningful messages for `malli.experimental.time` schemas, including `:min` and `:max` [#1114](https://github.com/metosin/malli/issues/1114)
+* Fixes:
+  * `malli.dot/transform` and `malli.plantuml/transform` work with schemas referenced via the `:registry` option, showing them as entities [#1060](https://github.com/metosin/malli/issues/1060)
+    * **NOTE**: references to schemas outside the schema itself, including the default registry, are now followed and shown as entities, instead of as links to undeclared nodes
+    * a named root schema such as `"Curve"` is shown as its own entity, var references are named by their symbol (`my.ns/Foo`) and same-named schemas from different local registries are kept apart
 
 ## 0.20.3 (2026-09-25)
 

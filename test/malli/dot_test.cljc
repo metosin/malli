@@ -1,7 +1,9 @@
 (ns malli.dot-test
   (:require [clojure.string :as str]
-            [clojure.test :refer [deftest is]]
-            [malli.dot :as md]))
+            [clojure.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [malli.dot :as md]
+            [malli.registry :as mr]))
 
 (def Order
   [:schema
@@ -83,3 +85,86 @@
           \":malli.dot/schema\" [label=\"{:malli.dot/schema|[:and int? [:\\< 100]]\\l}\", fillcolor=\"#fff0cd\"]
         }"
        (md/transform [:and int? [:< 100]]))))
+
+(deftest options-registry-test
+  (let [registry (mr/composite-registry
+                  m/default-registry
+                  (mr/registry {"Curve" [:enum :curve25519 :p256]
+                                "Key" [:map [:curve "Curve"] [:value [:map [:x int?]]]]}))]
+
+    (testing "external schemas referenced from the options registry are shown as entities"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
+            }"
+           (md/transform "Curve" {:registry registry}))))
+
+    (testing "embedded schemas can reference schemas from the options registry"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
+              \"Point\" [label=\"{Point|:curve Curve\\l}\", fillcolor=\"#fff0cd\"]
+
+              \"Point\" -> \"Curve\" [arrowtail=\"odiamond\"]
+            }"
+           (md/transform [:schema {:registry {"Point" [:map [:curve "Curve"]]}} "Point"] {:registry registry}))))
+
+    (testing "external schemas are normalized and their references followed"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \":malli.dot/schema\" [label=\"{:malli.dot/schema|:key Key\\l}\", fillcolor=\"#fff0cd\"]
+              \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
+              \"Key\" [label=\"{Key|:curve Curve\\l:value Key$Value\\l}\", fillcolor=\"#fff0cd\"]
+              \"Key$Value\" [label=\"{Key$Value|:x int?\\l}\", fillcolor=\"#e6caab\"]
+
+              \":malli.dot/schema\" -> \"Key\" [arrowtail=\"odiamond\"]
+              \"Key\" -> \"Curve\" [arrowtail=\"odiamond\"]
+              \"Key\" -> \"Key$Value\" [arrowtail=\"diamond\"]
+            }"
+           (md/transform [:map [:key "Key"]] {:registry registry}))))
+
+    (testing "same name in different scopes are different entities"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \":malli.dot/schema\" [label=\"{:malli.dot/schema|:s Scoped\\l}\", fillcolor=\"#fff0cd\"]
+              \"Scoped\" [label=\"{Scoped|:x Scoped$X\\l}\", fillcolor=\"#fff0cd\"]
+              \"Scoped$X\" [label=\"{Scoped$X|[:enum :a :b]\\l}\", fillcolor=\"#fff0cd\"]
+              \"X\" [label=\"{X|[:enum 1 2]\\l}\", fillcolor=\"#fff0cd\"]
+
+              \":malli.dot/schema\" -> \"Scoped\" [arrowtail=\"odiamond\"]
+              \"Scoped\" -> \"Scoped$X\" [arrowtail=\"odiamond\"]
+            }"
+           (md/transform [:map {:registry {"X" [:enum 1 2]}} [:s "Scoped"]]
+                         {:registry (mr/composite-registry
+                                     m/default-registry
+                                     (mr/registry {"Scoped" [:map {:registry {"X" [:enum :a :b]}} [:x "X"]]}))}))))
+
+    (testing "recursive external schemas terminate"
+      (let [registry (mr/composite-registry
+                      m/default-registry
+                      (mr/registry {"Node" [:map [:next [:maybe [:ref "Node"]]]]}))
+            dot (md/transform [:map [:node "Node"]] {:registry registry})]
+        (is (trimmed=
+             "digraph {
+                node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+                edge [dir=\"back\", arrowtail=\"none\"]
+
+                \":malli.dot/schema\" [label=\"{:malli.dot/schema|:node Node\\l}\", fillcolor=\"#fff0cd\"]
+                \"Node\" [label=\"{Node|:next [:maybe [:ref \\\"Node\\\"]]\\l}\", fillcolor=\"#fff0cd\"]
+
+                \":malli.dot/schema\" -> \"Node\" [arrowtail=\"odiamond\"]
+                \"Node\" -> \"Node\" [arrowtail=\"odiamond\"]
+              }"
+             dot))))))

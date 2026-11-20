@@ -77,4 +77,27 @@
             Key o-- Curve
             Key *-- Key$Value
             @enduml"
-           (plantuml/transform [:map [:key "Key"]] {:registry registry}))))))
+           (plantuml/transform [:map [:key "Key"]] {:registry registry}))))
+
+    (testing "same name in different scopes are different entities"
+      (is (trimmed=
+           "@startuml
+            entity :malli.dot/schema {
+             :s \"Scoped\"
+            }
+            entity Scoped {
+             :x \"Scoped$X\"
+            }
+            entity Scoped$X {
+             [:enum :a :b]
+            }
+            entity X {
+             [:enum 1 2]
+            }
+            :malli.dot/schema o-- Scoped
+            Scoped o-- Scoped$X
+            @enduml"
+           (plantuml/transform [:map {:registry {"X" [:enum 1 2]}} [:s "Scoped"]]
+                               {:registry (mr/composite-registry
+                                           m/default-registry
+                                           (mr/registry {"Scoped" [:map {:registry {"X" [:enum :a :b]}} [:x "X"]]}))}))))))

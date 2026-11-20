@@ -24,26 +24,44 @@
   (->> path (remove #{:malli.core/in}) (map (m/-comp str/capitalize m/-keyword->string)) (into [base]) (str/join "$")))
 
 (defn -normalize [{:keys [registry] :as ctx}]
-  (let [registry* (atom registry)]
+  (let [registry* (atom registry)
+        ;; original forms of the referable schemas, to tell apart different schemas with the same name
+        forms (atom (reduce-kv (fn [acc k v] (assoc acc k (m/form v))) {} registry))
+        added (atom {})
+        ;; name under which the schema `target`, referenced as `ref` from `k`, is in the registry.
+        ;; schemas that are not in the registry yet (e.g. from the :registry option) are added. If the
+        ;; name is taken by a different schema (e.g. a local registry entry in another scope), uses a new name.
+        ->name (fn [k ref target]
+                 (let [form (m/form target)]
+                   (loop [name ref, i 0]
+                     (let [f (get @forms name ::none)]
+                       (cond
+                         (= f form) name
+                         (and (= f ::none) (not (contains? @registry* name)))
+                         (do (swap! forms assoc name form)
+                             (swap! registry* assoc name target)
+                             (swap! added assoc name target)
+                             name)
+                         :else (recur (str (-schema-name k []) "$" (m/-keyword->string ref) (when (pos? i) i)) (inc i)))))))]
     (loop [todo registry]
       (when (seq todo)
-        ;; references resolved via the options registry, not embedded in the schema
-        (let [external (atom {})]
-          (doseq [[k v] todo]
-            (swap! registry* assoc k
-                   (m/walk v (fn [schema path children _]
-                               (when-let [ref (and (m/-ref-schema? schema) (m/-ref schema))]
-                                 (when-not (contains? @registry* ref)
-                                   (swap! external assoc ref (m/deref schema))))
-                               (let [options (update (m/options schema) :registry #(mr/composite-registry @registry* %))
-                                     schema (m/into-schema (m/parent schema) (m/properties schema) children options)]
-                                 (if (and (seq path) (= :map (m/type schema)))
-                                   (let [ref (-schema-name k path)]
-                                     (swap! registry* assoc ref (mu/update-properties schema assoc ::entity k))
-                                     ref)
-                                   schema))))))
-          (swap! registry* merge @external)
-          (recur @external))))
+        (reset! added {})
+        (doseq [[k v] todo]
+          (swap! registry* assoc k
+                 (m/walk v (fn [schema path children _]
+                             (let [ref (when (m/-ref-schema? schema) (m/-ref schema))
+                                   name (when ref (->name k ref (m/deref schema)))
+                                   options (update (m/options schema) :registry #(mr/composite-registry @registry* %))
+                                   schema (cond
+                                            (= ref name) (m/into-schema (m/parent schema) (m/properties schema) children options)
+                                            (= :ref (m/type schema)) (m/into-schema (m/parent schema) (m/properties schema) [name] options)
+                                            :else (m/schema name options))]
+                               (if (and (seq path) (= :map (m/type schema)))
+                                 (let [ref (-schema-name k path)]
+                                   (swap! registry* assoc ref (mu/update-properties schema assoc ::entity k))
+                                   ref)
+                                 schema))))))
+        (recur @added)))
     (assoc ctx :registry @registry*)))
 
 (defn -get-links [registry]

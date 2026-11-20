@@ -122,6 +122,25 @@
             }"
            (md/transform [:map [:key "Key"]] {:registry registry}))))
 
+    (testing "same name in different scopes are different entities"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \":malli.dot/schema\" [label=\"{:malli.dot/schema|:s Scoped\\l}\", fillcolor=\"#fff0cd\"]
+              \"Scoped\" [label=\"{Scoped|:x Scoped$X\\l}\", fillcolor=\"#fff0cd\"]
+              \"Scoped$X\" [label=\"{Scoped$X|[:enum :a :b]\\l}\", fillcolor=\"#fff0cd\"]
+              \"X\" [label=\"{X|[:enum 1 2]\\l}\", fillcolor=\"#fff0cd\"]
+
+              \":malli.dot/schema\" -> \"Scoped\" [arrowtail=\"odiamond\"]
+              \"Scoped\" -> \"Scoped$X\" [arrowtail=\"odiamond\"]
+            }"
+           (md/transform [:map {:registry {"X" [:enum 1 2]}} [:s "Scoped"]]
+                         {:registry (mr/composite-registry
+                                     m/default-registry
+                                     (mr/registry {"Scoped" [:map {:registry {"X" [:enum :a :b]}} [:x "X"]]}))}))))
+
     (testing "recursive external schemas terminate"
       (let [registry (mr/composite-registry
                       m/default-registry

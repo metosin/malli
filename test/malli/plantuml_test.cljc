@@ -47,13 +47,9 @@
     (testing "external schemas referenced from the options registry are shown as entities"
       (is (trimmed=
            "@startuml
-            entity :malli.dot/schema {
-             \"Curve\"
-            }
             entity Curve {
              [:enum :curve25519 :p256]
             }
-            :malli.dot/schema o-- Curve
             @enduml"
            (plantuml/transform "Curve" {:registry registry}))))
 
@@ -100,4 +96,41 @@
            (plantuml/transform [:map {:registry {"X" [:enum 1 2]}} [:s "Scoped"]]
                                {:registry (mr/composite-registry
                                            m/default-registry
-                                           (mr/registry {"Scoped" [:map {:registry {"X" [:enum :a :b]}} [:x "X"]]}))}))))))
+                                           (mr/registry {"Scoped" [:map {:registry {"X" [:enum :a :b]}} [:x "X"]]}))}))))
+
+    (testing "recursive external schemas terminate"
+      (is (trimmed=
+           "@startuml
+            entity :malli.dot/schema {
+             :node \"Node\"
+            }
+            entity Node {
+             :next [:maybe [:ref \"Node\"]]
+            }
+            :malli.dot/schema o-- Node
+            Node o-- Node
+            @enduml"
+           (plantuml/transform [:map [:node "Node"]]
+                               {:registry (mr/composite-registry
+                                           m/default-registry
+                                           (mr/registry {"Node" [:map [:next [:maybe [:ref "Node"]]]]}))}))))))
+
+#?(:clj
+   (def Foo [:map [:a int?] [:b [:maybe [:ref #'Foo]]]]))
+
+#?(:clj
+   (deftest var-ref-test
+     (is (trimmed=
+          "@startuml
+           entity :malli.dot/schema {
+            :foo [:ref \"malli.plantuml-test/Foo\"]
+           }
+           entity malli.plantuml-test/Foo {
+            :a int?
+            :b [:maybe [:ref \"malli.plantuml-test/Foo\"]]
+           }
+           :malli.dot/schema o-- malli.plantuml-test/Foo
+           malli.plantuml-test/Foo o-- malli.plantuml-test/Foo
+           @enduml"
+          (plantuml/transform [:map [:foo [:ref #'Foo]]]
+                              {:registry (mr/composite-registry m/default-registry (mr/var-registry))})))))

@@ -98,12 +98,22 @@
               node [shape=\"record\", style=\"filled\", color=\"#000000\"]
               edge [dir=\"back\", arrowtail=\"none\"]
 
-              \":malli.dot/schema\" [label=\"{:malli.dot/schema|Curve\\l}\", fillcolor=\"#fff0cd\"]
               \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
-
-              \":malli.dot/schema\" -> \"Curve\" [arrowtail=\"odiamond\"]
             }"
            (md/transform "Curve" {:registry registry}))))
+
+    (testing "embedded schemas can reference schemas from the options registry"
+      (is (trimmed=
+           "digraph {
+              node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+              edge [dir=\"back\", arrowtail=\"none\"]
+
+              \"Curve\" [label=\"{Curve|[:enum :curve25519 :p256]\\l}\", fillcolor=\"#fff0cd\"]
+              \"Point\" [label=\"{Point|:curve Curve\\l}\", fillcolor=\"#fff0cd\"]
+
+              \"Point\" -> \"Curve\" [arrowtail=\"odiamond\"]
+            }"
+           (md/transform [:schema {:registry {"Point" [:map [:curve "Curve"]]}} "Point"] {:registry registry}))))
 
     (testing "external schemas are normalized and their references followed"
       (is (trimmed=
@@ -146,5 +156,15 @@
                       m/default-registry
                       (mr/registry {"Node" [:map [:next [:maybe [:ref "Node"]]]]}))
             dot (md/transform [:map [:node "Node"]] {:registry registry})]
-        (is (str/includes? dot "\"Node\" [label=\"{Node|:next [:maybe [:ref"))
-        (is (str/includes? dot "\"Node\" -> \"Node\""))))))
+        (is (trimmed=
+             "digraph {
+                node [shape=\"record\", style=\"filled\", color=\"#000000\"]
+                edge [dir=\"back\", arrowtail=\"none\"]
+
+                \":malli.dot/schema\" [label=\"{:malli.dot/schema|:node Node\\l}\", fillcolor=\"#fff0cd\"]
+                \"Node\" [label=\"{Node|:next [:maybe [:ref \\\"Node\\\"]]\\l}\", fillcolor=\"#fff0cd\"]
+
+                \":malli.dot/schema\" -> \"Node\" [arrowtail=\"odiamond\"]
+                \"Node\" -> \"Node\" [arrowtail=\"odiamond\"]
+              }"
+             dot))))))

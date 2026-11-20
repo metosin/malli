@@ -4,10 +4,19 @@
             [malli.registry :as mr]
             [malli.util :as mu]))
 
+(defn -ref-name
+  "name for a reference in the output: vars as their symbol name, as #'... is not a valid PlantUML name"
+  [ref]
+  (if (var? ref) (subs (str ref) 2) ref))
+
 (defn -lift [?schema]
   (let [schema (m/schema ?schema)]
-    (if (and (m/-ref-schema? schema) (-> schema m/deref m/type (= ::m/schema)))
-      ?schema [:schema {:registry {::schema ?schema}} ?schema])))
+    (cond
+      ;; a named root, e.g. "Curve" from the :registry option, is its own entity
+      (and (#{::m/schema :ref} (m/type schema)) (m/-ref schema))
+      (let [id (-ref-name (m/-ref schema))] [:schema {:registry {id (m/deref schema)}} id])
+      (and (m/-ref-schema? schema) (-> schema m/deref m/type (= ::m/schema))) ?schema
+      :else [:schema {:registry {::schema ?schema}} ?schema])))
 
 (defn -collect [schema]
   (let [state (atom {})]
@@ -33,7 +42,7 @@
         ;; name is taken by a different schema (e.g. a local registry entry in another scope), uses a new name.
         ->name (fn [k ref target]
                  (let [form (m/form target)]
-                   (loop [name ref, i 0]
+                   (loop [name (-ref-name ref), i 0]
                      (let [f (get @forms name ::none)]
                        (cond
                          (= f form) name
@@ -42,7 +51,7 @@
                              (swap! registry* assoc name target)
                              (swap! added assoc name target)
                              name)
-                         :else (recur (str (-schema-name k []) "$" (m/-keyword->string ref) (when (pos? i) i)) (inc i)))))))]
+                         :else (recur (str (-schema-name k []) "$" (m/-keyword->string (-ref-name ref)) (when (pos? i) i)) (inc i)))))))]
     (loop [todo registry]
       (when (seq todo)
         (reset! added {})

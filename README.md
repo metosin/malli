@@ -74,7 +74,7 @@ So, we decided to spin out our own library, which would do all the things we fee
 
 Malli requires Clojure 1.11 or ClojureScript 1.11.51.
 
-Malli is tested with the LTS releases Java 8, 11, 17, 21 and 25.
+Malli is tested with the LTS releases Java 8, 11, 17, 21 and 25. Java 8 and 11 are tested with Clojure 1.11 and 1.12 only, as Clojure 1.13 requires Java 17.
 
 ## Quickstart
 

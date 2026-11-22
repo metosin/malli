@@ -17,6 +17,12 @@ jobs:
         # Supported Java versions: LTS releases and latest
         jdk: [17, 21, 25, 26]
         clojure: [11, 12, 13]
+        # Clojure 1.13 requires Java 17+, test older Java with 1.11 and 1.12
+        include:
+          - {jdk: 8, clojure: 11}
+          - {jdk: 8, clojure: 12}
+          - {jdk: 11, clojure: 11}
+          - {jdk: 11, clojure: 12}
 
     name: Clojure ${{ matrix.clojure }} (Java ${{ matrix.jdk }})
 

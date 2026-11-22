@@ -43,7 +43,7 @@ jobs:
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@13.7.0
         with:
-          cli: latest
+          cli: 1.12.7.1681
       - name: Run tests
         run: CLOJURE_ALIAS=clojure-${{ matrix.clojure }} bin/kaocha
 
@@ -74,7 +74,7 @@ jobs:
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@13.7.0
         with:
-          cli: latest
+          cli: 1.12.7.1681
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
@@ -111,8 +111,8 @@ jobs:
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@13.7.0
         with:
-          cli: latest
-          bb: latest
+          cli: 1.12.7.1681
+          bb: 1.13.230
       - name: Run tests
         run: bb test-bb
 
@@ -143,7 +143,7 @@ jobs:
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@13.7.0
         with:
-          cli: latest
-          bb: latest
+          cli: 1.12.7.1681
+          bb: 1.13.230
       - name: Run doc tests
         run: bb test-docs

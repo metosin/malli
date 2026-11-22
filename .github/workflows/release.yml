@@ -23,7 +23,7 @@ jobs:
     - name: "Setup Clojure"
       uses: DeLaGuardo/setup-clojure@13.7.0
       with:
-        cli: latest
+        cli: 1.12.7.1681
     - name: Build jar
       run: clojure -T:jar
     - name: Deploy to Clojars
